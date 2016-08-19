@@ -1,0 +1,153 @@
+/*
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ */
+
+allprojects {
+  apply plugin: 'idea'
+  apply plugin: 'eclipse'
+
+  repositories {
+    mavenCentral()
+  }
+
+  //wrapper generation task
+  task wrapper(type: Wrapper) {
+    gradleVersion = '3.5'
+  }
+}
+
+subprojects {
+  apply plugin: 'java'
+  apply plugin: 'checkstyle'
+  apply plugin: 'findbugs'
+
+  //code quality and inspections
+  checkstyle {
+    toolVersion = '7.5.1'
+    ignoreFailures = false
+    configFile = rootProject.file('checkstyle/checkstyle.xml')
+  }
+
+  findbugs {
+    toolVersion = "3.0.1"
+    excludeFilter = file("$rootDir/gradle/findbugs-exclude.xml")
+    ignoreFailures = false
+  }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest', 'findbugsMain', 'findbugsTest')
+
+  tasks.withType(FindBugs) {
+    reports {
+      xml.enabled (project.hasProperty('xmlFindBugsReport'))
+      html.enabled (!project.hasProperty('xmlFindBugsReport'))
+    }
+  }
+
+  jar {
+    from "$rootDir/LICENSE"
+    from "$rootDir/NOTICE"
+  }
+
+  test {
+    useJUnit {}
+    testLogging {
+      events "passed", "failed", "skipped"
+    }
+    maxParallelForks = Runtime.runtime.availableProcessors()
+  }
+}
+
+project(':cruise-control') {
+  apply plugin: 'scala'
+
+  //needed because our java classes depend on scala classes, so must be compiled by scala
+  sourceSets {
+    main {
+      java {
+        srcDirs = []
+      }
+
+      scala {
+        srcDirs = ['src/main/java', 'src/main/scala']
+      }
+    }
+
+    test {
+      java {
+        srcDirs = []
+      }
+      scala {
+        srcDirs = ['src/test/java', 'src/test/scala']
+      }
+    }
+
+  }
+
+  dependencies {
+    compile project(':cruise-control-metrics-reporter')
+    compile "org.slf4j:slf4j-api:1.7.25"
+    compile "org.apache.zookeeper:zookeeper:3.4.6"
+    compile "org.apache.kafka:kafka_2.10:0.10.1.0"
+    compile 'org.apache.kafka:kafka_2.10:0.10.1.0:test'
+    compile 'org.apache.kafka:kafka-clients:0.10.1.0'
+    compile "org.scala-lang:scala-library:2.10.4"
+    compile 'junit:junit:4.12'
+    compile 'org.apache.commons:commons-math3:3.6.1'
+    compile 'com.google.code.gson:gson:2.7'
+    compile 'org.eclipse.jetty:jetty-server:9.4.6.v20170531'
+    compile 'org.eclipse.jetty:jetty-servlet:9.4.6.v20170531'
+    compile 'io.dropwizard.metrics:metrics-core:3.2.2'
+
+    testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
+    testCompile "org.scala-lang:scala-library:2.10.4"
+    testCompile 'org.easymock:easymock:3.4'
+    testCompile 'org.apache.kafka:kafka_2.10:0.10.1.0:test'
+  }
+
+  tasks.create(name: "copyDependantLibs", type: Copy) {
+    from (configurations.testRuntime) {
+      include('slf4j-log4j12*')
+    }
+    from (configurations.runtime) {
+
+    }
+    into "$buildDir/dependant-libs"
+    duplicatesStrategy 'exclude'
+  }
+
+  compileScala.doLast {
+    tasks.copyDependantLibs.execute()
+  }
+}
+
+project(':cruise-control-metrics-reporter') {
+  apply plugin: 'scala'
+
+  configurations {
+    testOutput
+  }
+
+  dependencies {
+    compile "org.slf4j:slf4j-api:1.7.25"
+    compile "org.apache.kafka:kafka_2.10:0.10.1.0"
+    compile 'org.apache.kafka:kafka-clients:0.10.1.0'
+    compile 'junit:junit:4.12'
+    compile 'org.apache.commons:commons-math3:3.6.1'
+
+    testCompile 'org.bouncycastle:bcpkix-jdk15on:1.54'
+    testOutput sourceSets.test.output
+  }
+
+  sourceSets {
+    test {
+      java {
+        srcDirs = []
+      }
+      scala {
+        srcDirs = ['src/test/java', 'src/test/scala']
+      }
+    }
+
+  }
+}
+
