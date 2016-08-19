@@ -1,0 +1,81 @@
+<!--
+  ~ Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+  -->
+
+<FindBugsFilter>
+  <Match>
+    <!-- Findbugs tends to work a little bit better with Java than with Scala.  We suppress
+         some categories of bug reports when using Scala, since findbugs generates huge
+         numbers of false positives in some of these categories when examining Scala code.
+
+        NP_LOAD_OF_KNOWN_NULL_VALUE: The variable referenced at this point is known to be null
+        due to an earlier check against null.
+        NP_NULL_PARAM_DEREF: Method call passes null for non-null parameter.
+        NP_NULL_ON_SOME_PATH: Possible null pointer dereference
+        SE_BAD_FIELD: Non-transient non-serializable instance field in serializable class.
+        DM_STRING_CTOR: Method invokes inefficient new String(String) constructor.
+        DM_NEW_FOR_GETCLASS: Method allocates an object, only to get the class object.
+        ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD: Write to static field from instance method.
+        DM_NUMBER_CTOR: Method invokes inefficient Number constructor; use static valueOf instead.
+        RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE: Nullcheck of value previously dereferenced.
+        RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE: Redundant nullcheck of value known to be non-null.
+        RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE: Redundant nullcheck of value known to be null.
+        RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT: Return value of method without side effect is ignored.
+        NM_CLASS_NAMING_CONVENTION: Class names should start with an upper case letter.
+        NM_METHOD_NAMING_CONVENTION: Method names should start with a lower case letter.
+        EC_NULL_ARG: Call to equals(null)
+        NP_ALWAYS_NULL: Null pointer dereference
+        MS_CANNOT_BE_FINAL: Field isn't final and can't be protected from malicious code -->
+    <Source name="~.*\.scala|TestSslUtils.java" />
+    <Or>
+      <Bug pattern="NP_LOAD_OF_KNOWN_NULL_VALUE"/>
+      <Bug pattern="NP_NULL_ON_SOME_PATH"/>
+      <Bug pattern="NP_NULL_PARAM_DEREF"/>
+      <Bug pattern="SE_BAD_FIELD"/>
+      <Bug pattern="DM_STRING_CTOR"/>
+      <Bug pattern="DM_NEW_FOR_GETCLASS"/>
+      <Bug pattern="DM_DEFAULT_ENCODING"/>
+      <Bug pattern="ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD"/>
+      <Bug pattern="DM_NUMBER_CTOR"/>
+      <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE"/>
+      <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE"/>
+      <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE"/>
+      <Bug pattern="RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT"/>
+      <Bug pattern="EI_EXPOSE_REP"/>
+      <Bug pattern="EI_EXPOSE_REP2"/>
+      <Bug pattern="OBL_UNSATISFIED_OBLIGATION_EXCEPTION_EDGE"/>
+      <Bug pattern="RV_RETURN_VALUE_IGNORED_BAD_PRACTICE"/>
+      <Bug pattern="NM_CLASS_NAMING_CONVENTION"/>
+      <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+      <Bug pattern="EC_NULL_ARG"/>
+      <Bug pattern="NP_ALWAYS_NULL"/>
+      <Bug pattern="MS_CANNOT_BE_FINAL"/>
+    </Or>
+  </Match>
+
+  <!-- We do not catch the serializable issue here because the servlet requires everything it contains to be
+   serializable for some outdated reason. -->
+  <Match>
+    <Bug pattern="SE_BAD_FIELD"/>
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.model.ClusterModelStats" />
+    <Method name="utilizationMatrix" />
+    <Bug pattern="EI_EXPOSE_REP" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator" />
+    <Method name="clear" />
+    <Bug pattern="SWL_SLEEP_WITH_LOCK_HELD" />
+  </Match>
+
+  <Match>
+    <Class name="com.linkedin.kafka.cruisecontrol.model.ClusterModel" />
+    <Method name="setBrokerState" />
+    <Bug pattern="SF_SWITCH_FALLTHROUGH" />
+  </Match>
+
+
+</FindBugsFilter>

@@ -1,0 +1,24 @@
+{
+  "brokerCapacities":[
+    {
+      "brokerId": "-1",
+      "capacity": {
+        "DISK": "100000",
+        "CPU": "100",
+        "NW_IN": "10000",
+        "NW_OUT": "10000"
+      },
+      "doc": "This is the default capacity."
+    },
+    {
+      "brokerId": "0",
+      "capacity": {
+        "DISK": "500000",
+        "CPU": "100",
+        "NW_IN": "50000",
+        "NW_OUT": "50000"
+      },
+      "doc": "This overrides the capacity for broker 0"
+    }
+  ]
+}
