@@ -45,7 +45,7 @@ import org.slf4j.LoggerFactory;
  */
 public class KafkaCruiseControlServlet extends HttpServlet {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlServlet.class);
-  private static final Logger ACCESS_LOG = LoggerFactory.getLogger("LiKafkaCruiseControlPublicAccessLogger");
+  private static final Logger ACCESS_LOG = LoggerFactory.getLogger("CruiseControlPublicAccessLogger");
 
   private static final String START_MS_PARAM = "start";
   private static final String END_MS_PARAM = "end";

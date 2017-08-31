@@ -153,7 +153,7 @@ public class LoadMonitor {
    */
   public LoadMonitorState state() {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState state = _loadMonitorTaskRunner.state();
-    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.clusterAndGeneration();
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
     Cluster kafkaCluster = clusterAndGeneration.cluster();
     int totalNumPartitions = MonitorUtils.totalNumPartitions(kafkaCluster);
     double minMonitoredPartitionsPercentage = _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage();
@@ -168,7 +168,7 @@ public class LoadMonitor {
     // We do this primarily because the checker and aggregator are not always synchronized.
     int numValidSnapshotWindows = 0;
     SortedMap<Long, Double> loadSnapshotsWindows = new TreeMap<>();
-    for (long window : _metricSampleAggregator.snapshotWindows()) {
+    for (long window : _metricSampleAggregator.visibleSnapshotWindows()) {
       double monitoredPartitionsPercentage = windowToMonitoredPercentage.getOrDefault(window, 0.0);
       numValidSnapshotWindows =
           monitoredPartitionsPercentage < minMonitoredPartitionsPercentage ? 0 : numValidSnapshotWindows + 1;
@@ -366,10 +366,12 @@ public class LoadMonitor {
     try {
       // Create the racks and brokers.
       for (Node node : kafkaCluster.nodes()) {
-        clusterModel.createRack(node.rack());
+        // If the rack is not specified, we use the host info as rack info.
+        String rack = getRackHandleNull(node);
+        clusterModel.createRack(rack);
         Map<Resource, Double> brokerCapacity =
-            _brokerCapacityConfigResolver.capacityForBroker(node.rack(), node.host(), node.id());
-        clusterModel.createBroker(node.rack(), node.host(), node.id(), brokerCapacity);
+            _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
+        clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity);
       }
 
       // populate snapshots for the cluster model.
@@ -541,16 +543,21 @@ public class LoadMonitor {
     if (partitionInfo != null) {
       for (Node replica : partitionInfo.replicas()) {
         boolean isLeader = partitionInfo.leader() != null && replica.id() == partitionInfo.leader().id();
+        String rack = getRackHandleNull(replica);
         Map<Resource, Double> brokerCapacity =
-            _brokerCapacityConfigResolver.capacityForBroker(replica.rack(), replica.host(), replica.id());
-        clusterModel.createReplicaHandleDeadBroker(replica.rack(), replica.id(), tp, isLeader, brokerCapacity);
+            _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
+        clusterModel.createReplicaHandleDeadBroker(rack, replica.id(), tp, isLeader, brokerCapacity);
         // Push the load snapshot to the replica one by one.
         for (int i = 0; i < leaderLoadSnapshots.length; i++) {
-          clusterModel.pushLatestSnapshot(replica.rack(), replica.id(), tp,
+          clusterModel.pushLatestSnapshot(rack, replica.id(), tp,
                                           isLeader ? leaderLoadSnapshots[i].duplicate() : MonitorUtils.toFollowerSnapshot(leaderLoadSnapshots[i]));
         }
       }
     }
+  }
+  
+  private String getRackHandleNull(Node node) {
+    return node.rack() == null || node.rack().isEmpty() ? node.host() : node.rack();
   }
 
   private Set<Integer> brokersWithPartitions(Cluster kafkaCluster) {
@@ -630,7 +637,7 @@ public class LoadMonitor {
         _numValidSnapshotWindows =
             getAvailableNumSnapshots(clusterAndGeneration, minMonitoredPartitionsPercentage, totalNumPartitions);
         _monitoredPartitionsPercentage = getMonitoredPartitionsPercentage();
-        _totalMonitoredSnapshotWindows = _metricSampleAggregator.snapshotWindows().size();
+        _totalMonitoredSnapshotWindows = _metricSampleAggregator.allSnapshotWindows().size();
         _lastUpdate = System.currentTimeMillis();
       } catch (Throwable t) {
         // We catch all the throwables because we don't want the sensor updater to die

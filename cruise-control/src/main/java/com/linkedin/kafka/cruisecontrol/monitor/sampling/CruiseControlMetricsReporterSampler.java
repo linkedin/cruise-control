@@ -26,6 +26,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
+import org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
@@ -155,17 +156,15 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, Integer.toString(Integer.MAX_VALUE));
     KafkaCruiseControlUtils.setSslConfigs(consumerProps, configs);
     _metricConsumer = new KafkaConsumer<>(consumerProps);
-    _metricConsumer.subscribe(Pattern.compile(metricReporterTopic), new ConsumerRebalanceListener() {
-      @Override
-      public void onPartitionsRevoked(Collection<TopicPartition> collection) {
-        _metricConsumer.commitSync();
+    _metricConsumer.subscribe(Pattern.compile(metricReporterTopic), new NoOpConsumerRebalanceListener());
+    Pattern topicPattern = Pattern.compile(metricReporterTopic);
+    for(String topic : _metricConsumer.listTopics().keySet()) {
+      if (topicPattern.matcher(topic).matches()) {
+        return;
       }
-
-      @Override
-      public void onPartitionsAssigned(Collection<TopicPartition> collection) {
-        // Do nothing
-      }
-    });
+    }
+    throw new IllegalStateException("Cruise Control cannot find sampling topic matches " + metricReporterTopic 
+        + " in the target cluster.");
   }
 
   @Override

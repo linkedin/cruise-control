@@ -64,10 +64,10 @@ public class MetricSampleAggregatorTest {
       assertNotNull(snapshots);
       assertEquals(NUM_SNAPSHOTS, snapshots.length);
       for (int i = 0; i < NUM_SNAPSHOTS; i++) {
-        assertEquals((i + 1) * SNAPSHOT_WINDOW_MS, snapshots[i].time());
+        assertEquals((NUM_SNAPSHOTS - i) * SNAPSHOT_WINDOW_MS, snapshots[i].time());
         for (Resource resource : Resource.values()) {
           double expectedValue = resource == Resource.DISK ?
-              i * 10 + MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1 : i * 10 + (MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1) / 2.0;
+              (NUM_SNAPSHOTS - 1 - i) * 10 + MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1 : (NUM_SNAPSHOTS - 1 - i) * 10 + (MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1) / 2.0;
           assertEquals("The utilization for " + resource + " should be " + expectedValue,
               expectedValue, snapshots[i].utilizationFor(resource), 0);
         }
@@ -92,6 +92,9 @@ public class MetricSampleAggregatorTest {
           metricSampleAggregator.recentSnapshots(metadata.fetch(), Long.MAX_VALUE).snapshots();
       assertEquals("Only " + NUM_SNAPSHOTS + " should be returned.",
           NUM_SNAPSHOTS, snapshotsForPartition.get(TP).length);
+      for (int i = 0; i < NUM_SNAPSHOTS; i++) {
+        assertEquals((NUM_SNAPSHOTS + 1 - i) * SNAPSHOT_WINDOW_MS, snapshotsForPartition.get(TP)[i].time());
+      }
     } catch (NotEnoughSnapshotsException e) {
       fail("There should be enough snapshots.");
     }
@@ -162,10 +165,10 @@ public class MetricSampleAggregatorTest {
       int numFlaws = 0;
       for (MetricSampleAggregationResult.SampleFlaw sampleFlaw : result.sampleFlaw(TP)) {
         assertEquals(MetricSampleAggregationResult.Imputation.PREV_PERIOD, sampleFlaw.imputation());
-        // Check the sample flow window.
-        assertEquals((NUM_SNAPSHOTS + numFlaws + 1) * SNAPSHOT_WINDOW_MS, sampleFlaw.snapshotWindow());
+        // Check the sample flaw window.
+        assertEquals((NUM_SNAPSHOTS + 2 - numFlaws) * SNAPSHOT_WINDOW_MS, sampleFlaw.snapshotWindow());
         // Check the snapshot window.
-        assertEquals(sampleFlaw.snapshotWindow(), result.snapshots().get(TP)[numFlaws].time());
+        assertEquals(sampleFlaw.snapshotWindow(), result.snapshots().get(TP)[NUM_SNAPSHOTS - 2 + numFlaws].time());
         numFlaws++;
       }
       assertEquals(2, numFlaws);
@@ -294,7 +297,7 @@ public class MetricSampleAggregatorTest {
         double expectedValue = resource == Resource.DISK ?
             MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1 : (MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1) / 2.0;
         assertEquals("The utilization for " + resource + " should be " + expectedValue,
-            expectedValue, snapshots[0].utilizationFor(resource), 0);
+            expectedValue, snapshots[NUM_SNAPSHOTS - 1].utilizationFor(resource), 0);
       }
     } catch (NotEnoughSnapshotsException e) {
       fail("Should not have enough snapshots.");
@@ -315,7 +318,7 @@ public class MetricSampleAggregatorTest {
     MetricSampleAggregationResult result0 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
                                                                                   NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
     assertTrue("result0 should have been cached.", result0 == metricSampleAggregator.cachedAggregationResult());
-    assertEquals("The cached aggregated window should be 21000", (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS,
+    assertEquals("The cached aggregated window should be 20000", NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
                  metricSampleAggregator.cachedAggregationResultWindow());
     assertEquals("The generation should be " + generation, generation, metricSampleAggregator.currentGeneration());
     MetricSampleAggregationResult result1 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
@@ -339,13 +342,13 @@ public class MetricSampleAggregatorTest {
     MetricSampleAggregationResult result3 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
                                                                                    NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
     assertTrue("result3 should have been cached.", result3 == metricSampleAggregator.cachedAggregationResult());
-    assertEquals("The cached aggregated window should be 21000", (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS,
+    assertEquals("The cached aggregated window should be 20000", NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
                  metricSampleAggregator.cachedAggregationResultWindow());
 
     // Roll out a new snapshot window, should have no impact on the cache.
     populateSampleAggregator(1, 1, metricSampleAggregator, TP, NUM_SNAPSHOTS + 1);
     assertTrue("result3 should remain cached.", result3 == metricSampleAggregator.cachedAggregationResult());
-    assertEquals("The cached aggregated window should be 21000", (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS,
+    assertEquals("The cached aggregated window should be 20000", NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
                  metricSampleAggregator.cachedAggregationResultWindow());
     MetricSampleAggregationResult result4 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
                                                                                    NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
@@ -357,7 +360,7 @@ public class MetricSampleAggregatorTest {
                                                                                    (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS);
     assertTrue("The cache should have been updated.", result5 != result4);
     assertTrue("The cache should have been updated to result5.", result5 == metricSampleAggregator.cachedAggregationResult());
-    assertEquals("The cached aggregated window should be 22000", (NUM_SNAPSHOTS + 2) * SNAPSHOT_WINDOW_MS,
+    assertEquals("The cached aggregated window should be 21000", (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS,
                  metricSampleAggregator.cachedAggregationResultWindow());
     assertEquals("The generation should be " + (generation + 2), generation + 2, metricSampleAggregator.currentGeneration());
 
@@ -366,7 +369,7 @@ public class MetricSampleAggregatorTest {
     MetricSampleAggregationResult result6 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
                                                                                    (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS);
     assertTrue("result5 should remain cached.", result5 == metricSampleAggregator.cachedAggregationResult());
-    assertEquals("The cached aggregated window should be 22000", (NUM_SNAPSHOTS + 2) * SNAPSHOT_WINDOW_MS,
+    assertEquals("The cached aggregated window should be 21000", (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS,
                  metricSampleAggregator.cachedAggregationResultWindow());
     assertTrue("Result6 should be returned from the cache.", result6 == metricSampleAggregator.cachedAggregationResult());
     assertEquals("The generation should be " + (generation + 2), generation + 2, metricSampleAggregator.currentGeneration());
