@@ -81,7 +81,7 @@ public class MetricSampleAggregatorTest {
     ModelGeneration modelGeneration = new ModelGeneration(1, metricSampleAggregator.currentGeneration());
     assertEquals(NUM_SNAPSHOTS, checker.numValidWindows(modelGeneration, metadata.fetch(), 1.0, 1));
     Map<Long, Double> monitoredPercentages = checker.monitoredPercentages(modelGeneration, metadata.fetch(), 1);
-    for(double percentage : monitoredPercentages.values()) {
+    for (double percentage : monitoredPercentages.values()) {
       assertEquals(1.0, percentage, 0.0);
     }
     assertEquals(NUM_SNAPSHOTS, checker.numWindows(-1, Long.MAX_VALUE));
