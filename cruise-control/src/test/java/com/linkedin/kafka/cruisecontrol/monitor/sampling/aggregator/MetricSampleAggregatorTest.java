@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.NotEnoughSnapshotsException;
+import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.util.ArrayList;
@@ -75,6 +76,15 @@ public class MetricSampleAggregatorTest {
     } catch (NotEnoughSnapshotsException e) {
       fail("Should not have exception " + e.toString());
     }
+    
+    // Verify the metric completeness checker state
+    ModelGeneration modelGeneration = new ModelGeneration(1, metricSampleAggregator.currentGeneration());
+    assertEquals(NUM_SNAPSHOTS, checker.numValidWindows(modelGeneration, metadata.fetch(), 1.0, 1));
+    Map<Long, Double> monitoredPercentages = checker.monitoredPercentages(modelGeneration, metadata.fetch(), 1);
+    for(double percentage : monitoredPercentages.values()) {
+      assertEquals(1.0, percentage, 0.0);
+    }
+    assertEquals(NUM_SNAPSHOTS, checker.numWindows(-1, Long.MAX_VALUE));
   }
 
   @Test
@@ -345,14 +355,16 @@ public class MetricSampleAggregatorTest {
     assertEquals("The cached aggregated window should be 20000", NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
                  metricSampleAggregator.cachedAggregationResultWindow());
 
-    // Roll out a new snapshot window, should have no impact on the cache.
+    // Roll out a new snapshot window, the cache should be invalidated.
     populateSampleAggregator(1, 1, metricSampleAggregator, TP, NUM_SNAPSHOTS + 1);
-    assertTrue("result3 should remain cached.", result3 == metricSampleAggregator.cachedAggregationResult());
-    assertEquals("The cached aggregated window should be 20000", NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
+    assertNull("The cache should have been cleared.", metricSampleAggregator.cachedAggregationResult());
+    assertEquals("The cached aggregated window should be -1", -1,
                  metricSampleAggregator.cachedAggregationResultWindow());
     MetricSampleAggregationResult result4 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
                                                                                    NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
-    assertTrue("result4 should have been cached because the query window were the same", result4 == result3);
+    assertNull("result4 should not be cached because it did not query latest window.", metricSampleAggregator.cachedAggregationResult());
+    assertEquals("The cached aggregated window should be -1", -1,
+                 metricSampleAggregator.cachedAggregationResultWindow());
     assertEquals("The generation should be " + (generation + 2), generation + 2, metricSampleAggregator.currentGeneration());
 
     // Query a new snapshot window

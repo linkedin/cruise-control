@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,7 +20,6 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -158,7 +156,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     _metricConsumer = new KafkaConsumer<>(consumerProps);
     _metricConsumer.subscribe(Pattern.compile(metricReporterTopic), new NoOpConsumerRebalanceListener());
     Pattern topicPattern = Pattern.compile(metricReporterTopic);
-    for(String topic : _metricConsumer.listTopics().keySet()) {
+    for (String topic : _metricConsumer.listTopics().keySet()) {
       if (topicPattern.matcher(topic).matches()) {
         return;
       }

@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -20,7 +21,7 @@ import org.apache.kafka.common.TopicPartition;
  */
 public class MetricCompletenessChecker {
   // The following two data structures help us to quickly identify how many valid partitions are there in each window.
-  private final ConcurrentSkipListMap<Long, Map<String, Integer>> _validPartitionsPerTopicByWindows;
+  private final ConcurrentSkipListMap<Long, Map<String, Set<Integer>>> _validPartitionsPerTopicByWindows;
   private final SortedMap<Long, Integer> _validPartitionsByWindows;
   private final int _maxNumSnapshots;
   private volatile ModelGeneration _modelGeneration;
@@ -113,9 +114,14 @@ public class MetricCompletenessChecker {
                                    TopicPartition tp) {
     _activeSnapshotWindow = aggregator.activeSnapshotWindow();
     _validPartitionsPerTopicByWindows.computeIfAbsent(window, w -> new ConcurrentHashMap<>())
-                                     .compute(tp.topic(), (t, v) -> {
-                                       int newValue = v == null ? 0 : v;
-                                       return newValue + (aggregator.isValidPartition(window, tp) ? 1 : 0);
+                                     .compute(tp.topic(), (t, set) -> {
+                                       Set<Integer> s = set == null ? new HashSet<>() : set;
+                                       if (aggregator.isValidPartition(window, tp)) {
+                                         synchronized (s) {
+                                           s.add(tp.partition());
+                                         }
+                                       }
+                                       return s;
                                      });
   }
 
@@ -124,7 +130,7 @@ public class MetricCompletenessChecker {
     if (_modelGeneration == null || !_modelGeneration.equals(modelGeneration)) {
       _modelGeneration = modelGeneration;
       _validPartitionsByWindows.clear();
-      for (Map.Entry<Long, Map<String, Integer>> entry : _validPartitionsPerTopicByWindows.entrySet()) {
+      for (Map.Entry<Long, Map<String, Set<Integer>>> entry : _validPartitionsPerTopicByWindows.entrySet()) {
         long window = entry.getKey();
         for (String topic : entry.getValue().keySet()) {
           updateWindowMetricCompleteness(cluster, window, topic);
@@ -134,10 +140,10 @@ public class MetricCompletenessChecker {
   }
 
   private void updateWindowMetricCompleteness(Cluster cluster, long window, String topic) {
-    int numValidPartitions = _validPartitionsPerTopicByWindows.get(window).get(topic);
+    int numValidPartitions = _validPartitionsPerTopicByWindows.get(window).get(topic).size();
     int numPartitions = cluster.partitionsForTopic(topic).size();
     _validPartitionsByWindows.compute(window, (w, v) -> {
-      int newValue = v == null ? 0 : v;
+      int newValue = (v == null ? 0 : v);
       return numValidPartitions == numPartitions ? newValue + numPartitions : newValue;
     });
   }
