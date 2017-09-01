@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,11 +20,11 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
+import org.apache.kafka.clients.consumer.internals.NoOpConsumerRebalanceListener;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
@@ -155,17 +154,15 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, Integer.toString(Integer.MAX_VALUE));
     KafkaCruiseControlUtils.setSslConfigs(consumerProps, configs);
     _metricConsumer = new KafkaConsumer<>(consumerProps);
-    _metricConsumer.subscribe(Pattern.compile(metricReporterTopic), new ConsumerRebalanceListener() {
-      @Override
-      public void onPartitionsRevoked(Collection<TopicPartition> collection) {
-        _metricConsumer.commitSync();
+    _metricConsumer.subscribe(Pattern.compile(metricReporterTopic), new NoOpConsumerRebalanceListener());
+    Pattern topicPattern = Pattern.compile(metricReporterTopic);
+    for (String topic : _metricConsumer.listTopics().keySet()) {
+      if (topicPattern.matcher(topic).matches()) {
+        return;
       }
-
-      @Override
-      public void onPartitionsAssigned(Collection<TopicPartition> collection) {
-        // Do nothing
-      }
-    });
+    }
+    throw new IllegalStateException("Cruise Control cannot find sampling topic matches " + metricReporterTopic 
+        + " in the target cluster.");
   }
 
   @Override

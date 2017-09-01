@@ -13,7 +13,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
@@ -36,9 +35,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentSkipListMap;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult.Imputation.AVG_ADJACENT;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult.Imputation.AVG_AVAILABLE;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult.Imputation.FORCED_INSUFFICIENT;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult.Imputation.FORCED_UNKNOWN;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult.Imputation.NO_VALID_IMPUTATION;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult.Imputation.PREV_PERIOD;
 
 
 /**
@@ -69,9 +71,9 @@ public class MetricSampleAggregator {
   private final Map<Integer, BrokerMetricSample> _latestBrokerMetrics;
   private final MetricCompletenessChecker _metricCompletenessChecker;
   private volatile long _activeSnapshotWindow;
-  // The following two variables is for cashing purpose. If nothing has been back-inserted into any stable snapshot
-  // window, we do not need to recompute the aggregation result. If lastResult is null, a new aggregation will be
-  // performed.
+  // The following two variables are for caching purpose. If nothing has been back-inserted into any stable snapshot
+  // window, we do not need to recompute the aggregation result. If _cachedAggregationResult is null, a new aggregation
+  // will be performed.
   private volatile MetricSampleAggregationResult _cachedAggregationResult;
   // The active snapshot window when the _cachedAggregationResult was taken;
   private volatile long _cachedAggregationResultWindow;
@@ -85,7 +87,7 @@ public class MetricSampleAggregator {
   public MetricSampleAggregator(KafkaCruiseControlConfig config,
                                 Metadata metadata,
                                 MetricCompletenessChecker metricCompletenessChecker) {
-    _windowedAggregatedPartitionMetrics = new ConcurrentSkipListMap<>();
+    _windowedAggregatedPartitionMetrics = new ConcurrentSkipListMap<>((w1, w2) -> Long.compare(w2, w1));
     // We keep twice as many the snapshot windows.
     _numSnapshots = config.getInt(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG);
     _numSnapshotsToKeep = _numSnapshots * 2;
@@ -132,6 +134,7 @@ public class MetricSampleAggregator {
     if (!isValidSample(sample, leaderValidation)) {
       return false;
     }
+    boolean newWindow = false;
     // Find the snapshot window
     long snapshotWindow = MonitorUtils.toSnapshotWindow(sample.sampleTime(), _snapshotWindowMs);
     Map<TopicPartition, AggregatedMetrics> snapshotsByPartition = _windowedAggregatedPartitionMetrics.get(snapshotWindow);
@@ -148,17 +151,17 @@ public class MetricSampleAggregator {
         }
 
         if (_activeSnapshotWindow < snapshotWindow && oldValue == null) {
-          LOG.debug("Rolled out new snapshot window {}, number of snapshots = {}", snapshotWindow,
+          LOG.info("Rolled out new snapshot window {}, number of snapshots = {}", snapshotWindow,
                     _windowedAggregatedPartitionMetrics.size());
           _activeSnapshotWindow = snapshotWindow;
-          _aggregationResultGeneration.incrementAndGet();
+          newWindow = true;
           // We only keep N ready snapshots and one active snapshot, evict the old ones if needed. But do not do this
           // when snapshot collection is in progress. We can do it later.
           while (_snapshotCollectionInProgress.get() == 0 && _windowedAggregatedPartitionMetrics.size() > _numSnapshotsToKeep + 1) {
-            Long oldestSnapshotWindow = _windowedAggregatedPartitionMetrics.firstKey();
+            Long oldestSnapshotWindow = _windowedAggregatedPartitionMetrics.lastKey();
             _windowedAggregatedPartitionMetrics.remove(oldestSnapshotWindow);
             _metricCompletenessChecker.removeWindow(oldestSnapshotWindow);
-            LOG.debug("Removed snapshot window {}, number of snapshots = {}", oldestSnapshotWindow,
+            LOG.info("Removed snapshot window {}, number of snapshots = {}", oldestSnapshotWindow,
                       _windowedAggregatedPartitionMetrics.size());
           }
         }
@@ -172,7 +175,7 @@ public class MetricSampleAggregator {
     }
     // If we are inserting metric samples into some past windows, invalidate the aggregation result cache and
     // bump up aggregation result generation.
-    if (snapshotWindow != _activeSnapshotWindow) {
+    if (snapshotWindow != _activeSnapshotWindow || newWindow) {
       synchronized (this) {
         _cachedAggregationResult = null;
         _cachedAggregationResultWindow = -1L;
@@ -247,11 +250,23 @@ public class MetricSampleAggregator {
         throw new IllegalArgumentException("The required number of snapshots can not be " + requiredNumSnapshots
                                                + ". It must be positive.");
       }
+      // The aggregator does not have any window.
+      if (_activeSnapshotWindow < 0) {
+        return new MetricSampleAggregationResult(currentGeneration(), includeAllTopics);
+      }
+      long requestedLowerBoundWindow = MonitorUtils.toSnapshotWindow(Math.max(from, 0), _snapshotWindowMs);
+      long requestedUpperBoundWindow = MonitorUtils.toSnapshotWindow(Math.max(to, 0), _snapshotWindowMs) - _snapshotWindowMs;
+      long mostRecentAvailableWindow;
+      long actualUpperBoundWindow;
       // Synchronize with addSamples() here.
       synchronized (this) {
         _snapshotCollectionInProgress.incrementAndGet();
+        // We have to calculate this after increment the counter above to avoid snapshot eviction.
+        mostRecentAvailableWindow = _activeSnapshotWindow - _snapshotWindowMs;
+        // Have a local variable in case the active snapshot window changes.
+        actualUpperBoundWindow = Math.min(mostRecentAvailableWindow, requestedUpperBoundWindow);
         // If we have a cache, use it.
-        if (from <= 0 && Math.min(MonitorUtils.toSnapshotWindow(to, _snapshotWindowMs), _activeSnapshotWindow) == _cachedAggregationResultWindow
+        if (from <= 0 && actualUpperBoundWindow == _cachedAggregationResultWindow
             && _cachedAggregationResult != null
             && includeAllTopics == _cachedAggregationResult.includeAllTopics()
             && requiredNumSnapshots == _numSnapshots) {
@@ -259,21 +274,14 @@ public class MetricSampleAggregator {
           return _cachedAggregationResult;
         }
       }
+      
       LOG.debug("Getting metric sample aggregation result (from={}, to={}, requiredNumSnapshots={}, includeAllTopics={})",
                 from, to, requiredNumSnapshots, includeAllTopics);
-      // Have a local variable in case the active snapshot window changes.
-      long activeSnapshotWindow = _activeSnapshotWindow;
       // Get the ready snapshots.
       Map<Long, Map<TopicPartition, AggregatedMetrics>> candidateWindowedAggMetrics =
-          _windowedAggregatedPartitionMetrics.subMap(from, true, to, true);
-      if (candidateWindowedAggMetrics.isEmpty()) {
-        throw new NotEnoughSnapshotsException("No snapshot is available in [" + from + "," + to + "].");
-      }
-      Map<Long, Map<TopicPartition, AggregatedMetrics>> readyWindowedAggMetrics;
-      // Add the metrics to the ready aggregated metrics.
-      readyWindowedAggMetrics = ensureNumSnapshots(candidateWindowedAggMetrics,
-                                                   activeSnapshotWindow,
-                                                   requiredNumSnapshots);
+          _windowedAggregatedPartitionMetrics.subMap(actualUpperBoundWindow, true, requestedLowerBoundWindow, true);
+      Map<Long, Map<TopicPartition, AggregatedMetrics>> readyWindowedAggMetrics = 
+          ensureNumSnapshots(candidateWindowedAggMetrics, requiredNumSnapshots);
       // Ensure we only read from the aggregated metrics.
       readyWindowedAggMetrics = Collections.unmodifiableMap(readyWindowedAggMetrics);
       LOG.debug("Collected {} snapshot windows to aggregate", readyWindowedAggMetrics.size());
@@ -291,11 +299,12 @@ public class MetricSampleAggregator {
         }
         aggregationResult.merge(topicResult);
       }
-      if (from <= 0 && MonitorUtils.toSnapshotWindow(to, _snapshotWindowMs) >= activeSnapshotWindow
+      // Maybe update cache.
+      if (from <= 0 && actualUpperBoundWindow == mostRecentAvailableWindow
           && requiredNumSnapshots == _numSnapshots) {
         synchronized (this) {
           _cachedAggregationResult = aggregationResult;
-          _cachedAggregationResultWindow = activeSnapshotWindow;
+          _cachedAggregationResultWindow = mostRecentAvailableWindow;
         }
       }
       return aggregationResult;
@@ -306,24 +315,18 @@ public class MetricSampleAggregator {
 
   private Map<Long, Map<TopicPartition, AggregatedMetrics>> ensureNumSnapshots(
       Map<Long, Map<TopicPartition, AggregatedMetrics>> candidateWindowedAggMetrics,
-      long activeSnapshotWindow,
       int requiredNumSnapshots) throws NotEnoughSnapshotsException {
-    Map<Long, Map<TopicPartition, AggregatedMetrics>> readyWindowedAggMetrics = new LinkedHashMap<>();
-    int activeWindowIncluded = candidateWindowedAggMetrics.containsKey(activeSnapshotWindow) ? 1 : 0;
-    if (candidateWindowedAggMetrics.size() - activeWindowIncluded < requiredNumSnapshots) {
-      throw new NotEnoughSnapshotsException("There are only " + (candidateWindowedAggMetrics.size() - activeWindowIncluded) +
+    if (candidateWindowedAggMetrics.size() < requiredNumSnapshots) {
+      throw new NotEnoughSnapshotsException("There are only " + candidateWindowedAggMetrics.size() +
                                                 " snapshots available, which is less than the required " + requiredNumSnapshots
                                                 + " snapshots.");
     }
-    Iterator<Map.Entry<Long, Map<TopicPartition, AggregatedMetrics>>> iter =
-        candidateWindowedAggMetrics.entrySet().iterator();
-    int numExtraSnapshots = candidateWindowedAggMetrics.size() - activeWindowIncluded - requiredNumSnapshots;
-    for (int i = 0; i < numExtraSnapshots; i++) {
-      iter.next();
-    }
-    while (readyWindowedAggMetrics.size() < requiredNumSnapshots) {
-      Map.Entry<Long, Map<TopicPartition, AggregatedMetrics>> entry = iter.next();
+    Map<Long, Map<TopicPartition, AggregatedMetrics>> readyWindowedAggMetrics = new LinkedHashMap<>();
+    for (Map.Entry<Long, Map<TopicPartition, AggregatedMetrics>> entry : candidateWindowedAggMetrics.entrySet()) {
       readyWindowedAggMetrics.put(entry.getKey(), entry.getValue());
+      if (readyWindowedAggMetrics.size() == requiredNumSnapshots) {
+        break;
+      }
     }
     return readyWindowedAggMetrics;
   }
@@ -333,9 +336,27 @@ public class MetricSampleAggregator {
   }
 
   /**
-   * @return the current active snapshot window.
+   * Get the visible snapshot windows. The visible snapshot windows are the most recent snapshot windows
+   * up to num.load.snapshots.
    */
-  public List<Long> snapshotWindows() {
+  public List<Long> visibleSnapshotWindows() {
+    Map<Long, Map<TopicPartition, AggregatedMetrics>> availableAggMetricsByWindow = 
+        _windowedAggregatedPartitionMetrics.tailMap(_activeSnapshotWindow, false);
+    int numVisibleWindows = Math.min(availableAggMetricsByWindow.size(), _numSnapshots);
+    List<Long> windows = new ArrayList<>(numVisibleWindows);
+    for (long window : availableAggMetricsByWindow.keySet()) {
+      windows.add(window);
+      if (windows.size() == numVisibleWindows) {
+        break;
+      }
+    }
+    return windows;
+  }
+
+  /**
+   * Get all the monitored snapshot windows
+   */
+  public List<Long> allSnapshotWindows() {
     List<Long> windows = new ArrayList<>(_windowedAggregatedPartitionMetrics.size());
     windows.addAll(_windowedAggregatedPartitionMetrics.keySet());
     return windows;
@@ -490,18 +511,18 @@ public class MetricSampleAggregator {
       if (aggMetricsForPartition != null && aggMetricsForPartition.numSamples() >= _minSamplesPerSnapshot / 2) {
         // We have more than half of the required samples but not sufficient
         snapshot = aggMetricsForPartition.toSnapshot(snapshotWindow);
-        imputation = MetricSampleAggregationResult.Imputation.AVG_AVAILABLE;
+        imputation = AVG_AVAILABLE;
         LOG.debug("Not enough metric samples for {} in snapshot window {}. Required {}, got {} samples. Falling back to use {}",
-                  tp, snapshotWindow, _minSamplesPerSnapshot, aggMetricsForPartition.numSamples(), MetricSampleAggregationResult.Imputation.AVG_AVAILABLE);
+                  tp, snapshotWindow, _minSamplesPerSnapshot, aggMetricsForPartition.numSamples(), AVG_AVAILABLE);
       }
 
       // We do not have enough samples, fall back to use adjacent windows.
       if (snapshot == null) {
         snapshot = avgAdjacentSnapshots(tp, cluster, snapshotWindow);
         if (snapshot != null) {
-          imputation = MetricSampleAggregationResult.Imputation.AVG_ADJACENT;
+          imputation = AVG_ADJACENT;
           LOG.debug("No metric samples for {} in snapshot window {}. Required {}, falling back to use {}", tp,
-                    snapshotWindow, _minSamplesPerSnapshot, MetricSampleAggregationResult.Imputation.AVG_ADJACENT);
+                    snapshotWindow, _minSamplesPerSnapshot, AVG_ADJACENT);
         }
       }
 
@@ -510,9 +531,9 @@ public class MetricSampleAggregator {
         snapshot = partitionSnapshotForWindow(tp, cluster, snapshotWindow - _snapshotWindowMs * _numSnapshots,
                                               resultSnapshotWindow, false, false).snapshot();
         if (snapshot != null) {
-          imputation = MetricSampleAggregationResult.Imputation.PREV_PERIOD;
+          imputation = PREV_PERIOD;
           LOG.debug("No metric samples for {} in snapshot window {}. Required {}, falling back to use {}", tp,
-                    snapshotWindow, _minSamplesPerSnapshot, MetricSampleAggregationResult.Imputation.PREV_PERIOD);
+                    snapshotWindow, _minSamplesPerSnapshot, PREV_PERIOD);
         }
       }
     }

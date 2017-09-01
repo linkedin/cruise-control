@@ -31,6 +31,14 @@ Cruise Control for Apache Kafka
     * Rebalance the cluster
 
 ### Quick Start ###
+0. Only needed if you want to use `CruiseControlMetricsReporter` for metrics collection. The metrics reporter will 
+periodically sample the Kafka raw metrics on the broker and send them to a Kafka topic.
+    * ```./gradlew jar```
+    * Copy `./cruise-control-metrics-reporter/build/libs/cruise-control-metrics-reporter.jar` to your Kafka server 
+    dependency jar folder. For Apache Kafka, the folder would be `core/build/dependant-libs-SCALA_VERSION/`
+    * Modify Kafka server configuration to set `metric.reporters` to 
+    `com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter`
+    * Start the Kafka server
 1. Modify config/cruisecontrol.properties to 
     * fill in `bootstrap.servers` and `zookeeper.connect` to the Kafka cluster to be monitored.
     * set `metric.sampler.class` to your implementation (the default sampler class is CruiseControlMetricsReporterSampler) 
@@ -42,6 +50,12 @@ Cruise Control for Apache Kafka
     ```
 3. visit http://localhost:9090/kafkacruisecontrol/state or http://localhost:\[port\]/kafkacruisecontrol/state if 
 you specified the port when starting cruise control. 
+
+**Note**: 
+* Cruise Control will need some time to read the raw Kafka metrics from the cluster.
+* The metrics of a newly up broker may take a few minutes to get stable. Cruise Control will drop the inconsistent 
+metrics (e.g when topic bytes-in is higher than broker bytes-in), so the first a
+few snapshot windows may not have enough valid partitions. 
 
 ### REST API ###
 Cruise Control has provided a [REST API](https://github.com/linkedin/cruise-control/wiki/REST-APIs) for users 
