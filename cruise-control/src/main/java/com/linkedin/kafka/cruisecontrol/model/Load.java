@@ -104,7 +104,7 @@ public class Load implements Serializable {
       if (_snapshotsByTime.isEmpty()) {
         return 0.0;
       }
-      return _snapshotsByTime.get(_snapshotsByTime.size() - 1).utilizationFor(resource);
+      return _snapshotsByTime.get(0).utilizationFor(resource);
     }
 
     return _accumulatedUtilization[resource.id()] / _snapshotsByTime.size();
@@ -173,8 +173,8 @@ public class Load implements Serializable {
                                         "snapshot time" + snapshot.time() + ". Existing snapshot times: " +
                                         Arrays.toString(allSnapshotTimes()));
     }
-    if (!_snapshotsByTime.isEmpty() && snapshot.time() <= _snapshotsByTime.get(_snapshotsByTime.size() - 1).time()) {
-      throw new ModelInputException("Attempt to push a stale snapshot with timestamp " + snapshot.time() +
+    if (!_snapshotsByTime.isEmpty() && snapshot.time() >= _snapshotsByTime.get(_snapshotsByTime.size() - 1).time()) {
+      throw new ModelInputException("Attempt to push an out of order snapshot with timestamp " + snapshot.time() +
                                         " to a replica. Existing snapshot times: " +
                                         Arrays.toString(allSnapshotTimes()));
     }
