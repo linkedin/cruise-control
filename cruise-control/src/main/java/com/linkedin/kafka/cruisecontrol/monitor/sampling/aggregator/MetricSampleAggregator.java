@@ -363,7 +363,7 @@ public class MetricSampleAggregator {
   }
 
   /**
-   * @return Whether there are enough snapshots in the metric sample aggregator.
+   * @return The number of monitored snapshot windows in the metric sample aggregator.
    */
   public int numSnapshotWindows() {
     return _windowedAggregatedPartitionMetrics.size();
@@ -468,9 +468,9 @@ public class MetricSampleAggregator {
    * Check if the partition is a valid partition or not. A valid partition has enough metrics to be give a
    * reliable aggregation. We accept imputation here.
    */
-  boolean isValidPartition(long window, TopicPartition tp) {
+  MetricSampleAggregationResult.Imputation validatePartitions(long window, TopicPartition tp) {
     return partitionSnapshotForWindow(tp, _metadata.fetch(), window, window,
-                                      false, true).imputation() != NO_VALID_IMPUTATION;
+                                      false, true).imputation();
   }
 
   /**

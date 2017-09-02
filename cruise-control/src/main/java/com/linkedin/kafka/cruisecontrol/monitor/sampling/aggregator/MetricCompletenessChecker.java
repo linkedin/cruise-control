@@ -14,12 +14,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
 
 
 /**
  * A class that helps compute the completeness of the metrics in the {@link MetricSampleAggregator}
  */
 public class MetricCompletenessChecker {
+  private static final Logger LOG = org.slf4j.LoggerFactory.getLogger(MetricCompletenessChecker.class);
   // The following two data structures help us to quickly identify how many valid partitions are there in each window.
   private final ConcurrentSkipListMap<Long, Map<String, Set<Integer>>> _validPartitionsPerTopicByWindows;
   private final SortedMap<Long, Integer> _validPartitionsByWindows;
@@ -49,10 +51,11 @@ public class MetricCompletenessChecker {
     int i = 0;
     double minMonitoredNumPartitions = totalNumPartitions * minMonitoredPartitionsPercentage;
     for (Map.Entry<Long, Integer> entry : _validPartitionsByWindows.entrySet()) {
-      if (entry.getValue() < minMonitoredNumPartitions || i == _maxNumSnapshots) {
+      long window = entry.getKey();
+      if ((entry.getValue() < minMonitoredNumPartitions && window != _activeSnapshotWindow) || i == _maxNumSnapshots) {
         break;
       }
-      if (entry.getKey() != _activeSnapshotWindow) {
+      if (window != _activeSnapshotWindow) {
         i++;
       }
     }
@@ -116,7 +119,10 @@ public class MetricCompletenessChecker {
     _validPartitionsPerTopicByWindows.computeIfAbsent(window, w -> new ConcurrentHashMap<>())
                                      .compute(tp.topic(), (t, set) -> {
                                        Set<Integer> s = set == null ? new HashSet<>() : set;
-                                       if (aggregator.isValidPartition(window, tp)) {
+                                       MetricSampleAggregationResult.Imputation imputation = aggregator.validatePartitions(window, tp);
+                                       if (imputation != MetricSampleAggregationResult.Imputation.NO_VALID_IMPUTATION) {
+                                         LOG.debug("Added partition {} to valid partition set for window {} with imputation {}", 
+                                                   tp, window, imputation);
                                          synchronized (s) {
                                            s.add(tp.partition());
                                          }

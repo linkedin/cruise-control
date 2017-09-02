@@ -120,7 +120,7 @@ public class GoalOptimizer implements Runnable {
         LOG.info("Skipping best proposal precomputing because load monitor is in " + loadMonitorTaskRunnerState + " state.");
         // Check in 30 seconds to see if the load monitor state has changed.
         sleepTime = 30000L;
-      } else if (!_loadMonitor.meetLoadRequirements(_requirementsIgnoreMinMonitoredPartitions)) {
+      } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsIgnoreMinMonitoredPartitions)) {
         LOG.info("Skipping best proposal precomputing because load monitor does not have enough snapshots.");
         // Check in 30 seconds to see if the load monitor state has changed.
         sleepTime = 30000L;
@@ -208,7 +208,7 @@ public class GoalOptimizer implements Runnable {
   public AnalyzerState state() {
     Map<Goal, Boolean> goalRediness = new LinkedHashMap<>(_goalsByPriority.size());
     for (Goal goal : _goalsByPriority.values()) {
-      goalRediness.put(goal, _loadMonitor.meetLoadRequirements(goal.clusterModelCompletenessRequirements()));
+      goalRediness.put(goal, _loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements()));
     }
     return new AnalyzerState(_bestProposal != null, goalRediness);
   }
@@ -221,7 +221,7 @@ public class GoalOptimizer implements Runnable {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
     if (loadMonitorTaskRunnerState == LOADING || loadMonitorTaskRunnerState == BOOTSTRAPPING) {
       throw new IllegalStateException("Cannot get proposal because load monitor is in " + loadMonitorTaskRunnerState + " state.");
-    } else if (!_loadMonitor.meetLoadRequirements(_requirementsIgnoreMinMonitoredPartitions)) {
+    } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsIgnoreMinMonitoredPartitions)) {
       throw new IllegalStateException("Cannot get proposal because model completeness is not met.");
     }
     if (!validCachedProposal()) {
@@ -478,7 +478,7 @@ public class GoalOptimizer implements Runnable {
         try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration()) {
           long startMs = _time.milliseconds();
           // We compute the proposal even if there is not enough modeled partitions.
-          ModelCompletenessRequirements requirements = _loadMonitor.meetLoadRequirements(_defaultModelCompletenessRequirements) ?
+          ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements) ?
               _defaultModelCompletenessRequirements : _requirementsIgnoreMinMonitoredPartitions;
           ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements);
           if (!clusterModel.topics().isEmpty()) {

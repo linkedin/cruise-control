@@ -70,7 +70,7 @@ public class DeterministicClusterTest {
       throws AnalysisInputException, ModelInputException {
     Collection<Object[]> params = new ArrayList<>();
 
-    int numSnapshots = 1;
+    int numSnapshots = 2;
     if (!Load.initialized()) {
       Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
       props.setProperty(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG, Integer.toString(numSnapshots));

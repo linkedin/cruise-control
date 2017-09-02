@@ -94,7 +94,7 @@ public class GoalViolationDetector implements Runnable {
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
         int priority = entry.getKey();
         Goal goal = entry.getValue();
-        if (_loadMonitor.meetLoadRequirements(goal.clusterModelCompletenessRequirements())) {
+        if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
           LOG.debug("Detecting if {} is violated.", entry.getValue().name());
           // Because the model generation could be slow, We only get new cluster model if needed.
           if (newModelNeeded) {
