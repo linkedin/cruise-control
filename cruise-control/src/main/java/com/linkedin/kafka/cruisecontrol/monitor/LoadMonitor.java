@@ -170,8 +170,9 @@ public class LoadMonitor {
     SortedMap<Long, Double> loadSnapshotsWindows = new TreeMap<>();
     for (long window : _metricSampleAggregator.visibleSnapshotWindows()) {
       double monitoredPartitionsPercentage = windowToMonitoredPercentage.getOrDefault(window, 0.0);
-      numValidSnapshotWindows =
-          monitoredPartitionsPercentage < minMonitoredPartitionsPercentage ? 0 : numValidSnapshotWindows + 1;
+      if (monitoredPartitionsPercentage >= minMonitoredPartitionsPercentage) {
+        numValidSnapshotWindows++;
+      }
       loadSnapshotsWindows.put(window, monitoredPartitionsPercentage);
     }
 
