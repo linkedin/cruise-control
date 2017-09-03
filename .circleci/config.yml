@@ -1,0 +1,29 @@
+version: 2
+
+jobs:
+
+   build:
+     working_directory: ~/workspace
+     docker:
+       - image: circleci/openjdk:8-jdk
+     steps:
+       - checkout
+       - restore_cache:
+           key: dependency-cache-{{ checksum "build.gradle" }}
+       - run:
+           command: ./gradlew clean build
+       - save_cache:
+           key: dependency-cache-{{ checksum "build.gradle" }}
+           paths:
+             - ~/.gradle
+       - run:
+           command: mkdir ~/test-results
+       - run:
+           command: find ~/workspace -type f -regex ".*/test-results/.*xml" -exec ln {} ~/test-results/ \;
+       - store_test_results:
+           path: ~/test-results
+       - store_artifacts:
+           path: ~/test-results
+       - store_artifacts:
+           path: build/libs
+
