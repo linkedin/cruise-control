@@ -25,6 +25,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -185,7 +186,7 @@ public class LoadMonitor {
     // We do this primarily because the checker and aggregator are not always synchronized.
     int numValidSnapshotWindows = 0;
     boolean hasInvalidSnapshotWindows = false;
-    SortedMap<Long, Double> loadSnapshotsWindows = new TreeMap<>((w1, w2) -> Long.compare(w2, w1));
+    SortedMap<Long, Double> loadSnapshotsWindows = new TreeMap<>(Comparator.reverseOrder());
     for (long window : _metricSampleAggregator.visibleSnapshotWindows()) {
       double monitoredPartitionsPercentage = windowToMonitoredPercentage.getOrDefault(window, 0.0);
       if (monitoredPartitionsPercentage >= minMonitoredPartitionsPercentage && !hasInvalidSnapshotWindows) {

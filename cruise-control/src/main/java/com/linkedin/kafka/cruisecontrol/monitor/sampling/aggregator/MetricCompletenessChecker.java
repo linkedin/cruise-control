@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -30,8 +31,8 @@ public class MetricCompletenessChecker {
   private volatile long _activeSnapshotWindow;
 
   public MetricCompletenessChecker(int maxNumSnapshots) {
-    _validPartitionsPerTopicByWindows = new ConcurrentSkipListMap<>((w1, w2) -> Long.compare(w2, w1));
-    _validPartitionsByWindows = new TreeMap<>((w1, w2) -> Long.compare(w2, w1));
+    _validPartitionsPerTopicByWindows = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
+    _validPartitionsByWindows = new TreeMap<>(Comparator.reverseOrder());
     _modelGeneration = null;
     _maxNumSnapshots = maxNumSnapshots;
   }

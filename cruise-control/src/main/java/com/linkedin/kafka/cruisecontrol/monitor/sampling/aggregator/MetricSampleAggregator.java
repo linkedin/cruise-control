@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.SortedMap;
@@ -87,7 +88,7 @@ public class MetricSampleAggregator {
   public MetricSampleAggregator(KafkaCruiseControlConfig config,
                                 Metadata metadata,
                                 MetricCompletenessChecker metricCompletenessChecker) {
-    _windowedAggregatedPartitionMetrics = new ConcurrentSkipListMap<>((w1, w2) -> Long.compare(w2, w1));
+    _windowedAggregatedPartitionMetrics = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
     // We keep twice as many the snapshot windows.
     _numSnapshots = config.getInt(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG);
     _numSnapshotsToKeep = _numSnapshots * 2;
