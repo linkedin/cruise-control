@@ -25,6 +25,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -83,20 +84,36 @@ public class LoadMonitor {
    *
    * @param config The load monitor configuration.
    * @param time   The time object.
+   * @param dropwizardMetricRegistry the sensor registry for cruise control
    */
   public LoadMonitor(KafkaCruiseControlConfig config,
                      Time time,
                      MetricRegistry dropwizardMetricRegistry) {
-    Metadata metadata = new Metadata(5000L, config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG));
-    _metadataClient = new MetadataClient(config, metadata, METADATA_TTL, time);
+    this(config, 
+         new MetadataClient(config,
+                            new Metadata(5000L, config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG)),
+                            METADATA_TTL,
+                            time),
+         time,
+         dropwizardMetricRegistry);
+  }
 
+  /**
+   * Package private constructor for unit tests.
+   */
+  LoadMonitor(KafkaCruiseControlConfig config,
+              MetadataClient metadataClient,
+              Time time,
+              MetricRegistry dropwizardMetricRegistry) {
+    _metadataClient = metadataClient;
+    
     _brokerCapacityConfigResolver = config.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
                                                                  BrokerCapacityConfigResolver.class);
     _numSnapshots = config.getInt(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG);
 
     _metricCompletenessChecker = new MetricCompletenessChecker(_numSnapshots);
 
-    _metricSampleAggregator = new MetricSampleAggregator(config, metadata, _metricCompletenessChecker);
+    _metricSampleAggregator = new MetricSampleAggregator(config, metadataClient.metadata(), _metricCompletenessChecker);
 
     _acquiredClusterModelSemaphore = ThreadLocal.withInitial(() -> false);
 
@@ -125,6 +142,7 @@ public class LoadMonitor {
     _dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "num-partitions-with-flaw"),
                                        (Gauge<Integer>) this::numPartitionsWithFlaw);
   }
+  
 
   /**
    * Start the load monitor.
@@ -167,11 +185,14 @@ public class LoadMonitor {
     // Get valid snapshot window number and populate the monitored partition map.
     // We do this primarily because the checker and aggregator are not always synchronized.
     int numValidSnapshotWindows = 0;
-    SortedMap<Long, Double> loadSnapshotsWindows = new TreeMap<>();
+    boolean hasInvalidSnapshotWindows = false;
+    SortedMap<Long, Double> loadSnapshotsWindows = new TreeMap<>(Comparator.reverseOrder());
     for (long window : _metricSampleAggregator.visibleSnapshotWindows()) {
       double monitoredPartitionsPercentage = windowToMonitoredPercentage.getOrDefault(window, 0.0);
-      if (monitoredPartitionsPercentage >= minMonitoredPartitionsPercentage) {
+      if (monitoredPartitionsPercentage >= minMonitoredPartitionsPercentage && !hasInvalidSnapshotWindows) {
         numValidSnapshotWindows++;
+      } else {
+        hasInvalidSnapshotWindows = true;
       }
       loadSnapshotsWindows.put(window, monitoredPartitionsPercentage);
     }
@@ -436,13 +457,27 @@ public class LoadMonitor {
   /**
    * Check whether the monitored load meets the load requirements.
    */
-  public boolean meetLoadRequirements(ModelCompletenessRequirements requirements) {
+  public boolean meetCompletenessRequirements(ModelCompletenessRequirements requirements) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
     int availableNumSnapshots = getAvailableNumSnapshots(clusterAndGeneration,
                                                          requirements.minMonitoredPartitionsPercentage(),
                                                          MonitorUtils.totalNumPartitions(clusterAndGeneration.cluster()));
     int requiredSnapshot = requirements.minRequiredNumSnapshotWindows();
     return availableNumSnapshots >= requiredSnapshot;
+  }
+
+  /**
+   * Package private for unit test.
+   */
+  MetricSampleAggregator aggregator() {
+    return _metricSampleAggregator;
+  }
+
+  /**
+   * Package private for unit test. 
+   */
+  MetricCompletenessChecker completenessChecker() {
+    return _metricCompletenessChecker;
   }
 
   /**

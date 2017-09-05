@@ -29,7 +29,7 @@ import java.util.Map;
  * snapshots.
  */
 public class Load implements Serializable {
-  private static final Comparator<Snapshot> TIME_COMPARATOR = (o1, o2) -> Long.compare(o1.time(), o2.time());
+  private static final Comparator<Snapshot> TIME_COMPARATOR = (t1, t2) -> Long.compare(t2.time(), t1.time());
   // Number of snapshots in this load.
   private static int _maxNumSnapshots = -1;
   // Snapshots by their time.

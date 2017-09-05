@@ -186,11 +186,15 @@ public class LoadMonitorState {
     return _loadMonitorTaskRunnerState;
   }
 
+  public int numValidSnapshotWindows() {
+    return _numValidSnapshotWindows;
+  }
+  
   public SortedMap<Long, Double> monitoredSnapshotWindows() {
     return _monitoredSnapshotWindows;
   }
 
-  public int numValidMonitoredTopics() {
+  public int numValidMonitoredPartitions() {
     return _numValidMonitoredPartitions;
   }
 
