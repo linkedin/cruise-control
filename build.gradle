@@ -53,7 +53,9 @@ subprojects {
     testLogging {
       events "passed", "failed", "skipped"
     }
-    maxParallelForks = Runtime.runtime.availableProcessors()
+    if (!project.hasProperty("maxParallelForks")) {
+      maxParallelForks = Runtime.runtime.availableProcessors()
+    }
   }
 }
 
