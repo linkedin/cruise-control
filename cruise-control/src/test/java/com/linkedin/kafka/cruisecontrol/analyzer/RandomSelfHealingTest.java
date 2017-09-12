@@ -137,7 +137,6 @@ public class RandomSelfHealingTest {
       assertTrue("Self Healing Test failed to improve the existing state.",
           OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority));
     } catch (AnalysisInputException analysisInputException) {
-      analysisInputException.printStackTrace();
       // This exception is thrown if self healing fails due to healthy brokers failing due to healthy brokers
       // violating rack awareness.
       assertThat(analysisInputException.getMessage(), is("Healthy brokers fail to satisfy rack-awareness."));
