@@ -1,11 +1,12 @@
 version: 2
 
+
+
 jobs:
-  machine:
-     environment:
-      _JAVA_OPTIONS: "-Xms512m -Xmx1024m"
 
   build:
+    environment:
+      _JAVA_OPTIONS: "-Xms512m -Xmx1024m"
     working_directory: ~/workspace
     docker:
       - image: circleci/openjdk:8-jdk
