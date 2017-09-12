@@ -117,7 +117,7 @@ public class BrokerFailureDetector {
 
   private Set<Integer> aliveBrokers() {
     // We get the alive brokers from ZK directly.
-    return JavaConversions.asJavaList(_zkUtils.getAllBrokersInCluster())
+    return JavaConversions.asJavaCollection(_zkUtils.getAllBrokersInCluster())
                           .stream().map(Broker::id).collect(toSet());
   }
 

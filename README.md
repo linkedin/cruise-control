@@ -30,9 +30,15 @@ Cruise Control for Apache Kafka
     * Decommission brokers
     * Rebalance the cluster
 
+### Environment Requirements
+* The current master branch of Cruise Control is compatible with Apache Kafka 0.10.1 and above.
+* message.format.version 0.10.0 and above is needed
+* The master branch compiles with Scala 2.11
+
 ### Quick Start ###
-0. Only needed if you want to use `CruiseControlMetricsReporter` for metrics collection. The metrics reporter will 
-periodically sample the Kafka raw metrics on the broker and send them to a Kafka topic.
+0. Needed if `CruiseControlMetricsReporter` is used for metrics collection (this is the default config
+for Cruise Control). The metrics reporter will periodically sample the Kafka raw metrics on the broker and send them 
+to a Kafka topic.
     * ```./gradlew jar```
     * Copy `./cruise-control-metrics-reporter/build/libs/cruise-control-metrics-reporter.jar` to your Kafka server 
     dependency jar folder. For Apache Kafka, the folder would be `core/build/dependant-libs-SCALA_VERSION/`
