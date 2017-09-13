@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashMap;
 
 
 /**
@@ -32,6 +33,27 @@ public class AnalyzerState {
     return _readyGoals;
   }
 
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> analyzerState = new HashMap<>();
+    Set<Map<String, String>> readyGoalNames = new HashSet<>();
+    for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
+      if (entry.getValue()) {
+        Map<String, String> goalMap = new HashMap<>();
+        goalMap.put("goal", entry.getKey().name());
+        goalMap.put("category", entry.getKey().goalClass());
+        goalMap.put("description", entry.getKey().goalDescription());
+        readyGoalNames.add(goalMap);
+      }
+    }
+    analyzerState.put("isProposalReady", _isProposalReady);
+    analyzerState.put("readyGoals", readyGoalNames);
+    return analyzerState;
+  }
+
   @Override
   public String toString() {
     Set<String> readyGoalNames = new HashSet<>();
@@ -40,6 +62,6 @@ public class AnalyzerState {
         readyGoalNames.add(entry.getKey().getClass().getSimpleName());
       }
     }
-    return String.format("{isProposalReady: %s, ReadyGaols: %s}", _isProposalReady, readyGoalNames);
+    return String.format("{isProposalReady: %s, ReadyGoals: %s}", _isProposalReady, readyGoalNames);
   }
 }

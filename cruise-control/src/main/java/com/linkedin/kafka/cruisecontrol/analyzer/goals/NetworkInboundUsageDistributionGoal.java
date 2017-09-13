@@ -34,4 +34,15 @@ public class NetworkInboundUsageDistributionGoal extends ResourceDistributionGoa
   public String name() {
     return NetworkInboundUsageDistributionGoal.class.getSimpleName();
   }
+
+  @Override
+  public String goalClass() {
+    return "Soft";
+  }
+
+  @Override
+  public String goalDescription() {
+    return "";
+  }
+
 }

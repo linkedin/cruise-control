@@ -108,6 +108,17 @@ public interface Goal extends Configurable {
   String name();
 
   /**
+   * Get whether goal is soft or hard goal
+   */
+  String goalClass();
+
+  /**
+   * Describe the goal
+   */
+  String goalDescription();
+
+
+  /**
    * A comparator that compares two cluster model stats.
    */
   interface ClusterModelStatsComparator extends Comparator<ClusterModelStats>, Serializable {

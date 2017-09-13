@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 
 import java.util.HashMap;
 import java.util.Map;
+import com.google.gson.Gson;
 
 
 public class ClusterModelStats {
@@ -149,6 +150,42 @@ public class ClusterModelStats {
   public int numSnapshotWindows() {
     return _numSnapshotWindows;
   }
+
+  /*
+   * Return a valid JSON encoded string
+   */
+  public String getJSONString() {
+    Gson gson = new Gson();
+    return gson.toJson(getJsonStructure());
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> statMap = new HashMap<>();
+    Map<String, Integer> basicMap = new HashMap<>();
+    basicMap.put("brokers", numBrokers());
+    basicMap.put("replicas", numReplicasInCluster());
+    basicMap.put("topics", numTopics());
+    // List of all statistics AVG, MAX, MIN, STD
+    Map<String, Object> allStatMap = new HashMap();
+    for (Statistic stat : Statistic.values()) {
+      Map<String, Object> resourceMap = new HashMap<>();
+      for (Resource resource : Resource.values()) {
+        resourceMap.put(resource.resource(), resourceUtilizationStats().get(stat).get(resource));
+      }
+      resourceMap.put("potentialNwOut", potentialNwOutUtilizationStats().get(stat));
+      resourceMap.put("replicas", replicaStats().get(stat));
+      resourceMap.put("topicReplicas", topicReplicaStats().get(stat));
+      allStatMap.put(stat.stat(), resourceMap);
+    }
+    statMap.put("metadata", basicMap);
+    statMap.put("statistics", allStatMap);
+    return statMap;
+  }
+
 
   @Override
   public String toString() {

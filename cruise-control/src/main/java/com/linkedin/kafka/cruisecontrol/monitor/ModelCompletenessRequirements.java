@@ -3,6 +3,8 @@
  */
 
 package com.linkedin.kafka.cruisecontrol.monitor;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * This class is created to describe the requirements of the model. In cruise control, the requirement
@@ -100,6 +102,18 @@ public class ModelCompletenessRequirements {
     return new ModelCompletenessRequirements(Math.min(_minRequiredNumSnapshotWindows, other.minRequiredNumSnapshotWindows()),
                                              Math.min(_minMonitoredPartitionsPercentage, other.minMonitoredPartitionsPercentage()),
                                              _includeAllTopics && other.includeAllTopics());
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> requirements = new HashMap<>();
+    requirements.put("requiredNumSnapshots", _minRequiredNumSnapshotWindows);
+    requirements.put("minMonitoredPartitionsPercentage", _minMonitoredPartitionsPercentage);
+    requirements.put("includeAllTopics", _includeAllTopics);
+    return requirements;
   }
 
   @Override

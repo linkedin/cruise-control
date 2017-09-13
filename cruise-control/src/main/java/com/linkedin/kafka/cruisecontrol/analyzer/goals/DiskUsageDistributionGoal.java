@@ -50,4 +50,14 @@ public class DiskUsageDistributionGoal extends ResourceDistributionGoal {
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
     return new ModelCompletenessRequirements(1, _minMonitoredPartitionPercentage, true);
   }
+
+  @Override
+  public String goalClass() {
+    return "Soft";
+  }
+
+  @Override
+  public String goalDescription() {
+    return "";
+  }
 }

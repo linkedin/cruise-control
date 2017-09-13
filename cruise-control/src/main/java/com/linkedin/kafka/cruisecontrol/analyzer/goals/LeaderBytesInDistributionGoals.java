@@ -224,4 +224,13 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
     }
   }
 
+  @Override
+  public String goalClass() {
+    return "Soft";
+  }
+
+  @Override
+  public String goalDescription() {
+    return "goal to distribute leader bytes evenly.";
+  }
 }

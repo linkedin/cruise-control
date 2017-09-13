@@ -34,4 +34,14 @@ public class CpuUsageDistributionGoal extends ResourceDistributionGoal {
   public String name() {
     return CpuUsageDistributionGoal.class.getSimpleName();
   }
+
+  @Override
+  public String goalClass() {
+    return "Soft";
+  }
+
+  @Override
+  public String goalDescription() {
+    return "";
+  }
 }

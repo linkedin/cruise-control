@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import org.apache.kafka.common.TopicPartition;
+import java.util.HashMap;
 
 public class LoadMonitorState {
 
@@ -137,6 +138,74 @@ public class LoadMonitorState {
                                 -1.0,
                                 loadingProgress);
   }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> loadMonitorState = new HashMap<>();
+    String trained = ModelParameters.trainingCompleted() ? "true" : "false";
+    double trainingPct = 0.0;
+    if (ModelParameters.trainingCompleted()) {
+      trainingPct = 100.0;
+    } else {
+      trainingPct = ModelParameters.modelCoefficientTrainingCompleteness() * 100;
+    }
+    // generic attribute collection
+    switch (_loadMonitorTaskRunnerState) {
+      case RUNNING:
+      case SAMPLING:
+      case PAUSED:
+      case BOOTSTRAPPING:
+      case TRAINING:
+      case LOADING:
+        loadMonitorState.put("state", _loadMonitorTaskRunnerState);
+        loadMonitorState.put("trained", trained);
+        loadMonitorState.put("trainingPct", trainingPct);
+        loadMonitorState.put("numMonitoredWindows", _monitoredSnapshotWindows.size());
+        loadMonitorState.put("monitoredWindows", _monitoredSnapshotWindows);
+        loadMonitorState.put("numValidPartitions", _numValidMonitoredPartitions);
+        loadMonitorState.put("numTotalPartitions", _totalNumPartitions);
+        loadMonitorState.put("monitoringCoveragePct", nanToZero(monitoringCoverage() * 100));
+        loadMonitorState.put("numFlawedPartitions", _sampleFlaws.size());
+        break;
+      default:
+        break;
+    }
+    // specific attribute collection
+    switch (_loadMonitorTaskRunnerState) {
+      case RUNNING:
+      case SAMPLING:
+      case PAUSED:
+      case TRAINING:
+        break;
+      case BOOTSTRAPPING:
+        loadMonitorState.put("bootstrapProgressPct", nanToZero(_bootstrapProgress * 100));
+        break;
+      case LOADING:
+        loadMonitorState.put("loadingProgressPct", nanToZero(_loadingProgress * 100));
+        break;
+      default:
+        loadMonitorState.put("state", _loadMonitorTaskRunnerState);
+        loadMonitorState.put("error", "ILLEGAL_STATE_EXCEPTION");
+        break;
+    }
+    return loadMonitorState;
+  }
+
+  /*
+   * JSON does not support literal NaN value
+   * round it to zero when Java Math sees a NaN
+   */
+  public static double nanToZero(double v) {
+      if (Double.isNaN(v)) {
+          return 0.0;
+      } else {
+          return v;
+      }
+  }
+
 
   @Override
   public String toString() {

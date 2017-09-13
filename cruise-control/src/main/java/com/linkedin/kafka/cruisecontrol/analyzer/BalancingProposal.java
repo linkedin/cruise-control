@@ -6,6 +6,8 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
 import org.apache.kafka.common.TopicPartition;
+import java.util.HashMap;
+import java.util.Map;
 
 
 /**
@@ -101,6 +103,19 @@ public class BalancingProposal {
    */
   public long dataToMove() {
     return _dataToMove;
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> proposalMap = new HashMap<>();
+    proposalMap.put("topicPartition", _topicPartition);
+    proposalMap.put("sourceBrokerId", _sourceBrokerId);
+    proposalMap.put("destinationBrokerId", _destinationBrokerId);
+    proposalMap.put("balancingAction", _balancingAction);
+    return proposalMap;
   }
 
   /**

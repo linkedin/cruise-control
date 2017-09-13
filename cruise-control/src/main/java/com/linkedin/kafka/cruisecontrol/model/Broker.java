@@ -75,6 +75,18 @@ public class Broker implements Serializable {
     return _host;
   }
 
+  public String getState() {
+    if (_state == State.ALIVE) {
+      return "ALIVE";
+    } else if (_state == State.DEAD) {
+      return "DEAD";
+    } else if (_state == State.NEW) {
+      return "NEW";
+    } else {
+      return "UNKNOWN";
+    }
+  }
+
   /**
    * Get broker's rack.
    */
@@ -383,6 +395,22 @@ public class Broker implements Serializable {
       _leadershipLoad.addSnapshot(snapshot);
     }
     _load.addSnapshot(snapshot);
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    List<Map<String, Object>> replicaList = new ArrayList<>();
+    for (Replica replica : _replicas) {
+      replicaList.add(replica.getJsonStructureForLoad());
+    }
+    Map<String, Object> brokerMap = new HashMap<>();
+    brokerMap.put("brokerid", _id);
+    brokerMap.put("brokerstate", _state);
+    brokerMap.put("replicas", replicaList);
+    return brokerMap;
   }
 
   /**

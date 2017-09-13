@@ -589,4 +589,15 @@ public class RackAwareCapacityGoal extends AbstractGoal {
       return null;
     }
   }
+
+  @Override
+  public String goalClass() {
+    return "Hard";
+  }
+
+  @Override
+  public String goalDescription() {
+    return "Generate leadership and replica movement proposals to push the load on brokers under the capacity limit." +
+           "Generate replica movement proposals to provide rack-aware replica distribution.";
+  }
 }

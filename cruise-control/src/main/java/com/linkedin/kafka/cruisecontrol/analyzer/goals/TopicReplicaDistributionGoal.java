@@ -239,4 +239,14 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       return _reasonForLastNegativeResult;
     }
   }
+
+  @Override
+  public String goalClass() {
+    return "Soft";
+  }
+
+  @Override
+  public String goalDescription() {
+    return "Balance collocations of replicas of the same topic.";
+  }
 }

@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import javax.servlet.ServletException;
@@ -38,6 +39,8 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 
 /**
@@ -47,6 +50,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlServlet.class);
   private static final Logger ACCESS_LOG = LoggerFactory.getLogger("CruiseControlPublicAccessLogger");
 
+  private static final String JSON_PARAM = "json";
   private static final String START_MS_PARAM = "start";
   private static final String END_MS_PARAM = "end";
   private static final String CLEAR_METRICS_PARAM = "clearmetrics";
@@ -87,7 +91,20 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   /**
+   * OPTIONS request takes care of CORS applications
+   *
+   * https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Examples_of_access_control_scenarios
+   */
+  protected void doOptions(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+    response.setStatus(HttpServletResponse.SC_OK);
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
+  }
+
+  /**
    * The GET requests can do the following:
+   *
+   * NOTE: ADD json=true to the query parameters to get 200/OK response in JSON format.
    *
    * <pre>
    * 1. Bootstrap the load monitor
@@ -121,7 +138,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
+    ACCESS_LOG.info("Received {}, {} from {}", request.toString(), request.getRequestURL().toString(),
                      KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       EndPoint endPoint = endPoint(request);
@@ -194,7 +211,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
+    ACCESS_LOG.info("Received {}, {} from {}", request.toString(), request.getRequestURL().toString(),
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       EndPoint endPoint = endPoint(request);
@@ -241,6 +258,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Long startMs;
     Long endMs;
     boolean clearMetrics;
+    boolean json;
     try {
       String startMsString = request.getParameter(START_MS_PARAM);
       String endMsString = request.getParameter(END_MS_PARAM);
@@ -248,6 +266,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       startMs = startMsString == null ? null : Long.parseLong(startMsString);
       endMs = endMsString == null ? null : Long.parseLong(endMsString);
       clearMetrics = clearMetricsString == null || Boolean.parseBoolean(clearMetricsString);
+      json = wantJSON(request);
       if (startMs == null && endMs != null) {
         throw new IllegalArgumentException("The start time cannot be empty when end time is specified.");
       }
@@ -262,8 +281,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } else {
       _kafkaCruiseControl.bootstrapLoadMonitor(clearMetrics);
     }
-    String resp = "Bootstrap started. Check status through " + getStateCheckUrl(request);
-    setResponseCode(response, HttpServletResponse.SC_OK);
+    String resp;
+    if (json) {
+      resp = "{\"message\": \"Bootstrap started.\"}";
+      setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+    } else {
+      resp = "Bootstrap started. Check status through " + getStateCheckUrl(request);
+      setResponseCode(response, HttpServletResponse.SC_OK);
+    }
     response.setContentLength(resp.length());
     response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
     response.getOutputStream().flush();
@@ -272,17 +297,25 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void train(HttpServletRequest request, HttpServletResponse response) throws Exception {
     Long startMs;
     Long endMs;
+    boolean json;
     try {
       String startMsString = request.getParameter(START_MS_PARAM);
       String endMsString = request.getParameter(END_MS_PARAM);
       startMs = Long.parseLong(startMsString);
       endMs = Long.parseLong(endMsString);
+      json = wantJSON(request);
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
     _kafkaCruiseControl.trainLoadModel(startMs, endMs);
-    String resp = "Load model training started. Check status through " + getStateCheckUrl(request);
-    setResponseCode(response, HttpServletResponse.SC_OK);
+    String resp;
+    if (json) {
+      resp = "{\"message\": \"Load model training started.\"}";
+      setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+    } else {
+      resp = "Load model training started. Check status through " + getStateCheckUrl(request);
+      setResponseCode(response, HttpServletResponse.SC_OK);
+    }
     response.setContentLength(resp.length());
     response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
     response.getOutputStream().flush();
@@ -291,11 +324,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void getClusterLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
     long time;
     String granularity;
+    boolean json = false;
     try {
       String timeString = request.getParameter(TIME_PARAM);
       time = (timeString == null || timeString.toUpperCase().equals("NOW"))
           ? System.currentTimeMillis() : Long.parseLong(timeString);
       granularity = request.getParameter(GRANULARITY_PARAM);
+      json = wantJSON(request);
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
@@ -305,19 +340,38 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       ClusterModel.BrokerStats brokerStats = _kafkaCruiseControl.cachedBrokerLoadStats();
       String brokerLoad;
       if (brokerStats != null) {
-        brokerLoad = brokerStats.toString();
+        if (json) {
+          brokerLoad = brokerStats.getJSONString();
+        } else {
+          brokerLoad = brokerStats.toString();
+        }
       } else {
         ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(time, requirements);
-        brokerLoad = clusterModel.brokerStats().toString();
+        if (json) {
+          brokerLoad = clusterModel.brokerStatsJSON();
+        } else {
+          brokerLoad = clusterModel.brokerStats().toString();
+        }
       }
-      setResponseCode(response, HttpServletResponse.SC_OK);
+      if (json) {
+        setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+      } else {
+        setResponseCode(response, HttpServletResponse.SC_OK);
+      }
       response.setContentLength(brokerLoad.length());
       response.getOutputStream().write(brokerLoad.getBytes(StandardCharsets.UTF_8));
     } else if (granularity.toLowerCase().equals(GRANULARITY_REPLICA)) {
       ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(time, requirements);
-      setResponseCode(response, HttpServletResponse.SC_OK);
-      // Write to stream to avoid expensive toString() call.
-      clusterModel.writeTo(response.getOutputStream());
+      if (json) {
+        String data = clusterModel.getJSONString();
+        setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+        response.setContentLength(data.length());
+        response.getOutputStream().write(data.getBytes(StandardCharsets.UTF_8));
+      } else {
+        setResponseCode(response, HttpServletResponse.SC_OK);
+        // Write to stream to avoid expensive toString() call.
+        clusterModel.writeTo(response.getOutputStream());
+      }
     } else {
       throw new UserRequestException("Unknown granularity " + granularity);
     }
@@ -328,8 +382,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Resource resource;
     Long startMs;
     Long endMs;
+    boolean json;
     try {
       String resourceString = request.getParameter(RESOURCE_PARAM);
+      json = wantJSON(request);
       try {
         resource = Resource.valueOf(resourceString);
       } catch (IllegalArgumentException iae) {
@@ -347,23 +403,49 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, false);
     ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(startMs, endMs, requirements);
     List<Partition> sortedPartitions = clusterModel.replicasSortedByUtilization(resource);
-    setResponseCode(response, HttpServletResponse.SC_OK);
     OutputStream out = response.getOutputStream();
-    int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
-    out.write(String.format("%" + topicNameLength + "s%10s%30s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
-                            "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)")
-                    .getBytes(StandardCharsets.UTF_8));
-    for (Partition p : sortedPartitions) {
-      List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
-      out.write(String.format("%" + topicNameLength + "s%10s%30s%19.6f%19.3f%19.3f%19.3f%n",
-                              p.leader().topicPartition(),
-                              p.leader().broker().id(),
-                              followers,
-                              p.leader().load().expectedUtilizationFor(Resource.CPU),
-                              p.leader().load().expectedUtilizationFor(Resource.DISK),
-                              p.leader().load().expectedUtilizationFor(Resource.NW_IN),
-                              p.leader().load().expectedUtilizationFor(Resource.NW_OUT))
+    if (!json) {
+      int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
+      setResponseCode(response, HttpServletResponse.SC_OK);
+      out.write(String.format("%" + topicNameLength + "s%10s%30s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
+                              "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)")
                       .getBytes(StandardCharsets.UTF_8));
+      for (Partition p : sortedPartitions) {
+        List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
+        out.write(String.format("%" + topicNameLength + "s%10s%30s%19.6f%19.3f%19.3f%19.3f%n",
+                                p.leader().topicPartition(),
+                                p.leader().broker().id(),
+                                followers,
+                                p.leader().load().expectedUtilizationFor(Resource.CPU),
+                                p.leader().load().expectedUtilizationFor(Resource.DISK),
+                                p.leader().load().expectedUtilizationFor(Resource.NW_IN),
+                                p.leader().load().expectedUtilizationFor(Resource.NW_OUT))
+                        .getBytes(StandardCharsets.UTF_8));
+      }
+    } else {
+      Map<String, Object> partitionMap = new HashMap<>();
+      List<Object> partitionList = new ArrayList<>();
+      List<String> header = new ArrayList<String>(Arrays.asList("topic", "partition", "leader", "followers", "CPU", "DISK", "NW_IN", "NW_OUT"));
+      partitionMap.put("header", header);
+      for (Partition p : sortedPartitions) {
+        List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
+        List<Object> record = new ArrayList<>();
+        record.add(p.leader().topicPartition().topic());
+        record.add(p.leader().topicPartition().partition());
+        record.add(p.leader().broker().id());
+        record.add(followers);
+        record.add(p.leader().load().expectedUtilizationFor(Resource.CPU));
+        record.add(p.leader().load().expectedUtilizationFor(Resource.DISK));
+        record.add(p.leader().load().expectedUtilizationFor(Resource.NW_IN));
+        record.add(p.leader().load().expectedUtilizationFor(Resource.NW_OUT));
+        partitionList.add(record);
+      }
+      partitionMap.put("records", partitionList);
+      Gson gson = new Gson();
+      String g = gson.toJson(partitionMap);
+      setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+      response.setContentLength(g.length());
+      out.write(g.getBytes(StandardCharsets.UTF_8));
     }
     out.flush();
   }
@@ -373,8 +455,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean ignoreProposalCache;
     boolean withAvailableValidWindows;
     boolean withAvailableValidPartitions;
+    boolean json;
     List<String> goals;
     try {
+      json = wantJSON(request);
       String timeString = request.getParameter(TIME_PARAM);
       boolean timeSpecified = timeString != null && timeString.toUpperCase().equals("NOW");
       String verboseString = request.getParameter(VERBOSE_PARAM);
@@ -383,7 +467,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String withAvailableValidWindowsString = request.getParameter(WITH_AVAILABLE_VALID_WINDOWS);
       String withAvailableValidPartitionsString = request.getParameter(WITH_AVAILABLE_VALID_PARTITIONS);
       String goalsString = request.getParameter(GOALS_PARAM);
-      goals = goalsString == null ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
+      // TODO: Handle urlencoded value (%2C insted of ,)
+      goals = goalsString == null || goalsString.isEmpty() ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
       ignoreProposalCache = (ignoreProposalCacheString != null && Boolean.parseBoolean(ignoreProposalCacheString))
           || timeSpecified || !goals.isEmpty();
@@ -404,26 +489,52 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       ModelCompletenessRequirements requirements = getRequirements(withAvailableValidPartitions, withAvailableValidWindows);
       optimizerResult = _kafkaCruiseControl.getOptimizationProposals(goals, requirements);
     }
-    String loadBeforeOptimization = optimizerResult.brokerStatsBeforeOptimization().toString();
-    String loadAfterOptimization = optimizerResult.brokerStatsAfterOptimization().toString();
-
-    setResponseCode(response, HttpServletResponse.SC_OK);
-    OutputStream out = response.getOutputStream();
-    if (!verbose) {
-      out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
+    String loadBeforeOptimization;
+    String loadAfterOptimization;
+    if (json) {
+      loadBeforeOptimization = optimizerResult.brokerStatsBeforeOptimization().getJSONString();
+      loadAfterOptimization = optimizerResult.brokerStatsAfterOptimization().getJSONString();
     } else {
-      out.write(optimizerResult.goalProposals().toString().getBytes(StandardCharsets.UTF_8));
+      loadBeforeOptimization = optimizerResult.brokerStatsBeforeOptimization().toString();
+      loadAfterOptimization = optimizerResult.brokerStatsAfterOptimization().toString();
     }
-    for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
-      Goal goal = entry.getKey();
-      out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
-                      .getBytes(StandardCharsets.UTF_8));
-      out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
+    OutputStream out = response.getOutputStream();
+    if (!json) {
+      if (!verbose) {
+        out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
+      } else {
+        out.write(optimizerResult.goalProposals().toString().getBytes(StandardCharsets.UTF_8));
+      }
+      setResponseCode(response, HttpServletResponse.SC_OK);
+      // Print summary before & after optimization
+      out.write(String.format("%n%nCurrent load:").getBytes(StandardCharsets.UTF_8));
+      out.write(loadBeforeOptimization.getBytes(StandardCharsets.UTF_8));
+      out.write(String.format("%n%nOptimized load:").getBytes(StandardCharsets.UTF_8));
+      out.write(loadAfterOptimization.getBytes(StandardCharsets.UTF_8));
+    } else {
+      // Build all the goal summary
+      List<Map<String, Object>> allGoals = new ArrayList<>();
+      for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
+        Goal goal = entry.getKey();
+        String goalViolation = goalResultDescription(goal, optimizerResult);
+        Map<String, Object> goalMap = new HashMap<>();
+        goalMap.put("goal", goal.name());
+        goalMap.put("goalViolated", goalViolation);
+        goalMap.put("clusterModelStats", entry.getValue().getJsonStructure());
+        allGoals.add(goalMap);
+      }
+      Map<String, Object> proposalMap = new HashMap<>();
+      proposalMap.put("goals", allGoals);
+      proposalMap.put("loadBeforeOptimization", optimizerResult.brokerStatsBeforeOptimization().getJsonStructure());
+      proposalMap.put("loadAfterOptimization", optimizerResult.brokerStatsAfterOptimization().getJsonStructure());
+      Gson gson = new GsonBuilder()
+                      .serializeNulls()
+                      .serializeSpecialFloatingPointValues()
+                      .create();
+      String proposalsString = gson.toJson(proposalMap);
+      setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+      out.write(proposalsString.getBytes(StandardCharsets.UTF_8));
     }
-    out.write(String.format("%n%nCurrent load:").getBytes(StandardCharsets.UTF_8));
-    out.write(loadBeforeOptimization.getBytes(StandardCharsets.UTF_8));
-    out.write(String.format("%n%nOptimized load:").getBytes(StandardCharsets.UTF_8));
-    out.write(loadAfterOptimization.getBytes(StandardCharsets.UTF_8));
     out.flush();
   }
 
@@ -450,55 +561,71 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return requirements;
   }
 
+  private boolean wantJSON(HttpServletRequest request) {
+    boolean json;
+    String jsonString = request.getParameter(JSON_PARAM);
+    json = jsonString != null && Boolean.parseBoolean(jsonString);
+    return json;
+  }
+
   private void getState(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean verbose;
     boolean superVerbose;
+    boolean json;
     try {
       String verboseString = request.getParameter(VERBOSE_PARAM);
       verbose = verboseString != null && Boolean.parseBoolean(verboseString);
       String superVerboseString = request.getParameter(SUPER_VERBOSE_PARM);
       superVerbose = superVerboseString != null && Boolean.parseBoolean(superVerboseString);
+      json = wantJSON(request);
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
     KafkaCruiseControlState state = _kafkaCruiseControl.state();
-    String stateString = state.toString();
-    setResponseCode(response, HttpServletResponse.SC_OK);
     OutputStream out = response.getOutputStream();
-    out.write(stateString.getBytes(StandardCharsets.UTF_8));
-    if (verbose || superVerbose) {
-      out.write(String.format("%n%nMonitored Windows:%n").getBytes(StandardCharsets.UTF_8));
-      StringJoiner joiner = new StringJoiner(", ", "{", "}");
-      for (Map.Entry<Long, Double> entry : state.monitorState().monitoredSnapshotWindows().entrySet()) {
-        joiner.add(String.format("%d=%.3f%%", entry.getKey(), entry.getValue() * 100));
-      }
-      out.write(joiner.toString().getBytes(StandardCharsets.UTF_8));
-      out.write(String.format("%n%nGoal Readiness:%n").getBytes(StandardCharsets.UTF_8));
-      for (Map.Entry<Goal, Boolean> entry : state.analyzerState().readyGoals().entrySet()) {
-        Goal goal = entry.getKey();
-        out.write(String.format("%50s, %s, %s%n", goal.getClass().getSimpleName(), goal.clusterModelCompletenessRequirements(),
-            entry.getValue() ? "Ready" : "NotReady").getBytes(StandardCharsets.UTF_8));
-      }
-      if (superVerbose) {
-        out.write(String.format("%n%nFlawed metric samples:%n").getBytes(StandardCharsets.UTF_8));
-        Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws = state.monitorState().sampleFlaws();
-        if (sampleFlaws != null && !sampleFlaws.isEmpty()) {
-          for (Map.Entry<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> entry : sampleFlaws.entrySet()) {
-            out.write(String.format("%n%s: %s", entry.getKey(), entry.getValue()).getBytes(StandardCharsets.UTF_8));
-          }
-        } else {
-          out.write("None".getBytes(StandardCharsets.UTF_8));
+    if (json) {
+      String stateString = state.getJSONString();
+      setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+      response.setContentLength(stateString.length());
+      out.write(stateString.getBytes(StandardCharsets.UTF_8));
+    } else {
+      String stateString = state.toString();
+      setResponseCode(response, HttpServletResponse.SC_OK);
+      out.write(stateString.getBytes(StandardCharsets.UTF_8));
+      if (verbose || superVerbose) {
+        out.write(String.format("%n%nMonitored Windows:%n").getBytes(StandardCharsets.UTF_8));
+        StringJoiner joiner = new StringJoiner(", ", "{", "}");
+        for (Map.Entry<Long, Double> entry : state.monitorState().monitoredSnapshotWindows().entrySet()) {
+          joiner.add(String.format("%d=%.3f%%", entry.getKey(), entry.getValue() * 100));
         }
-        out.write(String.format("%n%nLinear Regression Model State:%n%s", state.monitorState().detailTrainingProgress())
-                        .getBytes(StandardCharsets.UTF_8));
-        if (state.executorState().state() == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
-          out.write(String.format("%n%nIn progress partition movements:%n").getBytes(StandardCharsets.UTF_8));
-          for (ExecutionTask task : state.executorState().inProgressPartitionMovements()) {
-            out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
+        out.write(joiner.toString().getBytes(StandardCharsets.UTF_8));
+        out.write(String.format("%n%nGoal Readiness:%n").getBytes(StandardCharsets.UTF_8));
+        for (Map.Entry<Goal, Boolean> entry : state.analyzerState().readyGoals().entrySet()) {
+          Goal goal = entry.getKey();
+          out.write(String.format("%50s, %s, %s%n", goal.getClass().getSimpleName(), goal.clusterModelCompletenessRequirements(),
+              entry.getValue() ? "Ready" : "NotReady").getBytes(StandardCharsets.UTF_8));
+        }
+        if (superVerbose) {
+          out.write(String.format("%n%nFlawed metric samples:%n").getBytes(StandardCharsets.UTF_8));
+          Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws = state.monitorState().sampleFlaws();
+          if (sampleFlaws != null && !sampleFlaws.isEmpty()) {
+            for (Map.Entry<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> entry : sampleFlaws.entrySet()) {
+              out.write(String.format("%n%s: %s", entry.getKey(), entry.getValue()).getBytes(StandardCharsets.UTF_8));
+            }
+          } else {
+            out.write("None".getBytes(StandardCharsets.UTF_8));
           }
-          out.write(String.format("%n%nPending partition movements:%n").getBytes(StandardCharsets.UTF_8));
-          for (ExecutionTask task : state.executorState().pendingPartitionMovements()) {
-            out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
+          out.write(String.format("%n%nLinear Regression Model State:%n%s", state.monitorState().detailTrainingProgress())
+                          .getBytes(StandardCharsets.UTF_8));
+          if (state.executorState().state() == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
+            out.write(String.format("%n%nIn progress partition movements:%n").getBytes(StandardCharsets.UTF_8));
+            for (ExecutionTask task : state.executorState().inProgressPartitionMovements()) {
+              out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
+            }
+            out.write(String.format("%n%nPending partition movements:%n").getBytes(StandardCharsets.UTF_8));
+            for (ExecutionTask task : state.executorState().pendingPartitionMovements()) {
+              out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
+            }
           }
         }
       }
@@ -512,7 +639,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean dryrun;
     boolean throttleRemovedBroker;
     List<String> goals;
+    boolean json;
     try {
+      // TODO: Handle urlencoded value (%2C insted of ,)
       String[] brokerIdsString = request.getParameter(BROKER_ID_PARAM).split(",");
       for (String brokerIdString : brokerIdsString) {
         brokerIds.add(Integer.parseInt(brokerIdString));
@@ -522,7 +651,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String throttleRemovedBrokerString = request.getParameter(THROTTLE_REMOVED_BROKER_PARAM);
       throttleRemovedBroker = throttleRemovedBrokerString == null || Boolean.parseBoolean(throttleRemovedBrokerString);
       String goalsString = request.getParameter(GOALS_PARAM);
-      goals = goalsString == null ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
+      // TODO: Handle urlencoded value (%2C insted of ,)
+      goals = goalsString == null || goalsString.isEmpty() ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
     } catch (Exception e) {
       throw new UserRequestException(e);
@@ -562,7 +692,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       dryrun = dryrunString == null || Boolean.parseBoolean(dryrunString);
 
       String goalsString = request.getParameter(GOALS_PARAM);
-      goals = goalsString == null ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
+      // TODO: Handle urlencoded value (%2C insted of ,)
+      goals = goalsString == null || goalsString.isEmpty() ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
 
       String withAvailableValidWindowsString = request.getParameter(WITH_AVAILABLE_VALID_WINDOWS);
@@ -610,9 +741,19 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private void setResponseCode(HttpServletResponse response, int code) {
+    response.setStatus(code);
     response.setContentType("text/plain");
     response.setCharacterEncoding("utf-8");
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
+  }
+
+  private void setJSONResponseCode(HttpServletRequest request, HttpServletResponse response, int code) {
     response.setStatus(code);
+    response.setContentType("application/json");
+    response.setCharacterEncoding("utf-8");
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
   }
 
   private void returnErrorMessage(HttpServletResponse response, String errorMessage, int responseCode)

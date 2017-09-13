@@ -284,6 +284,21 @@ public class Rack implements Serializable {
 
   }
 
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    List<Object> hostList = new ArrayList<>();
+    for (Host host : _hosts.values()) {
+      hostList.add(host.getJsonStructure());
+    }
+    Map<String, Object> rackMap = new HashMap<>();
+    rackMap.put("rackid", _id);
+    rackMap.put("hosts", hostList);
+    return rackMap;
+  }
+
   /**
    * Output writing string representation of this class to the stream.
    * @param out the output stream.

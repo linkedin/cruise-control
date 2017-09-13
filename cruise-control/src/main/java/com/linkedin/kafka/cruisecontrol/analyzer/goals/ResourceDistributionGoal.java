@@ -421,4 +421,14 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       return _reasonForLastNegativeResult;
     }
   }
+
+  @Override
+  public String goalClass() {
+    return "Soft";
+  }
+
+  @Override
+  public String goalDescription() {
+    return "Balance resource distribution over brokers (e.g. cpu, disk, inbound / outbound network traffic).";
+  }
 }

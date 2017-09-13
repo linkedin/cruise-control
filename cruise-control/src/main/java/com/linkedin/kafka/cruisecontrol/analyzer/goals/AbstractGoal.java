@@ -106,6 +106,12 @@ public abstract class AbstractGoal implements Goal {
   @Override
   public abstract String name();
 
+  @Override
+  public abstract String goalClass();
+
+  @Override
+  public abstract String goalDescription();
+
   /**
    * Get brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
    *

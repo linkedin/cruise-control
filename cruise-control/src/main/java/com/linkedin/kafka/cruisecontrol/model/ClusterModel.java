@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
+import com.google.gson.Gson;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -802,6 +803,43 @@ public class ClusterModel implements Serializable {
     }
   }
 
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public List<Map<String, Object>> getJsonStructure() {
+    List<Map<String, Object>> finalClusterStats = new ArrayList<>();
+
+    for (Broker broker : sortBrokersInAscendingOrderById()) {
+      double leaderBytesInRate = broker.leadershipLoad().expectedUtilizationFor(Resource.NW_IN);
+
+      Map<String, Object> hostEntry = new HashMap<>();
+      hostEntry.put("Host", broker.host().name());
+      hostEntry.put("Broker", broker.id());
+      hostEntry.put("BrokerState", broker.getState());
+      hostEntry.put("DiskMB", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.DISK)));
+      hostEntry.put("CpuPct", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.CPU)));
+      hostEntry.put("LeaderNwInRate", AnalyzerUtils.nanToZero(leaderBytesInRate));
+      hostEntry.put("FollowerNwInRate", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate));
+      hostEntry.put("NnwOutRate", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.NW_OUT)));
+      hostEntry.put("PnwOutRate", AnalyzerUtils.nanToZero(potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT)));
+      hostEntry.put("Replicas", broker.replicas().size());
+
+      finalClusterStats.add(hostEntry);
+    }
+
+    return finalClusterStats;
+  }
+
+  /**
+   * Get broker level stats in JSON format.
+   */
+  public String brokerStatsJSON() {
+    Gson gson = new Gson();
+    String json = gson.toJson(getJsonStructure());
+    return json;
+  }
+
   /**
    * Get broker return the broker stats.
    */
@@ -812,6 +850,7 @@ public class ClusterModel implements Serializable {
           double leaderBytesInRate = broker.leadershipLoad().expectedUtilizationFor(Resource.NW_IN);
           brokerStats.addSingleBrokerStats(broker.host().name(),
                                            broker.id(),
+                                           broker.getState(),
                                            broker.load().expectedUtilizationFor(Resource.DISK),
                                            broker.load().expectedUtilizationFor(Resource.CPU),
                                            leaderBytesInRate,
@@ -831,12 +870,12 @@ public class ClusterModel implements Serializable {
     private int _hostFieldLength = 0;
     private Map<String, BasicStats> _hostStats = new ConcurrentHashMap<>();
 
-    private void addSingleBrokerStats(String host, int id, double diskUtil, double cpuUtil, double leaderBytesInRate,
+    private void addSingleBrokerStats(String host, int id, String state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                                       double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
                                       int numReplicas) {
 
       SingleBrokerStats singleBrokerStats =
-          new SingleBrokerStats(host, id, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
+          new SingleBrokerStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
                                 potentialBytesOutRate, numReplicas);
       _brokerStats.add(singleBrokerStats);
       _hostFieldLength = Math.max(_hostFieldLength, host.length());
@@ -850,6 +889,44 @@ public class ClusterModel implements Serializable {
      */
     public List<SingleBrokerStats> stats() {
       return _brokerStats;
+    }
+
+
+    /*
+    * Return a valid JSON encoded string
+    */
+    public String getJSONString() {
+      Gson gson = new Gson();
+      return gson.toJson(getJsonStructure());
+    }
+
+    /**
+     * Return an object that can be further used
+     * to encode into JSON
+     */
+    public Map<String, Object> getJsonStructure() {
+      List<Map<String, Object>> hostStats = new ArrayList<>();
+
+      // host level statistics
+      for (Map.Entry<String, BasicStats> entry : _hostStats.entrySet()) {
+        BasicStats stats = entry.getValue();
+        Map<String, Object> hostEntry = entry.getValue().getJSONStructure();
+        hostEntry.put("Host", entry.getKey());
+        hostStats.add(hostEntry);
+      }
+
+      // broker level statistics
+      List<Map<String, Object>> brokerStats = new ArrayList<>();
+      for (SingleBrokerStats stats : _brokerStats) {
+        Map<String, Object> brokerEntry = stats.getJSONStructure();
+        brokerStats.add(brokerEntry);
+      }
+
+      // consolidated
+      Map<String, Object> stats = new HashMap<>();
+      stats.put("hosts", hostStats);
+      stats.put("brokers", brokerStats);
+      return stats;
     }
 
     @Override
@@ -896,13 +973,15 @@ public class ClusterModel implements Serializable {
   public static class SingleBrokerStats {
     private final String _host;
     private final int _id;
+    private final String _state;
     final BasicStats _basicStats;
 
-    private SingleBrokerStats(String host, int id, double diskUtil, double cpuUtil, double leaderBytesInRate,
+    private SingleBrokerStats(String host, int id, String state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                               double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
                               int numReplicas) {
       _host = host;
       _id = id;
+      _state = state;
       _basicStats = new BasicStats(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
                                    potentialBytesOutRate, numReplicas);
     }
@@ -911,12 +990,28 @@ public class ClusterModel implements Serializable {
       return _host;
     }
 
+    public String state() {
+      return _state;
+    }
+
     public int id() {
       return _id;
     }
 
     private BasicStats basicStats() {
       return _basicStats;
+    }
+
+    /*
+    * Return an object that can be further used
+    * to encode into JSON
+    */
+    public Map<String, Object> getJSONStructure() {
+      Map<String, Object> entry = _basicStats.getJSONStructure();
+      entry.put("Host", _host);
+      entry.put("Broker", _id);
+      entry.put("BrokerState", _state);
+      return entry;
     }
   }
 
@@ -932,13 +1027,13 @@ public class ClusterModel implements Serializable {
     private BasicStats(double diskUtil, double cpuUtil, double leaderBytesInRate,
                        double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
                        int numReplicas) {
-      _diskUtil = diskUtil;
-      _cpuUtil = cpuUtil;
-      _leaderBytesInRate = leaderBytesInRate;
-      _followerBytesInRate = followerBytesInRate;
-      _bytesOutRate = bytesOutRate;
-      _potentialBytesOutRate = potentialBytesOutRate;
-      _numReplicas = numReplicas;
+      _diskUtil = Double.isNaN(diskUtil) || diskUtil < 0.0 ? 0.0 : diskUtil;
+      _cpuUtil = Double.isNaN(cpuUtil) || cpuUtil < 0.0 ? 0.0 : cpuUtil;
+      _leaderBytesInRate = Double.isNaN(leaderBytesInRate) || leaderBytesInRate < 0.0 ? 0.0 : leaderBytesInRate;
+      _followerBytesInRate = Double.isNaN(followerBytesInRate) || followerBytesInRate < 0.0 ? 0.0 : followerBytesInRate;
+      _bytesOutRate = Double.isNaN(bytesOutRate) || bytesOutRate < 0.0 ? 0.0 : bytesOutRate;
+      _potentialBytesOutRate = Double.isNaN(potentialBytesOutRate) || potentialBytesOutRate < 0.0 ? 0.0 : potentialBytesOutRate;
+      _numReplicas = numReplicas < 1 ? 0 : numReplicas;
     }
 
     double diskUtil() {
@@ -977,6 +1072,22 @@ public class ClusterModel implements Serializable {
       _bytesOutRate += basicStats.bytesOutRate();
       _potentialBytesOutRate  += basicStats.potentialBytesOutRate();
       _numReplicas += basicStats.numReplicas();
+    }
+
+    /*
+    * Return an object that can be further used
+    * to encode into JSON
+    */
+    public Map<String, Object> getJSONStructure() {
+      Map<String, Object> entry = new HashMap<>();
+      entry.put("DiskMB", diskUtil());
+      entry.put("CpuPct", cpuUtil());
+      entry.put("LeaderNwInRate", leaderBytesInRate());
+      entry.put("FollowerNwInRate", followerBytesInRate());
+      entry.put("NnwOutRate", bytesOutRate());
+      entry.put("PnwOutRate", potentialBytesOutRate());
+      entry.put("Replicas", numReplicas());
+      return entry;
     }
   }
 
@@ -1038,6 +1149,29 @@ public class ClusterModel implements Serializable {
       }
     }
     return utilization;
+  }
+
+  /*
+   * Return a valid JSON encoded string
+   */
+  public String getJSONString() {
+    Gson gson = new Gson();
+    return gson.toJson(getJsonStructure2());
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON (version2 thats used in writeTo)
+   */
+  public Map<String, Object> getJsonStructure2() {
+    Map<String, Object> clusterMap = new HashMap<>();
+    clusterMap.put("maxReplicationFactor", _maxReplicationFactor);
+    List<Map<String, Object>> racks = new ArrayList<>();
+    for (Rack rack : _racksById.values()) {
+      racks.add(rack.getJsonStructure());
+    }
+    clusterMap.put("racks", racks);
+    return clusterMap;
   }
 
   public void writeTo(OutputStream out) throws IOException {

@@ -10,6 +10,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
 
 
 /**
@@ -153,6 +157,43 @@ public class Snapshot implements Serializable {
     }
 
     out.write(">%n</Snapshot>%n".getBytes(StandardCharsets.UTF_8));
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON (version 2 for load stats)
+   */
+  public Map<String, Object> getJsonStructureForLoad() {
+    Map<String, Object> snapshotMap = new HashMap<>();
+    snapshotMap.put("time", _time);
+
+    for (Resource r : Resource.values()) {
+      snapshotMap.put(r.resource(), _utilizationByResource[r.id()]);
+    }
+
+    return snapshotMap;
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> snapshotMap = new HashMap<>();
+    snapshotMap.put("time", _time);
+
+    List<Object> resourceList = new ArrayList<>();
+
+    for (Resource resource : Resource.values()) {
+      Map<String, Object> rMap = new HashMap<>();
+      rMap.put("resource", resource);
+      rMap.put("utilization", _utilizationByResource[resource.id()]);
+      resourceList.add(rMap);
+    }
+
+    snapshotMap.put("resources", resourceList);
+
+    return snapshotMap;
   }
 
   /**

@@ -137,13 +137,10 @@ public class GoalOptimizer implements Runnable {
         LOG.debug("Skipping best proposal precomputing because the cached best result is still valid. "
                       + "Cached generation: {}", _bestProposal.modelGeneration());
       }
-      long deadline = _time.milliseconds() + sleepTime;
-      while (!_shutdown && _time.milliseconds() < deadline && (_bestProposal == null || validCachedProposal())) {
-        try {
-          Thread.sleep(deadline - _time.milliseconds());
-        } catch (InterruptedException e) {
-          // let it go.
-        }
+      try {
+        Thread.sleep(sleepTime);
+      } catch (InterruptedException e) {
+        // let it go.
       }
     }
   }

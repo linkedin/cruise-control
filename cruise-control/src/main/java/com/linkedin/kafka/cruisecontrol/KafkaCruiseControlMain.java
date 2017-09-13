@@ -12,7 +12,7 @@ import java.util.Properties;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
-
+import org.eclipse.jetty.servlet.DefaultServlet;
 
 /**
  * The main class to run Kafka Cruise Control.
@@ -50,6 +50,13 @@ public class KafkaCruiseControlMain {
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
     context.setContextPath("/");
     server.setHandler(context);
+    // Placeholder for any static content
+    DefaultServlet defaultServlet = new DefaultServlet();
+    ServletHolder holderWebapp = new ServletHolder("default", defaultServlet);
+    holderWebapp.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed", "false");
+    holderWebapp.setInitParameter("resourceBase", "./cruise-control-ui/dist/");
+    context.addServlet(holderWebapp, "/*");
+    // Kafka Cruise control servlet data
     KafkaCruiseControlServlet kafkaCruiseControlServlet = new KafkaCruiseControlServlet(kafkaCruiseControl);
     ServletHolder servletHolder = new ServletHolder(kafkaCruiseControlServlet);
     context.addServlet(servletHolder, "/kafkacruisecontrol/*");
@@ -61,6 +68,7 @@ public class KafkaCruiseControlMain {
     });
     kafkaCruiseControl.startUp();
     server.start();
+    System.out.println("Application directory: " + System.getProperty("user.dir"));
     System.out.println("Kafka Cruise Control started.");
   }
 
