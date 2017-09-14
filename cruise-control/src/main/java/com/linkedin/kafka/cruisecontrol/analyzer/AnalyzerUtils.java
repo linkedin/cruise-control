@@ -143,6 +143,19 @@ public class AnalyzerUtils {
    *
    * @param d1 The first {@code double} to compare.
    * @param d2 The second {@code double} to compare.
+   * @param resource the resource the current comparison is for.
+   * @return 1 if first > second, -1 if first < second, 0 otherwise.
+   */
+  public static int compare(double d1, double d2, Resource resource) {
+    double epsilon = resource.epsilon(d1, d2);
+    return compare(d1, d2, epsilon);
+  }
+
+  /**
+   * Compare the given values. Return 1 if first > second, -1 if first < second, 0 otherwise.
+   *
+   * @param d1 The first {@code double} to compare.
+   * @param d2 The second {@code double} to compare.
    * @return 1 if first > second, -1 if first < second, 0 otherwise.
    */
   public static int compare(double d1, double d2, double epsilon) {
