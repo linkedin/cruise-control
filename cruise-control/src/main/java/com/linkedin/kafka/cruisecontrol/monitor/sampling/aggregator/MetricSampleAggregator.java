@@ -253,11 +253,11 @@ public class MetricSampleAggregator {
     if (_activeSnapshotWindow < 0) {
       return new MetricSampleAggregationResult(currentGeneration(), includeAllTopics);
     }
+    long requestedLowerBoundWindow = MonitorUtils.toSnapshotWindow(Math.max(from, 0), _snapshotWindowMs);
+    long requestedUpperBoundWindow = MonitorUtils.toSnapshotWindow(Math.max(to, 0), _snapshotWindowMs) - _snapshotWindowMs;
+    long mostRecentAvailableWindow;
+    long actualUpperBoundWindow;
     try {
-      long requestedLowerBoundWindow = MonitorUtils.toSnapshotWindow(Math.max(from, 0), _snapshotWindowMs);
-      long requestedUpperBoundWindow = MonitorUtils.toSnapshotWindow(Math.max(to, 0), _snapshotWindowMs) - _snapshotWindowMs;
-      long mostRecentAvailableWindow;
-      long actualUpperBoundWindow;
       // Synchronize with addSamples() here.
       synchronized (this) {
         // Disable the snapshot window eviction to avoid inconsistency of data.
