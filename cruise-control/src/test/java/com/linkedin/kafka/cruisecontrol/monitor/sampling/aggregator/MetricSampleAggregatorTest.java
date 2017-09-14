@@ -68,7 +68,7 @@ public class MetricSampleAggregatorTest {
         assertEquals((NUM_SNAPSHOTS - i) * SNAPSHOT_WINDOW_MS, snapshots[i].time());
         for (Resource resource : Resource.values()) {
           double expectedValue = resource == Resource.DISK ?
-              (NUM_SNAPSHOTS - 1 - i) * 10 + MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1 : 
+              (NUM_SNAPSHOTS - 1 - i) * 10 + MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1 :
               (NUM_SNAPSHOTS - 1 - i) * 10 + (MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1) / 2.0;
           assertEquals("The utilization for " + resource + " should be " + expectedValue,
               expectedValue, snapshots[i].utilizationFor(resource), 0);
@@ -77,7 +77,7 @@ public class MetricSampleAggregatorTest {
     } catch (NotEnoughSnapshotsException e) {
       fail("Should not have exception " + e.toString());
     }
-    
+
     // Verify the metric completeness checker state
     ModelGeneration modelGeneration = new ModelGeneration(1, metricSampleAggregator.currentGeneration());
     assertEquals(NUM_SNAPSHOTS, checker.numValidWindows(modelGeneration, metadata.fetch(), 1.0, 1));
@@ -96,7 +96,14 @@ public class MetricSampleAggregatorTest {
     MetricCompletenessChecker checker = new MetricCompletenessChecker(numSnapshot);
     MetricSampleAggregator metricSampleAggregator = new MetricSampleAggregator(config, metadata, checker);
 
-    populateSampleAggregator(NUM_SNAPSHOTS + 2, MIN_SAMPLES_PER_LOAD_SNAPSHOT, metricSampleAggregator);
+    // The eviction should still work after throwing exceptions.
+    try {
+      metricSampleAggregator.recentSnapshots(metadata.fetch(), Long.MAX_VALUE);
+      metricSampleAggregator.snapshots(metadata.fetch(), -1, Long.MAX_VALUE, -1, true);
+    } catch (IllegalArgumentException | NotEnoughSnapshotsException e) {
+      // let it go.
+    }
+    populateSampleAggregator(2 * NUM_SNAPSHOTS + 2, MIN_SAMPLES_PER_LOAD_SNAPSHOT, metricSampleAggregator);
 
     try {
       Map<TopicPartition, Snapshot[]> snapshotsForPartition =
@@ -104,8 +111,9 @@ public class MetricSampleAggregatorTest {
       assertEquals("Only " + NUM_SNAPSHOTS + " should be returned.",
           NUM_SNAPSHOTS, snapshotsForPartition.get(TP).length);
       for (int i = 0; i < NUM_SNAPSHOTS; i++) {
-        assertEquals((NUM_SNAPSHOTS + 1 - i) * SNAPSHOT_WINDOW_MS, snapshotsForPartition.get(TP)[i].time());
+        assertEquals((2 * NUM_SNAPSHOTS + 1 - i) * SNAPSHOT_WINDOW_MS, snapshotsForPartition.get(TP)[i].time());
       }
+      assertEquals(2 * NUM_SNAPSHOTS + 1, metricSampleAggregator.numSnapshotWindows());
     } catch (NotEnoughSnapshotsException e) {
       fail("There should be enough snapshots.");
     }
@@ -121,7 +129,7 @@ public class MetricSampleAggregatorTest {
 
     // Only give two sample to the aggregator.
     populateSampleAggregator(2, 1, metricSampleAggregator);
-    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_SNAPSHOTS - 1, MIN_SAMPLES_PER_LOAD_SNAPSHOT, 
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_SNAPSHOTS - 1, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
                                                         metricSampleAggregator, TP, 2, SNAPSHOT_WINDOW_MS);
     try {
       MetricSampleAggregationResult result =
@@ -163,7 +171,7 @@ public class MetricSampleAggregatorTest {
     // Only give one sample to the aggregator.
     populateSampleAggregator(NUM_SNAPSHOTS, MIN_SAMPLES_PER_LOAD_SNAPSHOT, metricSampleAggregator);
     // Let a snapshot window exist but not containing samples for partition 0
-    CruiseControlUnitTestUtils.populateSampleAggregator(2, MIN_SAMPLES_PER_LOAD_SNAPSHOT, metricSampleAggregator, 
+    CruiseControlUnitTestUtils.populateSampleAggregator(2, MIN_SAMPLES_PER_LOAD_SNAPSHOT, metricSampleAggregator,
                                                         anotherTopicPartition, NUM_SNAPSHOTS, SNAPSHOT_WINDOW_MS);
     CruiseControlUnitTestUtils.populateSampleAggregator(NUM_SNAPSHOTS - 1,
                              MIN_SAMPLES_PER_LOAD_SNAPSHOT,
@@ -205,16 +213,16 @@ public class MetricSampleAggregatorTest {
     // Only give one sample to the aggregator for previous period.
     populateSampleAggregator(NUM_SNAPSHOTS, MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1, metricSampleAggregator);
     // Create let (NUM_SNAPSHOT + 1) have enough samples.
-    CruiseControlUnitTestUtils.populateSampleAggregator(1, MIN_SAMPLES_PER_LOAD_SNAPSHOT, metricSampleAggregator, 
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, MIN_SAMPLES_PER_LOAD_SNAPSHOT, metricSampleAggregator,
                                                         TP, NUM_SNAPSHOTS, SNAPSHOT_WINDOW_MS);
     // Let a snapshot window exist but not containing samples for partition 0
-    CruiseControlUnitTestUtils.populateSampleAggregator(1, MIN_SAMPLES_PER_LOAD_SNAPSHOT, metricSampleAggregator, 
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, MIN_SAMPLES_PER_LOAD_SNAPSHOT, metricSampleAggregator,
                                                         anotherTopicPartition, NUM_SNAPSHOTS + 1, SNAPSHOT_WINDOW_MS);
     // Let the rest of the snapshot has enough samples.
     CruiseControlUnitTestUtils.populateSampleAggregator(NUM_SNAPSHOTS - 1,
                              MIN_SAMPLES_PER_LOAD_SNAPSHOT,
                              metricSampleAggregator, TP,
-                             NUM_SNAPSHOTS + 2, 
+                             NUM_SNAPSHOTS + 2,
                              SNAPSHOT_WINDOW_MS);
 
     try {
@@ -247,7 +255,7 @@ public class MetricSampleAggregatorTest {
 
     // Only give two samples to the aggregator.
     populateSampleAggregator(3, MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1, metricSampleAggregator);
-    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_SNAPSHOTS - 2, MIN_SAMPLES_PER_LOAD_SNAPSHOT, 
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_SNAPSHOTS - 2, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
                                                         metricSampleAggregator, TP, 3, SNAPSHOT_WINDOW_MS);
 
 
@@ -455,7 +463,7 @@ public class MetricSampleAggregatorTest {
                                         int numSamplesPerSnapshot,
                                         MetricSampleAggregator metricSampleAggregator,
                                         TopicPartition tp) {
-    CruiseControlUnitTestUtils.populateSampleAggregator(numSnapshots, numSamplesPerSnapshot, metricSampleAggregator, 
+    CruiseControlUnitTestUtils.populateSampleAggregator(numSnapshots, numSamplesPerSnapshot, metricSampleAggregator,
                                                         tp, 0, SNAPSHOT_WINDOW_MS);
   }
 
