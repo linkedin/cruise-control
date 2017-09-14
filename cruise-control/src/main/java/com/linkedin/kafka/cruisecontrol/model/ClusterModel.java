@@ -715,7 +715,7 @@ public class ClusterModel implements Serializable {
         for (Replica replica : broker.replicas()) {
           sumOfReplicaUtilization += replica.load().expectedUtilizationFor(resource);
         }
-        if (AnalyzerUtils.compare(sumOfReplicaUtilization, broker.load().expectedUtilizationFor(resource), resource.epsilon()) != 0) {
+        if (AnalyzerUtils.compare(sumOfReplicaUtilization, broker.load().expectedUtilizationFor(resource), resource) != 0) {
           throw new ModelInputException(prologueErrorMsg + " Broker utilization for " + resource + " is "
               + "different from the total replica utilization in the broker with id: " + broker.id()
               + ". Sum of the replica utilization: " + sumOfReplicaUtilization + ", broker utilization: "
@@ -736,7 +736,7 @@ public class ClusterModel implements Serializable {
             sumOfBrokerUtilization += broker.load().expectedUtilizationFor(resource);
           }
           Double hostUtilization = host.load().expectedUtilizationFor(resource);
-          if (AnalyzerUtils.compare(sumOfBrokerUtilization, hostUtilization, resource.epsilon()) != 0) {
+          if (AnalyzerUtils.compare(sumOfBrokerUtilization, hostUtilization, resource) != 0) {
             throw new ModelInputException(prologueErrorMsg + " Host utilization for " + resource + " is "
                                               + "different from the total broker utilization in the host : " + host.name()
                                               + ". Sum of the brokers: " + sumOfBrokerUtilization + ", host utilization: " + hostUtilization);
@@ -751,7 +751,7 @@ public class ClusterModel implements Serializable {
         double sumOfHostsUtil = entry.getValue();
         sumOfRackUtilizationByResource.putIfAbsent(resource, 0.0);
         Double rackUtilization = rack.load().expectedUtilizationFor(resource);
-        if (AnalyzerUtils.compare(rackUtilization, sumOfHostsUtil, resource.epsilon()) != 0) {
+        if (AnalyzerUtils.compare(rackUtilization, sumOfHostsUtil, resource) != 0) {
           throw new ModelInputException(prologueErrorMsg + " Rack utilization for " + resource + " is "
                                             + "different from the total host utilization in rack" + rack.id()
                                             + " . Sum of the hosts: " + sumOfHostsUtil + ", rack utilization: "
@@ -765,7 +765,7 @@ public class ClusterModel implements Serializable {
     for (Map.Entry<Resource, Double> entry : sumOfRackUtilizationByResource.entrySet()) {
       Resource resource = entry.getKey();
       double sumOfRackUtil = entry.getValue();
-      if (AnalyzerUtils.compare(_load.expectedUtilizationFor(resource), sumOfRackUtil, resource.epsilon()) != 0) {
+      if (AnalyzerUtils.compare(_load.expectedUtilizationFor(resource), sumOfRackUtil, resource) != 0) {
         throw new ModelInputException(prologueErrorMsg + " Cluster utilization for " + resource + " is "
             + "different from the total rack utilization in the cluster. Sum of the racks: "
             + sumOfRackUtil + ", cluster utilization: " + _load.expectedUtilizationFor(resource));
@@ -781,7 +781,7 @@ public class ClusterModel implements Serializable {
       }
       if (AnalyzerUtils.compare(sumOfLeaderOfReplicaUtilization,
                                 _potentialLeadershipLoadByBrokerId.get(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-                                Resource.NW_OUT.epsilon()) != 0) {
+                                Resource.NW_OUT) != 0) {
         throw new ModelInputException(prologueErrorMsg + " Leadership utilization for " + Resource.NW_OUT
             + " is different from the total utilization leader of replicas in the broker with id: "
             + broker.id() + " Expected: " + sumOfLeaderOfReplicaUtilization + " Received: "
@@ -794,7 +794,7 @@ public class ClusterModel implements Serializable {
         }
         double leaderSum = broker.leaderReplicas().stream().mapToDouble(r -> r.load().expectedUtilizationFor(resource)).sum();
         double cachedLoad = broker.leadershipLoad().expectedUtilizationFor(resource);
-        if (AnalyzerUtils.compare(leaderSum, cachedLoad, resource.epsilon()) != 0) {
+        if (AnalyzerUtils.compare(leaderSum, cachedLoad, resource) != 0) {
           throw new ModelInputException(prologueErrorMsg + " Leadership load for resource " + resource + " is " +
             cachedLoad + " but recomputed sum is " + leaderSum + ".");
         }

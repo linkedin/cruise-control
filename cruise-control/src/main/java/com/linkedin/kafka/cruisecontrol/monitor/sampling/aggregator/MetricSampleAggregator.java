@@ -156,18 +156,10 @@ public class MetricSampleAggregator {
                     _windowedAggregatedPartitionMetrics.size());
           _activeSnapshotWindow = snapshotWindow;
           newWindow = true;
-          // We only keep N ready snapshots and one active snapshot, evict the old ones if needed. But do not do this
-          // when snapshot collection is in progress. We can do it later.
-          while (_snapshotCollectionInProgress.get() == 0 && _windowedAggregatedPartitionMetrics.size() > _numSnapshotsToKeep + 1) {
-            Long oldestSnapshotWindow = _windowedAggregatedPartitionMetrics.lastKey();
-            _windowedAggregatedPartitionMetrics.remove(oldestSnapshotWindow);
-            _metricCompletenessChecker.removeWindow(oldestSnapshotWindow);
-            LOG.info("Removed snapshot window {}, number of snapshots = {}", oldestSnapshotWindow,
-                      _windowedAggregatedPartitionMetrics.size());
-          }
         }
       }
     }
+    maybeEvictOldSnapshots();
     AggregatedMetrics aggMetrics =
         snapshotsByPartition.computeIfAbsent(sample.topicPartition(), topicPartition -> new AggregatedMetrics());
     aggMetrics.addSample(sample);
@@ -186,6 +178,23 @@ public class MetricSampleAggregator {
 
     LOG.trace("Added sample {} to aggregated metrics window {}.", sample, snapshotWindow);
     return true;
+  }
+
+  private void maybeEvictOldSnapshots() {
+    if (_windowedAggregatedPartitionMetrics.size() > _numSnapshotsToKeep + 1) {
+      synchronized (this) {
+        // We only keep N ready snapshots and one active snapshot, evict the old ones if needed. But do not do this
+        // when snapshot collection is in progress. We can do it later.
+        while (_snapshotCollectionInProgress.get() == 0
+            && _windowedAggregatedPartitionMetrics.size() > _numSnapshotsToKeep + 1) {
+          Long oldestSnapshotWindow = _windowedAggregatedPartitionMetrics.lastKey();
+          _windowedAggregatedPartitionMetrics.remove(oldestSnapshotWindow);
+          _metricCompletenessChecker.removeWindow(oldestSnapshotWindow);
+          LOG.info("Removed snapshot window {}, number of snapshots = {}", oldestSnapshotWindow,
+              _windowedAggregatedPartitionMetrics.size());
+        }
+      }
+    }
   }
 
   /**
