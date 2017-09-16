@@ -241,12 +241,12 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  public String goalClass() {
-    return "Soft";
+  public String goalType() {
+    return _goalType.getType();
   }
 
   @Override
   public String goalDescription() {
-    return "Balance collocations of replicas of the same topic.";
+    return "Attempt to make the replicas of the same topic are evenly distributed across the entire cluster.";
   }
 }

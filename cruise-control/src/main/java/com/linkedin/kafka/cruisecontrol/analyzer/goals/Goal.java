@@ -34,6 +34,25 @@ import org.apache.kafka.common.annotation.InterfaceStability;
  */
 @InterfaceStability.Evolving
 public interface Goal extends Configurable {
+  /**
+   * enum to categorize various types of goals in system
+   * Presently, we have Hard or Soft goals. This might change
+   * in future
+   */
+  public enum GoalType {
+    HARD("hard"),
+    SOFT("soft");
+
+    public final String goalType;
+
+    GoalType(String goaltype) {
+      this.goalType = goaltype;
+    }
+
+    public String getType() {
+      return this.goalType;
+    }
+  }
 
   /**
    * Optimize the given cluster model as needed for this goal.
@@ -110,7 +129,7 @@ public interface Goal extends Configurable {
   /**
    * Get whether goal is soft or hard goal
    */
-  String goalClass();
+  String goalType();
 
   /**
    * Describe the goal

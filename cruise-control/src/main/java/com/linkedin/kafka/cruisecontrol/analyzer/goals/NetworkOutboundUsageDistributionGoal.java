@@ -36,12 +36,12 @@ public class NetworkOutboundUsageDistributionGoal extends ResourceDistributionGo
   }
 
   @Override
-  public String goalClass() {
-    return "Soft";
+  public String goalType() {
+    return _goalType.getType();
   }
 
   @Override
   public String goalDescription() {
-    return "";
+    return "Attempt to make the network-outbound-utilization variance among all the brokers are within a certain range.";
   }
 }

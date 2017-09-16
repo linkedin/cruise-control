@@ -423,12 +423,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  public String goalClass() {
-    return "Soft";
+  public String goalType() {
+    return _goalType.getType();
   }
 
   @Override
   public String goalDescription() {
-    return "Balance resource distribution over brokers (e.g. cpu, disk, inbound / outbound network traffic).";
+    return "Attempt to make the resource (CPU, Disk, Network) utilization variance among all the brokers are within a certain range.";
   }
 }

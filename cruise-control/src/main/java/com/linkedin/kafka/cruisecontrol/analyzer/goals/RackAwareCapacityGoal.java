@@ -41,7 +41,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
    * Constructor for Rack Capacity Goal.
    */
   public RackAwareCapacityGoal() {
-
+    super(GoalType.HARD);
   }
 
   /**
@@ -591,8 +591,8 @@ public class RackAwareCapacityGoal extends AbstractGoal {
   }
 
   @Override
-  public String goalClass() {
-    return "Hard";
+  public String goalType() {
+    return _goalType.getType();
   }
 
   @Override

@@ -44,7 +44,7 @@ public class AnalyzerState {
       if (entry.getValue()) {
         Map<String, String> goalMap = new HashMap<>();
         goalMap.put("goal", entry.getKey().name());
-        goalMap.put("category", entry.getKey().goalClass());
+        goalMap.put("category", entry.getKey().goalType());
         goalMap.put("description", entry.getKey().goalDescription());
         readyGoalNames.add(goalMap);
       }

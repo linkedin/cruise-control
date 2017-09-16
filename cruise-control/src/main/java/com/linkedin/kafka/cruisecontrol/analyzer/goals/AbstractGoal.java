@@ -40,6 +40,7 @@ public abstract class AbstractGoal implements Goal {
   protected BalancingConstraint _balancingConstraint;
   protected int _numSnapshots = 1;
   protected double _minMonitoredPartitionPercentage = 0.995;
+  GoalType _goalType = GoalType.SOFT;
 
   /**
    * Constructor of Abstract Goal class sets the _finished flag to false to signal that the goal requirements have not
@@ -48,6 +49,12 @@ public abstract class AbstractGoal implements Goal {
   public AbstractGoal() {
     _finished = false;
   }
+
+  public AbstractGoal(GoalType type) {
+    this();
+    _goalType = type;
+  }
+
 
   @Override
   public void configure(Map<String, ?> configs) {
@@ -107,7 +114,7 @@ public abstract class AbstractGoal implements Goal {
   public abstract String name();
 
   @Override
-  public abstract String goalClass();
+  public abstract String goalType();
 
   @Override
   public abstract String goalDescription();

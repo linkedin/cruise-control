@@ -214,8 +214,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  public String goalClass() {
-    return "Soft";
+  public String goalType() {
+    return _goalType.getType();
   }
 
   @Override
