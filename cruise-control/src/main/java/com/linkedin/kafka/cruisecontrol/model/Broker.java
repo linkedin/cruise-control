@@ -76,15 +76,7 @@ public class Broker implements Serializable {
   }
 
   public String getState() {
-    if (_state == State.ALIVE) {
-      return "ALIVE";
-    } else if (_state == State.DEAD) {
-      return "DEAD";
-    } else if (_state == State.NEW) {
-      return "NEW";
-    } else {
-      return "UNKNOWN";
-    }
+    return _state.name();
   }
 
   /**
