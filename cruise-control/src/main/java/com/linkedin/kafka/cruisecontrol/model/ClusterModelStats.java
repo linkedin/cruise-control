@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.cruisecontrol.resource.Resource;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 

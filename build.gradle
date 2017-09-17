@@ -59,6 +59,36 @@ subprojects {
   }
 }
 
+project(':cruise-control-core') {
+
+  configurations {
+    testOutput
+  }
+
+  dependencies {
+    compile project(':cruise-control-metrics-reporter')
+    compile "org.slf4j:slf4j-api:1.7.25"
+    compile 'junit:junit:4.12'
+
+    testOutput sourceSets.test.output
+  }
+
+  sourceSets {
+    main {
+      java {
+        srcDirs = ['src/main/java']
+      }
+    }
+    test {
+      java {
+        srcDirs = ['src/test/java']
+      }
+    }
+
+  }
+
+}
+
 project(':cruise-control') {
   apply plugin: 'scala'
 
@@ -87,6 +117,7 @@ project(':cruise-control') {
 
   dependencies {
     compile project(':cruise-control-metrics-reporter')
+    compile project(':cruise-control-core')
     compile "org.slf4j:slf4j-api:1.7.25"
     compile "org.apache.zookeeper:zookeeper:3.4.6"
     compile "org.apache.kafka:kafka_2.11:0.10.1.0"
@@ -101,6 +132,7 @@ project(':cruise-control') {
     compile 'io.dropwizard.metrics:metrics-core:3.2.2'
 
     testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
+    testCompile project(path: ':cruise-control-core', configuration: 'testOutput')
     testCompile "org.scala-lang:scala-library:2.11.11"
     testCompile 'org.easymock:easymock:3.4'
     testCompile 'org.apache.kafka:kafka_2.11:0.10.1.0:test'
@@ -149,7 +181,6 @@ project(':cruise-control-metrics-reporter') {
         srcDirs = ['src/test/java', 'src/test/scala']
       }
     }
-
   }
 }
 

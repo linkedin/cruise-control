@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.cruisecontrol.resource.Resource;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.PartitionMetric;

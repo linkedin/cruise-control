@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
@@ -87,7 +87,7 @@ class OptimizationVerifier {
 
     // Generate the goalOptimizer and optimize given goals.
     long startTime = System.currentTimeMillis();
-    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     GoalOptimizer goalOptimizer = new GoalOptimizer(new KafkaCruiseControlConfig(constraint.setProps(props)),
                                                     null,
                                                     new SystemTime(),

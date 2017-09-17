@@ -161,7 +161,7 @@ public class KafkaSampleStore implements SampleStore {
                            metricSampleCount.incrementAndGet();
                          } else {
                            LOG.error("Failed to produce partition metric sample for {} of timestamp {} due to exception",
-                                     sample.topicPartition(), sample.sampleTime(), e);
+                                     sample.entity(), sample.sampleTime(), e);
                          }
                        }
                      });

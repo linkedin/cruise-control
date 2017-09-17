@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.cruisecontrol.resource.Resource;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.BrokerMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType;
@@ -59,16 +59,16 @@ public class CruiseControlMetricsProcessorTest {
     assertEquals(2, samples.brokerMetricSamples().size());
 
     for (PartitionMetricSample sample : samples.partitionMetricSamples()) {
-      if (sample.topicPartition().equals(T1P0)) {
+      if (sample.entity().equals(T1P0)) {
         validatePartitionMetricSample(sample, _time.milliseconds() + 2, 1.27610208, 20.0, 100.0, 100.0);
-      } else if (sample.topicPartition().equals(T1P1)) {
+      } else if (sample.entity().equals(T1P1)) {
         validatePartitionMetricSample(sample, _time.milliseconds() + 2, 18.5758513, 500.0, 1000.0, 300.0);
-      } else if (sample.topicPartition().equals(T2P0)) {
+      } else if (sample.entity().equals(T2P0)) {
         validatePartitionMetricSample(sample, _time.milliseconds() + 2, 20.0116009, 400.0, 1050.0, 200.0);
-      } else if (sample.topicPartition().equals(T2P1)) {
+      } else if (sample.entity().equals(T2P1)) {
         validatePartitionMetricSample(sample, _time.milliseconds() + 2, 20.0116009, 400.0, 1050.0, 500.0);
       } else {
-        fail("Should never have partition " + sample.topicPartition());
+        fail("Should never have partition " + sample.entity());
       }
     }
 
@@ -148,7 +148,7 @@ public class CruiseControlMetricsProcessorTest {
     assertEquals(2, samples.brokerMetricSamples().size());
 
     for (PartitionMetricSample sample : samples.partitionMetricSamples()) {
-      if (sample.topicPartition().equals(T1P0)) {
+      if (sample.entity().equals(T1P0)) {
         // T1P0 should not have any IO or CPU usage.
         validatePartitionMetricSample(sample, _time.milliseconds() + 2, 0.0, 0.0, 0.0, 100.0);
       }

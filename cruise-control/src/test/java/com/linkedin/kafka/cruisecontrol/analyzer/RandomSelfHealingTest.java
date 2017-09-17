@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
@@ -64,7 +64,7 @@ public class RandomSelfHealingTest {
     softGoalNameByPriority.put(8, ReplicaDistributionGoal.class.getName());
 
     KafkaCruiseControlConfig config =
-        new KafkaCruiseControlConfig(CruiseControlUnitTestUtils.getCruiseControlProperties());
+        new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties());
     BalancingConstraint balancingConstraint = new BalancingConstraint(config);
     balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);

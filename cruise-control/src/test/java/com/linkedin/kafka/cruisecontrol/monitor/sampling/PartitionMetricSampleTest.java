@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.cruisecontrol.resource.Resource;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
@@ -58,7 +58,7 @@ public class PartitionMetricSampleTest {
     byte[] bytes = sample.toBytes();
     PartitionMetricSample deserializedSample = PartitionMetricSample.fromBytes(bytes);
     assertEquals(sample.brokerId(), deserializedSample.brokerId());
-    assertEquals(sample.topicPartition(), deserializedSample.topicPartition());
+    assertEquals(sample.entity(), deserializedSample.entity());
     assertEquals(sample.metricFor(Resource.CPU), deserializedSample.metricFor(Resource.CPU));
     assertEquals(sample.metricFor(Resource.DISK), deserializedSample.metricFor(Resource.DISK));
     assertEquals(sample.metricFor(Resource.NW_IN), deserializedSample.metricFor(Resource.NW_IN));

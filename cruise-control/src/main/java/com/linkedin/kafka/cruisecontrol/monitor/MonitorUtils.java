@@ -5,9 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.monitor;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.cruisecontrol.resource.Resource;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
+import com.linkedin.cruisecontrol.monitor.sampling.Snapshot;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -24,15 +24,6 @@ public class MonitorUtils {
 
   private MonitorUtils() {
 
-  }
-
-  /**
-   * Convert from the timestamp to corresponding snapshot window. A snapshot window is identified by its cut off time.
-   * i.e. snapshot window <tt>W</tt> means the snapshot of time range [W - T, W], where <tt>T</tt> is the snapshot
-   * window size in milliseconds.
-   */
-  public static long toSnapshotWindow(long time, long snapshotWindowMs) {
-    return (time / snapshotWindowMs + 1) * snapshotWindowMs;
   }
 
   /**

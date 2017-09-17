@@ -24,7 +24,7 @@ import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
+import com.linkedin.cruisecontrol.monitor.sampling.Snapshot;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;

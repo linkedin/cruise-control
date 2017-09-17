@@ -4,13 +4,14 @@
 
 package com.linkedin.kafka.cruisecontrol.common;
 
+import com.linkedin.cruisecontrol.resource.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
+import com.linkedin.cruisecontrol.monitor.sampling.Snapshot;
 
 import java.util.ArrayList;
 import java.util.Collections;
