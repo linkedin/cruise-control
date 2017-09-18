@@ -168,7 +168,8 @@ public class MetricSampleAggregator {
                                              topicPartition -> new AggregatedMetrics());
     aggMetrics.addSample(sample);
     if (updateCompletenessCache) {
-      _metricCompletenessChecker.updatePartitionCompleteness(this, snapshotWindow, sample.topicPartition());
+      _metricCompletenessChecker.updatePartitionCompleteness(this, snapshotWindow,
+                                                             _identityPartitionMap.get(sample.topicPartition()));
     }
     // If we are inserting metric samples into some past windows, invalidate the aggregation result cache and
     // bump up aggregation result generation.

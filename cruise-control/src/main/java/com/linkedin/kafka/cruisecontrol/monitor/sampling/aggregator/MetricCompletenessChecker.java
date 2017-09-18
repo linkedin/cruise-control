@@ -113,8 +113,8 @@ public class MetricCompletenessChecker {
   /**
    * Update the valid partition number of a topic for a window.
    */
-  void updatePartitionCompleteness(MetricSampleAggregator aggregator, 
-                                   long window, 
+  void updatePartitionCompleteness(MetricSampleAggregator aggregator,
+                                   long window,
                                    TopicPartition tp) {
     _activeSnapshotWindow = aggregator.activeSnapshotWindow();
     _validPartitionsPerTopicByWindows.computeIfAbsent(window, w -> new ConcurrentHashMap<>())
@@ -122,7 +122,7 @@ public class MetricCompletenessChecker {
                                        Set<Integer> s = set == null ? new HashSet<>() : set;
                                        MetricSampleAggregationResult.Imputation imputation = aggregator.validatePartitions(window, tp);
                                        if (imputation != MetricSampleAggregationResult.Imputation.NO_VALID_IMPUTATION) {
-                                         LOG.debug("Added partition {} to valid partition set for window {} with imputation {}", 
+                                         LOG.debug("Added partition {} to valid partition set for window {} with imputation {}",
                                                    tp, window, imputation);
                                          synchronized (s) {
                                            s.add(tp.partition());
