@@ -60,6 +60,7 @@ public class MetricSampleAggregator {
   private final int _numSnapshots;
   private final int _numSnapshotsToKeep;
   private final long _snapshotWindowMs;
+  private final ConcurrentHashMap<TopicPartition, TopicPartition> _identityPartitionMap;
   private final ConcurrentNavigableMap<Long, Map<TopicPartition, AggregatedMetrics>> _windowedAggregatedPartitionMetrics;
   private final Metadata _metadata;
   private final int _minSamplesPerSnapshot;
@@ -102,6 +103,7 @@ public class MetricSampleAggregator {
     _cachedAggregationResultWindow = -1L;
     _aggregationResultGeneration = new AtomicLong(0);
     _latestBrokerMetrics = new ConcurrentHashMap<>();
+    _identityPartitionMap = new ConcurrentHashMap<>();
   }
 
   public void updateBrokerMetricSample(BrokerMetricSample brokerMetricSample) {
@@ -161,10 +163,13 @@ public class MetricSampleAggregator {
     }
     maybeEvictOldSnapshots();
     AggregatedMetrics aggMetrics =
-        snapshotsByPartition.computeIfAbsent(sample.topicPartition(), topicPartition -> new AggregatedMetrics());
+        snapshotsByPartition.computeIfAbsent(_identityPartitionMap.computeIfAbsent(sample.topicPartition(),
+                                                                                   topicPartition -> topicPartition),
+                                             topicPartition -> new AggregatedMetrics());
     aggMetrics.addSample(sample);
     if (updateCompletenessCache) {
-      _metricCompletenessChecker.updatePartitionCompleteness(this, snapshotWindow, sample.topicPartition());
+      _metricCompletenessChecker.updatePartitionCompleteness(this, snapshotWindow,
+                                                             _identityPartitionMap.get(sample.topicPartition()));
     }
     // If we are inserting metric samples into some past windows, invalidate the aggregation result cache and
     // bump up aggregation result generation.
