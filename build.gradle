@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 allprojects {
@@ -53,7 +53,9 @@ subprojects {
     testLogging {
       events "passed", "failed", "skipped"
     }
-    maxParallelForks = Runtime.runtime.availableProcessors()
+    if (!project.hasProperty("maxParallelForks")) {
+      maxParallelForks = Runtime.runtime.availableProcessors()
+    }
   }
 }
 
@@ -87,10 +89,10 @@ project(':cruise-control') {
     compile project(':cruise-control-metrics-reporter')
     compile "org.slf4j:slf4j-api:1.7.25"
     compile "org.apache.zookeeper:zookeeper:3.4.6"
-    compile "org.apache.kafka:kafka_2.10:0.10.1.0"
-    compile 'org.apache.kafka:kafka_2.10:0.10.1.0:test'
+    compile "org.apache.kafka:kafka_2.11:0.10.1.0"
+    compile 'org.apache.kafka:kafka_2.11:0.10.1.0:test'
     compile 'org.apache.kafka:kafka-clients:0.10.1.0'
-    compile "org.scala-lang:scala-library:2.10.4"
+    compile "org.scala-lang:scala-library:2.11.11"
     compile 'junit:junit:4.12'
     compile 'org.apache.commons:commons-math3:3.6.1'
     compile 'com.google.code.gson:gson:2.7'
@@ -99,9 +101,9 @@ project(':cruise-control') {
     compile 'io.dropwizard.metrics:metrics-core:3.2.2'
 
     testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
-    testCompile "org.scala-lang:scala-library:2.10.4"
+    testCompile "org.scala-lang:scala-library:2.11.11"
     testCompile 'org.easymock:easymock:3.4'
-    testCompile 'org.apache.kafka:kafka_2.10:0.10.1.0:test'
+    testCompile 'org.apache.kafka:kafka_2.11:0.10.1.0:test'
   }
 
   tasks.create(name: "copyDependantLibs", type: Copy) {
@@ -129,7 +131,7 @@ project(':cruise-control-metrics-reporter') {
 
   dependencies {
     compile "org.slf4j:slf4j-api:1.7.25"
-    compile "org.apache.kafka:kafka_2.10:0.10.1.0"
+    compile "org.apache.kafka:kafka_2.11:0.10.1.0"
     compile 'org.apache.kafka:kafka-clients:0.10.1.0'
     compile 'junit:junit:4.12'
     compile 'org.apache.commons:commons-math3:3.6.1'

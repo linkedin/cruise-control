@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.monitor;
@@ -25,6 +25,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -83,20 +84,36 @@ public class LoadMonitor {
    *
    * @param config The load monitor configuration.
    * @param time   The time object.
+   * @param dropwizardMetricRegistry the sensor registry for cruise control
    */
   public LoadMonitor(KafkaCruiseControlConfig config,
                      Time time,
                      MetricRegistry dropwizardMetricRegistry) {
-    Metadata metadata = new Metadata(5000L, config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG));
-    _metadataClient = new MetadataClient(config, metadata, METADATA_TTL, time);
+    this(config, 
+         new MetadataClient(config,
+                            new Metadata(5000L, config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG)),
+                            METADATA_TTL,
+                            time),
+         time,
+         dropwizardMetricRegistry);
+  }
 
+  /**
+   * Package private constructor for unit tests.
+   */
+  LoadMonitor(KafkaCruiseControlConfig config,
+              MetadataClient metadataClient,
+              Time time,
+              MetricRegistry dropwizardMetricRegistry) {
+    _metadataClient = metadataClient;
+    
     _brokerCapacityConfigResolver = config.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
                                                                  BrokerCapacityConfigResolver.class);
     _numSnapshots = config.getInt(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG);
 
     _metricCompletenessChecker = new MetricCompletenessChecker(_numSnapshots);
 
-    _metricSampleAggregator = new MetricSampleAggregator(config, metadata, _metricCompletenessChecker);
+    _metricSampleAggregator = new MetricSampleAggregator(config, metadataClient.metadata(), _metricCompletenessChecker);
 
     _acquiredClusterModelSemaphore = ThreadLocal.withInitial(() -> false);
 
@@ -125,6 +142,7 @@ public class LoadMonitor {
     _dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "num-partitions-with-flaw"),
                                        (Gauge<Integer>) this::numPartitionsWithFlaw);
   }
+  
 
   /**
    * Start the load monitor.
@@ -153,7 +171,7 @@ public class LoadMonitor {
    */
   public LoadMonitorState state() {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState state = _loadMonitorTaskRunner.state();
-    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.clusterAndGeneration();
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
     Cluster kafkaCluster = clusterAndGeneration.cluster();
     int totalNumPartitions = MonitorUtils.totalNumPartitions(kafkaCluster);
     double minMonitoredPartitionsPercentage = _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage();
@@ -167,11 +185,15 @@ public class LoadMonitor {
     // Get valid snapshot window number and populate the monitored partition map.
     // We do this primarily because the checker and aggregator are not always synchronized.
     int numValidSnapshotWindows = 0;
-    SortedMap<Long, Double> loadSnapshotsWindows = new TreeMap<>();
-    for (long window : _metricSampleAggregator.snapshotWindows()) {
+    boolean hasInvalidSnapshotWindows = false;
+    SortedMap<Long, Double> loadSnapshotsWindows = new TreeMap<>(Comparator.reverseOrder());
+    for (long window : _metricSampleAggregator.visibleSnapshotWindows()) {
       double monitoredPartitionsPercentage = windowToMonitoredPercentage.getOrDefault(window, 0.0);
-      numValidSnapshotWindows =
-          monitoredPartitionsPercentage < minMonitoredPartitionsPercentage ? 0 : numValidSnapshotWindows + 1;
+      if (monitoredPartitionsPercentage >= minMonitoredPartitionsPercentage && !hasInvalidSnapshotWindows) {
+        numValidSnapshotWindows++;
+      } else {
+        hasInvalidSnapshotWindows = true;
+      }
       loadSnapshotsWindows.put(window, monitoredPartitionsPercentage);
     }
 
@@ -366,10 +388,12 @@ public class LoadMonitor {
     try {
       // Create the racks and brokers.
       for (Node node : kafkaCluster.nodes()) {
-        clusterModel.createRack(node.rack());
+        // If the rack is not specified, we use the host info as rack info.
+        String rack = getRackHandleNull(node);
+        clusterModel.createRack(rack);
         Map<Resource, Double> brokerCapacity =
-            _brokerCapacityConfigResolver.capacityForBroker(node.rack(), node.host(), node.id());
-        clusterModel.createBroker(node.rack(), node.host(), node.id(), brokerCapacity);
+            _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
+        clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity);
       }
 
       // populate snapshots for the cluster model.
@@ -433,13 +457,27 @@ public class LoadMonitor {
   /**
    * Check whether the monitored load meets the load requirements.
    */
-  public boolean meetLoadRequirements(ModelCompletenessRequirements requirements) {
+  public boolean meetCompletenessRequirements(ModelCompletenessRequirements requirements) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
     int availableNumSnapshots = getAvailableNumSnapshots(clusterAndGeneration,
                                                          requirements.minMonitoredPartitionsPercentage(),
                                                          MonitorUtils.totalNumPartitions(clusterAndGeneration.cluster()));
     int requiredSnapshot = requirements.minRequiredNumSnapshotWindows();
     return availableNumSnapshots >= requiredSnapshot;
+  }
+
+  /**
+   * Package private for unit test.
+   */
+  MetricSampleAggregator aggregator() {
+    return _metricSampleAggregator;
+  }
+
+  /**
+   * Package private for unit test. 
+   */
+  MetricCompletenessChecker completenessChecker() {
+    return _metricCompletenessChecker;
   }
 
   /**
@@ -541,16 +579,21 @@ public class LoadMonitor {
     if (partitionInfo != null) {
       for (Node replica : partitionInfo.replicas()) {
         boolean isLeader = partitionInfo.leader() != null && replica.id() == partitionInfo.leader().id();
+        String rack = getRackHandleNull(replica);
         Map<Resource, Double> brokerCapacity =
-            _brokerCapacityConfigResolver.capacityForBroker(replica.rack(), replica.host(), replica.id());
-        clusterModel.createReplicaHandleDeadBroker(replica.rack(), replica.id(), tp, isLeader, brokerCapacity);
+            _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
+        clusterModel.createReplicaHandleDeadBroker(rack, replica.id(), tp, isLeader, brokerCapacity);
         // Push the load snapshot to the replica one by one.
         for (int i = 0; i < leaderLoadSnapshots.length; i++) {
-          clusterModel.pushLatestSnapshot(replica.rack(), replica.id(), tp,
+          clusterModel.pushLatestSnapshot(rack, replica.id(), tp,
                                           isLeader ? leaderLoadSnapshots[i].duplicate() : MonitorUtils.toFollowerSnapshot(leaderLoadSnapshots[i]));
         }
       }
     }
+  }
+  
+  private String getRackHandleNull(Node node) {
+    return node.rack() == null || node.rack().isEmpty() ? node.host() : node.rack();
   }
 
   private Set<Integer> brokersWithPartitions(Cluster kafkaCluster) {
@@ -630,7 +673,7 @@ public class LoadMonitor {
         _numValidSnapshotWindows =
             getAvailableNumSnapshots(clusterAndGeneration, minMonitoredPartitionsPercentage, totalNumPartitions);
         _monitoredPartitionsPercentage = getMonitoredPartitionsPercentage();
-        _totalMonitoredSnapshotWindows = _metricSampleAggregator.snapshotWindows().size();
+        _totalMonitoredSnapshotWindows = _metricSampleAggregator.allSnapshotWindows().size();
         _lastUpdate = System.currentTimeMillis();
       } catch (Throwable t) {
         // We catch all the throwables because we don't want the sensor updater to die

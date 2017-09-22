@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.detector;
@@ -94,10 +94,12 @@ public class GoalViolationDetector implements Runnable {
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
         int priority = entry.getKey();
         Goal goal = entry.getValue();
-        if (_loadMonitor.meetLoadRequirements(goal.clusterModelCompletenessRequirements())) {
+        if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
           LOG.debug("Detecting if {} is violated.", entry.getValue().name());
           // Because the model generation could be slow, We only get new cluster model if needed.
           if (newModelNeeded) {
+            // Make cluster model null before generating a new cluster model so the current one can be GCed.
+            clusterModel = null;
             clusterModel = _loadMonitor.clusterModel(now, goal.clusterModelCompletenessRequirements());
             // The anomaly detector have to include all the topics in order to detect the rack awareness issue.
             newModelNeeded = false;

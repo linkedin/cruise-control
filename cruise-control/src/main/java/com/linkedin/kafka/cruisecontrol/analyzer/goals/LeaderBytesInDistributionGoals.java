@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  *
  */
 
@@ -125,16 +125,6 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
     }
     finish();
   }
-//
-//  /**
-//   * This does nothing.  Never try to heal a cluster with just leadership movement.
-//   */
-//  @Override
-//  protected void healCluster(ClusterModel clusterModel, Set<Goal> optimizedGoals)
-//      throws AnalysisInputException, ModelInputException {
-//
-//
-//  }
 
   @Override
   protected void rebalanceForBroker(Broker broker, ClusterModel clusterModel, Set<Goal> optimizedGoals,

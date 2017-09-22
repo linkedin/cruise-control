@@ -1,11 +1,12 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import java.util.Iterator;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
@@ -14,22 +15,24 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
 
 
 /**
  * A class that helps compute the completeness of the metrics in the {@link MetricSampleAggregator}
  */
 public class MetricCompletenessChecker {
+  private static final Logger LOG = org.slf4j.LoggerFactory.getLogger(MetricCompletenessChecker.class);
   // The following two data structures help us to quickly identify how many valid partitions are there in each window.
-  private final ConcurrentSkipListMap<Long, Map<String, Integer>> _validPartitionsPerTopicByWindows;
+  private final ConcurrentSkipListMap<Long, Map<String, Set<Integer>>> _validPartitionsPerTopicByWindows;
   private final SortedMap<Long, Integer> _validPartitionsByWindows;
   private final int _maxNumSnapshots;
   private volatile ModelGeneration _modelGeneration;
   private volatile long _activeSnapshotWindow;
 
   public MetricCompletenessChecker(int maxNumSnapshots) {
-    _validPartitionsPerTopicByWindows = new ConcurrentSkipListMap<>();
-    _validPartitionsByWindows = new TreeMap<>((o1, o2) -> Long.compare(o2, o1));
+    _validPartitionsPerTopicByWindows = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
+    _validPartitionsByWindows = new TreeMap<>(Comparator.reverseOrder());
     _modelGeneration = null;
     _maxNumSnapshots = maxNumSnapshots;
   }
@@ -45,16 +48,15 @@ public class MetricCompletenessChecker {
                                           Cluster cluster,
                                           double minMonitoredPartitionsPercentage,
                                           int totalNumPartitions) {
-    computeMetricCompleteness(cluster, modelGeneration);
+    updateMetricCompleteness(cluster, modelGeneration);
     int i = 0;
     double minMonitoredNumPartitions = totalNumPartitions * minMonitoredPartitionsPercentage;
-    Iterator<Integer> iter = _validPartitionsByWindows.values().iterator();
-    while (iter.hasNext() && i < _maxNumSnapshots) {
-      long monitoredPartitions = iter.next();
-      if (monitoredPartitions < minMonitoredNumPartitions) {
+    for (Map.Entry<Long, Integer> entry : _validPartitionsByWindows.entrySet()) {
+      long window = entry.getKey();
+      if ((entry.getValue() < minMonitoredNumPartitions && window != _activeSnapshotWindow) || i == _maxNumSnapshots) {
         break;
       }
-      if (monitoredPartitions != _activeSnapshotWindow) {
+      if (window != _activeSnapshotWindow) {
         i++;
       }
     }
@@ -64,7 +66,7 @@ public class MetricCompletenessChecker {
   synchronized public SortedMap<Long, Double> monitoredPercentages(ModelGeneration modelGeneration,
                                                                    Cluster cluster,
                                                                    int totalNumPartitions) {
-    computeMetricCompleteness(cluster, modelGeneration);
+    updateMetricCompleteness(cluster, modelGeneration);
     TreeMap<Long, Double> percentages = new TreeMap<>();
     for (Map.Entry<Long, Integer> entry : _validPartitionsByWindows.entrySet()) {
       percentages.put(entry.getKey(), (double) entry.getValue() / totalNumPartitions);
@@ -77,22 +79,14 @@ public class MetricCompletenessChecker {
    */
   synchronized public int numWindows(long from, long to) {
     int i = 0;
+    long activeSnapshotWindow = _activeSnapshotWindow;
     for (long window : _validPartitionsByWindows.keySet()) {
       // Exclude the active window.
-      if (window >= from && window <= to && window != _validPartitionsByWindows.firstKey()) {
+      if (window >= from && window <= to && window != activeSnapshotWindow) {
         i++;
       }
     }
     return i;
-  }
-
-  void updatePartitionCompleteness(MetricSampleAggregator aggregator, long window, TopicPartition tp) {
-    _validPartitionsPerTopicByWindows.computeIfAbsent(window, w -> new ConcurrentHashMap<>())
-                                     .compute(tp.topic(), (t, v) -> {
-                                       int increment = aggregator.isValidPartition(window, tp) ? 1 : 0;
-                                       return v == null ? increment : v + increment;
-                                     });
-    _activeSnapshotWindow = aggregator.activeSnapshotWindow();
   }
 
   synchronized void refreshAllPartitionCompleteness(MetricSampleAggregator aggregator,
@@ -109,27 +103,55 @@ public class MetricCompletenessChecker {
     _modelGeneration = null;
   }
 
+  /**
+   * Remove a snapshot window that has been evicted from the metric sample aggregator.
+   */
   void removeWindow(long snapshotWindow) {
     _validPartitionsPerTopicByWindows.remove(snapshotWindow);
   }
 
-  private void computeMetricCompleteness(Cluster cluster, ModelGeneration modelGeneration) {
+  /**
+   * Update the valid partition number of a topic for a window.
+   */
+  void updatePartitionCompleteness(MetricSampleAggregator aggregator,
+                                   long window,
+                                   TopicPartition tp) {
+    _activeSnapshotWindow = aggregator.activeSnapshotWindow();
+    _validPartitionsPerTopicByWindows.computeIfAbsent(window, w -> new ConcurrentHashMap<>())
+                                     .compute(tp.topic(), (t, set) -> {
+                                       Set<Integer> s = set == null ? new HashSet<>() : set;
+                                       MetricSampleAggregationResult.Imputation imputation = aggregator.validatePartitions(window, tp);
+                                       if (imputation != MetricSampleAggregationResult.Imputation.NO_VALID_IMPUTATION) {
+                                         LOG.debug("Added partition {} to valid partition set for window {} with imputation {}",
+                                                   tp, window, imputation);
+                                         synchronized (s) {
+                                           s.add(tp.partition());
+                                         }
+                                       }
+                                       return s;
+                                     });
+  }
+
+  private void updateMetricCompleteness(Cluster cluster,
+                                        ModelGeneration modelGeneration) {
     if (_modelGeneration == null || !_modelGeneration.equals(modelGeneration)) {
+      _modelGeneration = modelGeneration;
       _validPartitionsByWindows.clear();
-      for (Map.Entry<Long, Map<String, Integer>> entry : _validPartitionsPerTopicByWindows.entrySet()) {
+      for (Map.Entry<Long, Map<String, Set<Integer>>> entry : _validPartitionsPerTopicByWindows.entrySet()) {
         long window = entry.getKey();
         for (String topic : entry.getValue().keySet()) {
-          updateWindowCompleteness(cluster, window, topic);
+          updateWindowMetricCompleteness(cluster, window, topic);
         }
       }
-      _modelGeneration = modelGeneration;
     }
   }
 
-  private void updateWindowCompleteness(Cluster cluster, long window, String topic) {
-    int numValidPartitions = _validPartitionsPerTopicByWindows.get(window).get(topic);
-    if (cluster.partitionsForTopic(topic).size() == numValidPartitions) {
-      _validPartitionsByWindows.compute(window, (w, v) -> v == null ? numValidPartitions : v + numValidPartitions);
-    }
+  private void updateWindowMetricCompleteness(Cluster cluster, long window, String topic) {
+    int numValidPartitions = _validPartitionsPerTopicByWindows.get(window).get(topic).size();
+    int numPartitions = cluster.partitionsForTopic(topic).size();
+    _validPartitionsByWindows.compute(window, (w, v) -> {
+      int newValue = (v == null ? 0 : v);
+      return numValidPartitions == numPartitions ? newValue + numPartitions : newValue;
+    });
   }
 }

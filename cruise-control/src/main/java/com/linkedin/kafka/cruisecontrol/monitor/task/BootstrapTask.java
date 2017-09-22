@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.monitor.task;
@@ -177,7 +177,7 @@ class BootstrapTask implements Runnable {
     LOG.trace("Mode: {}, Sampled range [{}, {}], now = {}, MetricSamplerAggregator snapshot windows: {}, "
                   + "sampling interval: {}",
               _mode, _bootstrappedRangeStartMs, _bootstrappedRangeEndMs, now,
-              _metricSampleAggregator.snapshotWindows(), _samplingIntervalMs);
+              _metricSampleAggregator.allSnapshotWindows(), _samplingIntervalMs);
     switch (_mode) {
       case RANGE:
         return _bootstrappedRangeStartMs == _startMs && _bootstrappedRangeEndMs == _endMs;
@@ -188,7 +188,7 @@ class BootstrapTask implements Runnable {
         // Because we know that the sampling range end is always up to date. As long as we have enough snapshots
         // in the metric sample aggregator and our sampled range starting time is already no later than the
         // earliest snapshot window starting time, we know the bootstrap has finished.
-        List<Long> snapshotWindows = _metricSampleAggregator.snapshotWindows();
+        List<Long> snapshotWindows = _metricSampleAggregator.allSnapshotWindows();
         return (snapshotWindows.size() >= _configuredNumSnapshots + 1)
             && (snapshotWindows.get(0) - _configuredSnapshotWindowMs >= _bootstrappedRangeStartMs)
             && _bootstrappedRangeEndMs > now - _samplingIntervalMs;
@@ -257,7 +257,7 @@ class BootstrapTask implements Runnable {
     } finally {
       LOG.info("Load monitor finished bootstrapping {} metric samples in {} snapshot windows for time "
                    + "range [{}, {}] in {} seconds.", _metricSampleAggregator.totalNumSamples(),
-               _metricSampleAggregator.snapshotWindows().size(), _bootstrappedRangeStartMs, _bootstrappedRangeEndMs,
+               _metricSampleAggregator.allSnapshotWindows().size(), _bootstrappedRangeStartMs, _bootstrappedRangeEndMs,
                (_time.milliseconds() - bootstrapStartingMs) / 1000);
       _loadMonitorTaskRunner.compareAndSetState(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING,
                                                 LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING);

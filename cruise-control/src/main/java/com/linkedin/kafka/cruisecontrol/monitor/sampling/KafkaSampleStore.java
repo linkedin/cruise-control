@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
@@ -53,8 +53,8 @@ public class KafkaSampleStore implements SampleStore {
   public static final String PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "partition.metric.sample.store.topic";
   public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
   public static final String NUM_SAMPLE_LOADING_THREADS = "num.sample.loading.threads";
-  protected static final String PRODUCER_CLIENT_ID = "LiKafkaCruiseControlSampleStoreProducer";
-  protected static final String CONSUMER_CLIENT_ID = "LiKafkaCruiseControlSampleStoreConsumer";
+  protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
+  protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   // Keep additional snapshot windows in case some of the windows do not have enough samples.
   private static final int ADDITIONAL_SNAPSHOT_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());

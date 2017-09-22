@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.model;
@@ -29,7 +29,7 @@ import java.util.Map;
  * snapshots.
  */
 public class Load implements Serializable {
-  private static final Comparator<Snapshot> TIME_COMPARATOR = (o1, o2) -> Long.compare(o1.time(), o2.time());
+  private static final Comparator<Snapshot> TIME_COMPARATOR = (t1, t2) -> Long.compare(t2.time(), t1.time());
   // Number of snapshots in this load.
   private static int _maxNumSnapshots = -1;
   // Snapshots by their time.
@@ -104,7 +104,7 @@ public class Load implements Serializable {
       if (_snapshotsByTime.isEmpty()) {
         return 0.0;
       }
-      return _snapshotsByTime.get(_snapshotsByTime.size() - 1).utilizationFor(resource);
+      return _snapshotsByTime.get(0).utilizationFor(resource);
     }
 
     return _accumulatedUtilization[resource.id()] / _snapshotsByTime.size();
@@ -173,8 +173,8 @@ public class Load implements Serializable {
                                         "snapshot time" + snapshot.time() + ". Existing snapshot times: " +
                                         Arrays.toString(allSnapshotTimes()));
     }
-    if (!_snapshotsByTime.isEmpty() && snapshot.time() <= _snapshotsByTime.get(_snapshotsByTime.size() - 1).time()) {
-      throw new ModelInputException("Attempt to push a stale snapshot with timestamp " + snapshot.time() +
+    if (!_snapshotsByTime.isEmpty() && snapshot.time() >= _snapshotsByTime.get(_snapshotsByTime.size() - 1).time()) {
+      throw new ModelInputException("Attempt to push an out of order snapshot with timestamp " + snapshot.time() +
                                         " to a replica. Existing snapshot times: " +
                                         Arrays.toString(allSnapshotTimes()));
     }

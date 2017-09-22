@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.common;
@@ -37,7 +37,7 @@ public class TestConstants {
     UNIFORM, LINEAR, EXPONENTIAL
   }
 
-  private final static int NUM_SNAPSHOTS = 1;
+  private final static int NUM_SNAPSHOTS = 2;
   // Cluster properties to be used as a base. Any changes specified in modified properties will be applied to this.
   public final static Map<ClusterProperty, Number> BASE_PROPERTIES;
 

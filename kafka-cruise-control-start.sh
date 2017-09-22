@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). 
+# Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").
 # See License in the project root for license information.
 
 if [ $# -lt 1 ];
@@ -100,7 +100,7 @@ if [ -z "$KAFKA_OPTS" ]; then
 fi
 
 # Set Debug options if enabled
-if [ "x$KAFKA_DEBUG" != "x" ]; then
+#if [ "x$KAFKA_DEBUG" != "x" ]; then
 
     # Use default ports
     DEFAULT_JAVA_DEBUG_PORT="5005"
@@ -117,7 +117,7 @@ if [ "x$KAFKA_DEBUG" != "x" ]; then
 
     echo "Enabling Java debug options: $JAVA_DEBUG_OPTS"
     KAFKA_OPTS="$JAVA_DEBUG_OPTS $KAFKA_OPTS"
-fi
+#fi
 
 # Which java to use
 if [ -z "$JAVA_HOME" ]; then

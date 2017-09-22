@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.common;
@@ -15,6 +15,7 @@ public enum Resource {
   NW_OUT("networkOutbound", 2, true, 10),
   DISK("disk", 3, false, 100);
 
+  private static final double EPSILON_PERCENT = 1E-4;
   private final String _resource;
   private final int _id;
   private final boolean _isHostResource;
@@ -49,8 +50,8 @@ public enum Resource {
     return _isHostResource;
   }
 
-  public double epsilon() {
-    return _epsilon;
+  public double epsilon(double value1, double value2) {
+    return Math.max(_epsilon, EPSILON_PERCENT * (value1 + value2) / 2);
   }
 
   @Override

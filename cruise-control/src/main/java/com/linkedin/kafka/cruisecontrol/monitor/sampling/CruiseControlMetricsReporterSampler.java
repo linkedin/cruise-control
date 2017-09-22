@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
@@ -166,6 +166,14 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
         // Do nothing
       }
     });
+    Pattern topicPattern = Pattern.compile(metricReporterTopic);
+    for (String topic : _metricConsumer.listTopics().keySet()) {
+      if (topicPattern.matcher(topic).matches()) {
+        return;
+      }
+    }
+    throw new IllegalStateException("Cruise Control cannot find sampling topic matches " + metricReporterTopic 
+        + " in the target cluster.");
   }
 
   @Override

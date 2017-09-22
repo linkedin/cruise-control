@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.detector;
@@ -117,7 +117,7 @@ public class BrokerFailureDetector {
 
   private Set<Integer> aliveBrokers() {
     // We get the alive brokers from ZK directly.
-    return JavaConversions.asJavaList(_zkUtils.getAllBrokersInCluster())
+    return JavaConversions.asJavaCollection(_zkUtils.getAllBrokersInCluster())
                           .stream().map(Broker::id).collect(toSet());
   }
 

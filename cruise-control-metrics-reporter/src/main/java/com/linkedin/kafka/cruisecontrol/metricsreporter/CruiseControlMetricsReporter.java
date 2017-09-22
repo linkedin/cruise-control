@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
@@ -22,7 +22,6 @@ import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
-import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.errors.InterruptException;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
@@ -88,8 +87,9 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   public void configure(Map<String, ?> configs) {
     String bootstrapServers = (String) configs.get(CRUISE_CONTROL_METRICS_REPORTER_BOOTSTRAP_SERVERS);
     if (bootstrapServers == null) {
-      throw new ConfigException(String.format("Configuration %s must be provided.",
-                                              CRUISE_CONTROL_METRICS_REPORTER_BOOTSTRAP_SERVERS));
+      String port = (String) configs.get("port");
+      bootstrapServers = "localhost:" + (port == null ? "9092" : port);
+      LOG.info("Using default value of {} for {}", bootstrapServers, CRUISE_CONTROL_METRICS_REPORTER_BOOTSTRAP_SERVERS);
     }
 
     Properties producerProps = new Properties();
@@ -179,7 +179,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
       @Override
       public void onCompletion(RecordMetadata recordMetadata, Exception e) {
         if (e != null) {
-          LOG.debug("Failed to send cruise control metric {}", ccm);
+          LOG.warn("Failed to send cruise control metric {}", ccm);
           _numMetricSendFailure++;
         }
       }

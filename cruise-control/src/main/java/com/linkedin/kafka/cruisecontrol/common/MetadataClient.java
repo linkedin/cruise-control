@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").  See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.common;
@@ -89,10 +89,23 @@ public class MetadataClient {
     return new ClusterAndGeneration(_metadata.fetch(), _metadataGeneration.get());
   }
 
+  /**
+   * Get the metadata maintained by this metadata client.
+   */
+  public Metadata metadata() {
+    return _metadata;
+  }
+
+  /**
+   * Get the current cluster and generation 
+   */
   public ClusterAndGeneration clusterAndGeneration() {
     return new ClusterAndGeneration(_metadata.fetch(), _metadataGeneration.get());
   }
 
+  /**
+   * Get the current cluster.
+   */
   public Cluster cluster() {
     return _metadata.fetch();
   }
@@ -101,7 +114,7 @@ public class MetadataClient {
     private final Cluster _cluster;
     private final int _generation;
 
-    private ClusterAndGeneration(Cluster cluster, int generation) {
+    public ClusterAndGeneration(Cluster cluster, int generation) {
       _cluster = cluster;
       _generation = generation;
     }
