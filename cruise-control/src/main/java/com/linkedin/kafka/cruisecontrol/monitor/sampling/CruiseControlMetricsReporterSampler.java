@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
@@ -142,6 +141,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     }
 
     Properties consumerProps = new Properties();
+    consumerProps.putAll(configs);
     Random random = new Random();
     consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
@@ -153,7 +153,6 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, Integer.toString(Integer.MAX_VALUE));
-    KafkaCruiseControlUtils.setSslConfigs(consumerProps, configs);
     _metricConsumer = new KafkaConsumer<>(consumerProps);
     _metricConsumer.subscribe(Pattern.compile(metricReporterTopic), new ConsumerRebalanceListener() {
       @Override
@@ -172,7 +171,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
         return;
       }
     }
-    throw new IllegalStateException("Cruise Control cannot find sampling topic matches " + metricReporterTopic 
+    throw new IllegalStateException("Cruise Control cannot find sampling topic matches " + metricReporterTopic
         + " in the target cluster.");
   }
 

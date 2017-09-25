@@ -8,10 +8,8 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
-import java.util.Properties;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.common.config.SslConfigs;
 
 
 /**
@@ -43,33 +41,6 @@ public class KafkaCruiseControlUtils {
       throw new ConfigException(String.format("Configuration %s must be provided.", configName));
     }
     return value;
-  }
-
-  /**
-   * Set SSL configs to a property.
-   */
-  public static void setSslConfigs(Properties props, Map<String, ?> config) {
-    putIfAbsent(props, config, SslConfigs.SSL_CIPHER_SUITES_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_ENABLED_PROTOCOLS_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_KEY_PASSWORD_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_KEYSTORE_TYPE_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_PROTOCOL_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_PROVIDER_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG);
-    putIfAbsent(props, config, SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG);
-  }
-
-  public static void putIfAbsent(Properties props, Map<String, ?> config, String name) {
-    if (config.containsKey(name)) {
-      props.setProperty(name, (String) config.get(name));
-    }
   }
 
   public static void closeZkUtilsWithTimeout(ZkUtils zkUtils, long timeoutMs) {
