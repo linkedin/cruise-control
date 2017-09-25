@@ -695,6 +695,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
-    super(CONFIG, originals, false);
+    super(CONFIG, originals, doLog);
   }
 }
