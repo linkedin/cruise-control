@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.common;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.cruisecontrol.resource.Resource;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Load;
 
@@ -57,7 +58,7 @@ public class TestConstants {
     BASE_PROPERTIES = Collections.unmodifiableMap(properties);
 
     if (!Load.initialized()) {
-      Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+      Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
       props.setProperty(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG, Integer.toString(NUM_SNAPSHOTS));
       Load.init(new KafkaCruiseControlConfig(props));
     }

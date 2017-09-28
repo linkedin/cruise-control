@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
+import com.linkedin.cruisecontrol.monitor.sampling.Snapshot;
 import java.util.List;
 import org.junit.Test;
 

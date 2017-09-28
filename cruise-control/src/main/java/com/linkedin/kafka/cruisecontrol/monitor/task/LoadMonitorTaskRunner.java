@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -27,12 +27,12 @@ public class LoadMonitorTaskRunner {
 
   private final Time _time;
   private final MetricFetcherManager _metricFetcherManager;
-  private final MetricSampleAggregator _metricSampleAggregator;
+  private final KafkaMetricSampleAggregator _metricSampleAggregator;
   private final MetadataClient _metadataClient;
   private final SampleStore _sampleStore;
   private final ScheduledExecutorService _samplingScheduler;
   private final long _samplingIntervalMs;
-  // The following two configuration is actually for MetricSampleAggregator, the MetricFetcherManager uses it to
+  // The following two configuration is actually for KafkaMetricSampleAggregator, the MetricFetcherManager uses it to
   // check if a bootstrap is done or not.
   private final int _configuredNumSnapshots;
   private final long _configuredSnapshotWindowMs;
@@ -54,7 +54,7 @@ public class LoadMonitorTaskRunner {
    * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring cruise control.
    */
   public LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
-                               MetricSampleAggregator metricSampleAggregator,
+                               KafkaMetricSampleAggregator metricSampleAggregator,
                                MetadataClient metadataClient,
                                Time time,
                                MetricRegistry dropwizardMetricRegistry) {
@@ -76,7 +76,7 @@ public class LoadMonitorTaskRunner {
    */
   LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
                         MetricFetcherManager metricFetcherManager,
-                        MetricSampleAggregator metricSampleAggregator,
+                        KafkaMetricSampleAggregator metricSampleAggregator,
                         MetadataClient metadataClient,
                         Time time) {
     _time = time;

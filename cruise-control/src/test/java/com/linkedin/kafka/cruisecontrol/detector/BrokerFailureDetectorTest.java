@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.testutils.AbstractKafkaIntegrationTestHarness;
@@ -123,7 +123,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
     LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
     EasyMock.expect(mockLoadMonitor.brokersWithPartitions(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
     EasyMock.replay(mockLoadMonitor);
-    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zkConnect());
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
     return new BrokerFailureDetector(kafkaCruiseControlConfig,

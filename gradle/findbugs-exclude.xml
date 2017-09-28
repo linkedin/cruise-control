@@ -66,7 +66,7 @@
   </Match>
 
   <Match>
-    <Class name="com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator" />
+    <Class name="com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator" />
     <Method name="clear" />
     <Bug pattern="SWL_SLEEP_WITH_LOCK_HELD" />
   </Match>

@@ -6,7 +6,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.cruisecontrol.resource.Resource;
 
 
 public class NetworkInboundUsageDistributionGoal extends ResourceDistributionGoal {

@@ -2,18 +2,18 @@
  * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator;
+package com.linkedin.cruisecontrol.monitor.sampling.aggregator;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
+import com.linkedin.cruisecontrol.resource.Resource;
+import com.linkedin.cruisecontrol.monitor.sampling.MetricSample;
+import com.linkedin.cruisecontrol.monitor.sampling.Snapshot;
 
 
 /**
  * The class that help aggregate the metric samples by different resource types. This class also maintains
  * the number of samples aggregated for validity check.
  */
-class AggregatedMetrics {
+public class AggregatedMetrics {
   private int _numSamples;
   private float[] _metrics;
 
@@ -22,7 +22,7 @@ class AggregatedMetrics {
     _metrics = new float[Resource.values().length];
   }
 
-  synchronized AggregatedMetrics addSample(PartitionMetricSample sample) {
+  synchronized AggregatedMetrics addSample(MetricSample sample) {
     for (Resource resource : Resource.values()) {
       if (resource == Resource.DISK) {
         _metrics[resource.id()] = sample.metricFor(Resource.DISK).floatValue();

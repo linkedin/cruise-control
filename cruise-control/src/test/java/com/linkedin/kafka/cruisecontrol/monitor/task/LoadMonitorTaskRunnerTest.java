@@ -5,14 +5,13 @@
 package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.cruisecontrol.resource.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricCompletenessChecker;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
@@ -79,7 +78,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
     Metadata metadata = new Metadata();
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
-    MockMetricSampleAggregator mockMetricSampleAggregator = new MockMetricSampleAggregator(config, metadata);
+    MockKafkaMetricSampleAggregator mockMetricSampleAggregator = new MockKafkaMetricSampleAggregator(config, metadata);
     List<MetricSampler> samplers = new ArrayList<>();
     MetricRegistry dropwizardMetricRegistry = new MetricRegistry();
     for (int i = 0; i < NUM_METRIC_FETCHERS; i++) {
@@ -108,8 +107,8 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
       PartitionMetricSample sample = sampleQueue.poll();
       if (sample != null) {
         assertTrue("The topic partition should have been sampled and sampled only once.",
-            partitionsToSample.contains(sample.topicPartition()));
-        partitionsToSample.remove(sample.topicPartition());
+            partitionsToSample.contains(sample.entity()));
+        partitionsToSample.remove(sample.entity());
       }
     }
     assertTrue("Did not see sample for partitions " + Arrays.toString(partitionsToSample.toArray()),
@@ -123,7 +122,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
     Metadata metadata = new Metadata();
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
-    MockMetricSampleAggregator mockMetricSampleAggregator = new MockMetricSampleAggregator(config, metadata);
+    MockKafkaMetricSampleAggregator mockMetricSampleAggregator = new MockKafkaMetricSampleAggregator(config, metadata);
     List<MetricSampler> samplers = new ArrayList<>();
     MetricRegistry dropwizardMetricRegistry = new MetricRegistry();
     for (int i = 0; i < NUM_METRIC_FETCHERS; i++) {
@@ -160,7 +159,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   }
 
   private Properties getLoadMonitorProperties() {
-    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     props.setProperty(KafkaCruiseControlConfig.LOAD_SNAPSHOT_WINDOW_MS_CONFIG, Long.toString(SNAPSHOT_WINDOW_MS));
     props.setProperty(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG, Integer.toString(NUM_SNAPSHOTS));
@@ -249,15 +248,15 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
 
   }
 
-  private static class MockMetricSampleAggregator extends MetricSampleAggregator {
+  private static class MockKafkaMetricSampleAggregator extends KafkaMetricSampleAggregator {
     private final BlockingQueue<PartitionMetricSample> _partitionMetricSamples;
     /**
      * Construct the metric sample aggregator.
      * @param config   The load monitor configurations.
      * @param metadata The metadata of the cluster.
      */
-    MockMetricSampleAggregator(KafkaCruiseControlConfig config, Metadata metadata) {
-      super(config, metadata, new MetricCompletenessChecker(config.getInt(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG)));
+    MockKafkaMetricSampleAggregator(KafkaCruiseControlConfig config, Metadata metadata) {
+      super(config, metadata);
       _partitionMetricSamples = new ArrayBlockingQueue<>(10000);
     }
 
@@ -268,7 +267,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     }
 
     @Override
-    public synchronized boolean addSample(PartitionMetricSample sample, boolean skipLeaderCheck, boolean updateCompletenessCache) {
+    public synchronized boolean addSample(PartitionMetricSample sample, boolean skipLeaderCheck) {
       _partitionMetricSamples.add(sample);
       return true;
     }

@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.cruisecontrol.resource.Resource;
 import java.util.Map;
 import org.apache.kafka.common.Configurable;
 

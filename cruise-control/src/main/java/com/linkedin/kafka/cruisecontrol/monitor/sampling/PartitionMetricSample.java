@@ -4,13 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.cruisecontrol.monitor.sampling.MetricSample;
+import com.linkedin.cruisecontrol.resource.Resource;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import java.nio.ByteBuffer;
 import org.apache.kafka.common.TopicPartition;
 
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Map;
 
 import static java.nio.charset.StandardCharsets.*;
@@ -20,58 +20,19 @@ import static java.nio.charset.StandardCharsets.*;
  * The class that hosts one the metrics samples of the following resources:
  * CPU, DISK, Network Bytes In, Network Bytes Out.
  */
-public class PartitionMetricSample {
+public class PartitionMetricSample extends MetricSample<TopicPartition> {
   private static final byte CURRENT_VERSION = 1;
 
   private final int _brokerId;
-  private final TopicPartition _tp;
-  private final Map<Resource, Double> _metrics;
   private double _produceRequestRate = 0.0;
   private double _fetchRequestRate = 0.0;
   private double _messagesInPerSec = 0.0;
   private double _replicationBytesInPerSec = 0.0;
   private double _replicationBytesOutPerSec = 0.0;
-  // The time this sample is closed.
-  private long _sampleTime;
 
   public PartitionMetricSample(int brokerId, TopicPartition tp) {
+    super(tp);
     _brokerId = brokerId;
-    _tp = tp;
-    _metrics = new HashMap<>();
-    _sampleTime = -1L;
-  }
-
-  /**
-   * Record a sample value for the given resource type.
-   *
-   * @param type        The resource type.
-   * @param sampleValue the sample value.
-   */
-  public void record(Resource type, double sampleValue) {
-    record(type, sampleValue, false);
-  }
-
-  /**
-   * Record a sample value for the given resource type.
-   * This is a package private function which allows metric fetcher to override the metric if necessary.
-   * Currently it is only used when user enables auto cluster model coefficient training.
-   *
-   * When the update is from metric fetcher, it does not override the user specified value.
-   *
-   * @param type        The resource type.
-   * @param sampleValue the sample value.
-   * @param updateFromMetricFetcher indicate whether the update is from metric fetcher.
-   */
-  void record(Resource type, double sampleValue, boolean updateFromMetricFetcher) {
-    if (!updateFromMetricFetcher && _sampleTime >= 0) {
-      throw new IllegalStateException("The metric sample has been closed.");
-    }
-
-    Double origValue = _metrics.putIfAbsent(type, sampleValue);
-    if (!updateFromMetricFetcher && origValue != null) {
-      throw new IllegalStateException("Trying to record sample value " + sampleValue + " for " + type +
-          ", but there is already a value " + origValue + " recorded.");
-    }
   }
 
   /**
@@ -117,27 +78,6 @@ public class PartitionMetricSample {
   }
 
   /**
-   * The topic partition associated with the metric sample.
-   */
-  public TopicPartition topicPartition() {
-    return _tp;
-  }
-
-  /**
-   * The time this sample was taken.
-   */
-  public long sampleTime() {
-    return _sampleTime;
-  }
-
-  /**
-   * The metric for the specified resource.
-   */
-  public Double metricFor(Resource resource) {
-    return _metrics.get(resource);
-  }
-
-  /**
    * The produce request rate for this partition.
    */
   public double produceRequestRate() {
@@ -180,19 +120,6 @@ public class PartitionMetricSample {
   }
 
   /**
-   * Close this metric sample. The timestamp will be used to determine which snapshot the metric sample will be in.
-   */
-  public void close(long closingTime) {
-    if (closingTime < 0) {
-      throw new IllegalArgumentException("The closing time cannot be negative.");
-    }
-
-    if (_sampleTime < 0) {
-      _sampleTime = closingTime;
-    }
-  }
-
-  /**
    * This method serialize the metric sample using a simple protocol.
    * 1 byte  - version
    * 4 bytes - brokerId
@@ -210,7 +137,7 @@ public class PartitionMetricSample {
    * N bytes - topic string bytes
    */
   public byte[] toBytes() {
-    byte[] topicStringBytes = _tp.topic().getBytes(UTF_8);
+    byte[] topicStringBytes = entity().topic().getBytes(UTF_8);
     // Allocate memory:
     ByteBuffer buffer = ByteBuffer.allocate(89 + topicStringBytes.length);
     buffer.put(CURRENT_VERSION);
@@ -225,7 +152,7 @@ public class PartitionMetricSample {
     buffer.putDouble(_replicationBytesInPerSec);
     buffer.putDouble(_replicationBytesOutPerSec);
     buffer.putLong(_sampleTime);
-    buffer.putInt(_tp.partition());
+    buffer.putInt(entity().partition());
     buffer.put(topicStringBytes);
     return buffer.array();
   }
@@ -258,7 +185,7 @@ public class PartitionMetricSample {
           .append(", ");
     }
     builder.delete(builder.length() - 2, builder.length()).append("}");
-    return String.format("[brokerId: %d, Partition: %s, time: %s, metrics: %s]", _brokerId, _tp,
+    return String.format("[brokerId: %d, Partition: %s, time: %s, metrics: %s]", _brokerId, entity(),
         new Date(_sampleTime), builder.toString());
   }
 
