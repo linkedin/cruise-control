@@ -15,7 +15,7 @@ public enum Resource {
   NW_OUT("networkOutbound", 2, true, 10),
   DISK("disk", 3, false, 100);
 
-  private static final double EPSILON_PERCENT = 1E-4;
+  private static final double EPSILON_PERCENT = 1E-3;
   private final String _resource;
   private final int _id;
   private final boolean _isHostResource;
