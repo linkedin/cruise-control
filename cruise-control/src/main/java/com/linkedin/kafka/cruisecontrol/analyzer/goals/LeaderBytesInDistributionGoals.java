@@ -209,8 +209,8 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
 
       double[] stat2 = stats2.utilizationMatrix()[RawAndDerivedResource.LEADER_NW_IN.ordinal()];
       double variance1 = new Variance().evaluate(stat1);
-      double variance2 = new Variance().evaluate(stat2, meanPreLeaderBytesIn);
-      int result = AnalyzerUtils.compare(variance2, variance1, EPSILON);
+      double variance2 = new Variance().evaluate(stat2);
+      int result = AnalyzerUtils.compare(Math.sqrt(variance2), Math.sqrt(variance1), Resource.NW_IN);
       if (result < 0) {
         _reasonForLastNegativeResult = String.format("Violated leader bytes in balancing. preVariance: %.3f "
                                                          + "postVariance: %.3f.", variance2, variance1);
