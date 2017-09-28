@@ -31,8 +31,6 @@ import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils.EPSILON;
-
 
 /**
  * Soft goal to distribute leader bytes evenly.
