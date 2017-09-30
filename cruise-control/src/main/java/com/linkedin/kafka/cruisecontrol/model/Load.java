@@ -4,12 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.cruisecontrol.metricdef.MetricDef;
+import com.linkedin.cruisecontrol.metricdef.MetricInfo;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 
-import com.google.gson.Gson;
-
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -17,9 +18,6 @@ import java.io.Serializable;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,69 +25,40 @@ import java.util.Map;
 
 /**
  * A class for representing load information for each resource. Each Load in a cluster must have the same number of
- * snapshots.
+ * windows.
  */
 public class Load implements Serializable {
-  private static final Comparator<Snapshot> TIME_COMPARATOR = (t1, t2) -> Long.compare(t2.time(), t1.time());
-  // Number of snapshots in this load.
-  private static int _maxNumSnapshots = -1;
-  // Snapshots by their time.
-  private final List<Snapshot> _snapshotsByTime;
-  private final double[] _accumulatedUtilization;
-  private final int _maxNumSnapshotForObject;
+  // load by their time.
+  private List<Long> _windows;
+  private final AggregatedMetricValues _metricValues;
 
   /**
-   * Initialize the Load class. The initialization should be done once and only once.
-   *
-   * @param config The configurations for Kafka Cruise Control
+   * Package constructor for load with given load properties.
    */
-  public static void init(KafkaCruiseControlConfig config) {
-    if (_maxNumSnapshots > 0) {
-      throw new IllegalStateException("The Load has already been initialized.");
-    }
-    int numSnapshots = config.getInt(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG);
-    if (numSnapshots <= 0) {
-      throw new IllegalArgumentException("The number of snapshots is " + numSnapshots + ". It must be greater than 0.");
-    }
-    _maxNumSnapshots = numSnapshots;
+  public Load() {
+    _windows = null;
+    _metricValues = new AggregatedMetricValues();
   }
 
   /**
-   * Get snapshots in this load by their snapshot time.
+   * Get load by their window time.
    */
-  public List<Snapshot> snapshotsByTime() {
-    return _snapshotsByTime;
+  public AggregatedMetricValues loadByWindows() {
+    return _metricValues;
   }
 
   /**
    * Get the number of snapshots in the load.
    */
-  public int numSnapshots() {
-    return _snapshotsByTime.size();
+  public int numWindows() {
+    return _metricValues.length();
   }
 
   /**
-   * Generate a new Load with the number of snapshots specified in {@link #init}.
+   * Get the windows list for the load.
    */
-  public static Load newLoad() {
-    if (_maxNumSnapshots <= 0) {
-      throw new IllegalStateException("The LoadFactory hasn't been initialized.");
-    }
-    return new Load(_maxNumSnapshots);
-  }
-
-  /**
-   * Check if the load is initialized.
-   */
-  public static boolean initialized() {
-    return _maxNumSnapshots > 0;
-  }
-
-  /**
-   * Get the number of snapshots setting.
-   */
-  public static int maxNumSnapshots() {
-    return _maxNumSnapshots;
+  public List<Long> windows() {
+    return _windows;
   }
 
   /**
@@ -101,50 +70,36 @@ public class Load implements Serializable {
    * @return A single representative utilization value on a resource.
    */
   public double expectedUtilizationFor(Resource resource) {
-    if (_snapshotsByTime.isEmpty()) {
+    if (_metricValues.isEmpty()) {
       return 0.0;
     }
-    return resource == Resource.DISK ? Math.max(0, _snapshotsByTime.get(0).utilizationFor(resource)) :
-        Math.max(0, _accumulatedUtilization[resource.id()] / _snapshotsByTime.size());
+    MetricValues metricValues = _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource));
+    return  resource.equals(Resource.DISK) ? metricValues.latest() : metricValues.avg();
   }
 
   /**
-   * Package constructor for load with given load properties.
+   * @return true if this load is empty, false otherwise.
    */
-  Load(int maxNumSnapshots) {
-    _snapshotsByTime = new ArrayList<>(maxNumSnapshots);
-    _maxNumSnapshotForObject = maxNumSnapshots;
-    _accumulatedUtilization = new double[Resource.values().length];
-    for (Resource resource : Resource.cachedValues()) {
-      _accumulatedUtilization[resource.id()] = 0.0;
-    }
+  boolean isEmpty() {
+    return _metricValues.isEmpty();
   }
 
   /**
    * Overwrite the load for given resource with the given load.
    *
    * @param resource           Resource for which the load will be overwritten.
-   * @param loadBySnapshotTime Load for the given resource to overwrite the original load by snapshot time.
+   * @param loadForResource Load for the given resource to overwrite the original load by snapshot time.
    */
-  void setLoadFor(Resource resource, Map<Long, Double> loadBySnapshotTime) {
-    if (loadBySnapshotTime.size() != _snapshotsByTime.size()) {
-      throw new IllegalArgumentException("Load to set and load for the resources must have exactly "
-                                         + _snapshotsByTime.size() + " entries.");
+  void setLoadFor(Resource resource, double[] loadForResource) {
+    if (loadForResource.length != _metricValues.length()) {
+      throw new IllegalArgumentException("Load to set and load for the resources must have exactly " +
+                                         _metricValues.length() + " entries.");
     }
 
-    double delta = 0.0;
-    for (Snapshot snapshot : _snapshotsByTime) {
-      long time = snapshot.time();
-      if (!loadBySnapshotTime.containsKey(time)) {
-        throw new IllegalStateException("The new snapshot time does not match the current snapshot time.");
-      }
-      double oldUtilization = snapshot.utilizationFor(resource);
-      double newUtilization = loadBySnapshotTime.get(time);
-      snapshot.setUtilizationFor(resource, newUtilization);
-      delta += newUtilization - oldUtilization;
+    MetricValues currentLoadForResource = _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource));
+    for (int i = 0; i < loadForResource.length; i++) {
+      currentLoadForResource.set(i, (float) loadForResource[i]);
     }
-
-    _accumulatedUtilization[resource.id()] = _accumulatedUtilization[resource.id()] + delta;
   }
 
   /**
@@ -153,58 +108,35 @@ public class Load implements Serializable {
    * @param resource Resource for which the utilization will be cleared.
    */
   void clearLoadFor(Resource resource) {
-    for (Snapshot snapshot : _snapshotsByTime) {
-      snapshot.clearUtilizationFor(resource);
-    }
-    _accumulatedUtilization[resource.id()] = 0.0;
-  }
-
-  /**
-   * Push the latest snapshot.
-   *
-   * @param snapshot Snapshot containing latest time and state for each resource.
-   */
-  void pushLatestSnapshot(Snapshot snapshot) {
-    if (_snapshotsByTime.size() >= _maxNumSnapshotForObject) {
-      throw new IllegalArgumentException("Already have " + _snapshotsByTime.size() + " snapshots but see a different "
-                                         + "snapshot time" + snapshot.time() + ". Existing snapshot times: "
-                                         + Arrays.toString(allSnapshotTimes()));
-    }
-    if (!_snapshotsByTime.isEmpty() && snapshot.time() >= _snapshotsByTime.get(_snapshotsByTime.size() - 1).time()) {
-      throw new IllegalArgumentException("Attempt to push an out of order snapshot with timestamp " + snapshot.time()
-                                         + " to a replica. Existing snapshot times: "
-                                         + Arrays.toString(allSnapshotTimes()));
-    }
-    _snapshotsByTime.add(snapshot);
-    for (Resource r : Resource.cachedValues()) {
-      double utilization = _accumulatedUtilization[r.id()];
-      _accumulatedUtilization[r.id()] = utilization + snapshot.utilizationFor(r);
+    if (!_metricValues.isEmpty()) {
+      _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)).clear();
     }
   }
 
   /**
-   * Add the given snapshot to the existing load.
-   * Used by cluster/rack/broker when the load in the structure is updated with the push of a new snapshot.
+   * Initialize the metric values for this load. This method should only be called once for initialization.
+   * This method is used for the entity load, which should be immutable for most cases.
    *
-   * @param snapshotToAdd Snapshot to add to the original load.
+   * @param aggregatedMetricValues the metric values to set as initialization.
    */
-  void addSnapshot(Snapshot snapshotToAdd) {
-    getAndMaybeCreateSnapshot(snapshotToAdd.time()).addSnapshot(snapshotToAdd);
-    for (Resource r : Resource.cachedValues()) {
-      _accumulatedUtilization[r.id()] = _accumulatedUtilization[r.id()] + snapshotToAdd.utilizationFor(r);
+  void initializeMetricValues(AggregatedMetricValues aggregatedMetricValues, List<Long> windows) {
+    if (!_metricValues.isEmpty()) {
+      throw new IllegalStateException("Metric values already exists, cannot set it again.");
     }
+    _windows = windows;
+    _metricValues.add(aggregatedMetricValues);
   }
 
   /**
-   * Subtract the given snapshot from the existing load.
-   *
-   * @param snapshotToSubtract Snapshot to subtract from the original load.
+   * Add the metric values to the existing metric values.
+   * @param aggregatedMetricValues the metric values to add.
+   * @param windows the windows list of the aggregated metric values.
    */
-  void subtractSnapshot(Snapshot snapshotToSubtract) {
-    snapshotForTime(snapshotToSubtract.time()).subtractSnapshot(snapshotToSubtract);
-    for (Resource r : Resource.cachedValues()) {
-      _accumulatedUtilization[r.id()] = _accumulatedUtilization[r.id()] - snapshotToSubtract.utilizationFor(r);
+  void addMetricValues(AggregatedMetricValues aggregatedMetricValues, List<Long> windows) {
+    if (_windows == null) {
+      _windows = windows;
     }
+    _metricValues.add(aggregatedMetricValues);
   }
 
   /**
@@ -213,12 +145,7 @@ public class Load implements Serializable {
    * @param loadToAdd Load to add to this load.
    */
   void addLoad(Load loadToAdd) {
-    for (Snapshot snapshot : loadToAdd.snapshotsByTime()) {
-      getAndMaybeCreateSnapshot(snapshot.time()).addSnapshot(snapshot);
-    }
-    for (Resource r : Resource.cachedValues()) {
-      _accumulatedUtilization[r.id()] = this._accumulatedUtilization[r.id()] + loadToAdd.accumulatedUtilization()[r.id()];
-    }
+    _metricValues.add(loadToAdd.loadByWindows());
   }
 
   /**
@@ -227,12 +154,7 @@ public class Load implements Serializable {
    * @param loadToSubtract Load to subtract from this load.
    */
   void subtractLoad(Load loadToSubtract) {
-    for (Snapshot snapshot : loadToSubtract.snapshotsByTime()) {
-      snapshotForTime(snapshot.time()).subtractSnapshot(snapshot);
-    }
-    for (Resource r : Resource.cachedValues()) {
-      _accumulatedUtilization[r.id()] = this._accumulatedUtilization[r.id()] - loadToSubtract.accumulatedUtilization()[r.id()];
-    }
+    _metricValues.subtract(loadToSubtract.loadByWindows());
   }
 
   /**
@@ -241,14 +163,10 @@ public class Load implements Serializable {
    * @param resource                Resource for which the given load will be added.
    * @param loadToAddBySnapshotTime Load to add to this load for the given resource.
    */
-  void addLoadFor(Resource resource, Map<Long, Double> loadToAddBySnapshotTime) {
-    double delta = 0.0;
-    for (Snapshot snapshot : _snapshotsByTime) {
-      double loadToAdd = loadToAddBySnapshotTime.get(snapshot.time());
-      snapshot.addUtilizationFor(resource, loadToAdd);
-      delta += loadToAdd;
+  void addLoadFor(Resource resource, double[] loadToAddBySnapshotTime) {
+    if (!_metricValues.isEmpty()) {
+      _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)).add(loadToAddBySnapshotTime);
     }
-    _accumulatedUtilization[resource.id()] = _accumulatedUtilization[resource.id()] + delta;
   }
 
   /**
@@ -257,94 +175,50 @@ public class Load implements Serializable {
    * @param resource                     Resource for which the given load will be subtracted.
    * @param loadToSubtractBySnapshotTime Load to subtract from this load for the given resource.
    */
-  void subtractLoadFor(Resource resource, Map<Long, Double> loadToSubtractBySnapshotTime) {
-    double delta = 0.0;
-    for (Snapshot snapshot : _snapshotsByTime) {
-      double loadToSubtract = loadToSubtractBySnapshotTime.get(snapshot.time());
-      snapshot.subtractUtilizationFor(resource, loadToSubtract);
-      delta += loadToSubtract;
+  void subtractLoadFor(Resource resource, double[] loadToSubtractBySnapshotTime) {
+    if (!_metricValues.isEmpty()) {
+      _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)).subtract(loadToSubtractBySnapshotTime);
     }
-    _accumulatedUtilization[resource.id()] = _accumulatedUtilization[resource.id()] - delta;
   }
 
   /**
    * Clear the content of the circular list for each resource.
    */
   void clearLoad() {
-    _snapshotsByTime.clear();
-    for (Resource r : Resource.cachedValues()) {
-      _accumulatedUtilization[r.id()] = 0.0;
-    }
+    _metricValues.clear();
   }
 
   /**
-   * Get the load for the requested resource as a mapping from snapshot time to utilization for the given resource.
+   * Get the load for the requested resource cross all the windows.
    *
    * @param resource Resource for which the load will be provided.
    * @return Load of the requested resource as a mapping from snapshot time to utilization for the given resource.
    */
-  Map<Long, Double> loadFor(Resource resource) {
-    Map<Long, Double> loadForResource = new HashMap<>();
-
-    for (Snapshot snapshot : _snapshotsByTime) {
-      loadForResource.put(snapshot.time(), snapshot.utilizationFor(resource));
-    }
+  MetricValues loadFor(Resource resource) {
+    MetricValues loadForResource = new MetricValues(_metricValues.length());
+    loadForResource.add(_metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)));
     return loadForResource;
   }
 
-  private double[] accumulatedUtilization() {
-    return _accumulatedUtilization;
-  }
-
-  // A binary search by time. package private for testing.
-  Snapshot snapshotForTime(long time) {
-    int index = Collections.binarySearch(_snapshotsByTime, new Snapshot(time), TIME_COMPARATOR);
-    if (index < 0) {
-      return null;
-    }
-    return _snapshotsByTime.get(index);
-  }
-
-  // package private for testing.
-  Snapshot getAndMaybeCreateSnapshot(long time) {
-    // First do a binary search.
-    int index = Collections.binarySearch(_snapshotsByTime, new Snapshot(time), TIME_COMPARATOR);
-    if (index >= 0) {
-      return _snapshotsByTime.get(index);
-    }
-
-    Snapshot snapshot = new Snapshot(time);
-    _snapshotsByTime.add(-(index + 1), snapshot);
-    return snapshot;
-  }
-
-  private long[] allSnapshotTimes() {
-    long[] times = new long[_snapshotsByTime.size()];
-    for (int i = 0; i < _snapshotsByTime.size(); i++) {
-      times[i] = _snapshotsByTime.get(i).time();
-    }
-    return times;
-  }
-
-  /*
-   * Return a valid JSON encoded string
-   */
-  public String getJSONString() {
-    Gson gson = new Gson();
-    return gson.toJson(getJsonStructure());
-  }
-
-  /*
+  /**
    * Return an object that can be further used
    * to encode into JSON
    */
   public Map<String, Object> getJsonStructure() {
+    MetricDef metricDef = KafkaCruiseControlMetricDef.metricDef();
     Map<String, Object> loadMap = new HashMap<>();
-    List<Object> snapList = new ArrayList<>();
-    for (Snapshot snapshot : _snapshotsByTime) {
-      snapList.add(snapshot.getJsonStructureForLoad());
+    List<Object> metricValueList = new ArrayList<>();
+    for (MetricInfo metricInfo : metricDef.all()) {
+      MetricValues metricValues = _metricValues.valuesFor(metricInfo.id());
+      if (metricValues != null) {
+        Map<Long, Double> metricValuesMap = new HashMap<>();
+        for (int i = 0; i < _windows.size(); i++) {
+          metricValuesMap.put(_windows.get(i), metricValues.get(i));
+        }
+        metricValueList.add(metricValuesMap);
+      }
     }
-    loadMap.put("snapshots", snapList);
+    loadMap.put("MetricValues", metricValueList);
     return loadMap;
   }
 
@@ -354,9 +228,7 @@ public class Load implements Serializable {
    */
   public void writeTo(OutputStream out) throws IOException {
     out.write("<Load>".getBytes(StandardCharsets.UTF_8));
-    for (Snapshot snapshot : _snapshotsByTime) {
-      snapshot.writeTo(out);
-    }
+    _metricValues.writeTo(out);
     out.write("</Load>%n".getBytes(StandardCharsets.UTF_8));
   }
 
@@ -365,11 +237,6 @@ public class Load implements Serializable {
    */
   @Override
   public String toString() {
-    StringBuilder load = new StringBuilder().append("<Load>");
-
-    for (Snapshot snapshot : _snapshotsByTime) {
-      load.append(snapshot.toString());
-    }
-    return load.append("</Load>%n").toString();
+    return "<Load>" + _metricValues.toString() + "</Load>%n";
   }
 }

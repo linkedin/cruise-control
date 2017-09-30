@@ -4,9 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -44,7 +44,7 @@ public class Rack implements Serializable {
     _hosts = new HashMap<>();
     _brokers = new HashMap<>();
     // Initially rack does not contain any load -- cannot create a load with a specific window size.
-    _load = Load.newLoad();
+    _load = new Load();
     _rackCapacity = new double[Resource.values().length];
   }
 
@@ -191,9 +191,9 @@ public class Rack implements Serializable {
    * @param tp TopicPartition of the replica for which the outbound network load will be removed.
    * @return Leadership load by snapshot time.
    */
-  Map<Resource, Map<Long, Double>> makeFollower(int brokerId, TopicPartition tp) {
+  Map<Resource, double[]> makeFollower(int brokerId, TopicPartition tp) {
     Host host = _brokers.get(brokerId).host();
-    Map<Resource, Map<Long, Double>> leadershipLoad = host.makeFollower(brokerId, tp);
+    Map<Resource, double[]> leadershipLoad = host.makeFollower(brokerId, tp);
     // Remove leadership load from recent load.
     _load.subtractLoadFor(Resource.NW_OUT, leadershipLoad.get(Resource.NW_OUT));
     _load.subtractLoadFor(Resource.CPU, leadershipLoad.get(Resource.CPU));
@@ -211,7 +211,7 @@ public class Rack implements Serializable {
    */
   void makeLeader(int brokerId,
                   TopicPartition tp,
-                  Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime) {
+                  Map<Resource, double[]> leadershipLoadBySnapshotTime) {
     Host host = _brokers.get(brokerId).host();
     host.makeLeader(brokerId, tp, leadershipLoadBySnapshotTime);
     // Add leadership load to recent load.
@@ -230,17 +230,17 @@ public class Rack implements Serializable {
   }
 
   /**
-   * Pushes the latest snapshot information containing the snapshot time and resource loads to the rack.
+   * Set the replica load.
    *
    * @param brokerId       Broker Id containing the replica with the given topic partition.
    * @param tp Topic partition that identifies the replica in this broker.
-   * @param snapshot       Snapshot containing latest state for each resource.
+   * @param aggregatedMetricValues   The metric values for this replica..
    */
-  void pushLatestSnapshot(int brokerId, TopicPartition tp, Snapshot snapshot) {
+  void setReplicaLoad(int brokerId, TopicPartition tp, AggregatedMetricValues aggregatedMetricValues, List<Long> windows) {
     Host host = _brokers.get(brokerId).host();
-    host.pushLatestSnapshot(brokerId, tp, snapshot);
+    host.setReplicaLoad(brokerId, tp, aggregatedMetricValues, windows);
     // Update the recent load of this rack.
-    _load.addSnapshot(snapshot);
+    _load.addMetricValues(aggregatedMetricValues, windows);
   }
 
   /**

@@ -4,10 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -27,15 +29,6 @@ public class MonitorUtils {
   }
 
   /**
-   * Convert from the timestamp to corresponding snapshot window. A snapshot window is identified by its cut off time.
-   * i.e. snapshot window <tt>W</tt> means the snapshot of time range [W - T, W], where <tt>T</tt> is the snapshot
-   * window size in milliseconds.
-   */
-  public static long toSnapshotWindow(long time, long snapshotWindowMs) {
-    return (time / snapshotWindowMs + 1) * snapshotWindowMs;
-  }
-
-  /**
    * Derive follower load snapshot from the leader load snapshot.
    * <p>
    * If linear regression model is used, the The way we derive the follower metrics is the following:
@@ -48,15 +41,27 @@ public class MonitorUtils {
    *
    * If linear regression model is not used, CPU utilization of the follower will be fixed to be 0.2;
    */
-  public static Snapshot toFollowerSnapshot(Snapshot leaderSnapshot) {
-    double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(leaderSnapshot.utilizationFor(Resource.NW_IN),
-                                                                         leaderSnapshot.utilizationFor(Resource.NW_OUT),
-                                                                         leaderSnapshot.utilizationFor(Resource.CPU));
-    return new Snapshot(leaderSnapshot.time(),
-                        followerCpuUtil,
-                        leaderSnapshot.utilizationFor(Resource.NW_IN),
-                        0,
-                        leaderSnapshot.utilizationFor(Resource.DISK));
+  public static AggregatedMetricValues toFollowerMetricValues(AggregatedMetricValues aggregatedMetricValues) {
+    int cpuId = KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU);
+    int networkInId = KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_IN);
+    int networkOutId = KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT);
+
+    AggregatedMetricValues followerLoad = new AggregatedMetricValues();
+    for (int metricId : aggregatedMetricValues.metricIds()) {
+      if (metricId != cpuId && metricId != networkInId) {
+        followerLoad.add(metricId, aggregatedMetricValues.valuesFor(metricId));
+      }
+    }
+    MetricValues followerCpu = new MetricValues(aggregatedMetricValues.length());
+    for (int i = 0; i < aggregatedMetricValues.length(); i++) {
+      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(aggregatedMetricValues.valuesFor(cpuId).get(i),
+                                                                           aggregatedMetricValues.valuesFor(networkInId).get(i),
+                                                                           aggregatedMetricValues.valuesFor(networkOutId).get(i));
+      followerCpu.set(i, followerCpuUtil);
+    }
+    followerLoad.add(networkOutId, new MetricValues(aggregatedMetricValues.length()));
+    followerLoad.add(cpuId, followerCpu);
+    return followerLoad;
   }
 
   /**

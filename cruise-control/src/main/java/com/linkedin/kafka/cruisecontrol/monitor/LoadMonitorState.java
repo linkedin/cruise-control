@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor;
 
 import com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleFlaw;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState;
 import java.util.Collections;
 import java.util.List;
@@ -19,19 +19,19 @@ public class LoadMonitorState {
 
   private final LoadMonitorTaskRunnerState _loadMonitorTaskRunnerState;
   private final int _numValidSnapshotWindows;
-  private final SortedMap<Long, Double> _monitoredSnapshotWindows;
+  private final SortedMap<Long, Float> _monitoredSnapshotWindows;
   private final int _numValidMonitoredPartitions;
-  private final Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> _sampleFlaws;
+  private final Map<TopicPartition, List<SampleFlaw>> _sampleFlaws;
   private final int _totalNumPartitions;
   private final double _bootstrapProgress;
   private final double _loadingProgress;
 
   private LoadMonitorState(LoadMonitorTaskRunnerState state,
                            int numValidSnapshotWindows,
-                           SortedMap<Long, Double> monitoredSnapshotWindows,
+                           SortedMap<Long, Float> monitoredSnapshotWindows,
                            int numValidMonitoredPartitions,
                            int totalNumPartitions,
-                           Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws,
+                           Map<TopicPartition, List<SampleFlaw>> sampleFlaws,
                            double bootstrapProgress,
                            double loadingProgress) {
     _loadMonitorTaskRunnerState = state;
@@ -49,13 +49,13 @@ public class LoadMonitorState {
   }
 
   public static LoadMonitorState running(int numValidSnapshotWindows,
-                                         SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                         SortedMap<Long, Float> partitionCoverageByWindows,
                                          int numValidMonitoredTopics,
                                          int totalNumPartitions,
-                                         Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws) {
+                                         Map<TopicPartition, List<SampleFlaw>> sampleFlaws) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.RUNNING,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                partitionCoverageByWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 sampleFlaws,
@@ -64,13 +64,13 @@ public class LoadMonitorState {
   }
 
   public static LoadMonitorState paused(int numValidSnapshotWindows,
-                                        SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                        SortedMap<Long, Float> monitoredSnapshotWindows,
                                         int numValidMonitoredTopics,
                                         int totalNumPartitions,
-                                        Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws) {
+                                        Map<TopicPartition, List<SampleFlaw>> sampleFlaws) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.PAUSED,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                monitoredSnapshotWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 sampleFlaws,
@@ -79,13 +79,13 @@ public class LoadMonitorState {
   }
 
   public static LoadMonitorState sampling(int numValidSnapshotWindows,
-                                          SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                          SortedMap<Long, Float> monitoredSnapshotWindows,
                                           int numValidMonitoredTopics,
                                           int totalNumPartitions,
-                                          Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws) {
+                                          Map<TopicPartition, List<SampleFlaw>> sampleFlaws) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.SAMPLING,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                monitoredSnapshotWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 sampleFlaws,
@@ -94,14 +94,14 @@ public class LoadMonitorState {
   }
 
   public static LoadMonitorState bootstrapping(int numValidSnapshotWindows,
-                                               SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                               SortedMap<Long, Float> monitoredSnapshotWindows,
                                                int numValidMonitoredTopics,
                                                int totalNumPartitions,
                                                double bootstrapProgress,
-                                               Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws) {
+                                               Map<TopicPartition, List<SampleFlaw>> sampleFlaws) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.BOOTSTRAPPING,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                monitoredSnapshotWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 sampleFlaws,
@@ -110,13 +110,13 @@ public class LoadMonitorState {
   }
 
   public static LoadMonitorState training(int numValidSnapshotWindows,
-                                          SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                          SortedMap<Long, Float> monitoredSnapshotWindows,
                                           int numValidMonitoredTopics,
                                           int totalNumPartitions,
-                                          Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws) {
+                                          Map<TopicPartition, List<SampleFlaw>> sampleFlaws) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.TRAINING,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                monitoredSnapshotWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 sampleFlaws,
@@ -125,13 +125,13 @@ public class LoadMonitorState {
   }
 
   public static LoadMonitorState loading(int numValidSnapshotWindows,
-                                         SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                         SortedMap<Long, Float> monitoredSnapshotWindows,
                                          int numValidMonitoredTopics,
                                          int totalNumPartitions,
                                          double loadingProgress) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.LOADING,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                monitoredSnapshotWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 Collections.emptyMap(),
@@ -258,8 +258,8 @@ public class LoadMonitorState {
   public int numValidSnapshotWindows() {
     return _numValidSnapshotWindows;
   }
-  
-  public SortedMap<Long, Double> monitoredSnapshotWindows() {
+
+  public SortedMap<Long, Float> monitoredSnapshotWindows() {
     return _monitoredSnapshotWindows;
   }
 
@@ -275,7 +275,7 @@ public class LoadMonitorState {
     return _bootstrapProgress;
   }
 
-  public Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws() {
+  public Map<TopicPartition, List<SampleFlaw>> sampleFlaws() {
     return _sampleFlaws;
   }
 

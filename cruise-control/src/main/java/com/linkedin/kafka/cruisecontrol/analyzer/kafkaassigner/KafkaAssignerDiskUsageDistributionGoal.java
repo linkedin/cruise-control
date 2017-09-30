@@ -4,11 +4,11 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -28,7 +28,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.common.Resource.*;
+import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 
 
 /**
@@ -61,7 +61,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   public void configure(Map<String, ?> configs) {
     _balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(configs, false));
     String minMonitoredPartitionPercentageString =
-        (String) configs.get(KafkaCruiseControlConfig.MIN_MONITORED_PARTITION_PERCENTAGE_CONFIG);
+        (String) configs.get(KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
     if (minMonitoredPartitionPercentageString != null
         && !minMonitoredPartitionPercentageString.isEmpty()) {
       _minMonitoredPartitionPercentage = Double.parseDouble(minMonitoredPartitionPercentageString);

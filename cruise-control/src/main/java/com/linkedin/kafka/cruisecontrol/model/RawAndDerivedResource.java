@@ -22,7 +22,7 @@ public enum RawAndDerivedResource {
 
   private final Resource _derivedFrom;
 
-  private RawAndDerivedResource(Resource derivedFrom) {
+  RawAndDerivedResource(Resource derivedFrom) {
     _derivedFrom = derivedFrom;
   }
 

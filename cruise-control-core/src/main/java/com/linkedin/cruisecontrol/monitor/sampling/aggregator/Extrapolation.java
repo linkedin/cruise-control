@@ -6,7 +6,7 @@ package com.linkedin.cruisecontrol.monitor.sampling.aggregator;
 
 /**
  * There are a few extrapolations we will do when there is not
- * {@link com.linkedin.cruisecontrol.config.CruiseControlConfig#MIN_SAMPLES_PER_WINDOW_CONFIG sufficient samples}
+ * {@link com.linkedin.cruisecontrol.config.CruiseControlConfig#MIN_SAMPLES_PER_METRICS_WINDOW_CONFIG sufficient samples}
  * in a window for an entity. The extrapolations are used in the following preference order.
  * <ul>
  *   <li>

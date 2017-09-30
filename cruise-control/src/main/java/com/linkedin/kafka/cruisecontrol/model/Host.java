@@ -4,16 +4,16 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +34,7 @@ public class Host implements Serializable {
     _brokers = new HashMap<>();
     _replicas = new HashSet<>();
     _rack = rack;
-    _load = Load.newLoad();
+    _load = new Load();
     _hostCapacity = new double[Resource.values().length];
     _aliveBrokers = 0;
   }
@@ -135,16 +135,12 @@ public class Host implements Serializable {
     Broker broker = broker(brokerId);
     if (broker.isAlive() && newState == Broker.State.DEAD) {
       for (Resource r : Resource.values()) {
-        if (!r.isHostResource()) {
-          _hostCapacity[r.id()] -= broker.capacityFor(r);
-        }
+        _hostCapacity[r.id()] -= broker.capacityFor(r);
       }
       _aliveBrokers--;
     } else if (!broker.isAlive() && newState != Broker.State.DEAD) {
       for (Resource r : Resource.values()) {
-        if (!r.isHostResource()) {
-          _hostCapacity[r.id()] += broker.capacityFor(r);
-        }
+        _hostCapacity[r.id()] += broker.capacityFor(r);
       }
       _aliveBrokers++;
     }
@@ -160,7 +156,7 @@ public class Host implements Serializable {
   Replica removeReplica(int brokerId, TopicPartition tp) {
     Broker broker = _brokers.get(brokerId);
     if (broker == null) {
-      throw new IllegalStateException(String.format("Cannot remove replica for %s from broker %s because "
+      throw new IllegalStateException(String.format("Cannot remove replica for %s from broker broker %s because "
                                                         + "it does not exist in host %s", tp, brokerId, _name));
     }
     Replica replica = broker.removeReplica(tp);
@@ -169,13 +165,13 @@ public class Host implements Serializable {
     return replica;
   }
 
-  Map<Resource, Map<Long, Double>> makeFollower(int brokerId, TopicPartition tp) {
+  Map<Resource, double[]> makeFollower(int brokerId, TopicPartition tp) {
     Broker broker = broker(brokerId);
     if (broker == null) {
       throw new IllegalStateException(String.format("Cannot make replica %s on broker %d as follower because the broker"
                                                         + " does not exist in host %s", tp, brokerId, _name));
     }
-    Map<Resource, Map<Long, Double>> leadershipLoad = broker.makeFollower(tp);
+    Map<Resource, double[]> leadershipLoad = broker.makeFollower(tp);
 
     // Remove leadership load from recent load.
     _load.subtractLoadFor(Resource.NW_OUT, leadershipLoad.get(Resource.NW_OUT));
@@ -183,18 +179,9 @@ public class Host implements Serializable {
     return leadershipLoad;
   }
 
-  /**
-   * (1) Make the replica with the given topic partition and brokerId the leader.
-   * (2) Add the outbound network load associated with leadership to the given replica.
-   * (3) Add the CPU load associated with leadership.
-   *
-   * @param brokerId Id of the broker containing the replica.
-   * @param tp TopicPartition of the replica for which the outbound network load will be added.
-   * @param leadershipLoadBySnapshotTime Resource to leadership load to be added by snapshot time.
-   */
   void makeLeader(int brokerId,
                   TopicPartition tp,
-                  Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime) {
+                  Map<Resource, double[]> leadershipLoadBySnapshotTime) {
     Broker broker = _brokers.get(brokerId);
     broker.makeLeader(tp, leadershipLoadBySnapshotTime);
     // Add leadership load to recent load.
@@ -202,12 +189,13 @@ public class Host implements Serializable {
     _load.addLoadFor(Resource.CPU, leadershipLoadBySnapshotTime.get(Resource.CPU));
   }
 
-  void pushLatestSnapshot(int brokerId,
-                          TopicPartition tp,
-                          Snapshot snapshot) {
+  void setReplicaLoad(int brokerId,
+                      TopicPartition tp,
+                      AggregatedMetricValues aggregatedMetricValues,
+                      List<Long> windows) {
     Broker broker = _brokers.get(brokerId);
-    broker.pushLatestSnapshot(tp, snapshot);
-    _load.addSnapshot(snapshot);
+    broker.setReplicaLoad(tp, aggregatedMetricValues, windows);
+    _load.addMetricValues(aggregatedMetricValues, windows);
   }
 
   void clearLoad() {

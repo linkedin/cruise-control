@@ -4,8 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
 
 import java.util.HashMap;
@@ -59,7 +59,7 @@ public class ClusterModelStats {
     numForReplicas(clusterModel);
     numForAvgTopicReplicas(clusterModel);
     _utilizationMatrix = clusterModel.utilizationMatrix();
-    _numSnapshotWindows = clusterModel.load().numSnapshots();
+    _numSnapshotWindows = clusterModel.load().numWindows();
     _monitoredPartitionsPercentage = clusterModel.monitoredPartitionsPercentage();
     return this;
   }

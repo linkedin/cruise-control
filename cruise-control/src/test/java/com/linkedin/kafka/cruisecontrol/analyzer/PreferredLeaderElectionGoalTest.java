@@ -4,19 +4,21 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
@@ -59,12 +61,6 @@ public class PreferredLeaderElectionGoalTest {
   }
 
   private ClusterModel createClusterModel() {
-    int numSnapshots = 2;
-    if (!Load.initialized()) {
-      Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
-      props.setProperty(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG, Integer.toString(numSnapshots));
-      Load.init(new KafkaCruiseControlConfig(props));
-    }
 
     final int numRacks = 4;
     ClusterModel clusterModel = new ClusterModel(new ModelGeneration(0, 0),
@@ -81,37 +77,52 @@ public class PreferredLeaderElectionGoalTest {
       clusterModel.createBroker("r" + j, "h" + i, i, TestConstants.BROKER_CAPACITY);
     }
 
-    clusterModel.createReplica("r0", 0, T0P0, 0, true);
-    clusterModel.createReplica("r0", 1, T0P1, 0, true);
-    clusterModel.createReplica("r1", 2, T0P2, 0, true);
-    clusterModel.createReplica("r2", 3, T1P0, 0, false);
-    clusterModel.createReplica("r3", 4, T1P1, 0, false);
-    clusterModel.createReplica("r0", 0, T1P2, 0, false);
-    clusterModel.createReplica("r0", 1, T2P0, 0, false);
-    clusterModel.createReplica("r1", 2, T2P1, 0, false);
-    clusterModel.createReplica("r2", 3, T2P2, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 0, T0P0, 0, true);
+    createReplicaAndSetLoad(clusterModel, "r0", 1, T0P1, 0, true);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, T0P2, 0, true);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, T1P0, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, T1P1, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 0, T1P2, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 1, T2P0, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, T2P1, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, T2P2, 0, false);
 
-    clusterModel.createReplica("r3", 4, T0P0, 1, false);
-    clusterModel.createReplica("r1", 2, T0P1, 1, false);
-    clusterModel.createReplica("r0", 0, T0P2, 1, false);
-    clusterModel.createReplica("r0", 1, T1P0, 1, true);
-    clusterModel.createReplica("r2", 3, T1P1, 1, true);
-    clusterModel.createReplica("r3", 4, T1P2, 1, true);
-    clusterModel.createReplica("r1", 2, T2P0, 1, false);
-    clusterModel.createReplica("r0", 0, T2P1, 1, false);
-    clusterModel.createReplica("r0", 1, T2P2, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, T0P0, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, T0P1, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 0, T0P2, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 1, T1P0, 1, true);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, T1P1, 1, true);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, T1P2, 1, true);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, T2P0, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 0, T2P1, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 1, T2P2, 1, false);
 
-    clusterModel.createReplica("r2", 3, T0P0, 2, false);
-    clusterModel.createReplica("r3", 4, T0P1, 2, false);
-    clusterModel.createReplica("r2", 3, T0P2, 2, false);
-    clusterModel.createReplica("r1", 2, T1P0, 2, false);
-    clusterModel.createReplica("r0", 0, T1P1, 2, false);
-    clusterModel.createReplica("r1", 2, T1P2, 2, false);
-    clusterModel.createReplica("r3", 4, T2P0, 2, true);
-    clusterModel.createReplica("r2", 3, T2P1, 2, true);
-    clusterModel.createReplica("r3", 4, T2P2, 2, true);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, T0P0, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, T0P1, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, T0P2, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, T1P0, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 0, T1P1, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, T1P2, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, T2P0, 2, true);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, T2P1, 2, true);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, T2P2, 2, true);
 
     return clusterModel;
+  }
+
+  private void createReplicaAndSetLoad(ClusterModel clusterModel,
+                                       String rack,
+                                       int brokerId,
+                                       TopicPartition tp,
+                                       int index,
+                                       boolean isLeader) {
+    clusterModel.createReplica(rack, brokerId, tp, index, isLeader);
+    MetricValues metricValues = new MetricValues(1);
+    Map<Integer, MetricValues> metricValuesByResource = new HashMap<>();
+    Resource.cachedValues().forEach(r -> metricValuesByResource.put(KafkaCruiseControlMetricDef.resourceToMetricId(r),
+                                                                    metricValues));
+    clusterModel.setReplicaLoad(rack, brokerId, tp, new AggregatedMetricValues(metricValuesByResource),
+                                Collections.singletonList(1L));
   }
 
 }

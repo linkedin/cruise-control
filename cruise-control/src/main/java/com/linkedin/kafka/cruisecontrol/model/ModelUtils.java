@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 
 
@@ -43,22 +42,6 @@ public class ModelUtils {
                 + ModelParameters.CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE * leaderBytesOutRate);
       }
     }
-  }
-
-  /**
-   * Estimate the CPU utilization of a follower based on the leader's bytes in/out rate and CPU utilization.
-   *
-   * @param leaderLoad Leader load.
-   * @param snapshotTime Snapshot time.
-   * @return Estimated CPU utilization of a follower for the given snapshot time.
-   */
-  static double getFollowerCpuUtilFromLeaderLoad(Load leaderLoad, Long snapshotTime) {
-
-    double leaderBytesInRate = leaderLoad.loadFor(Resource.NW_IN).get(snapshotTime);
-    double leaderBytesOutRate = leaderLoad.loadFor(Resource.NW_OUT).get(snapshotTime);
-    Double leaderCpuUtil = leaderLoad.loadFor(Resource.CPU).get(snapshotTime);
-
-    return getFollowerCpuUtilFromLeaderLoad(leaderBytesInRate, leaderBytesOutRate, leaderCpuUtil);
   }
 
   public static double estimateLeaderCpuUtil(double brokerCpuUtil,

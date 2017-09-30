@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
+import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import java.util.Set;
@@ -25,6 +26,7 @@ class TrainingFetcher extends MetricFetcher {
   private final long _endTimeMs;
   private final Timer _fetcherTimer;
   private final Meter _fetcherFailureRate;
+  private final MetricDef _metricDef;
 
   TrainingFetcher(MetricSampler metricSampler,
                   Cluster cluster,
@@ -32,6 +34,7 @@ class TrainingFetcher extends MetricFetcher {
                   Set<TopicPartition> assignedPartitions,
                   long startTimeMs,
                   long endTimeMs,
+                  MetricDef metricDef,
                   Timer fetcherTimer,
                   Meter fetcherFailureRate) {
     _cluster = cluster;
@@ -40,6 +43,7 @@ class TrainingFetcher extends MetricFetcher {
     _startTimeMs = startTimeMs;
     _endTimeMs = endTimeMs;
     _assignedPartitions = assignedPartitions;
+    _metricDef = metricDef;
     _fetcherTimer = fetcherTimer;
     _fetcherFailureRate = fetcherFailureRate;
   }
@@ -50,7 +54,8 @@ class TrainingFetcher extends MetricFetcher {
 
     try {
       MetricSampler.Samples samples =
-          _metricSampler.getSamples(_cluster, _assignedPartitions, _startTimeMs, _endTimeMs, MetricSampler.SamplingMode.BROKER_METRICS_ONLY);
+          _metricSampler.getSamples(_cluster, _assignedPartitions, _startTimeMs, _endTimeMs, 
+                                    MetricSampler.SamplingMode.BROKER_METRICS_ONLY, _metricDef);
       ModelParameters.addMetricObservation(samples.brokerMetricSamples());
 
       _sampleStore.storeSamples(samples);

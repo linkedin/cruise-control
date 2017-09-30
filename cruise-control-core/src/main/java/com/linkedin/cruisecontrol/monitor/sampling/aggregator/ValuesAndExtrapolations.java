@@ -20,7 +20,7 @@ public class ValuesAndExtrapolations {
   private List<Long> _windows;
 
   /**
-   * Package private constructor.
+   * Construct the values and imputations.
    * @param metricValues the metric values.
    * @param extrapolations the extrapolations by corresponding metric value indexes.
    */

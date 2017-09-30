@@ -130,7 +130,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
 
   @Override
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
-    return new ModelCompletenessRequirements(_numSnapshots, _minMonitoredPartitionPercentage, false);
+    return new ModelCompletenessRequirements(_numWindows, _minMonitoredPartitionPercentage, false);
   }
 
   @Override

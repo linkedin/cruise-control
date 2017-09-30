@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.PartitionMetric;
@@ -21,6 +21,8 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.*;
 
 
 /**
@@ -52,7 +54,8 @@ public class CruiseControlMetricsProcessor {
 
   MetricSampler.Samples process(Cluster cluster,
                                 Collection<TopicPartition> partitions,
-                                MetricSampler.SamplingMode samplingMode) {
+                                MetricSampler.SamplingMode samplingMode,
+                                MetricDef metricDef) {
     Map<Integer, Map<String, Integer>> leaderDistributionStats = leaderDistributionStats(cluster);
     fillInFollowerBytesInRate(cluster, leaderDistributionStats);
     //TODO: maybe need to skip the entire processing logic if broker load is not consistent.
@@ -70,7 +73,7 @@ public class CruiseControlMetricsProcessor {
         || samplingMode == MetricSampler.SamplingMode.PARTITION_METRICS_ONLY) {
       for (TopicPartition tp : partitions) {
         try {
-          PartitionMetricSample sample = buildPartitionMetricSample(cluster, tp, leaderDistributionStats);
+          PartitionMetricSample sample = buildPartitionMetricSample(cluster, tp, leaderDistributionStats, metricDef);
           if (sample != null) {
             LOG.debug("Added partition metrics sample for {}", tp);
             partitionMetricSamples.add(sample);
@@ -187,7 +190,8 @@ public class CruiseControlMetricsProcessor {
 
   private PartitionMetricSample buildPartitionMetricSample(Cluster cluster,
                                                            TopicPartition tp,
-                                                           Map<Integer, Map<String, Integer>> leaderDistributionStats) {
+                                                           Map<Integer, Map<String, Integer>> leaderDistributionStats,
+                                                           MetricDef metricDef) {
     TopicPartition tpWithDotHandled = partitionHandleDotInTopicName(tp);
     int leaderId = cluster.leaderFor(tp).id();
     BrokerLoad brokerLoad = _brokerLoad.get(leaderId);
@@ -215,18 +219,28 @@ public class CruiseControlMetricsProcessor {
     double topicBytesOutInBroker = topicIOLoad.bytesOut();
     double partitionBytesInRate = topicBytesInInBroker / numLeaderPartitionsOnBroker;
     double partitionBytesOutRate = topicBytesOutInBroker / numLeaderPartitionsOnBroker;
+    double partitionProduceRate = topicIOLoad.produceRequestRate() / numLeaderPartitionsOnBroker;
+    double partitionFetchRate = topicIOLoad.fetchRequestRate() / numLeaderPartitionsOnBroker;
+    double partitionMessageInRate = topicIOLoad.messagesInRate() / numLeaderPartitionsOnBroker;
+    double partitionReplicationBytesInRate = topicIOLoad.replicationBytesIn() / numLeaderPartitionsOnBroker;
+    double partitionReplicationBytesOutRate = topicIOLoad.replicationBytesOut() / numLeaderPartitionsOnBroker;
 
     PartitionMetricSample pms = new PartitionMetricSample(leaderId, tp);
-    pms.record(Resource.NW_IN, partitionBytesInRate / BYTES_IN_KB);
+    pms.record(metricDef.metricInfo(LEADER_BYTES_IN.name()), partitionBytesInRate / BYTES_IN_KB);
     // TODO: After Kafka 0.11 the bytes out will exclude replication bytes, we need to take replication factor into consideration as well.
-    pms.record(Resource.NW_OUT, partitionBytesOutRate / BYTES_IN_KB);
-    pms.record(Resource.DISK, partSize.value() / BYTES_IN_MB);
-    pms.record(Resource.CPU, ModelUtils.estimateLeaderCpuUtil(brokerLoad.cpuUtil(),
-                                                              brokerLoad.bytesIn(),
-                                                              brokerLoad.bytesOut(),
-                                                              _brokerFollowerLoad.get(leaderId),
-                                                              partitionBytesInRate,
-                                                              partitionBytesOutRate));
+    pms.record(metricDef.metricInfo(LEADER_BYTES_OUT.name()), partitionBytesOutRate / BYTES_IN_KB);
+    pms.record(metricDef.metricInfo(DISK_USAGE.name()), partSize.value() / BYTES_IN_MB);
+    pms.record(metricDef.metricInfo(CPU_USAGE.name()), ModelUtils.estimateLeaderCpuUtil(brokerLoad.cpuUtil(),
+                                                                                        brokerLoad.bytesIn(),
+                                                                                        brokerLoad.bytesOut(),
+                                                                                        _brokerFollowerLoad.get(leaderId),
+                                                                                        partitionBytesInRate,
+                                                                                        partitionBytesOutRate));
+    pms.record(metricDef.metricInfo(PRODUCE_RATE.name()), partitionProduceRate);
+    pms.record(metricDef.metricInfo(FETCH_RATE.name()), partitionFetchRate);
+    pms.record(metricDef.metricInfo(MESSAGE_IN_RATE.name()), partitionMessageInRate);
+    pms.record(metricDef.metricInfo(REPLICATION_BYTES_IN_RATE.name()), partitionReplicationBytesInRate);
+    pms.record(metricDef.metricInfo(REPLICATION_BYTES_OUT_RATE.name()), partitionReplicationBytesOutRate);
     pms.close(_maxMetricTimestamp);
     return pms;
   }

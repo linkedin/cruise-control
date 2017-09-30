@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
+import com.linkedin.cruisecontrol.config.CruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -27,7 +28,6 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.TreeSet;
 import org.apache.kafka.clients.CommonClientConfigs;
-import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 
 import java.util.Map;
@@ -39,7 +39,7 @@ import static org.apache.kafka.common.config.ConfigDef.Range.between;
 /**
  * The configuration class of Kafka Cruise Control.
  */
-public class KafkaCruiseControlConfig extends AbstractConfig {
+public class KafkaCruiseControlConfig extends CruiseControlConfig {
   private static final String DEFAULT_FAILED_BROKERS_ZK_PATH = "/CruiseControlBrokerList";
   // We have to define this so we don't need to move every package to scala src folder.
   private static final String DEFAULT_ANOMALY_NOTIFIER_CLASS = NoopNotifier.class.getName();
@@ -115,29 +115,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String METRIC_SAMPLING_INTERVAL_MS_DOC = "The interval of metric sampling.";
 
   /**
-   * <code>load.snapshot.interval.ms</code>
-   */
-  public static final String LOAD_SNAPSHOT_WINDOW_MS_CONFIG = "load.snapshot.window.ms";
-  private static final String LOAD_SNAPSHOT_WINDOW_MS_DOC = "The interval in millisecond that is covered by each " +
-      "load snapshot. The load snapshot will aggregate all the metric samples whose timestamp fall into its window. " +
-      "The load snapshot window must be greater than the metric.sampling.interval.ms";
-
-  /**
-   * <code>num.load.snapshots</code>
-   */
-  public static final String NUM_LOAD_SNAPSHOTS_CONFIG = "num.load.snapshots";
-  private static final String NUM_LOAD_SNAPSHOTS_DOC = "The maximum number of load snapshots the load monitor would keep. " +
-      "Each snapshot covers a time window defined by load.snapshot.window.ms";
-
-  /**
-   * <code>min.samples.per.load.snapshot</code>
-   */
-  public static final String MIN_SAMPLES_PER_LOAD_SNAPSHOT_CONFIG = "min.samples.per.load.snapshot";
-  private static final String MIN_SAMPLES_PER_LOAD_SNAPSHOT_DOC = "The minimum number of metric samples a valid load " +
-      "snapshot should have. If a partition does not have enough samples in a snapshot window, the topic of the partition " +
-      "will be removed from the snapshot due to in sufficient data.";
-
-  /**
    * <code>broker.capacity.config.resolver.class</code>
    */
   public static final String BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG = "broker.capacity.config.resolver.class";
@@ -148,8 +125,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   /**
    * <code>min.monitored.partition.percentage</code>
    */
-  public static final String MIN_MONITORED_PARTITION_PERCENTAGE_CONFIG = "min.monitored.partition.percentage";
-  private static final String MIN_MONITORED_PARTITION_PERCENTAGE_DOC = "The minimum percentage of the total partitions " +
+  public static final String MIN_VALID_PARTITION_RATIO_CONFIG = "min.valid.partition.ratio";
+  private static final String MIN_VALID_PARTITION_RATIO_DOC = "The minimum percentage of the total partitions " +
       "required to be monitored in order to generate a valid load model. Because the topic and partitions in a " +
       "Kafka cluster are dynamically changing. The load monitor will exclude some of the topics that does not have " +
       "sufficient metric samples. This configuration defines the minimum required percentage of the partitions that " +
@@ -493,35 +470,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(0),
                 ConfigDef.Importance.HIGH,
                 METRIC_SAMPLING_INTERVAL_MS_DOC)
-        .define(LOAD_SNAPSHOT_WINDOW_MS_CONFIG,
-                ConfigDef.Type.LONG,
-                60 * 60 * 1000,
-                atLeast(0),
-                ConfigDef.Importance.HIGH,
-                LOAD_SNAPSHOT_WINDOW_MS_DOC)
-        .define(NUM_LOAD_SNAPSHOTS_CONFIG,
-                ConfigDef.Type.INT,
-                5,
-                atLeast(1),
-                ConfigDef.Importance.HIGH,
-                NUM_LOAD_SNAPSHOTS_DOC)
-        .define(MIN_SAMPLES_PER_LOAD_SNAPSHOT_CONFIG,
-                ConfigDef.Type.INT,
-                3,
-                atLeast(1),
-                ConfigDef.Importance.LOW,
-                MIN_SAMPLES_PER_LOAD_SNAPSHOT_DOC)
         .define(BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS,
                 BrokerCapacityConfigFileResolver.class.getName(),
                 ConfigDef.Importance.MEDIUM,
                 BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_DOC)
-        .define(MIN_MONITORED_PARTITION_PERCENTAGE_CONFIG,
+        .define(MIN_VALID_PARTITION_RATIO_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 0.995,
                 between(0, 1),
-                ConfigDef.Importance.HIGH,
-                MIN_MONITORED_PARTITION_PERCENTAGE_DOC)
+                ConfigDef.Importance.HIGH, MIN_VALID_PARTITION_RATIO_DOC)
         .define(LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 0.6,

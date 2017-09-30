@@ -6,11 +6,13 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
+import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -18,6 +20,9 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.CPU_USAGE;
+
 
 /**
  * A metric fetcher that is responsible for fetching the metric samples to monitor the cluster load.
@@ -27,7 +32,7 @@ class SamplingFetcher extends MetricFetcher {
   // The metadata of the cluster this metric fetcher is fetching from.
   private final MetricSampler _metricSampler;
   private final Cluster _cluster;
-  private final MetricSampleAggregator _metricSampleAggregator;
+  private final KafkaMetricSampleAggregator _metricSampleAggregator;
   private final SampleStore _sampleStore;
   private final Set<TopicPartition> _assignedPartitions;
   private final long _startTimeMs;
@@ -36,16 +41,18 @@ class SamplingFetcher extends MetricFetcher {
   private final boolean _useLinearRegressionModel;
   private final Timer _fetchTimer;
   private final Meter _fetchFailureRate;
+  private final MetricDef _metricDef;
 
   SamplingFetcher(MetricSampler metricSampler,
                   Cluster cluster,
-                  MetricSampleAggregator metricSampleAggregator,
+                  KafkaMetricSampleAggregator metricSampleAggregator,
                   SampleStore sampleStore,
                   Set<TopicPartition> assignedPartitions,
                   long startTimeMs,
                   long endTimeMs,
                   boolean leaderValidation,
                   boolean useLinearRegressionModel,
+                  MetricDef metricDef,
                   Timer fetchTimer,
                   Meter fetchFailureRate) {
     _metricSampler = metricSampler;
@@ -53,6 +60,7 @@ class SamplingFetcher extends MetricFetcher {
     _metricSampleAggregator = metricSampleAggregator;
     _sampleStore = sampleStore;
     _assignedPartitions = assignedPartitions;
+    _metricDef = metricDef;
     _startTimeMs = startTimeMs;
     _endTimeMs = endTimeMs;
     _leaderValidation = leaderValidation;
@@ -87,11 +95,11 @@ class SamplingFetcher extends MetricFetcher {
   private MetricSampler.Samples fetchSamples() throws MetricSamplingException {
     MetricSampler.Samples samples =
         _metricSampler.getSamples(_cluster, _assignedPartitions, _startTimeMs, _endTimeMs,
-                                  MetricSampler.SamplingMode.ALL);
+                                  MetricSampler.SamplingMode.ALL, _metricDef);
     if (samples == null) {
       samples = MetricSampler.EMPTY_SAMPLES;
     }
-    Long earliestSnapshotWindowBefore = _metricSampleAggregator.earliestSnapshotWindow();
+    Long earliestWindowBefore = _metricSampleAggregator.earliestWindow();
     // Give an initial capacity to avoid resizing.
     Set<TopicPartition> returnedPartitions = new HashSet<>(_assignedPartitions.size());
     // Ignore the null value if the metric sampler did not return a sample
@@ -99,16 +107,17 @@ class SamplingFetcher extends MetricFetcher {
       Iterator<PartitionMetricSample> iter = samples.partitionMetricSamples().iterator();
       while (iter.hasNext()) {
         PartitionMetricSample partitionMetricSample = iter.next();
-        TopicPartition tp = partitionMetricSample.topicPartition();
+        TopicPartition tp = partitionMetricSample.entity().tp();
         if (_assignedPartitions.contains(tp)) {
           // we fill in the cpu utilization based on the model in case user did not fill it in.
           if (_useLinearRegressionModel && ModelParameters.trainingCompleted()) {
-            partitionMetricSample.record(Resource.CPU, estimateCpuUtil(partitionMetricSample), true);
+            partitionMetricSample.record(KafkaCruiseControlMetricDef.metricDef().metricInfo(CPU_USAGE.name()),
+                                         estimateCpuUtil(partitionMetricSample));
           }
           // we close the metric sample in case the implementation forgot to do so.
           partitionMetricSample.close(_endTimeMs);
           // We remove the sample from the returning set if it is not accepted.
-          if (!_metricSampleAggregator.addSample(partitionMetricSample, _leaderValidation, true)) {
+          if (!_metricSampleAggregator.addSample(partitionMetricSample, _leaderValidation)) {
             iter.remove();
           }
           returnedPartitions.add(tp);
@@ -126,22 +135,21 @@ class SamplingFetcher extends MetricFetcher {
 
     // Add the broker metric samples to the observation.
     ModelParameters.addMetricObservation(samples.brokerMetricSamples());
-    for (BrokerMetricSample brokerMetricSample : samples.brokerMetricSamples()) {
-      _metricSampleAggregator.updateBrokerMetricSample(brokerMetricSample);
-    }
 
-    Long earliestSnapshotWindow = _metricSampleAggregator.earliestSnapshotWindow();
-    if (earliestSnapshotWindowBefore != null
-        && earliestSnapshotWindow != null
-        && earliestSnapshotWindow > earliestSnapshotWindowBefore) {
-      _sampleStore.evictSamplesBefore(earliestSnapshotWindow);
+    Long earliestWindow = _metricSampleAggregator.earliestWindow();
+    if (earliestWindowBefore != null
+        && earliestWindow != null
+        && earliestWindow > earliestWindowBefore) {
+      _sampleStore.evictSamplesBefore(earliestWindow);
     }
 
     return samples;
   }
 
   private double estimateCpuUtil(PartitionMetricSample partitionMetricSample) {
-    return ModelUtils.estimateLeaderCpuUtilUsingLinearRegressionModel(partitionMetricSample.metricFor(Resource.NW_IN),
-                                                                      partitionMetricSample.metricFor(Resource.NW_OUT));
+    int cpuId = KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU);
+    int networkOutId = KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT);
+    return ModelUtils.estimateLeaderCpuUtilUsingLinearRegressionModel(partitionMetricSample.metricValue(cpuId),
+                                                                      partitionMetricSample.metricValue(networkOutId));
   }
 }

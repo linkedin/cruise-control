@@ -5,17 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
 
 
 public class SampleLoadingTask implements Runnable {
   private final SampleStore _sampleStore;
-  private final MetricSampleAggregator _metricSampleAggregator;
+  private final KafkaMetricSampleAggregator _metricSampleAggregator;
   private final LoadMonitorTaskRunner _loadMonitorTaskRunner;
 
   SampleLoadingTask(SampleStore sampleStore,
-                    MetricSampleAggregator metricSampleAggregator,
+                    KafkaMetricSampleAggregator metricSampleAggregator,
                     LoadMonitorTaskRunner loadMonitorTaskRunner) {
     _sampleStore = sampleStore;
     _metricSampleAggregator = metricSampleAggregator;
@@ -27,7 +27,6 @@ public class SampleLoadingTask implements Runnable {
     try {
       _sampleStore.loadSamples(new SampleStore.SampleLoader(_metricSampleAggregator));
       ModelParameters.updateModelCoefficient();
-      _metricSampleAggregator.refreshCompletenessCache();
     } finally {
       // The sample loading task is run before the load monitor starts.
       _loadMonitorTaskRunner.setState(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING);

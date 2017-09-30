@@ -4,13 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
+import com.google.gson.Gson;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
-import com.google.gson.Gson;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -75,7 +75,7 @@ public class ClusterModel implements Serializable {
     // A set of healthy brokers
     _healthyBrokers = new HashSet<>();
     // Initially cluster does not contain any load.
-    _load = Load.newLoad();
+    _load = new Load();
     _clusterCapacity = new double[Resource.cachedValues().size()];
     _maxReplicationFactor = 1;
     _replicationFactorByTopic = new HashMap<>();
@@ -302,17 +302,15 @@ public class ClusterModel implements Serializable {
                                          + " because the destination replica is a leader.");
     }
 
-    /**
-     * Transfer the leadership load (whole outbound network and a fraction of CPU load) of source replica to the
-     * destination replica.
-     * (1) Remove and get the outbound network load and a fraction of CPU load associated with leadership from the
-     * given replica.
-     * (2) Add the outbound network load and CPU load associated with leadership to the given replica.
-     */
-
+    // Transfer the leadership load (whole outbound network and a fraction of CPU load) of source replica to the
+    // destination replica.
+    // (1) Remove and get the outbound network load and a fraction of CPU load associated with leadership from the
+    // given replica.
+    // (2) Add the outbound network load and CPU load associated with leadership to the given replica.
+    //
     // Remove the load from the source rack.
     Rack rack = broker(sourceBrokerId).rack();
-    Map<Resource, Map<Long, Double>> resourceToLeadershipLoadBySnapshotTime = rack.makeFollower(sourceBrokerId, tp);
+    Map<Resource, double[]> resourceToLeadershipLoadBySnapshotTime = rack.makeFollower(sourceBrokerId, tp);
     // Add the load to the destination rack.
     rack = broker(destinationBrokerId).rack();
     rack.makeLeader(destinationBrokerId, tp, resourceToLeadershipLoadBySnapshotTime);
@@ -478,33 +476,39 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Push the latest snapshot information containing the snapshot time and resource loads to the cluster.
+   * Set the load for the given replica. This method should be called only once for each replica.
    *
    * @param rackId         Rack id.
    * @param brokerId       Broker Id containing the replica with the given topic partition.
-   * @param tp Topic partition that identifies the replica in this broker.
-   * @param snapshot       Snapshot containing latest state for each resource.
+   * @param tp             Topic partition that identifies the replica in this broker.
+   * @param metricValues   The load of the replica.
+   * @param windows        The windows list of the aggregated metrics.
    */
-  public void pushLatestSnapshot(String rackId, int brokerId, TopicPartition tp, Snapshot snapshot) {
+  public void setReplicaLoad(String rackId,
+                             int brokerId,
+                             TopicPartition tp,
+                             AggregatedMetricValues metricValues,
+                             List<Long> windows) {
     // Sanity check for the attempts to push more than allowed number of snapshots having different times.
-    if (_validSnapshotTimes.add(snapshot.time()) && _validSnapshotTimes.size() > Load.maxNumSnapshots()) {
-      throw new IllegalArgumentException("Cluster cannot contain snapshots for more than " + Load.maxNumSnapshots()
-                                         + " unique snapshot times.");
+    if (!broker(brokerId).replica(tp).load().isEmpty()) {
+      throw new IllegalStateException(String.format("The load for %s on broker %d, rack %s already has metric values.",
+                                                    tp, brokerId, rackId));
     }
+
     Rack rack = rack(rackId);
-    rack.pushLatestSnapshot(brokerId, tp, snapshot);
+    rack.setReplicaLoad(brokerId, tp, metricValues, windows);
 
     // Update the recent load of cluster.
-    _load.addSnapshot(snapshot);
+    _load.addMetricValues(metricValues, windows);
     // If this snapshot belongs to leader, update leadership load.
     Replica leader = partition(tp).leader();
     if (leader != null && leader.broker().id() == brokerId) {
       // Leadership load must be updated for each broker containing a replica of the same partition.
       for (Replica follower : partition(tp).followers()) {
-        _potentialLeadershipLoadByBrokerId.get(follower.broker().id()).addSnapshot(snapshot);
+        _potentialLeadershipLoadByBrokerId.get(follower.broker().id()).addMetricValues(metricValues, windows);
       }
       // Make this update for the broker containing the leader as well.
-      _potentialLeadershipLoadByBrokerId.get(brokerId).addSnapshot(snapshot);
+      _potentialLeadershipLoadByBrokerId.get(brokerId).addMetricValues(metricValues, windows);
     }
   }
 
@@ -592,7 +596,7 @@ public class ClusterModel implements Serializable {
    * @return Created broker.
    */
   public Broker createBroker(String rackId, String host, int brokerId, Map<Resource, Double> brokerCapacity) {
-    _potentialLeadershipLoadByBrokerId.putIfAbsent(brokerId, Load.newLoad());
+    _potentialLeadershipLoadByBrokerId.putIfAbsent(brokerId, new Load());
     Rack rack = rack(rackId);
     _brokerIdToRack.put(brokerId, rack);
     Broker broker = rack.createBroker(brokerId, host, brokerCapacity);
@@ -614,9 +618,8 @@ public class ClusterModel implements Serializable {
 
   /**
    * Get a list of sorted (in ascending order by resource) healthy brokers having utilization under:
-   * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#_isHostResource} and
-   * {@link Resource#_isBrokerResource)). Utilization threshold might be any capacity constraint thresholds such as
-   * balance or capacity.
+   * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#_isHostResource}).
+   * Utilization threshold might be any capacity constraint thresholds such as balance or capacity.
    *
    * @param resource             Resource for which brokers will be sorted.
    * @param utilizationThreshold Utilization threshold for the given resource.
@@ -725,40 +728,40 @@ public class ClusterModel implements Serializable {
     // SANITY CHECK #1: Each load in the cluster must contain exactly the number of snapshots defined by the Load.
     Map<String, Integer> numSnapshotsByErrorMsg = new HashMap<>();
 
-    int expectedNumSnapshots = _load.numSnapshots();
+    int expectedNumSnapshots = _load.numWindows();
 
     // Check leadership loads.
     for (Map.Entry<Integer, Load> entry : _potentialLeadershipLoadByBrokerId.entrySet()) {
       int brokerId = entry.getKey();
       Load load = entry.getValue();
-      if (load.numSnapshots() != expectedNumSnapshots && broker(brokerId).replicas().size() != 0) {
-        numSnapshotsByErrorMsg.put("Leadership(" + brokerId + ")", load.numSnapshots());
+      if (load.numWindows() != expectedNumSnapshots && broker(brokerId).replicas().size() != 0) {
+        numSnapshotsByErrorMsg.put("Leadership(" + brokerId + ")", load.numWindows());
       }
     }
 
     // Check rack loads.
     for (Rack rack : _racksById.values()) {
-      if (rack.load().numSnapshots() != expectedNumSnapshots && rack.replicas().size() != 0) {
-        numSnapshotsByErrorMsg.put("Rack(id:" + rack.id() + ")", rack.load().numSnapshots());
+      if (rack.load().numWindows() != expectedNumSnapshots && rack.replicas().size() != 0) {
+        numSnapshotsByErrorMsg.put("Rack(id:" + rack.id() + ")", rack.load().numWindows());
       }
 
       // Check the host load.
       for (Host host : rack.hosts()) {
-        if (host.load().numSnapshots() != expectedNumSnapshots && host.replicas().size() != 0) {
-          numSnapshotsByErrorMsg.put("Host(id:" + host.name() + ")", host.load().numSnapshots());
+        if (host.load().numWindows() != expectedNumSnapshots && host.replicas().size() != 0) {
+          numSnapshotsByErrorMsg.put("Host(id:" + host.name() + ")", host.load().numWindows());
         }
 
         // Check broker loads.
         for (Broker broker : rack.brokers()) {
-          if (broker.load().numSnapshots() != expectedNumSnapshots && broker.replicas().size() != 0) {
-            numSnapshotsByErrorMsg.put("Broker(id:" + broker.id() + ")", broker.load().numSnapshots());
+          if (broker.load().numWindows() != expectedNumSnapshots && broker.replicas().size() != 0) {
+            numSnapshotsByErrorMsg.put("Broker(id:" + broker.id() + ")", broker.load().numWindows());
           }
 
           // Check replica loads.
           for (Replica replica : broker.replicas()) {
-            if (replica.load().numSnapshots() != expectedNumSnapshots) {
+            if (replica.load().numWindows() != expectedNumSnapshots) {
               numSnapshotsByErrorMsg.put("Replica(id:" + replica.topicPartition() + "-" + broker.id() + ")",
-                                         replica.load().numSnapshots());
+                                         replica.load().numWindows());
             }
           }
         }

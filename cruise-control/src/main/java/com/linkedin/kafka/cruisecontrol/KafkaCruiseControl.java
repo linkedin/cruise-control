@@ -17,22 +17,19 @@ import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -61,12 +58,11 @@ public class KafkaCruiseControl {
     _config = config;
     _time = new SystemTime();
     // initialize some of the static state of Kafka Cruise Control;
-    Load.init(config);
     ModelUtils.init(config);
     ModelParameters.init(config);
 
     // Instantiate the components.
-    _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry);
+    _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry, KafkaCruiseControlMetricDef.metricDef());
     _goalOptimizerExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry);
@@ -342,7 +338,7 @@ public class KafkaCruiseControl {
     ModelCompletenessRequirements requirementsForCache = _goalOptimizer.modelCompletenessRequirementsForPrecomputing();
     boolean hasWeakerRequirement =
         requirementsForCache.minMonitoredPartitionsPercentage() > modelCompletenessRequirements.minMonitoredPartitionsPercentage()
-        || requirementsForCache.minRequiredNumSnapshotWindows() > modelCompletenessRequirements.minRequiredNumSnapshotWindows()
+        || requirementsForCache.minRequiredNumWindows() > modelCompletenessRequirements.minRequiredNumWindows()
         || (requirementsForCache.includeAllTopics() && !modelCompletenessRequirements.includeAllTopics());
     if ((goals != null && !goals.isEmpty()) || hasWeakerRequirement) {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
@@ -404,14 +400,6 @@ public class KafkaCruiseControl {
    */
   public ModelCompletenessRequirements defaultModelCompletenessRequirements() {
     return _goalOptimizer.defaultModelCompletenessRequirements();
-  }
-
-  /**
-   * Get the current snapshots for Cruise Control.  This is basically a data dump.
-   * @return a non-null map of the current snapshots for all partitions.
-   */
-  public SortedMap<Long, Map<TopicPartition, Snapshot>> currentSnapshots() {
-    return _loadMonitor.currentSnapshots();
   }
 
   private ModelCompletenessRequirements modelCompletenessRequirements(Collection<Goal> overrides) {

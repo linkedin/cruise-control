@@ -110,8 +110,8 @@ public class KafkaCruiseControlServletDataFromTest {
 
     assertEquals(new HashSet<>(goalsAndRequirements.goals()), new HashSet<>(_expectedGoalsToUse));
     if (_expectedRequirements != null) {
-      assertEquals(_expectedRequirements.minRequiredNumSnapshotWindows(),
-                   goalsAndRequirements.requirements().minRequiredNumSnapshotWindows());
+      assertEquals(_expectedRequirements.minRequiredNumWindows(),
+                   goalsAndRequirements.requirements().minRequiredNumWindows());
       assertEquals(_expectedRequirements.minMonitoredPartitionsPercentage(),
                    goalsAndRequirements.requirements().minMonitoredPartitionsPercentage(), 0.0);
       assertEquals(_expectedRequirements.includeAllTopics(),

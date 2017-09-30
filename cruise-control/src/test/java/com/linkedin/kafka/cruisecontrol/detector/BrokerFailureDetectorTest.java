@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import com.linkedin.kafka.clients.utils.tests.EmbeddedBroker;
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.Arrays;
@@ -127,7 +127,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
     LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
     EasyMock.expect(mockLoadMonitor.brokersWithPartitions(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
     EasyMock.replay(mockLoadMonitor);
-    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().getConnectionString());
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
     return new BrokerFailureDetector(kafkaCruiseControlConfig,
@@ -145,7 +145,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   private void restartDeadBroker(int index) throws Exception {
     _brokers.get(index).startup();
   }
-  
+
   private MockTime getMockTime() {
     return new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
   }

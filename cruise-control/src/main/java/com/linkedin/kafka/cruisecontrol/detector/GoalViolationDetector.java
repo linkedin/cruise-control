@@ -4,12 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.exception.NotEnoughValidSnapshotsException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
@@ -124,8 +124,8 @@ public class GoalViolationDetector implements Runnable {
       if (!goalViolations.violations().isEmpty()) {
         _anomalies.add(goalViolations);
       }
-    } catch (NotEnoughValidSnapshotsException nempe) {
-      LOG.debug("Skipping goal violation detection because there are not enough modeled partitions.");
+    } catch (NotEnoughValidWindowsException nevwe) {
+      LOG.debug("Skipping goal violation detection because there are not enough valid windows.");
     } catch (KafkaCruiseControlException kcce) {
       LOG.warn("Goal violation detector received exception", kcce);
     } catch (Exception e) {
