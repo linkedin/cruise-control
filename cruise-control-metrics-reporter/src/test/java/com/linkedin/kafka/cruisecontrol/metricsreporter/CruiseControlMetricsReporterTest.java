@@ -4,9 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
+import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
-import com.linkedin.kafka.cruisecontrol.testutils.AbstractKafkaIntegrationTestHarness;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;

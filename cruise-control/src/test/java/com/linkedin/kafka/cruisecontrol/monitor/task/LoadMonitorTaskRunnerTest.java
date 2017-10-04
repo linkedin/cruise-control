@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
@@ -16,7 +17,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSample
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
-import com.linkedin.kafka.cruisecontrol.testutils.AbstractKafkaIntegrationTestHarness;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,6 +30,9 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import kafka.admin.AdminUtils;
 import kafka.admin.RackAwareMode;
+import kafka.utils.ZkUtils;
+import org.I0Itec.zkclient.ZkClient;
+import org.I0Itec.zkclient.ZkConnection;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
@@ -171,6 +174,12 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     props.setProperty(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG, Long.toString(SAMPLING_INTERVAL));
     props.setProperty(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
     return props;
+  }
+
+  private ZkUtils zkUtils() {
+    ZkConnection zkConnection = new ZkConnection(zookeeper().getConnectionString());
+    ZkClient zkClient = new ZkClient(zkConnection);
+    return new ZkUtils(zkClient, zkConnection, false);
   }
 
   // A simple metric sampler that increment the mock time by 1 and

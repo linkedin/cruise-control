@@ -9,12 +9,15 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
 import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
-import com.linkedin.kafka.cruisecontrol.testutils.AbstractKafkaIntegrationTestHarness;
+import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Properties;
 import kafka.admin.AdminUtils;
 import kafka.admin.RackAwareMode;
+import kafka.utils.ZkUtils;
+import org.I0Itec.zkclient.ZkClient;
+import org.I0Itec.zkclient.ZkConnection;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.SystemTime;
 import org.junit.After;
@@ -95,10 +98,16 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     props.setProperty(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, capacityConfigFile);
     props.setProperty(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     props.setProperty(KafkaCruiseControlConfig.METRIC_SAMPLER_CLASS_CONFIG, NoopSampler.class.getName());
-    props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zkConnect());
+    props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().getConnectionString());
     props.setProperty(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG, "10");
     props.setProperty(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "1000");
     return props;
+  }
+
+  private ZkUtils zkUtils() {
+    ZkConnection zkConnection = new ZkConnection(zookeeper().getConnectionString());
+    ZkClient zkClient = new ZkClient(zkConnection);
+    return new ZkUtils(zkClient, zkConnection, false);
   }
 
 }

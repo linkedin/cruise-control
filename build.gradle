@@ -8,6 +8,7 @@ allprojects {
 
   repositories {
     mavenCentral()
+    jcenter()
   }
 
   //wrapper generation task
@@ -101,6 +102,7 @@ project(':cruise-control') {
     compile 'io.dropwizard.metrics:metrics-core:3.2.2'
 
     testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
+    testCompile 'com.linkedin.kafka.clients:li-apache-kafka-clients:0.0.7:tests@jar'
     testCompile "org.scala-lang:scala-library:2.11.11"
     testCompile 'org.easymock:easymock:3.4'
     testCompile 'org.apache.kafka:kafka_2.11:0.10.1.0:test'
@@ -123,7 +125,6 @@ project(':cruise-control') {
 }
 
 project(':cruise-control-metrics-reporter') {
-  apply plugin: 'scala'
 
   configurations {
     testOutput
@@ -137,19 +138,9 @@ project(':cruise-control-metrics-reporter') {
     compile 'org.apache.commons:commons-math3:3.6.1'
 
     testCompile 'org.bouncycastle:bcpkix-jdk15on:1.54'
+    testCompile 'com.linkedin.kafka.clients:li-apache-kafka-clients:0.0.7:tests@jar'
     testOutput sourceSets.test.output
   }
 
-  sourceSets {
-    test {
-      java {
-        srcDirs = []
-      }
-      scala {
-        srcDirs = ['src/test/java', 'src/test/scala']
-      }
-    }
-
-  }
 }
 
