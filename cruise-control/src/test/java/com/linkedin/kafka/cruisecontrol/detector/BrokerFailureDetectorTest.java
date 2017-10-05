@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
@@ -49,7 +50,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
 
   @Test
   public void testFailureDetection() throws Exception {
-    Time mockTime = new MockTime(100L);
+    Time mockTime = getMockTime();
     Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
     try {
@@ -81,7 +82,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
 
   @Test
   public void testDetectorStartWithFailedBrokers() throws Exception {
-    Time mockTime = new MockTime(100L);
+    Time mockTime = getMockTime();
     Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
@@ -97,7 +98,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
 
   @Test
   public void testLoadFailedBrokersFromZK() throws Exception {
-    Time mockTime = new MockTime(100L);
+    Time mockTime = getMockTime();
     Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
@@ -143,5 +144,9 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
 
   private void restartDeadBroker(int index) throws Exception {
     _brokers.get(index).startup();
+  }
+  
+  private MockTime getMockTime() {
+    return new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
   }
 }

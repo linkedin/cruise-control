@@ -31,8 +31,6 @@ import java.util.concurrent.TimeUnit;
 import kafka.admin.AdminUtils;
 import kafka.admin.RackAwareMode;
 import kafka.utils.ZkUtils;
-import org.I0Itec.zkclient.ZkClient;
-import org.I0Itec.zkclient.ZkConnection;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
@@ -62,8 +60,9 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   @Before
   public void setUp() {
     super.setUp();
+    ZkUtils zkUtils = CruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
     for (int i = 0; i < NUM_TOPICS; i++) {
-      AdminUtils.createTopic(zkUtils(), "topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
+      AdminUtils.createTopic(zkUtils, "topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
     }
   }
 
@@ -174,12 +173,6 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     props.setProperty(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG, Long.toString(SAMPLING_INTERVAL));
     props.setProperty(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
     return props;
-  }
-
-  private ZkUtils zkUtils() {
-    ZkConnection zkConnection = new ZkConnection(zookeeper().getConnectionString());
-    ZkClient zkClient = new ZkClient(zkConnection);
-    return new ZkUtils(zkClient, zkConnection, false);
   }
 
   // A simple metric sampler that increment the mock time by 1 and
