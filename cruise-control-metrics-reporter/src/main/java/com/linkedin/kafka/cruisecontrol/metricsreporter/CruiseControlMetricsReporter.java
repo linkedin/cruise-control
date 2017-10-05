@@ -31,13 +31,6 @@ import org.apache.kafka.common.utils.KafkaThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfigs.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfigs.CRUISE_CONTROL_METRICS_TOPIC_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfigs.DEFAULT_CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfigs.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfigs.PRODUCER_ID;
-
-
 public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporter.class);
   private YammerMetricProcessor _yammerMetricProcessor;
@@ -86,22 +79,25 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    Properties producerProps = CruiseControlMetricsReporterConfigs.parseConfigMap(configs);
-    if (!producerProps.containsKey(CruiseControlMetricsReporterConfigs.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG))) {
+    Properties producerProps = CruiseControlMetricsReporterConfig.parseProducerConfigs(configs);
+    if (!producerProps.containsKey(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)) {
       String port = (String) configs.get("port");
       String bootstrapServers = "localhost:" + (port == null ? "9092" : port);
-      producerProps.put(CruiseControlMetricsReporterConfigs.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
+      producerProps.put(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
                         bootstrapServers);
       LOG.info("Using default value of {} for {}", bootstrapServers,
-               CruiseControlMetricsReporterConfigs.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
+               CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
     }
-    if (!producerProps.containsKey(CruiseControlMetricsReporterConfigs.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG))) {
+    if (!producerProps.containsKey(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)) {
       String securityProtocol = "PLAINTEXT";
       LOG.info("Using default value of {} for {}", securityProtocol,
-               CruiseControlMetricsReporterConfigs.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG));
+               CruiseControlMetricsReporterConfig.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG));
     }
+    CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(configs, false);
 
-    setIfAbsent(producerProps, ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_ID);
+    setIfAbsent(producerProps,
+                ProducerConfig.CLIENT_ID_CONFIG,
+                reporterConfig.getString(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.CLIENT_ID_CONFIG)));
     // Set batch.size and linger.ms to a big number to have better batching.
     setIfAbsent(producerProps, ProducerConfig.LINGER_MS_CONFIG, "30000");
     setIfAbsent(producerProps, ProducerConfig.BATCH_SIZE_CONFIG, "800000");
@@ -111,14 +107,11 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     setIfAbsent(producerProps, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
     setIfAbsent(producerProps, ProducerConfig.ACKS_CONFIG, "all");
     _producer = new KafkaProducer<>(producerProps);
-    _cruiseControlMetricsTopic = (String) configs.get(CRUISE_CONTROL_METRICS_TOPIC_CONFIG);
-    if (_cruiseControlMetricsTopic == null) {
-      _cruiseControlMetricsTopic = DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
-    }
-    String reportingIntervalString = (String) configs.get(CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG);
-    _reportingIntervalMs = reportingIntervalString == null ?
-        DEFAULT_CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS : Long.parseLong(reportingIntervalString);
+
     _brokerId = Integer.parseInt((String) configs.get(KafkaConfig.BrokerIdProp()));
+
+    _cruiseControlMetricsTopic = reporterConfig.getString(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG);
+    _reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG);
   }
 
   @Override

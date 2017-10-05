@@ -12,8 +12,8 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.protocol.SecurityProtocol;
 import org.junit.Assert;
 
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfigs.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfigs.CRUISE_CONTROL_METRICS_TOPIC_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG;
 
 
 public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsReporterTest {
@@ -33,6 +33,7 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
   public Properties overridingProps() {
     Properties props = new Properties();
     int port = findLocalPort();
+    // We need to convert all the properties to the cruise control properties.
     setSecurityConfigs(props, "producer");
     for (String configName : ProducerConfig.configNames()) {
       Object value = props.get(configName);
@@ -43,8 +44,8 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
     }
     props.setProperty("metric.reporters", CruiseControlMetricsReporter.class.getName());
     props.setProperty("listeners", "SSL://127.0.0.1:" + port);
-    props.setProperty(CruiseControlMetricsReporterConfigs.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG), "127.0.0.1:" + port);
-    props.setProperty(CruiseControlMetricsReporterConfigs.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG), "SSL");
+    props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG), "127.0.0.1:" + port);
+    props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG), "SSL");
     props.setProperty(CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG, "100");
     props.setProperty(CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
     return props;
@@ -61,7 +62,7 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
   }
 
   private String appendPrefix(Object key) {
-    return CruiseControlMetricsReporterConfigs.config((String) key);
+    return CruiseControlMetricsReporterConfig.config((String) key);
   }
 
 }

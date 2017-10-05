@@ -83,11 +83,11 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     int port = findLocalPort();
     props.setProperty("metric.reporters", CruiseControlMetricsReporter.class.getName());
     props.setProperty("listeners", "PLAINTEXT://127.0.0.1:" + port);
-    props.setProperty(CruiseControlMetricsReporterConfigs.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
+    props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
                       "127.0.0.1:" + port);
-    props.setProperty(CruiseControlMetricsReporterConfigs.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG,
+    props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG,
                       "100");
-    props.setProperty(CruiseControlMetricsReporterConfigs.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
+    props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
     return props;
   }
 
