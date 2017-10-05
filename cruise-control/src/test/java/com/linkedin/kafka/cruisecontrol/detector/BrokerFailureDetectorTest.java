@@ -15,10 +15,7 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import kafka.utils.MockTime;
-import kafka.utils.ZkUtils;
-import org.I0Itec.zkclient.ZkClient;
-import org.I0Itec.zkclient.ZkConnection;
+import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.After;
@@ -51,16 +48,16 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   }
 
   @Test
-  public void testFailureDetection() {
+  public void testFailureDetection() throws Exception {
     Time mockTime = new MockTime(100L);
     Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
-
     try {
       // Start detection.
       detector.startDetection();
       assertTrue(anomalies.isEmpty());
-      int brokerId = killRandomBroker();
+      int brokerId = 0;
+      killBroker(brokerId);
       long start = System.currentTimeMillis();
       while (anomalies.isEmpty() && System.currentTimeMillis() < start + 30000) {
         // wait for the anomalies to be drained.
@@ -74,7 +71,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
 
       // Bring the broker back
       System.out.println("Starting brokers.");
-      restartDeadBrokers();
+      restartDeadBroker(brokerId);
       detector.detectBrokerFailures();
       assertTrue(detector.failedBrokers().isEmpty());
     } finally {
@@ -83,13 +80,14 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   }
 
   @Test
-  public void testDetectorStartWithFailedBrokers() {
+  public void testDetectorStartWithFailedBrokers() throws Exception {
     Time mockTime = new MockTime(100L);
     Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
     try {
-      int brokerId = killRandomBroker();
+      int brokerId = 0;
+      killBroker(brokerId);
       detector.startDetection();
       assertEquals(Collections.singletonMap(brokerId, 100L), detector.failedBrokers());
     } finally {
@@ -98,14 +96,15 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   }
 
   @Test
-  public void testLoadFailedBrokersFromZK() {
+  public void testLoadFailedBrokersFromZK() throws Exception {
     Time mockTime = new MockTime(100L);
     Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
     try {
       detector.startDetection();
-      int brokerId = killRandomBroker();
+      int brokerId = 0;
+      killBroker(brokerId);
       long start = System.currentTimeMillis();
       while (anomalies.isEmpty() && System.currentTimeMillis() < start + 30000) {
         // Wait for the anomalies to be drained.
@@ -136,18 +135,13 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
                                      time);
   }
 
-  private ZkUtils zkUtils() {
-    ZkConnection zkConnection = new ZkConnection(zookeeper().getConnectionString());
-    ZkClient zkClient = new ZkClient(zkConnection);
-    return new ZkUtils(zkClient, zkConnection, false);
-  }
-
-
   private void killBroker(int index) throws Exception {
-    _brokers.get(Integer.toString(index)).close();
+    EmbeddedBroker broker = _brokers.get(index);
+    broker.shutdown();
+    broker.awaitShutdown();
   }
 
-  private void restartDeadBrokers(int index) {
-
+  private void restartDeadBroker(int index) throws Exception {
+    _brokers.get(index).startup();
   }
 }

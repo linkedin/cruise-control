@@ -246,6 +246,11 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     }
 
     @Override
+    public long hiResClockMs() {
+      return 0;
+    }
+
+    @Override
     public long nanoseconds() {
       this.sleep(autoTickMs);
       return nanos;

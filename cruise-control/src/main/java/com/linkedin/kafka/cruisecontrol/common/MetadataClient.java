@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.common;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import java.net.InetSocketAddress;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.ClientUtils;
@@ -39,7 +40,7 @@ public class MetadataClient {
     _time = time;
     List<InetSocketAddress> addresses =
         ClientUtils.parseAndValidateAddresses(config.getList(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
-    _metadata.update(Cluster.bootstrap(addresses), time.milliseconds());
+    _metadata.update(Cluster.bootstrap(addresses), Collections.emptySet(), time.milliseconds());
     ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config.values());
     _networkClient = new NetworkClient(
         new Selector(config.getLong(KafkaCruiseControlConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG), new Metrics(), time, "load-monitor", channelBuilder),
@@ -50,7 +51,8 @@ public class MetadataClient {
         config.getInt(KafkaCruiseControlConfig.SEND_BUFFER_CONFIG),
         config.getInt(KafkaCruiseControlConfig.RECEIVE_BUFFER_CONFIG),
         config.getInt(KafkaCruiseControlConfig.REQUEST_TIMEOUT_MS_CONFIG),
-        _time);
+        _time,
+        true);
     _metadataTTL = metadataTTL;
   }
 
@@ -69,7 +71,7 @@ public class MetadataClient {
     if (_metadataTTL <= 0 || (_time.milliseconds() >= _metadata.lastSuccessfulUpdate() + _metadataTTL)) {
       // This is a super confusing interface in the Metadata. If we don't set this to false, the metadata.update()
       // will remove all the topics that are not in the metadata interested topics list.
-      _metadata.addListener(cluster -> _metadata.needMetadataForAllTopics(false));
+      _metadata.addListener((cluster, unavailableTopics) -> _metadata.needMetadataForAllTopics(false));
       // Cruise Control always fetch metadata for all the topics.
       _metadata.needMetadataForAllTopics(true);
       int version = _metadata.requestUpdate();
@@ -97,7 +99,7 @@ public class MetadataClient {
   }
 
   /**
-   * Get the current cluster and generation 
+   * Get the current cluster and generation
    */
   public ClusterAndGeneration clusterAndGeneration() {
     return new ClusterAndGeneration(_metadata.fetch(), _metadataGeneration.get());
