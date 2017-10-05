@@ -486,9 +486,9 @@ public class MetricSampleAggregatorTest {
     for (TopicPartition tp : partitions) {
       parts.add(new PartitionInfo(tp.topic(), tp.partition(), node0, nodes, nodes));
     }
-    Cluster cluster = new Cluster(allNodes, parts, Collections.emptySet());
+    Cluster cluster = new Cluster("clusterId", allNodes, parts, Collections.emptySet(), Collections.emptySet());
     Metadata metadata = new Metadata();
-    metadata.update(cluster, 0);
+    metadata.update(cluster, Collections.emptySet(), 0);
     return metadata;
   }
 

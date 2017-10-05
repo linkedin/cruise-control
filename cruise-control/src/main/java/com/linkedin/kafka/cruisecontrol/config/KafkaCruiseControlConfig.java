@@ -687,7 +687,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 KafkaSampleStore.class.getName(),
                 ConfigDef.Importance.LOW,
                 SAMPLE_STORE_CLASS_DOC)
-        .withClientSslSupport();
+        .withClientSslSupport()
+        .withClientSaslSupport();
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals) {

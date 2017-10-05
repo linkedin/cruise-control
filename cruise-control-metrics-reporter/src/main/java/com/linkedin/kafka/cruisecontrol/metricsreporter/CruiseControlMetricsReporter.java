@@ -17,6 +17,7 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import kafka.server.KafkaConfig;
+import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -30,15 +31,8 @@ import org.apache.kafka.common.utils.KafkaThread;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-
 public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporter.class);
-  public static final String CRUISE_CONTROL_METRICS_TOPIC = "cruise.control.metrics.topic";
-  public static final String CRUISE_CONTROL_METRICS_REPORTER_BOOTSTRAP_SERVERS = "cruise.control.metrics.reporter.bootstrap.servers";
-  public static final String CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS = "cruise.control.metrics.reporting.interval.ms";
-  public static final String DEFAULT_CRUISE_CONTROL_METRICS_TOPIC = "__CruiseControlMetrics";
-  private static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS = 60000;
-  private static final String PRODUCER_ID = "CruiseControlMetricsReporter";
   private YammerMetricProcessor _yammerMetricProcessor;
   private Map<org.apache.kafka.common.MetricName, KafkaMetric> _interestedMetrics = new ConcurrentHashMap<>();
   private KafkaThread _metricsReporterRunner;
@@ -85,33 +79,39 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    String bootstrapServers = (String) configs.get(CRUISE_CONTROL_METRICS_REPORTER_BOOTSTRAP_SERVERS);
-    if (bootstrapServers == null) {
+    Properties producerProps = CruiseControlMetricsReporterConfig.parseProducerConfigs(configs);
+    if (!producerProps.containsKey(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)) {
       String port = (String) configs.get("port");
-      bootstrapServers = "localhost:" + (port == null ? "9092" : port);
-      LOG.info("Using default value of {} for {}", bootstrapServers, CRUISE_CONTROL_METRICS_REPORTER_BOOTSTRAP_SERVERS);
+      String bootstrapServers = "localhost:" + (port == null ? "9092" : port);
+      producerProps.put(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
+                        bootstrapServers);
+      LOG.info("Using default value of {} for {}", bootstrapServers,
+               CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
     }
+    if (!producerProps.containsKey(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)) {
+      String securityProtocol = "PLAINTEXT";
+      LOG.info("Using default value of {} for {}", securityProtocol,
+               CruiseControlMetricsReporterConfig.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG));
+    }
+    CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(configs, false);
 
-    Properties producerProps = new Properties();
-    producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-    producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_ID);
+    setIfAbsent(producerProps,
+                ProducerConfig.CLIENT_ID_CONFIG,
+                reporterConfig.getString(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.CLIENT_ID_CONFIG)));
     // Set batch.size and linger.ms to a big number to have better batching.
-    producerProps.setProperty(ProducerConfig.LINGER_MS_CONFIG, "30000");
-    producerProps.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, "800000");
-    producerProps.setProperty(ProducerConfig.RETRIES_CONFIG, "5");
-    producerProps.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
-    producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-    producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
-    producerProps.setProperty(ProducerConfig.ACKS_CONFIG, "all");
+    setIfAbsent(producerProps, ProducerConfig.LINGER_MS_CONFIG, "30000");
+    setIfAbsent(producerProps, ProducerConfig.BATCH_SIZE_CONFIG, "800000");
+    setIfAbsent(producerProps, ProducerConfig.RETRIES_CONFIG, "5");
+    setIfAbsent(producerProps, ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
+    setIfAbsent(producerProps, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+    setIfAbsent(producerProps, ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
+    setIfAbsent(producerProps, ProducerConfig.ACKS_CONFIG, "all");
     _producer = new KafkaProducer<>(producerProps);
-    _cruiseControlMetricsTopic = (String) configs.get(CRUISE_CONTROL_METRICS_TOPIC);
-    if (_cruiseControlMetricsTopic == null) {
-      _cruiseControlMetricsTopic = DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
-    }
-    String reportingIntervalString = (String) configs.get(CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS);
-    _reportingIntervalMs = reportingIntervalString == null ?
-        DEFAULT_CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS : Long.parseLong(reportingIntervalString);
+
     _brokerId = Integer.parseInt((String) configs.get(KafkaConfig.BrokerIdProp()));
+
+    _cruiseControlMetricsTopic = reporterConfig.getString(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG);
+    _reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG);
   }
 
   @Override
@@ -197,7 +197,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   }
 
   private void reportKafkaMetrics(long now) {
-    LOG.debug("Reporing KafkaMetrics.");
+    LOG.debug("Reporting KafkaMetrics.");
     for (KafkaMetric metric : _interestedMetrics.values()) {
       sendCruiseControlMetric(MetricsUtils.toCruiseControlMetric(metric, now, _brokerId));
     }
@@ -215,6 +215,12 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     if (MetricsUtils.isInterested(metric.metricName())) {
       LOG.debug("Added new metric {} to cruise control metrics reporter.", metric.metricName());
       _interestedMetrics.put(metric.metricName(), metric);
+    }
+  }
+
+  private void setIfAbsent(Properties props, String key, String value) {
+    if (!props.containsKey(key)) {
+      props.setProperty(key, value);
     }
   }
 
