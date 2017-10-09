@@ -104,10 +104,10 @@ public class Load implements Serializable {
       if (_snapshotsByTime.isEmpty()) {
         return 0.0;
       }
-      return _snapshotsByTime.get(0).utilizationFor(resource);
+      return Math.max(0, _snapshotsByTime.get(0).utilizationFor(resource));
     }
 
-    return _accumulatedUtilization[resource.id()] / _snapshotsByTime.size();
+    return Math.max(0, _accumulatedUtilization[resource.id()] / _snapshotsByTime.size());
   }
 
   /**

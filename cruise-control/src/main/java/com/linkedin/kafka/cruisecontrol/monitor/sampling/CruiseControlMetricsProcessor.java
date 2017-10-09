@@ -187,6 +187,7 @@ public class CruiseControlMetricsProcessor {
   private PartitionMetricSample buildPartitionMetricSample(Cluster cluster,
                                                            TopicPartition tp,
                                                            Map<Integer, Map<String, Integer>> leaderDistributionStats) {
+    TopicPartition tpWithDotHandled = partitionHandleDotInTopicName(tp);
     int leaderId = cluster.leaderFor(tp).id();
     BrokerLoad brokerLoad = _brokerLoad.get(leaderId);
     if (brokerLoad == null || !brokerLoad.isValid()) {
@@ -199,7 +200,7 @@ public class CruiseControlMetricsProcessor {
       LOG.debug("Skip generating metric sample for partition {} because broker {} did not report CPU utilization.", tp, leaderId);
       return null;
     }
-    ValueAndTime partSize = brokerLoad.size(tp);
+    ValueAndTime partSize = brokerLoad.size(tpWithDotHandled);
     if (partSize == null) {
       // This broker is no longer the leader.
       LOG.debug("Skip generating metric sample for partition {} because broker {} is no longer the leader.", tp, leaderId);
@@ -208,7 +209,7 @@ public class CruiseControlMetricsProcessor {
 
     int numLeaderPartitionsOnBroker = leaderDistributionStats.get(leaderId).get(tp.topic());
 
-    IOLoad topicIOLoad = brokerLoad.ioLoad(tp.topic());
+    IOLoad topicIOLoad = brokerLoad.ioLoad(tpWithDotHandled.topic());
     double topicBytesInInBroker = topicIOLoad.bytesIn();
     double topicBytesOutInBroker = topicIOLoad.bytesOut();
     double partitionBytesInRate = topicBytesInInBroker / numLeaderPartitionsOnBroker;
@@ -227,6 +228,12 @@ public class CruiseControlMetricsProcessor {
                                                               partitionBytesOutRate));
     pms.close(_maxMetricTimestamp);
     return pms;
+  }
+
+  private TopicPartition partitionHandleDotInTopicName(TopicPartition tp) {
+    // In the reported metrics, the "." in the topic name will be replaced by "_".
+    return !tp.topic().contains(".") ? tp :
+      new TopicPartition(tp.topic().replace('.', '_'), tp.partition());
   }
 
   /**
@@ -347,22 +354,24 @@ public class CruiseControlMetricsProcessor {
     }
 
     private IOLoad ioLoad(String topic) {
-      return _topicIOLoad.get(topic);
+      return _topicIOLoad.get(topic.replace('.', '_'));
     }
 
     private IOLoad ioLoad(String topic, int partition) {
-      return _topicIOLoad.compute(topic, (t, l) -> {
+      // The metric will replace . with _
+      String topicWithDotHandled = topic.replace('.', '_');
+      return _topicIOLoad.compute(topicWithDotHandled, (t, l) -> {
         if (l != null) {
           return l;
         }
         // If partition size has been reported on this partition, we create topic IO load for this topic.
         // This is because for topics that does not have an IO, the broker will not create the sensors for IO.
-        return (_partitionSize.containsKey(new TopicPartition(topic, partition))) ? new IOLoad() : null;
+        return (_partitionSize.containsKey(new TopicPartition(topicWithDotHandled, partition))) ? new IOLoad() : null;
       });
     }
 
     private ValueAndTime size(TopicPartition tp) {
-      return _partitionSize.get(tp);
+      return _partitionSize.get(partitionHandleDotInTopicName(tp));
     }
   }
 

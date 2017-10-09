@@ -54,6 +54,9 @@ public class MetadataClient {
         _time,
         true);
     _metadataTTL = metadataTTL;
+    // This is a super confusing interface in the Metadata. If we don't set this to false, the metadata.update()
+    // will remove all the topics that are not in the metadata interested topics list.
+    _metadata.addListener((cluster, unavailableTopics) -> _metadata.needMetadataForAllTopics(false));
   }
 
   /**
@@ -69,9 +72,6 @@ public class MetadataClient {
   public synchronized ClusterAndGeneration refreshMetadata(long timeout) {
     // Do not update metadata if the metadata has just been refreshed.
     if (_metadataTTL <= 0 || (_time.milliseconds() >= _metadata.lastSuccessfulUpdate() + _metadataTTL)) {
-      // This is a super confusing interface in the Metadata. If we don't set this to false, the metadata.update()
-      // will remove all the topics that are not in the metadata interested topics list.
-      _metadata.addListener((cluster, unavailableTopics) -> _metadata.needMetadataForAllTopics(false));
       // Cruise Control always fetch metadata for all the topics.
       _metadata.needMetadataForAllTopics(true);
       int version = _metadata.requestUpdate();

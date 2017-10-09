@@ -375,8 +375,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean withAvailableValidPartitions;
     List<String> goals;
     try {
-      String timeString = request.getParameter(TIME_PARAM);
-      boolean timeSpecified = timeString != null && timeString.toUpperCase().equals("NOW");
       String verboseString = request.getParameter(VERBOSE_PARAM);
       verbose = verboseString != null && Boolean.parseBoolean(verboseString);
       String ignoreProposalCacheString = request.getParameter(IGNORE_PROPOSAL_CACHE_PARAM);
@@ -386,7 +384,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       goals = goalsString == null ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
       ignoreProposalCache = (ignoreProposalCacheString != null && Boolean.parseBoolean(ignoreProposalCacheString))
-          || timeSpecified || !goals.isEmpty();
+          || !goals.isEmpty();
       if (withAvailableValidWindowsString != null && withAvailableValidPartitionsString != null) {
         throw new IllegalArgumentException("Cannot specify " + WITH_AVAILABLE_VALID_PARTITIONS + " and "
                                                + WITH_AVAILABLE_VALID_WINDOWS + " at the same time.");
@@ -396,14 +394,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
+    GoalsAndRequirements goalsAndRequirements =
+        getGoalsAndRequirements(goals, withAvailableValidPartitions, withAvailableValidWindows, ignoreProposalCache);
 
-    GoalOptimizer.OptimizerResult optimizerResult;
-    if (!ignoreProposalCache && goals.isEmpty() && !withAvailableValidPartitions && !withAvailableValidWindows) {
-      optimizerResult = _kafkaCruiseControl.getOptimizationProposals();
-    } else {
-      ModelCompletenessRequirements requirements = getRequirements(withAvailableValidPartitions, withAvailableValidWindows);
-      optimizerResult = _kafkaCruiseControl.getOptimizationProposals(goals, requirements);
-    }
+    GoalOptimizer.OptimizerResult optimizerResult =
+        _kafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(),
+                                                     goalsAndRequirements.requirements());
     String loadBeforeOptimization = optimizerResult.brokerStatsBeforeOptimization().toString();
     String loadAfterOptimization = optimizerResult.brokerStatsAfterOptimization().toString();
 
@@ -510,6 +506,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throws KafkaCruiseControlException, IOException {
     List<Integer> brokerIds = new ArrayList<>();
     boolean dryrun;
+    boolean withAvailableValidWindows;
+    boolean withAvailableValidPartitions;
     boolean throttleRemovedBroker;
     List<String> goals;
     try {
@@ -524,15 +522,28 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String goalsString = request.getParameter(GOALS_PARAM);
       goals = goalsString == null ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
+      String withAvailableValidWindowsString = request.getParameter(WITH_AVAILABLE_VALID_WINDOWS);
+      String withAvailableValidPartitionsString = request.getParameter(WITH_AVAILABLE_VALID_PARTITIONS);
+      if (withAvailableValidWindowsString != null && withAvailableValidPartitionsString != null) {
+        throw new IllegalArgumentException("Cannot specify " + WITH_AVAILABLE_VALID_PARTITIONS + " and "
+                                               + WITH_AVAILABLE_VALID_WINDOWS + " at the same time.");
+      }
+      withAvailableValidWindows = withAvailableValidWindowsString != null && Boolean.parseBoolean(withAvailableValidWindowsString);
+      withAvailableValidPartitions = withAvailableValidPartitionsString != null && Boolean.parseBoolean(withAvailableValidPartitionsString);
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-
+    GoalsAndRequirements goalsAndRequirements =
+        getGoalsAndRequirements(goals, withAvailableValidPartitions, withAvailableValidWindows, false);
     GoalOptimizer.OptimizerResult optimizerResult;
     if (endPoint == EndPoint.ADD_BROKER) {
-      optimizerResult = _kafkaCruiseControl.addBrokers(brokerIds, dryrun, throttleRemovedBroker, goals);
+      optimizerResult = _kafkaCruiseControl.addBrokers(brokerIds, dryrun, throttleRemovedBroker,
+                                                       goalsAndRequirements.goals(),
+                                                       goalsAndRequirements.requirements());
     } else {
-      optimizerResult = _kafkaCruiseControl.decommissionBrokers(brokerIds, dryrun, throttleRemovedBroker, goals);
+      optimizerResult = _kafkaCruiseControl.decommissionBrokers(brokerIds, dryrun, throttleRemovedBroker,
+                                                                goalsAndRequirements.goals(),
+                                                                goalsAndRequirements.requirements());
     }
 
     setResponseCode(response, HttpServletResponse.SC_OK);
@@ -562,7 +573,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       dryrun = dryrunString == null || Boolean.parseBoolean(dryrunString);
 
       String goalsString = request.getParameter(GOALS_PARAM);
-      goals = goalsString == null ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
+      goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
 
       String withAvailableValidWindowsString = request.getParameter(WITH_AVAILABLE_VALID_WINDOWS);
@@ -576,9 +587,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-
-    ModelCompletenessRequirements requirements = getRequirements(withAvailableValidPartitions, withAvailableValidWindows);
-    GoalOptimizer.OptimizerResult optimizerResult = _kafkaCruiseControl.rebalance(goals, dryrun, requirements);
+    GoalsAndRequirements goalsAndRequirements =
+        getGoalsAndRequirements(goals, withAvailableValidPartitions, withAvailableValidWindows, false);
+    GoalOptimizer.OptimizerResult optimizerResult = _kafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
+                                                                                  dryrun,
+                                                                                  goalsAndRequirements.requirements());
 
     setResponseCode(response, HttpServletResponse.SC_OK);
     OutputStream out = response.getOutputStream();
@@ -631,5 +644,56 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private String urlEncode(String s) throws UnsupportedEncodingException {
     return s == null ? null : URLEncoder.encode(s, StandardCharsets.UTF_8.name());
+  }
+
+  private GoalsAndRequirements getGoalsAndRequirements(List<String> userProvidedGoals,
+                                                       boolean withAvailableValidPartitions,
+                                                       boolean withAvailableValidWindows,
+                                                       boolean ignoreCache) {
+    if (!userProvidedGoals.isEmpty() || withAvailableValidPartitions || withAvailableValidWindows) {
+      return new GoalsAndRequirements(userProvidedGoals,
+                                      getRequirements(withAvailableValidPartitions, withAvailableValidWindows));
+    }
+    KafkaCruiseControlState state = _kafkaCruiseControl.state();
+    int availableWindows = state.monitorState().numValidSnapshotWindows();
+    List<String> allGoals = new ArrayList<>();
+    List<String> readyGoals = new ArrayList<>();
+    _kafkaCruiseControl.state().analyzerState().readyGoals().forEach((goal, ready) -> {
+      allGoals.add(goal.name());
+      if (ready) {
+        readyGoals.add(goal.name());
+      }
+    });
+    if (allGoals.size() == readyGoals.size()) {
+      // If all the goals work, use it.
+      return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), null);
+    } else if (availableWindows > 0) {
+      // If some valid windows are available, use it.
+      return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), getRequirements(false, true));
+    } else if (readyGoals.size() > 0) {
+      // If no window is valid but some goals are ready, use them.
+      return new GoalsAndRequirements(readyGoals, getRequirements(false, false));
+    } else {
+      // Ok, use default setting and let it throw exception.
+      return new GoalsAndRequirements(Collections.emptyList(), null);
+    }
+  }
+
+  private static class GoalsAndRequirements {
+    private final List<String> _goals;
+    private final ModelCompletenessRequirements _requirements;
+
+    private GoalsAndRequirements(List<String> goals, ModelCompletenessRequirements requirements) {
+      _goals = goals;
+      _requirements = requirements;
+    }
+
+    private List<String> goals() {
+      return _goals;
+    }
+
+    private ModelCompletenessRequirements requirements() {
+      return _requirements;
+    }
   }
 }

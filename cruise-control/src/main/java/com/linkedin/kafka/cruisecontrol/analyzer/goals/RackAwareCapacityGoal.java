@@ -428,7 +428,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
             broker.host().load().expectedUtilizationFor(resource) : broker.load().expectedUtilizationFor(resource);
         double capacity = resource.isHostResource() ? broker.host().capacityFor(resource) : broker.capacityFor(resource);
         double capacityLimit = capacity * capacityThreshold;
-        if (utilization > capacityLimit) {
+        if (!broker.replicas().isEmpty() && utilization > capacityLimit) {
           // The utilization of the broker for the resource is over the capacity limit.
           throw new OptimizationFailureException("Optimization for goal " + name() + " failed because resource"
                                                      + "utilization for " + resource + " is above capacity");
@@ -441,6 +441,9 @@ public class RackAwareCapacityGoal extends AbstractGoal {
                                          Resource resource,
                                          double brokerCapacityLimit,
                                          double hostCapacityLimit) {
+    if (broker.replicas().isEmpty()) {
+      return false;
+    }
     double brokerUtilization = broker.load().expectedUtilizationFor(resource);
     if (_currentResource == Resource.DISK) {
       return brokerUtilization > brokerCapacityLimit;
