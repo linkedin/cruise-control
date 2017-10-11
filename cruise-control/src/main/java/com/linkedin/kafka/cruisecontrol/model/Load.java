@@ -103,7 +103,7 @@ public class Load implements Serializable {
     if (_snapshotsByTime.isEmpty()) {
       return 0.0;
     }
-    return resource.equals(Resource.DISK) ? Math.max(0, _snapshotsByTime.get(0).utilizationFor(resource)) :
+    return resource == Resource.DISK ? Math.max(0, _snapshotsByTime.get(0).utilizationFor(resource)) :
         Math.max(0, _accumulatedUtilization[resource.id()] / _snapshotsByTime.size());
   }
 
