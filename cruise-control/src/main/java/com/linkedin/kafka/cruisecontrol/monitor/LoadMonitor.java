@@ -26,6 +26,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -89,7 +90,7 @@ public class LoadMonitor {
   public LoadMonitor(KafkaCruiseControlConfig config,
                      Time time,
                      MetricRegistry dropwizardMetricRegistry) {
-    this(config, 
+    this(config,
          new MetadataClient(config,
                             new Metadata(5000L, config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG)),
                             METADATA_TTL,
@@ -106,7 +107,7 @@ public class LoadMonitor {
               Time time,
               MetricRegistry dropwizardMetricRegistry) {
     _metadataClient = metadataClient;
-    
+
     _brokerCapacityConfigResolver = config.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
                                                                  BrokerCapacityConfigResolver.class);
     _numSnapshots = config.getInt(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG);
@@ -142,7 +143,7 @@ public class LoadMonitor {
     _dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "num-partitions-with-flaw"),
                                        (Gauge<Integer>) this::numPartitionsWithFlaw);
   }
-  
+
 
   /**
    * Start the load monitor.
@@ -474,7 +475,7 @@ public class LoadMonitor {
   }
 
   /**
-   * Package private for unit test. 
+   * Package private for unit test.
    */
   MetricCompletenessChecker completenessChecker() {
     return _metricCompletenessChecker;
@@ -580,7 +581,8 @@ public class LoadMonitor {
       for (Node replica : partitionInfo.replicas()) {
         boolean isLeader = partitionInfo.leader() != null && replica.id() == partitionInfo.leader().id();
         String rack = getRackHandleNull(replica);
-        Map<Resource, Double> brokerCapacity =
+        // If broker is dead, do not call resolver to get the capacity.
+        Map<Resource, Double> brokerCapacity = kafkaCluster.nodeById(replica.id()) == null ? deadBrokerCapacity() :
             _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
         clusterModel.createReplicaHandleDeadBroker(rack, replica.id(), tp, isLeader, brokerCapacity);
         // Push the load snapshot to the replica one by one.
@@ -591,7 +593,13 @@ public class LoadMonitor {
       }
     }
   }
-  
+
+  private Map<Resource, Double> deadBrokerCapacity() {
+    Map<Resource, Double> capacity = new HashMap<>();
+    Resource.cachedValues().forEach(r -> capacity.put(r, -1.0));
+    return capacity;
+  }
+
   private String getRackHandleNull(Node node) {
     return node.rack() == null || node.rack().isEmpty() ? node.host() : node.rack();
   }

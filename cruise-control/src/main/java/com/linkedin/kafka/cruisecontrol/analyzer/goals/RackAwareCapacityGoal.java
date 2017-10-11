@@ -119,14 +119,16 @@ public class RackAwareCapacityGoal extends AbstractGoal {
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal) {
     Replica sourceReplica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
     Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
-    // If the source broker is dead, the proposal must be executed.
-    if (!sourceReplica.broker().isAlive()) {
-      return true;
-    }
 
-    // Move must be acceptable for the current resource as well as balanced resources.
-    Set<Resource> resources = new HashSet<>(_balancedResources);
-    resources.add(_currentResource);
+    Set<Resource> resources;
+    if (!clusterModel.selfHealingEligibleReplicas().isEmpty()) {
+      // for self-healing the broker utilization should not go beyond any given resources.
+      resources = new HashSet<>(_balancingConstraint.resources());
+    } else {
+      // Move must be acceptable for the current resource as well as balanced resources.
+      resources = new HashSet<>(_balancedResources);
+      resources.add(_currentResource);
+    }
     // Check if movement is acceptable by this goal for the given resources.
     for (Resource resource : resources) {
       if (!isMovementAcceptableForCapacity(resource, sourceReplica, destinationBroker)) {
@@ -182,6 +184,14 @@ public class RackAwareCapacityGoal extends AbstractGoal {
           throw new AnalysisInputException("Healthy brokers fail to satisfy rack-awareness.");
         }
       }
+      for (Resource resource : _balancingConstraint.resources()) {
+        for (Broker broker : clusterModel.healthyBrokers()) {
+          if (isUtilizationAboveLimit(resource, broker)) {
+            throw new AnalysisInputException(String.format("%s utilization of healthy broker %d is already beyond "
+                                                               + "the capacity limit.", resource, broker.id()));
+          }
+        }
+      }
     }
     // Sanity Check #2. -- i.e. not enough resources.
     Load recentClusterLoad = clusterModel.load();
@@ -230,60 +240,6 @@ public class RackAwareCapacityGoal extends AbstractGoal {
       _currentResource = _balancingConstraint.resources().get(_balancedResources.size());
     }
   }
-
-//  /**
-//   * HEAL BY LEADERSHIP MOVEMENT:
-//   * Leadership on self-healing eligible replicas are distributed to replicas on healthy brokers while satisfying the
-//   * capacity threshold and rack awareness.
-//   * <p>
-//   * HEAL BY REPLICA MOVEMENT:
-//   * Replicas on self-healing eligible replicas are distributed to healthy brokers while satisfying the capacity
-//   * threshold and rack awareness.
-//   *
-//   * @param clusterModel   The state of the cluster.
-//   * @param optimizedGoals Optimized goals.
-//   */
-//  @Override
-//  protected void healCluster(ClusterModel clusterModel, Set<Goal> optimizedGoals)
-//      throws AnalysisInputException, ModelInputException {
-//    double capacityThreshold = _balancingConstraint.capacityThreshold(_currentResource);
-//    // HEAL BY LEADERSHIP MOVEMENT:
-//    if (_currentResource.equals(Resource.NW_OUT)) {
-//      for (Replica leader : clusterModel.selfHealingEligibleReplicas()) {
-//        if (!leader.isLeader()) {
-//          continue;
-//        }
-//        // If the broker of leader violates capacity threshold, move leadership to an available follower.
-//        double capacityLimit = leader.broker().capacityFor(_currentResource) * capacityThreshold;
-//        if (leader.broker().load().expectedUtilizationFor(_currentResource) > capacityLimit) {
-//          // Get followers of this leader and sort them in ascending order by their broker resource utilization.
-//          List<Replica> followers = clusterModel.partition(leader.topicPartition()).followers();
-//          clusterModel.sortReplicasInAscendingOrderByBrokerResourceUtilization(followers, _currentResource);
-//          List<Broker> eligibleBrokers = followers.stream().map(Replica::broker).collect(Collectors.toList());
-//
-//          maybeApplyBalancingAction(clusterModel, leader, eligibleBrokers, BalancingAction.LEADERSHIP_MOVEMENT,
-//              optimizedGoals);
-//        }
-//      }
-//    } else {
-//      // HEAL BY REPLICA MOVEMENT:
-//      for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-//        // If the broker of this replica violates capacity threshold, move it to another available broker.
-//        double capacityLimit = replica.broker().capacityFor(_currentResource) * capacityThreshold;
-//        if (replica.broker().load().expectedUtilizationFor(_currentResource) > capacityLimit) {
-//          // Find eligible brokers that this replica is allowed to move. Unless the target broker would go
-//          // over the capacity the movement will be successful.
-//          List<Broker> eligibleBrokers = new ArrayList<>(removeBrokersViolatingRackAwareness(replica,
-//              clusterModel.sortedHealthyBrokersUnderThreshold(_currentResource, capacityThreshold),
-//              clusterModel));
-//
-//          maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, BalancingAction.REPLICA_MOVEMENT,
-//              optimizedGoals);
-//        }
-//      }
-//    }
-//    sanityCheckSelfHealedCapacity(_currentResource, clusterModel);
-//  }
 
   /**
    * (1) REBALANCE BY LEADERSHIP MOVEMENT:
@@ -428,10 +384,12 @@ public class RackAwareCapacityGoal extends AbstractGoal {
             broker.host().load().expectedUtilizationFor(resource) : broker.load().expectedUtilizationFor(resource);
         double capacity = resource.isHostResource() ? broker.host().capacityFor(resource) : broker.capacityFor(resource);
         double capacityLimit = capacity * capacityThreshold;
-        if (utilization > capacityLimit) {
+        if (!broker.replicas().isEmpty() && utilization > capacityLimit) {
           // The utilization of the broker for the resource is over the capacity limit.
-          throw new OptimizationFailureException("Optimization for goal " + name() + " failed because resource"
-                                                     + "utilization for " + resource + " is above capacity");
+          throw new OptimizationFailureException(String.format("Optimization for goal %s failed because %s utilization "
+                                                                   + "for broker %d is %f which is above capacity "
+                                                                   + "limit %f",
+                                                               name(), resource, broker.id(), utilization, capacityLimit));
         }
       }
     }
@@ -441,6 +399,9 @@ public class RackAwareCapacityGoal extends AbstractGoal {
                                          Resource resource,
                                          double brokerCapacityLimit,
                                          double hostCapacityLimit) {
+    if (broker.replicas().isEmpty()) {
+      return false;
+    }
     double brokerUtilization = broker.load().expectedUtilizationFor(resource);
     if (_currentResource == Resource.DISK) {
       return brokerUtilization > brokerCapacityLimit;
@@ -521,31 +482,6 @@ public class RackAwareCapacityGoal extends AbstractGoal {
   }
 
   /**
-   * Sanity check: Utilization of brokers containing self healing eligible replicas are under the capacity limit for
-   * the given resource.
-   *
-   * @param resource     Resource for which the capacity limit will be compared with the existing utilization at brokers
-   *                     containing self-healed replicas.
-   * @param clusterModel The state of the cluster.
-   * @throws AnalysisInputException
-   */
-  private void sanityCheckSelfHealedCapacity(Resource resource, ClusterModel clusterModel)
-      throws AnalysisInputException {
-    Set<Replica> selfHealingEligibleReplicas = clusterModel.selfHealingEligibleReplicas();
-    double capacityThreshold = _balancingConstraint.capacityThreshold(resource);
-
-    // Confirm that utilization of brokers containing self healing eligible replicas are under the capacity limit.
-    for (Broker selfHealedBroker : selfHealingEligibleReplicas.stream()
-        .map(Replica::broker)
-        .collect(Collectors.toSet())) {
-      double capacityLimit = selfHealedBroker.capacityFor(resource) * capacityThreshold;
-      if (selfHealedBroker.load().expectedUtilizationFor(resource) > capacityLimit) {
-        throw new AnalysisInputException("Cannot satisfy hard requirement for capacity balance for" + resource);
-      }
-    }
-  }
-
-  /**
    * Check whether the movement of utilization for the given resource from the given source replica to given
    * destination broker is acceptable for this goal.
    *
@@ -559,21 +495,20 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     // The proposal is unacceptable if the movement of replica or leadership makes the utilization of the
     // destination broker go out of healthy capacity for the given resource.
     double replicaUtilization = sourceReplica.load().expectedUtilizationFor(resource);
+    return !isUtilizationAboveLimitAfterAddingLoad(resource, destinationBroker, replicaUtilization);
+  }
 
-    if (!resource.isHostResource()) {
-      double destinationBrokerUtilization = destinationBroker.load().expectedUtilizationFor(resource);
-      double allowedDestinationBrokerCapacity = destinationBroker.capacityFor(resource) * _balancingConstraint.capacityThreshold(resource);
-      // Check whether replica or leadership movement leads to violation of capacity limit requirement.
-      return destinationBrokerUtilization + replicaUtilization <= allowedDestinationBrokerCapacity;
-    } else {
-      // When there are multiple brokers in a host, we only look at the host utilization for CPU, NW_IN and NW_OUT
-      // because those resources are shared by all the brokers on the host. We assume all the brokers have their
-      // own dedicated disks.
-      double destinationHostUtilization = destinationBroker.host().load().expectedUtilizationFor(resource);
-      double allowedDestinationHostCapacity =
-          destinationBroker.host().capacityFor(resource) * _balancingConstraint.capacityThreshold(resource);
-      return destinationHostUtilization + replicaUtilization < allowedDestinationHostCapacity;
-    }
+  private boolean isUtilizationAboveLimit(Resource resource, Broker broker) {
+    return isUtilizationAboveLimitAfterAddingLoad(resource, broker, 0);
+  }
+
+  private boolean isUtilizationAboveLimitAfterAddingLoad(Resource resource, Broker broker, double loadToAdd) {
+    double capacityThreshold = _balancingConstraint.capacityThreshold(resource);
+    double utilization = resource.isHostResource() ?
+        broker.host().load().expectedUtilizationFor(resource) : broker.load().expectedUtilizationFor(resource);
+    double capacity = resource.isHostResource() ? broker.host().capacityFor(resource) : broker.capacityFor(resource);
+    double capacityLimit = capacity * capacityThreshold;
+    return utilization + loadToAdd >= capacityLimit;
   }
 
   private static class RackAwareCapacityGoalStatsComparator implements ClusterModelStatsComparator {
