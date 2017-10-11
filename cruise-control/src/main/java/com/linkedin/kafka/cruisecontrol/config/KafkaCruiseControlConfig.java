@@ -17,8 +17,7 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
-import java.util.Arrays;
-import joptsimple.internal.Strings;
+import java.util.StringJoiner;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -635,15 +634,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC)
         .define(GOALS_CONFIG,
                 ConfigDef.Type.LIST,
-                Strings.join(Arrays.asList(RackAwareCapacityGoal.class.getName(),
-                                           PotentialNwOutGoal.class.getName(),
-                                           DiskUsageDistributionGoal.class.getName(),
-                                           NetworkInboundUsageDistributionGoal.class.getName(),
-                                           NetworkOutboundUsageDistributionGoal.class.getName(),
-                                           CpuUsageDistributionGoal.class.getName(),
-                                           LeaderBytesInDistributionGoals.class.getName(),
-                                           TopicReplicaDistributionGoal.class.getName(),
-                                           ReplicaDistributionGoal.class.getName()), ","),
+                new StringJoiner(",")
+                    .add(RackAwareCapacityGoal.class.getName())
+                    .add(PotentialNwOutGoal.class.getName())
+                    .add(DiskUsageDistributionGoal.class.getName())
+                    .add(NetworkInboundUsageDistributionGoal.class.getName())
+                    .add(NetworkOutboundUsageDistributionGoal.class.getName())
+                    .add(CpuUsageDistributionGoal.class.getName())
+                    .add(LeaderBytesInDistributionGoals.class.getName())
+                    .add(TopicReplicaDistributionGoal.class.getName())
+                    .add(ReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
                 GOALS_DOC)
         .define(ANOMALY_NOTIFIER_CLASS_CONFIG,
@@ -657,15 +657,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ANOMALY_DETECTION_INTERVAL_MS_DOC)
         .define(ANOMALY_DETECTION_GOALS_CONFIG,
                 ConfigDef.Type.LIST,
-                Strings.join(Arrays.asList(RackAwareCapacityGoal.class.getName(),
-                                           PotentialNwOutGoal.class.getName(),
-                                           DiskUsageDistributionGoal.class.getName(),
-                                           NetworkInboundUsageDistributionGoal.class.getName(),
-                                           NetworkOutboundUsageDistributionGoal.class.getName(),
-                                           CpuUsageDistributionGoal.class.getName(),
-                                           LeaderBytesInDistributionGoals.class.getName(),
-                                           TopicReplicaDistributionGoal.class.getName(),
-                                           ReplicaDistributionGoal.class.getName()), ","),
+                new StringJoiner(",")
+                    .add(RackAwareCapacityGoal.class.getName())
+                    .add(PotentialNwOutGoal.class.getName())
+                    .add(DiskUsageDistributionGoal.class.getName())
+                    .add(NetworkInboundUsageDistributionGoal.class.getName())
+                    .add(NetworkOutboundUsageDistributionGoal.class.getName())
+                    .add(CpuUsageDistributionGoal.class.getName())
+                    .add(LeaderBytesInDistributionGoals.class.getName())
+                    .add(TopicReplicaDistributionGoal.class.getName())
+                    .add(ReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.MEDIUM,
                 ANOMALY_DETECTION_GOALS_DOC)
         .define(FAILED_BROKERS_ZK_PATH_CONFIG,
