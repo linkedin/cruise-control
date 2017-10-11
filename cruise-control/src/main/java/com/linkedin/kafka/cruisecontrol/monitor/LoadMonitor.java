@@ -581,8 +581,9 @@ public class LoadMonitor {
       for (Node replica : partitionInfo.replicas()) {
         boolean isLeader = partitionInfo.leader() != null && replica.id() == partitionInfo.leader().id();
         String rack = getRackHandleNull(replica);
-        // If broker is dead, do not call resolver to get the capacity.
-        Map<Resource, Double> brokerCapacity = kafkaCluster.nodeById(replica.id()) == null ? deadBrokerCapacity() :
+        // Note that we assume the capacity resolver can still return the broker capacity even if the broker
+        // is dead. We need this to get the host resource capacity.
+        Map<Resource, Double> brokerCapacity =
             _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
         clusterModel.createReplicaHandleDeadBroker(rack, replica.id(), tp, isLeader, brokerCapacity);
         // Push the load snapshot to the replica one by one.

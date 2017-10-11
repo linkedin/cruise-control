@@ -184,14 +184,6 @@ public class RackAwareCapacityGoal extends AbstractGoal {
           throw new AnalysisInputException("Healthy brokers fail to satisfy rack-awareness.");
         }
       }
-      for (Resource resource : _balancingConstraint.resources()) {
-        for (Broker broker : clusterModel.healthyBrokers()) {
-          if (isUtilizationAboveLimit(resource, broker)) {
-            throw new AnalysisInputException(String.format("%s utilization of healthy broker %d is already beyond "
-                                                               + "the capacity limit.", resource, broker.id()));
-          }
-        }
-      }
     }
     // Sanity Check #2. -- i.e. not enough resources.
     Load recentClusterLoad = clusterModel.load();
