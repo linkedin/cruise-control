@@ -100,14 +100,11 @@ public class Load implements Serializable {
    * @return A single representative utilization value on a resource.
    */
   public double expectedUtilizationFor(Resource resource) {
-    if (resource.equals(Resource.DISK)) {
-      if (_snapshotsByTime.isEmpty()) {
-        return 0.0;
-      }
-      return Math.max(0, _snapshotsByTime.get(0).utilizationFor(resource));
+    if (_snapshotsByTime.isEmpty()) {
+      return 0.0;
     }
-
-    return Math.max(0, _accumulatedUtilization[resource.id()] / _snapshotsByTime.size());
+    return resource == Resource.DISK ? Math.max(0, _snapshotsByTime.get(0).utilizationFor(resource)) :
+        Math.max(0, _accumulatedUtilization[resource.id()] / _snapshotsByTime.size());
   }
 
   /**
