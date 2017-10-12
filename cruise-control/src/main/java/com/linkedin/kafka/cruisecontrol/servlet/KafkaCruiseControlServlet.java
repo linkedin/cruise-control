@@ -551,7 +551,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult)
                                             .getBytes(StandardCharsets.UTF_8));
     for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
-      out.write(String.format("%n%nStats for goal %s:%n", entry.getKey().name()).getBytes(StandardCharsets.UTF_8));
+      Goal goal = entry.getKey();
+      out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
+                      .getBytes(StandardCharsets.UTF_8));
       out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
     }
     out.write(String.format("%nCluster load after %s broker %s:%n",
@@ -598,9 +600,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
     for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
       Goal goal = entry.getKey();
-      out.write(String.format("%n%nStats for goal %s%s:%n",
-                              goal.name(),
-                              optimizerResult.violatedGoalsBeforeOptimization().contains(goal) ? " (VIOLATED)" : "").getBytes(StandardCharsets.UTF_8));
+      out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
+                      .getBytes(StandardCharsets.UTF_8));
       out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
     }
     out.write(String.format("%nCluster load after rebalance:%n").getBytes(StandardCharsets.UTF_8));
