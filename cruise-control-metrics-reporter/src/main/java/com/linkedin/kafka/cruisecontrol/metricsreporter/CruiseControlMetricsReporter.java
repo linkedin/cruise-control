@@ -83,13 +83,13 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     if (!producerProps.containsKey(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)) {
       String port = (String) configs.get("port");
       String bootstrapServers = "localhost:" + (port == null ? "9092" : port);
-      producerProps.put(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
-                        bootstrapServers);
+      producerProps.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
       LOG.info("Using default value of {} for {}", bootstrapServers,
                CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
     }
     if (!producerProps.containsKey(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG)) {
       String securityProtocol = "PLAINTEXT";
+      producerProps.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, securityProtocol);
       LOG.info("Using default value of {} for {}", securityProtocol,
                CruiseControlMetricsReporterConfig.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG));
     }
