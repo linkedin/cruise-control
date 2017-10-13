@@ -98,6 +98,8 @@ public class GoalViolationDetector implements Runnable {
           LOG.debug("Detecting if {} is violated.", entry.getValue().name());
           // Because the model generation could be slow, We only get new cluster model if needed.
           if (newModelNeeded) {
+            // Make cluster model null before generating a new cluster model so the current one can be GCed.
+            clusterModel = null;
             clusterModel = _loadMonitor.clusterModel(now, goal.clusterModelCompletenessRequirements());
             // The anomaly detector have to include all the topics in order to detect the rack awareness issue.
             newModelNeeded = false;

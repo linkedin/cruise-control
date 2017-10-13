@@ -80,7 +80,28 @@ public class RandomCluster {
    * @throws AnalysisInputException
    * @throws ModelInputException
    */
-  public static void populate(ClusterModel cluster, Map<ClusterProperty, Number> properties, TestConstants.Distribution replicaDistribution)
+  public static void populate(ClusterModel cluster,
+                              Map<ClusterProperty, Number> properties,
+                              TestConstants.Distribution replicaDistribution)
+      throws ModelInputException, AnalysisInputException {
+    populate(cluster, properties, replicaDistribution, false);
+  }
+
+  /**
+   * Populate the given cluster with replicas having a certain load distribution using the given properties and
+   * replica distribution. Balancing constraint sets the resources existing in the cluster at each broker.
+   *
+   * @param cluster             The state of the cluster.
+   * @param properties          Representing the cluster properties as specified in {@link ClusterProperty}.
+   * @param replicaDistribution The replica distribution showing the broker of each replica in the cluster.
+   * @param rackAware           Whether the replicas should be rack aware or not.
+   * @throws AnalysisInputException
+   * @throws ModelInputException
+   */
+  public static void populate(ClusterModel cluster,
+                              Map<ClusterProperty, Number> properties,
+                              TestConstants.Distribution replicaDistribution,
+                              boolean rackAware)
       throws AnalysisInputException, ModelInputException {
     // Sanity checks.
     int numBrokers = cluster.brokers().size();
@@ -155,6 +176,7 @@ public class RandomCluster {
       String topic = datum.topic();
       for (int i = 1; i <= datum.numTopicLeaders(); i++) {
         Set<Integer> replicaBrokerIds = new HashSet<>();
+        Set<String> replicaRacks = new HashSet<>();
         int brokerConflictResolver = 0;
         TopicPartition pInfo = new TopicPartition(topic, i - 1);
         for (int j = 1; j <= datum.replicationFactor(); j++) {
@@ -162,7 +184,8 @@ public class RandomCluster {
 
           if (replicaDistribution.equals(TestConstants.Distribution.UNIFORM)) {
             randomBrokerId = uniformlyRandom(0, numBrokers - 1, TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex);
-            while (replicaBrokerIds.contains(randomBrokerId)) {
+            while (replicaBrokerIds.contains(randomBrokerId)
+                || (rackAware && replicaRacks.contains(cluster.broker(randomBrokerId).rack().id()))) {
               brokerConflictResolver++;
               randomBrokerId = uniformlyRandom(0, numBrokers - 1,
                   TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex + brokerConflictResolver);
@@ -179,7 +202,8 @@ public class RandomCluster {
               }
             }
 
-            while (replicaBrokerIds.contains(randomBrokerId)) {
+            while (replicaBrokerIds.contains(randomBrokerId)
+                || (rackAware && replicaRacks.contains(cluster.broker(randomBrokerId).rack().id()))) {
               brokerConflictResolver++;
               randomBinValue = uniformlyRandom(1, binRange,
                   TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex + brokerConflictResolver);
@@ -202,7 +226,8 @@ public class RandomCluster {
                 break;
               }
             }
-            while (replicaBrokerIds.contains(randomBrokerId)) {
+            while (replicaBrokerIds.contains(randomBrokerId)
+                || (rackAware && replicaRacks.contains(cluster.broker(randomBrokerId).rack().id()))) {
               brokerConflictResolver++;
               randomBinValue = uniformlyRandom(1, binRange,
                   TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex + brokerConflictResolver);
@@ -238,6 +263,7 @@ public class RandomCluster {
 
           // Update the set of replica locations.
           replicaBrokerIds.add(randomBrokerId);
+          replicaRacks.add(cluster.broker(randomBrokerId).rack().id());
           // Update next replica index
           replicaIndex++;
         }

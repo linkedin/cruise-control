@@ -33,9 +33,7 @@ import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
-import static org.hamcrest.CoreMatchers.is;
 
 
 @RunWith(Parameterized.class)
@@ -51,17 +49,15 @@ public class RandomSelfHealingTest {
   public static Collection<Object[]> data() throws AnalysisInputException {
     Collection<Object[]> params = new ArrayList<>();
 
-    Map<Integer, String> hardGoalNameByPriority = new HashMap<>();
-    hardGoalNameByPriority.put(1, RackAwareCapacityGoal.class.getName());
-
-    Map<Integer, String> softGoalNameByPriority = new HashMap<>();
-    softGoalNameByPriority.put(2, PotentialNwOutGoal.class.getName());
-    softGoalNameByPriority.put(3, DiskUsageDistributionGoal.class.getName());
-    softGoalNameByPriority.put(4, NetworkInboundUsageDistributionGoal.class.getName());
-    softGoalNameByPriority.put(5, NetworkOutboundUsageDistributionGoal.class.getName());
-    softGoalNameByPriority.put(6, CpuUsageDistributionGoal.class.getName());
-    softGoalNameByPriority.put(7, TopicReplicaDistributionGoal.class.getName());
-    softGoalNameByPriority.put(8, ReplicaDistributionGoal.class.getName());
+    Map<Integer, String> goalNameByPriority = new HashMap<>();
+    goalNameByPriority.put(1, RackAwareCapacityGoal.class.getName());
+    goalNameByPriority.put(2, PotentialNwOutGoal.class.getName());
+    goalNameByPriority.put(3, DiskUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(4, NetworkInboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(5, NetworkOutboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(6, CpuUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(7, TopicReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(8, ReplicaDistributionGoal.class.getName());
 
     KafkaCruiseControlConfig config =
         new KafkaCruiseControlConfig(CruiseControlUnitTestUtils.getCruiseControlProperties());
@@ -72,35 +68,29 @@ public class RandomSelfHealingTest {
     Map<ClusterProperty, Number> modifiedProperties = new HashMap<>();
 
     // -- TEST DECK #1: SINGLE DEAD BROKER.
-    // Test: Single Soft Goal.
+    // Test: Single Goal.
     modifiedProperties.put(ClusterProperty.NUM_DEAD_BROKERS, 1);
-    for (Map.Entry<Integer, String> entry : softGoalNameByPriority.entrySet()) {
+    for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
       Object[] singleDeadSingleSoftParams = {modifiedProperties, Collections.singletonMap(entry.getKey(),
           entry.getValue()), balancingConstraint};
       params.add(singleDeadSingleSoftParams);
     }
-    // Test: All Soft Goals.
-    Object[] singleDeadMultiSoftParams = {modifiedProperties, softGoalNameByPriority, balancingConstraint};
-    params.add(singleDeadMultiSoftParams);
-    // Test: Hard Goal.
-    Object[] singleDeadSingleHardParams = {modifiedProperties, hardGoalNameByPriority, balancingConstraint};
-    params.add(singleDeadSingleHardParams);
+    // Test: All Goals.
+    Object[] singleDeadMultiAllGoalsParams = {modifiedProperties, goalNameByPriority, balancingConstraint};
+    params.add(singleDeadMultiAllGoalsParams);
 
     // -- TEST DECK #2: MULTIPLE DEAD BROKERS.
-    // Test: Single Soft Goal.
-    modifiedProperties.put(ClusterProperty.NUM_DEAD_BROKERS, 10);
-    for (Map.Entry<Integer, String> entry : softGoalNameByPriority.entrySet()) {
+    // Test: Single Goal.
+    modifiedProperties.put(ClusterProperty.NUM_DEAD_BROKERS, 5);
+    for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
       Object[] multiDeadSingleSoftParams = {modifiedProperties, Collections.singletonMap(entry.getKey(),
                                                                                          entry.getValue()),
           balancingConstraint};
       params.add(multiDeadSingleSoftParams);
     }
-    // Test: All Soft Goals.
-    Object[] multiDeadMultiSoftParams = {modifiedProperties, softGoalNameByPriority, balancingConstraint};
-    params.add(multiDeadMultiSoftParams);
-    // Test: Hard Goal.
-    Object[] multiDeadSingleHardParams = {modifiedProperties, hardGoalNameByPriority, balancingConstraint};
-    params.add(multiDeadSingleHardParams);
+    // Test: All Goals.
+    Object[] multiDeadMultiAllGoalsParams = {modifiedProperties, goalNameByPriority, balancingConstraint};
+    params.add(multiDeadMultiAllGoalsParams);
 
     return params;
   }
@@ -129,17 +119,12 @@ public class RandomSelfHealingTest {
     Map<ClusterProperty, Number> clusterProperties = new HashMap<>(TestConstants.BASE_PROPERTIES);
     clusterProperties.putAll(_modifiedProperties);
 
-    LOG.debug("Replica distribution: {}.", TestConstants.Distribution.EXPONENTIAL);
+    LOG.debug("Replica distribution: {}.", TestConstants.Distribution.UNIFORM);
     ClusterModel clusterModel = RandomCluster.generate(clusterProperties);
-    RandomCluster.populate(clusterModel, clusterProperties, TestConstants.Distribution.EXPONENTIAL);
+    RandomCluster.populate(clusterModel, clusterProperties, TestConstants.Distribution.UNIFORM, true);
 
-    try {
-      assertTrue("Self Healing Test failed to improve the existing state.",
-          OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority));
-    } catch (AnalysisInputException analysisInputException) {
-      // This exception is thrown if self healing fails due to healthy brokers failing due to healthy brokers
-      // violating rack awareness.
-      assertThat(analysisInputException.getMessage(), is("Healthy brokers fail to satisfy rack-awareness."));
-    }
+    assertTrue("Self Healing Test failed to improve the existing state.",
+               OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority));
+
   }
 }

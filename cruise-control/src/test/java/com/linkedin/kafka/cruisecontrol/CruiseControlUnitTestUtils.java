@@ -11,7 +11,13 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
+import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import kafka.utils.ZkUtils;
+import org.I0Itec.zkclient.ZkClient;
+import org.I0Itec.zkclient.ZkConnection;
+import org.I0Itec.zkclient.exception.ZkMarshallingError;
+import org.I0Itec.zkclient.serialize.ZkSerializer;
 import org.apache.kafka.common.TopicPartition;
 
 
@@ -52,6 +58,25 @@ public class CruiseControlUnitTestUtils {
         sample.close(i * snapshotWindowMs + 1);
         metricSampleAggregator.addSample(sample);
       }
+    }
+  }
+
+  public static ZkUtils zkUtils(String zkConnect) {
+    ZkConnection zkConnection = new ZkConnection(zkConnect, 30000);
+    ZkClient zkClient = new ZkClient(zkConnection, 30000, new ZKStringSerializer());
+    return new ZkUtils(zkClient, zkConnection, false);
+  }
+
+  private static class ZKStringSerializer implements ZkSerializer {
+
+    @Override
+    public byte[] serialize(Object data) throws ZkMarshallingError {
+      return ((String) data).getBytes(StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public Object deserialize(byte[] bytes) throws ZkMarshallingError {
+      return bytes == null ? null : new String(bytes, StandardCharsets.UTF_8);
     }
   }
 }

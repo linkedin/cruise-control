@@ -4,17 +4,19 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
+import com.linkedin.kafka.clients.utils.tests.EmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
-import com.linkedin.kafka.cruisecontrol.testutils.AbstractKafkaIntegrationTestHarness;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import kafka.utils.MockTime;
+import java.util.concurrent.TimeUnit;
+import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.After;
@@ -47,16 +49,16 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   }
 
   @Test
-  public void testFailureDetection() {
-    Time mockTime = new MockTime(100L);
+  public void testFailureDetection() throws Exception {
+    Time mockTime = getMockTime();
     Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
-
     try {
       // Start detection.
       detector.startDetection();
       assertTrue(anomalies.isEmpty());
-      int brokerId = killRandomBroker();
+      int brokerId = 0;
+      killBroker(brokerId);
       long start = System.currentTimeMillis();
       while (anomalies.isEmpty() && System.currentTimeMillis() < start + 30000) {
         // wait for the anomalies to be drained.
@@ -70,7 +72,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
 
       // Bring the broker back
       System.out.println("Starting brokers.");
-      restartDeadBrokers();
+      restartDeadBroker(brokerId);
       detector.detectBrokerFailures();
       assertTrue(detector.failedBrokers().isEmpty());
     } finally {
@@ -79,13 +81,14 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   }
 
   @Test
-  public void testDetectorStartWithFailedBrokers() {
-    Time mockTime = new MockTime(100L);
+  public void testDetectorStartWithFailedBrokers() throws Exception {
+    Time mockTime = getMockTime();
     Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
     try {
-      int brokerId = killRandomBroker();
+      int brokerId = 0;
+      killBroker(brokerId);
       detector.startDetection();
       assertEquals(Collections.singletonMap(brokerId, 100L), detector.failedBrokers());
     } finally {
@@ -94,14 +97,15 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   }
 
   @Test
-  public void testLoadFailedBrokersFromZK() {
-    Time mockTime = new MockTime(100L);
+  public void testLoadFailedBrokersFromZK() throws Exception {
+    Time mockTime = getMockTime();
     Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
     try {
       detector.startDetection();
-      int brokerId = killRandomBroker();
+      int brokerId = 0;
+      killBroker(brokerId);
       long start = System.currentTimeMillis();
       while (anomalies.isEmpty() && System.currentTimeMillis() < start + 30000) {
         // Wait for the anomalies to be drained.
@@ -124,11 +128,25 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
     EasyMock.expect(mockLoadMonitor.brokersWithPartitions(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
     EasyMock.replay(mockLoadMonitor);
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zkConnect());
+    props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().getConnectionString());
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
     return new BrokerFailureDetector(kafkaCruiseControlConfig,
                                      mockLoadMonitor,
                                      anomalies,
                                      time);
+  }
+
+  private void killBroker(int index) throws Exception {
+    EmbeddedBroker broker = _brokers.get(index);
+    broker.shutdown();
+    broker.awaitShutdown();
+  }
+
+  private void restartDeadBroker(int index) throws Exception {
+    _brokers.get(index).startup();
+  }
+  
+  private MockTime getMockTime() {
+    return new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
   }
 }

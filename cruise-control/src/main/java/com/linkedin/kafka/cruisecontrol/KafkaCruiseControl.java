@@ -128,10 +128,12 @@ public class KafkaCruiseControl {
   public GoalOptimizer.OptimizerResult decommissionBrokers(Collection<Integer> brokerIds,
                                                            boolean dryRun,
                                                            boolean throttleDecommissionedBroker,
-                                                           List<String> goals)
+                                                           List<String> goals,
+                                                           ModelCompletenessRequirements requirements)
       throws KafkaCruiseControlException {
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
-    ModelCompletenessRequirements modelCompletenessRequirements = modelCompletenessRequirements(goalsByPriority.values());
+    ModelCompletenessRequirements modelCompletenessRequirements =
+        modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration()) {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
@@ -159,11 +161,12 @@ public class KafkaCruiseControl {
   public GoalOptimizer.OptimizerResult addBrokers(Collection<Integer> brokerIds,
                                                   boolean dryRun,
                                                   boolean throttleAddedBrokers,
-                                                  List<String> goals) throws KafkaCruiseControlException {
+                                                  List<String> goals,
+                                                  ModelCompletenessRequirements requirements) throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration()) {
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
       ModelCompletenessRequirements modelCompletenessRequirements =
-          MonitorUtils.combineLoadRequirementOptions(goalsByPriority.values());
+          modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.NEW));
       GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel, goalsByPriority);

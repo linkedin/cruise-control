@@ -68,7 +68,7 @@ public class GoalOptimizer implements Runnable {
   private Thread _proposalPrecomputingSchedulerThread;
   private final Timer _proposalComputationTimer;
   private final ModelCompletenessRequirements _defaultModelCompletenessRequirements;
-  private final ModelCompletenessRequirements _requirementsIgnoreMinMonitoredPartitions;
+  private final ModelCompletenessRequirements _requirementsWithAvailableValidWindows;
 
   /**
    * Constructor for Goal Optimizer takes the goals as input. The order of the list determines the priority of goals
@@ -82,9 +82,9 @@ public class GoalOptimizer implements Runnable {
                        MetricRegistry dropwizardMetricRegistry) {
     _goalsByPriority = AnalyzerUtils.getGoalMapByPriority(config);
     _defaultModelCompletenessRequirements = MonitorUtils.combineLoadRequirementOptions(_goalsByPriority.values());
-    _requirementsIgnoreMinMonitoredPartitions = new ModelCompletenessRequirements(
-        _defaultModelCompletenessRequirements.minRequiredNumSnapshotWindows(),
-        0.0,
+    _requirementsWithAvailableValidWindows = new ModelCompletenessRequirements(
+        1,
+        _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage(),
         _defaultModelCompletenessRequirements.includeAllTopics());
     _goalByPriorityForPrecomputing = new ArrayList<>();
     _numPrecomputingThreads = config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
@@ -120,7 +120,7 @@ public class GoalOptimizer implements Runnable {
         LOG.info("Skipping best proposal precomputing because load monitor is in " + loadMonitorTaskRunnerState + " state.");
         // Check in 30 seconds to see if the load monitor state has changed.
         sleepTime = 30000L;
-      } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsIgnoreMinMonitoredPartitions)) {
+      } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsWithAvailableValidWindows)) {
         LOG.info("Skipping best proposal precomputing because load monitor does not have enough snapshots.");
         // Check in 30 seconds to see if the load monitor state has changed.
         sleepTime = 30000L;
@@ -199,7 +199,7 @@ public class GoalOptimizer implements Runnable {
   }
 
   public ModelCompletenessRequirements modelCompletenessRequirementsForPrecomputing() {
-    return _requirementsIgnoreMinMonitoredPartitions;
+    return _requirementsWithAvailableValidWindows;
   }
 
   /**
@@ -221,7 +221,7 @@ public class GoalOptimizer implements Runnable {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
     if (loadMonitorTaskRunnerState == LOADING || loadMonitorTaskRunnerState == BOOTSTRAPPING) {
       throw new IllegalStateException("Cannot get proposal because load monitor is in " + loadMonitorTaskRunnerState + " state.");
-    } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsIgnoreMinMonitoredPartitions)) {
+    } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsWithAvailableValidWindows)) {
       throw new IllegalStateException("Cannot get proposal because model completeness is not met.");
     }
     if (!validCachedProposal()) {
@@ -479,7 +479,7 @@ public class GoalOptimizer implements Runnable {
           long startMs = _time.milliseconds();
           // We compute the proposal even if there is not enough modeled partitions.
           ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements) ?
-              _defaultModelCompletenessRequirements : _requirementsIgnoreMinMonitoredPartitions;
+              _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
           ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements);
           if (!clusterModel.topics().isEmpty()) {
             OptimizerResult result = optimizations(clusterModel, _goalByPriority);

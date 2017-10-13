@@ -191,8 +191,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
                                     Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
     double capacityLimit = broker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
-    boolean estimatedMaxPossibleNwOutOverLimit
-        = clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
+    boolean estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
+        clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
     if (!estimatedMaxPossibleNwOutOverLimit) {
       // Estimated max possible utilization in broker is under the limit.
       return;
@@ -217,7 +217,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
               optimizedGoals);
       if (destinationBrokerId != null) {
         // Check if broker capacity limit is satisfied now.
-        estimatedMaxPossibleNwOutOverLimit =
+        estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
             clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
         if (!estimatedMaxPossibleNwOutOverLimit) {
           break;

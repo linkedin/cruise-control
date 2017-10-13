@@ -8,7 +8,8 @@ import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import kafka.utils.MockTime;
+import java.util.concurrent.TimeUnit;
+import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.junit.Test;
 
@@ -27,7 +28,7 @@ public class SelfHealingNotifierTest {
     final long failureTime1 = 200L;
     final long failureTime2 = 400L;
     final long startTime = 500L;
-    Time mockTime = new MockTime(startTime);
+    Time mockTime = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
     TestingBrokerFailureAutoFixNotifier anomalyNotifier = new TestingBrokerFailureAutoFixNotifier(mockTime);
     anomalyNotifier.configure(Collections.emptyMap());
 

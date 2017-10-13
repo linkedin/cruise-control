@@ -86,6 +86,7 @@ public class KafkaSampleStore implements SampleStore {
       _consumers.add(createConsumers(config));
     }
     Properties producerProps = new Properties();
+    producerProps.putAll(config);
     producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
                               (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
     producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_CLIENT_ID);
@@ -96,7 +97,6 @@ public class KafkaSampleStore implements SampleStore {
     producerProps.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
     producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-    KafkaCruiseControlUtils.setSslConfigs(producerProps, config);
     _producer = new KafkaProducer<>(producerProps);
 
     _loadingProgress = -1.0;
@@ -106,6 +106,7 @@ public class KafkaSampleStore implements SampleStore {
 
   protected KafkaConsumer<byte[], byte[]> createConsumers(Map<String, ?> config) {
       Properties consumerProps = new Properties();
+      consumerProps.putAll(config);
       long randomToken = RANDOM.nextLong();
       consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                                 (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
@@ -116,7 +117,6 @@ public class KafkaSampleStore implements SampleStore {
       consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
       consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
       consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-      KafkaCruiseControlUtils.setSslConfigs(consumerProps, config);
       return new KafkaConsumer<>(consumerProps);
   }
 

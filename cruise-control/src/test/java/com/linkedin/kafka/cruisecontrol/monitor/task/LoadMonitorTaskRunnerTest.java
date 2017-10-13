@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
@@ -16,7 +17,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSample
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
-import com.linkedin.kafka.cruisecontrol.testutils.AbstractKafkaIntegrationTestHarness;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -30,6 +30,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import kafka.admin.AdminUtils;
 import kafka.admin.RackAwareMode;
+import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
@@ -59,8 +60,9 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   @Before
   public void setUp() {
     super.setUp();
+    ZkUtils zkUtils = CruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
     for (int i = 0; i < NUM_TOPICS; i++) {
-      AdminUtils.createTopic(zkUtils(), "topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
+      AdminUtils.createTopic(zkUtils, "topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
     }
   }
 
@@ -234,6 +236,11 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     public long milliseconds() {
       this.sleep(autoTickMs);
       return TimeUnit.MILLISECONDS.convert(this.nanos, TimeUnit.NANOSECONDS);
+    }
+
+    @Override
+    public long hiResClockMs() {
+      return 0;
     }
 
     @Override

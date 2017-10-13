@@ -30,7 +30,7 @@ copyJars() {
 base_dir=$(dirname $0)
 
 if [ -z "$SCALA_VERSION" ]; then
-  SCALA_VERSION=2.10.6
+  SCALA_VERSION=2.11.11
 fi
 
 if [ -z "$SCALA_BINARY_VERSION" ]; then
@@ -136,13 +136,14 @@ if [ -z "$KAFKA_JVM_PERFORMANCE_OPTS" ]; then
   KAFKA_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+DisableExplicitGC -Djava.awt.headless=true"
 fi
 
-
+DAEMON_NAME="kafka-cruise-control"
+CONSOLE_OUTPUT_FILE="${LOG_DIR}"/"${DAEMON_NAME}".out
 while [ $# -gt 0 ]; do
   COMMAND=$1
   case $COMMAND in
     -name)
       DAEMON_NAME=$2
-      CONSOLE_OUTPUT_FILE=$LOG_DIR/$DAEMON_NAME.out
+      CONSOLE_OUTPUT_FILE="${LOG_DIR}"/"${DAEMON_NAME}".out
       shift 2
       ;;
     -loggc)
@@ -179,7 +180,7 @@ fi
 
 # Launch mode
 if [ "x$DAEMON_MODE" = "xtrue" ]; then
-  nohup $JAVA $KAFKA_HEAP_OPTS $KAFKA_JVM_PERFORMANCE_OPTS $KAFKA_GC_LOG_OPTS $KAFKA_JMX_OPTS $KAFKA_LOG4J_OPTS -cp $CLASSPATH $KAFKA_OPTS "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
+  nohup $JAVA $KAFKA_HEAP_OPTS $KAFKA_JVM_PERFORMANCE_OPTS $KAFKA_GC_LOG_OPTS $KAFKA_JMX_OPTS $KAFKA_LOG4J_OPTS -cp $CLASSPATH $KAFKA_OPTS com.linkedin.kafka.cruisecontrol.KafkaCruiseControlMain "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
 else
   exec $JAVA $KAFKA_HEAP_OPTS $KAFKA_JVM_PERFORMANCE_OPTS $KAFKA_GC_LOG_OPTS $KAFKA_JMX_OPTS $KAFKA_LOG4J_OPTS -cp $CLASSPATH $KAFKA_OPTS com.linkedin.kafka.cruisecontrol.KafkaCruiseControlMain "$@"
 fi

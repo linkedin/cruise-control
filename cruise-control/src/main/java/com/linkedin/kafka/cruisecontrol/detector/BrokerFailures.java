@@ -35,7 +35,7 @@ public class BrokerFailures extends Anomaly {
     // Fix the cluster by removing the failed brokers.
     if (_failedBrokers != null && !_failedBrokers.isEmpty()) {
       kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(), false, false,
-                                             Collections.emptyList());
+                                             Collections.emptyList(), null);
     }
   }
 
