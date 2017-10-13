@@ -37,7 +37,7 @@ public class CpuUsageDistributionGoal extends ResourceDistributionGoal {
 
   @Override
   public String goalType() {
-    return _goalType.getType();
+    return _goalType.name();
   }
 
   @Override

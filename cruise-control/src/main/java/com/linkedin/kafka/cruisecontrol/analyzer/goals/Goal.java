@@ -40,18 +40,8 @@ public interface Goal extends Configurable {
    * in future
    */
   public enum GoalType {
-    HARD("hard"),
-    SOFT("soft");
-
-    public final String goalType;
-
-    GoalType(String goaltype) {
-      this.goalType = goaltype;
-    }
-
-    public String getType() {
-      return this.goalType;
-    }
+    HARD,
+    SOFT,
   }
 
   /**

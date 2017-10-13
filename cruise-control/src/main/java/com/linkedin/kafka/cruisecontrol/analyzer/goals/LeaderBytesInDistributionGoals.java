@@ -226,7 +226,7 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
 
   @Override
   public String goalType() {
-    return _goalType.getType();
+    return _goalType.name();
   }
 
   @Override

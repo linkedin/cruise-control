@@ -870,7 +870,7 @@ public class ClusterModel implements Serializable {
     private int _hostFieldLength = 0;
     private Map<String, BasicStats> _hostStats = new ConcurrentHashMap<>();
 
-    private void addSingleBrokerStats(String host, int id, String state, double diskUtil, double cpuUtil, double leaderBytesInRate,
+    private void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                                       double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
                                       int numReplicas) {
 
@@ -973,10 +973,10 @@ public class ClusterModel implements Serializable {
   public static class SingleBrokerStats {
     private final String _host;
     private final int _id;
-    private final String _state;
+    private final Broker.State _state;
     final BasicStats _basicStats;
 
-    private SingleBrokerStats(String host, int id, String state, double diskUtil, double cpuUtil, double leaderBytesInRate,
+    private SingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                               double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
                               int numReplicas) {
       _host = host;
@@ -990,7 +990,7 @@ public class ClusterModel implements Serializable {
       return _host;
     }
 
-    public String state() {
+    public Broker.State state() {
       return _state;
     }
 
@@ -1027,12 +1027,12 @@ public class ClusterModel implements Serializable {
     private BasicStats(double diskUtil, double cpuUtil, double leaderBytesInRate,
                        double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
                        int numReplicas) {
-      _diskUtil = Double.isNaN(diskUtil) || diskUtil < 0.0 ? 0.0 : diskUtil;
-      _cpuUtil = Double.isNaN(cpuUtil) || cpuUtil < 0.0 ? 0.0 : cpuUtil;
-      _leaderBytesInRate = Double.isNaN(leaderBytesInRate) || leaderBytesInRate < 0.0 ? 0.0 : leaderBytesInRate;
-      _followerBytesInRate = Double.isNaN(followerBytesInRate) || followerBytesInRate < 0.0 ? 0.0 : followerBytesInRate;
-      _bytesOutRate = Double.isNaN(bytesOutRate) || bytesOutRate < 0.0 ? 0.0 : bytesOutRate;
-      _potentialBytesOutRate = Double.isNaN(potentialBytesOutRate) || potentialBytesOutRate < 0.0 ? 0.0 : potentialBytesOutRate;
+      _diskUtil = diskUtil < 0.0 ? 0.0 : diskUtil;
+      _cpuUtil = cpuUtil < 0.0 ? 0.0 : cpuUtil;
+      _leaderBytesInRate = leaderBytesInRate < 0.0 ? 0.0 : leaderBytesInRate;
+      _followerBytesInRate = followerBytesInRate < 0.0 ? 0.0 : followerBytesInRate;
+      _bytesOutRate = bytesOutRate < 0.0 ? 0.0 : bytesOutRate;
+      _potentialBytesOutRate =  potentialBytesOutRate < 0.0 ? 0.0 : potentialBytesOutRate;
       _numReplicas = numReplicas < 1 ? 0 : numReplicas;
     }
 

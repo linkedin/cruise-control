@@ -37,7 +37,7 @@ public class NetworkOutboundUsageDistributionGoal extends ResourceDistributionGo
 
   @Override
   public String goalType() {
-    return _goalType.getType();
+    return _goalType.name();
   }
 
   @Override

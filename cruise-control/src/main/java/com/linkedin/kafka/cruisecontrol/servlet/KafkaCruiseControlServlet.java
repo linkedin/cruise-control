@@ -138,7 +138,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    ACCESS_LOG.info("Received {}, {} from {}", request.toString(), request.getRequestURL().toString(),
+    ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
                      KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       EndPoint endPoint = endPoint(request);
@@ -211,7 +211,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    ACCESS_LOG.info("Received {}, {} from {}", request.toString(), request.getRequestURL().toString(),
+    ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       EndPoint endPoint = endPoint(request);

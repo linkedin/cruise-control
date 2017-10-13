@@ -75,8 +75,8 @@ public class Broker implements Serializable {
     return _host;
   }
 
-  public String getState() {
-    return _state.name();
+  public State getState() {
+    return _state;
   }
 
   /**

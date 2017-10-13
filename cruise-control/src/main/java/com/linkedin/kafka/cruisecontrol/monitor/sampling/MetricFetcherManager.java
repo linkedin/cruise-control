@@ -148,7 +148,7 @@ public class MetricFetcherManager {
                                              long endMs,
                                              long timeoutMs,
                                              SampleStore sampleStore) throws TimeoutException {
-    LOG.info("Kicking off sampling for time range [{}, {}] {}ms using {} fetchers with {}ms timeout.",
+    LOG.info("Kicking off sampling for time range [{}, {}], duration {} ms using {} fetchers with timeout {} ms.",
         startMs, endMs, endMs - startMs, _numMetricFetchers, timeoutMs);
     List<Set<TopicPartition>> partitionAssignment =
         _partitionAssignor.assignPartitions(_metadataClient.cluster(), _numMetricFetchers);
@@ -192,10 +192,7 @@ public class MetricFetcherManager {
       errorFutures.add(_samplingExecutor.submit(metricFetcher));
     }
 
-    // Wait for the sampling to finish.
-    int i = 0;
     for (Future<Boolean> future : errorFutures) {
-      i++;
       try {
         hasSamplingError = hasSamplingError || future.get(deadlineMs - _time.milliseconds(), TimeUnit.MILLISECONDS);
       } catch (InterruptedException e) {
