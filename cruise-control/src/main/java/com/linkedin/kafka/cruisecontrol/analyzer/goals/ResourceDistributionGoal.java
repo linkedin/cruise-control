@@ -81,8 +81,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     Replica sourceReplica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
     Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
     // Balanced resources cannot be more imbalanced. i.e. cannot go over the broker balance limit.
-    return isLoadInRangeAfterChange(clusterModel, sourceReplica.load(), destinationBroker, ADD) &&
-        isLoadInRangeAfterChange(clusterModel, sourceReplica.load(), sourceReplica.broker(), REMOVE);
+    return isLoadUnderBalanceUpperLimitAfterChange(clusterModel, sourceReplica.load(), destinationBroker, ADD) &&
+        isLoadAboveBalanceLowerLimitAfterChange(clusterModel, sourceReplica.load(), sourceReplica.broker(), REMOVE);
   }
 
   @Override
@@ -150,6 +150,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   @Override
   protected void initGoalState(ClusterModel clusterModel) throws AnalysisInputException, ModelInputException {
     _brokerIdsAboveBalanceUpperLimit = new HashSet<>();
+    _brokerIdsUnderBalanceLowerLimit = new HashSet<>();
     _selfHealingDeadBrokersOnly = false;
   }
 
@@ -166,10 +167,13 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       LOG.warn("Utilization for broker ids:{} {} above the balance limit for:{} after {}.",
                _brokerIdsAboveBalanceUpperLimit, (_brokerIdsAboveBalanceUpperLimit.size() > 1) ? "are" : "is", resource(),
                (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
+      _brokerIdsAboveBalanceUpperLimit.clear();
+      _succeeded = false;
+    }
+    if (!_brokerIdsUnderBalanceLowerLimit.isEmpty()) {
       LOG.warn("Utilization for broker ids:{} {} under the balance limit for:{} after {}.",
                _brokerIdsUnderBalanceLowerLimit, (_brokerIdsUnderBalanceLowerLimit.size() > 1) ? "are" : "is", resource(),
                (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
-      _brokerIdsAboveBalanceUpperLimit.clear();
       _brokerIdsUnderBalanceLowerLimit.clear();
       _succeeded = false;
     }
@@ -233,7 +237,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       if (requireLessLoad && !rebalanceByMovingLeadersOut(broker, clusterModel, optimizedGoals)) {
         LOG.debug("Successfully balanced {} for broker {} by moving out leaders.", resource(), broker.id());
         return;
-      } else if (requireLessLoad && !rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals,
+      } else if (requireMoreLoad && !rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals,
                                                              BalancingAction.LEADERSHIP_MOVEMENT)) {
         LOG.debug("Successfully balanced {} for broker {} by moving in leaders.", resource(), broker.id());
         return;
@@ -243,12 +247,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // Update broker ids over the balance limit for logging purposes.
     if (requireLessLoad && rebalanceByMovingReplicasOut(broker, clusterModel, optimizedGoals, excludedTopics)) {
       _brokerIdsAboveBalanceUpperLimit.add(broker.id());
-      _succeeded = false;
       LOG.debug("Failed to balance {} for broker {} with replica and leader movements to reduce load.", resource(), broker.id());
     } else if (requireMoreLoad && rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals,
                                                           BalancingAction.REPLICA_MOVEMENT)) {
       _brokerIdsUnderBalanceLowerLimit.add(broker.id());
-      _succeeded = false;
       LOG.debug("Failed to balance {} for broker {} with replica and leader movements to increase load.", resource(), broker.id());
     } else {
       LOG.debug("Successfully balanced {} for broker {} by moving leaders and replicas.", resource(), broker.id());
@@ -382,39 +384,60 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     return !broker.replicas().isEmpty();
   }
 
-  private boolean isLoadInRangeAfterChange(ClusterModel clusterModel, Load load, Broker broker, ChangeType changeType) {
-    return isLoadUnderBalanceUpperLimitAfterChange(clusterModel, load, broker, changeType)
-        && isLoadAboveBalanceLowerLimitAfterChange(clusterModel, load, broker, changeType);
-  }
-
   private boolean isLoadAboveBalanceLowerLimitAfterChange(ClusterModel clusterModel,
                                                           Load load,
                                                           Broker broker,
                                                           ChangeType changeType) {
-    double balanceLowerThreshold = balanceLowerThreshold(clusterModel);
-    double capacity = resource().isHostResource() ? broker.host().capacityFor(resource()) : broker.capacityFor(resource());
-    double balanceLowerLimit = capacity * balanceLowerThreshold;
-
-    Load existingLoad = resource().isHostResource() ? broker.host().load() : broker.load();
-    double utilization = existingLoad.expectedUtilizationFor(resource());
     double utilizationDelta = load == null ? 0 : load.expectedUtilizationFor(resource());
-    return changeType == ADD ? utilization + utilizationDelta >= balanceLowerLimit :
-        utilization - utilizationDelta >= balanceLowerLimit;
+
+    double balanceLowerThreshold = balanceLowerThreshold(clusterModel);
+    double brokerCapacity = broker.capacityFor(resource());
+    double brokerBalanceLowerLimit = brokerCapacity * balanceLowerThreshold;
+    double brokerUtilization = broker.load().expectedUtilizationFor(resource());
+    boolean isBrokerAboveLowerLimit = changeType == ADD ? brokerUtilization + utilizationDelta >= brokerBalanceLowerLimit :
+        brokerUtilization - utilizationDelta >= brokerBalanceLowerLimit;
+
+    if (resource().isHostResource()) {
+      double hostCapacity = broker.host().capacityFor(resource());
+      double hostBalanceLowerLimit = hostCapacity * balanceLowerThreshold;
+      double hostUtilization = broker.host().load().expectedUtilizationFor(resource());
+      boolean isHostAboveLowerLimit = changeType == ADD ? hostUtilization + utilizationDelta >= hostBalanceLowerLimit :
+          hostUtilization - utilizationDelta >= hostBalanceLowerLimit;
+      // As long as either the host or the broker is above the limit, we claim the host resource utilization is
+      // above the limit. If the host is below limit, there must be at least one broker below limit. We should just
+      // bring more load to that broker.
+      return isHostAboveLowerLimit || isBrokerAboveLowerLimit;
+    } else {
+      return isBrokerAboveLowerLimit;
+    }
   }
 
   private boolean isLoadUnderBalanceUpperLimitAfterChange(ClusterModel clusterModel,
                                                           Load load,
                                                           Broker broker,
                                                           ChangeType changeType) {
-    double balanceUpperThreshold = balanceUpperThreshold(clusterModel);
-    double capacity = resource().isHostResource() ? broker.host().capacityFor(resource()) : broker.capacityFor(resource());
-    double balanceUpperLimit = capacity * balanceUpperThreshold;
-
-    Load existingLoad = resource().isHostResource() ? broker.host().load() : broker.load();
-    double utilization = existingLoad.expectedUtilizationFor(resource());
     double utilizationDelta = load == null ? 0 : load.expectedUtilizationFor(resource());
-    return changeType == ADD ? utilization + utilizationDelta <= balanceUpperLimit :
-        utilization - utilizationDelta <= balanceUpperLimit;
+
+    double balanceUpperThreshold = balanceUpperThreshold(clusterModel);
+    double brokerCapacity = broker.capacityFor(resource());
+    double brokerBalanceUpperLimit = brokerCapacity * balanceUpperThreshold;
+    double brokerUtilization = broker.load().expectedUtilizationFor(resource());
+    boolean isBrokerUnderUpperLimit = changeType == ADD ? brokerUtilization + utilizationDelta <= brokerBalanceUpperLimit :
+        brokerUtilization - utilizationDelta <= brokerBalanceUpperLimit;
+
+    if (resource().isHostResource()) {
+      double hostCapacity = broker.host().capacityFor(resource());
+      double hostBalanceUpperLimit = hostCapacity * balanceUpperThreshold;
+      double hostUtilization = broker.host().load().expectedUtilizationFor(resource());
+      boolean isHostUnderUpperLimit = changeType == ADD ? hostUtilization + utilizationDelta <= hostBalanceUpperLimit :
+          hostUtilization - utilizationDelta <= hostBalanceUpperLimit;
+      // As long as either the host or the broker is under the limit, we claim the host resource utilization is
+      // under the limit. If the host is above limit, there must be at least one broker above limit. We should just
+      // move load off that broker.
+      return isHostUnderUpperLimit || isBrokerUnderUpperLimit;
+    } else {
+      return isBrokerUnderUpperLimit;
+    }
   }
 
   /**
