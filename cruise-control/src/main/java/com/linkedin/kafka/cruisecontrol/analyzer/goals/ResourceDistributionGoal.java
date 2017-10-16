@@ -46,7 +46,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   // Flag to indicate whether the self healing failed to relocate all replicas away from dead brokers in its initial
   // attempt and currently omitting the resource balance limit to relocate remaining replicas.
   private boolean _selfHealingDeadBrokersOnly;
-  private Set<Integer> _brokerIdsOverBalanceLimit;
+  private Set<Integer> _brokerIdsAboveBalanceUpperLimit;
+  private Set<Integer> _brokerIdsUnderBalanceLowerLimit;
 
   /**
    * Constructor for Resource Distribution Goal.
@@ -60,7 +61,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    */
   ResourceDistributionGoal(BalancingConstraint constraint) {
     _balancingConstraint = constraint;
-    _brokerIdsOverBalanceLimit = new HashSet<>();
+    _brokerIdsAboveBalanceUpperLimit = new HashSet<>();
+    _brokerIdsUnderBalanceLowerLimit = new HashSet<>();
   }
 
   protected abstract Resource resource();
@@ -133,8 +135,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     //Check that current destination would not become more unbalanced.
-    return isLoadInRangeAfterChange(clusterModel, sourceReplica.load(), destinationBroker, ADD) &&
-        isLoadInRangeAfterChange(clusterModel, sourceReplica.load(), sourceReplica.broker(), REMOVE);
+    return isLoadUnderBalanceUpperLimitAfterChange(clusterModel, sourceReplica.load(), destinationBroker, ADD) &&
+        isLoadAboveBalanceLowerLimitAfterChange(clusterModel, sourceReplica.load(), sourceReplica.broker(), REMOVE);
   }
 
   /**
@@ -147,7 +149,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    */
   @Override
   protected void initGoalState(ClusterModel clusterModel) throws AnalysisInputException, ModelInputException {
-    _brokerIdsOverBalanceLimit = new HashSet<>();
+    _brokerIdsAboveBalanceUpperLimit = new HashSet<>();
     _selfHealingDeadBrokersOnly = false;
   }
 
@@ -160,11 +162,15 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   @Override
   protected void updateGoalState(ClusterModel clusterModel) throws AnalysisInputException {
     // Log broker Ids over balancing limit.
-    if (!_brokerIdsOverBalanceLimit.isEmpty()) {
+    if (!_brokerIdsAboveBalanceUpperLimit.isEmpty()) {
       LOG.warn("Utilization for broker ids:{} {} above the balance limit for:{} after {}.",
-          _brokerIdsOverBalanceLimit, (_brokerIdsOverBalanceLimit.size() > 1) ? "are" : "is", resource(),
-          (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
-      _brokerIdsOverBalanceLimit.clear();
+               _brokerIdsAboveBalanceUpperLimit, (_brokerIdsAboveBalanceUpperLimit.size() > 1) ? "are" : "is", resource(),
+               (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
+      LOG.warn("Utilization for broker ids:{} {} under the balance limit for:{} after {}.",
+               _brokerIdsUnderBalanceLowerLimit, (_brokerIdsUnderBalanceLowerLimit.size() > 1) ? "are" : "is", resource(),
+               (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
+      _brokerIdsAboveBalanceUpperLimit.clear();
+      _brokerIdsUnderBalanceLowerLimit.clear();
       _succeeded = false;
     }
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
@@ -236,12 +242,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
     // Update broker ids over the balance limit for logging purposes.
     if (requireLessLoad && rebalanceByMovingReplicasOut(broker, clusterModel, optimizedGoals, excludedTopics)) {
-      _brokerIdsOverBalanceLimit.add(broker.id());
+      _brokerIdsAboveBalanceUpperLimit.add(broker.id());
       _succeeded = false;
       LOG.debug("Failed to balance {} for broker {} with replica and leader movements to reduce load.", resource(), broker.id());
     } else if (requireMoreLoad && rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals,
                                                           BalancingAction.REPLICA_MOVEMENT)) {
-      _brokerIdsOverBalanceLimit.add(broker.id());
+      _brokerIdsUnderBalanceLowerLimit.add(broker.id());
       _succeeded = false;
       LOG.debug("Failed to balance {} for broker {} with replica and leader movements to increase load.", resource(), broker.id());
     } else {
@@ -255,11 +261,14 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                             BalancingAction balancingAction)
       throws AnalysisInputException, ModelInputException {
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>(
-        (b1, b2) -> Double.compare(b2.leadershipLoad().expectedUtilizationFor(resource()),
-                                   b1.leadershipLoad().expectedUtilizationFor(resource())));
-    double avgUtilizationPercentage =
+        (b1, b2) -> Double.compare(utilizationPercentage(b2), utilizationPercentage(b1)));
+    double clusterUtilizationPercentage =
         clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource());
-    eligibleBrokers.addAll(clusterModel.sortedHealthyBrokersUnderThreshold(resource(), avgUtilizationPercentage));
+    clusterModel.healthyBrokers().forEach(b -> {
+      if (utilizationPercentage(b) > clusterUtilizationPercentage) {
+        eligibleBrokers.add(b);
+      }
+    });
 
     // Stop when all the replicas are leaders or there is no leader can be moved in anymore.
     while (broker.leaderReplicas().size() != broker.replicas().size() && !eligibleBrokers.isEmpty()) {
@@ -283,7 +292,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
             }
             // If the source broker has a lower utilization than the next broker in the eligible broker in the queue,
             // we reenqueue the source broker and switch to the next broker.
-            if (utilizationPercentage(sourceBroker) < utilizationPercentage(eligibleBrokers.peek())) {
+            if (!eligibleBrokers.isEmpty() &&
+                utilizationPercentage(sourceBroker) < utilizationPercentage(eligibleBrokers.peek())) {
               eligibleBrokers.add(sourceBroker);
               break;
             }
