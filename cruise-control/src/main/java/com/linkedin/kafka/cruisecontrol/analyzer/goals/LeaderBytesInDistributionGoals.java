@@ -221,14 +221,4 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
       return _reasonForLastNegativeResult;
     }
   }
-
-  @Override
-  public String goalType() {
-    return _goalType.name();
-  }
-
-  @Override
-  public String goalDescription() {
-    return "Attempt to equalize the leader bytes in rate on each host";
-  }
 }

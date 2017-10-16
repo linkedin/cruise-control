@@ -34,14 +34,4 @@ public class NetworkOutboundUsageDistributionGoal extends ResourceDistributionGo
   public String name() {
     return NetworkOutboundUsageDistributionGoal.class.getSimpleName();
   }
-
-  @Override
-  public String goalType() {
-    return _goalType.name();
-  }
-
-  @Override
-  public String goalDescription() {
-    return "Attempt to make the network-outbound-utilization variance among all the brokers are within a certain range.";
-  }
 }

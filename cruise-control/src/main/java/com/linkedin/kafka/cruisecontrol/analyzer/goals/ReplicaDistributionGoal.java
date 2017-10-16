@@ -212,14 +212,4 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       return _reasonForLastNegativeResult;
     }
   }
-
-  @Override
-  public String goalType() {
-    return _goalType.name();
-  }
-
-  @Override
-  public String goalDescription() {
-    return "Distribute partitions (independent of their topics) evenly over brokers.";
-  }
 }

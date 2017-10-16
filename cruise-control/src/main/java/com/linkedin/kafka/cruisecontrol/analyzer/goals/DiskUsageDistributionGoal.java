@@ -50,14 +50,4 @@ public class DiskUsageDistributionGoal extends ResourceDistributionGoal {
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
     return new ModelCompletenessRequirements(1, _minMonitoredPartitionPercentage, true);
   }
-
-  @Override
-  public String goalType() {
-    return _goalType.name();
-  }
-
-  @Override
-  public String goalDescription() {
-    return "Attempt to make the disk-utilization variance among all the brokers are within a certain range.";
-  }
 }

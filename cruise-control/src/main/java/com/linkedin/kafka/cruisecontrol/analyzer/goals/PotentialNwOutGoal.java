@@ -281,16 +281,4 @@ public class PotentialNwOutGoal extends AbstractGoal {
       return _reasonForLastNegativeResult;
     }
   }
-
-  @Override
-  public String goalType() {
-    return _goalType.name();
-  }
-
-  @Override
-  public String goalDescription() {
-    return "Generate proposals to keep the outbound network utilization on a broker such that even if all partitions" +
-           " within the broker become the leader, the outbound network utilization would not exceed the corresponding broker" +
-           " capacity threshold. This goal can be interpreted as keeping the potential outbound network utilization under a threshold.";
-  }
 }

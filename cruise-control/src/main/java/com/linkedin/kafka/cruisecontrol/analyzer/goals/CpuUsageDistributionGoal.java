@@ -34,14 +34,4 @@ public class CpuUsageDistributionGoal extends ResourceDistributionGoal {
   public String name() {
     return CpuUsageDistributionGoal.class.getSimpleName();
   }
-
-  @Override
-  public String goalType() {
-    return _goalType.name();
-  }
-
-  @Override
-  public String goalDescription() {
-    return "Attempt to make the cpu-utilization variance among all the brokers are within a certain range.";
-  }
 }

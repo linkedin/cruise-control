@@ -421,14 +421,4 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       return _reasonForLastNegativeResult;
     }
   }
-
-  @Override
-  public String goalType() {
-    return _goalType.name();
-  }
-
-  @Override
-  public String goalDescription() {
-    return "Attempt to make the resource (CPU, Disk, Network) utilization variance among all the brokers are within a certain range.";
-  }
 }

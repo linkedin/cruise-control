@@ -35,14 +35,4 @@ public class NetworkInboundUsageDistributionGoal extends ResourceDistributionGoa
     return NetworkInboundUsageDistributionGoal.class.getSimpleName();
   }
 
-  @Override
-  public String goalType() {
-    return _goalType.name();
-  }
-
-  @Override
-  public String goalDescription() {
-    return "Attempt to make the network-inbound-utilization variance among all the brokers are within a certain range.";
-  }
-
 }

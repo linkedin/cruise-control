@@ -239,14 +239,4 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       return _reasonForLastNegativeResult;
     }
   }
-
-  @Override
-  public String goalType() {
-    return _goalType.name();
-  }
-
-  @Override
-  public String goalDescription() {
-    return "Attempt to make the replicas of the same topic are evenly distributed across the entire cluster.";
-  }
 }
