@@ -26,6 +26,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -34,6 +36,7 @@ import java.util.stream.Collectors;
  * HARD GOAL#2: Generate replica movement proposals to provide rack-aware replica distribution.
  */
 public class RackAwareCapacityGoal extends AbstractGoal {
+  private static final Logger LOG = LoggerFactory.getLogger(RackAwareCapacityGoal.class);
   private Set<Resource> _balancedResources;
   private Resource _currentResource;
 
@@ -254,18 +257,32 @@ public class RackAwareCapacityGoal extends AbstractGoal {
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
+    LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     double capacityThreshold = _balancingConstraint.capacityThreshold(_currentResource);
     double brokerCapacityLimit = broker.capacityFor(_currentResource) * capacityThreshold;
     double hostCapacityLimit = broker.host().capacityFor(_currentResource) * capacityThreshold;
-    boolean isUtilizationOverLimit;
-    // REBALANCE BY LEADERSHIP MOVEMENT:
-    if (_currentResource.equals(Resource.NW_OUT)) {
-      isUtilizationOverLimit =
-          isUtilizationOverLimit(broker, _currentResource, brokerCapacityLimit, hostCapacityLimit);
-      if (!isUtilizationOverLimit) {
-        // The utilization of source broker for the current resource is already under the capacity limit.
-        return;
+    // 1. Satisfy rack awareness requirement.
+    for (Replica replica : new ArrayList<>(broker.replicas())) {
+      if (satisfiedRackAwareness(replica, clusterModel) || excludedTopics.contains(replica.topicPartition().topic())) {
+        continue;
       }
+      // Rack awareness is violated. Move replica to a broker in another rack.
+      if (maybeApplyBalancingAction(clusterModel, replica, rackAwareEligibleBrokers(replica, clusterModel),
+                                    BalancingAction.REPLICA_MOVEMENT, optimizedGoals) == null) {
+        throw new AnalysisInputException(
+            "Violated rack-awareness requirement for broker with id " + broker.id() + ".");
+      }
+    }
+
+    boolean isUtilizationOverLimit =
+        isUtilizationOverLimit(broker, _currentResource, brokerCapacityLimit, hostCapacityLimit);
+    if (!isUtilizationOverLimit) {
+      // The utilization of source broker for the current resource is already under the capacity limit.
+      return;
+    }
+
+    // First try REBALANCE BY LEADERSHIP MOVEMENT:
+    if (_currentResource.equals(Resource.NW_OUT)) {
       // Sort replicas in by descending order of preference to relocate. Preference is based on resource cost.
       List<Replica> sortedLeadersInSourceBroker = broker.sortedReplicas(_currentResource);
       for (Replica leader : sortedLeadersInSourceBroker) {
@@ -277,8 +294,11 @@ public class RackAwareCapacityGoal extends AbstractGoal {
         clusterModel.sortReplicasInAscendingOrderByBrokerResourceUtilization(followers, _currentResource);
         List<Broker> eligibleBrokers = followers.stream().map(Replica::broker).collect(Collectors.toList());
 
-        maybeApplyBalancingAction(clusterModel, leader, eligibleBrokers, BalancingAction.LEADERSHIP_MOVEMENT,
-            optimizedGoals);
+        Integer brokerId = maybeApplyBalancingAction(clusterModel, leader, eligibleBrokers, BalancingAction.LEADERSHIP_MOVEMENT,
+                                                     optimizedGoals);
+        if (brokerId == null) {
+          LOG.debug("Failed to move leader replica {} to any other brokers in {}", leader, eligibleBrokers);
+        }
         isUtilizationOverLimit =
             isUtilizationOverLimit(broker, _currentResource, brokerCapacityLimit, hostCapacityLimit);
         // Broker utilization has successfully been reduced under the capacity limit for the current resource.
@@ -286,27 +306,10 @@ public class RackAwareCapacityGoal extends AbstractGoal {
           break;
         }
       }
-    } else {
-      // REBALANCE BY REPLICA MOVEMENT:
-      // 1. Satisfy rack awareness requirement.
-      for (Replica replica : new ArrayList<>(broker.replicas())) {
-        if (satisfiedRackAwareness(replica, clusterModel) || excludedTopics.contains(replica.topicPartition().topic())) {
-          continue;
-        }
-        // Rack awareness is violated. Move replica to a broker in another rack.
-        if (maybeApplyBalancingAction(clusterModel, replica, rackAwareEligibleBrokers(replica, clusterModel),
-            BalancingAction.REPLICA_MOVEMENT, optimizedGoals) == null) {
-          throw new AnalysisInputException(
-              "Violated rack-awareness requirement for broker with id " + broker.id() + ".");
-        }
-      }
-      // 2. Satisfy capacity limit requirement.
-      isUtilizationOverLimit =
-          isUtilizationOverLimit(broker, _currentResource, brokerCapacityLimit, hostCapacityLimit);
-      if (!isUtilizationOverLimit) {
-        // The utilization of source broker for the current resource is already under the capacity limit.
-        return;
-      }
+    }
+
+    // If leader movement did not work, move replicas.
+    if (isUtilizationOverLimit) {
       // Get sorted healthy brokers under capacity limit.
       List<Broker> sortedHealthyBrokersUnderCapacityLimit =
           clusterModel.sortedHealthyBrokersUnderThreshold(_currentResource, capacityThreshold);
@@ -323,8 +326,11 @@ public class RackAwareCapacityGoal extends AbstractGoal {
         List<Broker> eligibleBrokers = new ArrayList<>(
             removeBrokersViolatingRackAwareness(replica, sortedHealthyBrokersUnderCapacityLimit, clusterModel));
 
-        maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, BalancingAction.REPLICA_MOVEMENT,
-            optimizedGoals);
+        Integer brokerId = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, BalancingAction.REPLICA_MOVEMENT,
+                                                     optimizedGoals);
+        if (brokerId == null) {
+          LOG.debug("Failed to move replica {} to any of the brokers in {}", replica, eligibleBrokers);
+        }
         // If capacity limit was not satisfied before, check if it is satisfied now.
         isUtilizationOverLimit =
             isUtilizationOverLimit(broker, _currentResource, brokerCapacityLimit, hostCapacityLimit);
@@ -334,6 +340,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
         }
       }
     }
+
     if (isUtilizationOverLimit) {
       if (_currentResource == Resource.DISK) {
         // Utilization is above the capacity limit after all replicas in the given source broker were checked.

@@ -270,18 +270,14 @@ public class Rack implements Serializable {
   void setBrokerState(int brokerId, Broker.State newState) {
     // Broker is dead
     Broker broker = broker(brokerId);
-    if (broker.isAlive() && newState == Broker.State.DEAD) {
-      for (Resource r : Resource.values()) {
-        _rackCapacity[r.id()] -= broker.capacityFor(r);
+    broker.host().setBrokerState(brokerId, newState);
+    for (Resource r : Resource.cachedValues()) {
+      double capacity = 0;
+      for (Host h : _hosts.values()) {
+        capacity += h.capacityFor(r);
       }
-      broker.host().setBrokerState(brokerId, newState);
-    } else if (!broker.isAlive() && newState != Broker.State.DEAD) {
-      broker.host().setBrokerState(brokerId, newState);
-      for (Resource r : Resource.values()) {
-        _rackCapacity[r.id()] += broker.capacityFor(r);
-      }
+      _rackCapacity[r.id()] = capacity;
     }
-
   }
 
   /**
