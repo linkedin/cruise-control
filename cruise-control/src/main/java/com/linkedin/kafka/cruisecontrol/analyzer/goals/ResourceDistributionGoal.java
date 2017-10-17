@@ -455,7 +455,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    */
   protected double balanceLowerThreshold(ClusterModel clusterModel) {
     return (clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource()))
-        * (1 - balancePercentageWithMargin(resource()));
+        * Math.max(0, (1 - balancePercentageWithMargin(resource())));
   }
 
   protected double utilizationPercentage(Broker broker) {

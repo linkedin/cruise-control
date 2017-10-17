@@ -184,7 +184,7 @@ public class ClusterModelStats {
       double balanceUpperThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))
           * _balancingConstraint.balancePercentage(resource);
       double balanceLowerThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))
-          * (2 - _balancingConstraint.balancePercentage(resource));
+          * Math.max(0, (2 - _balancingConstraint.balancePercentage(resource)));
       // Average utilization for the resource.
       double avgUtilization = clusterModel.load().expectedUtilizationFor(resource) / _numBrokers;
       avgUtilizationByResource.put(resource, avgUtilization);
