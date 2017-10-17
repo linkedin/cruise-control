@@ -236,7 +236,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       return;
     } else if (!clusterModel.deadBrokers().isEmpty() && requireLessLoad && broker.isAlive()
         && broker.immigrantReplicas().isEmpty()) {
-      // return if the cluster is in selfhealing mode and the broker requires less load but does not hav eany
+      // return if the cluster is in self-healing mode and the broker requires less load but does not have any
       // immigrant replicas.
       return;
     }
