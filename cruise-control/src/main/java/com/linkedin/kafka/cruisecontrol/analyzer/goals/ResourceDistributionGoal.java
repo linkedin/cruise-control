@@ -26,13 +26,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal.ChangeType.ADD;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal.ChangeType.REMOVE;
+import static com.linkedin.kafka.cruisecontrol.common.BalancingAction.LEADERSHIP_MOVEMENT;
+import static com.linkedin.kafka.cruisecontrol.common.BalancingAction.REPLICA_MOVEMENT;
 
 
 /**
@@ -223,33 +226,41 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
-    // If the host utilization is over limit then there must be at least one broker whose utilization is over limit.
-    // We should only balance those brokers.
     boolean requireLessLoad = !isLoadUnderBalanceUpperLimitAfterChange(clusterModel, null, broker, REMOVE);
     boolean requireMoreLoad = !isLoadAboveBalanceLowerLimitAfterChange(clusterModel, null, broker, ADD);
     if (broker.isAlive() && !requireMoreLoad && !requireLessLoad) {
       // return if the broker is already under limit.
       return;
+    } else if (!clusterModel.newBrokers().isEmpty() && requireMoreLoad && !broker.isNew()) {
+      // return if we have new broker and the current broker is not a new broker but require more load.
+      return;
+    } else if (!clusterModel.deadBrokers().isEmpty() && requireLessLoad && broker.isAlive()
+        && broker.immigrantReplicas().isEmpty()) {
+      // return if the cluster is in self-healing mode and the broker requires less load but does not have any
+      // immigrant replicas.
+      return;
     }
 
     // First try leadership movement
     if (resource() == Resource.NW_OUT || resource() == Resource.CPU) {
-      if (requireLessLoad && !rebalanceByMovingLeadersOut(broker, clusterModel, optimizedGoals)) {
+      if (requireLessLoad && !rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals,
+                                                       LEADERSHIP_MOVEMENT, excludedTopics)) {
         LOG.debug("Successfully balanced {} for broker {} by moving out leaders.", resource(), broker.id());
         return;
       } else if (requireMoreLoad && !rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals,
-                                                             BalancingAction.LEADERSHIP_MOVEMENT)) {
+                                                             LEADERSHIP_MOVEMENT, excludedTopics)) {
         LOG.debug("Successfully balanced {} for broker {} by moving in leaders.", resource(), broker.id());
         return;
       }
     }
 
     // Update broker ids over the balance limit for logging purposes.
-    if (requireLessLoad && rebalanceByMovingReplicasOut(broker, clusterModel, optimizedGoals, excludedTopics)) {
+    if (requireLessLoad && rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals,
+                                                    REPLICA_MOVEMENT, excludedTopics)) {
       _brokerIdsAboveBalanceUpperLimit.add(broker.id());
       LOG.debug("Failed to balance {} for broker {} with replica and leader movements to reduce load.", resource(), broker.id());
     } else if (requireMoreLoad && rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals,
-                                                          BalancingAction.REPLICA_MOVEMENT)) {
+                                                          REPLICA_MOVEMENT, excludedTopics)) {
       _brokerIdsUnderBalanceLowerLimit.add(broker.id());
       LOG.debug("Failed to balance {} for broker {} with replica and leader movements to increase load.", resource(), broker.id());
     } else {
@@ -260,7 +271,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   protected boolean rebalanceByMovingLoadIn(Broker broker,
                                             ClusterModel clusterModel,
                                             Set<Goal> optimizedGoals,
-                                            BalancingAction balancingAction)
+                                            BalancingAction balancingAction,
+                                            Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>(
         (b1, b2) -> Double.compare(utilizationPercentage(b2), utilizationPercentage(b1)));
@@ -272,33 +284,33 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       }
     });
 
-    // Stop when all the replicas are leaders or there is no leader can be moved in anymore.
-    while (broker.leaderReplicas().size() != broker.replicas().size() && !eligibleBrokers.isEmpty()) {
+    // Stop when all the replicas are leaders for leader movement or there is no replicas can be moved in anymore
+    // for replica movement.
+    while (!eligibleBrokers.isEmpty() && (balancingAction == REPLICA_MOVEMENT ||
+        (balancingAction == LEADERSHIP_MOVEMENT && broker.leaderReplicas().size() != broker.replicas().size()))) {
       Broker sourceBroker = eligibleBrokers.poll();
       for (Replica replica : sourceBroker.sortedReplicas(resource())) {
-        boolean eligibleReplica = false;
-        if (balancingAction == BalancingAction.REPLICA_MOVEMENT && broker.replica(replica.topicPartition()) == null) {
-          eligibleReplica = true;
-        } else if (balancingAction == BalancingAction.LEADERSHIP_MOVEMENT && replica.isLeader()
-                && broker.replica(replica.topicPartition()) != null) {
-          eligibleReplica = true;
+        if (excludedTopics.contains(replica.topicPartition().topic())) {
+          continue;
         }
-        if (eligibleReplica) {
-          Integer brokerId = maybeApplyBalancingAction(clusterModel, replica, Collections.singletonList(broker),
-                                                       balancingAction, optimizedGoals);
-          // Only need to check status if the action is taken. This will also handle the case that the source broker
-          // has nothing to move in. In that case we will never reenqueue that source broker.
-          if (brokerId != null) {
-            if (isLoadAboveBalanceLowerLimitAfterChange(clusterModel, null, broker, ADD)) {
-              return false;
-            }
-            // If the source broker has a lower utilization than the next broker in the eligible broker in the queue,
-            // we reenqueue the source broker and switch to the next broker.
-            if (!eligibleBrokers.isEmpty() &&
-                utilizationPercentage(sourceBroker) < utilizationPercentage(eligibleBrokers.peek())) {
-              eligibleBrokers.add(sourceBroker);
-              break;
-            }
+        // It does not make sense to move a replica without utilization from a live broker.
+        if (replica.load().expectedUtilizationFor(resource()) == 0.0 && broker.isAlive()) {
+          break;
+        }
+        Broker b = maybeApplyBalancingAction(clusterModel, replica, Collections.singletonList(broker),
+                                                     balancingAction, optimizedGoals);
+        // Only need to check status if the action is taken. This will also handle the case that the source broker
+        // has nothing to move in. In that case we will never reenqueue that source broker.
+        if (b != null) {
+          if (isLoadAboveBalanceLowerLimitAfterChange(clusterModel, null, broker, ADD)) {
+            return false;
+          }
+          // If the source broker has a lower utilization than the next broker in the eligible broker in the queue,
+          // we reenqueue the source broker and switch to the next broker.
+          if (!eligibleBrokers.isEmpty() &&
+              utilizationPercentage(sourceBroker) < utilizationPercentage(eligibleBrokers.peek())) {
+            eligibleBrokers.add(sourceBroker);
+            break;
           }
         }
       }
@@ -306,76 +318,73 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     return true;
   }
 
-  /**
-   * Rebalance the broker by leader movement until it reaches given host and broker utilization limit.
-   * @return true if the utilization is still over limit, false otherwise.
-   * @throws ModelInputException
-   * @throws AnalysisInputException
-   */
-  protected boolean rebalanceByMovingLeadersOut(Broker broker,
-                                                ClusterModel clusterModel,
-                                                Set<Goal> optimizedGoals)
-      throws ModelInputException, AnalysisInputException {
-    // Attempt to move leaders until the resource utilization on the broker is under the balance limit.
-    // Leaders are sorted in by descending order of preference to relocate. Preference is based on utilization.
-    for (Replica leader : broker.sortedReplicas(resource())) {
-      // Get followers of this leader and sort them in ascending order by their broker resource utilization.
-      List<Replica> followers = clusterModel.partition(leader.topicPartition()).followers();
-      clusterModel.sortReplicasInAscendingOrderByBrokerResourceUtilization(followers, resource());
-      List<Broker> eligibleBrokers = followers.stream().map(Replica::broker).collect(Collectors.toList());
-      maybeApplyBalancingAction(clusterModel, leader, eligibleBrokers, BalancingAction.LEADERSHIP_MOVEMENT, optimizedGoals);
-
-      boolean isUtilizationUnderLimit = isLoadUnderBalanceUpperLimitAfterChange(clusterModel, null, broker, REMOVE);
-      if (isUtilizationUnderLimit) {
-        return false;
-      }
-    }
-    return !broker.replicas().isEmpty();
-  }
-
-  /**
-   * Rebalance the broker by replica movement until it reaches given host and broker utilization limit.
-   * @return true if the utilization is still over limit, false otherwise.
-   * @throws ModelInputException
-   * @throws AnalysisInputException
-   */
-  protected boolean rebalanceByMovingReplicasOut(Broker broker,
-                                                 ClusterModel clusterModel,
-                                                 Set<Goal> optimizedGoals,
-                                                 Set<String> excludedTopics)
-      throws ModelInputException, AnalysisInputException {
-
-    // Get and sort candidate destination brokers.
-    List<Broker> candidateBrokers;
+  protected boolean rebalanceByMovingLoadOut(Broker broker,
+                                             ClusterModel clusterModel,
+                                             Set<Goal> optimizedGoals,
+                                             BalancingAction balancingAction,
+                                             Set<String> excludedTopics)
+      throws AnalysisInputException, ModelInputException {
+    // Get th eligible brokers.
+    SortedSet<Broker> candidateBrokers = new TreeSet<>((b1, b2) -> {
+        int result = Double.compare(utilizationPercentage(b1), utilizationPercentage(b2));
+        return result != 0 ? result : Integer.compare(b1.id(), b2.id());
+    });
+    double balancingUpperThreshold = balanceUpperThreshold(clusterModel);
     if (_selfHealingDeadBrokersOnly) {
-      candidateBrokers = new ArrayList<>(clusterModel.healthyBrokers());
-      candidateBrokers.sort((b1, b2) -> Double.compare(b2.leadershipLoad().expectedUtilizationFor(Resource.NW_OUT),
-                                                       b1.leadershipLoad().expectedUtilizationFor(Resource.NW_OUT)));
+      candidateBrokers.addAll(clusterModel.healthyBrokers());
     } else {
-      candidateBrokers = clusterModel.sortedHealthyBrokersUnderThreshold(resource(),
-                                                                         balanceUpperThreshold(clusterModel));
+      candidateBrokers.addAll(clusterModel.sortedHealthyBrokersUnderThreshold(resource(), balancingUpperThreshold));
     }
-    // Attempt to move replicas until the resource utilization on the broker is under the balance limit.
-    // Replicas are sorted in descending order of preference to relocate. Preference is based on utilization.
-    for (Replica replica : broker.sortedReplicas(resource())) {
+
+    // Get the replicas to rebalance.
+    List<Replica> replicasToMove;
+    if (balancingAction == LEADERSHIP_MOVEMENT) {
+      // Only take leader replicas to move leaders.
+      replicasToMove = new ArrayList<>(broker.leaderReplicas());
+      replicasToMove.sort((r1, r2) -> Double.compare(r2.load().expectedUtilizationFor(resource()),
+                                                     r1.load().expectedUtilizationFor(resource())));
+    } else {
+      // Take all replicas for replica movements.
+      replicasToMove = broker.sortedReplicas(resource());
+    }
+
+    // Now let's move things around.
+    for (Replica replica : replicasToMove) {
       if (excludedTopics.contains(replica.topicPartition().topic())) {
         continue;
       }
-
       // It does not make sense to move a replica without utilization from a live broker.
       if (replica.load().expectedUtilizationFor(resource()) == 0.0 && broker.isAlive()) {
         break;
       }
-      // Eligible brokers are healthy brokers without partition brokers.
-      List<Broker> eligibleBrokers = new ArrayList<>(candidateBrokers);
-      eligibleBrokers.removeAll(clusterModel.partition(replica.topicPartition()).partitionBrokers());
-      LOG.trace("Moving {} to {} in order to balance {}", replica, eligibleBrokers, resource());
-      maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers,
-                                BalancingAction.REPLICA_MOVEMENT, optimizedGoals);
-      boolean isUtilizationUnderLimit =
-          isLoadUnderBalanceUpperLimitAfterChange(clusterModel, null, broker, REMOVE);
-      if (isUtilizationUnderLimit) {
-        return false;
+
+      // An optimization for leader movements.
+      SortedSet<Broker> eligibleBrokers;
+      if (balancingAction == LEADERSHIP_MOVEMENT) {
+        eligibleBrokers = new TreeSet<>((b1, b2) -> {
+          int result = Double.compare(utilizationPercentage(b1), utilizationPercentage(b2));
+          return result != 0 ? result : Integer.compare(b1.id(), b2.id());
+        });
+        clusterModel.partition(replica.topicPartition()).followerBrokers().forEach(b -> {
+          if (candidateBrokers.contains(b)) {
+            eligibleBrokers.add(b);
+          }
+        });
+      } else {
+        eligibleBrokers = candidateBrokers;
+      }
+
+      Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, balancingAction, optimizedGoals);
+      // Only check if we successfully moved something.
+      if (b != null) {
+        if (isLoadUnderBalanceUpperLimitAfterChange(clusterModel, null, broker, REMOVE)) {
+          return false;
+        }
+        // Remove and reinsert the broker so the order is correct.
+        candidateBrokers.remove(b);
+        if (utilizationPercentage(b) < balancingUpperThreshold) {
+          candidateBrokers.add(b);
+        }
       }
     }
     // If all the replicas has been moved away from the broker and we still reach here, that means the broker

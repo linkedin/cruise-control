@@ -76,9 +76,8 @@ public abstract class AbstractGoal implements Goal {
     initGoalState(clusterModel);
     Collection<Broker> deadBrokers = clusterModel.deadBrokers();
 
-    Collection<Broker> brokersToOptimize = deadBrokers.isEmpty() ? brokersToBalance(clusterModel) : deadBrokers;
     while (!_finished) {
-      for (Broker broker : brokersToOptimize) {
+      for (Broker broker : brokersToBalance(clusterModel)) {
         rebalanceForBroker(broker, clusterModel, optimizedGoals, excludedTopics);
       }
       updateGoalState(clusterModel);
@@ -179,38 +178,55 @@ public abstract class AbstractGoal implements Goal {
    * @param optimizedGoals  Optimized goals.
    * @return Broker id of the destination if the movement attempt succeeds, null otherwise.
    */
-  protected Integer maybeApplyBalancingAction(ClusterModel clusterModel,
+  protected Broker maybeApplyBalancingAction(ClusterModel clusterModel,
                                               Replica replica,
-                                              List<Broker> candidateBrokers,
+                                              Collection<Broker> candidateBrokers,
                                               BalancingAction action,
                                               Set<Goal> optimizedGoals)
       throws ModelInputException, AnalysisInputException {
-    List<Broker> eligibleBrokers = getEligibleBrokers(clusterModel, replica, candidateBrokers);
+    // In self healing mode, only allow move from dead brokers to alive brokers.
+    if (!clusterModel.deadBrokers().isEmpty() && replica.originalBroker().isAlive()) {
+      return null;
+    }
+    Collection<Broker> eligibleBrokers = getEligibleBrokers(clusterModel, replica, candidateBrokers);
     for (Broker broker : eligibleBrokers) {
       BalancingProposal optimizedGoalProposal =
           new BalancingProposal(replica.topicPartition(), replica.broker().id(), broker.id(), action);
       // A replica should be moved if:
+      // 0. The move is legit.
       // 1. The goal requirements are not violated if this proposal is applied to the given cluster state.
       // 2. The movement is acceptable by the previously optimized goals.
-      boolean selfSatisfied = selfSatisfied(clusterModel, optimizedGoalProposal);
-      boolean satisfyOptimizedGoals = AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel);
-      LOG.trace("Trying to apply balancing action {}, selfSatisfied = {}, satisfyOptimizedGoals = {}",
-                optimizedGoalProposal, selfSatisfied, satisfyOptimizedGoals);
-      if (selfSatisfied && satisfyOptimizedGoals) {
+      boolean canMove = legitMove(replica, broker, action);
+      canMove = canMove && selfSatisfied(clusterModel, optimizedGoalProposal);
+      canMove = canMove && AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel);
+      LOG.trace("Trying to apply balancing action {}, legitMove = {}, selfSatisfied = {}, satisfyOptimizedGoals = {}",
+                legitMove(replica, broker, action), optimizedGoalProposal, selfSatisfied(clusterModel, optimizedGoalProposal),
+                AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel));
+      if (canMove) {
         if (action == BalancingAction.LEADERSHIP_MOVEMENT) {
           clusterModel.relocateLeadership(replica.topicPartition(), replica.broker().id(), broker.id());
         } else if (action == BalancingAction.REPLICA_MOVEMENT) {
           clusterModel.relocateReplica(replica.topicPartition(), replica.broker().id(), broker.id());
         }
-        return broker.id();
+        return broker;
       }
     }
     return null;
   }
 
-  private List<Broker> getEligibleBrokers(ClusterModel clusterModel,
-                                          Replica replica,
-                                          List<Broker> candidateBrokers) {
+  private boolean legitMove(Replica replica, Broker destBroker, BalancingAction balancingAction) {
+    if (balancingAction == BalancingAction.REPLICA_MOVEMENT && destBroker.replica(replica.topicPartition()) == null) {
+      return true;
+    } else if (balancingAction == BalancingAction.LEADERSHIP_MOVEMENT && replica.isLeader()
+        && destBroker.replica(replica.topicPartition()) != null) {
+      return true;
+    }
+    return false;
+  }
+
+  private Collection<Broker> getEligibleBrokers(ClusterModel clusterModel,
+                                                Replica replica,
+                                                Collection<Broker> candidateBrokers) {
     if (clusterModel.newBrokers().isEmpty()) {
       return candidateBrokers;
     } else {
