@@ -11,40 +11,41 @@ Cruise Control for Apache Kafka
 ### Features ###
   Kafka Cruise Control provides the following features out of the box:
   
-  * Resource utilization tracking for brokers, topics and partitions.
+  * Resource utilization tracking for brokers, topics, and partitions.
   
-  * Multi-goal rebalance proposal generation
+  * Multi-goal rebalance proposal generation for:
     * Rack-awareness
     * Resource utilization balance (CPU, DISK, Network I/O)
     * Leader traffic distribution
     * Replica distribution for topics
     * Global replica distribution
-    * write your own and plug them in
+    * Custom goals that you wrote and plugged in
   
-  * Anomaly detection and alerting for the Kafka cluster including
-    * goal violation
-    * broker failure detection
+  * Anomaly detection and alerting for the Kafka cluster, including:
+    * Goal violation
+    * Broker failure detection
   
-  * Admin operations including:
+  * Admin operations, including:
     * Add brokers
     * Decommission brokers
     * Rebalance the cluster
 
 ### Environment Requirements
-* The current master branch of Cruise Control is compatible with Apache Kafka 0.10.1 and above.
+* The current master branch of Cruise Control is compatible with Apache Kafka 0.10.1 and above
 * message.format.version 0.10.0 and above is needed
 * The master branch compiles with Scala 2.11
 
 ### Quick Start ###
-0. Needed if `CruiseControlMetricsReporter` is used for metrics collection (this is the default config
-for Cruise Control). The metrics reporter will periodically sample the Kafka raw metrics on the broker and send them 
+0. This step is required if `CruiseControlMetricsReporter` is used for metrics collection (this is the default config
+for Cruise Control). The metrics reporter periodically samples the Kafka raw metrics on the broker and sends them 
 to a Kafka topic.
     * ```./gradlew jar```
     * Copy `./cruise-control-metrics-reporter/build/libs/cruise-control-metrics-reporter.jar` to your Kafka server 
     dependency jar folder. For Apache Kafka, the folder would be `core/build/dependant-libs-SCALA_VERSION/`
     * Modify Kafka server configuration to set `metric.reporters` to 
-    `com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter`
-    * Start the Kafka server
+    `com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter`. For Apache Kafka, server properties
+    are located at `./config/server.properties`.
+    * Start ZooKeeper and Kafka server.
 1. Modify config/cruisecontrol.properties to 
     * fill in `bootstrap.servers` and `zookeeper.connect` to the Kafka cluster to be monitored.
     * set `metric.sampler.class` to your implementation (the default sampler class is CruiseControlMetricsReporterSampler) 
@@ -54,32 +55,30 @@ to a Kafka topic.
     ./gradlew jar copyDependantLibs
     ./kafka-cruise-control-start.sh [-jars PATH_TO_YOUR_JAR_1,PATH_TO_YOUR_JAR_2] config/cruisecontrol.properties [port]
     ```
+    JAR files correspond to your applications and `port` enables customizing the cruise control port number (default: 9090).
 3. visit http://localhost:9090/kafkacruisecontrol/state or http://localhost:\[port\]/kafkacruisecontrol/state if 
 you specified the port when starting cruise control. 
 
 **Note**: 
 * Cruise Control will need some time to read the raw Kafka metrics from the cluster.
 * The metrics of a newly up broker may take a few minutes to get stable. Cruise Control will drop the inconsistent 
-metrics (e.g when topic bytes-in is higher than broker bytes-in), so the first a
-few snapshot windows may not have enough valid partitions. 
+metrics (e.g when topic bytes-in is higher than broker bytes-in), so first few snapshot windows may not have enough valid partitions. 
 
 ### REST API ###
-Cruise Control has provided a [REST API](https://github.com/linkedin/cruise-control/wiki/REST-APIs) for users 
+Cruise Control provides a [REST API](https://github.com/linkedin/cruise-control/wiki/REST-APIs) for users 
 to interact with. See the wiki page for more details.
 
 ### How Does It Work ###
-Cruise Control tries to understand the workload of each replica and provide a optimization 
-solution to the current cluster based on this knowledge.
+Cruise Control relies on the recent load information of replicas to optimize the cluster.
 
-Cruise Control periodically gets the resource utilization samples at both broker and partition level to 
-understand the traffic pattern of each partition. Based on the traffic characteristics of all the partitions, 
-it derives the load impact of each partition in the brokers. Cruise Control then builds a workload
-model to simulate the workload of the Kafka cluster. The goal optimizer will explore different ways to generate 
-the cluster workload optimization proposals based on the list of goals specified by the users.
+Cruise Control periodically collects resource utilization samples at both broker- and partition-level to 
+infer the traffic pattern of each partition. Based on the traffic characteristics of all the partitions, 
+it derives the load impact of each partition over the brokers. Cruise Control then builds a workload
+model to simulate the workload of the Kafka cluster. The goal optimizer explores different ways to generate 
+cluster workload optimization proposals based on the user-specified list of goals.
 
-Cruise Control also monitors the liveness of all the brokers in the cluster. When a broker fails in the
-cluster, Cruise Control will automatically move the replicas on the failed broker to the healthy brokers to 
-avoid the loss of redundancy.
+Cruise Control also monitors the liveness of all the brokers in the cluster. 
+To avoid the loss of redundancy, Cruise Control automatically moves replicas from failed brokers to healthy ones.
 
 For more details about how Cruise Control achieves that, see 
 [these slides](https://www.slideshare.net/JiangjieQin/introduction-to-kafka-cruise-control-68180931).
@@ -93,37 +92,37 @@ More about pluggable components can be found in the
 [pluggable components wiki page](https://github.com/linkedin/cruise-control/wiki/Pluggable-Components).
 
 #### Metric Sampler #### 
-The metric sampler is one of the most important pluggables in Cruise Control, it allows users to easily 
-deploy Cruise Control to various environments and work with any existing metric system.
+The metric sampler enables users to deploy Cruise Control to various environments and work with the existing metric systems.
 
-Cruise Control provides a metrics reporter which can be configured in your Apache
-Kafka server. It will produce performance metrics to a kafka metrics topic which can be consumed by Cruise Control.
+Cruise Control provides a metrics reporter that can be configured in your Apache Kafka server. Metrics reporter generates
+performance metrics to a kafka metrics topic that can be consumed by Cruise Control.
 
 #### Sample Store ####
-The Sample Store is used to store the collected metric samples and training samples to external storage. 
-One problem in metric sampling is that we are using some derived data from the raw metrics. And the way we 
-derive the data relies on the metadata of the cluster at that point. So when we look at the old metrics, if we 
-do not know the metadata at the point the metric was collected the derived data would not be accurate. Sample 
-Store help solve this problem by storing the derived data directly to an external storage for later loading.
+The Sample Store enables storage of collected metric samples and training samples in an external storage. 
 
-The default sample store implementation produces the metric samples back to Kafka.
+Metric sampling uses derived data from the raw metrics, and the accuracy of the derived data depends on the metadata of the cluster at that point.
+Hence, when we look at the old metrics, if we do not know the metadata at the point the metric was collected, the derived data would not be accurate.
+Sample Store helps solving this problem by storing the derived data directly to an external storage for later loading.
+
+The default Sample Store implementation produces metric samples back to Kafka.
 
 #### Goals ####
-The goals in Cruise Control are pluggable with different priorities. The default goals are (in order of decreasing priority):
- * **RackAwareCapacityGoal** - A goal that ensures all the replicas of each partition are assigned in a rack aware manner. All the broker’s 
- resource utilization are below a given threshold.
- * **PotentialNwOutGoal** - A goal that ensures the potential network output (when all the replicas becomes leaders) on each of the broker do not exceed the broker’s network outbound bandwidth capacity.
- * **ResourceDistributionGoal** - Attempt to make the workload variance among all the brokers are within a certain range. This goal does not do anything if the cluster is in a low utilization mode (when all the resource utilization of each broker is below a configured percentage.)
- * **LeaderBytesInDistributsionGoal** - Attempt to equalize the leader bytes in rate on each host.
- * **TopicReplicaDistributionGoal** - Attempt to maintain an even distribution of any topic's replicas across the entire cluster.
- * **ReplicaDistributionGoal** - Attempt to make all the brokers in a cluster have a similar amount of replicas.
+The goals in Cruise Control are pluggable with different priorities. The default goals in order of decreasing priority are:
+ * **RackAwareCapacityGoal** - Ensures that (1) all replicas of each partition are assigned in a rack aware manner -- i.e. no more than one replica of 
+ each partition resides in the same rack, (2) for each resource, the utilization of each broker is below a given threshold.
+ * **PotentialNwOutGoal** - Ensures that the potential network output (when all the replicas in the broker become leaders) on each of the broker do 
+ not exceed the broker’s network outbound bandwidth capacity.
+ * **ResourceDistributionGoal** - Attempts to keep the workload variance among brokers within a certain range relative to the average utilization of each resource.
+ * **LeaderBytesInDistributsionGoal** - Attempts to equalize the leader bytes in rate on each host.
+ * **TopicReplicaDistributionGoal** - Attempts to maintain an even distribution of any topic's replicas across the entire cluster.
+ * **ReplicaDistributionGoal** - Attempts to make all the brokers in a cluster have a similar number of replicas.
 
 #### Anomaly Notifier ####
 The anomaly notifier allows users to be notified when an anomaly is detected. Anomalies include:
  * Broker failure
  * Goal violation
  
-In addition to anomaly notifications users can specify actions to be taken in response to the anomaly. the following actions are supported:
- * **fix** - fix the problem right away.
+In addition to anomaly notifications users can specify actions to be taken in response to an anomaly. The following actions are supported:
+ * **fix** - fix the problem right away
  * **check** - check the situation again after a given delay
  * **ignore** - ignore the anomaly
