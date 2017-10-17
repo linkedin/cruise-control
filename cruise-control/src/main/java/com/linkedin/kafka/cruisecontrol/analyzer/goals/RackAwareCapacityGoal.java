@@ -150,7 +150,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
    */
   @Override
   protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
-    return clusterModel.brokers();
+    return clusterModel.deadBrokers().isEmpty() ? clusterModel.brokers() : clusterModel.deadBrokers();
   }
 
   /**
@@ -294,9 +294,9 @@ public class RackAwareCapacityGoal extends AbstractGoal {
         clusterModel.sortReplicasInAscendingOrderByBrokerResourceUtilization(followers, _currentResource);
         List<Broker> eligibleBrokers = followers.stream().map(Replica::broker).collect(Collectors.toList());
 
-        Integer brokerId = maybeApplyBalancingAction(clusterModel, leader, eligibleBrokers, BalancingAction.LEADERSHIP_MOVEMENT,
-                                                     optimizedGoals);
-        if (brokerId == null) {
+        Broker b = maybeApplyBalancingAction(clusterModel, leader, eligibleBrokers,
+                                                  BalancingAction.LEADERSHIP_MOVEMENT, optimizedGoals);
+        if (b == null) {
           LOG.debug("Failed to move leader replica {} to any other brokers in {}", leader, eligibleBrokers);
         }
         isUtilizationOverLimit =
@@ -326,9 +326,9 @@ public class RackAwareCapacityGoal extends AbstractGoal {
         List<Broker> eligibleBrokers = new ArrayList<>(
             removeBrokersViolatingRackAwareness(replica, sortedHealthyBrokersUnderCapacityLimit, clusterModel));
 
-        Integer brokerId = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, BalancingAction.REPLICA_MOVEMENT,
-                                                     optimizedGoals);
-        if (brokerId == null) {
+        Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, BalancingAction.REPLICA_MOVEMENT,
+                                             optimizedGoals);
+        if (b == null) {
           LOG.debug("Failed to move replica {} to any of the brokers in {}", replica, eligibleBrokers);
         }
         // If capacity limit was not satisfied before, check if it is satisfied now.

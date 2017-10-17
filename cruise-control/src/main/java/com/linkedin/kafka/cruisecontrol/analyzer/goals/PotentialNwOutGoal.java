@@ -107,7 +107,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
    */
   @Override
   protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
-    return clusterModel.brokers();
+    return clusterModel.deadBrokers().isEmpty() ? clusterModel.brokers() : clusterModel.deadBrokers();
   }
 
   /**
@@ -212,10 +212,11 @@ public class PotentialNwOutGoal extends AbstractGoal {
       eligibleBrokers.removeAll(clusterModel.partition(replica.topicPartition()).partitionBrokers());
       eligibleBrokers.sort((b1, b2) -> Double.compare(b2.leadershipLoad().expectedUtilizationFor(Resource.NW_OUT),
                                                       b1.leadershipLoad().expectedUtilizationFor(Resource.NW_OUT)));
-      Integer destinationBrokerId =
+      Broker destinationBroker =
           maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, BalancingAction.REPLICA_MOVEMENT,
               optimizedGoals);
-      if (destinationBrokerId != null) {
+      if (destinationBroker != null) {
+        int destinationBrokerId = destinationBroker.id();
         // Check if broker capacity limit is satisfied now.
         estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
             clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;

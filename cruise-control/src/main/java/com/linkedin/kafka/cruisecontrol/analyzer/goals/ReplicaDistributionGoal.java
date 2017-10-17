@@ -104,6 +104,9 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
+    if (!clusterModel.deadBrokers().isEmpty()) {
+      return clusterModel.deadBrokers();
+    }
     // Brokers having over minimum number of replicas per broker are eligible for balancing.
     Set<Broker> brokersToBalance = new HashSet<>();
     int minNumReplicasPerBroker = _replicaDistributionTarget.minNumReplicasPerBroker();
