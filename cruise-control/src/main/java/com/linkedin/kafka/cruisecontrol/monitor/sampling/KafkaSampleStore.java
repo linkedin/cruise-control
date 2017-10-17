@@ -30,6 +30,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetOutOfRangeException;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -311,9 +312,14 @@ public class KafkaSampleStore implements SampleStore {
             }
             _sampleLoader.loadSamples(new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples));
             _loadingProgress = (double) _numLoadedSamples.addAndGet(consumerRecords.count()) / _totalSamples.get();
+          } catch (OffsetOutOfRangeException ooore) {
+            LOG.debug("Got offset out of range exception, resetting offset to beginning");
+            _consumer.seekToBeginning(ooore.partitions());
           } catch (Exception e) {
             if (_shutdown) {
               return;
+            } else {
+              LOG.error("Metric loader received exception:", e);
             }
           }
         }
