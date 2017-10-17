@@ -112,8 +112,7 @@ The goals in Cruise Control are pluggable with different priorities. The default
  each partition resides in the same rack, (2) for each resource, the utilization of each broker is below a given threshold.
  * **PotentialNwOutGoal** - Ensures that the potential network output (when all the replicas in the broker become leaders) on each of the broker do 
  not exceed the broker’s network outbound bandwidth capacity.
- * **ResourceDistributionGoal** - Attempts to keep the workload variance among brokers to a certain range. This goal does not do anything if the cluster is
- in a low utilization mode -- i.e. when all the resource utilization of each broker is below a configured percentage.
+ * **ResourceDistributionGoal** - Attempts to keep the workload variance among brokers within a certain range.
  * **LeaderBytesInDistributsionGoal** - Attempts to equalize the leader bytes in rate on each host.
  * **TopicReplicaDistributionGoal** - Attempts to maintain an even distribution of any topic's replicas across the entire cluster.
  * **ReplicaDistributionGoal** - Attempts to make all the brokers in a cluster have a similar number of replicas.
