@@ -117,6 +117,13 @@ public class Broker implements Serializable {
   }
 
   /**
+   * Get the immigrant replicas (The replicas that are moved here).
+   */
+  public Set<Replica> immigrantReplicas() {
+    return _immigrantReplicas;
+  }
+
+  /**
    * Get the replica if it is in the broker.
    *
    * @param topicPartition Topic partition of the replica.

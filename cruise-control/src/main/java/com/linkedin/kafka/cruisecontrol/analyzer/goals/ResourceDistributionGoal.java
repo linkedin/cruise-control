@@ -226,12 +226,18 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
-    // If the host utilization is over limit then there must be at least one broker whose utilization is over limit.
-    // We should only balance those brokers.
     boolean requireLessLoad = !isLoadUnderBalanceUpperLimitAfterChange(clusterModel, null, broker, REMOVE);
     boolean requireMoreLoad = !isLoadAboveBalanceLowerLimitAfterChange(clusterModel, null, broker, ADD);
     if (broker.isAlive() && !requireMoreLoad && !requireLessLoad) {
       // return if the broker is already under limit.
+      return;
+    } else if (!clusterModel.newBrokers().isEmpty() && requireMoreLoad && !broker.isNew()) {
+      // return if we have new broker and the current broker is not a new broker but require more load.
+      return;
+    } else if (!clusterModel.deadBrokers().isEmpty() && requireLessLoad && broker.isAlive()
+        && broker.immigrantReplicas().isEmpty()) {
+      // return if the cluster is in selfhealing mode and the broker requires less load but does not hav eany
+      // immigrant replicas.
       return;
     }
 
@@ -323,10 +329,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         int result = Double.compare(utilizationPercentage(b1), utilizationPercentage(b2));
         return result != 0 ? result : Integer.compare(b1.id(), b2.id());
     });
+    double balancingUpperThreshold = balanceUpperThreshold(clusterModel);
     if (_selfHealingDeadBrokersOnly) {
       candidateBrokers.addAll(clusterModel.healthyBrokers());
     } else {
-      candidateBrokers.addAll(clusterModel.sortedHealthyBrokersUnderThreshold(resource(), balanceUpperThreshold(clusterModel)));
+      candidateBrokers.addAll(clusterModel.sortedHealthyBrokersUnderThreshold(resource(), balancingUpperThreshold));
     }
 
     // Get the replicas to rebalance.
@@ -375,7 +382,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         }
         // Remove and reinsert the broker so the order is correct.
         candidateBrokers.remove(b);
-        candidateBrokers.add(b);
+        if (utilizationPercentage(b) < balancingUpperThreshold) {
+          candidateBrokers.add(b);
+        }
       }
     }
     // If all the replicas has been moved away from the broker and we still reach here, that means the broker
