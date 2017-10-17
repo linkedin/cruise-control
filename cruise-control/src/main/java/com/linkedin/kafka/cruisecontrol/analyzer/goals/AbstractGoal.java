@@ -199,8 +199,8 @@ public abstract class AbstractGoal implements Goal {
       boolean canMove = legitMove(replica, broker, action);
       canMove = canMove && selfSatisfied(clusterModel, optimizedGoalProposal);
       canMove = canMove && AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel);
-      LOG.trace("Trying to apply balancing action {}, selfSatisfied = {}, satisfyOptimizedGoals = {}",
-                optimizedGoalProposal, selfSatisfied(clusterModel, optimizedGoalProposal),
+      LOG.trace("Trying to apply balancing action {}, legitMove = {}, selfSatisfied = {}, satisfyOptimizedGoals = {}",
+                legitMove(replica, broker, action), optimizedGoalProposal, selfSatisfied(clusterModel, optimizedGoalProposal),
                 AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel));
       if (canMove) {
         if (action == BalancingAction.LEADERSHIP_MOVEMENT) {
