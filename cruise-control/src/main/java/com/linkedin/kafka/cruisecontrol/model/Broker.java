@@ -400,8 +400,6 @@ public class Broker implements Serializable {
 
   @Override
   public String toString() {
-    StringBuilder bldr = new StringBuilder();
-    bldr.append("Broker[id=").append(_id).append(",state=").append(_state).append(",replicaCount=").append(_replicas.size()).append(']');
-    return bldr.toString();
+    return String.format("Broker[id=%d,rack=%s,state=%s,replicaCount=%d]", _id, rack().id(), _state, _replicas.size());
   }
 }

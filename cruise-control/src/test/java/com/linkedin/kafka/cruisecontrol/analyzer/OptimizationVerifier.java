@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
@@ -131,6 +132,18 @@ class OptimizationVerifier {
               return false;
             }
           }
+        }
+      }
+      for (Broker broker : clusterModel.newBrokers()) {
+        // We can only check the first resource.
+        Resource r = constraint.resources().get(0);
+        double utilizationLowerThreshold =
+            clusterModel.load().expectedUtilizationFor(r) / clusterModel.capacityFor(r) * (2 - constraint.balancePercentage(r));
+        double brokerUtilization = broker.load().expectedUtilizationFor(r) / broker.capacityFor(r);
+        if (brokerUtilization < utilizationLowerThreshold) {
+          LOG.error("Broker {} is still under utilized for resource {}. Broker utilization is {}, the "
+                        + "lower threshold is {}", broker, r, brokerUtilization, utilizationLowerThreshold);
+          return false;
         }
       }
     }

@@ -134,12 +134,16 @@ public class Host implements Serializable {
     Broker broker = broker(brokerId);
     if (broker.isAlive() && newState == Broker.State.DEAD) {
       for (Resource r : Resource.values()) {
-        _hostCapacity[r.id()] -= broker.capacityFor(r);
+        if (!r.isHostResource()) {
+          _hostCapacity[r.id()] -= broker.capacityFor(r);
+        }
       }
       _aliveBrokers--;
     } else if (!broker.isAlive() && newState != Broker.State.DEAD) {
       for (Resource r : Resource.values()) {
-        _hostCapacity[r.id()] += broker.capacityFor(r);
+        if (!r.isHostResource()) {
+          _hostCapacity[r.id()] += broker.capacityFor(r);
+        }
       }
       _aliveBrokers++;
     }

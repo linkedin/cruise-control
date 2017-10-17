@@ -45,6 +45,7 @@ public class ClusterModel implements Serializable {
   private final Set<Broker> _newBrokers;
   private final Set<Broker> _healthyBrokers;
   private final double _monitoredPartitionsPercentage;
+  private final double[] _clusterCapacity;
   private Load _load;
   // An integer to keep track of the maximum replication factor that a partition was ever created with.
   private int _maxReplicationFactor;
@@ -69,6 +70,7 @@ public class ClusterModel implements Serializable {
     _healthyBrokers = new HashSet<>();
     // Initially cluster does not contain any load.
     _load = Load.newLoad();
+    _clusterCapacity = new double[Resource.cachedValues().size()];
     _maxReplicationFactor = 1;
     _potentialLeadershipLoadByBrokerId = new HashMap<>();
     _validSnapshotTimes = new HashSet<>();
@@ -196,7 +198,7 @@ public class ClusterModel implements Serializable {
     }
     // We need to go through rack so all the cached capacity will be updated.
     broker.rack().setBrokerState(brokerId, newState);
-
+    refreshCapacity();
     switch (newState) {
       case DEAD:
         _selfHealingEligibleReplicas.addAll(broker.replicas());
@@ -438,12 +440,7 @@ public class ClusterModel implements Serializable {
    * @return Healthy cluster capacity of the resource.
    */
   public double capacityFor(Resource resource) {
-    double healthyCapacity = 0.0;
-    for (Rack rack : _racksById.values()) {
-      healthyCapacity += rack.capacityFor(resource);
-    }
-
-    return healthyCapacity;
+    return _clusterCapacity[resource.id()];
   }
 
   /**
@@ -558,6 +555,7 @@ public class ClusterModel implements Serializable {
     _brokerIdToRack.put(brokerId, rack);
     Broker broker = rack.createBroker(brokerId, host, brokerCapacity);
     _healthyBrokers.add(broker);
+    refreshCapacity();
     return broker;
   }
 
@@ -1055,5 +1053,15 @@ public class ClusterModel implements Serializable {
     bldr.append("ClusterModel[brokerCount=").append(this.brokers().size()).append(",partitionCount=")
       .append(_partitionsByTopicPartition.size()).append(']');
     return bldr.toString();
+  }
+
+  private void refreshCapacity() {
+    for (Resource r : Resource.cachedValues()) {
+      double capacity = 0;
+      for (Rack rack : _racksById.values()) {
+        capacity += rack.capacityFor(r);
+      }
+      _clusterCapacity[r.id()] = capacity;
+    }
   }
 }

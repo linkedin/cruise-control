@@ -181,8 +181,10 @@ public class ClusterModelStats {
     Map<Resource, Double> minUtilizationByResource = new HashMap<>();
     Map<Resource, Double> stDevUtilizationByResource = new HashMap<>();
     for (Resource resource : Resource.values()) {
-      double balanceThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))
+      double balanceUpperThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))
           * _balancingConstraint.balancePercentage(resource);
+      double balanceLowerThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))
+          * Math.max(0, (2 - _balancingConstraint.balancePercentage(resource)));
       // Average utilization for the resource.
       double avgUtilization = clusterModel.load().expectedUtilizationFor(resource) / _numBrokers;
       avgUtilizationByResource.put(resource, avgUtilization);
@@ -195,9 +197,11 @@ public class ClusterModelStats {
       for (Broker broker : clusterModel.brokers()) {
         double utilization = resource.isHostResource() ?
             broker.host().load().expectedUtilizationFor(resource) : broker.load().expectedUtilizationFor(resource);
-        double balanceLimit = resource.isHostResource() ?
-            broker.host().capacityFor(resource) * balanceThreshold : broker.capacityFor(resource) * balanceThreshold;
-        if (utilization <= balanceLimit) {
+        double balanceUpperLimit = resource.isHostResource() ?
+            broker.host().capacityFor(resource) * balanceUpperThreshold : broker.capacityFor(resource) * balanceUpperThreshold;
+        double balanceLowerLimit = resource.isHostResource() ?
+            broker.host().capacityFor(resource) * balanceLowerThreshold : broker.capacityFor(resource) * balanceLowerThreshold;
+        if (utilization <= balanceUpperLimit && utilization >= balanceLowerLimit) {
           numBalancedBrokers++;
         }
         double brokerUtilization = broker.load().expectedUtilizationFor(resource);

@@ -178,10 +178,8 @@ public class Replica implements Serializable {
    */
   @Override
   public String toString() {
-    StringBuilder bldr = new StringBuilder();
-    bldr.append("Replica[isLeader=").append(_isLeader).append(",broker=").append(_broker.id()).append(",topic")
-      .append(_topicPartition.topic()).append(",part=").append(_topicPartition.partition()).append(",origBroker=")
-      .append(_originalBroker == null ? -1 : _originalBroker.id()).append("]");
-    return bldr.toString();
+    return String.format("Replica[isLeader=%s,rack=%s,broker=%d,TopicPartition=%s,origBroker=%d]", _isLeader,
+                         _broker.rack().id(), _broker.id(), _topicPartition,
+                         _originalBroker == null ? -1 : _originalBroker.id());
   }
 }
