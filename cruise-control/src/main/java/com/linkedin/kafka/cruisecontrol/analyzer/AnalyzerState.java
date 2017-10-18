@@ -40,6 +40,6 @@ public class AnalyzerState {
         readyGoalNames.add(entry.getKey().getClass().getSimpleName());
       }
     }
-    return String.format("{isProposalReady: %s, ReadyGaols: %s}", _isProposalReady, readyGoalNames);
+    return String.format("{isProposalReady: %s, ReadyGoals: %s}", _isProposalReady, readyGoalNames);
   }
 }
