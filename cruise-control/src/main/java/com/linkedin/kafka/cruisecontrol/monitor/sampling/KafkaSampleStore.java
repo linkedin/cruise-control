@@ -37,8 +37,10 @@ import org.apache.kafka.clients.producer.Producer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.record.InvalidRecordException;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
@@ -113,7 +115,7 @@ public class KafkaSampleStore implements SampleStore {
                                 (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
       consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "LiKafkaCruiseControlSampleStore" + randomToken);
       consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, CONSUMER_CLIENT_ID + randomToken);
-      consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "none");
+      consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
       consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
       consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
       consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
@@ -312,9 +314,17 @@ public class KafkaSampleStore implements SampleStore {
             }
             _sampleLoader.loadSamples(new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples));
             _loadingProgress = (double) _numLoadedSamples.addAndGet(consumerRecords.count()) / _totalSamples.get();
-          } catch (OffsetOutOfRangeException ooore) {
-            LOG.debug("Got offset out of range exception, resetting offset to beginning");
-            _consumer.seekToBeginning(ooore.partitions());
+          } catch (KafkaException ke) {
+            if (ke.getMessage().toLowerCase().contains("record is corrupt")) {
+              for (TopicPartition tp : _consumer.assignment()) {
+                long position = _consumer.position(tp);
+                if (position < endOffsets.get(tp)) {
+                  _consumer.seek(tp, position + 1);
+                }
+              }
+            } else {
+              LOG.error("Metric loader received exception:", ke);
+            }
           } catch (Exception e) {
             if (_shutdown) {
               return;
