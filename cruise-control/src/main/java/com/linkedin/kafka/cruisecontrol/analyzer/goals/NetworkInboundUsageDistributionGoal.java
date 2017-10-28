@@ -6,7 +6,10 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
 
 public class NetworkInboundUsageDistributionGoal extends ResourceDistributionGoal {
@@ -28,6 +31,13 @@ public class NetworkInboundUsageDistributionGoal extends ResourceDistributionGoa
   @Override
   protected Resource resource() {
     return Resource.NW_IN;
+  }
+
+  @Override
+  public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
+    /// Leadership movement won't cause inbound network utilization change.
+    return proposal.balancingAction() == BalancingAction.LEADERSHIP_MOVEMENT
+        || super.isProposalAcceptable(proposal, clusterModel);
   }
 
   @Override

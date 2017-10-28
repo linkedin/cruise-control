@@ -165,8 +165,8 @@ public abstract class AbstractGoal implements Goal {
       throws AnalysisInputException, ModelInputException;
 
   /**
-   * Attempt to apply the given balancing action to the given replica in the given cluster. The application attempts
-   * considers the eligible brokers as the potential destination brokers for replica movement or the location of
+   * Attempt to apply the given balancing action to the given replica in the given cluster. The application
+   * considers the candidate brokers as the potential destination brokers for replica movement or the location of
    * followers for leadership transfer. If the movement attempt succeeds, the function returns the broker id of the
    * destination, otherwise the function returns null.
    *
@@ -184,9 +184,10 @@ public abstract class AbstractGoal implements Goal {
                                               BalancingAction action,
                                               Set<Goal> optimizedGoals)
       throws ModelInputException, AnalysisInputException {
-    // In self healing mode, only allow move from dead brokers to alive brokers.
+    // In self healing mode, allow a move only from dead to alive brokers.
     if (!clusterModel.deadBrokers().isEmpty() && replica.originalBroker().isAlive()) {
-      return null;
+      //return null;
+      LOG.trace("Applying {} to a replica in a healthy broker in self-healing mode.", action);
     }
     Collection<Broker> eligibleBrokers = getEligibleBrokers(clusterModel, replica, candidateBrokers);
     for (Broker broker : eligibleBrokers) {
@@ -200,8 +201,8 @@ public abstract class AbstractGoal implements Goal {
       canMove = canMove && selfSatisfied(clusterModel, optimizedGoalProposal);
       canMove = canMove && AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel);
       LOG.trace("Trying to apply balancing action {}, legitMove = {}, selfSatisfied = {}, satisfyOptimizedGoals = {}",
-                legitMove(replica, broker, action), optimizedGoalProposal, selfSatisfied(clusterModel, optimizedGoalProposal),
-                AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel));
+          optimizedGoalProposal, legitMove(replica, broker, action), selfSatisfied(clusterModel, optimizedGoalProposal),
+          AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel));
       if (canMove) {
         if (action == BalancingAction.LEADERSHIP_MOVEMENT) {
           clusterModel.relocateLeadership(replica.topicPartition(), replica.broker().id(), broker.id());

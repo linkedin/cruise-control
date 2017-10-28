@@ -15,6 +15,7 @@ Cruise Control for Apache Kafka
   
   * Multi-goal rebalance proposal generation for:
     * Rack-awareness
+    * Resource capacity violation checks (CPU, DISK, Network I/O)
     * Resource utilization balance (CPU, DISK, Network I/O)
     * Leader traffic distribution
     * Replica distribution for topics
@@ -108,8 +109,12 @@ The default Sample Store implementation produces metric samples back to Kafka.
 
 #### Goals ####
 The goals in Cruise Control are pluggable with different priorities. The default goals in order of decreasing priority are:
- * **RackAwareCapacityGoal** - Ensures that (1) all replicas of each partition are assigned in a rack aware manner -- i.e. no more than one replica of 
- each partition resides in the same rack, (2) for each resource, the utilization of each broker is below a given threshold.
+ * **RackAwareGoal** - Ensures that all replicas of each partition are assigned in a rack aware manner -- i.e. no more than one replica of 
+ each partition resides in the same rack.
+ * **CpuCapacityGoal** - Ensures that CPU utilization of each broker is below a given threshold.
+ * **DiskCapacityGoal** - Ensures that Disk space usage of each broker is below a given threshold.
+ * **NetworkInboundCapacityGoal** - Ensures that inbound network utilization of each broker is below a given threshold.
+ * **NetworkOutboundCapacityGoal** - Ensures that outbound network utilization of each broker is below a given threshold.
  * **PotentialNwOutGoal** - Ensures that the potential network output (when all the replicas in the broker become leaders) on each of the broker do 
  not exceed the broker’s network outbound bandwidth capacity.
  * **ResourceDistributionGoal** - Attempts to keep the workload variance among brokers within a certain range relative to the average utilization of each resource.

@@ -31,8 +31,8 @@ object ExecutorUtils {
       val inProgressPartitionMovement = zkUtils.getPartitionsBeingReassigned()
       // Add the partition being assigned to the newPartitionAssignment because we are going to add the new
       // reassignment together.
-      val newPartitionAssignment = scala.collection.mutable.Map(inProgressPartitionMovement.map { case (topicPartition, context) =>
-        topicPartition -> context.newReplicas
+      val newPartitionAssignment = scala.collection.mutable.Map(inProgressPartitionMovement.map { case (tp, context) =>
+        tp -> context.newReplicas
       }.toSeq: _*)
       tasks.foreach({ task =>
         val topic = task.proposal.topic

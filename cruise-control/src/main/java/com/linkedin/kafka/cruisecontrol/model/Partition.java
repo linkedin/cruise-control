@@ -21,23 +21,23 @@ import org.apache.kafka.common.TopicPartition;
  * are followers.
  */
 public class Partition implements Serializable {
-  private final TopicPartition _topicPartition;
+  private final TopicPartition _tp;
   private final List<Replica> _followers;
   private Replica _leader;
 
   /**
    * Constructor for Partition class.
    *
-   * @param topicPartition Topic partition information for the replica in this partition,
+   * @param tp Topic partition information for the replica in this partition,
    * @param leader         Leader of the replica in this partition,
    * @throws ModelInputException
    */
-  Partition(TopicPartition topicPartition, Replica leader) throws ModelInputException {
+  Partition(TopicPartition tp, Replica leader) throws ModelInputException {
     if (leader != null && !leader.isLeader()) {
       throw new ModelInputException("Inconsistent leadership information. Specified leader replica " + leader +
           " is not marked as leader.");
     }
-    _topicPartition = topicPartition;
+    _tp = tp;
     _followers = new ArrayList<>();
     _leader = leader;
   }
@@ -53,9 +53,9 @@ public class Partition implements Serializable {
       throw new ModelInputException("Inconsistent leadership information. Trying to add follower replica " +
           follower + " while it is a leader.");
     }
-    if (!follower.topicPartition().equals(_topicPartition)) {
+    if (!follower.topicPartition().equals(_tp)) {
       throw new ModelInputException("Inconsistent topic partition. Trying to add follower replica " + follower +
-          " to partition " + _topicPartition + ".");
+          " to partition " + _tp + ".");
     }
     // Add follower to the list of followers.
     _followers.add(follower);
@@ -93,7 +93,7 @@ public class Partition implements Serializable {
       }
     }
 
-    throw new ModelInputException("Requested replica " + brokerId + " is not a replica of partition " + _topicPartition);
+    throw new ModelInputException("Requested replica " + brokerId + " is not a replica of partition " + _tp);
   }
 
   /**
@@ -124,7 +124,7 @@ public class Partition implements Serializable {
       throws ModelInputException {
     if (!leader.isLeader()) {
       throw new ModelInputException("Inconsistent leadership information. Trying to set " + leader.broker() +
-          " as the leader for partition " + _topicPartition + " while the replica is not marked as a leader.");
+          " as the leader for partition " + _tp + " while the replica is not marked as a leader.");
     }
     _leader = leader;
   }

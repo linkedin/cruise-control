@@ -40,7 +40,7 @@ public class MetricCompletenessChecker {
   }
 
   /**
-   * Get the number of valid windows that meets the the minimum monitored partitions percentage requirement.
+   * Get the number of valid windows that meets the minimum monitored partitions percentage requirement.
    *
    * @param minMonitoredPartitionsPercentage the minimum monitored partitions percentage.
    * @param totalNumPartitions the total number of partitions.

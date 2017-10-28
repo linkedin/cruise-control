@@ -164,8 +164,8 @@ public class MetricSampleAggregator {
     maybeEvictOldSnapshots();
     AggregatedMetrics aggMetrics =
         snapshotsByPartition.computeIfAbsent(_identityPartitionMap.computeIfAbsent(sample.topicPartition(),
-                                                                                   topicPartition -> topicPartition),
-                                             topicPartition -> new AggregatedMetrics());
+                                                                                   tp -> tp),
+                                             tp -> new AggregatedMetrics());
     aggMetrics.addSample(sample);
     if (updateCompletenessCache) {
       _metricCompletenessChecker.updatePartitionCompleteness(this, snapshotWindow,

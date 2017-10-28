@@ -161,7 +161,7 @@ public class Host implements Serializable {
   Replica removeReplica(int brokerId, TopicPartition tp) {
     Broker broker = _brokers.get(brokerId);
     if (broker == null) {
-      throw new IllegalStateException(String.format("Cannot remove replica for %s from broker broker %s because "
+      throw new IllegalStateException(String.format("Cannot remove replica for %s from broker %s because "
                                                         + "it does not exist in host %s", tp, brokerId, _name));
     }
     Replica replica = broker.removeReplica(tp);
@@ -184,6 +184,15 @@ public class Host implements Serializable {
     return leadershipLoad;
   }
 
+  /**
+   * (1) Make the replica with the given topic partition and brokerId the leader.
+   * (2) Add the outbound network load associated with leadership to the given replica.
+   * (3) Add the CPU load associated with leadership.
+   *
+   * @param brokerId Id of the broker containing the replica.
+   * @param tp TopicPartition of the replica for which the outbound network load will be added.
+   * @param leadershipLoadBySnapshotTime Resource to leadership load to be added by snapshot time.
+   */
   void makeLeader(int brokerId,
                   TopicPartition tp,
                   Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime) throws ModelInputException {

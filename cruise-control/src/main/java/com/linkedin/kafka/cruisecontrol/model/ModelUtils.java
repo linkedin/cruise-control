@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 
 
@@ -13,7 +14,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 public class ModelUtils {
   // In some extremely low throughput cluster, the partition IO may appear to be higher than the broker IO.
   // We allow such error if it is not too big and just treat the partition IO the same as broker IO.
-  // We also ignore all the in accuracy when the broker total throughput is to low.
+  // We also ignore all the inaccuracy when the broker total throughput is too low.
   private static final double ALLOWED_METRIC_ERROR_FACTOR = 1.05;
   private static final int UNSTABLE_METRIC_THROUGHPUT_THRESHOLD = 10;
   private static boolean _useLinearRegressionModel = false;
@@ -42,6 +43,22 @@ public class ModelUtils {
                 + ModelParameters.CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE * leaderBytesOutRate);
       }
     }
+  }
+
+  /**
+   * Estimate the CPU utilization of a follower based on the leader's bytes in/out rate and CPU utilization.
+   *
+   * @param leaderLoad Leader load.
+   * @param snapshotTime Snapshot time.
+   * @return Estimated CPU utilization of a follower for the given snapshot time.
+   */
+  static double getFollowerCpuUtilFromLeaderLoad(Load leaderLoad, Long snapshotTime) {
+
+    double leaderBytesInRate = leaderLoad.loadFor(Resource.NW_IN).get(snapshotTime);
+    double leaderBytesOutRate = leaderLoad.loadFor(Resource.NW_OUT).get(snapshotTime);
+    Double leaderCpuUtil = leaderLoad.loadFor(Resource.CPU).get(snapshotTime);
+
+    return getFollowerCpuUtilFromLeaderLoad(leaderBytesInRate, leaderBytesOutRate, leaderCpuUtil);
   }
 
   public static double estimateLeaderCpuUtil(double brokerCpuUtil,

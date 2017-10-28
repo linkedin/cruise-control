@@ -10,44 +10,38 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
 import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 
 
-public class DiskUsageDistributionGoal extends ResourceDistributionGoal {
+public class NetworkInboundCapacityGoal extends CapacityGoal {
 
   /**
-   * Constructor for Resource Distribution Goal.
+   * Constructor for Network Inbound Capacity Goal.
    */
-  public DiskUsageDistributionGoal() {
+  public NetworkInboundCapacityGoal() {
     super();
   }
 
   /**
    * Package private for unit test.
    */
-  DiskUsageDistributionGoal(BalancingConstraint constraint) {
+  NetworkInboundCapacityGoal(BalancingConstraint constraint) {
     super(constraint);
   }
 
   @Override
   protected Resource resource() {
-    return Resource.DISK;
+    return Resource.NW_IN;
   }
 
   @Override
   public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
-    /// Leadership movement won't cause disk utilization change.
+    /// Leadership movement won't cause inbound network utilization change.
     return proposal.balancingAction() == BalancingAction.LEADERSHIP_MOVEMENT
         || super.isProposalAcceptable(proposal, clusterModel);
   }
 
   @Override
   public String name() {
-    return DiskUsageDistributionGoal.class.getSimpleName();
-  }
-
-  @Override
-  public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
-    return new ModelCompletenessRequirements(1, _minMonitoredPartitionPercentage, true);
+    return NetworkInboundCapacityGoal.class.getSimpleName();
   }
 }

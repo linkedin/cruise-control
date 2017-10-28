@@ -90,7 +90,7 @@ public class ModelCompletenessRequirements {
 
   /**
    * Combine the requirements of this ModelCompletenessRequirements and another one.
-   * The result will be the weaker weaker one for each requirement in the two specifications.
+   * The result will be the weaker one for each requirement in the two specifications.
    *
    * @param other the other ModelCompletenessRequirements
    * @return the combined weaker model completeness requirements.

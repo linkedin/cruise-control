@@ -5,12 +5,16 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareCapacityGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -50,14 +54,18 @@ public class RandomSelfHealingTest {
     Collection<Object[]> params = new ArrayList<>();
 
     Map<Integer, String> goalNameByPriority = new HashMap<>();
-    goalNameByPriority.put(1, RackAwareCapacityGoal.class.getName());
-    goalNameByPriority.put(2, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(3, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(4, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(5, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(6, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(7, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(8, ReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(1, RackAwareGoal.class.getName());
+    goalNameByPriority.put(2, CpuCapacityGoal.class.getName());
+    goalNameByPriority.put(2, DiskCapacityGoal.class.getName());
+    goalNameByPriority.put(2, NetworkInboundCapacityGoal.class.getName());
+    goalNameByPriority.put(2, NetworkOutboundCapacityGoal.class.getName());
+    goalNameByPriority.put(3, PotentialNwOutGoal.class.getName());
+    goalNameByPriority.put(4, DiskUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(5, NetworkInboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(6, NetworkOutboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(7, CpuUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(8, TopicReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(9, ReplicaDistributionGoal.class.getName());
 
     KafkaCruiseControlConfig config =
         new KafkaCruiseControlConfig(CruiseControlUnitTestUtils.getCruiseControlProperties());
@@ -65,31 +73,31 @@ public class RandomSelfHealingTest {
     balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
-    Map<ClusterProperty, Number> modifiedProperties = new HashMap<>();
-
     // -- TEST DECK #1: SINGLE DEAD BROKER.
     // Test: Single Goal.
-    modifiedProperties.put(ClusterProperty.NUM_DEAD_BROKERS, 1);
+    Map<ClusterProperty, Number> singleDeadBroker = new HashMap<>();
+    singleDeadBroker.put(ClusterProperty.NUM_DEAD_BROKERS, 1);
     for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
-      Object[] singleDeadSingleSoftParams = {modifiedProperties, Collections.singletonMap(entry.getKey(),
+      Object[] singleDeadSingleSoftParams = {singleDeadBroker, Collections.singletonMap(entry.getKey(),
           entry.getValue()), balancingConstraint};
       params.add(singleDeadSingleSoftParams);
     }
     // Test: All Goals.
-    Object[] singleDeadMultiAllGoalsParams = {modifiedProperties, goalNameByPriority, balancingConstraint};
+    Object[] singleDeadMultiAllGoalsParams = {singleDeadBroker, goalNameByPriority, balancingConstraint};
     params.add(singleDeadMultiAllGoalsParams);
 
     // -- TEST DECK #2: MULTIPLE DEAD BROKERS.
     // Test: Single Goal.
-    modifiedProperties.put(ClusterProperty.NUM_DEAD_BROKERS, 5);
+    Map<ClusterProperty, Number> multipleDeadBrokers = new HashMap<>();
+    multipleDeadBrokers.put(ClusterProperty.NUM_DEAD_BROKERS, 5);
     for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
-      Object[] multiDeadSingleSoftParams = {modifiedProperties, Collections.singletonMap(entry.getKey(),
-                                                                                         entry.getValue()),
-          balancingConstraint};
+      Object[] multiDeadSingleSoftParams = {multipleDeadBrokers, Collections.singletonMap(entry.getKey(),
+                                                                                          entry.getValue()),
+                                                                                          balancingConstraint};
       params.add(multiDeadSingleSoftParams);
     }
     // Test: All Goals.
-    Object[] multiDeadMultiAllGoalsParams = {modifiedProperties, goalNameByPriority, balancingConstraint};
+    Object[] multiDeadMultiAllGoalsParams = {multipleDeadBrokers, goalNameByPriority, balancingConstraint};
     params.add(multiDeadMultiAllGoalsParams);
 
     return params;

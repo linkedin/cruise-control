@@ -477,7 +477,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
   /**
    * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
-   * threshold to be 1.1, we use 1.09 instead.
+   * threshold to be balancePercentage, we use (balancePercentage-1)*balanceMargin instead.
    * @return the rebalance threshold with a margin.
    */
   private double balancePercentageWithMargin(Resource resource) {

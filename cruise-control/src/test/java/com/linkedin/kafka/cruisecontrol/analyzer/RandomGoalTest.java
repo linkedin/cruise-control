@@ -5,13 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoals;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareCapacityGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -58,15 +62,19 @@ public class RandomGoalTest {
     Collection<Object[]> params = new ArrayList<>();
 
     Map<Integer, String> goalNameByPriority = new HashMap<>();
-    goalNameByPriority.put(1, RackAwareCapacityGoal.class.getName());
-    goalNameByPriority.put(2, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(3, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(4, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(5, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(6, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(7, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(8, LeaderBytesInDistributionGoals.class.getName());
-    goalNameByPriority.put(9, ReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(1, RackAwareGoal.class.getName());
+    goalNameByPriority.put(2, CpuCapacityGoal.class.getName());
+    goalNameByPriority.put(3, DiskCapacityGoal.class.getName());
+    goalNameByPriority.put(4, NetworkInboundCapacityGoal.class.getName());
+    goalNameByPriority.put(5, NetworkOutboundCapacityGoal.class.getName());
+    goalNameByPriority.put(6, PotentialNwOutGoal.class.getName());
+    goalNameByPriority.put(7, TopicReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(8, DiskUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(9, NetworkInboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(10, NetworkOutboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(11, CpuUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(12, LeaderBytesInDistributionGoal.class.getName());
+    goalNameByPriority.put(13, ReplicaDistributionGoal.class.getName());
 
     KafkaCruiseControlConfig config =
         new KafkaCruiseControlConfig(CruiseControlUnitTestUtils.getCruiseControlProperties());
@@ -110,7 +118,11 @@ public class RandomGoalTest {
 
     // Test shuffled soft goals.
     List<String> shuffledSoftGoalNames = new ArrayList<>(goalNameByPriority.values());
-    shuffledSoftGoalNames.remove(RackAwareCapacityGoal.class.getName());    // Remove the hard goal.
+    shuffledSoftGoalNames.remove(RackAwareGoal.class.getName());    // Remove the hard goal.
+    shuffledSoftGoalNames.remove(CpuCapacityGoal.class.getName());    // Remove the hard goal.
+    shuffledSoftGoalNames.remove(DiskCapacityGoal.class.getName());    // Remove the hard goal.
+    shuffledSoftGoalNames.remove(NetworkInboundCapacityGoal.class.getName());    // Remove the hard goal.
+    shuffledSoftGoalNames.remove(NetworkOutboundCapacityGoal.class.getName());    // Remove the hard goal.
     Collections.shuffle(shuffledSoftGoalNames, RANDOM);
 
     int priority = 1;

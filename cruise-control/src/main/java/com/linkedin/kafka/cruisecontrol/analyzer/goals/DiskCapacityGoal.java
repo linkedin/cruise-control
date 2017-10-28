@@ -10,22 +10,21 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
 import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 
 
-public class DiskUsageDistributionGoal extends ResourceDistributionGoal {
+public class DiskCapacityGoal extends CapacityGoal {
 
   /**
-   * Constructor for Resource Distribution Goal.
+   * Constructor for Disk Capacity Goal.
    */
-  public DiskUsageDistributionGoal() {
+  public DiskCapacityGoal() {
     super();
   }
 
   /**
    * Package private for unit test.
    */
-  DiskUsageDistributionGoal(BalancingConstraint constraint) {
+  DiskCapacityGoal(BalancingConstraint constraint) {
     super(constraint);
   }
 
@@ -43,11 +42,6 @@ public class DiskUsageDistributionGoal extends ResourceDistributionGoal {
 
   @Override
   public String name() {
-    return DiskUsageDistributionGoal.class.getSimpleName();
-  }
-
-  @Override
-  public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
-    return new ModelCompletenessRequirements(1, _minMonitoredPartitionPercentage, true);
+    return DiskCapacityGoal.class.getSimpleName();
   }
 }

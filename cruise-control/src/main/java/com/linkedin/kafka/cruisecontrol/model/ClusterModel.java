@@ -171,11 +171,11 @@ public class ClusterModel implements Serializable {
   /**
    * Get partition of the given replica.
    *
-   * @param topicPartition Topic partition of the replica for which the partition is requested.
+   * @param tp Topic partition of the replica for which the partition is requested.
    * @return Partition of the given replica.
    */
-  public Partition partition(TopicPartition topicPartition) {
-    return _partitionsByTopicPartition.get(topicPartition);
+  public Partition partition(TopicPartition tp) {
+    return _partitionsByTopicPartition.get(tp);
   }
 
   /**
@@ -224,15 +224,15 @@ public class ClusterModel implements Serializable {
    * * There is no need to make any modifications to _partitionsByTopicPartition because even after the move,
    * partitions will contain the same replicas.
    *
-   * @param topicPartition      Partition Info of the replica to be relocated.
+   * @param tp      Partition Info of the replica to be relocated.
    * @param sourceBrokerId      Source broker id.
    * @param destinationBrokerId Destination broker id.
    * @throws AnalysisInputException
    */
-  public void relocateReplica(TopicPartition topicPartition, int sourceBrokerId, int destinationBrokerId)
+  public void relocateReplica(TopicPartition tp, int sourceBrokerId, int destinationBrokerId)
       throws AnalysisInputException {
     // Removes the replica and related load from the source broker / source rack / cluster.
-    Replica replica = removeReplica(sourceBrokerId, topicPartition);
+    Replica replica = removeReplica(sourceBrokerId, tp);
     if (replica == null) {
       throw new AnalysisInputException("Replica is not in the cluster.");
     }
@@ -243,50 +243,52 @@ public class ClusterModel implements Serializable {
     replica.broker().rack().addReplica(replica);
     _load.addLoad(replica.load());
     // Add leadership load to the destination replica.
-    _potentialLeadershipLoadByBrokerId.get(destinationBrokerId).addLoad(partition(topicPartition).leader().load());
+    _potentialLeadershipLoadByBrokerId.get(destinationBrokerId).addLoad(partition(tp).leader().load());
   }
 
   /**
    * (1) Removes leadership from source replica.
    * (2) Adds this leadership to the destination replica.
-   * (3) Transfers the outbound network load of source replica to the destination replica.
+   * (3) Transfers the whole outbound network and a fraction of CPU load of source replica to the destination replica.
    * (4) Updates the leader and list of followers of the partition.
    *
-   * @param topicPartition      Topic partition of this replica.
+   * @param tp      Topic partition of this replica.
    * @param sourceBrokerId      Source broker id.
    * @param destinationBrokerId Destination broker id.
    * @return True if relocation is successful, false otherwise.
    * @throws ModelInputException
    */
-  public boolean relocateLeadership(TopicPartition topicPartition, int sourceBrokerId, int destinationBrokerId)
+  public boolean relocateLeadership(TopicPartition tp, int sourceBrokerId, int destinationBrokerId)
       throws ModelInputException {
     // Sanity check to see if the source replica is the leader.
-    Replica sourceReplica = _partitionsByTopicPartition.get(topicPartition).replica(sourceBrokerId);
+    Replica sourceReplica = _partitionsByTopicPartition.get(tp).replica(sourceBrokerId);
     if (!sourceReplica.isLeader()) {
       return false;
     }
     // Sanity check to see if the destination replica is a follower.
-    Replica destinationReplica = _partitionsByTopicPartition.get(topicPartition).replica(destinationBrokerId);
+    Replica destinationReplica = _partitionsByTopicPartition.get(tp).replica(destinationBrokerId);
     if (destinationReplica.isLeader()) {
-      throw new ModelInputException("Cannot relocate leadership of partition " + topicPartition + "from broker " +
+      throw new ModelInputException("Cannot relocate leadership of partition " + tp + "from broker " +
           sourceBrokerId + " to broker " + destinationBrokerId + " because the destination replica is a leader.");
     }
 
     /**
-     * Transfer the outbound network load of source replica to the destination replica.
-     * (1) Remove and get the outbound network load associated with leadership from the given replica.
-     * (2) Add the outbound network load associated with leadership to the given replica.
+     * Transfer the leadership load (whole outbound network and a fraction of CPU load) of source replica to the
+     * destination replica.
+     * (1) Remove and get the outbound network load and a fraction of CPU load associated with leadership from the
+     * given replica.
+     * (2) Add the outbound network load and CPU load associated with leadership to the given replica.
      */
 
     // Remove the load from the source rack.
     Rack rack = broker(sourceBrokerId).rack();
-    Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime = rack.makeFollower(sourceBrokerId, topicPartition);
+    Map<Resource, Map<Long, Double>> resourceToLeadershipLoadBySnapshotTime = rack.makeFollower(sourceBrokerId, tp);
     // Add the load to the destination rack.
     rack = broker(destinationBrokerId).rack();
-    rack.makeLeader(destinationBrokerId, topicPartition, leadershipLoadBySnapshotTime);
+    rack.makeLeader(destinationBrokerId, tp, resourceToLeadershipLoadBySnapshotTime);
 
     // Update the leader and list of followers of the partition.
-    Partition partition = _partitionsByTopicPartition.get(topicPartition);
+    Partition partition = _partitionsByTopicPartition.get(tp);
     partition.relocateLeadership(destinationReplica);
 
     return true;
@@ -342,18 +344,18 @@ public class ClusterModel implements Serializable {
    * Remove and get removed replica from the cluster.
    *
    * @param brokerId       Id of the broker containing the partition.
-   * @param topicPartition Topic partition of the replica to be removed.
+   * @param tp Topic partition of the replica to be removed.
    * @return The requested replica if the id exists in the rack and the partition is found in the broker, null
    * otherwise.
    */
-  public Replica removeReplica(int brokerId, TopicPartition topicPartition) {
+  public Replica removeReplica(int brokerId, TopicPartition tp) {
     for (Rack rack : _racksById.values()) {
       // Remove the replica and the associated load from the rack that it resides in.
-      Replica removedReplica = rack.removeReplica(brokerId, topicPartition);
+      Replica removedReplica = rack.removeReplica(brokerId, tp);
       if (removedReplica != null) {
         // Remove the load of the removed replica from the recent load of the cluster.
         _load.subtractLoad(removedReplica.load());
-        _potentialLeadershipLoadByBrokerId.get(brokerId).subtractLoad(partition(topicPartition).leader().load());
+        _potentialLeadershipLoadByBrokerId.get(brokerId).subtractLoad(partition(tp).leader().load());
         // Return the removed replica.
         return removedReplica;
       }
@@ -449,10 +451,10 @@ public class ClusterModel implements Serializable {
    *
    * @param rackId         Rack id.
    * @param brokerId       Broker Id containing the replica with the given topic partition.
-   * @param topicPartition Topic partition that identifies the replica in this broker.
+   * @param tp Topic partition that identifies the replica in this broker.
    * @param snapshot       Snapshot containing latest state for each resource.
    */
-  public void pushLatestSnapshot(String rackId, int brokerId, TopicPartition topicPartition, Snapshot snapshot)
+  public void pushLatestSnapshot(String rackId, int brokerId, TopicPartition tp, Snapshot snapshot)
       throws ModelInputException {
     // Sanity check for the attempts to push more than allowed number of snapshots having different times.
     if (_validSnapshotTimes.add(snapshot.time()) && _validSnapshotTimes.size() > Load.maxNumSnapshots()) {
@@ -460,15 +462,15 @@ public class ClusterModel implements Serializable {
           + " unique snapshot times.");
     }
     Rack rack = rack(rackId);
-    rack.pushLatestSnapshot(brokerId, topicPartition, snapshot);
+    rack.pushLatestSnapshot(brokerId, tp, snapshot);
 
     // Update the recent load of cluster.
     _load.addSnapshot(snapshot);
     // If this snapshot belongs to leader, update leadership load.
-    Replica leader = partition(topicPartition).leader();
+    Replica leader = partition(tp).leader();
     if (leader != null && leader.broker().id() == brokerId) {
       // Leadership load must be updated for each broker containing a replica of the same partition.
-      for (Replica follower : partition(topicPartition).followers()) {
+      for (Replica follower : partition(tp).followers()) {
         _potentialLeadershipLoadByBrokerId.get(follower.broker().id()).addSnapshot(snapshot);
       }
       // Make this update for the broker containing the leader as well.
@@ -483,13 +485,13 @@ public class ClusterModel implements Serializable {
    *
    * @param rackId         Rack id under which the replica will be created.
    * @param brokerId       Broker id under which the replica will be created.
-   * @param topicPartition Topic partition information of the replica.
+   * @param tp Topic partition information of the replica.
    * @param isLeader         True if the replica is a leader, false otherwise.
    * @param brokerCapacity The broker capacity to use if the broker does not exist.
    * @return Created replica.
    * @throws ModelInputException
    */
-  public Replica createReplicaHandleDeadBroker(String rackId, int brokerId, TopicPartition topicPartition, boolean isLeader,
+  public Replica createReplicaHandleDeadBroker(String rackId, int brokerId, TopicPartition tp, boolean isLeader,
                                                Map<Resource, Double> brokerCapacity) throws ModelInputException {
     if (rack(rackId) == null) {
       createRack(rackId);
@@ -497,7 +499,7 @@ public class ClusterModel implements Serializable {
     if (broker(brokerId) == null) {
       createBroker(rackId, "UNKNOWN_HOST", brokerId, brokerCapacity);
     }
-    return createReplica(rackId, brokerId, topicPartition, isLeader);
+    return createReplica(rackId, brokerId, tp, isLeader);
   }
 
   /**
@@ -506,22 +508,22 @@ public class ClusterModel implements Serializable {
    *
    * @param rackId         Rack id under which the replica will be created.
    * @param brokerId       Broker id under which the replica will be created.
-   * @param topicPartition Topic partition information of the replica.
+   * @param tp Topic partition information of the replica.
    * @param isLeader         True if the replica is a leader, false otherwise.
    * @return
    */
-  public Replica createReplica(String rackId, int brokerId, TopicPartition topicPartition, boolean isLeader)
+  public Replica createReplica(String rackId, int brokerId, TopicPartition tp, boolean isLeader)
       throws ModelInputException {
-    Replica replica = new Replica(topicPartition, broker(brokerId), isLeader);
+    Replica replica = new Replica(tp, broker(brokerId), isLeader);
     rack(rackId).addReplica(replica);
 
     // Add replica to its partition.
-    if (!_partitionsByTopicPartition.containsKey(topicPartition)) {
+    if (!_partitionsByTopicPartition.containsKey(tp)) {
       // Partition has not been created before.
-      _partitionsByTopicPartition.put(topicPartition, new Partition(topicPartition, null));
+      _partitionsByTopicPartition.put(tp, new Partition(tp, null));
     }
 
-    Partition partition = _partitionsByTopicPartition.get(topicPartition);
+    Partition partition = _partitionsByTopicPartition.get(tp);
     if (replica.isLeader()) {
       partition.setLeader(replica);
       return replica;
@@ -529,7 +531,7 @@ public class ClusterModel implements Serializable {
 
     partition.addFollower(replica);
     // If leader of this follower was already created and load was pushed to it, add that load to the follower.
-    Replica leaderReplica = partition(topicPartition).leader();
+    Replica leaderReplica = partition(tp).leader();
     if (leaderReplica != null) {
       _potentialLeadershipLoadByBrokerId.get(brokerId).addLoad(leaderReplica.load());
     }
@@ -573,13 +575,14 @@ public class ClusterModel implements Serializable {
 
   /**
    * Get a list of sorted (in ascending order by resource) healthy brokers having utilization under:
-   * (given utilization threshold) * (broker capacity). Utilization threshold might any capacity constraint
-   * thresholds such as balance or capacity.
+   * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#_isHostResource} and
+   * {@link Resource#_isBrokerResource)). Utilization threshold might be any capacity constraint thresholds such as
+   * balance or capacity.
    *
    * @param resource             Resource for which brokers will be sorted.
    * @param utilizationThreshold Utilization threshold for the given resource.
    * @return A list of sorted (in ascending order by resource) healthy brokers having utilization under:
-   * (given utilization threshold) * (broker capacity).
+   * (given utilization threshold) * (broker and/or host capacity).
    */
   public List<Broker> sortedHealthyBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
     List<Broker> sortedTargetBrokersUnderCapacityLimit = new ArrayList<>();
@@ -589,7 +592,7 @@ public class ClusterModel implements Serializable {
       double brokerUtilization = healthyBroker.load().expectedUtilizationFor(resource);
       double hostCapacityLimit = healthyBroker.host().capacityFor(resource) * utilizationThreshold;
       double hostUtilization = healthyBroker.host().load().expectedUtilizationFor(resource);
-      if (brokerUtilization < brokerCapacityLimit
+      if ((!resource.isBrokerResource() || brokerUtilization < brokerCapacityLimit)
           && (!resource.isHostResource() || hostUtilization < hostCapacityLimit)) {
         sortedTargetBrokersUnderCapacityLimit.add(healthyBroker);
       }
@@ -597,7 +600,8 @@ public class ClusterModel implements Serializable {
     sortedTargetBrokersUnderCapacityLimit.sort((o1, o2) -> {
       Double expectedBrokerLoad1 = o1.load().expectedUtilizationFor(resource);
       Double expectedBrokerLoad2 = o2.load().expectedUtilizationFor(resource);
-      // For host resource we first compare host util then look at the broker util.
+      // For host resource we first compare host util then look at the broker util -- even if a resource is a
+      // host-resource, but not broker-resource.
       int hostComparison = 0;
       if (resource.isHostResource()) {
         Double expectedHostLoad1 = resource.isHostResource() ? o1.host().load().expectedUtilizationFor(resource) : 0.0;
@@ -792,7 +796,7 @@ public class ClusterModel implements Serializable {
           continue;
         }
         double leaderSum = broker.leaderReplicas().stream().mapToDouble(r -> r.load().expectedUtilizationFor(resource)).sum();
-        double cachedLoad = broker.leadershipLoad().expectedUtilizationFor(resource);
+        double cachedLoad = broker.leadershipLoadForNwResources().expectedUtilizationFor(resource);
         if (AnalyzerUtils.compare(leaderSum, cachedLoad, resource) != 0) {
           throw new ModelInputException(prologueErrorMsg + " Leadership load for resource " + resource + " is " +
             cachedLoad + " but recomputed sum is " + leaderSum + ".");
@@ -809,7 +813,7 @@ public class ClusterModel implements Serializable {
     List<Map<String, Object>> finalClusterStats = new ArrayList<>();
 
     for (Broker broker : sortBrokersInAscendingOrderById()) {
-      double leaderBytesInRate = broker.leadershipLoad().expectedUtilizationFor(Resource.NW_IN);
+      double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
 
       Map<String, Object> hostEntry = new HashMap<>();
       hostEntry.put("Host", broker.host().name());
@@ -845,7 +849,7 @@ public class ClusterModel implements Serializable {
     BrokerStats brokerStats = new BrokerStats();
     sortBrokersInAscendingOrderById()
         .forEach(broker -> {
-          double leaderBytesInRate = broker.leadershipLoad().expectedUtilizationFor(Resource.NW_IN);
+          double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
           brokerStats.addSingleBrokerStats(broker.host().name(),
                                            broker.id(),
                                            broker.getState(),

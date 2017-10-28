@@ -155,15 +155,15 @@ public class Rack implements Serializable {
    * Get the removed replica from the rack.
    *
    * @param brokerId       Id of the broker containing the
-   * @param topicPartition Topic partition of the replica to be removed.
+   * @param tp Topic partition of the replica to be removed.
    * @return The requested replica if the id exists in the rack and the partition is found in the broker, and
    * null otherwise.
    */
-  Replica removeReplica(int brokerId, TopicPartition topicPartition) {
+  Replica removeReplica(int brokerId, TopicPartition tp) {
     Broker broker = _brokers.get(brokerId);
     if (broker != null) {
       // Remove the replica and the associated load from the broker that it resides in.
-      Replica removedReplica = broker.host().removeReplica(brokerId, topicPartition);
+      Replica removedReplica = broker.host().removeReplica(brokerId, tp);
       // Remove the load of the removed replica from the recent load of the rack.
       _load.subtractLoad(removedReplica.load());
       // Return the removed replica.
@@ -185,17 +185,17 @@ public class Rack implements Serializable {
   }
 
   /**
-   * (1) Make the replica with the given topicPartition and brokerId a follower.
+   * (1) Make the replica with the given topic partition and brokerId a follower.
    * (2) Remove and get the outbound network load associated with leadership from the given replica.
    *
    * @param brokerId       Id of the broker containing the replica.
-   * @param topicPartition TopicPartition of the replica for which the outbound network load will be removed.
+   * @param tp TopicPartition of the replica for which the outbound network load will be removed.
    * @return Leadership load by snapshot time.
    */
   Map<Resource, Map<Long, Double>> makeFollower(int brokerId,
-                                                TopicPartition topicPartition) throws ModelInputException {
+                                                TopicPartition tp) throws ModelInputException {
     Host host = _brokers.get(brokerId).host();
-    Map<Resource, Map<Long, Double>> leadershipLoad = host.makeFollower(brokerId, topicPartition);
+    Map<Resource, Map<Long, Double>> leadershipLoad = host.makeFollower(brokerId, tp);
     // Remove leadership load from recent load.
     _load.subtractLoadFor(Resource.NW_OUT, leadershipLoad.get(Resource.NW_OUT));
     _load.subtractLoadFor(Resource.CPU, leadershipLoad.get(Resource.CPU));
@@ -203,19 +203,20 @@ public class Rack implements Serializable {
   }
 
   /**
-   * (1) Make the replica with the given topicPartition and brokerId the leader.
+   * (1) Make the replica with the given topic partition and brokerId the leader.
    * (2) Add the outbound network load associated with leadership to the given replica.
+   * (3) Add the CPU load associated with leadership.
    *
-   * @param brokerId                     Id of the broker containing the replica.
-   * @param topicPartition               TopicPartition of the replica for which the outbound network load will be added.
-   * @param leadershipLoadBySnapshotTime Leadership load to be added by snapshot time.
+   * @param brokerId Id of the broker containing the replica.
+   * @param tp TopicPartition of the replica for which the outbound network load will be added.
+   * @param leadershipLoadBySnapshotTime Resource to leadership load to be added by snapshot time.
    */
   void makeLeader(int brokerId,
-                  TopicPartition topicPartition,
+                  TopicPartition tp,
                   Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime)
       throws ModelInputException {
     Host host = _brokers.get(brokerId).host();
-    host.makeLeader(brokerId, topicPartition, leadershipLoadBySnapshotTime);
+    host.makeLeader(brokerId, tp, leadershipLoadBySnapshotTime);
     // Add leadership load to recent load.
     _load.addLoadFor(Resource.NW_OUT, leadershipLoadBySnapshotTime.get(Resource.NW_OUT));
     _load.addLoadFor(Resource.CPU, leadershipLoadBySnapshotTime.get(Resource.CPU));
@@ -235,13 +236,13 @@ public class Rack implements Serializable {
    * Pushes the latest snapshot information containing the snapshot time and resource loads to the rack.
    *
    * @param brokerId       Broker Id containing the replica with the given topic partition.
-   * @param topicPartition Topic partition that identifies the replica in this broker.
+   * @param tp Topic partition that identifies the replica in this broker.
    * @param snapshot       Snapshot containing latest state for each resource.
    */
-  void pushLatestSnapshot(int brokerId, TopicPartition topicPartition, Snapshot snapshot)
+  void pushLatestSnapshot(int brokerId, TopicPartition tp, Snapshot snapshot)
       throws ModelInputException {
     Host host = _brokers.get(brokerId).host();
-    host.pushLatestSnapshot(brokerId, topicPartition, snapshot);
+    host.pushLatestSnapshot(brokerId, tp, snapshot);
     // Update the recent load of this rack.
     _load.addSnapshot(snapshot);
   }
