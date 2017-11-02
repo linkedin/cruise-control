@@ -15,7 +15,7 @@ abstract class Anomaly {
 
   /**
    * Fix the anomaly with KafkaCruiseControl. We make this method abstract so the user provided
-   * @param kafkaCruiseControl the Kafka cruise control instance.
+   * @param kafkaCruiseControl the Kafka Cruise Control instance.
    */
   abstract void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException;
 }

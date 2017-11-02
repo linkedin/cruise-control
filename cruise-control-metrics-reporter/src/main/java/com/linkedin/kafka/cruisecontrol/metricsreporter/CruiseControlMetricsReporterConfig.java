@@ -20,7 +20,7 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   public static final String PREFIX = "cruise.control.metrics.reporter.";
   // Two unique configurations
   public static final String CRUISE_CONTROL_METRICS_TOPIC_CONFIG = "cruise.control.metrics.topic";
-  private static final String CRUISE_CONTROL_METRICS_TOPIC_DOC = "The topic to which cruise control metrics reporter "
+  private static final String CRUISE_CONTROL_METRICS_TOPIC_DOC = "The topic to which Cruise Control metrics reporter "
       + "should send messages";
   public static final String CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG = PREFIX + "metrics.reporting.interval.ms";
   private static final String CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_DOC = "The interval in milliseconds the "
@@ -40,7 +40,7 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
                                     ConfigDef.Type.STRING,
                                     PRODUCER_ID,
                                     ConfigDef.Importance.LOW,
-                                    "The producer id for cruise control metrics reporter")
+                                    "The producer id for Cruise Control metrics reporter")
                             .define(CRUISE_CONTROL_METRICS_TOPIC_CONFIG,
                                     ConfigDef.Type.STRING,
                                     DEFAULT_CRUISE_CONTROL_METRICS_TOPIC,

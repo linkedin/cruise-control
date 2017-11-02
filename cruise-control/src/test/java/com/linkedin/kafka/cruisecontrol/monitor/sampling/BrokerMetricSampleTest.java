@@ -31,6 +31,7 @@ public class BrokerMetricSampleTest {
                                10.0,
                                11.0,
                                12.0,
+                               13.0,
                                1000L);
     System.out.println(sample);
     byte[] bytes = sample.toBytes();
@@ -45,9 +46,10 @@ public class BrokerMetricSampleTest {
     assertEquals(7.0, deserializedSample.brokerProduceRequestRate(), DELTA);
     assertEquals(8.0, deserializedSample.brokerConsumerFetchRequestRate(), DELTA);
     assertEquals(9.0, deserializedSample.brokerReplicationFetchRequestRate(), DELTA);
-    assertEquals(10.0, deserializedSample.brokerDiskUtilization(), DELTA);
-    assertEquals(11.0, deserializedSample.allTopicsProduceRequestRate(), DELTA);
-    assertEquals(12.0, deserializedSample.allTopicsFetchRequestRate(), DELTA);
+    assertEquals(10.0, deserializedSample.brokerRequestHandlerAvgIdlePercent(), DELTA);
+    assertEquals(11.0, deserializedSample.brokerDiskUtilization(), DELTA);
+    assertEquals(12.0, deserializedSample.allTopicsProduceRequestRate(), DELTA);
+    assertEquals(13.0, deserializedSample.allTopicsFetchRequestRate(), DELTA);
     assertEquals(1000, deserializedSample.sampleTime());
   }
 

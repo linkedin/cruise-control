@@ -6,7 +6,7 @@ Cruise Control for Apache Kafka
   Apache Kafka, many companies have bigger and bigger Kafka clusters. At LinkedIn, we have 1800+ Kafka brokers, 
   which means broker deaths are an almost daily occurrence and balancing the workload of Kafka also becomes a big overhead. 
   
-  Kafka Cruise control is designed to address this operation scalability issue.
+  Kafka Cruise Control is designed to address this operation scalability issue.
   
 ### Features ###
   Kafka Cruise Control provides the following features out of the box:
@@ -56,9 +56,9 @@ to a Kafka topic.
     ./gradlew jar copyDependantLibs
     ./kafka-cruise-control-start.sh [-jars PATH_TO_YOUR_JAR_1,PATH_TO_YOUR_JAR_2] config/cruisecontrol.properties [port]
     ```
-    JAR files correspond to your applications and `port` enables customizing the cruise control port number (default: 9090).
+    JAR files correspond to your applications and `port` enables customizing the Cruise Control port number (default: 9090).
 3. visit http://localhost:9090/kafkacruisecontrol/state or http://localhost:\[port\]/kafkacruisecontrol/state if 
-you specified the port when starting cruise control. 
+you specified the port when starting Cruise Control. 
 
 **Note**: 
 * Cruise Control will need some time to read the raw Kafka metrics from the cluster.
@@ -96,7 +96,7 @@ More about pluggable components can be found in the
 The metric sampler enables users to deploy Cruise Control to various environments and work with the existing metric systems.
 
 Cruise Control provides a metrics reporter that can be configured in your Apache Kafka server. Metrics reporter generates
-performance metrics to a kafka metrics topic that can be consumed by Cruise Control.
+performance metrics to a Kafka metrics topic that can be consumed by Cruise Control.
 
 #### Sample Store ####
 The Sample Store enables storage of collected metric samples and training samples in an external storage. 
@@ -118,7 +118,7 @@ The goals in Cruise Control are pluggable with different priorities. The default
  * **PotentialNwOutGoal** - Ensures that the potential network output (when all the replicas in the broker become leaders) on each of the broker do 
  not exceed the broker’s network outbound bandwidth capacity.
  * **ResourceDistributionGoal** - Attempts to keep the workload variance among brokers within a certain range relative to the average utilization of each resource.
- * **LeaderBytesInDistributsionGoal** - Attempts to equalize the leader bytes in rate on each host.
+ * **LeaderBytesInDistributionGoal** - Attempts to equalize the leader bytes in rate on each host.
  * **TopicReplicaDistributionGoal** - Attempts to maintain an even distribution of any topic's replicas across the entire cluster.
  * **ReplicaDistributionGoal** - Attempts to make all the brokers in a cluster have a similar number of replicas.
 

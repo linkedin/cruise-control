@@ -49,7 +49,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     for (KafkaMetric kafkaMetric : metrics) {
       addMetricIfInterested(kafkaMetric);
     }
-    LOG.info("Added {} kafka metrics for cruise control metrics during initialization.", _interestedMetrics.size());
+    LOG.info("Added {} Kafka metrics for Cruise Control metrics during initialization.", _interestedMetrics.size());
     _metricsReporterRunner = new KafkaThread("CruiseControlMetricsReporterRunner", this, true);
     _yammerMetricProcessor = new YammerMetricProcessor();
     _metricsReporterRunner.start();
@@ -67,7 +67,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   @Override
   public void close() {
-    LOG.info("Closing cruise control metrics reporter.");
+    LOG.info("Closing Cruise Control metrics reporter.");
     _shutdown = true;
     if (_metricsReporterRunner != null) {
       _metricsReporterRunner.interrupt();
@@ -116,7 +116,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
   @Override
   public void run() {
-    LOG.info("Starting cruise control metrics reporter with reporting interval of {} ms.", _reportingIntervalMs);
+    LOG.info("Starting Cruise Control metrics reporter with reporting interval of {} ms.", _reportingIntervalMs);
     try {
       while (!_shutdown) {
         long now = System.currentTimeMillis();
@@ -133,13 +133,13 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
             _producer.flush();
           } catch (InterruptException ie) {
             if (_shutdown) {
-              LOG.info("Cruise control metric reporter is interrupted during flush due to shutdown request.");
+              LOG.info("Cruise Control metric reporter is interrupted during flush due to shutdown request.");
             } else {
               throw ie;
             }
           }
         } catch (Exception e) {
-          LOG.error("Got exception in cruise control metrics reporter", e);
+          LOG.error("Got exception in Cruise Control metrics reporter", e);
         }
         // Log failures if there is any.
         if (_numMetricSendFailure > 0) {
@@ -159,13 +159,13 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         }
       }
     } finally {
-      LOG.info("Cruise control metrics reporter exited.");
+      LOG.info("Cruise Control metrics reporter exited.");
     }
   }
 
   /**
    * Send a CruiseControlMetric to the Kafka topic.
-   * @param ccm the cruise control metric to send.
+   * @param ccm the Cruise Control metric to send.
    */
   public void sendCruiseControlMetric(CruiseControlMetric ccm) {
     // Use topic name as key if existing so that the same sampler will be able to collect all the information
@@ -174,12 +174,12 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         ((TopicMetric) ccm).topic() : Integer.toString(ccm.brokerId());
     ProducerRecord<String, CruiseControlMetric> producerRecord =
         new ProducerRecord<>(_cruiseControlMetricsTopic, null, ccm.time(), key, ccm);
-    LOG.debug("Sending cruise control metric {}.", ccm);
+    LOG.debug("Sending Cruise Control metric {}.", ccm);
     _producer.send(producerRecord, new Callback() {
       @Override
       public void onCompletion(RecordMetadata recordMetadata, Exception e) {
         if (e != null) {
-          LOG.warn("Failed to send cruise control metric {}", ccm);
+          LOG.warn("Failed to send Cruise Control metric {}", ccm);
           _numMetricSendFailure++;
         }
       }
@@ -213,7 +213,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private void addMetricIfInterested(KafkaMetric metric) {
     LOG.trace("Checking Kafka metric {}", metric.metricName());
     if (MetricsUtils.isInterested(metric.metricName())) {
-      LOG.debug("Added new metric {} to cruise control metrics reporter.", metric.metricName());
+      LOG.debug("Added new metric {} to Cruise Control metrics reporter.", metric.metricName());
       _interestedMetrics.put(metric.metricName(), metric);
     }
   }

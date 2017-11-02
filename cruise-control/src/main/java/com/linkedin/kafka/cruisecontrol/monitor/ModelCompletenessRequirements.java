@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * This class is created to describe the requirements of the model. In cruise control, the requirement
+ * This class is created to describe the requirements of the model. In Cruise Control, the requirement
  * of the monitored performance metrics differs in different scenarios. For example, RackAwareness goal do not really
  * need any load information, but it need to include all the topics. On the other hand, resource distribution
  * would need more load information.

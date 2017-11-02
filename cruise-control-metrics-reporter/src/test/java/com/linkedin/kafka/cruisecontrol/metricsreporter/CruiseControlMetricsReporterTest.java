@@ -39,6 +39,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.BROKER_CONSUMER_FETCH_REQUEST_RATE;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.BROKER_CPU_UTIL;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.BROKER_FOLLOWER_FETCH_REQUEST_RATE;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.BROKER_PRODUCE_REQUEST_RATE;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.PARTITION_SIZE;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.TOPIC_BYTES_IN;
@@ -106,7 +107,7 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     consumer.subscribe(Collections.singletonList(TOPIC));
     long startMs = System.currentTimeMillis();
     Set<Integer> metricTypes = new HashSet<>();
-    while (metricTypes.size() < 15 && System.currentTimeMillis() < startMs + 15000) {
+    while (metricTypes.size() < 16 && System.currentTimeMillis() < startMs + 15000) {
       records = consumer.poll(10);
       for (ConsumerRecord<String, CruiseControlMetric> record : records) {
         metricTypes.add((int) record.value().metricType().id());
@@ -126,7 +127,8 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
                                                                        (int) TOPIC_MESSAGES_IN_PER_SEC.id(),
                                                                        (int) BROKER_PRODUCE_REQUEST_RATE.id(),
                                                                        (int) BROKER_CONSUMER_FETCH_REQUEST_RATE.id(),
-                                                                       (int) BROKER_FOLLOWER_FETCH_REQUEST_RATE.id()));
+                                                                       (int) BROKER_FOLLOWER_FETCH_REQUEST_RATE.id(),
+                                                                       (int) BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT.id()));
     assertEquals("Expected to see " + expectedMetricTypes + ", but only see " + metricTypes, metricTypes, expectedMetricTypes);
   }
 

@@ -15,7 +15,7 @@ public interface AnomalyNotifier extends Configurable {
    * When a particular goal is violated this method will be called..
    *
    * @param goalViolations The detected goal violations.
-   * @return The notification result that asks cruise control to perform one of the following behaviors: ignore, fix or
+   * @return The notification result that asks Cruise Control to perform one of the following behaviors: ignore, fix or
    * perform a delayed check.
    */
   AnomalyNotificationResult onGoalViolation(GoalViolations goalViolations);
@@ -24,7 +24,7 @@ public interface AnomalyNotifier extends Configurable {
    * The method will be called when a broker failure has been detected.
    *
    * @param brokerFailures the detected broker failures
-   * @return The notification result that asks cruise control to perform one of the following behaviors: ignore, fix or
+   * @return The notification result that asks Cruise Control to perform one of the following behaviors: ignore, fix or
    * perform a delayed check.
    */
   AnomalyNotificationResult onBrokerFailure(BrokerFailures brokerFailures);

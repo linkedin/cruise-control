@@ -48,7 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * The LoadMonitor monitors the workload of a kafka cluster. It periodically triggers the metric sampling and
+ * The LoadMonitor monitors the workload of a Kafka cluster. It periodically triggers the metric sampling and
  * maintains the collected {@link PartitionMetricSample}. It is also responsible for aggregate the metrics samples into
  * {@link Snapshot} for the analyzer to generate the balancing proposals.
  */
@@ -86,7 +86,7 @@ public class LoadMonitor {
    *
    * @param config The load monitor configuration.
    * @param time   The time object.
-   * @param dropwizardMetricRegistry the sensor registry for cruise control
+   * @param dropwizardMetricRegistry the sensor registry for Cruise Control
    */
   public LoadMonitor(KafkaCruiseControlConfig config,
                      Time time,
@@ -554,7 +554,7 @@ public class LoadMonitor {
   /**
    * Get the number of available snapshots which meets the cluster model completeness requirement.
    *
-   * @param clusterAndGeneration The kafka cluster and metadata generation.
+   * @param clusterAndGeneration The Kafka cluster and metadata generation.
    * @param minMonitoredPartitionPercentage the required partition coverage.
    * @param totalNumPartitions the total number of partitions. We can actually get this from the cluster info. But
    *                           we choose to pass it in to void recalculate every time.

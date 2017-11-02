@@ -51,7 +51,7 @@ public class LoadMonitorTaskRunner {
    * @param metricSampleAggregator  The queue that holds the metric samples.
    * @param metadataClient The metadata of the cluster.
    * @param time The time object.
-   * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring cruise control.
+   * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    */
   public LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
                                MetricSampleAggregator metricSampleAggregator,
