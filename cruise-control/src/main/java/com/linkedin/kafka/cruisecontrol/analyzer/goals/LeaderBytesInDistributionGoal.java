@@ -35,17 +35,17 @@ import org.slf4j.LoggerFactory;
 /**
  * Soft goal to distribute leader bytes evenly.
  */
-public class LeaderBytesInDistributionGoals extends AbstractGoal {
-  private static final Logger LOG = LoggerFactory.getLogger(LeaderBytesInDistributionGoals.class);
+public class LeaderBytesInDistributionGoal extends AbstractGoal {
+  private static final Logger LOG = LoggerFactory.getLogger(LeaderBytesInDistributionGoal.class);
 
   private double _meanLeaderBytesIn;
   private Set<Integer> _overLimitBrokerIds;
 
-  public LeaderBytesInDistributionGoals() {
+  public LeaderBytesInDistributionGoal() {
   }
 
   /** Testing constructor */
-  LeaderBytesInDistributionGoals(BalancingConstraint balancingConstraint) {
+  LeaderBytesInDistributionGoal(BalancingConstraint balancingConstraint) {
     this._balancingConstraint = balancingConstraint;
   }
 
@@ -69,7 +69,7 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
     }
 
     double balanceThreshold = balanceThreshold(clusterModel, destinationBroker.id());
-    double newDestLeaderBytesIn = destinationBroker.leadershipLoad().expectedUtilizationFor(Resource.NW_IN) +
+    double newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) +
         sourceReplica.load().expectedUtilizationFor(Resource.NW_IN);
     if (newDestLeaderBytesIn > balanceThreshold) {
       return false;
@@ -90,13 +90,13 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
 
   @Override
   public String name() {
-    return LeaderBytesInDistributionGoals.class.getSimpleName();
+    return LeaderBytesInDistributionGoal.class.getSimpleName();
   }
 
   @Override
   protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
     return clusterModel.brokers().stream()
-        .filter(b -> b.leadershipLoad().expectedUtilizationFor(Resource.NW_IN) > balanceThreshold(clusterModel, b.id()))
+        .filter(b -> b.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) > balanceThreshold(clusterModel, b.id()))
         .collect(Collectors.toList());
   }
 
@@ -129,7 +129,7 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
       Set<String> excludedTopics) throws AnalysisInputException, ModelInputException {
 
     double balanceThreshold = balanceThreshold(clusterModel, broker.id());
-    if (broker.leadershipLoad().expectedUtilizationFor(Resource.NW_IN) < balanceThreshold) {
+    if (broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) < balanceThreshold) {
       return;
     }
 
@@ -145,11 +145,11 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
       Replica leaderReplica = leaderReplicaIt.next();
       List<Replica> followers = clusterModel.partition(leaderReplica.topicPartition()).followers();
       List<Broker> eligibleBrokers = followers.stream().map(Replica::broker)
-          .sorted(Comparator.comparingDouble(a -> a.leadershipLoad().expectedUtilizationFor(Resource.NW_IN)))
+          .sorted(Comparator.comparingDouble(a -> a.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)))
           .collect(Collectors.toList());
       maybeApplyBalancingAction(clusterModel, leaderReplica, eligibleBrokers, BalancingAction.LEADERSHIP_MOVEMENT,
           optimizedGoals);
-      overThreshold = broker.leadershipLoad().expectedUtilizationFor(Resource.NW_IN) > balanceThreshold;
+      overThreshold = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) > balanceThreshold;
     }
     if (overThreshold) {
       _overLimitBrokerIds.add(broker.id());
@@ -169,7 +169,7 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
       if (!broker.isAlive()) {
         continue;
       }
-      accumulator += broker.leadershipLoad().expectedUtilizationFor(resource);
+      accumulator += broker.leadershipLoadForNwResources().expectedUtilizationFor(resource);
       brokerCount++;
     }
     return accumulator / brokerCount;
@@ -187,7 +187,7 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
     initMeanLeaderBytesIn(clusterModel);
     double lowUtilizationThreshold =
         _balancingConstraint.lowUtilizationThreshold(Resource.NW_IN) * clusterModel.broker(brokerId).capacityFor(Resource.NW_IN);
-    // We only balance leader bytes in rate of the brokers whose whose leader bytes in rate is higher than the minimum
+    // We only balance leader bytes in rate of the brokers whose leader bytes in rate is higher than the minimum
     // balancing threshold.
     return Math.max(_meanLeaderBytesIn * _balancingConstraint.balancePercentage(Resource.NW_IN), lowUtilizationThreshold);
   }
@@ -197,7 +197,6 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
 
     @Override
     public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
-      // Did we need to change anything?
       double[] stat1 = stats1.utilizationMatrix()[RawAndDerivedResource.LEADER_NW_IN.ordinal()];
       double meanPreLeaderBytesIn = new Mean().evaluate(stat1, 0, stat1.length);
       double threshold = meanPreLeaderBytesIn * _balancingConstraint.balancePercentage(Resource.NW_IN);

@@ -4,13 +4,17 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoals;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareCapacityGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
@@ -635,13 +639,17 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         .define(GOALS_CONFIG,
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")
-                    .add(RackAwareCapacityGoal.class.getName())
+                    .add(RackAwareGoal.class.getName())
+                    .add(CpuCapacityGoal.class.getName())
+                    .add(DiskCapacityGoal.class.getName())
+                    .add(NetworkInboundCapacityGoal.class.getName())
+                    .add(NetworkOutboundCapacityGoal.class.getName())
                     .add(PotentialNwOutGoal.class.getName())
                     .add(DiskUsageDistributionGoal.class.getName())
                     .add(NetworkInboundUsageDistributionGoal.class.getName())
                     .add(NetworkOutboundUsageDistributionGoal.class.getName())
                     .add(CpuUsageDistributionGoal.class.getName())
-                    .add(LeaderBytesInDistributionGoals.class.getName())
+                    .add(LeaderBytesInDistributionGoal.class.getName())
                     .add(TopicReplicaDistributionGoal.class.getName())
                     .add(ReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
@@ -658,13 +666,17 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         .define(ANOMALY_DETECTION_GOALS_CONFIG,
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")
-                    .add(RackAwareCapacityGoal.class.getName())
+                    .add(RackAwareGoal.class.getName())
+                    .add(CpuCapacityGoal.class.getName())
+                    .add(DiskCapacityGoal.class.getName())
+                    .add(NetworkInboundCapacityGoal.class.getName())
+                    .add(NetworkOutboundCapacityGoal.class.getName())
                     .add(PotentialNwOutGoal.class.getName())
                     .add(DiskUsageDistributionGoal.class.getName())
                     .add(NetworkInboundUsageDistributionGoal.class.getName())
                     .add(NetworkOutboundUsageDistributionGoal.class.getName())
                     .add(CpuUsageDistributionGoal.class.getName())
-                    .add(LeaderBytesInDistributionGoals.class.getName())
+                    .add(LeaderBytesInDistributionGoal.class.getName())
                     .add(TopicReplicaDistributionGoal.class.getName())
                     .add(ReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.MEDIUM,

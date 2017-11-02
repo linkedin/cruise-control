@@ -110,7 +110,7 @@ public class AnalyzerUtils {
    * @param optimizedGoals Optimized goals to check whether they accept the given proposal.
    * @param proposal       Proposal to be checked for acceptance.
    * @param clusterModel   The state of the cluster.
-   * @return True if the the given proposal is acceptable for all of the given optimized goals, false otherwise.
+   * @return True if the given proposal is acceptable for all of the given optimized goals, false otherwise.
    */
   public static boolean isProposalAcceptableForOptimizedGoals(Set<Goal> optimizedGoals,
                                                               BalancingProposal proposal,

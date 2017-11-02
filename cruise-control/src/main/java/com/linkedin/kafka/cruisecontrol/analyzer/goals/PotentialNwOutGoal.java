@@ -210,8 +210,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
       // over the potential outbound network capacity the movement will be successful.
       List<Broker> eligibleBrokers = new ArrayList<>(candidateBrokers);
       eligibleBrokers.removeAll(clusterModel.partition(replica.topicPartition()).partitionBrokers());
-      eligibleBrokers.sort((b1, b2) -> Double.compare(b2.leadershipLoad().expectedUtilizationFor(Resource.NW_OUT),
-                                                      b1.leadershipLoad().expectedUtilizationFor(Resource.NW_OUT)));
+      eligibleBrokers.sort((b1, b2) -> Double.compare(b2.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_OUT),
+                                                      b1.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_OUT)));
       Broker destinationBroker =
           maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, BalancingAction.REPLICA_MOVEMENT,
               optimizedGoals);

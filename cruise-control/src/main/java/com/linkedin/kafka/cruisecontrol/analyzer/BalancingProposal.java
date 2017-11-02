@@ -14,7 +14,7 @@ import java.util.Map;
  * Represents the load balancing operation over a replica for Kafka Load GoalOptimizer.
  */
 public class BalancingProposal {
-  private final TopicPartition _topicPartition;
+  private final TopicPartition _tp;
   private final int _sourceBrokerId;
   private final int _destinationBrokerId;
   private final BalancingAction _balancingAction;
@@ -24,32 +24,32 @@ public class BalancingProposal {
    * Constructor for creating a balancing proposal with given topic partition, source broker and destination id, and
    * balancing action.
    *
-   * @param topicPartition      Topic partition of the replica.
+   * @param tp                  Topic partition of the replica.
    * @param sourceBrokerId      Source broker id of the replica.
    * @param destinationBrokerId Destination broker id of the replica.
    * @param balancingAction     Leadership transfer or replica relocation.
    */
-  public BalancingProposal(TopicPartition topicPartition, int sourceBrokerId, int destinationBrokerId,
+  public BalancingProposal(TopicPartition tp, int sourceBrokerId, int destinationBrokerId,
                            BalancingAction balancingAction) {
-    this(topicPartition, sourceBrokerId, destinationBrokerId, balancingAction, 0L);
+    this(tp, sourceBrokerId, destinationBrokerId, balancingAction, 0L);
   }
 
   /**
    * Constructor for creating a balancing proposal with given topic partition, source broker and destination id, and
    * balancing action.
    *
-   * @param topicPartition      Topic partition of the replica.
+   * @param tp                  Topic partition of the replica.
    * @param sourceBrokerId      Source broker id of the replica.
    * @param destinationBrokerId Destination broker id of the replica.
    * @param balancingAction     Leadership transfer or replica relocation.
    * @param dataToMove          The data to move with this proposal. The unit should be MB.
    */
-  public BalancingProposal(TopicPartition topicPartition,
+  public BalancingProposal(TopicPartition tp,
                            int sourceBrokerId,
                            int destinationBrokerId,
                            BalancingAction balancingAction,
                            long dataToMove) {
-    _topicPartition = topicPartition;
+    _tp = tp;
     _sourceBrokerId = sourceBrokerId;
     _destinationBrokerId = destinationBrokerId;
     _balancingAction = balancingAction;
@@ -60,21 +60,21 @@ public class BalancingProposal {
    * Get the partition Id that is impacted by the balancing action.
    */
   public int partitionId() {
-    return _topicPartition.partition();
+    return _tp.partition();
   }
 
   /**
    * Get topic name of the impacted partition.
    */
   public String topic() {
-    return _topicPartition.topic();
+    return _tp.topic();
   }
 
   /**
    * Get topic partition.
    */
   public TopicPartition topicPartition() {
-    return _topicPartition;
+    return _tp;
   }
 
   /**
@@ -111,7 +111,7 @@ public class BalancingProposal {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> proposalMap = new HashMap<>();
-    proposalMap.put("topicPartition", _topicPartition);
+    proposalMap.put("topicPartition", _tp);
     proposalMap.put("sourceBrokerId", _sourceBrokerId);
     proposalMap.put("destinationBrokerId", _destinationBrokerId);
     proposalMap.put("balancingAction", _balancingAction);
@@ -123,7 +123,7 @@ public class BalancingProposal {
    */
   @Override
   public String toString() {
-    return String.format("(%s, %d->%d, %s)", _topicPartition, _sourceBrokerId, _destinationBrokerId, _balancingAction);
+    return String.format("(%s, %d->%d, %s)", _tp, _sourceBrokerId, _destinationBrokerId, _balancingAction);
   }
 
   /**
@@ -144,13 +144,13 @@ public class BalancingProposal {
 
     BalancingProposal otherProposal = (BalancingProposal) other;
     return _sourceBrokerId == otherProposal._sourceBrokerId
-        && _destinationBrokerId == otherProposal._destinationBrokerId && _topicPartition.equals(otherProposal._topicPartition)
+        && _destinationBrokerId == otherProposal._destinationBrokerId && _tp.equals(otherProposal._tp)
         && _balancingAction == otherProposal._balancingAction;
   }
 
   @Override
   public int hashCode() {
-    int result = _topicPartition.hashCode();
+    int result = _tp.hashCode();
     result = 31 * result + _sourceBrokerId;
     result = 31 * result + _destinationBrokerId;
     result = 31 * result + _balancingAction.hashCode();

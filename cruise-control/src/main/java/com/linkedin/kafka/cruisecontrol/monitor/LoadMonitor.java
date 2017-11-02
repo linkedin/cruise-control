@@ -261,7 +261,7 @@ public class LoadMonitor {
   }
 
   /**
-   * Return the the load monitor task runner state.
+   * Return the load monitor task runner state.
    */
   public LoadMonitorTaskRunner.LoadMonitorTaskRunnerState taskRunnerState() {
     return _loadMonitorTaskRunner.state();
