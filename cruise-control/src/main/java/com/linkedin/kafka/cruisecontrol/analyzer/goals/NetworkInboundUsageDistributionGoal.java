@@ -34,4 +34,5 @@ public class NetworkInboundUsageDistributionGoal extends ResourceDistributionGoa
   public String name() {
     return NetworkInboundUsageDistributionGoal.class.getSimpleName();
   }
+
 }

@@ -221,5 +221,4 @@ public class LeaderBytesInDistributionGoals extends AbstractGoal {
       return _reasonForLastNegativeResult;
     }
   }
-
 }

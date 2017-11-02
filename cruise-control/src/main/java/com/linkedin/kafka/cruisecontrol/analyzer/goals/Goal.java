@@ -34,7 +34,6 @@ import org.apache.kafka.common.annotation.InterfaceStability;
  */
 @InterfaceStability.Evolving
 public interface Goal extends Configurable {
-
   /**
    * Optimize the given cluster model as needed for this goal.
    * <p>

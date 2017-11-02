@@ -8,9 +8,11 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.common.Statistic;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 
 import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
@@ -138,6 +140,45 @@ public class AnalyzerUtils {
     }
   }
 
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   *
+   * @param clusterModelStats Cluster model stats.
+   */
+  public static Map<String, Object> getJsonStructure(ClusterModelStats clusterModelStats) {
+    Map<String, Object> clusterStatsMap = new HashMap<>();
+
+    clusterStatsMap.put("brokers", clusterModelStats.numBrokers());
+    clusterStatsMap.put("replicas", clusterModelStats.numReplicasInCluster());
+    clusterStatsMap.put("topics", clusterModelStats.numTopics());
+
+    Map<Statistic, Map<Resource, Double>> resourceUtilizationStats = clusterModelStats.resourceUtilizationStats();
+    Map<Statistic, Double> nwOutUtilizationStats = clusterModelStats.potentialNwOutUtilizationStats();
+    Map<Statistic, Number> replicaStats = clusterModelStats.replicaStats();
+    Map<Statistic, Number> topicReplicaStats = clusterModelStats.topicReplicaStats();
+
+    Map<String, Object> statisticMap = new HashMap<>();
+
+    for (Statistic stat : Statistic.values()) {
+      Map<String, Double> resourceMap = new HashMap<>();
+
+      for (Resource resource : Resource.values()) {
+        resourceMap.put(resource.resource(), resourceUtilizationStats.get(stat).get(resource));
+      }
+
+      resourceMap.put("potentialNwOut", nwOutUtilizationStats.get(stat));
+      resourceMap.put("replicas", replicaStats.get(stat).doubleValue());
+      resourceMap.put("topicReplicas",  topicReplicaStats.get(stat).doubleValue());
+
+      statisticMap.put(stat.stat(), resourceMap);
+    }
+
+    clusterStatsMap.put("statistics", statisticMap);
+
+    return clusterStatsMap;
+  }
+
   /**
    * Compare the given values. Return 1 if first > second, -1 if first < second, 0 otherwise.
    *
@@ -226,5 +267,18 @@ public class AnalyzerUtils {
 
     return pValues;
   }
+
+  /*
+   * JSON does not support literal NaN value
+   * round it to zero when Java Math sees a NaN
+   */
+  public static double nanToZero(double v) {
+      if (Double.isNaN(v)) {
+          return 0.0;
+      } else {
+          return v;
+      }
+  }
+
 
 }

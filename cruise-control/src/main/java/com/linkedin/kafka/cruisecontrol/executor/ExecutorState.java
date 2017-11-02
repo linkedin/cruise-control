@@ -6,6 +6,8 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import java.util.Collections;
 import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 
 
 public class ExecutorState {
@@ -102,6 +104,33 @@ public class ExecutorState {
 
   public Set<ExecutionTask> inProgressPartitionMovements() {
     return _inProgressPartitionMovements;
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> execState = new HashMap<>();
+    switch (_state) {
+      case NO_TASK_IN_PROGRESS:
+      case EXECUTION_STARTED:
+      case LEADER_MOVEMENT_TASK_IN_PROGRESS:
+        execState.put("state", _state);
+        break;
+      case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
+        execState.put("state", _state);
+        execState.put("numTotalPartitions", numTotalPartitionMovements());
+        execState.put("totalDataToMove", totalDataToMoveInMB());
+        execState.put("numFinishedPartitions", _numFinishedPartitionMovements);
+        execState.put("finishedDataMovement", _finishedDataMovementInMB);
+        break;
+      default:
+        execState.put("state", _state);
+        execState.put("error", "ILLEGAL_STATE_EXCEPTION");
+        break;
+    }
+    return execState;
   }
 
   @Override

@@ -44,7 +44,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
    * Constructor for Rack Capacity Goal.
    */
   public RackAwareCapacityGoal() {
-
+    super();
   }
 
   /**

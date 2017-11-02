@@ -148,7 +148,8 @@ public class MetricFetcherManager {
                                              long endMs,
                                              long timeoutMs,
                                              SampleStore sampleStore) throws TimeoutException {
-    LOG.debug("Kicking off sampling for time range [{}, {}].", startMs, endMs);
+    LOG.info("Kicking off sampling for time range [{}, {}], duration {} ms using {} fetchers with timeout {} ms.",
+        startMs, endMs, endMs - startMs, _numMetricFetchers, timeoutMs);
     List<Set<TopicPartition>> partitionAssignment =
         _partitionAssignor.assignPartitions(_metadataClient.cluster(), _numMetricFetchers);
     List<MetricFetcher> samplingFetchers = new ArrayList<>();
@@ -191,19 +192,20 @@ public class MetricFetcherManager {
       errorFutures.add(_samplingExecutor.submit(metricFetcher));
     }
 
-    // Wait for the sampling to finish.
     for (Future<Boolean> future : errorFutures) {
       try {
         hasSamplingError = hasSamplingError || future.get(deadlineMs - _time.milliseconds(), TimeUnit.MILLISECONDS);
       } catch (InterruptedException e) {
         LOG.warn("Sampling scheduler thread is interrupted when waiting for sampling to finish.", e);
       } catch (ExecutionException e) {
-        LOG.error("Sampling scheduler received exception when waiting for sampling to finish", e);
+        LOG.error("Sampling scheduler received Execution exception when waiting for sampling to finish", e);
+      } catch (Exception e) {
+        LOG.error("Sampling scheduler received Unknown exception when waiting for sampling to finish", e);
       }
     }
 
     long samplingTime = _time.milliseconds() - samplingActionStartMs;
-    LOG.debug("Finished sampling in {} ms.", samplingTime);
+    LOG.info("Finished sampling in {} ms.", samplingTime);
 
     return hasSamplingError;
   }

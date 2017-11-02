@@ -54,8 +54,13 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
                             long endTimeMs,
                             SamplingMode mode) throws MetricSamplingException {
     // Ensure we have an assignment.
+    long pollerCount = 0L;
     while (_metricConsumer.assignment().isEmpty()) {
+      pollerCount++;
       _metricConsumer.poll(10);
+      if (pollerCount % (12000) == 0) {
+        LOG.warn("metricConsumer Assignment is empty .. Did you copy the cruise-control-metrics-reporter.jar to kafka libs ?");
+      }
     }
     // Now seek to the startTimeMs.
     Map<TopicPartition, Long> timestampToSeek = new HashMap<>();

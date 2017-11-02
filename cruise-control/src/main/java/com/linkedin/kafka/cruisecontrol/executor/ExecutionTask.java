@@ -5,6 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * A class that wraps the execution information of a balancing proposal
@@ -42,6 +44,17 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   @Override
   public int hashCode() {
     return (int) executionId;
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> executionStatsMap = new HashMap<>();
+    executionStatsMap.put("executionId", executionId);
+    executionStatsMap.put("proposal", proposal.getJsonStructure());
+    return executionStatsMap;
   }
 
   @Override

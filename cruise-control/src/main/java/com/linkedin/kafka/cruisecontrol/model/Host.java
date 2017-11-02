@@ -14,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
@@ -204,6 +206,22 @@ public class Host implements Serializable {
     _brokers.values().forEach(Broker::clearLoad);
     _load.clearLoad();
   }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> hostMap = new HashMap<>();
+    List<Map<String, Object>> brokerList = new ArrayList<>();
+    for (Broker broker : _brokers.values()) {
+      brokerList.add(broker.getJsonStructure());
+    }
+    hostMap.put("name", _name);
+    hostMap.put("brokers", brokerList);
+    return hostMap;
+  }
+
 
   public void writeTo(OutputStream out) throws IOException {
     String host = String.format("<Host name=\"%s\">%n", _name);

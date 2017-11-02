@@ -75,6 +75,10 @@ public class Broker implements Serializable {
     return _host;
   }
 
+  public State getState() {
+    return _state;
+  }
+
   /**
    * Get broker's rack.
    */
@@ -390,6 +394,22 @@ public class Broker implements Serializable {
       _leadershipLoad.addSnapshot(snapshot);
     }
     _load.addSnapshot(snapshot);
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    List<Map<String, Object>> replicaList = new ArrayList<>();
+    for (Replica replica : _replicas) {
+      replicaList.add(replica.getJsonStructureForLoad());
+    }
+    Map<String, Object> brokerMap = new HashMap<>();
+    brokerMap.put("brokerid", _id);
+    brokerMap.put("brokerstate", _state);
+    brokerMap.put("replicas", replicaList);
+    return brokerMap;
   }
 
   /**

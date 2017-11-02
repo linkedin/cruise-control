@@ -162,6 +162,34 @@ public class Replica implements Serializable {
     _load.addLoadFor(Resource.CPU, networkOutboundLoadBySnapshotTime.get(Resource.CPU));
   }
 
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> replicaMap = new HashMap<>();
+    replicaMap.put("isLeader", _isLeader);
+    replicaMap.put("broker", _broker.id());
+    replicaMap.put("topic", _topicPartition.topic());
+    replicaMap.put("partition", _topicPartition.partition());
+    replicaMap.put("originalBroker", _originalBroker == null ? -1 : _originalBroker.id());
+    return replicaMap;
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON (version 2 used in load)
+   */
+  public Map<String, Object> getJsonStructureForLoad() {
+    Map<String, Object> replicaMap = new HashMap<>();
+    replicaMap.put("isLeader", _isLeader);
+    replicaMap.put("brokerid", _broker.id());
+    replicaMap.put("topic", _topicPartition.topic());
+    replicaMap.put("partition", _topicPartition.partition());
+    replicaMap.put("load", _load.getJsonStructure());
+    return replicaMap;
+  }
+
   /**
    * Output writing string representation of this class to the stream.
    * @param out the output stream.

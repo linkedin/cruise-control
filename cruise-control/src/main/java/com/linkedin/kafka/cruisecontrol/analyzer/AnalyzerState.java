@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashMap;
 
 
 /**
@@ -30,6 +31,25 @@ public class AnalyzerState {
 
   public Map<Goal, Boolean> readyGoals() {
     return _readyGoals;
+  }
+
+  /*
+   * Return an object that can be further used
+   * to encode into JSON
+   */
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> analyzerState = new HashMap<>();
+    Set<Map<String, String>> readyGoalNames = new HashSet<>();
+    for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
+      if (entry.getValue()) {
+        Map<String, String> goalMap = new HashMap<>();
+        goalMap.put("goal", entry.getKey().name());
+        readyGoalNames.add(goalMap);
+      }
+    }
+    analyzerState.put("isProposalReady", _isProposalReady);
+    analyzerState.put("readyGoals", readyGoalNames);
+    return analyzerState;
   }
 
   @Override

@@ -282,5 +282,4 @@ public class PotentialNwOutGoal extends AbstractGoal {
       return _reasonForLastNegativeResult;
     }
   }
-
 }
