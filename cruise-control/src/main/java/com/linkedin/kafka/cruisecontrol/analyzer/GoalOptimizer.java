@@ -138,7 +138,7 @@ public class GoalOptimizer implements Runnable {
                       + "Cached generation: {}", _bestProposal.modelGeneration());
       }
       long deadline = _time.milliseconds() + sleepTime;
-      while (!_shutdown && _time.milliseconds() < deadline && (_bestProposal == null || validCachedProposal())) {
+      while (!_shutdown && _time.milliseconds() < deadline) {
         try {
           Thread.sleep(deadline - _time.milliseconds());
         } catch (InterruptedException e) {

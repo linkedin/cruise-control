@@ -30,7 +30,7 @@ public class SelfHealingNotifierTest {
     final long startTime = 500L;
     Time mockTime = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
     TestingBrokerFailureAutoFixNotifier anomalyNotifier = new TestingBrokerFailureAutoFixNotifier(mockTime);
-    anomalyNotifier.configure(Collections.emptyMap());
+    anomalyNotifier.configure(Collections.singletonMap(SelfHealingNotifier.SELF_HEALING_ENABLED_CONFIG, "true"));
 
     Map<Integer, Long> failedBrokers = new HashMap<>();
     failedBrokers.put(1, failureTime1);
