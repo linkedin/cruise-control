@@ -37,6 +37,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
@@ -692,10 +693,10 @@ public class LoadMonitor {
   }
 
   public class AutoCloseableSemaphore implements AutoCloseable {
-    private boolean closed = false;
+    private AtomicBoolean _closed = new AtomicBoolean();
     @Override
     public void close() throws Exception {
-      if (!closed) {
+      if (_closed.compareAndSet(false, true)) {
         _clusterModelSemaphore.release();
         _acquiredClusterModelSemaphore.set(false);
       }

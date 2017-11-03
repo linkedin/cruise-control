@@ -81,7 +81,7 @@ public class GoalViolationDetector implements Runnable {
       return;
     }
 
-    AutoCloseable ignored = null;
+    AutoCloseable clusterModelSemaphore = null;
     try {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
       if (loadMonitorTaskRunnerState == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING ||
@@ -100,10 +100,10 @@ public class GoalViolationDetector implements Runnable {
           LOG.debug("Detecting if {} is violated.", entry.getValue().name());
           // Because the model generation could be slow, We only get new cluster model if needed.
           if (newModelNeeded) {
-            if (ignored != null) {
-              ignored.close();
+            if (clusterModelSemaphore != null) {
+              clusterModelSemaphore.close();
             }
-            ignored = _loadMonitor.acquireForModelGeneration();
+            clusterModelSemaphore = _loadMonitor.acquireForModelGeneration();
             // Make cluster model null before generating a new cluster model so the current one can be GCed.
             clusterModel = null;
             clusterModel = _loadMonitor.clusterModel(now, goal.clusterModelCompletenessRequirements());
@@ -127,9 +127,9 @@ public class GoalViolationDetector implements Runnable {
     } catch (Exception e) {
       LOG.error("Unexpected exception", e);
     } finally {
-      if (ignored != null) {
+      if (clusterModelSemaphore != null) {
         try {
-          ignored.close();
+          clusterModelSemaphore.close();
         } catch (Exception e) {
           LOG.error("Received exception when closing auto closable semaphore", e);
         }
