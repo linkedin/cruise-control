@@ -692,10 +692,13 @@ public class LoadMonitor {
   }
 
   public class AutoCloseableSemaphore implements AutoCloseable {
+    private boolean closed = false;
     @Override
     public void close() throws Exception {
-      _clusterModelSemaphore.release();
-      _acquiredClusterModelSemaphore.set(false);
+      if (!closed) {
+        _clusterModelSemaphore.release();
+        _acquiredClusterModelSemaphore.set(false);
+      }
     }
   }
 

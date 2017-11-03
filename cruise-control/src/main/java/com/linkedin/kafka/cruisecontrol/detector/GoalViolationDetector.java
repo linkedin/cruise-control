@@ -80,7 +80,9 @@ public class GoalViolationDetector implements Runnable {
                 _loadMonitor.clusterModelGeneration());
       return;
     }
-    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration()) {
+
+    AutoCloseable ignored = null;
+    try {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
       if (loadMonitorTaskRunnerState == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING ||
           loadMonitorTaskRunnerState == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING) {
@@ -98,25 +100,15 @@ public class GoalViolationDetector implements Runnable {
           LOG.debug("Detecting if {} is violated.", entry.getValue().name());
           // Because the model generation could be slow, We only get new cluster model if needed.
           if (newModelNeeded) {
+            if (ignored != null) {
+              ignored.close();
+            }
+            ignored = _loadMonitor.acquireForModelGeneration();
             // Make cluster model null before generating a new cluster model so the current one can be GCed.
             clusterModel = null;
             clusterModel = _loadMonitor.clusterModel(now, goal.clusterModelCompletenessRequirements());
-            // The anomaly detector have to include all the topics in order to detect the rack awareness issue.
-            newModelNeeded = false;
           }
-          if (clusterModel.topics().isEmpty()) {
-            LOG.info("Skipping goal violation detection because the cluster model does not have any topic.");
-            return;
-          }
-          Map<TopicPartition, List<Integer>> initDistribution = clusterModel.getReplicaDistribution();
-          // We do not exclude any topics when we are doing anomaly detection.
-          goal.optimize(clusterModel, new HashSet<>(), Collections.emptySet());
-          Set<BalancingProposal> proposals = AnalyzerUtils.getDiff(initDistribution, clusterModel);
-          LOG.trace("{} generated {} proposals", goal.name(), proposals.size());
-          if (!proposals.isEmpty()) {
-            goalViolations.addViolation(priority, goal.name(), proposals);
-            newModelNeeded = true;
-          }
+          newModelNeeded = optimizeForGoal(clusterModel, priority, goal, goalViolations);
         } else {
           LOG.debug("Skipping goal violation for {} detection because load completeness requirement is not met.",
                     goal.name());
@@ -135,7 +127,36 @@ public class GoalViolationDetector implements Runnable {
     } catch (Exception e) {
       LOG.error("Unexpected exception", e);
     } finally {
+      if (ignored != null) {
+        try {
+          ignored.close();
+        } catch (Exception e) {
+          LOG.error("Received exception when closing auto closable semaphore", e);
+        }
+      }
       LOG.debug("Goal violation detection finished.");
+    }
+  }
+
+  private boolean optimizeForGoal(ClusterModel clusterModel,
+                                  int priority,
+                                  Goal goal,
+                                  GoalViolations goalViolations)
+      throws KafkaCruiseControlException {
+    if (clusterModel.topics().isEmpty()) {
+      LOG.info("Skipping goal violation detection because the cluster model does not have any topic.");
+      return false;
+    }
+    Map<TopicPartition, List<Integer>> initDistribution = clusterModel.getReplicaDistribution();
+    // We do not exclude any topics when we are doing anomaly detection.
+    goal.optimize(clusterModel, new HashSet<>(), Collections.emptySet());
+    Set<BalancingProposal> proposals = AnalyzerUtils.getDiff(initDistribution, clusterModel);
+    LOG.trace("{} generated {} proposals", goal.name(), proposals.size());
+    if (!proposals.isEmpty()) {
+      goalViolations.addViolation(priority, goal.name(), proposals);
+      return true;
+    } else {
+      return false;
     }
   }
 }
