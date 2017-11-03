@@ -693,7 +693,7 @@ public class LoadMonitor {
   }
 
   public class AutoCloseableSemaphore implements AutoCloseable {
-    private AtomicBoolean _closed = new AtomicBoolean();
+    private AtomicBoolean _closed = new AtomicBoolean(false);
     @Override
     public void close() throws Exception {
       if (_closed.compareAndSet(false, true)) {
