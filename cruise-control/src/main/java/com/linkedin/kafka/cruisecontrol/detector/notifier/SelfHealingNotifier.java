@@ -113,6 +113,6 @@ public class SelfHealingNotifier implements AnomalyNotifier {
                                                        _brokerFailureAlertThresholdMs, _selfHealingThresholdMs));
     }
     String selfHealingEnabledString = (String) config.get(SELF_HEALING_ENABLED_CONFIG);
-    _selfHealingEnabled = selfHealingEnabledString == null || Boolean.parseBoolean(selfHealingEnabledString);
+    _selfHealingEnabled = selfHealingEnabledString != null && Boolean.parseBoolean(selfHealingEnabledString);
   }
 }
