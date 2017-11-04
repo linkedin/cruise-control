@@ -493,14 +493,18 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     setResponseCode(response, HttpServletResponse.SC_OK);
     OutputStream out = response.getOutputStream();
-    if (!verbose) {
-      out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
-    }
+
     if (!json) {
       if (!verbose) {
         out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
       } else {
         out.write(optimizerResult.goalProposals().toString().getBytes(StandardCharsets.UTF_8));
+      }
+      for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
+        Goal goal = entry.getKey();
+        out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
+            .getBytes(StandardCharsets.UTF_8));
+        out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
       }
       setResponseCode(response, HttpServletResponse.SC_OK);
       // Print summary before & after optimization
@@ -509,6 +513,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       out.write(String.format("%n%nOptimized load:").getBytes(StandardCharsets.UTF_8));
       out.write(loadAfterOptimization.getBytes(StandardCharsets.UTF_8));
     } else {
+      if (!verbose) {
+        out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
+      }
       // Build all the goal summary
       List<Map<String, Object>> allGoals = new ArrayList<>();
       for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
@@ -602,6 +609,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           out.write(String.format("%50s, %s, %s%n", goal.getClass().getSimpleName(), goal.clusterModelCompletenessRequirements(),
               entry.getValue() ? "Ready" : "NotReady").getBytes(StandardCharsets.UTF_8));
         }
+        if (state.executorState().state() == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
+          out.write(String.format("%n%nIn progress partition movements:%n").getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : state.executorState().inProgressPartitionMovements()) {
+            out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
+          }
+          out.write(String.format("%n%nPending partition movements:%n").getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : state.executorState().pendingPartitionMovements()) {
+            out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
+          }
+        }
         if (superVerbose) {
           out.write(String.format("%n%nFlawed metric samples:%n").getBytes(StandardCharsets.UTF_8));
           Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws = state.monitorState().sampleFlaws();
@@ -614,16 +631,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           }
           out.write(String.format("%n%nLinear Regression Model State:%n%s", state.monitorState().detailTrainingProgress())
                           .getBytes(StandardCharsets.UTF_8));
-          if (state.executorState().state() == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
-            out.write(String.format("%n%nIn progress partition movements:%n").getBytes(StandardCharsets.UTF_8));
-            for (ExecutionTask task : state.executorState().inProgressPartitionMovements()) {
-              out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
-            }
-            out.write(String.format("%n%nPending partition movements:%n").getBytes(StandardCharsets.UTF_8));
-            for (ExecutionTask task : state.executorState().pendingPartitionMovements()) {
-              out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
-            }
-          }
         }
       }
     }
