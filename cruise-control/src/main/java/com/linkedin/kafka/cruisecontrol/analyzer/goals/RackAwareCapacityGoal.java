@@ -34,7 +34,11 @@ import org.slf4j.LoggerFactory;
  * Class for achieving the following hard goals:
  * HARD GOAL#1: Generate leadership and replica movement proposals to push the load on brokers under the capacity limit.
  * HARD GOAL#2: Generate replica movement proposals to provide rack-aware replica distribution.
+ * 
+ * @deprecated Please use {@link RackAwareGoal}, {@link DiskCapacityGoal}, {@link NetworkInboundCapacityGoal}, 
+ * {@link NetworkOutboundCapacityGoal}, {@link CpuCapacityGoal} instead.
  */
+@Deprecated
 public class RackAwareCapacityGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(RackAwareCapacityGoal.class);
   private Set<Resource> _balancedResources;
