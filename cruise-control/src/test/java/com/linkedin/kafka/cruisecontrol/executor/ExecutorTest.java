@@ -91,6 +91,63 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     assertEquals("The leader should have moved.", zkUtils.getLeaderForPartition(topic1, partition).get(),
                  initialLeader1 == 0 ? 1 : 0);
   }
+  
+  @Test
+  public void testMoveNonExistingPartition() {
+    ZkUtils zkUtils = CruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    String topic0 = "testPartitionMovement0";
+    String topic1 = "testPartitionMovement1";
+    String topic2 = "testPartitionMovement2";
+    String topic3 = "testPartitionMovement3";
+    int partition = 0;
+    TopicPartition tp0 = new TopicPartition(topic0, partition);
+    TopicPartition tp1 = new TopicPartition(topic1, partition);
+    TopicPartition tp2 = new TopicPartition(topic2, partition);
+    TopicPartition tp3 = new TopicPartition(topic3, partition);
+    AdminUtils.createTopic(zkUtils, topic0, 1, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
+    AdminUtils.createTopic(zkUtils, topic1, 1, 2, new Properties(), RackAwareMode.Safe$.MODULE$);
+    while (zkUtils.getLeaderForPartition(topic0, partition).isEmpty()) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+    int initialLeader0 = (Integer) zkUtils.getLeaderForPartition(topic0, partition).get();
+    int initialLeader1 = (Integer) zkUtils.getLeaderForPartition(topic1, partition).get();
+    int initialLeader2 = (Integer) zkUtils.getLeaderForPartition(topic1, partition).get();
+    int initialLeader3 = (Integer) zkUtils.getLeaderForPartition(topic1, partition).get();
+    BalancingProposal proposal0 =
+        new BalancingProposal(tp0, initialLeader0, initialLeader0 == 0 ? 1 : 0, BalancingAction.REPLICA_MOVEMENT);
+    BalancingProposal proposal1 =
+        new BalancingProposal(tp1, initialLeader1, initialLeader1 == 0 ? 1 : 0, BalancingAction.LEADERSHIP_MOVEMENT);
+    BalancingProposal proposal2 =
+        new BalancingProposal(tp2, initialLeader2, initialLeader2 == 0 ? 1 : 0, BalancingAction.REPLICA_MOVEMENT);
+    BalancingProposal proposal3 =
+        new BalancingProposal(tp3, initialLeader3, initialLeader3 == 0 ? 1 : 0, BalancingAction.LEADERSHIP_MOVEMENT);
+
+    KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
+    Executor executor = new Executor(configs, new SystemTime());
+    executor.addBalancingProposals(Arrays.asList(proposal0, proposal1, proposal2, proposal3), Collections.emptySet());
+    executor.startExecution(null);
+    long now = System.currentTimeMillis();
+    while (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS
+        && System.currentTimeMillis() < now + 5000) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+    if (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+      fail("The execution did not finish in 5 seconds.");
+    }
+    assertEquals("Replication factor of topic 0 should be 1", zkUtils.getReplicasForPartition(topic0, partition).size(), 1);
+    assertEquals("The partition should have moved.", zkUtils.getReplicasForPartition(topic0, partition).apply(0),
+        initialLeader0 == 0 ? 1 : 0);
+    assertEquals("The leader should have moved.", zkUtils.getLeaderForPartition(topic1, partition).get(),
+        initialLeader1 == 0 ? 1 : 0);
+  }
 
   private Properties getExecutorProperties() {
     Properties props = new Properties();
