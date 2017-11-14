@@ -312,7 +312,7 @@ public class Executor {
         for (ExecutionTask task : _executionTaskManager.tasksInProgress()) {
           TopicPartition tp = task.proposal.topicPartition();
           if (cluster.partition(tp) == null) {
-            LOG.debug("Proposal {} is marked as finished because the topic has been deleted");
+            LOG.debug("Task {} is marked as finished because the topic has been deleted", task);
             finishedTasks.add(task);
             continue;
           }
