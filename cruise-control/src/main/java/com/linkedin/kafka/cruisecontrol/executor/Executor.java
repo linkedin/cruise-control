@@ -311,6 +311,11 @@ public class Executor {
         Cluster cluster = _metadataClient.refreshMetadata().cluster();
         for (ExecutionTask task : _executionTaskManager.tasksInProgress()) {
           TopicPartition tp = task.proposal.topicPartition();
+          if (cluster.partition(tp) == null) {
+            LOG.debug("Task {} is marked as finished because the topic has been deleted", task);
+            finishedTasks.add(task);
+            continue;
+          }
           boolean destinationExists = false;
           boolean sourceExists = false;
           if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
@@ -322,7 +327,8 @@ public class Executor {
               finishedTasks.add(task);
             }
           } else {
-            if (cluster.leaderFor(tp).id() == task.destinationBrokerId()) {
+            Node leader = cluster.leaderFor(tp);
+            if (leader != null && leader.id() == task.destinationBrokerId()) {
               finishedTasks.add(task);
             }
           }

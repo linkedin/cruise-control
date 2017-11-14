@@ -54,26 +54,29 @@ object ExecutorUtils {
           case None =>
             // verify with current assignment
             val currentReplicaAssignment = zkUtils.getReplicasForPartition(topic, partition)
-            if (currentReplicaAssignment.isEmpty)
-              throw new RuntimeException(s"The partition $partition does not exist.")
-
-            if (!currentReplicaAssignment.contains(destinationBroker)) {
-              if (currentReplicaAssignment.contains(sourceBroker)) {
-                // this is a normal movement.
-                (currentReplicaAssignment :+ destinationBroker).filter(_ != sourceBroker)
-              } else {
-                // The replica list should have at least one of the source broker or destination broker.
-                throw new RuntimeException(s"Broker $sourceBroker is not a replica of [$topic, $partition].")
-              }
+            if (currentReplicaAssignment.isEmpty) {
+              LOG.warn(s"The partition $partition does not exist.")
+              addTask = false
+              Seq.empty
             } else {
-              if (currentReplicaAssignment.contains(sourceBroker)) {
-                // The destination broker is already in the list, we just need to filter out the source broker if
-                // it exists.
-                currentReplicaAssignment.filter(_ != sourceBroker)
+              if (!currentReplicaAssignment.contains(destinationBroker)) {
+                if (currentReplicaAssignment.contains(sourceBroker)) {
+                  // this is a normal movement.
+                  (currentReplicaAssignment :+ destinationBroker).filter(_ != sourceBroker)
+                } else {
+                  // The replica list should have at least one of the source broker or destination broker.
+                  throw new RuntimeException(s"Broker $sourceBroker is not a replica of [$topic, $partition].")
+                }
               } else {
-                // If the source broker is no longer in the list, just do not add the task to the reassignment.
-                addTask = false
-                currentReplicaAssignment
+                if (currentReplicaAssignment.contains(sourceBroker)) {
+                  // The destination broker is already in the list, we just need to filter out the source broker if
+                  // it exists.
+                  currentReplicaAssignment.filter(_ != sourceBroker)
+                } else {
+                  // If the source broker is no longer in the list, just do not add the task to the reassignment.
+                  addTask = false
+                  currentReplicaAssignment
+                }
               }
             }
         }
@@ -93,24 +96,30 @@ object ExecutorUtils {
     if (inProgressPartitionMovement.nonEmpty)
       throw new IllegalStateException("The partition movements should have finished before leader movements start.")
 
-    val newReplicaAssignment = tasks.map { task =>
+    val newReplicaAssignment = tasks.flatMap { task =>
       val topic = task.proposal.topic
       val partition = task.proposal.partitionId
       val tp = TopicAndPartition(topic, partition)
       val destinationBroker = task.destinationBrokerId()
 
       val currentAssignment = zkUtils.getReplicasForPartition(topic, partition)
-      val replicasWithoutLeader = currentAssignment.filter(_ != destinationBroker)
-      if (currentAssignment.size != replicasWithoutLeader.size + 1)
-        throw new IllegalStateException(s"Current replicas $currentAssignment for $tp does not contain new " +
-          s"leader $destinationBroker")
-      val newReplicas = destinationBroker +: replicasWithoutLeader
-      tp -> newReplicas
+      if (currentAssignment.nonEmpty) {
+        val replicasWithoutLeader = currentAssignment.filter(_ != destinationBroker)
+        if (currentAssignment.size != replicasWithoutLeader.size + 1)
+          throw new IllegalStateException(s"Current replicas $currentAssignment for $tp does not contain new " +
+            s"leader $destinationBroker")
+        val newReplicas = destinationBroker +: replicasWithoutLeader
+        Some(tp -> newReplicas)
+      } else {
+        None
+      }
     }.toMap
 
-    val reassignPartitionCommand = new ReassignPartitionsCommand(zkUtils, newReplicaAssignment)
-    if (!reassignPartitionCommand.reassignPartitions())
-      throw new RuntimeException(s"partition assignment for $newReplicaAssignment failed because of ZK write failure")
+    if (newReplicaAssignment.nonEmpty) {
+      val reassignPartitionCommand = new ReassignPartitionsCommand(zkUtils, newReplicaAssignment)
+      if (!reassignPartitionCommand.reassignPartitions())
+        throw new RuntimeException(s"partition assignment for $newReplicaAssignment failed because of ZK write failure")
+    }
   }
 
   def executePreferredLeaderElection(zkUtils: ZkUtils,
