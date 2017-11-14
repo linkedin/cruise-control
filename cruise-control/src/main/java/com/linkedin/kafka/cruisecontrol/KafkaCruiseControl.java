@@ -355,6 +355,7 @@ public class KafkaCruiseControl {
   /**
    * Execute the given balancing proposals.
    * @param proposals the given balancing proposals
+   * @param unthrottledBrokers Brokers for which the rate of replica movements from/to will not be throttled.
    */
   public void executeProposals(Collection<BalancingProposal> proposals,
                                Collection<Integer> unthrottledBrokers) {

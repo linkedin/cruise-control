@@ -225,7 +225,7 @@ public class Executor {
       // Exhaust all the pending partition movements.
       while ((partitionsToMove > 0 || _executionTaskManager.hasTaskInProgress()) && !_stopRequested) {
         // Get tasks to execute.
-        List<ExecutionTask> tasksToExecute = _executionTaskManager.getPartitionMovementTasks();
+        List<ExecutionTask> tasksToExecute = _executionTaskManager.getReplicaMovementTasks();
         LOG.info("Executor will execute " + tasksToExecute.size() + " task(s)");
 
         if (!tasksToExecute.isEmpty()) {
@@ -255,7 +255,7 @@ public class Executor {
         LOG.info("Partition movements finished.");
       } else if (_stopRequested) {
         LOG.info("Partition movements stopped. {} in progress, {} pending, {} aborted, {} dead.",
-                 _executionTaskManager.tasksInProgress().size(), 
+                 _executionTaskManager.tasksInProgress().size(),
                  _executionTaskManager.remainingPartitionMovements().size(),
                  _executionTaskManager.abortedTasks().size(),
                  _executionTaskManager.deadTasks().size());
@@ -344,7 +344,7 @@ public class Executor {
               taskDone = isLeadershipMovementDone(cluster, tp, task);
               break;
             default:
-              throw new IllegalStateException("Should never be here.");  
+              throw new IllegalStateException("Should never be here.");
           }
           if (taskDone) {
             finishedTasks.add(task);
@@ -364,7 +364,7 @@ public class Executor {
       _executionTaskManager.completeTasks(finishedTasks);
       LOG.info("Completed tasks: {}", finishedTasks);
     }
-    
+
     private boolean isReplicaMovementDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
       boolean destinationExists = false;
       boolean sourceExists = false;
@@ -383,7 +383,7 @@ public class Executor {
           throw new IllegalStateException("Should never be here.");
       }
     }
-    
+
     private boolean isReplicaDeletionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
       boolean sourceExists = false;
       for (Node node : cluster.partition(tp).replicas()) {
@@ -407,7 +407,7 @@ public class Executor {
           throw new IllegalStateException("Should never be here.");
       }
     }
-    
+
     private boolean isLeadershipMovementDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
       Node leader = cluster.leaderFor(tp);
       switch (task.healthiness()) {
@@ -419,9 +419,9 @@ public class Executor {
         default:
           throw new IllegalStateException("Should never be here.");
       }
-      
+
     }
-    
+
     private void maybeAbortTasks(Collection<ExecutionTask> tasks) {
       List<ExecutionTask> abortedTasks = new ArrayList<>();
       List<ExecutionTask> deadTasks = new ArrayList<>();
