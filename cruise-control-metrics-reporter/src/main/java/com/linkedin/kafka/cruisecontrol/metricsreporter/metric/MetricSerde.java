@@ -44,7 +44,7 @@ public class MetricSerde implements Serializer<CruiseControlMetric>, Deserialize
     try {
       return fromBytes(bytes);
     } catch (Exception e) {
-      throw new RuntimeException("Error occurred when desriealize cruise control metrics.", e);
+      throw new RuntimeException("Error occurred when desriealize Cruise Control metrics.", e);
     }
   }
 

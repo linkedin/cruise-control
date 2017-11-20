@@ -303,7 +303,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>max.proposal.candidates</code>
    */
   public static final String MAX_PROPOSAL_CANDIDATES_CONFIG = "max.proposal.candidates";
-  private static final String MAX_PROPOSAL_CANDIDATES_DOC = "Kafka cruise control precomputes the optimization proposal"
+  private static final String MAX_PROPOSAL_CANDIDATES_DOC = "Kafka Cruise Control precomputes the optimization proposal"
       + "candidates continuously in the background. This config sets the maximum number of candidate proposals to "
       + "precompute for each cluster workload model. The more proposal candidates are generated, the more likely a "
       + "better optimization proposal will be found, but more CPU will be used as well.";
@@ -312,9 +312,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>proposal.expiration.ms</code>
    */
   public static final String PROPOSAL_EXPIRATION_MS_CONFIG = "proposal.expiration.ms";
-  private static final String PROPOSAL_EXPIRATION_MS_DOC = "Kafka cruise control will cache one of the best proposal "
+  private static final String PROPOSAL_EXPIRATION_MS_DOC = "Kafka Cruise Control will cache one of the best proposal "
       + "among all the optimization proposal candidates it recently computed. This configuration defines when will the"
-      + "cached proposal be invalidated and needs a recomputation. If proposal.expiration.ms is set to 0, cruise control"
+      + "cached proposal be invalidated and needs a recomputation. If proposal.expiration.ms is set to 0, Cruise Control"
       + "will continuously compute the proposal candidates.";
 
   /**

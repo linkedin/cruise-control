@@ -59,7 +59,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
       pollerCount++;
       _metricConsumer.poll(10);
       if (pollerCount % (12000) == 0) {
-        LOG.warn("metricConsumer Assignment is empty .. Did you copy the cruise-control-metrics-reporter.jar to kafka libs ?");
+        LOG.warn("metricConsumer Assignment is empty .. Did you copy the cruise-control-metrics-reporter.jar to Kafka libs ?");
       }
     }
     // Now seek to the startTimeMs.

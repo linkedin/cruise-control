@@ -17,7 +17,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * A Yammer metric processor that process the yammer metrics. Currenlty all the interested metrics are of type
+ * A Yammer metric processor that process the yammer metrics. Currently all the interested metrics are of type
  * Meter (BytesInRate, BytesOutRate) or Gauge (Partition Size).
  */
 public class YammerMetricProcessor implements MetricProcessor<YammerMetricProcessor.Context> {

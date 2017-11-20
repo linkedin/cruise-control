@@ -41,7 +41,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * The main class of cruise control.
+ * The main class of Cruise Control.
  */
 public class KafkaCruiseControl {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControl.class);
@@ -57,9 +57,9 @@ public class KafkaCruiseControl {
   private final String _metricsPrefix = "kafka.cruisecontrol";
 
   /**
-   * Construct the cruise control
+   * Construct the Cruise Control
    *
-   * @param config the configuration of cruise control.
+   * @param config the configuration of Cruise Control.
    */
   public KafkaCruiseControl(KafkaCruiseControlConfig config) {
     _config = config;
@@ -81,7 +81,7 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Start up the cruise control.
+   * Start up the Cruise Control.
    */
   public void startUp() {
     LOG.info("Starting Kafka Cruise Control...");
@@ -89,7 +89,7 @@ public class KafkaCruiseControl {
     _loadMonitor.startUp();
     _anomalyDetector.startDetection();
     _goalOptimizerExecutor.submit(_goalOptimizer);
-    LOG.info("Kafka cruise control started.");
+    LOG.info("Kafka Cruise Control started.");
   }
 
   public void shutdown() {
@@ -110,7 +110,7 @@ public class KafkaCruiseControl {
     try {
       t.join(30000);
     } catch (InterruptedException e) {
-      LOG.warn("Cruise control failed to shutdown in 30 seconds. Exit.");
+      LOG.warn("Cruise Control failed to shutdown in 30 seconds. Exit.");
     }
   }
 
@@ -372,14 +372,14 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Get the state for Kafka cruise control.
+   * Get the state for Kafka Cruise Control.
    */
   public KafkaCruiseControlState state() {
     return new KafkaCruiseControlState(_executor.state(), _loadMonitor.state(), _goalOptimizer.state());
   }
 
   /**
-   * Get the default model completeness requirement for cruise control. This is the combination of the
+   * Get the default model completeness requirement for Cruise Control. This is the combination of the
    * requirements of all the goals.
    */
   public ModelCompletenessRequirements defaultModelCompletenesRequirements() {
@@ -387,7 +387,7 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Get the current snapshots for cruise control.  This is basically a data dump.
+   * Get the current snapshots for Cruise Control.  This is basically a data dump.
    * @return a non-null map of the current snapshots for all partitions.
    */
   public SortedMap<Long, Map<TopicPartition, Snapshot>> currentSnapshots() {

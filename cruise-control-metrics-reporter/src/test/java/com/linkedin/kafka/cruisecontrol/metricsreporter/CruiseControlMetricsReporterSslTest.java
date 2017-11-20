@@ -33,7 +33,7 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
   public Properties overridingProps() {
     Properties props = new Properties();
     int port = findLocalPort();
-    // We need to convert all the properties to the cruise control properties.
+    // We need to convert all the properties to the Cruise Control properties.
     setSecurityConfigs(props, "producer");
     for (String configName : ProducerConfig.configNames()) {
       Object value = props.get(configName);

@@ -10,7 +10,7 @@ import org.apache.kafka.common.Configurable;
 
 
 /**
- * The interface for getting the broker capacity. Users should implement this interface so cruise control can
+ * The interface for getting the broker capacity. Users should implement this interface so Cruise Control can
  * optimize the cluster according to the capacity of each broker.
  */
 public interface BrokerCapacityConfigResolver extends Configurable, AutoCloseable {

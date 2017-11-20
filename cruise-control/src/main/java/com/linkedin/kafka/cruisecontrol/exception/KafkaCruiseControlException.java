@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.exception;
 
 /**
- * The parent exception for all the cruise control exceptions.
+ * The parent exception for all the Cruise Control exceptions.
  */
 public class KafkaCruiseControlException extends Exception {
 

@@ -44,7 +44,7 @@ import com.google.gson.GsonBuilder;
 
 
 /**
- * The servlet for kafka cruise control.
+ * The servlet for Kafka Cruise Control.
  */
 public class KafkaCruiseControlServlet extends HttpServlet {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlServlet.class);
@@ -130,7 +130,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *    GET /kafkacruisecontrol/proposals?verbose=[ENABLE_VERBOSE]&ignore_proposal_cache=[true/false]
    *    &goals=[goal1,goal2...]&with_available_monitored_partitions=[true/false]&with_available_valid_windows=[true/false]
    *
-   * 6. query the state of Kafka cruise control
+   * 6. query the state of Kafka Cruise Control
    *    GET /kafkacruisecontrol/state
    *
    * <b>NOTE: All the timestamps are epoch time in second granularity.</b>

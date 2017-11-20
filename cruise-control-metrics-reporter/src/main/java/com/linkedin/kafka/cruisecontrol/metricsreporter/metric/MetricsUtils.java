@@ -25,6 +25,7 @@ public class MetricsUtils {
   private static final String TOTAL_PRODUCE_REQUEST_PER_SEC = "TotalProduceRequestsPerSec";
   private static final String MESSAGES_IN_PER_SEC = "MessagesInPerSec";
   private static final String SIZE = "Size";
+  private static final String REQUEST_HANDLER_AVG_IDLE_PERCENT = "RequestHandlerAvgIdlePercent";
   // Groups
   private static final String KAFKA_SERVER = "kafka.server";
   private static final String KAFKA_LOG = "kafka.log";
@@ -38,6 +39,7 @@ public class MetricsUtils {
   private static final String BROKER_TOPIC_METRICS_GROUP = "BrokerTopicMetrics";
   private static final String LOG_GROUP = "Log";
   private static final String REQUEST_METRICS_GROUP = "RequestMetrics";
+  private static final String REQUEST_KAFKA_HANDLER_POOL_GROUP = "KafkaRequestHandlerPool";
 
   // Tag Value
   private static final String CONSUMER_FETCH_REQUEST_TYPE = "FetchConsumer";
@@ -60,6 +62,9 @@ public class MetricsUtils {
   private static final Set<String> INTERESTED_LOG_METRIC_NAMES =
       Collections.unmodifiableSet(Collections.singleton(SIZE));
 
+  private static final Set<String> INTERESTED_SERVER_METRIC_NAMES =
+      Collections.unmodifiableSet(Collections.singleton(REQUEST_HANDLER_AVG_IDLE_PERCENT));
+
   // Request type set
   private static final Set<String> INTERESTED_REQUEST_TYPE =
       Collections.unmodifiableSet(new HashSet<>(Arrays.asList(CONSUMER_FETCH_REQUEST_TYPE,
@@ -77,7 +82,7 @@ public class MetricsUtils {
     org.apache.kafka.common.MetricName metricName = kafkaMetric.metricName();
     CruiseControlMetric ccm = toCruiseControlMetric(now, brokerId, metricName.name(), metricName.tags(), kafkaMetric.value());
     if (ccm == null) {
-      throw new IllegalArgumentException(String.format("Cannot convert KafkaMetric %s to a cruise control metric for "
+      throw new IllegalArgumentException(String.format("Cannot convert KafkaMetric %s to a Cruise Control metric for "
                                                            + "broker %d at time %d", kafkaMetric.metricName(), brokerId, now));
     }
     return ccm;
@@ -94,7 +99,7 @@ public class MetricsUtils {
     CruiseControlMetric ccm =
         toCruiseControlMetric(now, brokerId, metricName.getName(), yammerMetricScopeToTags(metricName.getScope()), value);
     if (ccm == null) {
-      throw new IllegalArgumentException(String.format("Cannot convert yammer metric %s to a cruise control metric for "
+      throw new IllegalArgumentException(String.format("Cannot convert yammer metric %s to a Cruise Control metric for "
                                                            + "broker %d at time %d", metricName, brokerId, now));
     }
     return ccm;
@@ -144,10 +149,11 @@ public class MetricsUtils {
    * Check if a metric is an interested metric.
    */
   private static boolean isInterested(String group, String name, String type, Map<String, String> tags) {
-    if (group.equals(KAFKA_SERVER)
-        && INTERESTED_TOPIC_METRIC_NAMES.contains(name)
-        && BROKER_TOPIC_METRICS_GROUP.equals(type)) {
-      return true;
+    if (group.equals(KAFKA_SERVER)) {
+      if ((INTERESTED_TOPIC_METRIC_NAMES.contains(name) && BROKER_TOPIC_METRICS_GROUP.equals(type))
+          || (INTERESTED_SERVER_METRIC_NAMES.contains(name) && REQUEST_KAFKA_HANDLER_POOL_GROUP.equals(type))) {
+        return true;
+      }
     } else if (group.equals(KAFKA_NETWORK)
         && INTERESTED_NETWORK_METRIC_NAMES.contains(name)
         && REQUEST_METRICS_GROUP.equals(type)
@@ -228,6 +234,8 @@ public class MetricsUtils {
       case SIZE:
         int partition = Integer.parseInt(tags.get(PARTITION_KEY));
         return new PartitionMetric(MetricType.PARTITION_SIZE, now, brokerId, topic, partition, value);
+      case REQUEST_HANDLER_AVG_IDLE_PERCENT:
+        return new BrokerMetric(MetricType.BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT, now, brokerId, value);
       default:
         return null;
     }

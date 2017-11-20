@@ -56,7 +56,7 @@ public class KafkaCruiseControlMain {
     holderWebapp.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed", "false");
     holderWebapp.setInitParameter("resourceBase", "./cruise-control-ui/dist/");
     context.addServlet(holderWebapp, "/*");
-    // Kafka Cruise control servlet data
+    // Kafka Cruise Control servlet data
     KafkaCruiseControlServlet kafkaCruiseControlServlet = new KafkaCruiseControlServlet(kafkaCruiseControl);
     ServletHolder servletHolder = new ServletHolder(kafkaCruiseControlServlet);
     context.addServlet(servletHolder, "/kafkacruisecontrol/*");

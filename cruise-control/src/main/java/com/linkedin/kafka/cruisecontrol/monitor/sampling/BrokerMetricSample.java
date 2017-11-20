@@ -10,7 +10,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersion
 
 
 public class BrokerMetricSample {
-  private static final byte CURRENT_VERSION = 1;
+  private static final byte CURRENT_VERSION = 2;
   private final int _brokerId;
   private final double _brokerCpuUtil;
   private final double _brokerLeaderBytesInRate;
@@ -21,6 +21,7 @@ public class BrokerMetricSample {
   private final double _brokerProduceRequestRate;
   private final double _brokerConsumerFetchRequestRate;
   private final double _brokerReplicationFetchRequestRate;
+  private final double _brokerRequestHandlerAvgIdlePercent;
   private final double _brokerDiskUtil;
   private final double _allTopicsProduceRequestRate;
   private final double _allTopicsFetchRequestRate;
@@ -33,10 +34,11 @@ public class BrokerMetricSample {
                             double brokerReplicationBytesInRate) {
     this(-1, brokerCpuUtil, brokerLeaderBytesInRate, brokerLeaderBytesOutRate, brokerReplicationBytesInRate,
          -1.0, -1.0, -1.0,
-         -1.0, -1.0, -1.0,
+         -1.0, -1.0, -1.0, -1.0,
          -1.0, -1.0, -1L);
   }
 
+  @Deprecated
   public BrokerMetricSample(int brokerId,
                             double brokerCpuUtil,
                             double brokerLeaderBytesInRate,
@@ -51,6 +53,27 @@ public class BrokerMetricSample {
                             double allTopicsProduceRequestRate,
                             double allTopicsFetchRequestRate,
                             long sampleTime) {
+    this(brokerId, brokerCpuUtil, brokerLeaderBytesInRate, brokerLeaderBytesOutRate, brokerReplicationBytesInRate,
+        brokerReplicationBytesOutRate, brokerMessagesInRate, brokerProduceRequestRate,
+        brokerConsumerFetchRequestRate, brokerReplicationFetchRequestRate, -1.0, brokerDiskUtil,
+        allTopicsProduceRequestRate, allTopicsFetchRequestRate, sampleTime);
+  }
+
+  public BrokerMetricSample(int brokerId,
+                            double brokerCpuUtil,
+                            double brokerLeaderBytesInRate,
+                            double brokerLeaderBytesOutRate,
+                            double brokerReplicationBytesInRate,
+                            double brokerReplicationBytesOutRate,
+                            double brokerMessagesInRate,
+                            double brokerProduceRequestRate,
+                            double brokerConsumerFetchRequestRate,
+                            double brokerReplicationFetchRequestRate,
+                            double brokerRequestHandlerAvgIdlePercent,
+                            double brokerDiskUtil,
+                            double allTopicsProduceRequestRate,
+                            double allTopicsFetchRequestRate,
+                            long sampleTime) {
     _brokerId = brokerId;
     _brokerCpuUtil = brokerCpuUtil;
     _brokerLeaderBytesInRate = brokerLeaderBytesInRate;
@@ -61,6 +84,7 @@ public class BrokerMetricSample {
     _brokerProduceRequestRate = brokerProduceRequestRate;
     _brokerConsumerFetchRequestRate = brokerConsumerFetchRequestRate;
     _brokerReplicationFetchRequestRate = brokerReplicationFetchRequestRate;
+    _brokerRequestHandlerAvgIdlePercent = brokerRequestHandlerAvgIdlePercent;
     _brokerDiskUtil = brokerDiskUtil;
     _allTopicsProduceRequestRate = allTopicsProduceRequestRate;
     _allTopicsFetchRequestRate = allTopicsFetchRequestRate;
@@ -107,6 +131,10 @@ public class BrokerMetricSample {
     return _brokerReplicationFetchRequestRate;
   }
 
+  public double brokerRequestHandlerAvgIdlePercent() {
+    return _brokerRequestHandlerAvgIdlePercent;
+  }
+
   public double brokerDiskUtilization() {
     return _brokerDiskUtil;
   }
@@ -133,6 +161,7 @@ public class BrokerMetricSample {
    * 8 bytes - broker produce request rate
    * 8 bytes - broker consumer fetch request rate
    * 8 bytes - broker replication fetch request rate
+   * 8 bytes - broker request handler average idle percent
    * 8 bytes - broker disk utilization
    * 8 bytes - all topics produce request rate
    * 8 bytes - all topics fetch request rate
@@ -140,7 +169,7 @@ public class BrokerMetricSample {
    * @return the serialized bytes.
    */
   public byte[] toBytes() {
-    ByteBuffer buffer = ByteBuffer.allocate(109);
+    ByteBuffer buffer = ByteBuffer.allocate(117);
     buffer.put(CURRENT_VERSION);
     buffer.putInt(_brokerId);
     buffer.putDouble(_brokerCpuUtil);
@@ -152,6 +181,7 @@ public class BrokerMetricSample {
     buffer.putDouble(_brokerProduceRequestRate);
     buffer.putDouble(_brokerConsumerFetchRequestRate);
     buffer.putDouble(_brokerReplicationFetchRequestRate);
+    buffer.putDouble(_brokerRequestHandlerAvgIdlePercent);
     buffer.putDouble(_brokerDiskUtil);
     buffer.putDouble(_allTopicsProduceRequestRate);
     buffer.putDouble(_allTopicsFetchRequestRate);
@@ -178,6 +208,8 @@ public class BrokerMetricSample {
         return readV0(buffer);
       case 1:
         return readV1(buffer);
+      case 2:
+        return readV2(buffer);
       default:
         throw new IllegalStateException("Should never be here");
     }
@@ -187,13 +219,15 @@ public class BrokerMetricSample {
   public String toString() {
     return String.format("{CPU=%f, LEADER_BYTES_IN_RATE=%f, LEADER_BYTES_OUT_RATE=%f, REPLICATION_BYTES_IN_RATE=%f, "
                              + "REPLICATION_BYTES_OUT_RATE=%f, MESSAGES_IN_RATE=%f, PRODUCE_REQUEST_RATE=%f, "
-                             + "CONSUMER_FETCH_REQUEST_RATE=%f, REPLICATION_FETCH_REQUEST_RATE=%f, DISK_UTIL=%f, "
-                             + "ALL_TOPICS_PRODUCE_REQUEST_RATE=%f, ALL_TOPICS_FETCH_REQUEST_RATE=%f, "
+                             + "CONSUMER_FETCH_REQUEST_RATE=%f, REPLICATION_FETCH_REQUEST_RATE=%f, "
+                             + "REQUEST_HANDLER_AVG_IDLE_PERCENT=%f, DISK_UTIL=%f, ALL_TOPICS_PRODUCE_REQUEST_RATE=%f, "
+                             + "ALL_TOPICS_FETCH_REQUEST_RATE=%f, "
                              + "SAMPLE_TIME=%d",
                          _brokerCpuUtil, _brokerLeaderBytesInRate, _brokerLeaderBytesOutRate,
                          _brokerReplicationBytesInRate, _brokerReplicationBytesOutRate, _brokerMessagesInRate,
                          _brokerProduceRequestRate, _brokerConsumerFetchRequestRate, _brokerReplicationFetchRequestRate,
-                         _brokerDiskUtil, _allTopicsProduceRequestRate, _allTopicsFetchRequestRate, _sampleTime);
+        _brokerRequestHandlerAvgIdlePercent, _brokerDiskUtil, _allTopicsProduceRequestRate,
+                         _allTopicsFetchRequestRate, _sampleTime);
   }
 
   public Double metricFor(Resource resource) {
@@ -233,6 +267,7 @@ public class BrokerMetricSample {
                                   -1.0,
                                   -1.0,
                                   -1.0,
+                                  -1.0,
                                   -1L);
   }
 
@@ -261,6 +296,40 @@ public class BrokerMetricSample {
                                   brokerProduceRequestRate,
                                   brokerConsumerFetchRequestRate,
                                   brokerReplicationFetchRequestRate,
+                                  -1.0,
+                                  brokerDiskUtil,
+                                  allTopicsProduceRequestRate,
+                                  allTopicsFetchRequestRate,
+                                  sampleTime);
+  }
+
+  private static BrokerMetricSample readV2(ByteBuffer buffer) {
+    int brokerId = buffer.getInt();
+    double brokerCpuUtil = buffer.getDouble();
+    double brokerLeaderBytesInRate = buffer.getDouble();
+    double brokerLeaderBytesOutRate = buffer.getDouble();
+    double brokerReplicationBytesInRate = buffer.getDouble();
+    double brokerReplicationBytesOutRate = buffer.getDouble();
+    double brokerMessageInRate = buffer.getDouble();
+    double brokerProduceRequestRate = buffer.getDouble();
+    double brokerConsumerFetchRequestRate = buffer.getDouble();
+    double brokerReplicationFetchRequestRate = buffer.getDouble();
+    double brokerRequestHandlerAvgIdlePercent = buffer.getDouble();
+    double brokerDiskUtil = buffer.getDouble();
+    double allTopicsProduceRequestRate = buffer.getDouble();
+    double allTopicsFetchRequestRate = buffer.getDouble();
+    long sampleTime = buffer.getLong();
+    return new BrokerMetricSample(brokerId,
+                                  brokerCpuUtil,
+                                  brokerLeaderBytesInRate,
+                                  brokerLeaderBytesOutRate,
+                                  brokerReplicationBytesInRate,
+                                  brokerReplicationBytesOutRate,
+                                  brokerMessageInRate,
+                                  brokerProduceRequestRate,
+                                  brokerConsumerFetchRequestRate,
+                                  brokerReplicationFetchRequestRate,
+                                  brokerRequestHandlerAvgIdlePercent,
                                   brokerDiskUtil,
                                   allTopicsProduceRequestRate,
                                   allTopicsFetchRequestRate,

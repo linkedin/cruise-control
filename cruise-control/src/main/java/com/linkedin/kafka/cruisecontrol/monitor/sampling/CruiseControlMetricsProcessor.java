@@ -111,6 +111,7 @@ public class CruiseControlMetricsProcessor {
                                      brokerLoad.produceRequestRate(),
                                      brokerLoad.consumerFetchRequestRate(),
                                      brokerLoad.followerFetchRequestRate(),
+                                     brokerLoad.requestHandlerAvgIdlePercent(),
                                      -1.0,
                                      brokerLoad.allTopicsProduceRequestRate(),
                                      brokerLoad.allTopicsFetchRequestRate(),
@@ -247,6 +248,7 @@ public class CruiseControlMetricsProcessor {
     private ValueAndCount _allTopicsFetchRequestRate = new ValueAndCount();
     private ValueAndCount _consumerFetchRequestRate = new ValueAndCount();
     private ValueAndCount _followerFetchRequestRate = new ValueAndCount();
+    private ValueAndCount _requestHandlerAvgIdlePercent = new ValueAndCount();
     private boolean _valid = true;
 
     private void recordMetric(CruiseControlMetric ccm) {
@@ -268,6 +270,9 @@ public class CruiseControlMetricsProcessor {
           break;
         case BROKER_FOLLOWER_FETCH_REQUEST_RATE:
           _followerFetchRequestRate.addValue(ccm.value());
+          break;
+        case BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT:
+          _requestHandlerAvgIdlePercent.addValue(ccm.value());
           break;
         case BROKER_CPU_UTIL:
           _cpuUtil.addValue(ccm.value());
@@ -351,6 +356,10 @@ public class CruiseControlMetricsProcessor {
 
     private double followerFetchRequestRate() {
       return _followerFetchRequestRate.value();
+    }
+
+    private double requestHandlerAvgIdlePercent() {
+      return _requestHandlerAvgIdlePercent.value();
     }
 
     private IOLoad ioLoad(String topic) {
