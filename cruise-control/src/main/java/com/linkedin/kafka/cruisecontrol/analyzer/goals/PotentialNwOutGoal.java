@@ -143,10 +143,12 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * its initial attempt. Since self healing has not been executed yet, this flag is false.
    *
    * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel)
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
+    // While proposals exclude the excludedTopics, the potential nw_out still considers replicas of the excludedTopics.
     _selfHealingDeadBrokersOnly = false;
   }
 
@@ -156,7 +158,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * @param clusterModel The state of the cluster.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel)
+  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException {
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
@@ -235,6 +237,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
       // Utilization is above the max possible limit after all replicas in the source broker were checked.
       LOG.warn("Violated estimated max possible network out limit for broker id:{} limit:{} utilization:{}.",
           broker.id(), capacityLimit, clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT));
+      _succeeded = false;
     }
   }
 

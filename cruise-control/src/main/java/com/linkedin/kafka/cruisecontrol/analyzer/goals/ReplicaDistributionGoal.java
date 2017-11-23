@@ -25,14 +25,18 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * Class for achieving the following soft goal:
  * <p>
- * SOFT GOAL#4: Distribute partitions (independent of their topics) evenly over brokers.
+ * SOFT GOAL#4: Distribute replicas evenly over brokers. This distribution is independent of topics, but excludes
+ * replicas of excluded topics.
  */
 public class ReplicaDistributionGoal extends AbstractGoal {
+  private static final Logger LOG = LoggerFactory.getLogger(ReplicaDistributionGoal.class);
   private ReplicaDistributionTarget _replicaDistributionTarget;
 
   /**
@@ -135,10 +139,17 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    * Initiates replica distribution goal.
    *
    * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel)
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
+
+    // Sanity check to make sure that not all replicas are excluded.
+    if (clusterModel.topics().equals(excludedTopics)) {
+      LOG.warn("All replicas are excluded from {}.", name());
+    }
+
     Set<Broker> brokers = clusterModel.healthyBrokers();
     // Populate a map of replica distribution target in the cluster.
     int numReplicasToBalance = 0;
@@ -159,7 +170,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    * @param clusterModel The state of the cluster.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel)
+  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException {
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {

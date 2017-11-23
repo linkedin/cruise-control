@@ -68,6 +68,7 @@ public interface Goal extends Configurable {
   /**
    * Check whether given proposal is acceptable by this goal in the given state of the cluster. A proposal is
    * acceptable by a goal if it satisfies requirements of the goal.
+   * It is assumed that the given proposal does not involve replicas regarding excluded topics.
    *
    * @param proposal     Proposal to be checked for acceptance.
    * @param clusterModel State of the cluster before application of the proposal.
