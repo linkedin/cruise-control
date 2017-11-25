@@ -276,7 +276,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     if (startMs != null && endMs != null) {
       _kafkaCruiseControl.bootstrapLoadMonitor(startMs, endMs, clearMetrics);
-    } else if (startMs != null && endMs == null) {
+    } else if (startMs != null) {
       _kafkaCruiseControl.bootstrapLoadMonitor(startMs, clearMetrics);
     } else {
       _kafkaCruiseControl.bootstrapLoadMonitor(clearMetrics);
@@ -387,7 +387,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String resourceString = request.getParameter(RESOURCE_PARAM);
       json = wantJSON(request);
       try {
-        resource = Resource.valueOf(resourceString);
+        resource = Resource.valueOf(resourceString.toUpperCase());
       } catch (IllegalArgumentException iae) {
         throw new IllegalArgumentException("Invalid resource type " + resourceString +
                                                ". The resource type must be one of the following: CPU, DISK, NW_IN, NW_OUT");

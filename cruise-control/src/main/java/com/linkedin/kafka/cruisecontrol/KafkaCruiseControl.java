@@ -382,7 +382,7 @@ public class KafkaCruiseControl {
    * Get the default model completeness requirement for Cruise Control. This is the combination of the
    * requirements of all the goals.
    */
-  public ModelCompletenessRequirements defaultModelCompletenesRequirements() {
+  public ModelCompletenessRequirements defaultModelCompletenessRequirements() {
     return _goalOptimizer.defaultModelCompletenessRequirements();
   }
 
@@ -406,7 +406,7 @@ public class KafkaCruiseControl {
     if (goals == null || goals.isEmpty()) {
       return AnalyzerUtils.getGoalMapByPriority(_config);
     }
-    Map<String, Goal> allGoals = AnalyzerUtils.getGoalsMapByName(_config);
+    Map<String, Goal> allGoals = AnalyzerUtils.getCaseInsensitiveGoalsByName(_config);
     Map<Integer, Goal> goalsByPriority = new HashMap<>();
     int i = 0;
     for (String goalName : goals) {

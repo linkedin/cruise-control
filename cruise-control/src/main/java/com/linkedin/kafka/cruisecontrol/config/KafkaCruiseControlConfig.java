@@ -21,12 +21,16 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
+import java.util.List;
+import java.util.Set;
 import java.util.StringJoiner;
+import java.util.TreeSet;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 
 import java.util.Map;
+import org.apache.kafka.common.config.ConfigException;
 
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 import static org.apache.kafka.common.config.ConfigDef.Range.between;
@@ -361,8 +365,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>goals</code>
    */
   public static final String GOALS_CONFIG = "goals";
-  private static final String GOALS_DOC = "A list of goals in the order of priority. The high priority goals will be " +
-      "executed first.";
+  private static final String GOALS_DOC = "A list of case insensitive goals in the order of priority. The high "
+      + "priority goals will be executed first.";
 
   /**
    * <code>anomaly.notifier.class</code>
@@ -704,11 +708,26 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         .withClientSaslSupport();
   }
 
+  /**
+   * Sanity check for case insensitive goal names.
+   */
+  private void sanityCheckGoalNames() {
+    List<String> goalNames = getList(KafkaCruiseControlConfig.GOALS_CONFIG);
+    Set<String> caseInsensitiveGoalNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    for (String goalName: goalNames) {
+      if (!caseInsensitiveGoalNames.add(goalName.replaceAll(".*\\.", ""))) {
+        throw new ConfigException("Attempt to configure goals with case sensitive names.");
+      }
+    }
+  }
+
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
     super(CONFIG, originals);
+    sanityCheckGoalNames();
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
+    sanityCheckGoalNames();
   }
 }
