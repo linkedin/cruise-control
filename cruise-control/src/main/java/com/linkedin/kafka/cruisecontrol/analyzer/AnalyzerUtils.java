@@ -226,13 +226,13 @@ public class AnalyzerUtils {
   /**
    * Get a goal map with goal name as the keys.
    */
-  public static Map<String, Goal> getGoalsMapByName(KafkaCruiseControlConfig config) {
+  public static Map<String, Goal> getCaseInsensitiveGoalsByName(KafkaCruiseControlConfig config) {
     List<Goal> goals = config.getConfiguredInstances(KafkaCruiseControlConfig.GOALS_CONFIG, Goal.class);
-    Map<String, Goal> goalsByName = new HashMap<>();
+    Map<String, Goal> caseInsensitiveGoalsByName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     for (Goal goal: goals) {
-      goalsByName.put(goal.name(), goal);
+      caseInsensitiveGoalsByName.put(goal.name(), goal);
     }
-    return goalsByName;
+    return caseInsensitiveGoalsByName;
   }
 
  /**
