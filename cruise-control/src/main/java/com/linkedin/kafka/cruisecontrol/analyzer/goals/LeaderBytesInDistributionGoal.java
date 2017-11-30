@@ -110,13 +110,17 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  protected void initGoalState(ClusterModel clusterModel) throws AnalysisInputException, ModelInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+      throws AnalysisInputException, ModelInputException {
+    // While proposals exclude the excludedTopics, the leader bytes in still considers replicas of the excludedTopics.
     _meanLeaderBytesIn = 0.0;
     _overLimitBrokerIds = new HashSet<>();
   }
 
   @Override
-  protected void updateGoalState(ClusterModel clusterModel) throws AnalysisInputException {
+  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+      throws AnalysisInputException {
+    // While proposals exclude the excludedTopics, the leader bytes in still considers replicas of the excludedTopics.
     if (!_overLimitBrokerIds.isEmpty()) {
       LOG.warn("There were still {} brokers over the limit.", _overLimitBrokerIds.size());
       _succeeded = false;

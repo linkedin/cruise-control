@@ -14,7 +14,6 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -23,6 +22,8 @@ import java.util.Queue;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -40,6 +41,7 @@ public class GoalViolationDetector implements Runnable {
   private final Time _time;
   private final Queue<Anomaly> _anomalies;
   private ModelGeneration _lastCheckedModelGeneration;
+  private final Pattern _excludedTopics;
 
   public GoalViolationDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
@@ -50,6 +52,7 @@ public class GoalViolationDetector implements Runnable {
     _goals = getDetectorGoalsMap(config);
     _anomalies = anomalies;
     _time = time;
+    _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
   }
 
   private SortedMap<Integer, Goal> getDetectorGoalsMap(KafkaCruiseControlConfig config) {
@@ -138,6 +141,13 @@ public class GoalViolationDetector implements Runnable {
     }
   }
 
+  private Set<String> excludedTopics(ClusterModel clusterModel) {
+    return clusterModel.topics()
+        .stream()
+        .filter(topic -> _excludedTopics.matcher(topic).matches())
+        .collect(Collectors.toSet());
+  }
+
   private boolean optimizeForGoal(ClusterModel clusterModel,
                                   int priority,
                                   Goal goal,
@@ -148,8 +158,7 @@ public class GoalViolationDetector implements Runnable {
       return false;
     }
     Map<TopicPartition, List<Integer>> initDistribution = clusterModel.getReplicaDistribution();
-    // We do not exclude any topics when we are doing anomaly detection.
-    goal.optimize(clusterModel, new HashSet<>(), Collections.emptySet());
+    goal.optimize(clusterModel, new HashSet<>(), excludedTopics(clusterModel));
     Set<BalancingProposal> proposals = AnalyzerUtils.getDiff(initDistribution, clusterModel);
     LOG.trace("{} generated {} proposals", goal.name(), proposals.size());
     if (!proposals.isEmpty()) {

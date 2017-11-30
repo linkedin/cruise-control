@@ -24,6 +24,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -34,8 +35,8 @@ import org.slf4j.LoggerFactory;
  * Class for achieving the following hard goals:
  * HARD GOAL#1: Generate leadership and replica movement proposals to push the load on brokers under the capacity limit.
  * HARD GOAL#2: Generate replica movement proposals to provide rack-aware replica distribution.
- * 
- * @deprecated Please use {@link RackAwareGoal}, {@link DiskCapacityGoal}, {@link NetworkInboundCapacityGoal}, 
+ *
+ * @deprecated Please use {@link RackAwareGoal}, {@link DiskCapacityGoal}, {@link NetworkInboundCapacityGoal},
  * {@link NetworkOutboundCapacityGoal}, {@link CpuCapacityGoal} instead.
  */
 @Deprecated
@@ -168,9 +169,10 @@ public class RackAwareCapacityGoal extends AbstractGoal {
    * priority set in the _balancingConstraint.
    *
    * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel)
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
     _currentResource = null;
     _balancedResources = new HashSet<>();
@@ -204,8 +206,22 @@ public class RackAwareCapacityGoal extends AbstractGoal {
       }
     }
     // Sanity Check #3 -- i.e. not enough racks to satisfy rack awareness.
-    if (clusterModel.maxReplicationFactor() > clusterModel.numHealthyRacks()) {
-      throw new AnalysisInputException("Insufficient number of racks to distribute each replica over a rack.");
+    int numHealthyRacks = clusterModel.numHealthyRacks();
+    if (!excludedTopics.isEmpty()) {
+      int maxReplicationFactorOfIncludedTopics = 1;
+      Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();
+
+      for (Map.Entry<String, Integer> replicationFactorByTopicEntry: replicationFactorByTopic.entrySet()) {
+        if (!excludedTopics.contains(replicationFactorByTopicEntry.getKey())) {
+          maxReplicationFactorOfIncludedTopics =
+              Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
+          if (maxReplicationFactorOfIncludedTopics > numHealthyRacks) {
+            throw new AnalysisInputException("Insufficient number of racks to distribute included replicas.");
+          }
+        }
+      }
+    } else if (clusterModel.maxReplicationFactor() > numHealthyRacks) {
+      throw new AnalysisInputException("Insufficient number of racks to distribute each replica.");
     }
 
     // Set the initial resource to heal or rebalance in the order of priority set in the _balancingConstraint.
@@ -222,13 +238,13 @@ public class RackAwareCapacityGoal extends AbstractGoal {
    * @throws AnalysisInputException
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel)
+  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException, OptimizationFailureException {
     // Update balanced resources.
     _balancedResources.add(_currentResource);
     if (_balancedResources.size() == _balancingConstraint.resources().size()) {
       // Sanity check to confirm that the final distribution is rack aware.
-      ensureRackAware(clusterModel);
+      ensureRackAware(clusterModel, excludedTopics);
       // Ensure the resource utilization is under capacity limit.
       ensureUtilizationUnderCapacity(clusterModel);
       // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
@@ -359,9 +375,13 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     }
   }
 
-  private void ensureRackAware(ClusterModel clusterModel) throws OptimizationFailureException {
+  private void ensureRackAware(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
     // Sanity check to confirm that the final distribution is rack aware.
     for (Replica leader : clusterModel.leaderReplicas()) {
+      if (excludedTopics.contains(leader.topicPartition().topic())) {
+        continue;
+      }
+
       Set<String> replicaBrokersRackIds = new HashSet<>();
       Set<Broker> followerBrokers = new HashSet<>(clusterModel.partition(leader.topicPartition()).followerBrokers());
 
@@ -499,10 +519,6 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     // destination broker go out of healthy capacity for the given resource.
     double replicaUtilization = sourceReplica.load().expectedUtilizationFor(resource);
     return !isUtilizationAboveLimitAfterAddingLoad(resource, destinationBroker, replicaUtilization);
-  }
-
-  private boolean isUtilizationAboveLimit(Resource resource, Broker broker) {
-    return isUtilizationAboveLimitAfterAddingLoad(resource, broker, 0);
   }
 
   private boolean isUtilizationAboveLimitAfterAddingLoad(Resource resource, Broker broker, double loadToAdd) {

@@ -73,14 +73,14 @@ public abstract class AbstractGoal implements Goal {
     LOG.trace("[PRE - {}] {}", name(), statsBeforeOptimization);
     _finished = false;
     long goalStartTime = System.currentTimeMillis();
-    initGoalState(clusterModel);
+    initGoalState(clusterModel, excludedTopics);
     Collection<Broker> deadBrokers = clusterModel.deadBrokers();
 
     while (!_finished) {
       for (Broker broker : brokersToBalance(clusterModel)) {
         rebalanceForBroker(broker, clusterModel, optimizedGoals, excludedTopics);
       }
-      updateGoalState(clusterModel);
+      updateGoalState(clusterModel, excludedTopics);
     }
     ClusterModelStats statsAfterOptimization = clusterModel.getClusterStats(_balancingConstraint);
     LOG.trace("[POST - {}] {}", name(), statsAfterOptimization);
@@ -138,16 +138,18 @@ public abstract class AbstractGoal implements Goal {
    * requirements of hard goals.
    *
    * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
-  protected abstract void initGoalState(ClusterModel clusterModel)
+  protected abstract void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException;
 
   /**
    * Update goal state after one round of self-healing / rebalance.
    *
    * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposal.
    */
-  protected abstract void updateGoalState(ClusterModel clusterModel)
+  protected abstract void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException, OptimizationFailureException;
 
   /**

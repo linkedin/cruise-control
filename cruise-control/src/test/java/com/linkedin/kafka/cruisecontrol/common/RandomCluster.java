@@ -128,14 +128,13 @@ public class RandomCluster {
     }
     // Increase the replication factor.
     for (int i = 0; i < properties.get(ClusterProperty.NUM_TOPICS).intValue(); i++) {
-      int oldReplicationFactor = metadata.get(i).replicationFactor();
       int randomReplicationFactor = uniformlyRandom(properties.get(ClusterProperty.MIN_REPLICATION).intValue(),
           properties.get(ClusterProperty.MAX_REPLICATION).intValue(), TestConstants.REPLICATION_SEED + i);
       metadata.get(i).setReplicationFactor(randomReplicationFactor);
 
       if (totalTopicReplicas(metadata) > properties.get(ClusterProperty.NUM_REPLICAS).intValue()) {
-        // Rollback to previous replicationFactor.
-        metadata.get(i).setReplicationFactor(oldReplicationFactor);
+        // Rollback to minimum replicationFactor.
+        metadata.get(i).setReplicationFactor(properties.get(ClusterProperty.MIN_REPLICATION).intValue());
       }
     }
     // Increase the number of leaders.

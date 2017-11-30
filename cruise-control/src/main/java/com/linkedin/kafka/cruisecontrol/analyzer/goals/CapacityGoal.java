@@ -135,13 +135,15 @@ public abstract class CapacityGoal extends AbstractGoal {
    * determined by the total capacity of healthy cluster multiplied by the capacity threshold.
    *
    * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel)
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
     // Sanity Check -- i.e. not enough resources.
     Load recentClusterLoad = clusterModel.load();
 
+    // While proposals exclude the excludedTopics, the existingUtilization still considers replicas of the excludedTopics.
     double existingUtilization = recentClusterLoad.expectedUtilizationFor(resource());
     double allowedCapacity = clusterModel.capacityFor(resource()) * _balancingConstraint.capacityThreshold(resource());
 
@@ -159,9 +161,10 @@ public abstract class CapacityGoal extends AbstractGoal {
    * @param clusterModel The state of the cluster.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel)
+  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException, OptimizationFailureException {
     // Ensure the resource utilization is under capacity limit.
+    // While proposals exclude the excludedTopics, the utilization still considers replicas of the excludedTopics.
     ensureUtilizationUnderCapacity(clusterModel);
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
     AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);

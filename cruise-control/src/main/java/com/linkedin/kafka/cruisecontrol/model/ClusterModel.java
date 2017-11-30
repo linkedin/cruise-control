@@ -50,6 +50,8 @@ public class ClusterModel implements Serializable {
   private Load _load;
   // An integer to keep track of the maximum replication factor that a partition was ever created with.
   private int _maxReplicationFactor;
+  // The replication factor that each topic in the cluster created with ().
+  private Map<String, Integer> _replicationFactorByTopic;
   private Map<Integer, Load> _potentialLeadershipLoadByBrokerId;
   private Set<Long> _validSnapshotTimes;
 
@@ -73,6 +75,7 @@ public class ClusterModel implements Serializable {
     _load = Load.newLoad();
     _clusterCapacity = new double[Resource.cachedValues().size()];
     _maxReplicationFactor = 1;
+    _replicationFactorByTopic = new HashMap<>();
     _potentialLeadershipLoadByBrokerId = new HashMap<>();
     _validSnapshotTimes = new HashSet<>();
     _monitoredPartitionsPercentage = monitoredPartitionsPercentage;
@@ -166,6 +169,12 @@ public class ClusterModel implements Serializable {
    */
   public int maxReplicationFactor() {
     return _maxReplicationFactor;
+  }
+  /**
+   * Get the replication factor that each topic in the cluster created with.
+   */
+  public Map<String, Integer> replicationFactorByTopic() {
+    return _replicationFactorByTopic;
   }
 
   /**
@@ -393,6 +402,7 @@ public class ClusterModel implements Serializable {
     _partitionsByTopicPartition.clear();
     _load.clearLoad();
     _maxReplicationFactor = 1;
+    _replicationFactorByTopic.clear();
   }
 
   /**
@@ -510,7 +520,7 @@ public class ClusterModel implements Serializable {
    * @param brokerId       Broker id under which the replica will be created.
    * @param tp Topic partition information of the replica.
    * @param isLeader         True if the replica is a leader, false otherwise.
-   * @return
+   * @return Created replica.
    */
   public Replica createReplica(String rackId, int brokerId, TopicPartition tp, boolean isLeader)
       throws ModelInputException {
@@ -521,6 +531,7 @@ public class ClusterModel implements Serializable {
     if (!_partitionsByTopicPartition.containsKey(tp)) {
       // Partition has not been created before.
       _partitionsByTopicPartition.put(tp, new Partition(tp, null));
+      _replicationFactorByTopic.putIfAbsent(tp.topic(), 1);
     }
 
     Partition partition = _partitionsByTopicPartition.get(tp);
@@ -536,9 +547,13 @@ public class ClusterModel implements Serializable {
       _potentialLeadershipLoadByBrokerId.get(brokerId).addLoad(leaderReplica.load());
     }
 
+    // Keep track of the replication factor per topic.
+    Integer replicationFactor = Math.max(_replicationFactorByTopic.get(tp.topic()), partition.followers().size() + 1);
+    _replicationFactorByTopic.put(tp.topic(), replicationFactor);
+
     // Increment the maximum replication factor if the number of replicas of the partition is larger than the
     //  maximum replication factor of previously existing partitions.
-    _maxReplicationFactor = Math.max(_maxReplicationFactor, partition.followers().size() + 1);
+    _maxReplicationFactor = Math.max(_maxReplicationFactor, replicationFactor);
 
     return replica;
   }
@@ -1153,7 +1168,7 @@ public class ClusterModel implements Serializable {
     return utilization;
   }
 
-  /*
+  /**
    * Return a valid JSON encoded string
    */
   public String getJSONString() {
@@ -1161,13 +1176,13 @@ public class ClusterModel implements Serializable {
     return gson.toJson(getJsonStructure2());
   }
 
-  /*
+  /**
    * Return an object that can be further used
    * to encode into JSON (version2 thats used in writeTo)
    */
   public Map<String, Object> getJsonStructure2() {
     Map<String, Object> clusterMap = new HashMap<>();
-    clusterMap.put("maxReplicationFactor", _maxReplicationFactor);
+    clusterMap.put("maxPartitionReplicationFactor", _maxReplicationFactor);
     List<Map<String, Object>> racks = new ArrayList<>();
     for (Rack rack : _racksById.values()) {
       racks.add(rack.getJsonStructure());

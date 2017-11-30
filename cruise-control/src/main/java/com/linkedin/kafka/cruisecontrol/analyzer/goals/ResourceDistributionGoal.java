@@ -149,9 +149,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * in its initial attempt. Since self healing has not been executed yet, this flag is false.
    *
    * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel) throws AnalysisInputException, ModelInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+      throws AnalysisInputException, ModelInputException {
+    // While proposals exclude the excludedTopics, the balance still considers utilization of the excludedTopic replicas.
     _brokerIdsAboveBalanceUpperLimit = new HashSet<>();
     _brokerIdsUnderBalanceLowerLimit = new HashSet<>();
     _selfHealingDeadBrokersOnly = false;
@@ -164,8 +167,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @throws AnalysisInputException
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel) throws AnalysisInputException {
+  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws AnalysisInputException {
     // Log broker Ids over balancing limit.
+    // While proposals exclude the excludedTopics, the balance still considers utilization of the excludedTopic replicas.
     if (!_brokerIdsAboveBalanceUpperLimit.isEmpty()) {
       LOG.warn("Utilization for broker ids:{} {} above the balance limit for:{} after {}.",
                _brokerIdsAboveBalanceUpperLimit, (_brokerIdsAboveBalanceUpperLimit.size() > 1) ? "are" : "is", resource(),
