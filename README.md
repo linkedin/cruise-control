@@ -46,18 +46,21 @@ to a Kafka topic.
     * Modify Kafka server configuration to set `metric.reporters` to 
     `com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter`. For Apache Kafka, server properties
     are located at `./config/server.properties`.
-    * Start ZooKeeper and Kafka server.
-1. Modify config/cruisecontrol.properties to 
+    * If the default broker cleanup policy is `compact`, make sure that the topic to which Cruise Control metrics 
+    reporter should send messages is created with the `delete` cleanup policy -- the default metrics reporter topic is
+    `__CruiseControlMetrics`.
+1. Start ZooKeeper and Kafka server.
+2. Modify config/cruisecontrol.properties to 
     * fill in `bootstrap.servers` and `zookeeper.connect` to the Kafka cluster to be monitored.
     * set `metric.sampler.class` to your implementation (the default sampler class is CruiseControlMetricsReporterSampler) 
     * set `sample.store.class` to your implementation if necessary (the default SampleStore is KafkaSampleStore)
-2. Run the following command 
+3. Run the following command 
     ```
     ./gradlew jar copyDependantLibs
     ./kafka-cruise-control-start.sh [-jars PATH_TO_YOUR_JAR_1,PATH_TO_YOUR_JAR_2] config/cruisecontrol.properties [port]
     ```
     JAR files correspond to your applications and `port` enables customizing the Cruise Control port number (default: 9090).
-3. visit http://localhost:9090/kafkacruisecontrol/state or http://localhost:\[port\]/kafkacruisecontrol/state if 
+4. visit http://localhost:9090/kafkacruisecontrol/state or http://localhost:\[port\]/kafkacruisecontrol/state if 
 you specified the port when starting Cruise Control. 
 
 **Note**: 
