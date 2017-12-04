@@ -9,14 +9,16 @@ import org.apache.kafka.common.TopicPartition;
 import java.util.HashMap;
 import java.util.Map;
 
+import static com.linkedin.kafka.cruisecontrol.common.BalancingAction.*;
+
 
 /**
  * Represents the load balancing operation over a replica for Kafka Load GoalOptimizer.
  */
 public class BalancingProposal {
   private final TopicPartition _tp;
-  private final int _sourceBrokerId;
-  private final int _destinationBrokerId;
+  private final Integer _sourceBrokerId;
+  private final Integer _destinationBrokerId;
   private final BalancingAction _balancingAction;
   private final long _dataToMove;
 
@@ -29,7 +31,7 @@ public class BalancingProposal {
    * @param destinationBrokerId Destination broker id of the replica.
    * @param balancingAction     Leadership transfer or replica relocation.
    */
-  public BalancingProposal(TopicPartition tp, int sourceBrokerId, int destinationBrokerId,
+  public BalancingProposal(TopicPartition tp, Integer sourceBrokerId, Integer destinationBrokerId,
                            BalancingAction balancingAction) {
     this(tp, sourceBrokerId, destinationBrokerId, balancingAction, 0L);
   }
@@ -45,8 +47,8 @@ public class BalancingProposal {
    * @param dataToMove          The data to move with this proposal. The unit should be MB.
    */
   public BalancingProposal(TopicPartition tp,
-                           int sourceBrokerId,
-                           int destinationBrokerId,
+                           Integer sourceBrokerId,
+                           Integer destinationBrokerId,
                            BalancingAction balancingAction,
                            long dataToMove) {
     _tp = tp;
@@ -54,6 +56,36 @@ public class BalancingProposal {
     _destinationBrokerId = destinationBrokerId;
     _balancingAction = balancingAction;
     _dataToMove = dataToMove;
+    validate();
+  }
+  
+  private void validate() {
+    switch (_balancingAction) {
+      case REPLICA_ADDITION:
+        if (_destinationBrokerId == null) {
+          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + _balancingAction);
+        } else if (_sourceBrokerId != null) {
+          throw new IllegalArgumentException("The source broker should be null for balancing action " + _balancingAction);
+        }
+        break;
+      case REPLICA_DELETION:
+        if (_destinationBrokerId != null) {
+          throw new IllegalArgumentException("The destination broker should be null for balancing action " + _balancingAction);
+        } else if (_sourceBrokerId == null) {
+          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + _balancingAction);
+        }
+        break;
+      case REPLICA_MOVEMENT:
+      case LEADERSHIP_MOVEMENT:
+        if (_destinationBrokerId == null) {
+          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + _balancingAction);
+        } else if (_sourceBrokerId == null) {
+          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + _balancingAction);
+        }
+        break;
+      default:
+        throw new IllegalStateException("should never be here");
+    }
   }
 
   /**
@@ -80,14 +112,14 @@ public class BalancingProposal {
   /**
    * Get the source broker id that is impacted by the balancing action.
    */
-  public int sourceBrokerId() {
+  public Integer sourceBrokerId() {
     return _sourceBrokerId;
   }
 
   /**
    * Get the destination broker Id.
    */
-  public int destinationBrokerId() {
+  public Integer destinationBrokerId() {
     return _destinationBrokerId;
   }
 
@@ -141,11 +173,25 @@ public class BalancingProposal {
     if (this == other) {
       return true;
     }
-
+    
     BalancingProposal otherProposal = (BalancingProposal) other;
-    return _sourceBrokerId == otherProposal._sourceBrokerId
-        && _destinationBrokerId == otherProposal._destinationBrokerId && _tp.equals(otherProposal._tp)
-        && _balancingAction == otherProposal._balancingAction;
+    if (_sourceBrokerId == null) {
+      if (otherProposal._sourceBrokerId != null) {
+        return false;
+      }
+    } else if (!_sourceBrokerId.equals(otherProposal._sourceBrokerId)) {
+      return false;
+    }
+
+    if (_destinationBrokerId == null) {
+      if (otherProposal._destinationBrokerId != null) {
+        return false;
+      }
+    } else if (!_destinationBrokerId.equals(otherProposal._destinationBrokerId)) {
+      return false;
+    }
+    
+    return _tp.equals(otherProposal._tp) && _balancingAction == otherProposal._balancingAction;
   }
 
   @Override

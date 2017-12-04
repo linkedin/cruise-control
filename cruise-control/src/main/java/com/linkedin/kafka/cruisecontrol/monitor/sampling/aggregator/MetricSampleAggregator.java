@@ -140,6 +140,10 @@ public class MetricSampleAggregator {
     boolean newWindow = false;
     // Find the snapshot window
     long snapshotWindow = MonitorUtils.toSnapshotWindow(sample.sampleTime(), _snapshotWindowMs);
+    if (_windowedAggregatedPartitionMetrics.size() >= _numSnapshotsToKeep 
+        && snapshotWindow < _windowedAggregatedPartitionMetrics.firstKey()) {
+      return false;
+    }
     Map<TopicPartition, AggregatedMetrics> snapshotsByPartition = _windowedAggregatedPartitionMetrics.get(snapshotWindow);
     if (snapshotsByPartition == null) {
       // The synchronization is needed so we don't remove a snapshot that is being collected.
