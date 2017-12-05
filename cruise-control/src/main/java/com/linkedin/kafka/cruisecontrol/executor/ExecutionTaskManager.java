@@ -158,19 +158,31 @@ public class ExecutionTaskManager {
       }
     }
   }
-  
+
+  /**
+   * Mark the given task as aborted.
+   */
   public void markTaskAborted(ExecutionTask task) {
     _abortedTasks.add(task);
   }
-  
+
+  /**
+   * Mark the given task as dead.
+   */
   public void markTaskDead(ExecutionTask task) {
-    _abortedTasks.add(task);
+    _deadTasks.add(task);
   }
-  
+
+  /**
+   * @return the aborted tasks.
+   */
   public Set<ExecutionTask> abortedTasks() {
     return _abortedTasks;
   }
-  
+
+  /**
+   * @return the dead tasks.
+   */
   public Set<ExecutionTask> deadTasks() {
     return _deadTasks;
   }
@@ -200,6 +212,8 @@ public class ExecutionTaskManager {
     _inProgressPartMovementsByBrokerId.clear();
     _executionTaskPlanner.clear();
     _inProgressTasks.clear();
+    _abortedTasks.clear();
+    _deadTasks.clear();
   }
 
 }

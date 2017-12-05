@@ -116,7 +116,6 @@ object ExecutorUtils {
 
       // We do not use the ReassignPartitionsCommand here because we want to have incremental partition movement.
       if (newPartitionAssignment.nonEmpty)
-        System.out.println(newPartitionAssignment)
         zkUtils.updatePartitionReassignmentData(newPartitionAssignment)
     }
   }
