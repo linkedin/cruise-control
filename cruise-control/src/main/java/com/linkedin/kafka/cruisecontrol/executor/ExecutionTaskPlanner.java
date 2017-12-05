@@ -17,6 +17,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,9 +133,13 @@ public class ExecutionTaskPlanner {
    * Get a list of executable partition movements that comply with the concurrency constraint.
    *
    * @param readyBrokers The brokers that is ready to execute more movements.
+   * @param inProgressPartitions The partitions that is already in progress. This is needed because the controller
+   *                             does not allow updating the ongoing partition reassignment for a partition being
+   *                             reassigned.
    * @return A list of movements that is executable for the ready brokers.
    */
-  public List<ExecutionTask> getPartitionMovementTasks(Map<Integer, Integer> readyBrokers) {
+  public List<ExecutionTask> getPartitionMovementTasks(Map<Integer, Integer> readyBrokers, 
+                                                       Set<TopicPartition> inProgressPartitions) {
     LOG.trace("Getting tasks for brokers with concurrency {}", readyBrokers);
     List<ExecutionTask> executablePartitionMovements = new ArrayList<>();
     /**
@@ -144,6 +149,7 @@ public class ExecutionTaskPlanner {
      */
     boolean newTaskAdded = true;
     Set<Integer> brokerInvolved = new HashSet<>();
+    Set<TopicPartition> partitionsInvolved = new HashSet<>();
     while (newTaskAdded) {
       newTaskAdded = false;
       brokerInvolved.clear();
@@ -168,9 +174,12 @@ public class ExecutionTaskPlanner {
             if (brokerInvolved.contains(sourceBroker) || brokerInvolved.contains(destinationBroker)) {
               continue;
             }
-
+            TopicPartition tp = task.proposal.topicPartition();
             // Check if the proposal is executable.
-            if (isExecutableProposal(task.proposal, readyBrokers)) {
+            if (isExecutableProposal(task.proposal, readyBrokers) 
+                && !inProgressPartitions.contains(tp) 
+                && !partitionsInvolved.contains(tp)) {
+              partitionsInvolved.add(tp);
               executablePartitionMovements.add(task);
               // Record the two brokers as involved in this round and stop involving them again in this round.
               brokerInvolved.add(sourceBroker);

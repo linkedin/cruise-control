@@ -16,24 +16,47 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   public final long executionId;
   // The corresponding balancing proposal of this task.
   public final BalancingProposal proposal;
+  private volatile Healthiness healthiness;
 
   public ExecutionTask(long executionId, BalancingProposal proposal) {
     this.executionId = executionId;
     this.proposal = proposal;
+    this.healthiness = Healthiness.NORMAL;
   }
 
   /**
    * @return The source broker of this execution task.
    */
-  public int sourceBrokerId() {
-    return (int) proposal.sourceBrokerId();
+  public Integer sourceBrokerId() {
+    return proposal.sourceBrokerId();
   }
 
   /**
    * @return The destination broker of this execution task.
    */
-  public int destinationBrokerId() {
-    return (int) proposal.destinationBrokerId();
+  public Integer destinationBrokerId() {
+    return proposal.destinationBrokerId();
+  }
+
+  /**
+   * @return the healthiness of the task.
+   */
+  public Healthiness healthiness() {
+    return this.healthiness;
+  }
+
+  /**
+   * Kill the task.
+   */
+  public void kill() {
+    this.healthiness = Healthiness.KILLED;
+  }
+
+  /**
+   * Abort the task.
+   */
+  public void abort() {
+    this.healthiness = Healthiness.ABORTED;
   }
 
   @Override
@@ -56,10 +79,14 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     executionStatsMap.put("proposal", proposal.getJsonStructure());
     return executionStatsMap;
   }
+  
+  public enum Healthiness {
+    NORMAL, ABORTED, KILLED
+  }
 
   @Override
   public String toString() {
-    return "{EXE_ID:" + executionId + "," + proposal + "}";
+    return String.format("{EXE_ID: %d, %s, %s}", executionId, proposal, healthiness);
   }
 
   @Override

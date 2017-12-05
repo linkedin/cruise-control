@@ -5,7 +5,10 @@
 package com.linkedin.kafka.cruisecontrol.common;
 
 public enum BalancingAction {
-  REPLICA_MOVEMENT("REPLICA"), LEADERSHIP_MOVEMENT("LEADER");
+  REPLICA_MOVEMENT("REPLICA"), 
+  LEADERSHIP_MOVEMENT("LEADER"), 
+  REPLICA_ADDITION("ADDITION"), 
+  REPLICA_DELETION("DELETE");
 
   private final String _balancingAction;
 

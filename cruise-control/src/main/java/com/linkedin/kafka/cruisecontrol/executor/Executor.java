@@ -12,7 +12,9 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -29,6 +31,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.List;
+
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.Healthiness.*;
 
 
 /**
@@ -244,10 +248,18 @@ public class Executor {
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
       // ensures a clean stop when the execution is stopped in the middle.
-      while (!_executionTaskManager.tasksInProgress().isEmpty()) {
+      while (!_executionTaskManager.tasksInProgress().isEmpty() && !_stopRequested) {
         waitForExecutionTaskToFinish();
       }
-      LOG.info("Partition movements finished.");
+      if (_executionTaskManager.tasksInProgress().isEmpty()) {
+        LOG.info("Partition movements finished.");
+      } else if (_stopRequested) {
+        LOG.info("Partition movements stopped. {} in progress, {} pending, {} aborted, {} dead.",
+                 _executionTaskManager.tasksInProgress().size(), 
+                 _executionTaskManager.remainingPartitionMovements().size(),
+                 _executionTaskManager.abortedTasks().size(),
+                 _executionTaskManager.deadTasks().size());
+      }
     }
 
     private void moveLeaders() {
@@ -309,6 +321,7 @@ public class Executor {
       List<ExecutionTask> finishedTasks = new ArrayList<>();
       do {
         Cluster cluster = _metadataClient.refreshMetadata().cluster();
+        LOG.debug("Tasks in progress: {}", _executionTaskManager.tasksInProgress());
         for (ExecutionTask task : _executionTaskManager.tasksInProgress()) {
           TopicPartition tp = task.proposal.topicPartition();
           if (cluster.partition(tp) == null) {
@@ -316,24 +329,29 @@ public class Executor {
             finishedTasks.add(task);
             continue;
           }
-          boolean destinationExists = false;
-          boolean sourceExists = false;
-          if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
-            for (Node node : cluster.partition(tp).replicas()) {
-              destinationExists = destinationExists || (node.id() == task.destinationBrokerId());
-              sourceExists = sourceExists || (node.id() == task.sourceBrokerId());
-            }
-            if (destinationExists && !sourceExists) {
-              finishedTasks.add(task);
-            }
-          } else {
-            Node leader = cluster.leaderFor(tp);
-            if (leader != null && leader.id() == task.destinationBrokerId()) {
-              finishedTasks.add(task);
-            }
+          boolean taskDone;
+          switch (task.proposal.balancingAction()) {
+            case REPLICA_MOVEMENT:
+              taskDone = isReplicaMovementDone(cluster, tp, task);
+                break;
+            case REPLICA_DELETION:
+              taskDone = isReplicaDeletionDone(cluster, tp, task);
+              break;
+            case REPLICA_ADDITION:
+              taskDone = isReplicaAdditionDone(cluster, tp, task);
+              break;
+            case LEADERSHIP_MOVEMENT:
+              taskDone = isLeadershipMovementDone(cluster, tp, task);
+              break;
+            default:
+              throw new IllegalStateException("Should never be here.");  
+          }
+          if (taskDone) {
+            finishedTasks.add(task);
           }
         }
-        if (finishedTasks.size() == 0) {
+        if (finishedTasks.isEmpty()) {
+          maybeAbortTasks(_executionTaskManager.tasksInProgress());
           maybeReexecuteTasks();
           try {
             Thread.sleep(_statusCheckingIntervalMs);
@@ -341,10 +359,106 @@ public class Executor {
             // let it go
           }
         }
-      } while (finishedTasks.size() == 0 && !_stopRequested);
+      } while (!_executionTaskManager.tasksInProgress().isEmpty() && finishedTasks.size() == 0 && !_stopRequested);
       // Some tasks has finished, remove them from in progress task map.
       _executionTaskManager.completeTasks(finishedTasks);
       LOG.info("Completed tasks: {}", finishedTasks);
+    }
+    
+    private boolean isReplicaMovementDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
+      boolean destinationExists = false;
+      boolean sourceExists = false;
+      for (Node node : cluster.partition(tp).replicas()) {
+        destinationExists = destinationExists || (node.id() == task.destinationBrokerId());
+        sourceExists = sourceExists || (node.id() == task.sourceBrokerId());
+      }
+      switch (task.healthiness()) {
+        case NORMAL:
+          return destinationExists && !sourceExists;
+        case ABORTED:
+          return !destinationExists && sourceExists;
+        case KILLED:
+          return !destinationExists && !sourceExists;
+        default:
+          throw new IllegalStateException("Should never be here.");
+      }
+    }
+    
+    private boolean isReplicaDeletionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
+      boolean sourceExists = false;
+      for (Node node : cluster.partition(tp).replicas()) {
+        sourceExists = sourceExists || (node.id() == task.sourceBrokerId());
+      }
+      return !sourceExists;
+    }
+
+    private boolean isReplicaAdditionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
+      boolean destinationExists = false;
+      for (Node node : cluster.partition(tp).replicas()) {
+        destinationExists = destinationExists || (node.id() == task.destinationBrokerId());
+      }
+      switch (task.healthiness()) {
+        case NORMAL:
+          return destinationExists;
+        case ABORTED:
+        case KILLED:
+          return true;
+        default:
+          throw new IllegalStateException("Should never be here.");
+      }
+    }
+    
+    private boolean isLeadershipMovementDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
+      Node leader = cluster.leaderFor(tp);
+      switch (task.healthiness()) {
+        case NORMAL:
+          return leader != null && leader.id() == task.destinationBrokerId();
+        case ABORTED:
+        case KILLED:
+          return true;
+        default:
+          throw new IllegalStateException("Should never be here.");
+      }
+      
+    }
+    
+    private void maybeAbortTasks(Collection<ExecutionTask> tasks) {
+      List<ExecutionTask> abortedTasks = new ArrayList<>();
+      List<ExecutionTask> deadTasks = new ArrayList<>();
+      Set<Integer> aliveNodes = new HashSet<>();
+      Cluster cluster = _metadataClient.cluster();
+      cluster.nodes().forEach(node -> aliveNodes.add(node.id()));
+      for (ExecutionTask task : tasks) {
+        if (task.healthiness() == NORMAL) {
+          boolean destinationAlive = task.destinationBrokerId() == null || aliveNodes.contains(task.destinationBrokerId());
+          boolean sourceAlive = task.sourceBrokerId() == null || aliveNodes.contains(task.sourceBrokerId());
+          if (!destinationAlive) {
+            if (sourceAlive) {
+              task.abort();
+              _executionTaskManager.markTaskAborted(task);
+              abortedTasks.add(task);
+              LOG.error("Aborting execution for task {} because destination broker is down.", task);
+            } else {
+              task.kill();
+              _executionTaskManager.markTaskDead(task);
+              deadTasks.add(task);
+              LOG.error("Killing execution for task {} because both source and destination broker are down.", task);
+            }
+          }
+        }
+      }
+      if (!abortedTasks.isEmpty() || !deadTasks.isEmpty()) {
+        List<ExecutionTask> abortedAndKilled = new ArrayList<>(abortedTasks);
+        abortedAndKilled.addAll(deadTasks);
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        ExecutorUtils.executePartitionMovementTasks(_zkUtils, abortedAndKilled);
+        LOG.error("Aborted tasks: {} , dead tasks: {}, stopping proposal execution.", abortedTasks, deadTasks);
+        stopExecution();
+      }
     }
 
     /**

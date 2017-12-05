@@ -115,6 +115,39 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     executeAndVerifyProposals(zkUtils, proposalsToExecute, proposalsToCheck);
   }
   
+  @Test
+  public void testBrokerDiesWhenMovePartitions() throws Exception {
+    ZkUtils zkUtils = CruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    String topic0 = "testPartitionMovement0";
+    String topic1 = "testPartitionMovement1";
+    int partition = 0;
+    TopicPartition tp0 = new TopicPartition(topic0, partition);
+    TopicPartition tp1 = new TopicPartition(topic1, partition);
+
+    AdminUtils.createTopic(zkUtils, topic0, 1, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
+    AdminUtils.createTopic(zkUtils, topic1, 1, 2, new Properties(), RackAwareMode.Safe$.MODULE$);
+    while (zkUtils.getLeaderForPartition(topic0, partition).isEmpty()
+        || zkUtils.getLeaderForPartition(topic1, partition).isEmpty()) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+    int initialLeader0 = (Integer) zkUtils.getLeaderForPartition(topic0, partition).get();
+    int initialLeader1 = (Integer) zkUtils.getLeaderForPartition(topic1, partition).get();
+    _brokers.get(initialLeader0 == 0 ? 1 : 0).shutdown();
+    BalancingProposal proposal0 =
+        new BalancingProposal(tp0, initialLeader0, initialLeader0 == 0 ? 1 : 0, BalancingAction.REPLICA_MOVEMENT);
+    BalancingProposal proposal1 =
+        new BalancingProposal(tp1, initialLeader1, initialLeader1 == 0 ? 1 : 0, BalancingAction.LEADERSHIP_MOVEMENT);
+
+    Collection<BalancingProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
+    executeAndVerifyProposals(zkUtils, proposalsToExecute, Collections.emptyList());
+    
+    assertEquals(Collections.singletonList(initialLeader0), ExecutorUtils.newAssignmentForPartition(zkUtils, tp0));
+  }
+  
   private void executeAndVerifyProposals(ZkUtils zkUtils,
                                          Collection<BalancingProposal> proposalsToExecute,
                                          Collection<BalancingProposal> proposalsToCheck) {

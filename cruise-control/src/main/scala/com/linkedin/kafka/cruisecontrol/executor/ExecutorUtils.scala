@@ -45,37 +45,67 @@ object ExecutorUtils {
         var addTask = true
         val newReplicas = inProgressReplicasOpt match {
           case Some(inProgressReplicas) =>
-            // verify with in progress assignment
-            if (inProgressReplicas.contains(destinationBroker))
-              throw new RuntimeException(s"Broker $destinationBroker is already being assigned as a replica for [$topic, $partition]")
-            if (!inProgressReplicas.contains(sourceBroker))
-              throw new RuntimeException(s"Broker $sourceBroker is not assigned as a replica in previous partition movement for [$topic, $partition]")
-            (inProgressReplicas :+ destinationBroker).filter(_ != sourceBroker)
+            if (task.healthiness() == ExecutionTask.Healthiness.ABORTED) {
+              // verify with in progress assignment
+              if (!inProgressReplicas.contains(destinationBroker))
+                throw new RuntimeException(s"Broker $destinationBroker is not being assigned as a replica for [$topic, $partition] in $inProgressReplicas")
+              // It is possible that the source broker is also dead in cases of double failures.
+              // We handle this case in the executor, so the task is never propagated to here.
+              if (sourceBroker != null)
+                inProgressReplicas.filter(_ != destinationBroker) :+ sourceBroker.toInt
+              else
+                inProgressReplicas.filter(_ != destinationBroker)
+            } else if (task.healthiness() == ExecutionTask.Healthiness.KILLED) {
+              addTask = false
+              Seq.empty
+            } else if (task.healthiness() == ExecutionTask.Healthiness.NORMAL) {
+              // verify with in progress assignment
+              if (inProgressReplicas.contains(destinationBroker))
+                throw new RuntimeException(s"Broker $destinationBroker is already being assigned as a replica for [$topic, $partition]")
+              if (!inProgressReplicas.contains(sourceBroker))
+                throw new RuntimeException(s"Broker $sourceBroker is not assigned as a replica in previous partition movement for [$topic, $partition]")
+              if (destinationBroker != null)
+                (inProgressReplicas :+ destinationBroker.toInt).filter(_ != sourceBroker)
+              else
+                inProgressReplicas.filter(_ != sourceBroker)
+            } else {
+              throw new IllegalStateException("Should never be here")
+            }
           case None =>
-            // verify with current assignment
-            val currentReplicaAssignment = zkUtils.getReplicasForPartition(topic, partition)
-            if (currentReplicaAssignment.isEmpty) {
-              LOG.warn(s"The partition $partition does not exist.")
+            if (task.healthiness() == ExecutionTask.Healthiness.ABORTED 
+              || task.healthiness() == ExecutionTask.Healthiness.KILLED) {
+              LOG.warn(s"No need to abort tasks $task because the partition is not in reassignment")
               addTask = false
               Seq.empty
             } else {
-              if (!currentReplicaAssignment.contains(destinationBroker)) {
-                if (currentReplicaAssignment.contains(sourceBroker)) {
-                  // this is a normal movement.
-                  (currentReplicaAssignment :+ destinationBroker).filter(_ != sourceBroker)
-                } else {
-                  // The replica list should have at least one of the source broker or destination broker.
-                  throw new RuntimeException(s"Broker $sourceBroker is not a replica of [$topic, $partition].")
-                }
+              // verify with current assignment
+              val currentReplicaAssignment = zkUtils.getReplicasForPartition(topic, partition)
+              if (currentReplicaAssignment.isEmpty) {
+                LOG.warn(s"The partition $partition does not exist.")
+                addTask = false
+                Seq.empty
               } else {
-                if (currentReplicaAssignment.contains(sourceBroker)) {
-                  // The destination broker is already in the list, we just need to filter out the source broker if
-                  // it exists.
-                  currentReplicaAssignment.filter(_ != sourceBroker)
+                if (!currentReplicaAssignment.contains(destinationBroker)) {
+                  if (currentReplicaAssignment.contains(sourceBroker)) {
+                    // this is a normal movement.
+                    if (destinationBroker != null)
+                      (currentReplicaAssignment :+ destinationBroker.toInt).filter(_ != sourceBroker) 
+                    else
+                      currentReplicaAssignment.filter(_ != sourceBroker)
+                  } else {
+                    // The replica list should have at least one of the source broker or destination broker.
+                    throw new RuntimeException(s"Broker $sourceBroker is not a replica of [$topic, $partition].")
+                  }
                 } else {
-                  // If the source broker is no longer in the list, just do not add the task to the reassignment.
-                  addTask = false
-                  currentReplicaAssignment
+                  if (currentReplicaAssignment.contains(sourceBroker)) {
+                    // The destination broker is already in the list, we just need to filter out the source broker if
+                    // it exists.
+                    currentReplicaAssignment.filter(_ != sourceBroker)
+                  } else {
+                    // If the source broker is no longer in the list, just do not add the task to the reassignment.
+                    addTask = false
+                    currentReplicaAssignment
+                  }
                 }
               }
             }
@@ -100,7 +130,7 @@ object ExecutorUtils {
       val topic = task.proposal.topic
       val partition = task.proposal.partitionId
       val tp = TopicAndPartition(topic, partition)
-      val destinationBroker = task.destinationBrokerId()
+      val destinationBroker = task.destinationBrokerId().toInt
 
       val currentAssignment = zkUtils.getReplicasForPartition(topic, partition)
       if (currentAssignment.nonEmpty) {
@@ -133,5 +163,13 @@ object ExecutorUtils {
 
   def partitionsBeingReassigned(zkUtils: ZkUtils) = {
     setAsJavaSet(zkUtils.getPartitionsBeingReassigned().keys.map(tap => new TopicPartition(tap.topic, tap.partition)).toSet)
+  }
+  
+  def newAssignmentForPartition(zkUtils: ZkUtils, tp : TopicPartition): java.util.List[Integer] = {
+    val inProgressReassignment = 
+      zkUtils.getPartitionsBeingReassigned().getOrElse(TopicAndPartition(tp.topic(), tp.partition()), 
+      throw new NoSuchElementException(s"Partition $tp is not being reassigned."))
+    
+    seqAsJavaList(inProgressReassignment.newReplicas.map(i => i : java.lang.Integer))
   }
 }

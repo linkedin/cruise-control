@@ -13,6 +13,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.common.TopicPartition;
+
 
 /**
  * The class that helps track the execution status for the balancing.
@@ -26,7 +28,10 @@ import java.util.Set;
  */
 public class ExecutionTaskManager {
   private final Map<Integer, Integer> _inProgressPartMovementsByBrokerId;
-  private final Set<ExecutionTask> _taskInProgress;
+  private final Set<ExecutionTask> _inProgressTasks;
+  private final Set<TopicPartition> _inProgressPartitions;
+  private final Set<ExecutionTask> _abortedTasks;
+  private final Set<ExecutionTask> _deadTasks;
   private final ExecutionTaskPlanner _executionTaskPlanner;
   private final int _partitionMovementConcurrency;
   private final int _leaderMovementConcurrency;
@@ -39,7 +44,10 @@ public class ExecutionTaskManager {
    */
   public ExecutionTaskManager(int partitionMovementConcurrency, int leaderMovementConcurrency) {
     _inProgressPartMovementsByBrokerId = new HashMap<>();
-    _taskInProgress = new HashSet<>();
+    _inProgressPartitions = new HashSet<>();
+    _inProgressTasks = new HashSet<>();
+    _abortedTasks = new HashSet<>();
+    _deadTasks = new HashSet<>();
     _executionTaskPlanner = new ExecutionTaskPlanner();
     _partitionMovementConcurrency = partitionMovementConcurrency;
     _leaderMovementConcurrency = leaderMovementConcurrency;
@@ -61,7 +69,7 @@ public class ExecutionTaskManager {
         readyBrokers.put(entry.getKey(), Math.max(0, _partitionMovementConcurrency - entry.getValue()));
       }
     }
-    return _executionTaskPlanner.getPartitionMovementTasks(readyBrokers);
+    return _executionTaskPlanner.getPartitionMovementTasks(readyBrokers, _inProgressPartitions);
   }
 
   /**
@@ -96,14 +104,14 @@ public class ExecutionTaskManager {
    * Check if there is any task in progress.
    */
   public boolean hasTaskInProgress() {
-    return _taskInProgress.size() > 0;
+    return _inProgressTasks.size() > 0;
   }
 
   /**
    * Get all the in progress execution tasks.
    */
   public Set<ExecutionTask> tasksInProgress() {
-    return _taskInProgress;
+    return _inProgressTasks;
   }
 
   /**
@@ -136,14 +144,47 @@ public class ExecutionTaskManager {
    */
   public void markTasksInProgress(List<ExecutionTask> tasks) {
     for (ExecutionTask task : tasks) {
-      _taskInProgress.add(task);
+      _inProgressTasks.add(task);
+      _inProgressPartitions.add(task.proposal.topicPartition());
       if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
-        _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
-                                               _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) + 1);
-        _inProgressPartMovementsByBrokerId.put(task.destinationBrokerId(),
-                                               _inProgressPartMovementsByBrokerId.get(task.destinationBrokerId()) + 1);
+        if (task.sourceBrokerId() != null) {
+          _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
+                                                 _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) + 1);
+        }
+        if (task.destinationBrokerId() != null) {
+          _inProgressPartMovementsByBrokerId.put(task.destinationBrokerId(),
+                                                 _inProgressPartMovementsByBrokerId.get(task.destinationBrokerId()) + 1);
+        }
       }
     }
+  }
+
+  /**
+   * Mark the given task as aborted.
+   */
+  public void markTaskAborted(ExecutionTask task) {
+    _abortedTasks.add(task);
+  }
+
+  /**
+   * Mark the given task as dead.
+   */
+  public void markTaskDead(ExecutionTask task) {
+    _deadTasks.add(task);
+  }
+
+  /**
+   * @return the aborted tasks.
+   */
+  public Set<ExecutionTask> abortedTasks() {
+    return _abortedTasks;
+  }
+
+  /**
+   * @return the dead tasks.
+   */
+  public Set<ExecutionTask> deadTasks() {
+    return _deadTasks;
   }
 
   /**
@@ -151,12 +192,17 @@ public class ExecutionTaskManager {
    */
   public void completeTasks(List<ExecutionTask> tasks) {
     for (ExecutionTask task : tasks) {
-      _taskInProgress.remove(task);
+      _inProgressTasks.remove(task);
+      _inProgressPartitions.remove(task.proposal.topicPartition());
       if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
-        _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
-                                               _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) - 1);
-        _inProgressPartMovementsByBrokerId.put(task.destinationBrokerId(),
-                                               _inProgressPartMovementsByBrokerId.get(task.destinationBrokerId()) - 1);
+        if (task.sourceBrokerId() != null) {
+          _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
+                                                 _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) - 1);
+        }
+        if (task.destinationBrokerId() != null) {
+          _inProgressPartMovementsByBrokerId.put(task.destinationBrokerId(),
+                                                 _inProgressPartMovementsByBrokerId.get(task.destinationBrokerId()) - 1);
+        }
       }
     }
   }
@@ -165,7 +211,9 @@ public class ExecutionTaskManager {
     _brokersToSkipConcurrencyCheck.clear();
     _inProgressPartMovementsByBrokerId.clear();
     _executionTaskPlanner.clear();
-    _taskInProgress.clear();
+    _inProgressTasks.clear();
+    _abortedTasks.clear();
+    _deadTasks.clear();
   }
 
 }
