@@ -57,7 +57,7 @@ public class ExecutionTaskManager {
   /**
    * Returns a list of balancing proposal that moves the partitions.
    */
-  public List<ExecutionTask> getPartitionMovementTasks() {
+  public List<ExecutionTask> getReplicaMovementTasks() {
     Map<Integer, Integer> readyBrokers = new HashMap<>();
     for (Map.Entry<Integer, Integer> entry : _inProgressPartMovementsByBrokerId.entrySet()) {
       // We skip the concurrency level check if caller requested so.
@@ -69,7 +69,7 @@ public class ExecutionTaskManager {
         readyBrokers.put(entry.getKey(), Math.max(0, _partitionMovementConcurrency - entry.getValue()));
       }
     }
-    return _executionTaskPlanner.getPartitionMovementTasks(readyBrokers, _inProgressPartitions);
+    return _executionTaskPlanner.getReplicaMovementTasks(readyBrokers, _inProgressPartitions);
   }
 
   /**
@@ -83,7 +83,7 @@ public class ExecutionTaskManager {
    * Returns the remaining partition movement tasks.
    */
   public Set<ExecutionTask> remainingPartitionMovements() {
-    return _executionTaskPlanner.remainingPartitionMovements();
+    return _executionTaskPlanner.remainingReplicaMovements();
   }
 
   /**

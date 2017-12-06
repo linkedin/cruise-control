@@ -27,9 +27,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 import javax.servlet.ServletException;
@@ -41,6 +43,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.EndPoint.*;
 
 
 /**
@@ -58,7 +62,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final String VERBOSE_PARAM = "verbose";
   private static final String SUPER_VERBOSE_PARM = "super_verbose";
   private static final String RESOURCE_PARAM = "resource";
-  private static final String WITH_AVAILABLE_VALID_WINDOWS = "with_available_valid_windows";
   private static final String WITH_AVAILABLE_VALID_PARTITIONS = "with_available_valid_partitions";
 
   private static final String GOALS_PARAM = "goals";
@@ -68,10 +71,85 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final String GRANULARITY_REPLICA = "replica";
   private static final String BROKER_ID_PARAM = "brokerid";
   private static final String DRY_RUN_PARAM = "dryrun";
+  private static final String THROTTLE_ADDED_BROKER_PARAM = "throttle_added_broker";
   private static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
   private static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
 
-  private enum EndPoint {
+  private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
+  static {
+    Map<EndPoint, Set<String>> validParamNames = new HashMap<>();
+
+    Set<String> bootstrap = new HashSet<>();
+    bootstrap.add(START_MS_PARAM);
+    bootstrap.add(END_MS_PARAM);
+    bootstrap.add(CLEAR_METRICS_PARAM);
+    bootstrap.add(JSON_PARAM);
+
+    Set<String> train = new HashSet<>();
+    train.add(START_MS_PARAM);
+    train.add(END_MS_PARAM);
+    train.add(JSON_PARAM);
+
+    Set<String> load = new HashSet<>();
+    load.add(TIME_PARAM);
+    load.add(GRANULARITY_PARAM);
+    load.add(JSON_PARAM);
+
+    Set<String> partitionLoad = new HashSet<>();
+    partitionLoad.add(RESOURCE_PARAM);
+    partitionLoad.add(START_MS_PARAM);
+    partitionLoad.add(END_MS_PARAM);
+    partitionLoad.add(JSON_PARAM);
+
+    Set<String> proposals = new HashSet<>();
+    proposals.add(VERBOSE_PARAM);
+    proposals.add(IGNORE_PROPOSAL_CACHE_PARAM);
+    proposals.add(WITH_AVAILABLE_VALID_PARTITIONS);
+    proposals.add(GOALS_PARAM);
+    proposals.add(JSON_PARAM);
+
+    Set<String> state = new HashSet<>();
+    state.add(VERBOSE_PARAM);
+    state.add(SUPER_VERBOSE_PARM);
+    state.add(JSON_PARAM);
+
+    Set<String> addOrRemoveBroker = new HashSet<>();
+    addOrRemoveBroker.add(BROKER_ID_PARAM);
+    addOrRemoveBroker.add(DRY_RUN_PARAM);
+    addOrRemoveBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
+    addOrRemoveBroker.add(WITH_AVAILABLE_VALID_PARTITIONS);
+    addOrRemoveBroker.add(GOALS_PARAM);
+    addOrRemoveBroker.add(JSON_PARAM);
+
+    Set<String> addBroker = new HashSet<>();
+    addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
+    addBroker.addAll(addOrRemoveBroker);
+
+    Set<String> removeBroker = new HashSet<>();
+    removeBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
+    removeBroker.addAll(addOrRemoveBroker);
+
+    Set<String> rebalance = new HashSet<>();
+    rebalance.add(DRY_RUN_PARAM);
+    rebalance.add(GOALS_PARAM);
+    rebalance.add(WITH_AVAILABLE_VALID_PARTITIONS);
+    rebalance.add(JSON_PARAM);
+
+    validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
+    validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
+    validParamNames.put(LOAD, Collections.unmodifiableSet(load));
+    validParamNames.put(PARTITION_LOAD, Collections.unmodifiableSet(partitionLoad));
+    validParamNames.put(PROPOSALS, Collections.unmodifiableSet(proposals));
+    validParamNames.put(STATE, Collections.unmodifiableSet(state));
+    validParamNames.put(ADD_BROKER, Collections.unmodifiableSet(addBroker));
+    validParamNames.put(REMOVE_BROKER, Collections.unmodifiableSet(removeBroker));
+    validParamNames.put(REBALANCE, Collections.unmodifiableSet(rebalance));
+    validParamNames.put(STOP_PROPOSAL_EXECUTION, Collections.emptySet());
+
+    VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
+  }
+
+  protected enum EndPoint {
     BOOTSTRAP,
     TRAIN,
     LOAD,
@@ -128,7 +206,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *
    * 5. Get an optimization proposal
    *    GET /kafkacruisecontrol/proposals?verbose=[ENABLE_VERBOSE]&ignore_proposal_cache=[true/false]
-   *    &goals=[goal1,goal2...]&with_available_monitored_partitions=[true/false]&with_available_valid_windows=[true/false]
+   *    &goals=[goal1,goal2...]&with_available_valid_partitions=[true/false]
    *
    * 6. query the state of Kafka Cruise Control
    *    GET /kafkacruisecontrol/state
@@ -143,27 +221,46 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       EndPoint endPoint = endPoint(request);
       if (endPoint != null) {
-        switch (endPoint) {
-          case BOOTSTRAP:
-            bootstrap(request, response);
-            break;
-          case TRAIN:
-            train(request, response);
-            break;
-          case LOAD:
-            getClusterLoad(request, response);
-            break;
-          case PARTITION_LOAD:
-            getPartitionLoad(request, response);
-            break;
-          case PROPOSALS:
-            getProposals(request, response);
-            break;
-          case STATE:
-            getState(request, response);
-            break;
-          default:
-            throw new UserRequestException("Invalid URL for GET");
+        Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
+        Set<String> userParams = new HashSet<>();
+        if (validParamNames != null) {
+          userParams.addAll(request.getParameterMap().keySet());
+          userParams.removeAll(validParamNames);
+        }
+        if (!userParams.isEmpty()) {
+          // User request specifies parameters that are not a subset of the valid parameters.
+          String errorResp;
+          if (wantJSON(request)) {
+            errorResp = "{\"error\": \"Unrecognized endpoint parameters in " + endPoint + " get request: " +
+                userParams.toString() + "\"}";
+          } else {
+            errorResp = "Unrecognized endpoint parameters in " + endPoint + " get request: " +
+                userParams.toString() + ".";
+          }
+          returnErrorMessage(response, errorResp, HttpServletResponse.SC_NOT_IMPLEMENTED);
+        } else {
+          switch (endPoint) {
+            case BOOTSTRAP:
+              bootstrap(request, response);
+              break;
+            case TRAIN:
+              train(request, response);
+              break;
+            case LOAD:
+              getClusterLoad(request, response);
+              break;
+            case PARTITION_LOAD:
+              getPartitionLoad(request, response);
+              break;
+            case PROPOSALS:
+              getProposals(request, response);
+              break;
+            case STATE:
+              getState(request, response);
+              break;
+            default:
+              throw new UserRequestException("Invalid URL for GET");
+          }
         }
       } else {
         String errorMessage = String.format("Bad GET request '%s'", request.getPathInfo());
@@ -197,7 +294,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&dryrun=[true/false]&throttle_removed_broker=[true/false]&goals=[goal1,goal2...]
    *
    * 2. Add a broker
-   *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&dryrun=[true/false]&throttle_removed_broker=[true/false]&goals=[goal1,goal2...]
+   *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&dryrun=[true/false]&throttle_added_broker=[true/false]&goals=[goal1,goal2...]
    *
    * 3. Trigger a workload balance.
    *    POST /kafkacruisecontrol/rebalance?dryrun=[true/false]&force=[true/false]&goals=[goal1,goal2...]
@@ -216,19 +313,38 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       EndPoint endPoint = endPoint(request);
       if (endPoint != null) {
-        switch (endPoint) {
-          case ADD_BROKER:
-          case REMOVE_BROKER:
-            addOrRemoveBroker(request, response, endPoint);
-            break;
-          case REBALANCE:
-            rebalance(request, response);
-            break;
-          case STOP_PROPOSAL_EXECUTION:
-            stopProposalExecution();
-            break;
-          default:
-            throw new UserRequestException("Invalid url for POST");
+        Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
+        Set<String> userParams = new HashSet<>();
+        if (validParamNames != null) {
+          userParams.addAll(request.getParameterMap().keySet());
+          userParams.removeAll(validParamNames);
+        }
+        if (!userParams.isEmpty()) {
+          // User request specifies parameters that are not a subset of the valid parameters.
+          String errorResp;
+          if (wantJSON(request)) {
+            errorResp = "{\"error\": \"Unrecognized endpoint parameters in " + endPoint + " post request: " +
+                userParams.toString() + "\"}";
+          } else {
+            errorResp = "Unrecognized endpoint parameters in " + endPoint + " post request: " +
+                userParams.toString() + ".";
+          }
+          returnErrorMessage(response, errorResp, HttpServletResponse.SC_NOT_IMPLEMENTED);
+        } else {
+          switch (endPoint) {
+            case ADD_BROKER:
+            case REMOVE_BROKER:
+              addOrRemoveBroker(request, response, endPoint);
+              break;
+            case REBALANCE:
+              rebalance(request, response);
+              break;
+            case STOP_PROPOSAL_EXECUTION:
+              stopProposalExecution();
+              break;
+            default:
+              throw new UserRequestException("Invalid URL for POST");
+          }
         }
       } else {
         String errorMessage = String.format("Bad POST request '%s'", request.getPathInfo());
@@ -453,8 +569,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void getProposals(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean verbose;
     boolean ignoreProposalCache;
-    boolean withAvailableValidWindows;
-    boolean withAvailableValidPartitions;
+    boolean withAvailableValidWindows = false;
+    boolean withAvailableValidPartitions = false;
     boolean json;
     List<String> goals;
     try {
@@ -462,19 +578,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String verboseString = request.getParameter(VERBOSE_PARAM);
       verbose = verboseString != null && Boolean.parseBoolean(verboseString);
       String ignoreProposalCacheString = request.getParameter(IGNORE_PROPOSAL_CACHE_PARAM);
-      String withAvailableValidWindowsString = request.getParameter(WITH_AVAILABLE_VALID_WINDOWS);
       String withAvailableValidPartitionsString = request.getParameter(WITH_AVAILABLE_VALID_PARTITIONS);
       String goalsString = request.getParameter(GOALS_PARAM);
       goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
       ignoreProposalCache = (ignoreProposalCacheString != null && Boolean.parseBoolean(ignoreProposalCacheString))
           || !goals.isEmpty();
-      if (withAvailableValidWindowsString != null && withAvailableValidPartitionsString != null) {
-        throw new IllegalArgumentException("Cannot specify " + WITH_AVAILABLE_VALID_PARTITIONS + " and "
-                                               + WITH_AVAILABLE_VALID_WINDOWS + " at the same time.");
+      if (withAvailableValidPartitionsString != null) {
+        withAvailableValidPartitions = Boolean.parseBoolean(withAvailableValidPartitionsString);
+        withAvailableValidWindows = !withAvailableValidPartitions;
       }
-      withAvailableValidWindows = withAvailableValidWindowsString != null && Boolean.parseBoolean(withAvailableValidWindowsString);
-      withAvailableValidPartitions = withAvailableValidPartitionsString != null && Boolean.parseBoolean(withAvailableValidPartitionsString);
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
@@ -641,33 +754,31 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throws KafkaCruiseControlException, IOException {
     List<Integer> brokerIds = new ArrayList<>();
     boolean dryrun;
-    boolean withAvailableValidWindows;
-    boolean withAvailableValidPartitions;
-    boolean throttleRemovedBroker;
+    boolean withAvailableValidWindows = false;
+    boolean withAvailableValidPartitions = false;
+    boolean throttleAddedOrRemovedBrokers;
     List<String> goals;
     boolean json;
     try {
-      // TODO: Handle urlencoded value (%2C insted of ,)
+      // TODO: Handle urlencoded value (%2C instead of ,)
       String[] brokerIdsString = request.getParameter(BROKER_ID_PARAM).split(",");
       for (String brokerIdString : brokerIdsString) {
         brokerIds.add(Integer.parseInt(brokerIdString));
       }
       String dryrunString = request.getParameter(DRY_RUN_PARAM);
       dryrun = dryrunString == null || Boolean.parseBoolean(dryrunString);
-      String throttleRemovedBrokerString = request.getParameter(THROTTLE_REMOVED_BROKER_PARAM);
-      throttleRemovedBroker = throttleRemovedBrokerString == null || Boolean.parseBoolean(throttleRemovedBrokerString);
+      String throttleBrokerString = endPoint == EndPoint.ADD_BROKER ?
+          request.getParameter(THROTTLE_ADDED_BROKER_PARAM) : request.getParameter(THROTTLE_REMOVED_BROKER_PARAM);
+      throttleAddedOrRemovedBrokers = throttleBrokerString == null || Boolean.parseBoolean(throttleBrokerString);
       String goalsString = request.getParameter(GOALS_PARAM);
-      // TODO: Handle urlencoded value (%2C insted of ,)
+      // TODO: Handle urlencoded value (%2C instead of ,)
       goals = goalsString == null || goalsString.isEmpty() ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
-      String withAvailableValidWindowsString = request.getParameter(WITH_AVAILABLE_VALID_WINDOWS);
       String withAvailableValidPartitionsString = request.getParameter(WITH_AVAILABLE_VALID_PARTITIONS);
-      if (withAvailableValidWindowsString != null && withAvailableValidPartitionsString != null) {
-        throw new IllegalArgumentException("Cannot specify " + WITH_AVAILABLE_VALID_PARTITIONS + " and "
-                                               + WITH_AVAILABLE_VALID_WINDOWS + " at the same time.");
+      if (withAvailableValidPartitionsString != null) {
+        withAvailableValidPartitions = Boolean.parseBoolean(withAvailableValidPartitionsString);
+        withAvailableValidWindows = !withAvailableValidPartitions;
       }
-      withAvailableValidWindows = withAvailableValidWindowsString != null && Boolean.parseBoolean(withAvailableValidWindowsString);
-      withAvailableValidPartitions = withAvailableValidPartitionsString != null && Boolean.parseBoolean(withAvailableValidPartitionsString);
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
@@ -675,11 +786,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         getGoalsAndRequirements(goals, withAvailableValidPartitions, withAvailableValidWindows, false);
     GoalOptimizer.OptimizerResult optimizerResult;
     if (endPoint == EndPoint.ADD_BROKER) {
-      optimizerResult = _kafkaCruiseControl.addBrokers(brokerIds, dryrun, throttleRemovedBroker,
+      optimizerResult = _kafkaCruiseControl.addBrokers(brokerIds, dryrun, throttleAddedOrRemovedBrokers,
                                                        goalsAndRequirements.goals(),
                                                        goalsAndRequirements.requirements());
     } else {
-      optimizerResult = _kafkaCruiseControl.decommissionBrokers(brokerIds, dryrun, throttleRemovedBroker,
+      optimizerResult = _kafkaCruiseControl.decommissionBrokers(brokerIds, dryrun, throttleAddedOrRemovedBrokers,
                                                                 goalsAndRequirements.goals(),
                                                                 goalsAndRequirements.requirements());
     }
@@ -705,8 +816,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void rebalance(HttpServletRequest request, HttpServletResponse response)
       throws KafkaCruiseControlException, IOException {
     boolean dryrun;
-    boolean withAvailableValidWindows;
-    boolean withAvailableValidPartitions;
+    boolean withAvailableValidWindows = false;
+    boolean withAvailableValidPartitions = false;
     List<String> goals;
     try {
       String dryrunString = request.getParameter(DRY_RUN_PARAM);
@@ -716,14 +827,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
 
-      String withAvailableValidWindowsString = request.getParameter(WITH_AVAILABLE_VALID_WINDOWS);
       String withAvailableValidPartitionsString = request.getParameter(WITH_AVAILABLE_VALID_PARTITIONS);
-      if (withAvailableValidWindowsString != null && withAvailableValidPartitionsString != null) {
-        throw new IllegalArgumentException("Cannot specify " + WITH_AVAILABLE_VALID_PARTITIONS + " and "
-                                               + WITH_AVAILABLE_VALID_WINDOWS + " at the same time.");
+      if (withAvailableValidPartitionsString != null) {
+        withAvailableValidPartitions = Boolean.parseBoolean(withAvailableValidPartitionsString);
+        withAvailableValidWindows = !withAvailableValidPartitions;
       }
-      withAvailableValidWindows = withAvailableValidWindowsString != null && Boolean.parseBoolean(withAvailableValidWindowsString);
-      withAvailableValidPartitions = withAvailableValidPartitionsString != null && Boolean.parseBoolean(withAvailableValidPartitionsString);
     } catch (Exception e) {
       throw new UserRequestException(e);
     }

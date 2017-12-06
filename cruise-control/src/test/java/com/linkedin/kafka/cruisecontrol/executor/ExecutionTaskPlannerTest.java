@@ -84,7 +84,7 @@ public class ExecutionTaskPlannerTest {
     readyBrokers.put(1, 2);
     readyBrokers.put(2, 1);
     readyBrokers.put(3, 1);
-    List<ExecutionTask> partitionMovementTasks = planner.getPartitionMovementTasks(readyBrokers, Collections.emptySet());
+    List<ExecutionTask> partitionMovementTasks = planner.getReplicaMovementTasks(readyBrokers, Collections.emptySet());
     assertEquals("First task should be partitionMovement1", partitionMovement1, partitionMovementTasks.get(0).proposal);
     assertEquals("First task should be partitionMovement4", partitionMovement4, partitionMovementTasks.get(1).proposal);
     assertEquals("First task should be partitionMovement2", partitionMovement2, partitionMovementTasks.get(2).proposal);
