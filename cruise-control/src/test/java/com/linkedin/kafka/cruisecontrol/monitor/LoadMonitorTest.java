@@ -60,6 +60,7 @@ public class LoadMonitorTest {
   private static final int NUM_SNAPSHOT_WINDOWS = 2;
   private static final int MIN_SAMPLES_PER_SNAPSHOT_WINDOW = 4;
   private static final long SNAPSHOT_WINDOW_MS = 1000;
+  private static final String DEFAULT_CLEANUP_POLICY = "delete";
 
   private final Time _time = new MockTime(0);
 
@@ -403,6 +404,7 @@ public class LoadMonitorTest {
     props.put(KafkaCruiseControlConfig.MIN_SAMPLES_PER_LOAD_SNAPSHOT_CONFIG,
               Integer.toString(MIN_SAMPLES_PER_SNAPSHOT_WINDOW));
     props.put(KafkaCruiseControlConfig.LOAD_SNAPSHOT_WINDOW_MS_CONFIG, Long.toString(SNAPSHOT_WINDOW_MS));
+    props.put("cleanup.policy", DEFAULT_CLEANUP_POLICY);
     props.put(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
     LoadMonitor loadMonitor = new LoadMonitor(config, mockMetadataClient, _time, new MetricRegistry());
