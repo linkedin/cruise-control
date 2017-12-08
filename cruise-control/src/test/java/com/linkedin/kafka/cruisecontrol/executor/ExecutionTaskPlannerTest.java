@@ -36,13 +36,13 @@ public class ExecutionTaskPlannerTest {
       BalancingAction.LEADERSHIP_MOVEMENT);
 
   private final BalancingProposal partitionMovement1 = new BalancingProposal(new TopicPartition(TOPIC2, 0), 0, 1,
-      BalancingAction.REPLICA_MOVEMENT);
+      BalancingAction.REPLICA_MOVEMENT, 1);
   private final BalancingProposal partitionMovement2 = new BalancingProposal(new TopicPartition(TOPIC2, 1), 0, 1,
-      BalancingAction.REPLICA_MOVEMENT);
+      BalancingAction.REPLICA_MOVEMENT, 2);
   private final BalancingProposal partitionMovement3 = new BalancingProposal(new TopicPartition(TOPIC2, 2), 2, 1,
-      BalancingAction.REPLICA_MOVEMENT);
+      BalancingAction.REPLICA_MOVEMENT, 3);
   private final BalancingProposal partitionMovement4 = new BalancingProposal(new TopicPartition(TOPIC2, 3), 3, 2,
-      BalancingAction.REPLICA_MOVEMENT);
+      BalancingAction.REPLICA_MOVEMENT, 4);
 
   private final AtomicLong _executionId = new AtomicLong(0L);
 
@@ -88,6 +88,22 @@ public class ExecutionTaskPlannerTest {
     assertEquals("First task should be partitionMovement1", partitionMovement1, partitionMovementTasks.get(0).proposal);
     assertEquals("First task should be partitionMovement4", partitionMovement4, partitionMovementTasks.get(1).proposal);
     assertEquals("First task should be partitionMovement2", partitionMovement2, partitionMovementTasks.get(2).proposal);
+  }
+  
+  @Test
+  public void testClear() {
+    List<BalancingProposal> proposals = new ArrayList<>();
+    proposals.add(leaderMovement1);
+    proposals.add(partitionMovement1);
+    ExecutionTaskPlanner planner = new ExecutionTaskPlanner();
+    planner.addBalancingProposals(proposals);
+    assertEquals(1, planner.remainingDataToMoveInMB());
+    assertEquals(1, planner.remainingLeaderMovements().size());
+    assertEquals(1, planner.remainingReplicaMovements().size());
+    planner.clear();
+    assertEquals(0, planner.remainingDataToMoveInMB());
+    assertEquals(0, planner.remainingLeaderMovements().size());
+    assertEquals(0, planner.remainingReplicaMovements().size());
   }
 
   private List<ExecutionTask> generateExecutionTasks(BalancingProposal... proposals) {

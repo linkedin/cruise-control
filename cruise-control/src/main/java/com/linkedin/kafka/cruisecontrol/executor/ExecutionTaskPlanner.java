@@ -208,6 +208,8 @@ public class ExecutionTaskPlanner {
   public void clear() {
     _leaderMovements.clear();
     _partMoveProposalByBrokerId.clear();
+    _remainingReplicaMovements.clear();
+    _dataToMove = 0L;
   }
 
   /**
