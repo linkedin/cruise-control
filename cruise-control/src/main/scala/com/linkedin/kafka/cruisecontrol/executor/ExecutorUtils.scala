@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor
 
+import com.linkedin.kafka.cruisecontrol.common.BalancingAction
 import kafka.admin.{PreferredReplicaLeaderElectionCommand, ReassignPartitionsCommand}
 import kafka.common.TopicAndPartition
 import kafka.utils.ZkUtils
@@ -20,28 +21,29 @@ object ExecutorUtils {
   val LOG = LoggerFactory.getLogger(ExecutorUtils.getClass.getName)
 
   /**
-   * Add a list of partition movement tasks to execute.
+   * Add a list of replica reassignment tasks to execute. Replica reassignment indicates tasks that (1) relocate a replica
+   * within the cluster, (2) introduce a new replica to the cluster (3) remove an existing replica from the cluster.
    *
-   * @param zkUtils the ZkUtils class to use for partition reasignment.
-   * @param tasks
+   * @param zkUtils the ZkUtils class to use for partition reassignment.
+   * @param reassignmentTasks Replica reassignment tasks to be executed.
    */
-  def executePartitionMovementTasks(zkUtils: ZkUtils,
-                                    tasks: java.util.List[ExecutionTask]) {
-    if (tasks != null && !tasks.isEmpty) {
-      val inProgressPartitionMovement = zkUtils.getPartitionsBeingReassigned()
-      // Add the partition being assigned to the newPartitionAssignment because we are going to add the new
+  def executeReplicaReassignmentTasks(zkUtils: ZkUtils,
+                                      reassignmentTasks: java.util.List[ExecutionTask]) {
+    if (reassignmentTasks != null && !reassignmentTasks.isEmpty) {
+      val inProgressReplicaReassignment = zkUtils.getPartitionsBeingReassigned()
+      // Add the partition being assigned to the newReplicaAssignment because we are going to add the new
       // reassignment together.
-      val newPartitionAssignment = scala.collection.mutable.Map(inProgressPartitionMovement.map { case (tp, context) =>
+      val newReplicaAssignment = scala.collection.mutable.Map(inProgressReplicaReassignment.map { case (tp, context) =>
         tp -> context.newReplicas
       }.toSeq: _*)
-      tasks.foreach({ task =>
+      reassignmentTasks.foreach({ task =>
         val topic = task.proposal.topic
         val partition = task.proposal.partitionId
         val tp = TopicAndPartition(topic, partition)
         val sourceBroker = task.sourceBrokerId()
         val destinationBroker = task.destinationBrokerId()
 
-        val inProgressReplicasOpt = newPartitionAssignment.get(tp)
+        val inProgressReplicasOpt = newReplicaAssignment.get(tp)
         var addTask = true
         val newReplicas = inProgressReplicasOpt match {
           case Some(inProgressReplicas) =>
@@ -60,9 +62,9 @@ object ExecutorUtils {
               Seq.empty
             } else if (task.healthiness() == ExecutionTask.Healthiness.NORMAL) {
               // verify with in progress assignment
-              if (inProgressReplicas.contains(destinationBroker))
+              if (task.proposal.balancingAction() != BalancingAction.REPLICA_DELETION && inProgressReplicas.contains(destinationBroker))
                 throw new RuntimeException(s"Broker $destinationBroker is already being assigned as a replica for [$topic, $partition]")
-              if (!inProgressReplicas.contains(sourceBroker))
+              if (task.proposal.balancingAction() != BalancingAction.REPLICA_ADDITION && !inProgressReplicas.contains(sourceBroker))
                 throw new RuntimeException(s"Broker $sourceBroker is not assigned as a replica in previous partition movement for [$topic, $partition]")
               if (destinationBroker != null)
                 (inProgressReplicas :+ destinationBroker.toInt).filter(_ != sourceBroker)
@@ -72,7 +74,7 @@ object ExecutorUtils {
               throw new IllegalStateException("Should never be here")
             }
           case None =>
-            if (task.healthiness() == ExecutionTask.Healthiness.ABORTED 
+            if (task.healthiness() == ExecutionTask.Healthiness.ABORTED
               || task.healthiness() == ExecutionTask.Healthiness.KILLED) {
               LOG.warn(s"No need to abort tasks $task because the partition is not in reassignment")
               addTask = false
@@ -85,38 +87,77 @@ object ExecutorUtils {
                 addTask = false
                 Seq.empty
               } else {
-                if (!currentReplicaAssignment.contains(destinationBroker)) {
-                  if (currentReplicaAssignment.contains(sourceBroker)) {
-                    // this is a normal movement.
-                    if (destinationBroker != null)
-                      (currentReplicaAssignment :+ destinationBroker.toInt).filter(_ != sourceBroker) 
-                    else
-                      currentReplicaAssignment.filter(_ != sourceBroker)
+                if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
+                  if (currentReplicaAssignment.contains(destinationBroker) && !currentReplicaAssignment.contains(sourceBroker)) {
+                    // Reassignment is done already.
+                    addTask = false
+                    Seq.empty
                   } else {
-                    // The replica list should have at least one of the source broker or destination broker.
-                    throw new RuntimeException(s"Broker $sourceBroker is not a replica of [$topic, $partition].")
+                    // Get new replicas for replica movement.
+                    getNewReplicasForReplicaMovement(currentReplicaAssignment, task)
+                  }
+                } else if (task.proposal.balancingAction() == BalancingAction.REPLICA_ADDITION) {
+                  if (currentReplicaAssignment.contains(destinationBroker)) {
+                    // Reassignment is done already.
+                    addTask = false
+                    Seq.empty
+                  } else {
+                    // Get new replicas for replica addition.
+                    getNewReplicasForReplicaAddition(currentReplicaAssignment, task)
+                  }
+                } else if (task.proposal.balancingAction() == BalancingAction.REPLICA_DELETION) {
+                  if (!currentReplicaAssignment.contains(sourceBroker)) {
+                    // Reassignment is done already.
+                    addTask = false
+                    Seq.empty
+                  } else {
+                    // Get new replicas for replica deletion.
+                    getNewReplicasForReplicaDeletion(currentReplicaAssignment, task)
                   }
                 } else {
-                  if (currentReplicaAssignment.contains(sourceBroker)) {
-                    // The destination broker is already in the list, we just need to filter out the source broker if
-                    // it exists.
-                    currentReplicaAssignment.filter(_ != sourceBroker)
-                  } else {
-                    // If the source broker is no longer in the list, just do not add the task to the reassignment.
-                    addTask = false
-                    currentReplicaAssignment
-                  }
+                  throw new RuntimeException(s"Unexpected balancing action for proposal ${task.proposal} for [$topic, $partition]")
                 }
               }
             }
         }
         if (addTask)
-          newPartitionAssignment += (tp -> newReplicas)
+          newReplicaAssignment += (tp -> newReplicas)
       })
 
       // We do not use the ReassignPartitionsCommand here because we want to have incremental partition movement.
-      if (newPartitionAssignment.nonEmpty)
-        zkUtils.updatePartitionReassignmentData(newPartitionAssignment)
+      if (newReplicaAssignment.nonEmpty)
+        zkUtils.updatePartitionReassignmentData(newReplicaAssignment)
+    }
+  }
+
+  def getNewReplicasForReplicaAddition(currentReplicaAssignment: Seq[Int], task: ExecutionTask): Seq[Int] = {
+    // Source broker is guaranteed to be a null for replica addition.
+    val destinationBroker = task.destinationBrokerId()
+    currentReplicaAssignment :+ destinationBroker.toInt
+  }
+
+  def getNewReplicasForReplicaDeletion(currentReplicaAssignment: Seq[Int], task: ExecutionTask): Seq[Int] = {
+    // Destination broker is guaranteed to be a null for replica deletion.
+    val sourceBroker = task.sourceBrokerId()
+    currentReplicaAssignment.filter(_ != sourceBroker)
+  }
+
+  def getNewReplicasForReplicaMovement(currentReplicaAssignment: Seq[Int], task: ExecutionTask): Seq[Int] = {
+    // Both source and destination brokers are guaranteed to be non-null for replica movement.
+    val sourceBroker = task.sourceBrokerId()
+    val destinationBroker = task.destinationBrokerId()
+    if (!currentReplicaAssignment.contains(destinationBroker)) {
+      if (currentReplicaAssignment.contains(sourceBroker)) {
+        // This is a normal movement.
+        (currentReplicaAssignment :+ destinationBroker.toInt).filter(_ != sourceBroker)
+      } else {
+        throw new IllegalStateException(s"Unexpected proposal ${task.proposal}. Neither source nor destination broker" +
+          s" is in the current replica for ${BalancingAction.REPLICA_MOVEMENT}. Current replica assignment: " +
+          s"$currentReplicaAssignment.")
+      }
+    } else {
+      // The destination broker is already in the list, we just need to filter out the source broker if it exists.
+      currentReplicaAssignment.filter(_ != sourceBroker)
     }
   }
 
@@ -164,12 +205,12 @@ object ExecutorUtils {
   def partitionsBeingReassigned(zkUtils: ZkUtils) = {
     setAsJavaSet(zkUtils.getPartitionsBeingReassigned().keys.map(tap => new TopicPartition(tap.topic, tap.partition)).toSet)
   }
-  
+
   def newAssignmentForPartition(zkUtils: ZkUtils, tp : TopicPartition): java.util.List[Integer] = {
-    val inProgressReassignment = 
-      zkUtils.getPartitionsBeingReassigned().getOrElse(TopicAndPartition(tp.topic(), tp.partition()), 
+    val inProgressReassignment =
+      zkUtils.getPartitionsBeingReassigned().getOrElse(TopicAndPartition(tp.topic(), tp.partition()),
       throw new NoSuchElementException(s"Partition $tp is not being reassigned."))
-    
+
     seqAsJavaList(inProgressReassignment.newReplicas.map(i => i : java.lang.Integer))
   }
 }

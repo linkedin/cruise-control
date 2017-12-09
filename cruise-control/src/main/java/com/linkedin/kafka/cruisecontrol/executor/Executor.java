@@ -230,7 +230,7 @@ public class Executor {
 
         if (!tasksToExecute.isEmpty()) {
           // Execute the tasks.
-          ExecutorUtils.executePartitionMovementTasks(_zkUtils, tasksToExecute);
+          ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, tasksToExecute);
           _executionTaskManager.markTasksInProgress(tasksToExecute);
         }
         // Wait for some partition movements to finish
@@ -425,6 +425,7 @@ public class Executor {
     private void maybeAbortTasks(Collection<ExecutionTask> tasks) {
       List<ExecutionTask> abortedTasks = new ArrayList<>();
       List<ExecutionTask> deadTasks = new ArrayList<>();
+      List<ExecutionTask> abortedOrDeadLeaderMoveTasks = new ArrayList<>();
       Set<Integer> aliveNodes = new HashSet<>();
       Cluster cluster = _metadataClient.cluster();
       cluster.nodes().forEach(node -> aliveNodes.add(node.id()));
@@ -444,18 +445,24 @@ public class Executor {
               deadTasks.add(task);
               LOG.error("Killing execution for task {} because both source and destination broker are down.", task);
             }
+            // Keep track of leadership movement tasks.
+            if (task.proposal.balancingAction() == BalancingAction.LEADERSHIP_MOVEMENT) {
+              abortedOrDeadLeaderMoveTasks.add(task);
+            }
           }
         }
       }
       if (!abortedTasks.isEmpty() || !deadTasks.isEmpty()) {
-        List<ExecutionTask> abortedAndKilled = new ArrayList<>(abortedTasks);
-        abortedAndKilled.addAll(deadTasks);
+        // The aborted or killed relocation tasks include replica movement, addition, and deletion tasks.
+        List<ExecutionTask> abortedOrKilledReassignmentTasks = new ArrayList<>(abortedTasks);
+        abortedOrKilledReassignmentTasks.addAll(deadTasks);
+        abortedOrKilledReassignmentTasks.removeAll(abortedOrDeadLeaderMoveTasks);
         try {
           Thread.sleep(1000);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
-        ExecutorUtils.executePartitionMovementTasks(_zkUtils, abortedAndKilled);
+        ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, abortedOrKilledReassignmentTasks);
         LOG.error("Aborted tasks: {} , dead tasks: {}, stopping proposal execution.", abortedTasks, deadTasks);
         stopExecution();
       }
@@ -472,11 +479,11 @@ public class Executor {
         LOG.info("Reexecuting tasks {}", _executionTaskManager.tasksInProgress());
         List<ExecutionTask> tasksToReexecute = new ArrayList<>();
         for (ExecutionTask executionTask : _executionTaskManager.tasksInProgress()) {
-          if (executionTask.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
+          if (executionTask.proposal.balancingAction() != BalancingAction.LEADERSHIP_MOVEMENT) {
             tasksToReexecute.add(executionTask);
           }
         }
-        ExecutorUtils.executePartitionMovementTasks(_zkUtils, tasksToReexecute);
+        ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, tasksToReexecute);
       }
     }
   }
