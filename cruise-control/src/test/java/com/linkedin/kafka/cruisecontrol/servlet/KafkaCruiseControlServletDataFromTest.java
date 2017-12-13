@@ -19,6 +19,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -87,7 +88,7 @@ public class KafkaCruiseControlServletDataFromTest {
                                         _dataFrom,
                                         false);
     
-    assertEquals(goalsAndRequirements.goals(), _expectedGoalsToUse);
+    assertEquals(new HashSet<>(goalsAndRequirements.goals()), new HashSet<>(_expectedGoalsToUse));
     if (_expectedRequirements != null) {
       assertEquals(_expectedRequirements.minRequiredNumSnapshotWindows(), 
                    goalsAndRequirements.requirements().minRequiredNumSnapshotWindows());
