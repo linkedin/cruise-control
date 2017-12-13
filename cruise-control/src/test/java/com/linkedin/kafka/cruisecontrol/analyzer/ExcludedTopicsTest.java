@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistr
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
@@ -34,6 +35,7 @@ import java.util.HashSet;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Rule;
@@ -65,6 +67,7 @@ public class ExcludedTopicsTest {
     Set<String> goalNames = new HashSet<>();
     goalNames.add(RackAwareGoal.class.getName());
     goalNames.add(RackAwareCapacityGoal.class.getName());
+    goalNames.add(ReplicaCapacityGoal.class.getName());
     goalNames.add(CpuCapacityGoal.class.getName());
     goalNames.add(DiskCapacityGoal.class.getName());
     goalNames.add(NetworkInboundCapacityGoal.class.getName());
@@ -78,10 +81,9 @@ public class ExcludedTopicsTest {
     goalNames.add(LeaderBytesInDistributionGoal.class.getName());
     goalNames.add(ReplicaDistributionGoal.class.getName());
 
-    KafkaCruiseControlConfig config =
-        new KafkaCruiseControlConfig(CruiseControlUnitTestUtils.getCruiseControlProperties());
-
-    BalancingConstraint balancingConstraint = new BalancingConstraint(config);
+    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1L));
+    BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
@@ -120,7 +122,8 @@ public class ExcludedTopicsTest {
       } else if (goalName.equals(CpuCapacityGoal.class.getName()) ||
                  goalName.equals(DiskCapacityGoal.class.getName()) ||
                  goalName.equals(NetworkInboundCapacityGoal.class.getName()) ||
-                 goalName.equals(NetworkOutboundCapacityGoal.class.getName())) {
+                 goalName.equals(NetworkOutboundCapacityGoal.class.getName()) ||
+                 goalName.equals(ReplicaCapacityGoal.class.getName())) {
 
         // Test: With single excluded topic, satisfiable cluster (No exception, No proposal for excluded topic,
         // Expected to look optimized)
@@ -164,7 +167,7 @@ public class ExcludedTopicsTest {
         Object[] withAllExcludedTopicTestParams = {goal, clusterModel.topics(), null, clusterModel, false};
         params.add(withAllExcludedTopicTestParams);
       } else if (goalName.equals(TopicReplicaDistributionGoal.class.getName()) ||
-          goalName.equals(ReplicaDistributionGoal.class.getName())) {
+                 goalName.equals(ReplicaDistributionGoal.class.getName())) {
 
         // Test: With single excluded topic, satisfiable cluster (No exception, No proposal for excluded topic,
         // Expected to look optimized)

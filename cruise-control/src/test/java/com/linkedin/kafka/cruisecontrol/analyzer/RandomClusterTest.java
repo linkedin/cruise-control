@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGo
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -35,6 +36,7 @@ import java.util.Map;
 
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
+import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -58,22 +60,23 @@ public class RandomClusterTest {
 
     Map<Integer, String> goalNameByPriority = new HashMap<>();
     goalNameByPriority.put(1, RackAwareGoal.class.getName());
-    goalNameByPriority.put(2, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(3, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(4, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(5, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(6, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(7, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(8, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(9, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(10, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(11, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(12, LeaderBytesInDistributionGoal.class.getName());
-    goalNameByPriority.put(13, ReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
+    goalNameByPriority.put(3, CpuCapacityGoal.class.getName());
+    goalNameByPriority.put(4, DiskCapacityGoal.class.getName());
+    goalNameByPriority.put(5, NetworkInboundCapacityGoal.class.getName());
+    goalNameByPriority.put(6, NetworkOutboundCapacityGoal.class.getName());
+    goalNameByPriority.put(7, PotentialNwOutGoal.class.getName());
+    goalNameByPriority.put(8, TopicReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(13, LeaderBytesInDistributionGoal.class.getName());
+    goalNameByPriority.put(14, ReplicaDistributionGoal.class.getName());
 
-    KafkaCruiseControlConfig config =
-        new KafkaCruiseControlConfig(CruiseControlUnitTestUtils.getCruiseControlProperties());
-    BalancingConstraint balancingConstraint = new BalancingConstraint(config);
+    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1500L));
+    BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
@@ -85,7 +88,12 @@ public class RandomClusterTest {
       Object[] brokerCountParams = {modifiedProperties, goalNameByPriority, distribution, balancingConstraint};
       params.add(brokerCountParams);
     }
+
     // Test: Increase Replica Count
+    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(4000L));
+    balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
+    balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
+    balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
     for (int i = 7; i <= 12; i++) {
       modifiedProperties = new HashMap<>();
       modifiedProperties.put(ClusterProperty.NUM_REPLICAS, 50001 + (i - 7) * 5001);

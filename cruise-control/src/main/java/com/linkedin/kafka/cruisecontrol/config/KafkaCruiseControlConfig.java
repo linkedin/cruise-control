@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGo
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
@@ -322,6 +323,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "will continuously compute the proposal candidates.";
 
   /**
+   * <code>max.replicas.per.broker</code>
+   */
+  public static final String MAX_REPLICAS_PER_BROKER_CONFIG = "max.replicas.per.broker";
+  private static final String MAX_REPLICAS_PER_BROKER_DOC = "The maximum number of replicas allowed to reside on a "
+      + "broker. The analyzer will enforce a hard goal that the number of replica on a broker cannot be higher than "
+      + "this config.";
+
+  /**
    * <code>num.proposal.precompute.threads</code>
    */
   public static final String NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG = "num.proposal.precompute.threads";
@@ -615,6 +624,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 PROPOSAL_EXPIRATION_MS_DOC)
+        .define(MAX_REPLICAS_PER_BROKER_CONFIG,
+            ConfigDef.Type.LONG,
+            10000,
+            atLeast(0),
+            ConfigDef.Importance.MEDIUM,
+            MAX_REPLICAS_PER_BROKER_DOC)
         .define(NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG,
                 ConfigDef.Type.INT,
                 1,
@@ -644,6 +659,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")
                     .add(RackAwareGoal.class.getName())
+                    .add(ReplicaCapacityGoal.class.getName())
                     .add(CpuCapacityGoal.class.getName())
                     .add(DiskCapacityGoal.class.getName())
                     .add(NetworkInboundCapacityGoal.class.getName())
@@ -671,6 +687,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")
                     .add(RackAwareGoal.class.getName())
+                    .add(ReplicaCapacityGoal.class.getName())
                     .add(CpuCapacityGoal.class.getName())
                     .add(DiskCapacityGoal.class.getName())
                     .add(NetworkInboundCapacityGoal.class.getName())

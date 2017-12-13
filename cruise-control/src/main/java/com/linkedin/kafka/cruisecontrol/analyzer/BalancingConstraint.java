@@ -25,11 +25,13 @@ public class BalancingConstraint {
   private final Map<Resource, Double> _balancePercentage;
   private final Map<Resource, Double> _capacityThreshold;
   private final Map<Resource, Double> _lowUtilizationThreshold;
+  private final Long _maxReplicasPerBroker;
 
   /**
    * Constructor for Balancing Constraint.
    * (1) Sets resources in descending order of balancing priority.
-   * (2) Initializes balance percentage and capacity threshold with corresponding default values.
+   * (2) Initializes balance percentages, capacity thresholds, and the maximum number of replicas per broker with the
+   * corresponding default values.
    */
   public BalancingConstraint(KafkaCruiseControlConfig config) {
     _resources = Collections.unmodifiableList(Arrays.asList(Resource.DISK, Resource.NW_IN, Resource.NW_OUT, Resource.CPU));
@@ -52,6 +54,8 @@ public class BalancingConstraint {
     _lowUtilizationThreshold.put(Resource.CPU, config.getDouble(KafkaCruiseControlConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG));
     _lowUtilizationThreshold.put(Resource.NW_IN, config.getDouble(KafkaCruiseControlConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG));
     _lowUtilizationThreshold.put(Resource.NW_OUT, config.getDouble(KafkaCruiseControlConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG));
+    // Set default value for the maximum number of replicas per broker.
+    _maxReplicasPerBroker = config.getLong(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG);
   }
 
   Properties setProps(Properties props) {
@@ -69,6 +73,8 @@ public class BalancingConstraint {
     props.put(KafkaCruiseControlConfig.CPU_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.CPU).toString());
     props.put(KafkaCruiseControlConfig.NETWORK_INBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.NW_IN).toString());
     props.put(KafkaCruiseControlConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG, _lowUtilizationThreshold.get(Resource.NW_OUT).toString());
+
+    props.put(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, _maxReplicasPerBroker.toString());
     return props;
   }
 
@@ -77,6 +83,13 @@ public class BalancingConstraint {
    */
   public List<Resource> resources() {
     return _resources;
+  }
+
+  /**
+   * Get maximum number of replicas per broker.
+   */
+  public Long maxReplicasPerBroker() {
+    return _maxReplicasPerBroker;
   }
 
   /**
@@ -166,10 +179,11 @@ public class BalancingConstraint {
   public String toString() {
     return String.format("<BalancingConstraint cpuBalancePercentage=\"%.4f\" diskBalancePercentage=\"%.4f\" " +
             "inboundNwBalancePercentage=\"%.4f\" outboundNwBalancePercentage=\"%.4f\" cpuCapacityThreshold=\"%.4f\" "
-            + "diskCapacityThreshold=\"%.4f\" inboundNwCapacityThreshold=\"%.4f\" outboundNwCapacityThreshold=\"%.4f\">"
-            + "%n</BalancingConstraint>%n", _balancePercentage.get(Resource.CPU), _balancePercentage.get(Resource.DISK),
+            + "diskCapacityThreshold=\"%.4f\" inboundNwCapacityThreshold=\"%.4f\" outboundNwCapacityThreshold=\"%.4f\""
+            + " maxReplicasPerBroker=\"%d\">%n</BalancingConstraint>%n",
+        _balancePercentage.get(Resource.CPU), _balancePercentage.get(Resource.DISK),
         _balancePercentage.get(Resource.NW_IN), _balancePercentage.get(Resource.NW_OUT),
         _capacityThreshold.get(Resource.CPU), _capacityThreshold.get(Resource.DISK),
-        _capacityThreshold.get(Resource.NW_IN), _capacityThreshold.get(Resource.NW_OUT));
+        _capacityThreshold.get(Resource.NW_IN), _capacityThreshold.get(Resource.NW_OUT), _maxReplicasPerBroker);
   }
 }
