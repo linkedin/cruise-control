@@ -164,7 +164,7 @@ public abstract class AbstractGoal implements Goal {
                                              ClusterModel clusterModel,
                                              Set<Goal> optimizedGoals,
                                              Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException;
+      throws AnalysisInputException, ModelInputException, OptimizationFailureException;
 
   /**
    * Attempt to apply the given balancing action to the given replica in the given cluster. The application

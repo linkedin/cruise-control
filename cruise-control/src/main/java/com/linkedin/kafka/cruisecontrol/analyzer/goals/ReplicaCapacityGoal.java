@@ -19,9 +19,10 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -200,23 +201,21 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    */
   @Override
   protected void rebalanceForBroker(Broker broker, ClusterModel clusterModel, Set<Goal> optimizedGoals,
-      Set<String> excludedTopics) throws AnalysisInputException, ModelInputException {
+      Set<String> excludedTopics) throws AnalysisInputException, ModelInputException, OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
-    int numBrokerReplicas = broker.replicas().size();
     for (Replica replica : new ArrayList<>(broker.replicas())) {
-      if ((broker.isAlive() && numBrokerReplicas <= _balancingConstraint.maxReplicasPerBroker())
-          || excludedTopics.contains(replica.topicPartition().topic())) {
+      if (broker.isAlive() && broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker()) {
+        break;
+      }
+      if (excludedTopics.contains(replica.topicPartition().topic())) {
         continue;
       }
 
       // The goal requirements are violated. Move replica to an available broker.
       if (maybeApplyBalancingAction(clusterModel, replica, replicaCapacityEligibleBrokers(replica, clusterModel),
           BalancingAction.REPLICA_MOVEMENT, optimizedGoals) == null) {
-        throw new AnalysisInputException("Violated replica capacity requirement for broker with id " + broker.id() + ".");
+        throw new OptimizationFailureException("Violated replica capacity requirement for broker with id " + broker.id() + ".");
       }
-    }
-    if (!broker.isAlive() && broker.replicas().size() > 0) {
-      throw new AnalysisInputException("THERE ARE REPLICAS ON DEAD BROKER");
     }
   }
 
@@ -228,9 +227,12 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * @param clusterModel The state of the cluster.
    * @return A list of replica capacity eligible brokers for the given replica in the given cluster.
    */
-  private List<Broker> replicaCapacityEligibleBrokers(Replica replica, ClusterModel clusterModel) {
+  private SortedSet<Broker> replicaCapacityEligibleBrokers(Replica replica, ClusterModel clusterModel) {
     // Populate partition rack ids.
-    List<Broker> eligibleBrokers = new ArrayList<>();
+    SortedSet<Broker> eligibleBrokers = new TreeSet<>((o1, o2) -> {
+      return Integer.compare(o1.replicas().size(), o2.replicas().size());
+    });
+
     int sourceBrokerId = replica.broker().id();
 
     for (Broker broker : clusterModel.healthyBrokers()) {
@@ -238,10 +240,6 @@ public class ReplicaCapacityGoal extends AbstractGoal {
         eligibleBrokers.add(broker);
       }
     }
-
-    // Sort brokers from the least to most replica holder.
-    Collections.sort(eligibleBrokers,
-        (o1, o2) -> Integer.compare(o1.replicas().size(), o2.replicas().size()));
 
     // Return eligible brokers.
     return eligibleBrokers;

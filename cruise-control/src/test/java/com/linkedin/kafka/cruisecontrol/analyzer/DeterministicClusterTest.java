@@ -28,7 +28,6 @@ import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Load;
 
-import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -72,7 +71,7 @@ public class DeterministicClusterTest {
    * @return Parameters for the {@link OptimizationVerifier}.
    */
   @Parameterized.Parameters
-  public static Collection<Object[]> data() throws AnalysisInputException, ModelInputException, IOException {
+  public static Collection<Object[]> data() throws AnalysisInputException, ModelInputException {
     Collection<Object[]> params = new ArrayList<>();
 
     int numSnapshots = 2;
