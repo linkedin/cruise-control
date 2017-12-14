@@ -62,7 +62,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final String VERBOSE_PARAM = "verbose";
   private static final String SUPER_VERBOSE_PARM = "super_verbose";
   private static final String RESOURCE_PARAM = "resource";
-  private static final String WITH_AVAILABLE_VALID_PARTITIONS = "with_available_valid_partitions";
+  private static final String DATA_FROM_PARAM = "data_from";
 
   private static final String GOALS_PARAM = "goals";
   private static final String GRANULARITY_PARAM = "granularity";
@@ -104,7 +104,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Set<String> proposals = new HashSet<>();
     proposals.add(VERBOSE_PARAM);
     proposals.add(IGNORE_PROPOSAL_CACHE_PARAM);
-    proposals.add(WITH_AVAILABLE_VALID_PARTITIONS);
+    proposals.add(DATA_FROM_PARAM);
     proposals.add(GOALS_PARAM);
     proposals.add(JSON_PARAM);
 
@@ -117,7 +117,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     addOrRemoveBroker.add(BROKER_ID_PARAM);
     addOrRemoveBroker.add(DRY_RUN_PARAM);
     addOrRemoveBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
-    addOrRemoveBroker.add(WITH_AVAILABLE_VALID_PARTITIONS);
+    addOrRemoveBroker.add(DATA_FROM_PARAM);
     addOrRemoveBroker.add(GOALS_PARAM);
     addOrRemoveBroker.add(JSON_PARAM);
 
@@ -132,7 +132,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Set<String> rebalance = new HashSet<>();
     rebalance.add(DRY_RUN_PARAM);
     rebalance.add(GOALS_PARAM);
-    rebalance.add(WITH_AVAILABLE_VALID_PARTITIONS);
+    rebalance.add(DATA_FROM_PARAM);
     rebalance.add(JSON_PARAM);
 
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
@@ -569,8 +569,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void getProposals(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean verbose;
     boolean ignoreProposalCache;
-    boolean withAvailableValidWindows = false;
-    boolean withAvailableValidPartitions = false;
+    DataFrom dataFrom = DataFrom.WITH_AVAILABLE_VALID_WINDOWS;
     boolean json;
     List<String> goals;
     try {
@@ -578,21 +577,19 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String verboseString = request.getParameter(VERBOSE_PARAM);
       verbose = verboseString != null && Boolean.parseBoolean(verboseString);
       String ignoreProposalCacheString = request.getParameter(IGNORE_PROPOSAL_CACHE_PARAM);
-      String withAvailableValidPartitionsString = request.getParameter(WITH_AVAILABLE_VALID_PARTITIONS);
+      String dataFromString = request.getParameter(DATA_FROM_PARAM);
       String goalsString = request.getParameter(GOALS_PARAM);
       goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
       ignoreProposalCache = (ignoreProposalCacheString != null && Boolean.parseBoolean(ignoreProposalCacheString))
           || !goals.isEmpty();
-      if (withAvailableValidPartitionsString != null) {
-        withAvailableValidPartitions = Boolean.parseBoolean(withAvailableValidPartitionsString);
-        withAvailableValidWindows = !withAvailableValidPartitions;
+      if (dataFromString != null) {
+        dataFrom = DataFrom.valueOf(dataFromString.toUpperCase());
       }
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-    GoalsAndRequirements goalsAndRequirements =
-        getGoalsAndRequirements(goals, withAvailableValidPartitions, withAvailableValidWindows, ignoreProposalCache);
+    GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(goals, dataFrom, ignoreProposalCache);
 
     GoalOptimizer.OptimizerResult optimizerResult =
         _kafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(),
@@ -667,15 +664,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
   }
 
-  private ModelCompletenessRequirements getRequirements(boolean withAvailableValidPartitions,
-                                                        boolean withAvailableValidWindows) {
-    ModelCompletenessRequirements requirements = null;
-    if (withAvailableValidPartitions) {
-      requirements = new ModelCompletenessRequirements(Integer.MAX_VALUE, 0.0, true);
-    } else if (withAvailableValidWindows) {
-      requirements = new ModelCompletenessRequirements(1, 1.0, true);
+  private ModelCompletenessRequirements getRequirements(DataFrom dataFrom) {
+    if (dataFrom == DataFrom.WITH_AVAILABLE_VALID_PARTITIONS) {
+      return new ModelCompletenessRequirements(Integer.MAX_VALUE, 0.0, true);
+    } else {
+      return new ModelCompletenessRequirements(1, 1.0, true);
     }
-    return requirements;
   }
 
   private boolean wantJSON(HttpServletRequest request) {
@@ -754,8 +748,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throws KafkaCruiseControlException, IOException {
     List<Integer> brokerIds = new ArrayList<>();
     boolean dryrun;
-    boolean withAvailableValidWindows = false;
-    boolean withAvailableValidPartitions = false;
+    DataFrom dataFrom = DataFrom.WITH_AVAILABLE_VALID_WINDOWS; // by default we use withAvailableValidWindows
     boolean throttleAddedOrRemovedBrokers;
     List<String> goals;
     boolean json;
@@ -774,16 +767,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       // TODO: Handle urlencoded value (%2C instead of ,)
       goals = goalsString == null || goalsString.isEmpty() ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
-      String withAvailableValidPartitionsString = request.getParameter(WITH_AVAILABLE_VALID_PARTITIONS);
-      if (withAvailableValidPartitionsString != null) {
-        withAvailableValidPartitions = Boolean.parseBoolean(withAvailableValidPartitionsString);
-        withAvailableValidWindows = !withAvailableValidPartitions;
+      String dataFromString = request.getParameter(DATA_FROM_PARAM);
+      if (dataFromString != null) {
+        dataFrom = DataFrom.valueOf(dataFromString);
       }
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-    GoalsAndRequirements goalsAndRequirements =
-        getGoalsAndRequirements(goals, withAvailableValidPartitions, withAvailableValidWindows, false);
+    GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(goals, dataFrom, false);
     GoalOptimizer.OptimizerResult optimizerResult;
     if (endPoint == EndPoint.ADD_BROKER) {
       optimizerResult = _kafkaCruiseControl.addBrokers(brokerIds, dryrun, throttleAddedOrRemovedBrokers,
@@ -816,8 +807,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void rebalance(HttpServletRequest request, HttpServletResponse response)
       throws KafkaCruiseControlException, IOException {
     boolean dryrun;
-    boolean withAvailableValidWindows = false;
-    boolean withAvailableValidPartitions = false;
+    DataFrom dataFrom = DataFrom.WITH_AVAILABLE_VALID_WINDOWS; // default to with available windows.
     List<String> goals;
     try {
       String dryrunString = request.getParameter(DRY_RUN_PARAM);
@@ -827,16 +817,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
       goals.removeIf(String::isEmpty);
 
-      String withAvailableValidPartitionsString = request.getParameter(WITH_AVAILABLE_VALID_PARTITIONS);
-      if (withAvailableValidPartitionsString != null) {
-        withAvailableValidPartitions = Boolean.parseBoolean(withAvailableValidPartitionsString);
-        withAvailableValidWindows = !withAvailableValidPartitions;
+      String dataFromString = request.getParameter(DATA_FROM_PARAM);
+      if (dataFromString != null) {
+        dataFrom = DataFrom.valueOf(dataFromString);
       }
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-    GoalsAndRequirements goalsAndRequirements =
-        getGoalsAndRequirements(goals, withAvailableValidPartitions, withAvailableValidWindows, false);
+    GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(goals, dataFrom, false);
     GoalOptimizer.OptimizerResult optimizerResult = _kafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
                                                                                   dryrun,
                                                                                   goalsAndRequirements.requirements());
@@ -902,14 +890,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private String urlEncode(String s) throws UnsupportedEncodingException {
     return s == null ? null : URLEncoder.encode(s, StandardCharsets.UTF_8.name());
   }
-
-  private GoalsAndRequirements getGoalsAndRequirements(List<String> userProvidedGoals,
-                                                       boolean withAvailableValidPartitions,
-                                                       boolean withAvailableValidWindows,
-                                                       boolean ignoreCache) {
-    if (!userProvidedGoals.isEmpty() || withAvailableValidPartitions || withAvailableValidWindows) {
-      return new GoalsAndRequirements(userProvidedGoals,
-                                      getRequirements(withAvailableValidPartitions, withAvailableValidWindows));
+  
+  // package private for testing.
+  GoalsAndRequirements getGoalsAndRequirements(List<String> userProvidedGoals,
+                                               DataFrom dataFrom,
+                                               boolean ignoreCache) {
+    if (!userProvidedGoals.isEmpty() || dataFrom == DataFrom.WITH_AVAILABLE_VALID_PARTITIONS) {
+      return new GoalsAndRequirements(userProvidedGoals, getRequirements(dataFrom));
     }
     KafkaCruiseControlState state = _kafkaCruiseControl.state();
     int availableWindows = state.monitorState().numValidSnapshotWindows();
@@ -926,17 +913,18 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), null);
     } else if (availableWindows > 0) {
       // If some valid windows are available, use it.
-      return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), getRequirements(false, true));
+      return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), 
+                                      getRequirements(DataFrom.WITH_AVAILABLE_VALID_WINDOWS));
     } else if (readyGoals.size() > 0) {
       // If no window is valid but some goals are ready, use them.
-      return new GoalsAndRequirements(readyGoals, getRequirements(false, false));
+      return new GoalsAndRequirements(readyGoals, null);
     } else {
       // Ok, use default setting and let it throw exception.
       return new GoalsAndRequirements(Collections.emptyList(), null);
     }
   }
 
-  private static class GoalsAndRequirements {
+  static class GoalsAndRequirements {
     private final List<String> _goals;
     private final ModelCompletenessRequirements _requirements;
 
@@ -945,12 +933,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       _requirements = requirements;
     }
 
-    private List<String> goals() {
+    List<String> goals() {
       return _goals;
     }
 
-    private ModelCompletenessRequirements requirements() {
+    ModelCompletenessRequirements requirements() {
       return _requirements;
     }
+  }
+  
+  enum DataFrom {
+    WITH_AVAILABLE_VALID_WINDOWS, WITH_AVAILABLE_VALID_PARTITIONS
   }
 }
