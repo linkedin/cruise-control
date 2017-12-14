@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
@@ -65,10 +66,11 @@ public class Executor {
    *
    * @param config The configurations for Cruise Control.
    */
-  public Executor(KafkaCruiseControlConfig config, Time time) {
+  public Executor(KafkaCruiseControlConfig config, Time time, MetricRegistry dropwizardMetricRegistry) {
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
-                                 config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG));
+                                 config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
+                                 dropwizardMetricRegistry);
     _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     _metadataClient = new MetadataClient(config, new Metadata(), -1L, time);
     _statusCheckingIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
@@ -327,6 +329,7 @@ public class Executor {
           if (cluster.partition(tp) == null) {
             LOG.debug("Task {} is marked as finished because the topic has been deleted", task);
             finishedTasks.add(task);
+            _executionTaskManager.updateSensorsUponTaskTopicDeletion(task.proposal.balancingAction());
             continue;
           }
           boolean taskDone;
@@ -348,6 +351,7 @@ public class Executor {
           }
           if (taskDone) {
             finishedTasks.add(task);
+            _executionTaskManager.markTaskDone(task);
           }
         }
         if (finishedTasks.isEmpty()) {

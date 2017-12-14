@@ -76,7 +76,7 @@ public class KafkaCruiseControl {
     _goalOptimizerExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, _dropwizardMetricRegistry);
-    _executor = new Executor(config, _time);
+    _executor = new Executor(config, _time, _dropwizardMetricRegistry);
     _anomalyDetector = new AnomalyDetector(config, _loadMonitor, this, _time, _dropwizardMetricRegistry);
   }
 
