@@ -206,7 +206,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *
    * 5. Get an optimization proposal
    *    GET /kafkacruisecontrol/proposals?verbose=[ENABLE_VERBOSE]&ignore_proposal_cache=[true/false]
-   *    &goals=[goal1,goal2...]&with_available_valid_partitions=[true/false]
+   *    &goals=[goal1,goal2...]&data_from=[valid_windows/valid_partitions]
    *
    * 6. query the state of Kafka Cruise Control
    *    GET /kafkacruisecontrol/state
@@ -569,7 +569,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void getProposals(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean verbose;
     boolean ignoreProposalCache;
-    DataFrom dataFrom = DataFrom.WITH_AVAILABLE_VALID_WINDOWS;
+    DataFrom dataFrom = DataFrom.VALID_WINDOWS;
     boolean json;
     List<String> goals;
     try {
@@ -665,7 +665,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private ModelCompletenessRequirements getRequirements(DataFrom dataFrom) {
-    if (dataFrom == DataFrom.WITH_AVAILABLE_VALID_PARTITIONS) {
+    if (dataFrom == DataFrom.VALID_PARTITIONS) {
       return new ModelCompletenessRequirements(Integer.MAX_VALUE, 0.0, true);
     } else {
       return new ModelCompletenessRequirements(1, 1.0, true);
@@ -748,7 +748,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throws KafkaCruiseControlException, IOException {
     List<Integer> brokerIds = new ArrayList<>();
     boolean dryrun;
-    DataFrom dataFrom = DataFrom.WITH_AVAILABLE_VALID_WINDOWS; // by default we use withAvailableValidWindows
+    DataFrom dataFrom = DataFrom.VALID_WINDOWS; // by default we use ValidWindows
     boolean throttleAddedOrRemovedBrokers;
     List<String> goals;
     boolean json;
@@ -807,7 +807,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void rebalance(HttpServletRequest request, HttpServletResponse response)
       throws KafkaCruiseControlException, IOException {
     boolean dryrun;
-    DataFrom dataFrom = DataFrom.WITH_AVAILABLE_VALID_WINDOWS; // default to with available windows.
+    DataFrom dataFrom = DataFrom.VALID_WINDOWS; // default to with available windows.
     List<String> goals;
     try {
       String dryrunString = request.getParameter(DRY_RUN_PARAM);
@@ -895,7 +895,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   GoalsAndRequirements getGoalsAndRequirements(List<String> userProvidedGoals,
                                                DataFrom dataFrom,
                                                boolean ignoreCache) {
-    if (!userProvidedGoals.isEmpty() || dataFrom == DataFrom.WITH_AVAILABLE_VALID_PARTITIONS) {
+    if (!userProvidedGoals.isEmpty() || dataFrom == DataFrom.VALID_PARTITIONS) {
       return new GoalsAndRequirements(userProvidedGoals, getRequirements(dataFrom));
     }
     KafkaCruiseControlState state = _kafkaCruiseControl.state();
@@ -914,7 +914,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } else if (availableWindows > 0) {
       // If some valid windows are available, use it.
       return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), 
-                                      getRequirements(DataFrom.WITH_AVAILABLE_VALID_WINDOWS));
+                                      getRequirements(DataFrom.VALID_WINDOWS));
     } else if (readyGoals.size() > 0) {
       // If no window is valid but some goals are ready, use them.
       return new GoalsAndRequirements(readyGoals, null);
@@ -943,6 +943,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
   
   enum DataFrom {
-    WITH_AVAILABLE_VALID_WINDOWS, WITH_AVAILABLE_VALID_PARTITIONS
+    VALID_WINDOWS, VALID_PARTITIONS
   }
 }
