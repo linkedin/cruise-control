@@ -86,7 +86,7 @@ public class RandomSelfHealingTest {
           entry.getValue()), balancingConstraint};
       params.add(singleDeadSingleSoftParams);
     }
-    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10000L));
+    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5000L));
     balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);

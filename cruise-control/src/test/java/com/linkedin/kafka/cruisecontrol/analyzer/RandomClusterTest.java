@@ -90,7 +90,7 @@ public class RandomClusterTest {
     }
 
     // Test: Increase Replica Count
-    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(4000L));
+    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(3000L));
     balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);

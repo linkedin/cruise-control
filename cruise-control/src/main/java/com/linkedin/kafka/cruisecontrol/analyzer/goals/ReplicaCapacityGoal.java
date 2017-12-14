@@ -129,7 +129,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     }
 
     // Sanity check: total replicas in the cluster cannot be more than the allowed replicas in the cluster.
-    long maxReplicasInCluster = _balancingConstraint.maxReplicasPerBroker() * clusterModel.brokers().size();
+    long maxReplicasInCluster = _balancingConstraint.maxReplicasPerBroker() * clusterModel.healthyBrokers().size();
     if (totalReplicasInCluster > maxReplicasInCluster) {
       throw new AnalysisInputException(String.format("Total replicas in cluster: %d exceeds the maximum allowed "
           + "replicas in cluster: %d.", totalReplicasInCluster, maxReplicasInCluster));
@@ -147,10 +147,6 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal) {
-    if (proposal.balancingAction() != BalancingAction.REPLICA_MOVEMENT) {
-      throw new IllegalStateException("Found balancing action " + proposal.balancingAction() +
-          " but expected replica movement.");
-    }
     Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
     if (destinationBroker.replicas().size() >= _balancingConstraint.maxReplicasPerBroker()) {
       return false;
@@ -192,11 +188,9 @@ public class ReplicaCapacityGoal extends AbstractGoal {
 
   /**
    * Rebalance the given broker without violating the constraints of the current goal and optimized goals.
-   *  @param broker         Broker to be balanced.
+   * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
-
    * @param optimizedGoals Optimized goals.
-
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
@@ -212,10 +206,8 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       }
 
       // The goal requirements are violated. Move replica to an available broker.
-      if (maybeApplyBalancingAction(clusterModel, replica, replicaCapacityEligibleBrokers(replica, clusterModel),
-          BalancingAction.REPLICA_MOVEMENT, optimizedGoals) == null) {
-        throw new OptimizationFailureException("Violated replica capacity requirement for broker with id " + broker.id() + ".");
-      }
+      maybeApplyBalancingAction(clusterModel, replica, replicaCapacityEligibleBrokers(replica, clusterModel),
+          BalancingAction.REPLICA_MOVEMENT, optimizedGoals);
     }
   }
 
