@@ -114,6 +114,7 @@ The default Sample Store implementation produces metric samples back to Kafka.
 The goals in Cruise Control are pluggable with different priorities. The default goals in order of decreasing priority are:
  * **RackAwareGoal** - Ensures that all replicas of each partition are assigned in a rack aware manner -- i.e. no more than one replica of 
  each partition resides in the same rack.
+ * **ReplicaCapacityGoal** - Ensures that the maximum number of replicas per broker is under the specified maximum limit.
  * **CpuCapacityGoal** - Ensures that CPU utilization of each broker is below a given threshold.
  * **DiskCapacityGoal** - Ensures that Disk space usage of each broker is below a given threshold.
  * **NetworkInboundCapacityGoal** - Ensures that inbound network utilization of each broker is below a given threshold.

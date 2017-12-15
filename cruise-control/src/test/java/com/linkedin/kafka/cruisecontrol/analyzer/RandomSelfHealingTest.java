@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGo
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -30,6 +31,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.Properties;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -55,21 +57,23 @@ public class RandomSelfHealingTest {
 
     Map<Integer, String> goalNameByPriority = new HashMap<>();
     goalNameByPriority.put(1, RackAwareGoal.class.getName());
-    goalNameByPriority.put(2, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(2, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(2, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(2, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(3, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(4, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(5, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(6, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(7, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(8, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(9, ReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
+    goalNameByPriority.put(3, CpuCapacityGoal.class.getName());
+    goalNameByPriority.put(4, DiskCapacityGoal.class.getName());
+    goalNameByPriority.put(5, NetworkInboundCapacityGoal.class.getName());
+    goalNameByPriority.put(6, NetworkOutboundCapacityGoal.class.getName());
+    goalNameByPriority.put(7, PotentialNwOutGoal.class.getName());
+    goalNameByPriority.put(8, DiskUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(9, NetworkInboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(10, NetworkOutboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(11, CpuUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(12, TopicReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(13, ReplicaDistributionGoal.class.getName());
 
-    KafkaCruiseControlConfig config =
-        new KafkaCruiseControlConfig(CruiseControlUnitTestUtils.getCruiseControlProperties());
-    BalancingConstraint balancingConstraint = new BalancingConstraint(config);
+
+    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(2000L));
+    BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
@@ -82,6 +86,11 @@ public class RandomSelfHealingTest {
           entry.getValue()), balancingConstraint};
       params.add(singleDeadSingleSoftParams);
     }
+    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5000L));
+    balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
+    balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
+    balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
+
     // Test: All Goals.
     Object[] singleDeadMultiAllGoalsParams = {singleDeadBroker, goalNameByPriority, balancingConstraint};
     params.add(singleDeadMultiAllGoalsParams);
