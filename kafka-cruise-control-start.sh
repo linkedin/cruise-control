@@ -23,7 +23,7 @@ copyJars() {
   jars=(${files//,/ })
   for usrJar in ${jars[@]};
   do
-    cp $usrJar "$base_dir"/build/dependant-libs/
+    cp $usrJar "$base_dir"/cruise-control/build/dependant-libs/
   done
 }
 
