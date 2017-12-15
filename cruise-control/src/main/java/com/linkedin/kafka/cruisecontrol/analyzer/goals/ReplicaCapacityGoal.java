@@ -206,8 +206,12 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       }
 
       // The goal requirements are violated. Move replica to an available broker.
-      maybeApplyBalancingAction(clusterModel, replica, replicaCapacityEligibleBrokers(replica, clusterModel),
+      SortedSet<Broker> replicaCapacityEligibleBrokers = replicaCapacityEligibleBrokers(replica, clusterModel);
+      Broker b = maybeApplyBalancingAction(clusterModel, replica, replicaCapacityEligibleBrokers,
           BalancingAction.REPLICA_MOVEMENT, optimizedGoals);
+      if (b == null) {
+        LOG.debug("Failed to move replica {} to any broker in {}", replica, replicaCapacityEligibleBrokers);
+      }
     }
   }
 
