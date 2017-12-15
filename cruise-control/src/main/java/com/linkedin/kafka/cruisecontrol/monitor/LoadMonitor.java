@@ -24,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSample
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -389,7 +390,14 @@ public class LoadMonitor {
     final Timer.Context ctx = _clusterModelCreationTimer.time();
     try {
       // Create the racks and brokers.
-      for (Node node : kafkaCluster.nodes()) {
+      // Shuffle nodes before getting their capacity from the capacity resolver.
+      // This enables a capacity resolver to estimate the capacity of the nodes, for which the capacity retrieval has
+      // failed. If the call to the capacityForBroker fails on the invocation with the first node as the parameter, the
+      // capacity resolver would be unable to estimate the remaining nodes; hence, might throw an exception. Node
+      // shuffling decreases the likelihood of such failures on consecutive user requests.
+      List<Node> shuffledNodes = new ArrayList<>(kafkaCluster.nodes());
+      Collections.shuffle(shuffledNodes);
+      for (Node node : shuffledNodes) {
         // If the rack is not specified, we use the host info as rack info.
         String rack = getRackHandleNull(node);
         clusterModel.createRack(rack);
