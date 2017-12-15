@@ -392,9 +392,13 @@ public class LoadMonitor {
       // Create the racks and brokers.
       // Shuffle nodes before getting their capacity from the capacity resolver.
       // This enables a capacity resolver to estimate the capacity of the nodes, for which the capacity retrieval has
-      // failed. If the call to the capacityForBroker fails on the invocation with the first node as the parameter, the
-      // capacity resolver would be unable to estimate the remaining nodes; hence, might throw an exception. Node
-      // shuffling decreases the likelihood of such failures on consecutive user requests.
+      // failed.
+      // The use case for this estimation is that if the capacity of one of the nodes is not available (e.g. due to some
+      // 3rd party service issue), the capacity resolver may want to use the capacity of a peer node as the capacity for
+      // that node.
+      // To this end, Cruise Control handles the case that the first node is problematic so the capacity resolver does
+      // not have the chance to get the capacity for the other nodes.
+      // Shuffling the node order helps, as the problematic node is unlikely to always be the first node in the list.
       List<Node> shuffledNodes = new ArrayList<>(kafkaCluster.nodes());
       Collections.shuffle(shuffledNodes);
       for (Node node : shuffledNodes) {
