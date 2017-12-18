@@ -57,7 +57,7 @@ object ExecutorUtils {
                 inProgressReplicas.filter(_ != destinationBroker) :+ sourceBroker.toInt
               else
                 inProgressReplicas.filter(_ != destinationBroker)
-            } else if (task.healthiness() == ExecutionTask.Healthiness.KILLED) {
+            } else if (task.healthiness() == ExecutionTask.Healthiness.DEAD) {
               addTask = false
               Seq.empty
             } else if (task.healthiness() == ExecutionTask.Healthiness.NORMAL) {
@@ -75,7 +75,7 @@ object ExecutorUtils {
             }
           case None =>
             if (task.healthiness() == ExecutionTask.Healthiness.ABORTED
-              || task.healthiness() == ExecutionTask.Healthiness.KILLED) {
+              || task.healthiness() == ExecutionTask.Healthiness.DEAD) {
               LOG.warn(s"No need to abort tasks $task because the partition is not in reassignment")
               addTask = false
               Seq.empty

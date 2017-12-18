@@ -4,8 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.codahale.metrics.Counter;
-import com.codahale.metrics.Meter;
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
 
@@ -31,72 +30,98 @@ import org.apache.kafka.common.TopicPartition;
  */
 public class ExecutionTaskManager {
   private final Map<Integer, Integer> _inProgressPartMovementsByBrokerId;
-  private final Set<ExecutionTask> _inProgressTasks;
+  private final ExecutionTaskTracker _executionTaskTracker;
   private final Set<TopicPartition> _inProgressPartitions;
-  private final Set<ExecutionTask> _abortedTasks;
-  private final Set<ExecutionTask> _deadTasks;
   private final ExecutionTaskPlanner _executionTaskPlanner;
   private final int _partitionMovementConcurrency;
   private final int _leaderMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
 
-  private static final String COUNTER_REPLICA_MOVE_IN_PROGRESS = "replica-move-in-progress";
-  private static final String COUNTER_LEADERSHIP_MOVE_IN_PROGRESS = "leadership-move-in-progress";
-  private static final String COUNTER_REPLICA_MOVE_PENDING = "replica-move-pending";
-  private static final String COUNTER_LEADERSHIP_MOVE_PENDING = "leadership-move-pending";
-  private static final String METER_REPLICA_MOVE_ABORTED = "replica-move-aborted";
-  private static final String METER_LEADERSHIP_MOVE_ABORTED = "leadership-move-aborted";
-  private static final String METER_REPLICA_MOVE_DEAD = "replica-move-dead";
-  private static final String METER_LEADERSHIP_MOVE_DEAD = "leadership-move-dead";
-  private static final String COUNTER_REPLICA_ADDITION_IN_PROGRESS = "replica-addition-in-progress";
-  private static final String COUNTER_REPLICA_DELETION_IN_PROGRESS = "replica-deletion-in-progress";
-  private static final String COUNTER_REPLICA_ADDITION_PENDING = "replica-addition-pending";
-  private static final String COUNTER_REPLICA_DELETION_PENDING = "replica-deletion-pending";
-  private static final String METER_REPLICA_ADDITION_ABORTED = "replica-addition-aborted";
-  private static final String METER_REPLICA_DELETION_ABORTED = "replica-deletion-aborted";
-  private static final String METER_REPLICA_ADDITION_DEAD = "replica-addition-dead";
-  private static final String METER_REPLICA_DELETION_DEAD = "replica-deletion-dead";
+  private static final String REPLICA_MOVE = "replica-move";
+  private static final String LEADERSHIP_MOVE = "leadership-move";
+  private static final String REPLICA_ADDITION = "replica-addition";
+  private static final String REPLICA_DELETION = "replica-deletion";
+  private static final String IN_PROGRESS = "in-progress";
+  private static final String PENDING = "pending";
+  private static final String ABORTED = "aborted";
+  private static final String DEAD = "dead";
 
-  private static final String[] EXECUTION_COUNTER_NAMES = new String []
-      {COUNTER_REPLICA_MOVE_IN_PROGRESS, COUNTER_LEADERSHIP_MOVE_IN_PROGRESS,
-          COUNTER_REPLICA_MOVE_PENDING, COUNTER_LEADERSHIP_MOVE_PENDING,
-          COUNTER_REPLICA_ADDITION_IN_PROGRESS, COUNTER_REPLICA_DELETION_IN_PROGRESS,
-          COUNTER_REPLICA_ADDITION_PENDING, COUNTER_REPLICA_DELETION_PENDING};
+  private static final String GAUGE_REPLICA_MOVE_IN_PROGRESS = REPLICA_MOVE + "-" + IN_PROGRESS;
+  private static final String GAUGE_LEADERSHIP_MOVE_IN_PROGRESS = LEADERSHIP_MOVE + "-" + IN_PROGRESS;
+  private static final String GAUGE_REPLICA_MOVE_PENDING = REPLICA_MOVE + "-" + PENDING;
+  private static final String GAUGE_LEADERSHIP_MOVE_PENDING = LEADERSHIP_MOVE + "-" + PENDING;
+  private static final String GAUGE_REPLICA_MOVE_ABORTED = REPLICA_MOVE + "-" + ABORTED;
+  private static final String GAUGE_LEADERSHIP_MOVE_ABORTED = LEADERSHIP_MOVE + "-" + ABORTED;
+  private static final String GAUGE_REPLICA_MOVE_DEAD = REPLICA_MOVE + "-" + DEAD;
+  private static final String GAUGE_LEADERSHIP_MOVE_DEAD = LEADERSHIP_MOVE + "-" + DEAD;
+  private static final String GAUGE_REPLICA_ADDITION_IN_PROGRESS = REPLICA_ADDITION + "-" + IN_PROGRESS;
+  private static final String GAUGE_REPLICA_DELETION_IN_PROGRESS = REPLICA_DELETION + "-" + IN_PROGRESS;
+  private static final String GAUGE_REPLICA_ADDITION_PENDING = REPLICA_ADDITION + "-" + PENDING;
+  private static final String GAUGE_REPLICA_DELETION_PENDING = REPLICA_DELETION + "-" + PENDING;
+  private static final String GAUGE_REPLICA_ADDITION_ABORTED = REPLICA_ADDITION + "-" + ABORTED;
+  private static final String GAUGE_REPLICA_DELETION_ABORTED = REPLICA_DELETION + "-" + ABORTED;
+  private static final String GAUGE_REPLICA_ADDITION_DEAD = REPLICA_ADDITION + "-" + DEAD;
+  private static final String GAUGE_REPLICA_DELETION_DEAD = REPLICA_DELETION + "-" + DEAD;
 
-  private static final String[] EXECUTION_METER_NAMES = new String []
-      {METER_REPLICA_MOVE_ABORTED, METER_LEADERSHIP_MOVE_ABORTED,
-          METER_REPLICA_MOVE_DEAD, METER_LEADERSHIP_MOVE_DEAD,
-          METER_REPLICA_ADDITION_ABORTED, METER_REPLICA_DELETION_ABORTED,
-          METER_REPLICA_ADDITION_DEAD, METER_REPLICA_DELETION_DEAD};
-
-  private final Map<String, Counter> _executionCounterByName;
-  private final Map<String, Meter> _executionRateByName;
   /**
    * The constructor of The Execution task manager.
    *
    * @param partitionMovementConcurrency The maximum number of concurrent partition movements per broker.
    */
-  public ExecutionTaskManager(int partitionMovementConcurrency, int leaderMovementConcurrency,
+  public ExecutionTaskManager(int partitionMovementConcurrency,
+                              int leaderMovementConcurrency,
                               MetricRegistry dropwizardMetricRegistry) {
     _inProgressPartMovementsByBrokerId = new HashMap<>();
     _inProgressPartitions = new HashSet<>();
-    _inProgressTasks = new HashSet<>();
-    _abortedTasks = new HashSet<>();
-    _deadTasks = new HashSet<>();
+    _executionTaskTracker = new ExecutionTaskTracker();
     _executionTaskPlanner = new ExecutionTaskPlanner();
     _partitionMovementConcurrency = partitionMovementConcurrency;
     _leaderMovementConcurrency = leaderMovementConcurrency;
     _brokersToSkipConcurrencyCheck = new HashSet<>();
 
-    // Initialize execution counter and rate sensors.
-    _executionCounterByName = new HashMap<>();
-    for (String name : EXECUTION_COUNTER_NAMES) {
-      _executionCounterByName.put(name, dropwizardMetricRegistry.counter(MetricRegistry.name("Executor", name)));
-    }
-    _executionRateByName = new HashMap<>();
-    for (String name : EXECUTION_METER_NAMES) {
-      _executionRateByName.put(name, dropwizardMetricRegistry.meter(MetricRegistry.name("Executor", name)));
-    }
+    // Register gauge sensors.
+    registerGaugeSensors(dropwizardMetricRegistry);
+  }
+
+  /**
+   * Register gauge sensors.
+   *
+   * @param dropwizardMetricRegistry
+   */
+  private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
+    String metricName = "Executor";
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_MOVE_IN_PROGRESS),
+                                      (Gauge<Integer>) _executionTaskTracker::numInProgressReplicaMove);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_MOVE_IN_PROGRESS),
+                                      (Gauge<Integer>) _executionTaskTracker::numInProgressLeadershipMove);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_MOVE_PENDING),
+                                      (Gauge<Integer>) _executionTaskTracker::numPendingReplicaMove);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_MOVE_PENDING),
+                                      (Gauge<Integer>) _executionTaskTracker::numPendingLeadershipMove);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_ADDITION_IN_PROGRESS),
+                                      (Gauge<Integer>) _executionTaskTracker::numInProgressReplicaAddition);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_DELETION_IN_PROGRESS),
+                                      (Gauge<Integer>) _executionTaskTracker::numInProgressReplicaDeletion);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_ADDITION_PENDING),
+                                      (Gauge<Integer>) _executionTaskTracker::numPendingReplicaAddition);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_DELETION_PENDING),
+                                      (Gauge<Integer>) _executionTaskTracker::numPendingReplicaDeletion);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_MOVE_ABORTED),
+                                      (Gauge<Integer>) _executionTaskTracker::numAbortedReplicaMove);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_MOVE_ABORTED),
+                                      (Gauge<Integer>) _executionTaskTracker::numAbortedLeadershipMove);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_ADDITION_ABORTED),
+                                      (Gauge<Integer>) _executionTaskTracker::numAbortedReplicaAddition);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_DELETION_ABORTED),
+                                      (Gauge<Integer>) _executionTaskTracker::numAbortedReplicaDeletion);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_MOVE_DEAD),
+                                      (Gauge<Integer>) _executionTaskTracker::numDeadReplicaMove);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_MOVE_DEAD),
+                                      (Gauge<Integer>) _executionTaskTracker::numDeadLeadershipMove);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_ADDITION_DEAD),
+                                      (Gauge<Integer>) _executionTaskTracker::numDeadReplicaAddition);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_DELETION_DEAD),
+                                      (Gauge<Integer>) _executionTaskTracker::numDeadReplicaDeletion);
   }
 
   /**
@@ -149,14 +174,14 @@ public class ExecutionTaskManager {
    * Check if there is any task in progress.
    */
   public boolean hasTaskInProgress() {
-    return _inProgressTasks.size() > 0;
+    return _executionTaskTracker.hasTaskInProgress();
   }
 
   /**
    * Get all the in progress execution tasks.
    */
   public Set<ExecutionTask> tasksInProgress() {
-    return _inProgressTasks;
+    return _executionTaskTracker.tasksInProgress();
   }
 
   /**
@@ -178,19 +203,8 @@ public class ExecutionTaskManager {
         _inProgressPartMovementsByBrokerId.put(p.destinationBrokerId(), 0);
       }
 
-      // Increase pending task sensors.
-      BalancingAction balancingAction = p.balancingAction();
-      if (balancingAction == BalancingAction.REPLICA_MOVEMENT) {
-        _executionCounterByName.get(COUNTER_REPLICA_MOVE_PENDING).inc();
-      } else if (balancingAction == BalancingAction.LEADERSHIP_MOVEMENT) {
-        _executionCounterByName.get(COUNTER_LEADERSHIP_MOVE_PENDING).inc();
-      } else if (balancingAction == BalancingAction.REPLICA_ADDITION) {
-        _executionCounterByName.get(COUNTER_REPLICA_ADDITION_PENDING).inc();
-      } else if (balancingAction == BalancingAction.REPLICA_DELETION) {
-        _executionCounterByName.get(COUNTER_REPLICA_DELETION_PENDING).inc();
-      } else {
-        throw new IllegalStateException(String.format("Unrecognized balancing action: %s.", balancingAction));
-      }
+      // Add pending proposals to indicate the phase before they become an executable task.
+      _executionTaskTracker.pendingProposalsFor(p.balancingAction()).add(p);
     }
     _brokersToSkipConcurrencyCheck.clear();
     if (brokersToSkipConcurrencyCheck != null) {
@@ -205,15 +219,12 @@ public class ExecutionTaskManager {
     if (!tasks.isEmpty()) {
       // Get the common balancing action for the given tasks.
       BalancingAction taskBalancingAction = tasks.iterator().next().proposal.balancingAction();
-      // Sanity check: All tasks must have the same balancing action.
-      for (ExecutionTask task : tasks) {
-        if (task.proposal.balancingAction() != taskBalancingAction) {
-          throw new IllegalStateException("Attempt to execute tasks with heterogeneous balancing actions.");
-        }
-      }
 
       for (ExecutionTask task : tasks) {
-        _inProgressTasks.add(task);
+        // Add task to the relevant task in progress.
+        BalancingAction balancingAction = task.proposal.balancingAction();
+        _executionTaskTracker.inProgressTasksFor(balancingAction).add(task);
+        _executionTaskTracker.pendingProposalsFor(balancingAction).remove(task.proposal);
         _inProgressPartitions.add(task.proposal.topicPartition());
         if (taskBalancingAction == BalancingAction.REPLICA_MOVEMENT) {
           if (task.sourceBrokerId() != null) {
@@ -226,51 +237,6 @@ public class ExecutionTaskManager {
           }
         }
       }
-
-      // Mark in progress and pending tasks.
-      if (taskBalancingAction == BalancingAction.REPLICA_MOVEMENT) {
-        _executionCounterByName.get(COUNTER_REPLICA_MOVE_IN_PROGRESS).inc(tasks.size());
-        _executionCounterByName.get(COUNTER_REPLICA_MOVE_PENDING).dec(tasks.size());
-      } else if (taskBalancingAction == BalancingAction.LEADERSHIP_MOVEMENT) {
-        _executionCounterByName.get(COUNTER_LEADERSHIP_MOVE_IN_PROGRESS).inc(tasks.size());
-        _executionCounterByName.get(COUNTER_LEADERSHIP_MOVE_PENDING).dec(tasks.size());
-      } else if (taskBalancingAction == BalancingAction.REPLICA_ADDITION) {
-        _executionCounterByName.get(COUNTER_REPLICA_ADDITION_IN_PROGRESS).inc(tasks.size());
-        _executionCounterByName.get(COUNTER_REPLICA_ADDITION_PENDING).dec(tasks.size());
-      } else if (taskBalancingAction == BalancingAction.REPLICA_DELETION) {
-        _executionCounterByName.get(COUNTER_REPLICA_DELETION_IN_PROGRESS).inc(tasks.size());
-        _executionCounterByName.get(COUNTER_REPLICA_DELETION_PENDING).dec(tasks.size());
-      } else {
-        throw new IllegalStateException(String.format("Unrecognized balancing action: %s.", taskBalancingAction));
-      }
-    }
-  }
-
-  /**
-   * Update relevant sensors upon topic deletion of an ongoing task based on the given task balancing action.
-   *
-   * @param taskBalancingAction Task balancing action for the ongoing task.
-   */
-  void updateSensorsUponTaskTopicDeletion(BalancingAction taskBalancingAction) {
-    switch (taskBalancingAction) {
-      case REPLICA_MOVEMENT:
-        _executionCounterByName.get(COUNTER_REPLICA_MOVE_IN_PROGRESS).dec();
-        _executionRateByName.get(METER_REPLICA_MOVE_ABORTED).mark();
-        break;
-      case REPLICA_DELETION:
-        _executionCounterByName.get(COUNTER_REPLICA_DELETION_IN_PROGRESS).dec();
-        _executionRateByName.get(METER_REPLICA_DELETION_ABORTED).mark();
-        break;
-      case REPLICA_ADDITION:
-        _executionCounterByName.get(COUNTER_REPLICA_ADDITION_IN_PROGRESS).dec();
-        _executionRateByName.get(METER_REPLICA_ADDITION_ABORTED).mark();
-        break;
-      case LEADERSHIP_MOVEMENT:
-        _executionCounterByName.get(COUNTER_LEADERSHIP_MOVE_IN_PROGRESS).dec();
-        _executionRateByName.get(METER_LEADERSHIP_MOVE_ABORTED).mark();
-        break;
-      default:
-        throw new IllegalStateException(String.format("Unrecognized balancing action: %s.", taskBalancingAction));
     }
   }
 
@@ -279,68 +245,26 @@ public class ExecutionTaskManager {
    */
   public void markTaskDone(ExecutionTask task) {
     if (task.healthiness() == ExecutionTask.Healthiness.NORMAL) {
-      switch (task.proposal.balancingAction()) {
-        case REPLICA_MOVEMENT:
-          _executionCounterByName.get(COUNTER_REPLICA_MOVE_IN_PROGRESS).dec();
-          break;
-        case REPLICA_DELETION:
-          _executionCounterByName.get(COUNTER_REPLICA_DELETION_IN_PROGRESS).dec();
-          break;
-        case REPLICA_ADDITION:
-          _executionCounterByName.get(COUNTER_REPLICA_ADDITION_IN_PROGRESS).dec();
-          break;
-        case LEADERSHIP_MOVEMENT:
-          _executionCounterByName.get(COUNTER_LEADERSHIP_MOVE_IN_PROGRESS).dec();
-          break;
-        default:
-          throw new IllegalStateException(String.format("Unrecognized balancing action: %s.", task.proposal.balancingAction()));
-      }
+      BalancingAction balancingAction = task.proposal.balancingAction();
+      _executionTaskTracker.inProgressTasksFor(balancingAction).remove(task);
     }
   }
 
   /**
-   * Mark the given task as aborted.
+   * Mark the given task with its healthiness.
+   *
+   * @param task Task to be marked.
    */
-  public void markTaskAborted(ExecutionTask task) {
-    _abortedTasks.add(task);
-    switch (task.proposal.balancingAction()) {
-      case REPLICA_MOVEMENT:
-        _executionRateByName.get(METER_REPLICA_MOVE_ABORTED).mark();
-        break;
-      case REPLICA_DELETION:
-        _executionRateByName.get(METER_REPLICA_DELETION_ABORTED).mark();
-        break;
-      case REPLICA_ADDITION:
-        _executionRateByName.get(METER_REPLICA_ADDITION_ABORTED).mark();
-        break;
-      case LEADERSHIP_MOVEMENT:
-        _executionRateByName.get(METER_LEADERSHIP_MOVE_ABORTED).mark();
-        break;
-      default:
-        throw new IllegalStateException(String.format("Unrecognized balancing action: %s.", task.proposal.balancingAction()));
-    }
-  }
-
-  /**
-   * Mark the given task as dead.
-   */
-  public void markTaskDead(ExecutionTask task) {
-    _deadTasks.add(task);
-    switch (task.proposal.balancingAction()) {
-      case REPLICA_MOVEMENT:
-        _executionRateByName.get(METER_REPLICA_MOVE_DEAD).mark();
-        break;
-      case REPLICA_DELETION:
-        _executionRateByName.get(METER_REPLICA_DELETION_DEAD).mark();
-        break;
-      case REPLICA_ADDITION:
-        _executionRateByName.get(METER_REPLICA_ADDITION_DEAD).mark();
-        break;
-      case LEADERSHIP_MOVEMENT:
-        _executionRateByName.get(METER_LEADERSHIP_MOVE_DEAD).mark();
-        break;
-      default:
-        throw new IllegalStateException(String.format("Unrecognized balancing action: %s.", task.proposal.balancingAction()));
+  public void markTaskHealthiness(ExecutionTask task) {
+    BalancingAction balancingAction = task.proposal.balancingAction();
+    _executionTaskTracker.inProgressTasksFor(balancingAction).remove(task);
+    ExecutionTask.Healthiness healthiness = task.healthiness();
+    if (healthiness == ExecutionTask.Healthiness.ABORTED) {
+      _executionTaskTracker.abortedTasksFor(balancingAction).add(task);
+    } else if (healthiness == ExecutionTask.Healthiness.DEAD) {
+      _executionTaskTracker.deadTasksFor(balancingAction).add(task);
+    } else {
+      throw new IllegalStateException(String.format("Illegal attempt to mark healthiness: %s.", healthiness));
     }
   }
 
@@ -348,14 +272,14 @@ public class ExecutionTaskManager {
    * @return the aborted tasks.
    */
   public Set<ExecutionTask> abortedTasks() {
-    return _abortedTasks;
+    return _executionTaskTracker.tasksAborted();
   }
 
   /**
    * @return the dead tasks.
    */
   public Set<ExecutionTask> deadTasks() {
-    return _deadTasks;
+    return _executionTaskTracker.tasksDead();
   }
 
   /**
@@ -363,9 +287,10 @@ public class ExecutionTaskManager {
    */
   public void completeTasks(List<ExecutionTask> tasks) {
     for (ExecutionTask task : tasks) {
-      _inProgressTasks.remove(task);
+      BalancingAction balancingAction = task.proposal.balancingAction();
+      _executionTaskTracker.inProgressTasksFor(balancingAction).remove(task);
       _inProgressPartitions.remove(task.proposal.topicPartition());
-      if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
+      if (balancingAction == BalancingAction.REPLICA_MOVEMENT) {
         if (task.sourceBrokerId() != null) {
           _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
                                                  _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) - 1);
@@ -382,9 +307,6 @@ public class ExecutionTaskManager {
     _brokersToSkipConcurrencyCheck.clear();
     _inProgressPartMovementsByBrokerId.clear();
     _executionTaskPlanner.clear();
-    _inProgressTasks.clear();
-    _abortedTasks.clear();
-    _deadTasks.clear();
+    _executionTaskTracker.clear();
   }
-
 }

@@ -49,7 +49,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    * Kill the task.
    */
   public void kill() {
-    this.healthiness = Healthiness.KILLED;
+    this.healthiness = Healthiness.DEAD;
   }
 
   /**
@@ -79,9 +79,9 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     executionStatsMap.put("proposal", proposal.getJsonStructure());
     return executionStatsMap;
   }
-  
+
   public enum Healthiness {
-    NORMAL, ABORTED, KILLED
+    NORMAL, ABORTED, DEAD
   }
 
   @Override

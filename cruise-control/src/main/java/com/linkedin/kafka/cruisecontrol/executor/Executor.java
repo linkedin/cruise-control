@@ -329,7 +329,8 @@ public class Executor {
           if (cluster.partition(tp) == null) {
             LOG.debug("Task {} is marked as finished because the topic has been deleted", task);
             finishedTasks.add(task);
-            _executionTaskManager.updateSensorsUponTaskTopicDeletion(task.proposal.balancingAction());
+            task.abort();
+            _executionTaskManager.markTaskHealthiness(task);
             continue;
           }
           boolean taskDone;
@@ -364,7 +365,7 @@ public class Executor {
           }
         }
       } while (!_executionTaskManager.tasksInProgress().isEmpty() && finishedTasks.size() == 0 && !_stopRequested);
-      // Some tasks has finished, remove them from in progress task map.
+      // Some tasks have finished, remove them from in progress task map.
       _executionTaskManager.completeTasks(finishedTasks);
       LOG.info("Completed tasks: {}", finishedTasks);
     }
@@ -381,7 +382,7 @@ public class Executor {
           return destinationExists && !sourceExists;
         case ABORTED:
           return !destinationExists && sourceExists;
-        case KILLED:
+        case DEAD:
           return !destinationExists && !sourceExists;
         default:
           throw new IllegalStateException("Should never be here.");
@@ -405,7 +406,7 @@ public class Executor {
         case NORMAL:
           return destinationExists;
         case ABORTED:
-        case KILLED:
+        case DEAD:
           return true;
         default:
           throw new IllegalStateException("Should never be here.");
@@ -418,7 +419,7 @@ public class Executor {
         case NORMAL:
           return leader != null && leader.id() == task.destinationBrokerId();
         case ABORTED:
-        case KILLED:
+        case DEAD:
           return true;
         default:
           throw new IllegalStateException("Should never be here.");
@@ -440,12 +441,12 @@ public class Executor {
           if (!destinationAlive) {
             if (sourceAlive) {
               task.abort();
-              _executionTaskManager.markTaskAborted(task);
+              _executionTaskManager.markTaskHealthiness(task);
               abortedTasks.add(task);
               LOG.error("Aborting execution for task {} because destination broker is down.", task);
             } else {
               task.kill();
-              _executionTaskManager.markTaskDead(task);
+              _executionTaskManager.markTaskHealthiness(task);
               deadTasks.add(task);
               LOG.error("Killing execution for task {} because both source and destination broker are down.", task);
             }
@@ -457,16 +458,16 @@ public class Executor {
         }
       }
       if (!abortedTasks.isEmpty() || !deadTasks.isEmpty()) {
-        // The aborted or killed relocation tasks include replica movement, addition, and deletion tasks.
-        List<ExecutionTask> abortedOrKilledReassignmentTasks = new ArrayList<>(abortedTasks);
-        abortedOrKilledReassignmentTasks.addAll(deadTasks);
-        abortedOrKilledReassignmentTasks.removeAll(abortedOrDeadLeaderMoveTasks);
+        // The aborted or dead relocation tasks include replica movement, addition, and deletion tasks.
+        List<ExecutionTask> abortedOrDeadReassignmentTasks = new ArrayList<>(abortedTasks);
+        abortedOrDeadReassignmentTasks.addAll(deadTasks);
+        abortedOrDeadReassignmentTasks.removeAll(abortedOrDeadLeaderMoveTasks);
         try {
           Thread.sleep(1000);
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
-        ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, abortedOrKilledReassignmentTasks);
+        ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, abortedOrDeadReassignmentTasks);
         LOG.error("Aborted tasks: {} , dead tasks: {}, stopping proposal execution.", abortedTasks, deadTasks);
         stopExecution();
       }
