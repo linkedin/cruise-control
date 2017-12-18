@@ -24,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSample
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -389,7 +390,18 @@ public class LoadMonitor {
     final Timer.Context ctx = _clusterModelCreationTimer.time();
     try {
       // Create the racks and brokers.
-      for (Node node : kafkaCluster.nodes()) {
+      // Shuffle nodes before getting their capacity from the capacity resolver.
+      // This enables a capacity resolver to estimate the capacity of the nodes, for which the capacity retrieval has
+      // failed.
+      // The use case for this estimation is that if the capacity of one of the nodes is not available (e.g. due to some
+      // 3rd party service issue), the capacity resolver may want to use the capacity of a peer node as the capacity for
+      // that node.
+      // To this end, Cruise Control handles the case that the first node is problematic so the capacity resolver does
+      // not have the chance to get the capacity for the other nodes.
+      // Shuffling the node order helps, as the problematic node is unlikely to always be the first node in the list.
+      List<Node> shuffledNodes = new ArrayList<>(kafkaCluster.nodes());
+      Collections.shuffle(shuffledNodes);
+      for (Node node : shuffledNodes) {
         // If the rack is not specified, we use the host info as rack info.
         String rack = getRackHandleNull(node);
         clusterModel.createRack(rack);
