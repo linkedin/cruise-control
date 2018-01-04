@@ -273,8 +273,8 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Mark the successful completion of a given task. In-progress execution may yield successful completion. 
-   * Aborting execution may yield Aborted completion.
+   * Mark the successful completion of a given task. In-progress execution will yield successful completion. 
+   * Aborting execution will yield Aborted completion.
    */
   public void markTaskDone(ExecutionTask task) {
     if (task.state() == ExecutionTask.State.IN_PROGRESS) {
@@ -283,21 +283,26 @@ public class ExecutionTaskManager {
       markTaskState(task, ExecutionTask.State.ABORTED);
     }
   }
-  
+
+  /**
+   * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is possible.
+   */
   public void markTaskAborting(ExecutionTask task) {
     if (task.state() != ExecutionTask.State.ABORTING) {
       markTaskState(task, ExecutionTask.State.ABORTING);
     }
   }
-  
+
+  /**
+   * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is not possible.
+   */
   public void markTaskDead(ExecutionTask task) {
     if (task.state() != ExecutionTask.State.DEAD) {
       markTaskState(task, ExecutionTask.State.DEAD);
     }
   }
   
-  private void markTaskState(ExecutionTask task, 
-                             ExecutionTask.State targetState) {
+  private void markTaskState(ExecutionTask task, ExecutionTask.State targetState) {
     if (task.canTransferToState(targetState)) {
       ExecutionTask.State currentState = task.state();
       BalancingAction balancingAction = task.proposal.balancingAction();
@@ -339,7 +344,7 @@ public class ExecutionTaskManager {
           throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state");
       }
     } else {
-      throw new IllegalStateException("Cannot mark a task in " + task.state() + " to" + targetState + "state. The " 
+      throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state. The " 
                                           + "valid target state are " + task.validTargetState());
     }
   }

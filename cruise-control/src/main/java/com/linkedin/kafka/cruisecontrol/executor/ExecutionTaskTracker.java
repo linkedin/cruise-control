@@ -13,12 +13,12 @@ import java.util.Set;
 
 
 /**
- * A class for tracking the (1) dead tasks, (2) aborted tasks, (3) in progress tasks, and (4) pending proposals.
+ * A class for tracking the (1) dead tasks, (2) aborting/aborted tasks, (3) in progress tasks, and (4) pending proposals.
  */
 public class ExecutionTaskTracker {
   // Dead tasks indicate cancelled/killed executions affecting the original state before the balancing action execution.
   private final Map<BalancingAction, Set<ExecutionTask>> _deadTasks;
-  // Aborting tasks due to (1) cancelled balancing actions not affecting the state before the execution of balancing 
+  // Aborting tasks due to cancelled balancing actions not affecting the state before the execution of balancing 
   // action.
   private final Map<BalancingAction, Set<ExecutionTask>> _abortingTasks;
   // Tasks that have been successfully aborted.

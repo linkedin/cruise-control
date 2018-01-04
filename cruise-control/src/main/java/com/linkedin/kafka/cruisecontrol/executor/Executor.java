@@ -466,7 +466,7 @@ public class Executor {
           e.printStackTrace();
         }
         ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, abortedOrDeadReassignmentTasks);
-        LOG.error("Aborted tasks: {} , dead tasks: {}, stopping proposal execution.", abortingTasks, deadTasks);
+        LOG.error("Aborting tasks: {} , dead tasks: {}, stopping proposal execution.", abortingTasks, deadTasks);
         stopExecution();
       }
     }
