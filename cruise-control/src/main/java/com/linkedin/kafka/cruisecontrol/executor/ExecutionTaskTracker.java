@@ -66,9 +66,9 @@ public class ExecutionTaskTracker {
   }
 
   /**
-   * 
-   * @param balancingAction
-   * @return
+   * Get the set of aborting tasks for the given balancing action.
+   * @param balancingAction The balancing action of the requested aborting tasks.
+   * @return The set of aborting tasks for the given balancing action.
    */
   public Set<ExecutionTask> abortingTasksFor(BalancingAction balancingAction) {
     return _abortingTasks.get(balancingAction);
