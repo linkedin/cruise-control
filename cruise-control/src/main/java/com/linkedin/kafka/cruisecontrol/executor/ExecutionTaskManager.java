@@ -43,6 +43,7 @@ public class ExecutionTaskManager {
   private static final String REPLICA_DELETION = "replica-deletion";
   private static final String IN_PROGRESS = "in-progress";
   private static final String PENDING = "pending";
+  private static final String ABORTING = "aborting";
   private static final String ABORTED = "aborted";
   private static final String DEAD = "dead";
 
@@ -50,6 +51,8 @@ public class ExecutionTaskManager {
   private static final String GAUGE_LEADERSHIP_MOVE_IN_PROGRESS = LEADERSHIP_MOVE + "-" + IN_PROGRESS;
   private static final String GAUGE_REPLICA_MOVE_PENDING = REPLICA_MOVE + "-" + PENDING;
   private static final String GAUGE_LEADERSHIP_MOVE_PENDING = LEADERSHIP_MOVE + "-" + PENDING;
+  private static final String GAUGE_REPLICA_MOVE_ABORTING = REPLICA_MOVE + "-" + ABORTING;
+  private static final String GAUGE_LEADERSHIP_MOVE_ABORTING = LEADERSHIP_MOVE + "-" + ABORTING;
   private static final String GAUGE_REPLICA_MOVE_ABORTED = REPLICA_MOVE + "-" + ABORTED;
   private static final String GAUGE_LEADERSHIP_MOVE_ABORTED = LEADERSHIP_MOVE + "-" + ABORTED;
   private static final String GAUGE_REPLICA_MOVE_DEAD = REPLICA_MOVE + "-" + DEAD;
@@ -58,6 +61,8 @@ public class ExecutionTaskManager {
   private static final String GAUGE_REPLICA_DELETION_IN_PROGRESS = REPLICA_DELETION + "-" + IN_PROGRESS;
   private static final String GAUGE_REPLICA_ADDITION_PENDING = REPLICA_ADDITION + "-" + PENDING;
   private static final String GAUGE_REPLICA_DELETION_PENDING = REPLICA_DELETION + "-" + PENDING;
+  private static final String GAUGE_REPLICA_ADDITION_ABORTING = REPLICA_ADDITION + "-" + ABORTING;
+  private static final String GAUGE_REPLICA_DELETION_ABORTING = REPLICA_DELETION + "-" + ABORTING;
   private static final String GAUGE_REPLICA_ADDITION_ABORTED = REPLICA_ADDITION + "-" + ABORTED;
   private static final String GAUGE_REPLICA_DELETION_ABORTED = REPLICA_DELETION + "-" + ABORTED;
   private static final String GAUGE_REPLICA_ADDITION_DEAD = REPLICA_ADDITION + "-" + DEAD;
@@ -106,6 +111,14 @@ public class ExecutionTaskManager {
                                       (Gauge<Integer>) _executionTaskTracker::numPendingReplicaAddition);
     dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_DELETION_PENDING),
                                       (Gauge<Integer>) _executionTaskTracker::numPendingReplicaDeletion);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_MOVE_ABORTING),
+                                      (Gauge<Integer>) _executionTaskTracker::numAbortingReplicaMove);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_MOVE_ABORTING),
+                                      (Gauge<Integer>) _executionTaskTracker::numAbortingLeadershipMove);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_ADDITION_ABORTING),
+                                      (Gauge<Integer>) _executionTaskTracker::numAbortingReplicaAddition);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_DELETION_ABORTING),
+                                      (Gauge<Integer>) _executionTaskTracker::numAbortingReplicaDeletion);
     dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_MOVE_ABORTED),
                                       (Gauge<Integer>) _executionTaskTracker::numAbortedReplicaMove);
     dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_MOVE_ABORTED),
@@ -180,8 +193,29 @@ public class ExecutionTaskManager {
   /**
    * Get all the in progress execution tasks.
    */
-  public Set<ExecutionTask> tasksInProgress() {
-    return _executionTaskTracker.tasksInProgress();
+  public Set<ExecutionTask> inProgressTasks() {
+    return _executionTaskTracker.inProgressTasks();
+  }
+  
+  /**
+   * @return the aborting tasks.
+   */
+  public Set<ExecutionTask> abortingTasks() {
+    return _executionTaskTracker.abortingTasks();
+  }
+
+  /**
+   * @return the aborted tasks.
+   */
+  public Set<ExecutionTask> abortedTasks() {
+    return _executionTaskTracker.abortedTasks();
+  }
+
+  /**
+   * @return the dead tasks.
+   */
+  public Set<ExecutionTask> deadTasks() {
+    return _executionTaskTracker.deadTasks();
   }
 
   /**
@@ -222,9 +256,7 @@ public class ExecutionTaskManager {
 
       for (ExecutionTask task : tasks) {
         // Add task to the relevant task in progress.
-        BalancingAction balancingAction = task.proposal.balancingAction();
-        _executionTaskTracker.inProgressTasksFor(balancingAction).add(task);
-        _executionTaskTracker.pendingProposalsFor(balancingAction).remove(task.proposal);
+        markTaskState(task, ExecutionTask.State.IN_PROGRESS);
         _inProgressPartitions.add(task.proposal.topicPartition());
         if (taskBalancingAction == BalancingAction.REPLICA_MOVEMENT) {
           if (task.sourceBrokerId() != null) {
@@ -241,45 +273,80 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Mark the successful completion of a given task. Only normal execution may yield successful completion.
+   * Mark the successful completion of a given task. In-progress execution will yield successful completion. 
+   * Aborting execution will yield Aborted completion.
    */
   public void markTaskDone(ExecutionTask task) {
-    if (task.healthiness() == ExecutionTask.Healthiness.NORMAL) {
+    if (task.state() == ExecutionTask.State.IN_PROGRESS) {
+      markTaskState(task, ExecutionTask.State.COMPLETED);
+    } else if (task.state() == ExecutionTask.State.ABORTING) {
+      markTaskState(task, ExecutionTask.State.ABORTED);
+    }
+  }
+
+  /**
+   * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is possible.
+   */
+  public void markTaskAborting(ExecutionTask task) {
+    if (task.state() != ExecutionTask.State.ABORTING) {
+      markTaskState(task, ExecutionTask.State.ABORTING);
+    }
+  }
+
+  /**
+   * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is not possible.
+   */
+  public void markTaskDead(ExecutionTask task) {
+    if (task.state() != ExecutionTask.State.DEAD) {
+      markTaskState(task, ExecutionTask.State.DEAD);
+    }
+  }
+  
+  private void markTaskState(ExecutionTask task, ExecutionTask.State targetState) {
+    if (task.canTransferToState(targetState)) {
+      ExecutionTask.State currentState = task.state();
       BalancingAction balancingAction = task.proposal.balancingAction();
-      _executionTaskTracker.inProgressTasksFor(balancingAction).remove(task);
-    }
-  }
-
-  /**
-   * Mark the given task with its healthiness.
-   *
-   * @param task Task to be marked.
-   */
-  public void markTaskHealthiness(ExecutionTask task) {
-    BalancingAction balancingAction = task.proposal.balancingAction();
-    _executionTaskTracker.inProgressTasksFor(balancingAction).remove(task);
-    ExecutionTask.Healthiness healthiness = task.healthiness();
-    if (healthiness == ExecutionTask.Healthiness.ABORTED) {
-      _executionTaskTracker.abortedTasksFor(balancingAction).add(task);
-    } else if (healthiness == ExecutionTask.Healthiness.DEAD) {
-      _executionTaskTracker.deadTasksFor(balancingAction).add(task);
+      switch (currentState) {
+        case PENDING:
+          _executionTaskTracker.pendingProposalsFor(balancingAction).remove(task.proposal);
+          break;
+        case IN_PROGRESS:
+          _executionTaskTracker.inProgressTasksFor(balancingAction).remove(task);
+          break;
+        case ABORTING:
+          _executionTaskTracker.abortingTasksFor(balancingAction).remove(task);
+          break;
+        default:
+          throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state");
+      }
+      
+      switch (targetState) {
+        case IN_PROGRESS:
+          task.inProgress();
+          _executionTaskTracker.inProgressTasksFor(balancingAction).add(task);
+          break;
+        case ABORTING:
+          task.abort();
+          _executionTaskTracker.abortingTasksFor(balancingAction).add(task);
+          break;
+        case DEAD:
+          task.kill();
+          _executionTaskTracker.deadTasksFor(balancingAction).add(task);
+          break;
+        case ABORTED:
+          task.aborted();
+          _executionTaskTracker.abortedTasksFor(balancingAction).add(task);
+          break;
+        case COMPLETED:
+          task.completed();
+          break;
+        default:
+          throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state");
+      }
     } else {
-      throw new IllegalStateException(String.format("Illegal attempt to mark healthiness: %s.", healthiness));
+      throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state. The " 
+                                          + "valid target state are " + task.validTargetState());
     }
-  }
-
-  /**
-   * @return the aborted tasks.
-   */
-  public Set<ExecutionTask> abortedTasks() {
-    return _executionTaskTracker.tasksAborted();
-  }
-
-  /**
-   * @return the dead tasks.
-   */
-  public Set<ExecutionTask> deadTasks() {
-    return _executionTaskTracker.tasksDead();
   }
 
   /**
@@ -306,6 +373,7 @@ public class ExecutionTaskManager {
   public void clear() {
     _brokersToSkipConcurrencyCheck.clear();
     _inProgressPartMovementsByBrokerId.clear();
+    _inProgressPartitions.clear();
     _executionTaskPlanner.clear();
     _executionTaskTracker.clear();
   }
