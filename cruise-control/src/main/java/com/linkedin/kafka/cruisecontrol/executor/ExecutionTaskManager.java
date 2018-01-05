@@ -196,7 +196,7 @@ public class ExecutionTaskManager {
   public Set<ExecutionTask> inProgressTasks() {
     return _executionTaskTracker.inProgressTasks();
   }
-  
+
   /**
    * @return the aborting tasks.
    */
@@ -251,14 +251,11 @@ public class ExecutionTaskManager {
    */
   public void markTasksInProgress(List<ExecutionTask> tasks) {
     if (!tasks.isEmpty()) {
-      // Get the common balancing action for the given tasks.
-      BalancingAction taskBalancingAction = tasks.iterator().next().proposal.balancingAction();
-
       for (ExecutionTask task : tasks) {
         // Add task to the relevant task in progress.
         markTaskState(task, ExecutionTask.State.IN_PROGRESS);
         _inProgressPartitions.add(task.proposal.topicPartition());
-        if (taskBalancingAction == BalancingAction.REPLICA_MOVEMENT) {
+        if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
           if (task.sourceBrokerId() != null) {
             _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
                                                    _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) + 1);
@@ -273,7 +270,7 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Mark the successful completion of a given task. In-progress execution will yield successful completion. 
+   * Mark the successful completion of a given task. In-progress execution will yield successful completion.
    * Aborting execution will yield Aborted completion.
    */
   public void markTaskDone(ExecutionTask task) {
@@ -301,7 +298,7 @@ public class ExecutionTaskManager {
       markTaskState(task, ExecutionTask.State.DEAD);
     }
   }
-  
+
   private void markTaskState(ExecutionTask task, ExecutionTask.State targetState) {
     if (task.canTransferToState(targetState)) {
       ExecutionTask.State currentState = task.state();
@@ -319,7 +316,7 @@ public class ExecutionTaskManager {
         default:
           throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state");
       }
-      
+
       switch (targetState) {
         case IN_PROGRESS:
           task.inProgress();
@@ -344,7 +341,7 @@ public class ExecutionTaskManager {
           throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state");
       }
     } else {
-      throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state. The " 
+      throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state. The "
                                           + "valid target state are " + task.validTargetState());
     }
   }
