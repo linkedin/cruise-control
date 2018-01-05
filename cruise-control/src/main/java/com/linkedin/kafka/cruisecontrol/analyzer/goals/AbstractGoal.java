@@ -67,6 +67,7 @@ public abstract class AbstractGoal implements Goal {
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException, OptimizationFailureException {
+    _succeeded = true;
     LOG.debug("Starting optimization for {}.", name());
     // Initialize pre-optimized stats.
     ClusterModelStats statsBeforeOptimization = clusterModel.getClusterStats(_balancingConstraint);
@@ -104,6 +105,17 @@ public abstract class AbstractGoal implements Goal {
 
   @Override
   public abstract String name();
+
+  /**
+   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if its topic
+   * is in the excluded topics set and its broker is still alive.
+   * @param replica the replica to check.
+   * @param excludedTopics the excluded topics set.
+   * @return true if the replica should be excluded, false otherwise.
+   */
+  protected boolean shouldExclude(Replica replica, Set<String> excludedTopics) {
+    return excludedTopics.contains(replica.topicPartition().topic()) && replica.originalBroker().isAlive();
+  }
 
   /**
    * Get brokers that the rebalance process will go over to apply balancing actions to replicas they contain.

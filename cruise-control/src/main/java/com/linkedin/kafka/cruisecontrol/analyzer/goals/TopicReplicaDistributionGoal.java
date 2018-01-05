@@ -142,7 +142,9 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       throws AnalysisInputException, ModelInputException {
     _numRebalancedTopics = 0;
     _topicsToRebalance = new ArrayList<>(clusterModel.topics());
-    _topicsToRebalance.removeAll(excludedTopics);
+    if (clusterModel.deadBrokers().isEmpty()) {
+      _topicsToRebalance.removeAll(excludedTopics);
+    }
 
     if (_topicsToRebalance.isEmpty()) {
       LOG.warn("All topics are excluded from {}.", name());
@@ -230,9 +232,10 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       Set<Replica> topicReplicasInBroker = new HashSet<>(broker.replicasOfTopicInBroker(_currentRebalanceTopic));
       // Move local topic replicas to eligible brokers.
       _replicaDistributionTargetByTopic.get(_currentRebalanceTopic)
-                                       .moveReplicasInSourceBrokerToEligibleBrokers(
-                                           clusterModel, topicReplicasInBroker,
-                                           optimizedGoals, excludedTopics);
+                                       .moveReplicasInSourceBrokerToEligibleBrokers(clusterModel, 
+                                                                                    topicReplicasInBroker, 
+                                                                                    optimizedGoals, 
+                                                                                    excludedTopics);
     }
   }
 

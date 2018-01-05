@@ -139,7 +139,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
 
     List<Replica> leaderReplicasSortedByBytesIn = broker.replicas().stream()
         .filter(r -> r.isLeader())
-        .filter(r -> !excludedTopics.contains(r.topicPartition().topic()))
+        .filter(r -> !shouldExclude(r, excludedTopics))
         .sorted((a, b) -> Double.compare(b.load().expectedUtilizationFor(Resource.NW_IN), a.load().expectedUtilizationFor(Resource.NW_IN)))
         .collect(Collectors.toList());
 

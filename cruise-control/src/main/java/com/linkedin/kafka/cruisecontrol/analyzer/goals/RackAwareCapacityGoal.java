@@ -283,7 +283,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     double hostCapacityLimit = broker.host().capacityFor(_currentResource) * capacityThreshold;
     // 1. Satisfy rack awareness requirement.
     for (Replica replica : new ArrayList<>(broker.replicas())) {
-      if (satisfiedRackAwareness(replica, clusterModel) || excludedTopics.contains(replica.topicPartition().topic())) {
+      if (satisfiedRackAwareness(replica, clusterModel) || shouldExclude(replica, excludedTopics)) {
         continue;
       }
       // Rack awareness is violated. Move replica to a broker in another rack.
@@ -306,7 +306,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
       // Sort replicas in by descending order of preference to relocate. Preference is based on resource cost.
       List<Replica> sortedLeadersInSourceBroker = broker.sortedReplicas(_currentResource);
       for (Replica leader : sortedLeadersInSourceBroker) {
-        if (excludedTopics.contains(leader.topicPartition().topic())) {
+        if (shouldExclude(leader, excludedTopics)) {
           continue;
         }
         // Get followers of this leader and sort them in ascending order by their broker resource utilization.
@@ -338,7 +338,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
       // utilization) until the broker utilization is under the capacity limit. If the capacity limit cannot be
       // satisfied, throw an exception.
       for (Replica replica : broker.sortedReplicas(_currentResource)) {
-        if (excludedTopics.contains(replica.topicPartition().topic())) {
+        if (shouldExclude(replica, excludedTopics)) {
           continue;
         }
         // Find eligible brokers that this replica is allowed to move. Unless the target broker would go over the

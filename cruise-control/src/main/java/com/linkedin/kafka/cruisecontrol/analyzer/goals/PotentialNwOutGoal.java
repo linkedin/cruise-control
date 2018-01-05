@@ -205,7 +205,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
     // Attempt to move replicas to eligible brokers until either the estimated max possible network out
     // limit requirement is satisfied for the broker or all replicas are checked.
     for (Replica replica : new ArrayList<>(broker.replicas())) {
-      if (excludedTopics.contains(replica.topicPartition().topic())) {
+      if (shouldExclude(replica, excludedTopics)) {
         continue;
       }
       // Find the eligible brokers that this replica is allowed to move. Unless the target broker would go

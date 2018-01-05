@@ -86,7 +86,7 @@ class ReplicaDistributionTarget {
     }
 
     for (Replica replicaToMove : replicasInBrokerToMove) {
-      if (excludedTopics.contains(replicaToMove.topicPartition().topic())) {
+      if (excludedTopics.contains(replicaToMove.topicPartition().topic()) && replicaToMove.originalBroker().isAlive()) {
         continue;
       }
       if (moveReplicaToEligibleBroker(clusterModel, replicaToMove, optimizedGoals)) {
