@@ -71,7 +71,7 @@ public class MetadataClient {
    */
   public synchronized ClusterAndGeneration refreshMetadata(long timeout) {
     // Do not update metadata if the metadata has just been refreshed.
-    if (_metadataTTL <= 0 || (_time.milliseconds() >= _metadata.lastSuccessfulUpdate() + _metadataTTL)) {
+    if (_time.milliseconds() >= _metadata.lastSuccessfulUpdate() + _metadataTTL) {
       // Cruise Control always fetch metadata for all the topics.
       _metadata.needMetadataForAllTopics(true);
       int version = _metadata.requestUpdate();

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -76,7 +77,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     Collection<BalancingProposal> proposals = Arrays.asList(proposal0, proposal1);
     executeAndVerifyProposals(zkUtils, proposals, proposals);
   }
-  
+
   @Test
   public void testMoveNonExistingPartition() {
     ZkUtils zkUtils = CruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
@@ -114,7 +115,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     Collection<BalancingProposal> proposalsToCheck = Arrays.asList(proposal0, proposal1);
     executeAndVerifyProposals(zkUtils, proposalsToExecute, proposalsToCheck);
   }
-  
+
   @Test
   public void testBrokerDiesWhenMovePartitions() throws Exception {
     ZkUtils zkUtils = CruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
@@ -144,15 +145,15 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
     Collection<BalancingProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
     executeAndVerifyProposals(zkUtils, proposalsToExecute, Collections.emptyList());
-    
+
     assertEquals(Collections.singletonList(initialLeader0), ExecutorUtils.newAssignmentForPartition(zkUtils, tp0));
   }
-  
+
   private void executeAndVerifyProposals(ZkUtils zkUtils,
                                          Collection<BalancingProposal> proposalsToExecute,
                                          Collection<BalancingProposal> proposalsToCheck) {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
-    Executor executor = new Executor(configs, new SystemTime());
+    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry());
     executor.addBalancingProposals(proposalsToExecute, Collections.emptySet());
     executor.startExecution(null);
 
@@ -161,7 +162,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
       int replicationFactor = zkUtils.getReplicasForPartition(proposal.topic(), proposal.partitionId()).size();
       replicationFactors.put(new TopicPartition(proposal.topic(), proposal.partitionId()), replicationFactor);
     }
-    
+
     long now = System.currentTimeMillis();
     while (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS
         && System.currentTimeMillis() < now + 5000) {
@@ -174,15 +175,15 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     if (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
       fail("The execution did not finish in 5 seconds.");
     }
-    
+
     for (BalancingProposal proposal : proposalsToCheck) {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
       int expectedReplicationFector = replicationFactors.get(tp);
       assertEquals("Replication factor for partition " + tp + " should be " + expectedReplicationFector,
                    expectedReplicationFector, zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).size());
-      
+
       if (proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
-        assertTrue("The partition should have moved for " + tp, 
+        assertTrue("The partition should have moved for " + tp,
                    zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).contains(proposal.destinationBrokerId()));
       } else {
         assertEquals("The leader should have moved for " + tp,

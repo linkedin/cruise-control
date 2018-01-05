@@ -47,7 +47,7 @@ object ExecutorUtils {
         var addTask = true
         val newReplicas = inProgressReplicasOpt match {
           case Some(inProgressReplicas) =>
-            if (task.healthiness() == ExecutionTask.Healthiness.ABORTED) {
+            if (task.state() == ExecutionTask.State.ABORTING) {
               // verify with in progress assignment
               if (!inProgressReplicas.contains(destinationBroker))
                 throw new RuntimeException(s"Broker $destinationBroker is not being assigned as a replica for [$topic, $partition] in $inProgressReplicas")
@@ -57,10 +57,12 @@ object ExecutorUtils {
                 inProgressReplicas.filter(_ != destinationBroker) :+ sourceBroker.toInt
               else
                 inProgressReplicas.filter(_ != destinationBroker)
-            } else if (task.healthiness() == ExecutionTask.Healthiness.KILLED) {
+            } else if (task.state() == ExecutionTask.State.DEAD 
+              || task.state() == ExecutionTask.State.ABORTED 
+              || task.state() == ExecutionTask.State.COMPLETED) {
               addTask = false
               Seq.empty
-            } else if (task.healthiness() == ExecutionTask.Healthiness.NORMAL) {
+            } else if (task.state() == ExecutionTask.State.IN_PROGRESS) {
               // verify with in progress assignment
               if (task.proposal.balancingAction() != BalancingAction.REPLICA_DELETION && inProgressReplicas.contains(destinationBroker))
                 throw new RuntimeException(s"Broker $destinationBroker is already being assigned as a replica for [$topic, $partition]")
@@ -71,11 +73,13 @@ object ExecutorUtils {
               else
                 inProgressReplicas.filter(_ != sourceBroker)
             } else {
-              throw new IllegalStateException("Should never be here")
+              throw new IllegalStateException(s"Should never be here, the state is ${task.state()}")
             }
           case None =>
-            if (task.healthiness() == ExecutionTask.Healthiness.ABORTED
-              || task.healthiness() == ExecutionTask.Healthiness.KILLED) {
+            if (task.state() == ExecutionTask.State.ABORTED
+              || task.state() == ExecutionTask.State.DEAD 
+              || task.state() == ExecutionTask.State.ABORTING 
+              || task.state() == ExecutionTask.State.COMPLETED) {
               LOG.warn(s"No need to abort tasks $task because the partition is not in reassignment")
               addTask = false
               Seq.empty

@@ -26,6 +26,7 @@ import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -63,21 +64,21 @@ public class RandomGoalTest {
     int goalRepetition = 4;
     Collection<Object[]> params = new ArrayList<>();
 
-    Map<Integer, String> goalNameByPriority = new HashMap<>();
-    goalNameByPriority.put(1, RackAwareGoal.class.getName());
-    goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
-    goalNameByPriority.put(3, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(4, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(5, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(6, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(7, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(8, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, LeaderBytesInDistributionGoal.class.getName());
-    goalNameByPriority.put(14, ReplicaDistributionGoal.class.getName());
+    List<String> goalsSortedByPriority = Arrays.asList(
+        RackAwareGoal.class.getName(),
+        ReplicaCapacityGoal.class.getName(),
+        CpuCapacityGoal.class.getName(),
+        DiskCapacityGoal.class.getName(),
+        NetworkInboundCapacityGoal.class.getName(),
+        NetworkOutboundCapacityGoal.class.getName(),
+        PotentialNwOutGoal.class.getName(),
+        TopicReplicaDistributionGoal.class.getName(),
+        DiskUsageDistributionGoal.class.getName(),
+        NetworkInboundUsageDistributionGoal.class.getName(),
+        NetworkOutboundUsageDistributionGoal.class.getName(),
+        CpuUsageDistributionGoal.class.getName(),
+        LeaderBytesInDistributionGoal.class.getName(),
+        ReplicaDistributionGoal.class.getName());
 
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1500L));
@@ -86,15 +87,17 @@ public class RandomGoalTest {
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
     // Test: Single goal at a time.
-    for (Map.Entry<Integer, String> entry: goalNameByPriority.entrySet()) {
-      Map<Integer, String> singletonGoalNameByPriority = Collections.singletonMap(entry.getKey(), entry.getValue());
+    int goalPriority = 1;
+    for (String goalName: goalsSortedByPriority) {
+      Map<Integer, String> singletonGoalNameByPriority = Collections.singletonMap(goalPriority, goalName);
       Object[] singleGoalParams = {Collections.emptyMap(), singletonGoalNameByPriority, balancingConstraint};
       params.add(singleGoalParams);
+      goalPriority++;
     }
 
     // Test: Consecutive repetition of the same goal (goalRepetition times each).
-    int goalPriority = 1;
-    for (String goalName : goalNameByPriority.values()) {
+    goalPriority = 1;
+    for (String goalName : goalsSortedByPriority) {
       Map<Integer, String> repeatedGoalNamesByPriority = new HashMap<>();
       for (int i = 0; i < goalRepetition; i++) {
         repeatedGoalNamesByPriority.put(goalPriority, goalName);
@@ -107,7 +110,7 @@ public class RandomGoalTest {
     goalPriority = 1;
     Map<Integer, String> nonRepetitiveGoalNamesByPriority = new HashMap<>();
     for (int i = 0; i < goalRepetition; i++) {
-      for (String goalName : goalNameByPriority.values()) {
+      for (String goalName : goalsSortedByPriority) {
         nonRepetitiveGoalNamesByPriority.put(goalPriority, goalName);
         goalPriority++;
       }
@@ -120,20 +123,21 @@ public class RandomGoalTest {
     params.add(noGoalParams);
 
     // Test shuffled soft goals.
-    List<String> shuffledSoftGoalNames = new ArrayList<>(goalNameByPriority.values());
-    shuffledSoftGoalNames.remove(RackAwareGoal.class.getName());    // Remove the hard goal.
-    shuffledSoftGoalNames.remove(ReplicaCapacityGoal.class.getName());    // Remove the hard goal.
-    shuffledSoftGoalNames.remove(CpuCapacityGoal.class.getName());    // Remove the hard goal.
-    shuffledSoftGoalNames.remove(DiskCapacityGoal.class.getName());    // Remove the hard goal.
-    shuffledSoftGoalNames.remove(NetworkInboundCapacityGoal.class.getName());    // Remove the hard goal.
-    shuffledSoftGoalNames.remove(NetworkOutboundCapacityGoal.class.getName());    // Remove the hard goal.
+    List<String> shuffledSoftGoalNames = new ArrayList<>(goalsSortedByPriority);
+    // Remove the hard goals.
+    shuffledSoftGoalNames.remove(RackAwareGoal.class.getName());
+    shuffledSoftGoalNames.remove(ReplicaCapacityGoal.class.getName());
+    shuffledSoftGoalNames.remove(CpuCapacityGoal.class.getName());
+    shuffledSoftGoalNames.remove(DiskCapacityGoal.class.getName());
+    shuffledSoftGoalNames.remove(NetworkInboundCapacityGoal.class.getName());
+    shuffledSoftGoalNames.remove(NetworkOutboundCapacityGoal.class.getName());
     Collections.shuffle(shuffledSoftGoalNames, RANDOM);
 
-    int priority = 1;
+    goalPriority = 1;
     Map<Integer, String> randomOrderedSoftGoalsByPriority = new HashMap<>();
     for (String goalName : shuffledSoftGoalNames) {
-      randomOrderedSoftGoalsByPriority.put(priority, goalName);
-      priority++;
+      randomOrderedSoftGoalsByPriority.put(goalPriority, goalName);
+      goalPriority++;
     }
     Object[] randomOrderedSoftGoalsParams = {Collections.emptyMap(), randomOrderedSoftGoalsByPriority, balancingConstraint};
     params.add(randomOrderedSoftGoalsParams);
@@ -165,7 +169,7 @@ public class RandomGoalTest {
     Map<ClusterProperty, Number> clusterProperties = new HashMap<>(TestConstants.BASE_PROPERTIES);
     clusterProperties.putAll(_modifiedProperties);
 
-    LOG.debug("Replica distribution: {}.", TestConstants.Distribution.EXPONENTIAL);
+    LOG.debug("Replica distribution: {} || Goals: {}.", TestConstants.Distribution.EXPONENTIAL, _goalNameByPriority);
     ClusterModel clusterModel = RandomCluster.generate(clusterProperties);
     RandomCluster.populate(clusterModel, clusterProperties, TestConstants.Distribution.EXPONENTIAL);
 

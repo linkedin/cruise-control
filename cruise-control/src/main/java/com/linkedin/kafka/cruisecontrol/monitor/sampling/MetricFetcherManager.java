@@ -89,6 +89,7 @@ public class MetricFetcherManager {
    * @param metricSampleAggregator   The queue that holds the metric samples.
    * @param metadataClient      The metadata of the cluster.
    * @param time          The time object.
+   * @param dropwizardMetricRegistry The Metric Registry object.
    * @param createSampler Whether to create the metric fetchers or not. ( For unit test purpose)
    */
   private MetricFetcherManager(KafkaCruiseControlConfig config,
