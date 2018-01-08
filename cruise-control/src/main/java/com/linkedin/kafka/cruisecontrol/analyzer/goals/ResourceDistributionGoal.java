@@ -166,10 +166,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // Log broker Ids over balancing limit.
     // While proposals exclude the excludedTopics, the balance still considers utilization of the excludedTopic replicas.
     for (Broker broker : clusterModel.healthyBrokers()) {
-      if (!isLoadUnderBalanceUpperLimitAfterChange(clusterModel, null, broker, REMOVE)) {
+      if (!isLoadUnderBalanceUpperLimit(clusterModel, broker)) {
         brokerIdsAboveBalanceUpperLimit.add(broker.id());
       }
-      if (!isLoadAboveBalanceLowerLimitAfterChange(clusterModel, null, broker, ADD)) {
+      if (!isLoadAboveBalanceLowerLimit(clusterModel, broker)) {
         brokerIdsUnderBalanceLowerLimit.add(broker.id());
       }
     }
@@ -231,8 +231,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
-    boolean requireLessLoad = !isLoadUnderBalanceUpperLimitAfterChange(clusterModel, null, broker, REMOVE);
-    boolean requireMoreLoad = !isLoadAboveBalanceLowerLimitAfterChange(clusterModel, null, broker, ADD);
+    boolean requireLessLoad = !isLoadUnderBalanceUpperLimit(clusterModel, broker);
+    boolean requireMoreLoad = !isLoadAboveBalanceLowerLimit(clusterModel, broker);
     if (broker.isAlive() && !requireMoreLoad && !requireLessLoad) {
       // return if the broker is already under limit.
       return;
@@ -260,13 +260,17 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     // Update broker ids over the balance limit for logging purposes.
+    boolean unbalanced = false;
     if (requireLessLoad) {
-      rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals, REPLICA_MOVEMENT, excludedTopics);
+      unbalanced = rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals, REPLICA_MOVEMENT, excludedTopics);
     } else if (requireMoreLoad) {
-      rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals, REPLICA_MOVEMENT, excludedTopics);
-    } else {
+      unbalanced = rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals, REPLICA_MOVEMENT, excludedTopics);
+    }
+    
+    if (!unbalanced) {
       LOG.debug("Successfully balanced {} for broker {} by moving leaders and replicas.", resource(), broker.id());
     }
+    
   }
 
   protected boolean rebalanceByMovingLoadIn(Broker broker,
@@ -303,7 +307,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         // Only need to check status if the action is taken. This will also handle the case that the source broker
         // has nothing to move in. In that case we will never reenqueue that source broker.
         if (b != null) {
-          if (isLoadAboveBalanceLowerLimitAfterChange(clusterModel, null, broker, ADD)) {
+          if (isLoadAboveBalanceLowerLimit(clusterModel, broker)) {
             return false;
           }
           // If the source broker has a lower utilization than the next broker in the eligible broker in the queue,
@@ -378,7 +382,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, balancingAction, optimizedGoals);
       // Only check if we successfully moved something.
       if (b != null) {
-        if (isLoadUnderBalanceUpperLimitAfterChange(clusterModel, null, broker, REMOVE)) {
+        if (isLoadUnderBalanceUpperLimit(clusterModel, broker)) {
           return false;
         }
         // Remove and reinsert the broker so the order is correct.
@@ -392,6 +396,16 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // capacity is negative, i.e. the broker is dead. So as long as there is no replicas on the broker anymore
     // we consider it as not over limit.
     return !broker.replicas().isEmpty();
+  }
+  
+  private boolean isLoadAboveBalanceLowerLimit(ClusterModel clusterModel, Broker broker) {
+    // The action does not matter here because the load is null.
+    return isLoadAboveBalanceLowerLimitAfterChange(clusterModel, null, broker, ADD);
+  }
+  
+  private boolean isLoadUnderBalanceUpperLimit(ClusterModel clusterModel, Broker broker) {
+    // The action does not matter here because the load is null.
+    return isLoadUnderBalanceUpperLimitAfterChange(clusterModel, null, broker, REMOVE);
   }
 
   private boolean isLoadAboveBalanceLowerLimitAfterChange(ClusterModel clusterModel,
