@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
@@ -106,10 +107,10 @@ public class GoalViolationDetector implements Runnable {
             if (clusterModelSemaphore != null) {
               clusterModelSemaphore.close();
             }
-            clusterModelSemaphore = _loadMonitor.acquireForModelGeneration();
+            clusterModelSemaphore = _loadMonitor.acquireForModelGeneration(new OperationProgress());
             // Make cluster model null before generating a new cluster model so the current one can be GCed.
             clusterModel = null;
-            clusterModel = _loadMonitor.clusterModel(now, goal.clusterModelCompletenessRequirements());
+            clusterModel = _loadMonitor.clusterModel(now, goal.clusterModelCompletenessRequirements(), new OperationProgress());
           }
           newModelNeeded = optimizeForGoal(clusterModel, priority, goal, goalViolations);
         } else {

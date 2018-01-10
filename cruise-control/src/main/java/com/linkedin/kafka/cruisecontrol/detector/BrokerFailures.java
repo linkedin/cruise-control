@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -35,7 +36,7 @@ public class BrokerFailures extends Anomaly {
     // Fix the cluster by removing the failed brokers.
     if (_failedBrokers != null && !_failedBrokers.isEmpty()) {
       kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(), false, false,
-                                             Collections.emptyList(), null);
+                                             Collections.emptyList(), null, new OperationProgress());
     }
   }
 

@@ -12,6 +12,8 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
+import com.linkedin.kafka.cruisecontrol.async.progress.OptimizationForGoal;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
@@ -32,6 +34,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -61,6 +64,8 @@ public class GoalOptimizer implements Runnable {
   private final long _proposalExpirationMs;
   private final ExecutorService _proposalPrecomputingExecutor;
   private final AtomicInteger _totalProposalCandidateComputed;
+  private final AtomicBoolean _progressUpdateLock;
+  private final OperationProgress _proposalPrecomputingProgress;
   private final List<SortedMap<Integer, Goal>> _goalByPriorityForPrecomputing;
   private final Object _cacheLock;
   private volatile OptimizerResult _bestProposal;
@@ -105,6 +110,8 @@ public class GoalOptimizer implements Runnable {
     _cacheLock = new ReentrantLock();
     _bestProposal = null;
     _totalProposalCandidateComputed = new AtomicInteger(0);
+    _progressUpdateLock = new AtomicBoolean(false);
+    _proposalPrecomputingProgress = new OperationProgress();
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
   }
 
@@ -138,7 +145,7 @@ public class GoalOptimizer implements Runnable {
                       + "Cached generation: {}", _bestProposal.modelGeneration());
       }
       long deadline = _time.milliseconds() + sleepTime;
-      while (!_shutdown && _time.milliseconds() < deadline) {
+      if (!_shutdown && _time.milliseconds() < deadline) {
         try {
           Thread.sleep(deadline - _time.milliseconds());
         } catch (InterruptedException e) {
@@ -217,7 +224,7 @@ public class GoalOptimizer implements Runnable {
    * Get the cached proposals. If the cached proposal is not valid, block waiting on the cache update.
    * We do this to avoid duplicate optimization cluster model construction and proposal computation.
    */
-  public OptimizerResult optimizations() {
+  public OptimizerResult optimizations(OperationProgress operationProgress) throws InterruptedException {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
     if (loadMonitorTaskRunnerState == LOADING || loadMonitorTaskRunnerState == BOOTSTRAPPING) {
       throw new IllegalStateException("Cannot get proposal because load monitor is in " + loadMonitorTaskRunnerState + " state.");
@@ -230,13 +237,10 @@ public class GoalOptimizer implements Runnable {
                 _loadMonitor.clusterModelGeneration());
       synchronized (_cacheLock) {
         while (!validCachedProposal()) {
-          try {
-            // Wake up the proposal precomputing scheduler and wait for the cache update.
-            _proposalPrecomputingSchedulerThread.interrupt();
-            _cacheLock.wait();
-          } catch (InterruptedException e) {
-            LOG.debug("Interrupted while waiting for cache update.");
-          }
+          // Wake up the proposal precomputing scheduler and wait for the cache update.
+          _proposalPrecomputingSchedulerThread.interrupt();
+          operationProgress.refer(_proposalPrecomputingProgress);
+          _cacheLock.wait();
         }
       }
     }
@@ -254,11 +258,13 @@ public class GoalOptimizer implements Runnable {
    * @param clusterModel The state of the cluster over which the balancing proposal will be applied. Function execution
    *                     updates the cluster state with balancing proposals. If the cluster model is specified, the
    *                     cached proposal will be ignored.
+   * @param operationProgress to report the job progress.
    * @return Results of optimization containing the proposals and stats.
    * @throws KafkaCruiseControlException
    */
-  public OptimizerResult optimizations(ClusterModel clusterModel) throws KafkaCruiseControlException {
-    return optimizations(clusterModel, _goalsByPriority);
+  public OptimizerResult optimizations(ClusterModel clusterModel, OperationProgress operationProgress) 
+      throws KafkaCruiseControlException {
+    return optimizations(clusterModel, _goalsByPriority, operationProgress);
   }
 
   /**
@@ -271,10 +277,13 @@ public class GoalOptimizer implements Runnable {
    *                     updates the cluster state with balancing proposals. If the cluster model is specified, the
    *                     cached proposal will be ignored.
    * @param goalsByPriority the goals ordered by priority.
+   * @param operationProgress to report the job progress.
    * @return Results of optimization containing the proposals and stats.
    * @throws KafkaCruiseControlException
    */
-  public OptimizerResult optimizations(ClusterModel clusterModel, Map<Integer, Goal> goalsByPriority)
+  public OptimizerResult optimizations(ClusterModel clusterModel, 
+                                       Map<Integer, Goal> goalsByPriority,
+                                       OperationProgress operationProgress)
       throws KafkaCruiseControlException {
     if (clusterModel == null) {
       throw new IllegalArgumentException("The cluster model cannot be null");
@@ -284,7 +293,7 @@ public class GoalOptimizer implements Runnable {
     if (!clusterModel.isClusterAlive()) {
       throw new AnalysisInputException("All brokers are dead in the cluster.");
     }
-
+    
     LOG.trace("Cluster before optimization is {}", clusterModel);
     ClusterModel.BrokerStats brokerStatsBeforeOptimization = clusterModel.brokerStats();
     Map<TopicPartition, List<Integer>> initDistribution = clusterModel.getReplicaDistribution();
@@ -302,6 +311,8 @@ public class GoalOptimizer implements Runnable {
     for (Map.Entry<Integer, Goal> entry : goalsByPriority.entrySet()) {
       preOptimizedDistribution = preOptimizedDistribution == null ? initDistribution : clusterModel.getReplicaDistribution();
       Goal goal = entry.getValue();
+      OptimizationForGoal step = new OptimizationForGoal(goal.name());
+      operationProgress.addStep(step);
       LOG.debug("Optimizing goal {}", goal.name());
       boolean succeeded = goal.optimize(clusterModel, optimizedGoals, excludedTopics);
       optimizedGoals.add(goal);
@@ -315,6 +326,7 @@ public class GoalOptimizer implements Runnable {
         violatedGoalsAfterOptimization.add(goal);
       }
       logProgress(isSelfHealing, goal.name(), optimizedGoals.size(), goalProposals);
+      step.done();
     }
 
     clusterModel.sanityCheck();
@@ -387,6 +399,8 @@ public class GoalOptimizer implements Runnable {
     synchronized (_cacheLock) {
       _bestProposal = null;
       _totalProposalCandidateComputed.set(0);
+      _progressUpdateLock.set(false);
+      _proposalPrecomputingProgress.clear();
     }
   }
 
@@ -473,16 +487,17 @@ public class GoalOptimizer implements Runnable {
         LOG.warn("No load monitor available. Skip computing proposal candidate.");
         return;
       }
-
+      OperationProgress operationProgress = 
+          _progressUpdateLock.compareAndSet(false, true) ? _proposalPrecomputingProgress : new OperationProgress();
       while (_totalProposalCandidateComputed.incrementAndGet() <= _maxProposalCandidates) {
-        try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration()) {
+        try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
           long startMs = _time.milliseconds();
           // We compute the proposal even if there is not enough modeled partitions.
           ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements) ?
               _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
-          ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements);
+          ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, operationProgress);
           if (!clusterModel.topics().isEmpty()) {
-            OptimizerResult result = optimizations(clusterModel, _goalByPriority);
+            OptimizerResult result = optimizations(clusterModel, _goalByPriority, operationProgress);
             LOG.debug("Generated a proposal candidate in {} ms.", _time.milliseconds() - startMs);
             updateBestProposal(result);
           } else {

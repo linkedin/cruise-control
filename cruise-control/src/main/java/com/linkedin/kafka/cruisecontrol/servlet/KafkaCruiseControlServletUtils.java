@@ -13,7 +13,7 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * The util class for Kafka Cruise Control servlet.
  */
-public class KafkaCruiseControlServletUtils {
+class KafkaCruiseControlServletUtils {
 
   private KafkaCruiseControlServletUtils() {
 
@@ -33,7 +33,7 @@ public class KafkaCruiseControlServletUtils {
     "REMOTE_ADDR"
   };
 
-  public static String getClientIpAddress(HttpServletRequest request) {
+  static String getClientIpAddress(HttpServletRequest request) {
     for (String header : HEADERS_TO_TRY) {
       String ip = request.getHeader(header);
       if (ip != null && ip.length() != 0 && !"unknown".equalsIgnoreCase(ip)) {
@@ -43,7 +43,7 @@ public class KafkaCruiseControlServletUtils {
     return request.getRemoteAddr();
   }
 
-  public static String getProposalSummary(GoalOptimizer.OptimizerResult result) {
+  static String getProposalSummary(GoalOptimizer.OptimizerResult result) {
     int numReplicaMovements = 0;
     int numLeaderMovements = 0;
     long dataToMove = 0;

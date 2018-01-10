@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
@@ -121,7 +122,9 @@ class OptimizationVerifier {
                                                     null,
                                                     new SystemTime(),
                                                     new MetricRegistry());
-    GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel, goalByPriority);
+    GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel, 
+                                                                                goalByPriority, 
+                                                                                new OperationProgress());
     LOG.trace("Took {} ms to execute {} to generate {} proposals.", System.currentTimeMillis() - startTime,
               goalByPriority, optimizerResult.goalProposals().size());
 

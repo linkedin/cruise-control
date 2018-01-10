@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import java.io.FileInputStream;
@@ -44,7 +45,7 @@ public class KafkaCruiseControlMain {
       }
     }
 
-    KafkaCruiseControl kafkaCruiseControl = new KafkaCruiseControl(new KafkaCruiseControlConfig(props));
+    AsyncKafkaCruiseControl kafkaCruiseControl = new AsyncKafkaCruiseControl(new KafkaCruiseControlConfig(props));
 
     Server server = new Server(port);
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
@@ -57,7 +58,8 @@ public class KafkaCruiseControlMain {
     holderWebapp.setInitParameter("resourceBase", "./cruise-control-ui/dist/");
     context.addServlet(holderWebapp, "/*");
     // Kafka Cruise Control servlet data
-    KafkaCruiseControlServlet kafkaCruiseControlServlet = new KafkaCruiseControlServlet(kafkaCruiseControl);
+    KafkaCruiseControlServlet kafkaCruiseControlServlet = 
+        new KafkaCruiseControlServlet(kafkaCruiseControl, 10000L, 60000L);
     ServletHolder servletHolder = new ServletHolder(kafkaCruiseControlServlet);
     context.addServlet(servletHolder, "/kafkacruisecontrol/*");
     Runtime.getRuntime().addShutdownHook(new Thread() {

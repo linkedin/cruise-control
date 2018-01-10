@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,7 +35,7 @@ public class GoalViolations extends Anomaly {
   @Override
   void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
     // Fix the violations using a rebalance.
-    kafkaCruiseControl.rebalance(Collections.emptyList(), false, null);
+    kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress());
   }
 
   public static class Violation {
