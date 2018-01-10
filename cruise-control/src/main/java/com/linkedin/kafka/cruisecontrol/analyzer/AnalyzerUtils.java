@@ -134,8 +134,8 @@ public class AnalyzerUtils {
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       if (!replica.broker().isAlive()) {
         throw new AnalysisInputException(String.format(
-            "Self healing failed to move the replica away from decommissioned broker %d for goal",
-            replica.broker().id()));
+            "Self healing failed to move the replica %s away from decommissioned broker %d for goal",
+            replica, replica.broker().id()));
       }
     }
   }

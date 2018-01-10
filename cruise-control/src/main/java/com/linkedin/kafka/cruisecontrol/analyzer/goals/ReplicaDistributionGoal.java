@@ -150,7 +150,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       LOG.warn("All replicas are excluded from {}.", name());
     }
 
-    Set<Broker> brokers = clusterModel.healthyBrokers();
+    Set<Broker> healthyBrokers = clusterModel.healthyBrokers();
     // Populate a map of replica distribution target in the cluster.
     int numReplicasToBalance = 0;
     Map<TopicPartition, List<Integer>> replicaDistribution = clusterModel.getReplicaDistribution();
@@ -158,8 +158,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       numReplicasToBalance += replicaList.size();
     }
 
-    _replicaDistributionTarget = new ReplicaDistributionTarget(numReplicasToBalance, brokers);
-    for (Broker broker : brokers) {
+    _replicaDistributionTarget = new ReplicaDistributionTarget(numReplicasToBalance, healthyBrokers);
+    for (Broker broker : healthyBrokers) {
       _replicaDistributionTarget.setBrokerEligibilityForReceivingReplica(broker.id(), broker.replicas().size());
     }
   }

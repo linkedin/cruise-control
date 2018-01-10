@@ -16,10 +16,13 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 
 import java.lang.reflect.Constructor;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
+import java.util.StringJoiner;
 import java.util.TreeMap;
 
 import com.linkedin.kafka.cruisecontrol.model.Replica;
@@ -64,8 +67,30 @@ class OptimizationVerifier {
    */
   static boolean executeGoalsFor(BalancingConstraint constraint,
                                  ClusterModel clusterModel,
-                                 Map<Integer, String> goalNameByPriority)
-      throws Exception {
+                                 Map<Integer, String> goalNameByPriority) throws Exception {
+    return executeGoalsFor(constraint, clusterModel, goalNameByPriority, Collections.emptySet());
+  }
+
+  /**
+   * Execute given goals in the given cluster enforcing the given constraint. Return pass / fail status of a test.
+   * A test fails if:
+   * 1) Rebalance: During the optimization process, optimization of a goal leads to a worse cluster state (in terms of
+   * the requirements of the same goal) than the cluster state just before starting the optimization.
+   * 2) Self Healing: There are replicas on dead brokers after self healing.
+   * 3) Adding a new broker causes the replicas to move among old brokers.
+   *
+   * @param constraint         Balancing constraint for the given cluster.
+   * @param clusterModel       The state of the cluster.
+   * @param goalNameByPriority Name of goals by the order of execution priority.
+   * @param excludedTopics     The excluded topics.
+   * @return Pass / fail status of a test.
+   * @throws ModelInputException
+   * @throws AnalysisInputException
+   */
+  static boolean executeGoalsFor(BalancingConstraint constraint,
+                                 ClusterModel clusterModel,
+                                 Map<Integer, String> goalNameByPriority,
+                                 Collection<String> excludedTopics) throws Exception {
     // Get the initial stats from the cluster.
     ClusterModelStats preOptimizedStats = clusterModel.getClusterStats(constraint);
 
@@ -89,6 +114,9 @@ class OptimizationVerifier {
     // Generate the goalOptimizer and optimize given goals.
     long startTime = System.currentTimeMillis();
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    StringJoiner stringJoiner = new StringJoiner(",");
+    excludedTopics.forEach(stringJoiner::add);
+    props.setProperty(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG, stringJoiner.toString());
     GoalOptimizer goalOptimizer = new GoalOptimizer(new KafkaCruiseControlConfig(constraint.setProps(props)),
                                                     null,
                                                     new SystemTime(),

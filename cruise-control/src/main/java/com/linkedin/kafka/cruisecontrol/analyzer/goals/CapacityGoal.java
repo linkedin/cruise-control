@@ -226,10 +226,10 @@ public abstract class CapacityGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposal.
    */
   @Override
-  protected void rebalanceForBroker(Broker broker,
-      ClusterModel clusterModel,
-      Set<Goal> optimizedGoals,
-      Set<String> excludedTopics)
+  protected void rebalanceForBroker(Broker broker, 
+                                    ClusterModel clusterModel, 
+                                    Set<Goal> optimizedGoals, 
+                                    Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     Resource currentResource = resource();
@@ -250,7 +250,7 @@ public abstract class CapacityGoal extends AbstractGoal {
       // Only leaders in the source broker are sorted.
       List<Replica> sortedLeadersInSourceBroker = broker.sortedLeadersFor(currentResource);
       for (Replica leader : sortedLeadersInSourceBroker) {
-        if (excludedTopics.contains(leader.topicPartition().topic())) {
+        if (shouldExclude(leader, excludedTopics)) {
           continue;
         }
         // Get followers of this leader and sort them in ascending order by their broker resource utilization.
@@ -282,7 +282,7 @@ public abstract class CapacityGoal extends AbstractGoal {
       // utilization) until the source broker utilization gets under the capacity limit. If the capacity limit cannot
       // be satisfied, throw an exception.
       for (Replica replica : broker.sortedReplicas(currentResource)) {
-        if (excludedTopics.contains(replica.topicPartition().topic())) {
+        if (shouldExclude(replica, excludedTopics)) {
           continue;
         }
         // Unless the target broker would go over the host- and/or broker-level capacity,
@@ -328,10 +328,10 @@ public abstract class CapacityGoal extends AbstractGoal {
    * @param hostCapacityLimit Capacity limit for the host.
    * @return True if utilization is over the limit, false otherwise.
    */
-  private boolean isUtilizationOverLimit(Broker broker,
-      Resource resource,
-      double brokerCapacityLimit,
-      double hostCapacityLimit) {
+  private boolean isUtilizationOverLimit(Broker broker, 
+                                         Resource resource, 
+                                         double brokerCapacityLimit, 
+                                         double hostCapacityLimit) {
     // Host-level violation check.
     if (!broker.host().replicas().isEmpty() && resource.isHostResource()) {
       double utilization = broker.host().load().expectedUtilizationFor(resource);

@@ -191,8 +191,8 @@ public class RackAwareGoal extends AbstractGoal {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     // Satisfy rack awareness requirement.
     for (Replica replica : new ArrayList<>(broker.replicas())) {
-      if ((broker.isAlive() && satisfiedRackAwareness(replica, clusterModel))
-          || excludedTopics.contains(replica.topicPartition().topic())) {
+      if ((broker.isAlive() && satisfiedRackAwareness(replica, clusterModel)) 
+          || shouldExclude(replica, excludedTopics)) {
         continue;
       }
       // Rack awareness is violated. Move replica to a broker in another rack.

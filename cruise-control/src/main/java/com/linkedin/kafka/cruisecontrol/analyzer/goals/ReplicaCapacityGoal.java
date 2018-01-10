@@ -115,6 +115,9 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     // Sanity check: excluded topic replicas in a broker cannot exceed the max number of allowed replicas per broker.
     int totalReplicasInCluster = 0;
     for (Broker broker : brokersToBalance(clusterModel)) {
+      if (!broker.isAlive()) {
+        continue;
+      }
       int excludedReplicasInBroker = 0;
       for (String topic : excludedTopics) {
         excludedReplicasInBroker += broker.replicasOfTopicInBroker(topic).size();
@@ -194,14 +197,17 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void rebalanceForBroker(Broker broker, ClusterModel clusterModel, Set<Goal> optimizedGoals,
-      Set<String> excludedTopics) throws AnalysisInputException, ModelInputException, OptimizationFailureException {
+  protected void rebalanceForBroker(Broker broker, 
+                                    ClusterModel clusterModel, 
+                                    Set<Goal> optimizedGoals, 
+                                    Set<String> excludedTopics) 
+      throws AnalysisInputException, ModelInputException, OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     for (Replica replica : new ArrayList<>(broker.replicas())) {
       if (broker.isAlive() && broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker()) {
         break;
       }
-      if (excludedTopics.contains(replica.topicPartition().topic())) {
+      if (shouldExclude(replica, excludedTopics)) {
         continue;
       }
 

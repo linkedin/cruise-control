@@ -29,9 +29,11 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 
 import java.util.Properties;
+import java.util.Set;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -83,38 +85,55 @@ public class RandomSelfHealingTest {
     singleDeadBroker.put(ClusterProperty.NUM_DEAD_BROKERS, 1);
     for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
       Object[] singleDeadSingleSoftParams = {singleDeadBroker, Collections.singletonMap(entry.getKey(),
-          entry.getValue()), balancingConstraint};
+          entry.getValue()), balancingConstraint, Collections.emptySet()};
       params.add(singleDeadSingleSoftParams);
+      Object[] singleDeadSingleSoftParamsWithExcludedTopics = 
+          {singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()), balancingConstraint, 
+          Collections.singleton("T0")};
+      params.add(singleDeadSingleSoftParamsWithExcludedTopics);
     }
-    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5000L));
+    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5100L));
     balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
     // Test: All Goals.
-    Object[] singleDeadMultiAllGoalsParams = {singleDeadBroker, goalNameByPriority, balancingConstraint};
+    Object[] singleDeadMultiAllGoalsParams = 
+        {singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.emptySet()};
     params.add(singleDeadMultiAllGoalsParams);
+    Object[] singleDeadMultiAllGoalsParamsWithExcludedTopics = 
+        {singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.singleton("T0")};
+    params.add(singleDeadMultiAllGoalsParamsWithExcludedTopics);
 
     // -- TEST DECK #2: MULTIPLE DEAD BROKERS.
     // Test: Single Goal.
     Map<ClusterProperty, Number> multipleDeadBrokers = new HashMap<>();
     multipleDeadBrokers.put(ClusterProperty.NUM_DEAD_BROKERS, 5);
     for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
-      Object[] multiDeadSingleSoftParams = {multipleDeadBrokers, Collections.singletonMap(entry.getKey(),
-                                                                                          entry.getValue()),
-                                                                                          balancingConstraint};
+      Object[] multiDeadSingleSoftParams = 
+          {multipleDeadBrokers, Collections.singletonMap(entry.getKey(), entry.getValue()), balancingConstraint, 
+          Collections.emptySet()};
       params.add(multiDeadSingleSoftParams);
+      Object[] multiDeadSingleSoftParamsWithExcludedTopics =
+          {multipleDeadBrokers, Collections.singletonMap(entry.getKey(), entry.getValue()), balancingConstraint,
+              Collections.singleton("T0")};
+      params.add(multiDeadSingleSoftParamsWithExcludedTopics);
     }
     // Test: All Goals.
-    Object[] multiDeadMultiAllGoalsParams = {multipleDeadBrokers, goalNameByPriority, balancingConstraint};
+    Object[] multiDeadMultiAllGoalsParams = 
+        {multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.emptySet()};
     params.add(multiDeadMultiAllGoalsParams);
-
+    Object[] multiDeadMultiAllGoalsParamsWithExcludedTopics = 
+        {multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.singleton("T0")};
+    params.add(multiDeadMultiAllGoalsParamsWithExcludedTopics);
+    
     return params;
   }
 
   private Map<ClusterProperty, Number> _modifiedProperties;
   private Map<Integer, String> _goalNameByPriority;
   private BalancingConstraint _balancingConstraint;
+  private Set<String> _excludedTopics;
 
   /**
    * Constructor of Self Healing Test.
@@ -124,10 +143,12 @@ public class RandomSelfHealingTest {
    */
   public RandomSelfHealingTest(Map<ClusterProperty, Number> modifiedProperties,
                                Map<Integer, String> goalNameByPriority,
-                               BalancingConstraint balancingConstraint) {
+                               BalancingConstraint balancingConstraint,
+                               Collection<String> excludedTopics) {
     _modifiedProperties = modifiedProperties;
     _goalNameByPriority = goalNameByPriority;
     _balancingConstraint = balancingConstraint;
+    _excludedTopics = new HashSet<>(excludedTopics);
   }
 
   @Test
@@ -141,7 +162,7 @@ public class RandomSelfHealingTest {
     RandomCluster.populate(clusterModel, clusterProperties, TestConstants.Distribution.UNIFORM, true);
 
     assertTrue("Self Healing Test failed to improve the existing state.",
-               OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority));
+               OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority, _excludedTopics));
 
   }
 }

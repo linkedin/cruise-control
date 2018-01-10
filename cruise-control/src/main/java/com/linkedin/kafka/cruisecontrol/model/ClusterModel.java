@@ -1203,8 +1203,10 @@ public class ClusterModel implements Serializable {
   @Override
   public String toString() {
     StringBuilder bldr = new StringBuilder();
-    bldr.append("ClusterModel[brokerCount=").append(this.brokers().size()).append(",partitionCount=")
-      .append(_partitionsByTopicPartition.size()).append(']');
+    bldr.append("ClusterModel[brokerCount=").append(this.brokers().size())
+        .append(",partitionCount=").append(_partitionsByTopicPartition.size())
+        .append(",healthyBrokerCount=").append(_healthyBrokers.size())
+        .append(']');
     return bldr.toString();
   }
 

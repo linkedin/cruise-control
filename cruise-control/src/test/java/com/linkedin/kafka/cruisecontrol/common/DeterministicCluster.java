@@ -23,66 +23,6 @@ public class DeterministicCluster {
 
   }
 
-  public static ClusterModel excludedTopicsTestClusterModel(Map<Resource, Double> brokerCapacity)
-      throws AnalysisInputException, ModelInputException {
-    List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
-    ClusterModel cluster = getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
-        brokerCapacity);
-
-    // Create topic partition.
-    TopicPartition pInfoT10 = new TopicPartition("T1", 0);
-    TopicPartition pInfoT20 = new TopicPartition("T2", 0);
-
-    // Create replicas for topic: T1.
-    cluster.createReplica("0", 0, pInfoT10, true);
-    cluster.createReplica("0", 0, pInfoT20, true);
-
-    // Create snapshots and push them to the cluster.
-    cluster.pushLatestSnapshot("0", 0, pInfoT10, new Snapshot(1L,
-                               TestConstants.LARGE_BROKER_CAPACITY / 2,
-                               TestConstants.LARGE_BROKER_CAPACITY / 2,
-                               TestConstants.MEDIUM_BROKER_CAPACITY / 2,
-                               TestConstants.LARGE_BROKER_CAPACITY / 2));
-    cluster.pushLatestSnapshot("0", 0, pInfoT20, new Snapshot(1L,
-                               TestConstants.LARGE_BROKER_CAPACITY / 2,
-                               TestConstants.LARGE_BROKER_CAPACITY / 2,
-                               TestConstants.MEDIUM_BROKER_CAPACITY / 2,
-                               TestConstants.LARGE_BROKER_CAPACITY / 2));
-
-    return cluster;
-  }
-
-  public static ClusterModel rackAwareTestClusterModel(Map<Resource, Double> brokerCapacity)
-      throws AnalysisInputException, ModelInputException {
-    List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
-    ClusterModel cluster = getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
-        brokerCapacity);
-
-    // Create topic partition.
-    TopicPartition pInfoT10 = new TopicPartition("T1", 0);
-
-    // Create replicas for topic: T1.
-    cluster.createReplica("0", 0, pInfoT10, true);
-    cluster.createReplica("0", 1, pInfoT10, false);
-
-    // Create snapshots and push them to the cluster.
-    cluster.pushLatestSnapshot("0", 0, pInfoT10, new Snapshot(1L, 100.0, 100.0, 130.0, 75.0));
-    cluster.pushLatestSnapshot("0", 1, pInfoT10, new Snapshot(1L, 5.0, 100.0, 0.0, 75.0));
-
-    return cluster;
-  }
-
-  public static ClusterModel rackUnawareTestClusterModel(Map<Resource, Double> brokerCapacity)
-      throws AnalysisInputException, ModelInputException {
-    ClusterModel cluster = rackAwareTestClusterModel(brokerCapacity);
-    TopicPartition pInfoT10 = new TopicPartition("T1", 0);
-
-    cluster.createReplica("1", 2, pInfoT10, false);
-    cluster.pushLatestSnapshot("1", 2, pInfoT10, new Snapshot(1L, 100.0, 100.0, 130.0, 75.0));
-
-    return cluster;
-  }
-
   /**
    * Generates a small scale cluster.
    * <p>
@@ -280,9 +220,9 @@ public class DeterministicCluster {
    * @return Cluster with the specified number of racks and broker distribution.
    * @throws AnalysisInputException
    */
-  private static ClusterModel getHomogeneousDeterministicCluster(int numRacks,
-                                                                 List<Integer> orderedRackIdsOfBrokers,
-                                                                 Map<Resource, Double> brokerCapacity)
+  public static ClusterModel getHomogeneousDeterministicCluster(int numRacks,
+                                                                List<Integer> orderedRackIdsOfBrokers,
+                                                                Map<Resource, Double> brokerCapacity)
       throws AnalysisInputException {
     int numBrokers = orderedRackIdsOfBrokers.size();
     // Sanity checks.
