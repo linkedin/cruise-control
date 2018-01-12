@@ -112,6 +112,9 @@ The default Sample Store implementation produces metric samples back to Kafka.
 
 #### Goals ####
 The goals in Cruise Control are pluggable with different priorities. The default goals in order of decreasing priority are:
+ * **EvenAssignerGoal** - Distributes the replicas similar to the Even balance module in Kafka-assigner. This goal does not
+ care about self-healing. Hence, if there are dead brokers in the cluster, there will be replicas on those brokers at the end of the 
+ distribution process. This goal should be followed by the other goals to ensure that no replica resides on dead brokers.
  * **RackAwareGoal** - Ensures that all replicas of each partition are assigned in a rack aware manner -- i.e. no more than one replica of 
  each partition resides in the same rack.
  * **ReplicaCapacityGoal** - Ensures that the maximum number of replicas per broker is under the specified maximum limit.

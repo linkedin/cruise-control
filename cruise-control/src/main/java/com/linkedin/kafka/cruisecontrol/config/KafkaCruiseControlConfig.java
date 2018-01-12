@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.EvenAssignerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
@@ -658,6 +659,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         .define(GOALS_CONFIG,
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")
+                    .add(EvenAssignerGoal.class.getName())
                     .add(RackAwareGoal.class.getName())
                     .add(ReplicaCapacityGoal.class.getName())
                     .add(CpuCapacityGoal.class.getName())
@@ -686,6 +688,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         .define(ANOMALY_DETECTION_GOALS_CONFIG,
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")
+                    .add(EvenAssignerGoal.class.getName())
                     .add(RackAwareGoal.class.getName())
                     .add(ReplicaCapacityGoal.class.getName())
                     .add(CpuCapacityGoal.class.getName())

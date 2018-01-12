@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.EvenAssignerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
@@ -82,6 +83,7 @@ public class DeterministicClusterTest {
     }
 
     Map<Integer, String> goalNameByPriority = new HashMap<>();
+    goalNameByPriority.put(0, EvenAssignerGoal.class.getName());
     goalNameByPriority.put(1, RackAwareGoal.class.getName());
     goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
     goalNameByPriority.put(3, CpuCapacityGoal.class.getName());

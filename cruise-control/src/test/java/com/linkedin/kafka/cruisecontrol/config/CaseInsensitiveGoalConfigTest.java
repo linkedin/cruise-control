@@ -43,7 +43,8 @@ public class CaseInsensitiveGoalConfigTest {
     Properties caseInsensitiveGoalProps = new Properties();
     caseInsensitiveGoalProps.putAll(sharedProps);
     caseInsensitiveGoalProps.setProperty(KafkaCruiseControlConfig.GOALS_CONFIG,
-        "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
+            "com.linkedin.kafka.cruisecontrol.analyzer.goals.EvenAssignerGoal,"
+            + "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
             + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
             + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal,"
             + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,"

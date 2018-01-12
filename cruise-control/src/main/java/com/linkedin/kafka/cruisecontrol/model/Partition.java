@@ -49,16 +49,30 @@ public class Partition implements Serializable {
    * @throws ModelInputException
    */
   void addFollower(Replica follower) throws ModelInputException {
+    addFollower(-1, follower);
+  }
+
+  /**
+   * Add follower to the partition in the given index determining the follower position in replica list.
+   * @param index An index determining the follower position in replica list.
+   * @param follower Follower replica.
+   * @throws ModelInputException
+   */
+  private void addFollower(int index, Replica follower) throws ModelInputException {
     if (follower.isLeader()) {
       throw new ModelInputException("Inconsistent leadership information. Trying to add follower replica " +
-          follower + " while it is a leader.");
+                                    follower + " while it is a leader.");
     }
     if (!follower.topicPartition().equals(_tp)) {
       throw new ModelInputException("Inconsistent topic partition. Trying to add follower replica " + follower +
-          " to partition " + _tp + ".");
+                                    " to partition " + _tp + ".");
     }
     // Add follower to the list of followers.
-    _followers.add(follower);
+    if (index >= 0) {
+      _followers.add(index, follower);
+    } else {
+      _followers.add(follower);
+    }
   }
 
   /**
@@ -99,8 +113,22 @@ public class Partition implements Serializable {
   /**
    * Get the set of brokers that followers reside in.
    */
-  public Set<Broker> followerBrokers() {
-    return _followers.stream().map(Replica::broker).collect(Collectors.toSet());
+  public List<Broker> followerBrokers() {
+    return _followers.stream().map(Replica::broker).collect(Collectors.toList());
+  }
+
+  /**
+   * Given two follower indices in the follower list, swap their positions.
+   *
+   * @param followerIndex The index of the first follower to be swapped.
+   * @param otherFollowerIndex The index of the second follower to be swapped
+   */
+  public void swapFollowerPositions(int followerIndex, int otherFollowerIndex) {
+    Replica follower1 = _followers.get(followerIndex);
+    Replica follower2 = _followers.get(otherFollowerIndex);
+
+    _followers.set(otherFollowerIndex, follower1);
+    _followers.set(followerIndex, follower2);
   }
 
   /**
@@ -110,7 +138,7 @@ public class Partition implements Serializable {
     Set<Broker> partitionBrokers = new HashSet<>();
     // Add leader and follower brokers.
     partitionBrokers.add(_leader.broker());
-    partitionBrokers.addAll(_followers.stream().map(Replica::broker).collect(Collectors.toList()));
+    partitionBrokers.addAll(followerBrokers());
     return partitionBrokers;
   }
 
@@ -139,9 +167,10 @@ public class Partition implements Serializable {
    */
   void relocateLeadership(Replica prospectiveLeader) throws ModelInputException {
     // Remove prospective leader from followers.
+    int followerPosition = _followers.indexOf(prospectiveLeader);
     _followers.remove(prospectiveLeader);
     // Make the old leader a follower.
-    addFollower(_leader);
+    addFollower(followerPosition, _leader);
     // Make the prospective leader the leader.
     _leader = prospectiveLeader;
   }
