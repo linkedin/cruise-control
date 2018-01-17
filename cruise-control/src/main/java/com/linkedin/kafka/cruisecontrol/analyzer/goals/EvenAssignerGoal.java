@@ -21,7 +21,6 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.List;
@@ -36,6 +35,14 @@ import org.slf4j.LoggerFactory;
  * Class for achieving the following hard goal:
  * HARD GOAL: Generate replica and leadership movement proposals to provide even distribution of replicas similar to
  * even balance module in kafka-assigner.
+ *
+ * This goal performs balancing in two-phases for each partition of each topic. In the first phase, it balances partitions
+ * of the same topic. In the second phase, it distributes the remainder partitions evenly among the brokers in round
+ * robin distribution.
+ *
+ * @see <a href="https://github.com/linkedin/kafka-tools/blob/master/kafka/tools/assigner/actions/balancemodules/even.py">
+ *   https://github.com/linkedin/kafka-tools/blob/master/kafka/tools/assigner/actions/balancemodules/even.py</a>
+ *   for the original algorithm.
  */
 public class EvenAssignerGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(EvenAssignerGoal.class);
@@ -125,8 +132,7 @@ public class EvenAssignerGoal extends AbstractGoal {
   private List<Deque<Integer>> getRemainderBrokerIds(ClusterModel clusterModel) {
     PriorityQueue<Integer> orderedBrokerIds = new PriorityQueue<>(clusterModel.brokers().size());
 
-    clusterModel.brokers().stream().sorted(Comparator.comparing(Broker::id))
-        .forEach(broker -> orderedBrokerIds.add(broker.id()));
+    clusterModel.brokers().forEach(broker -> orderedBrokerIds.add(broker.id()));
 
     List<Deque<Integer>> remainderBrokerIds = new ArrayList<>();
     int maxReplicationFactor = clusterModel.maxReplicationFactor();

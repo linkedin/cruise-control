@@ -18,6 +18,7 @@ public class ClusterModelStats {
   private final Map<Statistic, Map<Resource, Double>> _resourceUtilizationStats;
   private final Map<Statistic, Double> _potentialNwOutUtilizationStats;
   private final Map<Statistic, Number> _replicaStats;
+  private final Map<Statistic, Number> _leaderRatioInBrokersWithMultipleReplicas;
   private final Map<Statistic, Number> _topicReplicaStats;
   private int _numBrokers;
   private int _numReplicasInCluster;
@@ -36,6 +37,7 @@ public class ClusterModelStats {
     _resourceUtilizationStats = new HashMap<>();
     _potentialNwOutUtilizationStats = new HashMap<>();
     _replicaStats = new HashMap<>();
+    _leaderRatioInBrokersWithMultipleReplicas = new HashMap<>();
     _topicReplicaStats = new HashMap<>();
     _numBrokers = 0;
     _numReplicasInCluster = 0;
@@ -59,6 +61,7 @@ public class ClusterModelStats {
     utilizationForResources(clusterModel);
     utilizationForPotentialNwOut(clusterModel);
     numForReplicas(clusterModel);
+    leaderRatioInBrokersWithMultipleReplicas(clusterModel);
     numForAvgTopicReplicas(clusterModel);
     _utilizationMatrix = clusterModel.utilizationMatrix();
     _numSnapshotWindows = clusterModel.load().numSnapshots();
@@ -85,6 +88,13 @@ public class ClusterModelStats {
    */
   public Map<Statistic, Number> replicaStats() {
     return _replicaStats;
+  }
+
+  /**
+   * Get stats for the leader ratio in brokers with multiple replicas for the cluster instance.
+   */
+  public Map<Statistic, Number> leaderRatioInBrokersWithMultipleReplicas() {
+    return _leaderRatioInBrokersWithMultipleReplicas;
   }
 
   /**
@@ -322,6 +332,48 @@ public class ClusterModelStats {
     _replicaStats.put(Statistic.MAX, maxReplicasInBroker);
     _replicaStats.put(Statistic.MIN, minReplicasInBroker);
     _replicaStats.put(Statistic.ST_DEV, Math.sqrt(varianceForReplicas));
+  }
+
+  /**
+   * Generate statistics for leader ratios in brokers with multiple replicas in the cluster.
+   *
+   * @param clusterModel The state of the cluster.
+   */
+  private void leaderRatioInBrokersWithMultipleReplicas(ClusterModel clusterModel) {
+    double maxLeaderRatioPerBroker = 0.0;
+    double minLeaderRatioPerBroker = Double.MAX_VALUE;
+    int numBrokersWithInsufficientNumReplicas = 0;
+    for (Broker broker : clusterModel.brokers()) {
+      // If the broker has less than 2 replicas, then skip it.
+      int numReplicas = broker.replicas().size();
+      if (numReplicas < 2) {
+        numBrokersWithInsufficientNumReplicas++;
+        continue;
+      }
+      double leaderRatioInBroker = ((double) broker.leaderReplicas().size()) / numReplicas;
+
+      maxLeaderRatioPerBroker = Math.max(maxLeaderRatioPerBroker, leaderRatioInBroker);
+      minLeaderRatioPerBroker = Math.min(minLeaderRatioPerBroker, leaderRatioInBroker);
+    }
+    double avgLeaderRatioPerBroker = ((double) clusterModel.leaderReplicas().size()) / _numReplicasInCluster;
+
+    // Standard deviation of leader ratios in brokers.
+    double varianceForLeaderRatioPerBroker = 0.0;
+    int numBrokersWithReplica = _numBrokers - numBrokersWithInsufficientNumReplicas;
+    for (Broker broker : clusterModel.brokers()) {
+      // If the broker has less than 2 replicas, then skip it.
+      int numReplicas = broker.replicas().size();
+      if (numReplicas < 2) {
+        continue;
+      }
+      double leaderRatio = ((double) broker.leaderReplicas().size()) / numReplicas;
+      varianceForLeaderRatioPerBroker += (Math.pow(leaderRatio - avgLeaderRatioPerBroker, 2) / numBrokersWithReplica);
+    }
+
+    _leaderRatioInBrokersWithMultipleReplicas.put(Statistic.AVG, avgLeaderRatioPerBroker);
+    _leaderRatioInBrokersWithMultipleReplicas.put(Statistic.MAX, maxLeaderRatioPerBroker);
+    _leaderRatioInBrokersWithMultipleReplicas.put(Statistic.MIN, minLeaderRatioPerBroker);
+    _leaderRatioInBrokersWithMultipleReplicas.put(Statistic.ST_DEV, Math.sqrt(varianceForLeaderRatioPerBroker));
   }
 
   /**

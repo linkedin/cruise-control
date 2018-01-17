@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoa
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PleGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
@@ -72,10 +73,11 @@ public class RandomGoalTest {
 
     List<String> goalsSortedByPriority = Arrays.asList(
         EvenAssignerGoal.class.getName(),
-        RackAwareGoal.class.getName(),
         ReplicaCapacityGoal.class.getName(),
-        CpuCapacityGoal.class.getName(),
+        RackAwareGoal.class.getName(),
         DiskCapacityGoal.class.getName(),
+        PleGoal.class.getName(),
+        CpuCapacityGoal.class.getName(),
         NetworkInboundCapacityGoal.class.getName(),
         NetworkOutboundCapacityGoal.class.getName(),
         PotentialNwOutGoal.class.getName(),
@@ -157,6 +159,7 @@ public class RandomGoalTest {
     shuffledSoftGoalNames.remove(EvenAssignerGoal.class.getName());
     shuffledSoftGoalNames.remove(RackAwareGoal.class.getName());
     shuffledSoftGoalNames.remove(ReplicaCapacityGoal.class.getName());
+    shuffledSoftGoalNames.remove(PleGoal.class.getName());
     shuffledSoftGoalNames.remove(CpuCapacityGoal.class.getName());
     shuffledSoftGoalNames.remove(DiskCapacityGoal.class.getName());
     shuffledSoftGoalNames.remove(NetworkInboundCapacityGoal.class.getName());

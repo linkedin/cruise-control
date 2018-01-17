@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoa
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PleGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
@@ -662,6 +663,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(EvenAssignerGoal.class.getName())
                     .add(RackAwareGoal.class.getName())
                     .add(ReplicaCapacityGoal.class.getName())
+                    .add(PleGoal.class.getName())
                     .add(CpuCapacityGoal.class.getName())
                     .add(DiskCapacityGoal.class.getName())
                     .add(NetworkInboundCapacityGoal.class.getName())
@@ -689,10 +691,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")
                     .add(EvenAssignerGoal.class.getName())
-                    .add(RackAwareGoal.class.getName())
                     .add(ReplicaCapacityGoal.class.getName())
-                    .add(CpuCapacityGoal.class.getName())
+                    .add(RackAwareGoal.class.getName())
                     .add(DiskCapacityGoal.class.getName())
+                    .add(PleGoal.class.getName())
+                    .add(CpuCapacityGoal.class.getName())
                     .add(NetworkInboundCapacityGoal.class.getName())
                     .add(NetworkOutboundCapacityGoal.class.getName())
                     .add(PotentialNwOutGoal.class.getName())

@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoa
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PleGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
@@ -84,20 +85,21 @@ public class DeterministicClusterTest {
 
     Map<Integer, String> goalNameByPriority = new HashMap<>();
     goalNameByPriority.put(0, EvenAssignerGoal.class.getName());
-    goalNameByPriority.put(1, RackAwareGoal.class.getName());
-    goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
-    goalNameByPriority.put(3, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(4, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(5, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(6, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(7, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(8, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, LeaderBytesInDistributionGoal.class.getName());
-    goalNameByPriority.put(14, ReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(1, ReplicaCapacityGoal.class.getName());
+    goalNameByPriority.put(2, RackAwareGoal.class.getName());
+    goalNameByPriority.put(3, DiskCapacityGoal.class.getName());
+    goalNameByPriority.put(4, PleGoal.class.getName());
+    goalNameByPriority.put(5, CpuCapacityGoal.class.getName());
+    goalNameByPriority.put(6, NetworkInboundCapacityGoal.class.getName());
+    goalNameByPriority.put(7, NetworkOutboundCapacityGoal.class.getName());
+    goalNameByPriority.put(8, PotentialNwOutGoal.class.getName());
+    goalNameByPriority.put(9, TopicReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(10, DiskUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(11, NetworkInboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(12, NetworkOutboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(13, CpuUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(14, LeaderBytesInDistributionGoal.class.getName());
+    goalNameByPriority.put(15, ReplicaDistributionGoal.class.getName());
 
 
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();

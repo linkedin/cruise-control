@@ -113,7 +113,7 @@ public abstract class AbstractGoal implements Goal {
       ClusterModelStatsComparator comparator = clusterModelStatsComparator();
       // Throw exception when the stats before optimization is preferred.
       if (comparator.compare(statsAfterOptimization, statsBeforeOptimization) < 0) {
-        throw new OptimizationFailureException("Optimization for Goal " + name() + " failed because the optimized"
+        throw new OptimizationFailureException("Optimization for Goal " + name() + " failed because the optimized "
                                                    + "result is worse than before. Detail reason: "
                                                    + comparator.explainLastComparison());
       }
@@ -199,6 +199,21 @@ public abstract class AbstractGoal implements Goal {
                                              Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException, OptimizationFailureException;
 
+  /**
+   * Attempt to apply the given balancing action to the given replica in the given cluster. The application
+   * considers the candidate brokers as the potential destination brokers for replica movement or the location of
+   * followers for leadership transfer. If the movement attempt succeeds, the function returns the broker id of the
+   * destination, otherwise the function returns null.
+   *
+   * @param clusterModel    The state of the cluster.
+   * @param replica         Replica to be applied the given balancing action.
+   * @param candidateBrokers Candidate brokers as the potential destination brokers for replica movement or the location
+   *                         of followers for leadership transfer.
+   * @param action          Balancing action.
+   * @param optimizedGoals  Optimized goals.
+   * @param skipEligibilityCheck Skip the eligibility check for the candidate brokers.
+   * @return Broker id of the destination if the movement attempt succeeds, null otherwise.
+   */
   protected Broker maybeApplyBalancingAction(ClusterModel clusterModel,
                                              Replica replica,
                                              Collection<Broker> candidateBrokers,
@@ -239,10 +254,7 @@ public abstract class AbstractGoal implements Goal {
   }
 
   /**
-   * Attempt to apply the given balancing action to the given replica in the given cluster. The application
-   * considers the candidate brokers as the potential destination brokers for replica movement or the location of
-   * followers for leadership transfer. If the movement attempt succeeds, the function returns the broker id of the
-   * destination, otherwise the function returns null.
+   * See JavaDoc of {@link #maybeApplyBalancingAction(ClusterModel, Replica, Collection, BalancingAction, Set, boolean)}.
    *
    * @param clusterModel    The state of the cluster.
    * @param replica         Replica to be applied the given balancing action.
