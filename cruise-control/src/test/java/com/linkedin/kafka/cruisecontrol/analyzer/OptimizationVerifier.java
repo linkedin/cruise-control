@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.EvenAssignerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -126,7 +127,12 @@ class OptimizationVerifier {
               goalByPriority, optimizerResult.goalProposals().size());
 
     // Check whether test has failed for self healing: fails if there are replicas on dead brokers after self healing.
-    if (!clusterModel.selfHealingEligibleReplicas().isEmpty()) {
+    boolean containsEvenAssignerGoal = !goalByPriority.isEmpty() && goalByPriority.values().stream()
+                                           .anyMatch(goal -> goal.name().equals(EvenAssignerGoal.class.getSimpleName()));
+    boolean isEvenAssignerLastGoal = containsEvenAssignerGoal && goalByPriority.get(goalByPriority.lastKey())
+        .name()
+        .equals(EvenAssignerGoal.class.getSimpleName());
+    if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && !isEvenAssignerLastGoal) {
       Set<Broker> deadBrokers = clusterModel.brokers();
       deadBrokers.removeAll(clusterModel.healthyBrokers());
       for (Broker deadBroker : deadBrokers) {
@@ -151,7 +157,7 @@ class OptimizationVerifier {
     }
 
     // When there are new brokers, ensure replicas are only moved from the old brokers to the new broker.
-    if (!clusterModel.newBrokers().isEmpty()) {
+    if (!clusterModel.newBrokers().isEmpty() && !containsEvenAssignerGoal) {
       for (Broker broker : clusterModel.healthyBrokers()) {
         if (!broker.isNew()) {
           for (Replica replica : broker.replicas()) {

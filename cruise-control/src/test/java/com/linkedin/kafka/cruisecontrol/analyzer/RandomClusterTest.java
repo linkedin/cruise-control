@@ -9,11 +9,13 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.EvenAssignerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PleGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
@@ -59,20 +61,22 @@ public class RandomClusterTest {
     Collection<Object[]> params = new ArrayList<>();
 
     Map<Integer, String> goalNameByPriority = new HashMap<>();
-    goalNameByPriority.put(1, RackAwareGoal.class.getName());
-    goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
-    goalNameByPriority.put(3, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(4, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(5, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(6, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(7, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(8, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, LeaderBytesInDistributionGoal.class.getName());
-    goalNameByPriority.put(14, ReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(0, EvenAssignerGoal.class.getName());
+    goalNameByPriority.put(1, ReplicaCapacityGoal.class.getName());
+    goalNameByPriority.put(2, RackAwareGoal.class.getName());
+    goalNameByPriority.put(3, DiskCapacityGoal.class.getName());
+    goalNameByPriority.put(4, PleGoal.class.getName());
+    goalNameByPriority.put(5, CpuCapacityGoal.class.getName());
+    goalNameByPriority.put(6, NetworkInboundCapacityGoal.class.getName());
+    goalNameByPriority.put(7, NetworkOutboundCapacityGoal.class.getName());
+    goalNameByPriority.put(8, PotentialNwOutGoal.class.getName());
+    goalNameByPriority.put(9, TopicReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(10, DiskUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(11, NetworkInboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(12, NetworkOutboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(13, CpuUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(14, LeaderBytesInDistributionGoal.class.getName());
+    goalNameByPriority.put(15, ReplicaDistributionGoal.class.getName());
 
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1500L));
@@ -117,6 +121,13 @@ public class RandomClusterTest {
       params.add(replicationCountParams);
     }
 
+    // Test: Decrease Topic Count -- i.e. generate topics having more partitions that the number of brokers.
+    for (int i = 25; i <= 30; i++) {
+      modifiedProperties = new HashMap<>();
+      modifiedProperties.put(ClusterProperty.NUM_TOPICS, 300 - (2 * i));
+      Object[] lessTopicCountParams = {modifiedProperties, goalNameByPriority, distribution, balancingConstraint};
+      params.add(lessTopicCountParams);
+    }
     return params;
   }
 

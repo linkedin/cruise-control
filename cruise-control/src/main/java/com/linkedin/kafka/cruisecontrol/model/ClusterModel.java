@@ -24,6 +24,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -185,6 +187,20 @@ public class ClusterModel implements Serializable {
    */
   public Partition partition(TopicPartition tp) {
     return _partitionsByTopicPartition.get(tp);
+  }
+
+  /**
+   * Get a map of partitions by topic names.
+   */
+  public SortedMap<String, List<Partition>> getPartitionsByTopic() {
+    SortedMap<String, List<Partition>> partitionsByTopic = new TreeMap<>();
+    for (String topicName: topics()) {
+      partitionsByTopic.put(topicName, new ArrayList<>());
+    }
+    for (Map.Entry<TopicPartition, Partition> entry: _partitionsByTopicPartition.entrySet()) {
+      partitionsByTopic.get(entry.getKey().topic()).add(entry.getValue());
+    }
+    return partitionsByTopic;
   }
 
   /**

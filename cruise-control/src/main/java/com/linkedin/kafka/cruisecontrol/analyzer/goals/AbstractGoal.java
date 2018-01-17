@@ -64,11 +64,32 @@ public abstract class AbstractGoal implements Goal {
     }
   }
 
+  /**
+   * Sanity check to ensure that if the current goal is {@link EvenAssignerGoal}, then no other goals, except other
+   * {@link EvenAssignerGoal}s, are optimized before this goal. This is because, the {@link EvenAssignerGoal} cares
+   * about neither (1) the broker state, nor (2) the previously optimized goals; hence, it tends to violate the
+   * requirements of the previously optimized goals.
+   *
+   * @param optimizedGoals Optimized goals.
+   */
+  private void optimizedGoalsSanityCheck(Set<Goal> optimizedGoals) {
+    String evenAssignerGoalName = EvenAssignerGoal.class.getSimpleName();
+    if (name().equals(evenAssignerGoalName)) {
+      for (Goal optimizedGoal : optimizedGoals) {
+        if (!optimizedGoal.name().equals(evenAssignerGoalName)) {
+          throw new IllegalArgumentException(String.format("Cannot optimize other goals before %s", name()));
+        }
+      }
+    }
+  }
+
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException, OptimizationFailureException {
     _succeeded = true;
     LOG.debug("Starting optimization for {}.", name());
+    // Sanity check optimized goals.
+    optimizedGoalsSanityCheck(optimizedGoals);
     // Initialize pre-optimized stats.
     ClusterModelStats statsBeforeOptimization = clusterModel.getClusterStats(_balancingConstraint);
     LOG.trace("[PRE - {}] {}", name(), statsBeforeOptimization);
@@ -92,7 +113,7 @@ public abstract class AbstractGoal implements Goal {
       ClusterModelStatsComparator comparator = clusterModelStatsComparator();
       // Throw exception when the stats before optimization is preferred.
       if (comparator.compare(statsAfterOptimization, statsBeforeOptimization) < 0) {
-        throw new OptimizationFailureException("Optimization for Goal " + name() + " failed because the optimized"
+        throw new OptimizationFailureException("Optimization for Goal " + name() + " failed because the optimized "
                                                    + "result is worse than before. Detail reason: "
                                                    + comparator.explainLastComparison());
       }
@@ -153,7 +174,7 @@ public abstract class AbstractGoal implements Goal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   protected abstract void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException;
+      throws AnalysisInputException, ModelInputException, OptimizationFailureException;
 
   /**
    * Update goal state after one round of self-healing / rebalance.
@@ -187,23 +208,26 @@ public abstract class AbstractGoal implements Goal {
    * @param clusterModel    The state of the cluster.
    * @param replica         Replica to be applied the given balancing action.
    * @param candidateBrokers Candidate brokers as the potential destination brokers for replica movement or the location
-   *                        of followers for leadership transfer.
+   *                         of followers for leadership transfer.
    * @param action          Balancing action.
    * @param optimizedGoals  Optimized goals.
+   * @param skipEligibilityCheck Skip the eligibility check for the candidate brokers.
    * @return Broker id of the destination if the movement attempt succeeds, null otherwise.
    */
   protected Broker maybeApplyBalancingAction(ClusterModel clusterModel,
-                                              Replica replica,
-                                              Collection<Broker> candidateBrokers,
-                                              BalancingAction action,
-                                              Set<Goal> optimizedGoals)
+                                             Replica replica,
+                                             Collection<Broker> candidateBrokers,
+                                             BalancingAction action,
+                                             Set<Goal> optimizedGoals,
+                                             boolean skipEligibilityCheck)
       throws ModelInputException, AnalysisInputException {
     // In self healing mode, allow a move only from dead to alive brokers.
     if (!clusterModel.deadBrokers().isEmpty() && replica.originalBroker().isAlive()) {
       //return null;
       LOG.trace("Applying {} to a replica in a healthy broker in self-healing mode.", action);
     }
-    Collection<Broker> eligibleBrokers = getEligibleBrokers(clusterModel, replica, candidateBrokers);
+    Collection<Broker> eligibleBrokers = skipEligibilityCheck ? candidateBrokers
+                                                              : getEligibleBrokers(clusterModel, replica, candidateBrokers);
     for (Broker broker : eligibleBrokers) {
       BalancingProposal optimizedGoalProposal =
           new BalancingProposal(replica.topicPartition(), replica.broker().id(), broker.id(), action);
@@ -229,6 +253,34 @@ public abstract class AbstractGoal implements Goal {
     return null;
   }
 
+  /**
+   * See JavaDoc of {@link #maybeApplyBalancingAction(ClusterModel, Replica, Collection, BalancingAction, Set, boolean)}.
+   *
+   * @param clusterModel    The state of the cluster.
+   * @param replica         Replica to be applied the given balancing action.
+   * @param candidateBrokers Candidate brokers as the potential destination brokers for replica movement or the location
+   *                        of followers for leadership transfer.
+   * @param action          Balancing action.
+   * @param optimizedGoals  Optimized goals.
+   * @return Broker id of the destination if the movement attempt succeeds, null otherwise.
+   */
+  protected Broker maybeApplyBalancingAction(ClusterModel clusterModel,
+                                              Replica replica,
+                                              Collection<Broker> candidateBrokers,
+                                              BalancingAction action,
+                                              Set<Goal> optimizedGoals)
+      throws ModelInputException, AnalysisInputException {
+    boolean skipEligibilityCheck = false;
+    for (Goal optimizedGoal : optimizedGoals) {
+      if (optimizedGoal.name().equals(EvenAssignerGoal.class.getSimpleName())) {
+        skipEligibilityCheck = true;
+        break;
+      }
+    }
+
+    return maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, action, optimizedGoals, skipEligibilityCheck);
+  }
+
   private boolean legitMove(Replica replica, Broker destBroker, BalancingAction balancingAction) {
     if (balancingAction == BalancingAction.REPLICA_MOVEMENT && destBroker.replica(replica.topicPartition()) == null) {
       return true;
@@ -246,7 +298,7 @@ public abstract class AbstractGoal implements Goal {
       return candidateBrokers;
     } else {
       List<Broker> eligibleBrokers = new ArrayList<>();
-      // When there is new brokers, we should only allow the replicas to be moved to the new brokers.
+      // When there are new brokers, we should only allow the replicas to be moved to the new brokers.
       candidateBrokers.forEach(b -> {
         if (b.isNew() || b == replica.originalBroker()) {
           eligibleBrokers.add(b);

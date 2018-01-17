@@ -9,11 +9,13 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.EvenAssignerGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PleGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
@@ -35,7 +37,9 @@ import java.util.Map;
 
 import java.util.Properties;
 import java.util.Random;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
@@ -54,6 +58,9 @@ public class RandomGoalTest {
 
   private final static Random RANDOM = new Random(34534534);
 
+  @Rule
+  public ExpectedException expected = ExpectedException.none();
+
   /**
    * Populate parameters for the {@link OptimizationVerifier}. All brokers are alive.
    *
@@ -65,10 +72,12 @@ public class RandomGoalTest {
     Collection<Object[]> params = new ArrayList<>();
 
     List<String> goalsSortedByPriority = Arrays.asList(
-        RackAwareGoal.class.getName(),
+        EvenAssignerGoal.class.getName(),
         ReplicaCapacityGoal.class.getName(),
-        CpuCapacityGoal.class.getName(),
+        RackAwareGoal.class.getName(),
         DiskCapacityGoal.class.getName(),
+        PleGoal.class.getName(),
+        CpuCapacityGoal.class.getName(),
         NetworkInboundCapacityGoal.class.getName(),
         NetworkOutboundCapacityGoal.class.getName(),
         PotentialNwOutGoal.class.getName(),
@@ -90,7 +99,7 @@ public class RandomGoalTest {
     int goalPriority = 1;
     for (String goalName: goalsSortedByPriority) {
       Map<Integer, String> singletonGoalNameByPriority = Collections.singletonMap(goalPriority, goalName);
-      Object[] singleGoalParams = {Collections.emptyMap(), singletonGoalNameByPriority, balancingConstraint};
+      Object[] singleGoalParams = {Collections.emptyMap(), singletonGoalNameByPriority, balancingConstraint, null};
       params.add(singleGoalParams);
       goalPriority++;
     }
@@ -103,30 +112,54 @@ public class RandomGoalTest {
         repeatedGoalNamesByPriority.put(goalPriority, goalName);
         goalPriority++;
       }
-      Object[] consecutiveRepetitionParams = {Collections.emptyMap(), repeatedGoalNamesByPriority, balancingConstraint};
+      Object[] consecutiveRepetitionParams = {Collections.emptyMap(), repeatedGoalNamesByPriority, balancingConstraint, null};
       params.add(consecutiveRepetitionParams);
     }
-    // Test: Nested repetition of the same goal (goalRepetition times each).
+    // Test: Nested repetition of the same goal (with EvenAssignerGoal, goalRepetition times each).
     goalPriority = 1;
-    Map<Integer, String> nonRepetitiveGoalNamesByPriority = new HashMap<>();
+    Map<Integer, String> nonRepetitiveGoalNamesWithEvenAssignerGoalByPriority = new HashMap<>();
     for (int i = 0; i < goalRepetition; i++) {
       for (String goalName : goalsSortedByPriority) {
-        nonRepetitiveGoalNamesByPriority.put(goalPriority, goalName);
+        nonRepetitiveGoalNamesWithEvenAssignerGoalByPriority.put(goalPriority, goalName);
         goalPriority++;
       }
     }
-    Object[] nestedRepetitionParams = {Collections.emptyMap(), nonRepetitiveGoalNamesByPriority, balancingConstraint};
-    params.add(nestedRepetitionParams);
+    Object[] nestedRepetitionParamsWithEvenAssignerGoal = {
+        Collections.emptyMap(),
+        nonRepetitiveGoalNamesWithEvenAssignerGoalByPriority,
+        balancingConstraint,
+        IllegalArgumentException.class};
+    params.add(nestedRepetitionParamsWithEvenAssignerGoal);
+
+    // Test: Nested repetition of the same goal (without EvenAssignerGoal, goalRepetition times each).
+    goalPriority = 1;
+    Map<Integer, String> nonRepetitiveGoalNamesWithoutEvenAssignerGoalByPriority = new HashMap<>();
+    for (int i = 0; i < goalRepetition; i++) {
+      for (String goalName : goalsSortedByPriority) {
+        if (!goalName.equals(EvenAssignerGoal.class.getName())) {
+          nonRepetitiveGoalNamesWithoutEvenAssignerGoalByPriority.put(goalPriority, goalName);
+          goalPriority++;
+        }
+      }
+    }
+    Object[] nestedRepetitionParamsWithoutEvenAssignerGoal = {
+        Collections.emptyMap(),
+        nonRepetitiveGoalNamesWithoutEvenAssignerGoalByPriority,
+        balancingConstraint,
+        null};
+    params.add(nestedRepetitionParamsWithoutEvenAssignerGoal);
 
     // Test: No goal.
-    Object[] noGoalParams = {Collections.emptyMap(), Collections.emptyMap(), balancingConstraint};
+    Object[] noGoalParams = {Collections.emptyMap(), Collections.emptyMap(), balancingConstraint, null};
     params.add(noGoalParams);
 
     // Test shuffled soft goals.
     List<String> shuffledSoftGoalNames = new ArrayList<>(goalsSortedByPriority);
     // Remove the hard goals.
+    shuffledSoftGoalNames.remove(EvenAssignerGoal.class.getName());
     shuffledSoftGoalNames.remove(RackAwareGoal.class.getName());
     shuffledSoftGoalNames.remove(ReplicaCapacityGoal.class.getName());
+    shuffledSoftGoalNames.remove(PleGoal.class.getName());
     shuffledSoftGoalNames.remove(CpuCapacityGoal.class.getName());
     shuffledSoftGoalNames.remove(DiskCapacityGoal.class.getName());
     shuffledSoftGoalNames.remove(NetworkInboundCapacityGoal.class.getName());
@@ -139,7 +172,7 @@ public class RandomGoalTest {
       randomOrderedSoftGoalsByPriority.put(goalPriority, goalName);
       goalPriority++;
     }
-    Object[] randomOrderedSoftGoalsParams = {Collections.emptyMap(), randomOrderedSoftGoalsByPriority, balancingConstraint};
+    Object[] randomOrderedSoftGoalsParams = {Collections.emptyMap(), randomOrderedSoftGoalsByPriority, balancingConstraint, null};
     params.add(randomOrderedSoftGoalsParams);
 
     return params;
@@ -148,19 +181,24 @@ public class RandomGoalTest {
   private Map<ClusterProperty, Number> _modifiedProperties;
   private Map<Integer, String> _goalNameByPriority;
   private BalancingConstraint _balancingConstraint;
+  private Class<Throwable> _exceptionClass;
 
   /**
    * Constructor of Random Goal Test.
    *
    * @param modifiedProperties Modified cluster properties over the {@link TestConstants#BASE_PROPERTIES}.
    * @param goalNameByPriority Goal name by priority.
+   * @param balancingConstraint Balancing constraint for the cluster.
+   * @param exceptionClass Expected exception class (if any).
    */
   public RandomGoalTest(Map<ClusterProperty, Number> modifiedProperties,
                         Map<Integer, String> goalNameByPriority,
-                        BalancingConstraint balancingConstraint) {
+                        BalancingConstraint balancingConstraint,
+                        Class<Throwable> exceptionClass) {
     _modifiedProperties = modifiedProperties;
     _goalNameByPriority = goalNameByPriority;
     _balancingConstraint = balancingConstraint;
+    _exceptionClass = exceptionClass;
   }
 
   @Test
@@ -172,6 +210,10 @@ public class RandomGoalTest {
     LOG.debug("Replica distribution: {} || Goals: {}.", TestConstants.Distribution.EXPONENTIAL, _goalNameByPriority);
     ClusterModel clusterModel = RandomCluster.generate(clusterProperties);
     RandomCluster.populate(clusterModel, clusterProperties, TestConstants.Distribution.EXPONENTIAL);
+
+    if (_exceptionClass != null) {
+      expected.expect(_exceptionClass);
+    }
 
     assertTrue("Random Goal Test failed to improve the existing state.",
         OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority));
