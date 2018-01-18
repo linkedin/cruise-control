@@ -19,9 +19,11 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -32,12 +34,13 @@ import org.slf4j.LoggerFactory;
  */
 public class ReplicaCapacityGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicaCapacityGoal.class);
+  private boolean _isSelfHealingMode;
 
   /**
    * Constructor for Replica Capacity Goal.
    */
   public ReplicaCapacityGoal() {
-
+    _isSelfHealingMode = false;
   }
 
   /**
@@ -45,6 +48,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    */
   ReplicaCapacityGoal(BalancingConstraint constraint) {
     _balancingConstraint = constraint;
+    _isSelfHealingMode = false;
   }
 
   /**
@@ -60,9 +64,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     if (proposal.balancingAction().equals(BalancingAction.REPLICA_MOVEMENT) ||
         proposal.balancingAction().equals(BalancingAction.REPLICA_ADDITION)) {
       Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
-      if (destinationBroker.replicas().size() >= _balancingConstraint.maxReplicasPerBroker()) {
-        return false;
-      }
+      return destinationBroker.replicas().size() < _balancingConstraint.maxReplicasPerBroker();
     }
     return true;
   }
@@ -115,6 +117,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     int totalReplicasInCluster = 0;
     for (Broker broker : brokersToBalance(clusterModel)) {
       if (!broker.isAlive()) {
+        _isSelfHealingMode = true;
         continue;
       }
       int excludedReplicasInBroker = 0;
@@ -150,10 +153,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal) {
     Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
-    if (destinationBroker.replicas().size() >= _balancingConstraint.maxReplicasPerBroker()) {
-      return false;
-    }
-    return true;
+    return destinationBroker.replicas().size() < _balancingConstraint.maxReplicasPerBroker();
   }
 
   /**
@@ -165,12 +165,16 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException, OptimizationFailureException {
-    // One pass is sufficient to satisfy or alert impossibility of this goal.
-    // Sanity check to confirm that the final distribution has less than the allowed number of replicas per broker.
-    ensureReplicaCapacitySatisfied(clusterModel);
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
     AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);
-    finish();
+
+    if (!_isSelfHealingMode) {
+      // One pass in non-self-healing mode is sufficient to satisfy or alert impossibility of this goal.
+      // Sanity check to confirm that the final distribution has less than the allowed number of replicas per broker.
+      ensureReplicaCapacitySatisfied(clusterModel);
+      finish();
+    }
+    _isSelfHealingMode = false;
   }
 
   /**
@@ -210,35 +214,48 @@ public class ReplicaCapacityGoal extends AbstractGoal {
         continue;
       }
 
-      // The goal requirements are violated. Move replica to an available broker.
-      SortedSet<Broker> replicaCapacityEligibleBrokers = replicaCapacityEligibleBrokers(replica, clusterModel);
-      Broker b = maybeApplyBalancingAction(clusterModel, replica, replicaCapacityEligibleBrokers,
-          BalancingAction.REPLICA_MOVEMENT, optimizedGoals);
+      // The goal requirements are violated. Move replica to an eligible broker.
+      List<Broker> eligibleBrokers =
+          eligibleBrokers(replica, clusterModel).stream().map(BrokerReplicaCount::broker).collect(Collectors.toList());
+
+      Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, BalancingAction.REPLICA_MOVEMENT, optimizedGoals);
       if (b == null) {
-        LOG.debug("Failed to move replica {} to any broker in {}", replica, replicaCapacityEligibleBrokers);
+        if (!broker.isAlive()) {
+          // If the replica resides in a dead broker, throw an exception!
+          throw new OptimizationFailureException(String.format("Failed to move dead broker replica %s of partition %s "
+                                                               + "to a broker in %s. Limit: %d for brokers: %s", replica,
+                                                               clusterModel.partition(replica.topicPartition()),
+                                                               eligibleBrokers, _balancingConstraint.maxReplicasPerBroker(),
+                                                               clusterModel.brokers()));
+        }
+        LOG.debug("Failed to move replica {} to any broker in {}.", replica, eligibleBrokers);
       }
     }
   }
 
   /**
-   * Get a list of replica capacity eligible brokers for the given replica in the given cluster. A broker is eligible
-   * for a given replica if the broker contains less than allowed maximum number of replicas.
+   * Get a list of replica capacity eligible brokers for the given replica in the given cluster.
+   *
+   * A healthy destination broker is eligible for a given replica if
+   * (1) the broker contains less than allowed maximum number of replicas, or
+   * (2) If the the self healing mode is true.
+   *
+   * Returned brokers are sorted by number of replicas on them in ascending order.
    *
    * @param replica      Replica for which a set of replica capacity eligible brokers are requested.
    * @param clusterModel The state of the cluster.
    * @return A list of replica capacity eligible brokers for the given replica in the given cluster.
    */
-  private SortedSet<Broker> replicaCapacityEligibleBrokers(Replica replica, ClusterModel clusterModel) {
+  private SortedSet<BrokerReplicaCount> eligibleBrokers(Replica replica, ClusterModel clusterModel) {
     // Populate partition rack ids.
-    SortedSet<Broker> eligibleBrokers = new TreeSet<>((o1, o2) -> {
-      return Integer.compare(o1.replicas().size(), o2.replicas().size());
-    });
+    SortedSet<BrokerReplicaCount> eligibleBrokers = new TreeSet<>();
 
     int sourceBrokerId = replica.broker().id();
 
     for (Broker broker : clusterModel.healthyBrokers()) {
-      if (broker.replicas().size() < _balancingConstraint.maxReplicasPerBroker() && broker.id() != sourceBrokerId) {
-        eligibleBrokers.add(broker);
+      if ((_isSelfHealingMode || broker.replicas().size() < _balancingConstraint.maxReplicasPerBroker())
+          && broker.id() != sourceBrokerId) {
+        eligibleBrokers.add(new BrokerReplicaCount(broker));
       }
     }
 
@@ -257,6 +274,55 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     @Override
     public String explainLastComparison() {
       return null;
+    }
+  }
+
+  /**
+   * A helper class for this goal to keep track of the number of replicas assigned to brokers.
+   */
+  private static class BrokerReplicaCount implements Comparable<BrokerReplicaCount> {
+    private final Broker _broker;
+    private int _replicaCount;
+
+    BrokerReplicaCount(Broker broker) {
+      _broker = broker;
+      _replicaCount = broker.replicas().size();
+    }
+
+    public Broker broker() {
+      return _broker;
+    }
+
+    int replicaCount() {
+      return _replicaCount;
+    }
+
+    @Override
+    public int compareTo(BrokerReplicaCount o) {
+      if (_replicaCount > o.replicaCount()) {
+        return 1;
+      } else if (_replicaCount < o.replicaCount()) {
+        return -1;
+      } else {
+        return Integer.compare(_broker.id(), o.broker().id());
+      }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      BrokerReplicaCount that = (BrokerReplicaCount) o;
+      return _replicaCount == that._replicaCount && _broker.id() == that._broker.id();
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(_broker.id(), _replicaCount);
     }
   }
 }
