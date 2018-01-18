@@ -138,8 +138,18 @@ public class Partition implements Serializable {
     Set<Broker> partitionBrokers = new HashSet<>();
     // Add leader and follower brokers.
     partitionBrokers.add(_leader.broker());
-    partitionBrokers.addAll(followerBrokers());
+    _followers.forEach(r -> partitionBrokers.add(r.broker()));
     return partitionBrokers;
+  }
+
+  /**
+   * @return the set of racks that contains replicas of the partition.
+   */
+  public Set<Rack> partitionRacks() {
+    Set<Rack> partitionRacks = new HashSet<>();
+    partitionRacks.add(_leader.broker().rack());
+    _followers.forEach(r -> partitionRacks.add(r.broker().rack()));
+    return partitionRacks;
   }
 
   /**

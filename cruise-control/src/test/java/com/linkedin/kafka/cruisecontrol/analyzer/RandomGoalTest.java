@@ -42,6 +42,7 @@ import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.*;
 import static org.junit.Assert.assertTrue;
 
 
@@ -62,7 +63,7 @@ public class RandomGoalTest {
   @Parameters
   public static Collection<Object[]> data() throws Exception {
     int goalRepetition = 4;
-    Collection<Object[]> params = new ArrayList<>();
+    Collection<Object[]> p = new ArrayList<>();
 
     List<String> goalsSortedByPriority = Arrays.asList(
         RackAwareGoal.class.getName(),
@@ -86,12 +87,13 @@ public class RandomGoalTest {
     balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
+    List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, DEAD_BROKERS, REGRESSION);
+    
     // Test: Single goal at a time.
     int goalPriority = 1;
     for (String goalName: goalsSortedByPriority) {
       Map<Integer, String> singletonGoalNameByPriority = Collections.singletonMap(goalPriority, goalName);
-      Object[] singleGoalParams = {Collections.emptyMap(), singletonGoalNameByPriority, balancingConstraint};
-      params.add(singleGoalParams);
+      p.add(params(Collections.emptyMap(), singletonGoalNameByPriority, balancingConstraint, verifications));
       goalPriority++;
     }
 
@@ -103,9 +105,9 @@ public class RandomGoalTest {
         repeatedGoalNamesByPriority.put(goalPriority, goalName);
         goalPriority++;
       }
-      Object[] consecutiveRepetitionParams = {Collections.emptyMap(), repeatedGoalNamesByPriority, balancingConstraint};
-      params.add(consecutiveRepetitionParams);
+      p.add(params(Collections.emptyMap(), repeatedGoalNamesByPriority, balancingConstraint, verifications));
     }
+    
     // Test: Nested repetition of the same goal (goalRepetition times each).
     goalPriority = 1;
     Map<Integer, String> nonRepetitiveGoalNamesByPriority = new HashMap<>();
@@ -115,12 +117,10 @@ public class RandomGoalTest {
         goalPriority++;
       }
     }
-    Object[] nestedRepetitionParams = {Collections.emptyMap(), nonRepetitiveGoalNamesByPriority, balancingConstraint};
-    params.add(nestedRepetitionParams);
+    p.add(params(Collections.emptyMap(), nonRepetitiveGoalNamesByPriority, balancingConstraint, verifications));
 
     // Test: No goal.
-    Object[] noGoalParams = {Collections.emptyMap(), Collections.emptyMap(), balancingConstraint};
-    params.add(noGoalParams);
+    p.add(params(Collections.emptyMap(), Collections.emptyMap(), balancingConstraint, verifications));
 
     // Test shuffled soft goals.
     List<String> shuffledSoftGoalNames = new ArrayList<>(goalsSortedByPriority);
@@ -139,28 +139,39 @@ public class RandomGoalTest {
       randomOrderedSoftGoalsByPriority.put(goalPriority, goalName);
       goalPriority++;
     }
-    Object[] randomOrderedSoftGoalsParams = {Collections.emptyMap(), randomOrderedSoftGoalsByPriority, balancingConstraint};
-    params.add(randomOrderedSoftGoalsParams);
+    p.add(params(Collections.emptyMap(), randomOrderedSoftGoalsByPriority, balancingConstraint, verifications));
 
-    return params;
+    return p;
+  }
+  
+  private static Object[] params(Map<ClusterProperty, Number> modifiedProperties,
+                                 Map<Integer, String> goalNameByPriority,
+                                 BalancingConstraint balancingConstraint,
+                                 List<OptimizationVerifier.Verification> verifications) {
+    return new Object[]{modifiedProperties, goalNameByPriority, balancingConstraint, verifications};
   }
 
   private Map<ClusterProperty, Number> _modifiedProperties;
   private Map<Integer, String> _goalNameByPriority;
   private BalancingConstraint _balancingConstraint;
+  private List<OptimizationVerifier.Verification> _verifications;
 
   /**
    * Constructor of Random Goal Test.
    *
    * @param modifiedProperties Modified cluster properties over the {@link TestConstants#BASE_PROPERTIES}.
    * @param goalNameByPriority Goal name by priority.
+   * @param balancingConstraint the balancing constraints.
+   * @param verifications the verifications to make.
    */
   public RandomGoalTest(Map<ClusterProperty, Number> modifiedProperties,
                         Map<Integer, String> goalNameByPriority,
-                        BalancingConstraint balancingConstraint) {
+                        BalancingConstraint balancingConstraint,
+                        List<OptimizationVerifier.Verification> verifications) {
     _modifiedProperties = modifiedProperties;
     _goalNameByPriority = goalNameByPriority;
     _balancingConstraint = balancingConstraint;
+    _verifications = verifications;
   }
 
   @Test
@@ -174,6 +185,6 @@ public class RandomGoalTest {
     RandomCluster.populate(clusterModel, clusterProperties, TestConstants.Distribution.EXPONENTIAL);
 
     assertTrue("Random Goal Test failed to improve the existing state.",
-        OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority));
+        OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority, _verifications));
   }
 }
