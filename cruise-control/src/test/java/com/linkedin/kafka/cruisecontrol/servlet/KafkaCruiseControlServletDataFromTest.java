@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
+import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
@@ -82,7 +83,8 @@ public class KafkaCruiseControlServletDataFromTest {
     EasyMock.expect(mockKCC.state()).andReturn(kccState).anyTimes();
     EasyMock.replay(mockKCC);
     
-    KafkaCruiseControlServlet servlet = new KafkaCruiseControlServlet(mockKCC, 10, 100);
+    KafkaCruiseControlServlet servlet = 
+        new KafkaCruiseControlServlet(mockKCC, 10, 100, new MetricRegistry());
     KafkaCruiseControlServlet.GoalsAndRequirements goalsAndRequirements = 
         servlet.getGoalsAndRequirements(Collections.emptyList(),
                                         _dataFrom,

@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import java.util.HashMap;
@@ -16,6 +18,8 @@ import java.util.function.Supplier;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import org.apache.kafka.common.utils.Time;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -31,6 +35,7 @@ import org.apache.kafka.common.utils.Time;
  * be returned.
  */
 public class SessionManager {
+  private static final Logger LOG = LoggerFactory.getLogger(SessionManager.class);
   private final int _capacity;
   private final long _sessionExpiryMs;
   private final Map<HttpSession, SessionInfo> _inProgressSessions;
@@ -46,12 +51,15 @@ public class SessionManager {
    * @param sessionExpiryMs the maximum time to wait before expire an inactive session.
    * @param time the time object for unit test.
    */
-  SessionManager(int capacity, long sessionExpiryMs, Time time) {
+  SessionManager(int capacity, long sessionExpiryMs, Time time, MetricRegistry dropwizardMetricRegistry) {
     _capacity = capacity;
     _sessionExpiryMs = sessionExpiryMs;
     _time = time;
     _inProgressSessions = new HashMap<>();
     _sessionCleaner.scheduleAtFixedRate(new ExpiredSessionCleaner(), 0, 5, TimeUnit.SECONDS);
+    dropwizardMetricRegistry.register(MetricRegistry.name("SessionManager", "num-active-sessions"),
+                                      (Gauge<Integer>) _inProgressSessions::size);
+    
   }
 
   /**
@@ -82,6 +90,7 @@ public class SessionManager {
     HttpSession session = request.getSession();
     SessionInfo info = _inProgressSessions.get(session);
     if (info != null) {
+      LOG.debug("Found existing session {}", session);
       if (!info.requestUrl().equals(request.toString())) {
         throw new UserRequestException("The session has an ongoing operation " + info.requestUrl() 
                                            + " while it " + "is trying another operation of " + request.toString());
@@ -93,6 +102,7 @@ public class SessionManager {
         throw new RuntimeException("There are already " + _inProgressSessions.size() + " active sessions, which "
                                        + "has reached the servlet capacity.");
       }
+      LOG.debug("Created session for {}", session);
       info = new SessionInfo(null, request.toString());
       OperationFuture<T> future = operation.get();
       info.setFuture(future);
@@ -125,8 +135,12 @@ public class SessionManager {
    */
   synchronized void closeSession(HttpServletRequest request) {
     HttpSession session = request.getSession();
+    if (session == null) {
+      return;
+    }
     SessionInfo info = _inProgressSessions.remove(session);
     if (info != null && info.future().isDone()) {
+      LOG.debug("Closing session {}", session);
       session.invalidate();
     }
   }
@@ -141,7 +155,10 @@ public class SessionManager {
       Map.Entry<HttpSession, SessionInfo> entry = iter.next();
       HttpSession session = entry.getKey();
       SessionInfo info = entry.getValue();
+      LOG.trace("Session {} was last accessed at {}, age is {} ms", session, session.getLastAccessedTime(), 
+                now - session.getLastAccessedTime());
       if (now >= session.getLastAccessedTime() + _sessionExpiryMs) {
+        LOG.debug("Expiring session {}.", session);
         iter.remove();
         session.invalidate();
         info.future().cancel(true);
@@ -181,7 +198,11 @@ public class SessionManager {
   private class ExpiredSessionCleaner implements Runnable {
     @Override
     public void run() {
-      expireOldSessions();
+      try {
+        expireOldSessions();
+      } catch (Throwable t) {
+        LOG.warn("Received exception when trying to expire sessions.", t);
+      }
     }
   }
 }

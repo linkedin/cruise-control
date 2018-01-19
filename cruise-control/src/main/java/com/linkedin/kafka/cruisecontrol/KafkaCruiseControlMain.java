@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import com.codahale.metrics.JmxReporter;
+import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
@@ -19,6 +21,7 @@ import org.eclipse.jetty.servlet.DefaultServlet;
  * The main class to run Kafka Cruise Control.
  */
 public class KafkaCruiseControlMain {
+  private static final String METRIC_DOMAIN = "kafka.cruisecontrol";
 
   private KafkaCruiseControlMain() {
 
@@ -45,7 +48,12 @@ public class KafkaCruiseControlMain {
       }
     }
 
-    AsyncKafkaCruiseControl kafkaCruiseControl = new AsyncKafkaCruiseControl(new KafkaCruiseControlConfig(props));
+    MetricRegistry dropwizardMetricsRegistry = new MetricRegistry();
+    JmxReporter jmxReporter = JmxReporter.forRegistry(dropwizardMetricsRegistry).inDomain(METRIC_DOMAIN).build();
+    jmxReporter.start();
+    
+    AsyncKafkaCruiseControl kafkaCruiseControl = new AsyncKafkaCruiseControl(new KafkaCruiseControlConfig(props),
+                                                                             dropwizardMetricsRegistry);
 
     Server server = new Server(port);
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
@@ -59,13 +67,14 @@ public class KafkaCruiseControlMain {
     context.addServlet(holderWebapp, "/*");
     // Kafka Cruise Control servlet data
     KafkaCruiseControlServlet kafkaCruiseControlServlet = 
-        new KafkaCruiseControlServlet(kafkaCruiseControl, 10000L, 60000L);
+        new KafkaCruiseControlServlet(kafkaCruiseControl, 10000L, 60000L, dropwizardMetricsRegistry);
     ServletHolder servletHolder = new ServletHolder(kafkaCruiseControlServlet);
     context.addServlet(servletHolder, "/kafkacruisecontrol/*");
     Runtime.getRuntime().addShutdownHook(new Thread() {
       @Override
       public void run() {
         kafkaCruiseControl.shutdown();
+        jmxReporter.close();
       }
     });
     kafkaCruiseControl.startUp();

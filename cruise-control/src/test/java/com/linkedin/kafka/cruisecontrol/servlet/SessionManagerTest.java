@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
+import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +24,7 @@ public class SessionManagerTest {
   @Test
   public void testCreateAndCloseSession() {
     TestContext context = prepareRequests(true, 1);
-    SessionManager sessionManager = new SessionManager(1, 1000, context.time());
+    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry());
 
     sessionManager.getAndCreateSessionIfNotExist(context.request(0), 
                                                  () -> new OperationFuture<>("testCreateSession"));
@@ -36,7 +37,7 @@ public class SessionManagerTest {
   @Test
   public void testSessionExpiration() {
     TestContext context = prepareRequests(true, 2);
-    SessionManager sessionManager = new SessionManager(2, 1000, context.time());
+    SessionManager sessionManager = new SessionManager(2, 1000, context.time(), new MetricRegistry());
     
     List<OperationFuture<Integer>> futures = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
@@ -66,7 +67,7 @@ public class SessionManagerTest {
   @Test
   public void testCreateSessionReachingCapacity() {
     TestContext context = prepareRequests(false, 2);
-    SessionManager sessionManager = new SessionManager(1, 1000, context.time());
+    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry());
     
     sessionManager.getAndCreateSessionIfNotExist(context.request(0),
                                                  () -> new OperationFuture<>("testCreateSession"));

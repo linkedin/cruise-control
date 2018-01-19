@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
+import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
@@ -172,11 +173,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private final SessionManager _sessionManager;
   private final long _maxBlockMs;
 
-  public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl, 
+  public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                    long maxBlockMs,
-                                   long sessionExpiryMs) {
+                                   long sessionExpiryMs,
+                                   MetricRegistry dropwizardMetricRegistry) {
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
-    _sessionManager = new SessionManager(5, sessionExpiryMs, Time.SYSTEM);
+    _sessionManager = new SessionManager(5, sessionExpiryMs, Time.SYSTEM, dropwizardMetricRegistry);
     _maxBlockMs = maxBlockMs;
   }
 

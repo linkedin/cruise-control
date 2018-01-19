@@ -78,8 +78,8 @@ public class OperationProgress {
     for (int i = 0; i < _steps.size(); i++) {
       OperationStep step = _steps.get(i);
       long time = (i == _steps.size() - 1 ? System.currentTimeMillis() : _startTimes.get(i + 1)) - _startTimes.get(i);
-      sb.append(String.format("(%d ms) - %s (%.1f%%): %s", 
-                              time, step.name(), step.completionPercentage(), step.description()));
+      sb.append(String.format("(%6d ms) - %s (%.1f%%): %s%n", 
+                              time, step.name(), step.completionPercentage() * 100, step.description()));
     }
     return sb.toString();
   }

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.async;
 
+import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
@@ -46,8 +47,8 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * 
    * @param config the configuration of Cruise Control.
    */
-  public AsyncKafkaCruiseControl(KafkaCruiseControlConfig config) {
-    super(config);
+  public AsyncKafkaCruiseControl(KafkaCruiseControlConfig config, MetricRegistry dropwizardMetricRegistry) {
+    super(config, dropwizardMetricRegistry);
   }
 
   /**

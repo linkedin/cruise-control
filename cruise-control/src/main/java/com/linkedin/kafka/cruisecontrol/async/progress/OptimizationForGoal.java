@@ -31,6 +31,6 @@ public class OptimizationForGoal implements OperationStep {
 
   @Override
   public String description() {
-    return null;
+    return "Optimizing goal " + _goalName;
   }
 }

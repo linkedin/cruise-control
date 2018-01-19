@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import com.codahale.metrics.JmxReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
@@ -53,32 +52,28 @@ public class KafkaCruiseControl {
   private final Executor _executor;
   private final AnomalyDetector _anomalyDetector;
   private final Time _time;
-  private final MetricRegistry _dropwizardMetricRegistry;
-  private final JmxReporter _reporter;
-  private final String _metricsPrefix = "kafka.cruisecontrol";
 
   /**
    * Construct the Cruise Control
    *
    * @param config the configuration of Cruise Control.
    */
-  public KafkaCruiseControl(KafkaCruiseControlConfig config) {
+  public KafkaCruiseControl(KafkaCruiseControlConfig config,
+                            MetricRegistry dropwizardMetricRegistry) {
     _config = config;
     _time = new SystemTime();
     // initialize some of the static state of Kafka Cruise Control;
     Load.init(config);
     ModelUtils.init(config);
     ModelParameters.init(config);
-    _dropwizardMetricRegistry = new MetricRegistry();
-    _reporter = JmxReporter.forRegistry(_dropwizardMetricRegistry).inDomain(_metricsPrefix).build();
 
     // Instantiate the components.
-    _loadMonitor = new LoadMonitor(config, _time, _dropwizardMetricRegistry);
+    _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry);
     _goalOptimizerExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
-    _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, _dropwizardMetricRegistry);
-    _executor = new Executor(config, _time, _dropwizardMetricRegistry);
-    _anomalyDetector = new AnomalyDetector(config, _loadMonitor, this, _time, _dropwizardMetricRegistry);
+    _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry);
+    _executor = new Executor(config, _time, dropwizardMetricRegistry);
+    _anomalyDetector = new AnomalyDetector(config, _loadMonitor, this, _time, dropwizardMetricRegistry);
   }
 
   /**
@@ -86,7 +81,6 @@ public class KafkaCruiseControl {
    */
   public void startUp() {
     LOG.info("Starting Kafka Cruise Control...");
-    _reporter.start();
     _loadMonitor.startUp();
     _anomalyDetector.startDetection();
     _goalOptimizerExecutor.submit(_goalOptimizer);
@@ -102,7 +96,6 @@ public class KafkaCruiseControl {
         _executor.shutdown();
         _anomalyDetector.shutdown();
         _goalOptimizer.shutdown();
-        _reporter.close();
         LOG.info("Kafka Cruise Control shutdown completed.");
       }
     };
