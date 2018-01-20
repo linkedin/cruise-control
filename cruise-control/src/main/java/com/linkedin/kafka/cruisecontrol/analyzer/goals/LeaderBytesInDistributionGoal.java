@@ -25,6 +25,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.stream.Collectors;
 import org.apache.commons.math3.stat.descriptive.moment.Mean;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
@@ -94,10 +95,18 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
-    return clusterModel.brokers().stream()
-        .filter(b -> b.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) > balanceThreshold(clusterModel, b.id()))
-        .collect(Collectors.toList());
+  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
+    // Brokers having inbound network traffic over the balance threshold for inbound traffic are eligible for balancing.
+    SortedSet<Broker> brokersToBalance = clusterModel.brokers();
+    for (Iterator<Broker> iterator = brokersToBalance.iterator(); iterator.hasNext(); ) {
+      Broker broker = iterator.next();
+      double brokerUtilizationForNwIn = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
+      if (brokerUtilizationForNwIn <= balanceThreshold(clusterModel, broker.id())) {
+        iterator.remove();
+      }
+    }
+
+    return brokersToBalance;
   }
 
   @Override

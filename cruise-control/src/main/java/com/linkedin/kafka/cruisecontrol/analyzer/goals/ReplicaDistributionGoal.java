@@ -17,11 +17,11 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.Collection;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 import org.apache.kafka.common.TopicPartition;
@@ -107,12 +107,12 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    * they contain.
    */
   @Override
-  protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
+  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
     if (!clusterModel.deadBrokers().isEmpty()) {
       return clusterModel.deadBrokers();
     }
     // Brokers having over minimum number of replicas per broker are eligible for balancing.
-    Set<Broker> brokersToBalance = new HashSet<>();
+    SortedSet<Broker> brokersToBalance = new TreeSet<>();
     int minNumReplicasPerBroker = _replicaDistributionTarget.minNumReplicasPerBroker();
     brokersToBalance.addAll(clusterModel.brokers().stream()
         .filter(broker -> broker.replicas().size() > minNumReplicasPerBroker)
@@ -200,7 +200,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       healCluster(clusterModel, optimizedGoals);
     } else {
       // If broker is overloaded, move local replicas to eligible brokers.
-      _replicaDistributionTarget.moveReplicasInSourceBrokerToEligibleBrokers(clusterModel, new HashSet<>(broker.replicas()),
+      _replicaDistributionTarget.moveReplicasInSourceBrokerToEligibleBrokers(clusterModel, new TreeSet<>(broker.replicas()),
                                                                              optimizedGoals, excludedTopics);
     }
   }

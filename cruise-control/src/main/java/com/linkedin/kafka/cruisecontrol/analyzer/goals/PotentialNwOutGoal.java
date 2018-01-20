@@ -18,11 +18,12 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import java.util.SortedSet;
+import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -106,7 +107,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * they contain.
    */
   @Override
-  protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
+  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
     return clusterModel.deadBrokers().isEmpty() ? clusterModel.brokers() : clusterModel.deadBrokers();
   }
 
@@ -204,7 +205,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
         clusterModel.healthyBrokers() : brokersUnderEstimatedMaxPossibleNwOut(clusterModel);
     // Attempt to move replicas to eligible brokers until either the estimated max possible network out
     // limit requirement is satisfied for the broker or all replicas are checked.
-    for (Replica replica : new ArrayList<>(broker.replicas())) {
+    SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());
+    for (Replica replica : replicas) {
       if (shouldExclude(replica, excludedTopics)) {
         continue;
       }

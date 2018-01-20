@@ -24,6 +24,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -313,8 +315,8 @@ public class ClusterModel implements Serializable {
   /**
    * Get the dead brokers in the cluster.
    */
-  public Set<Broker> deadBrokers() {
-    Set<Broker> brokers = brokers();
+  public SortedSet<Broker> deadBrokers() {
+    SortedSet<Broker> brokers = brokers();
     brokers.removeAll(healthyBrokers());
     return brokers;
   }
@@ -375,8 +377,8 @@ public class ClusterModel implements Serializable {
   /**
    * Get the set of brokers in the cluster.
    */
-  public Set<Broker> brokers() {
-    Set<Broker> brokers = new HashSet<>();
+  public SortedSet<Broker> brokers() {
+    SortedSet<Broker> brokers = new TreeSet<>();
     for (Rack rack : _racksById.values()) {
       brokers.addAll(rack.brokers());
     }

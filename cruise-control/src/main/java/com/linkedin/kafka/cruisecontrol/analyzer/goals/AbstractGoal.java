@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import java.util.Map;
+import java.util.SortedSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -118,13 +119,13 @@ public abstract class AbstractGoal implements Goal {
   }
 
   /**
-   * Get brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
+   * Get sorted brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
    *
    * @param clusterModel The state of the cluster.
    * @return A collection of brokers that the rebalance process will go over to apply balancing actions to replicas
    * they contain.
    */
-  protected abstract Collection<Broker> brokersToBalance(ClusterModel clusterModel);
+  protected abstract SortedSet<Broker> brokersToBalance(ClusterModel clusterModel);
 
   /**
    * Check if requirements of this goal are not violated if this proposal is applied to the given cluster state,

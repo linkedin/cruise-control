@@ -20,7 +20,6 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -108,7 +107,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * they contain.
    */
   @Override
-  protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
+  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
     return clusterModel.brokers();
   }
 
@@ -266,11 +265,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     } else if (requireMoreLoad) {
       unbalanced = rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals, REPLICA_MOVEMENT, excludedTopics);
     }
-    
+
     if (!unbalanced) {
       LOG.debug("Successfully balanced {} for broker {} by moving leaders and replicas.", resource(), broker.id());
     }
-    
+
   }
 
   protected boolean rebalanceByMovingLoadIn(Broker broker,
@@ -397,12 +396,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // we consider it as not over limit.
     return !broker.replicas().isEmpty();
   }
-  
+
   private boolean isLoadAboveBalanceLowerLimit(ClusterModel clusterModel, Broker broker) {
     // The action does not matter here because the load is null.
     return isLoadAboveBalanceLowerLimitAfterChange(clusterModel, null, broker, ADD);
   }
-  
+
   private boolean isLoadUnderBalanceUpperLimit(ClusterModel clusterModel, Broker broker) {
     // The action does not matter here because the load is null.
     return isLoadUnderBalanceUpperLimitAfterChange(clusterModel, null, broker, REMOVE);

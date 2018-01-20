@@ -20,9 +20,9 @@ import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,7 +126,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    * they contain.
    */
   @Override
-  protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
+  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
     return clusterModel.brokers();
   }
 
@@ -226,9 +226,9 @@ public abstract class CapacityGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposal.
    */
   @Override
-  protected void rebalanceForBroker(Broker broker, 
-                                    ClusterModel clusterModel, 
-                                    Set<Goal> optimizedGoals, 
+  protected void rebalanceForBroker(Broker broker,
+                                    ClusterModel clusterModel,
+                                    Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
@@ -328,9 +328,9 @@ public abstract class CapacityGoal extends AbstractGoal {
    * @param hostCapacityLimit Capacity limit for the host.
    * @return True if utilization is over the limit, false otherwise.
    */
-  private boolean isUtilizationOverLimit(Broker broker, 
-                                         Resource resource, 
-                                         double brokerCapacityLimit, 
+  private boolean isUtilizationOverLimit(Broker broker,
+                                         Resource resource,
+                                         double brokerCapacityLimit,
                                          double hostCapacityLimit) {
     // Host-level violation check.
     if (!broker.host().replicas().isEmpty() && resource.isHostResource()) {

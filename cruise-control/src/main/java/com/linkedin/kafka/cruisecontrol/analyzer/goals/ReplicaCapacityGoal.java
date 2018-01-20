@@ -18,7 +18,6 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
@@ -92,7 +91,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * they contain.
    */
   @Override
-  protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
+  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
     return clusterModel.brokers();
   }
 
@@ -197,10 +196,10 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void rebalanceForBroker(Broker broker, 
-                                    ClusterModel clusterModel, 
-                                    Set<Goal> optimizedGoals, 
-                                    Set<String> excludedTopics) 
+  protected void rebalanceForBroker(Broker broker,
+                                    ClusterModel clusterModel,
+                                    Set<Goal> optimizedGoals,
+                                    Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException, OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     for (Replica replica : new ArrayList<>(broker.replicas())) {

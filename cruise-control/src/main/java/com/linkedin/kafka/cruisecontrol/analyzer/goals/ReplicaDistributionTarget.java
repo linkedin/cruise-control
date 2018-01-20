@@ -18,6 +18,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
 
 
 /**
@@ -75,7 +76,7 @@ class ReplicaDistributionTarget {
    * @param excludedTopics The topics that should be excluded from the optimization proposal.
    */
   boolean moveReplicasInSourceBrokerToEligibleBrokers(ClusterModel clusterModel,
-                                                      Set<Replica> replicasInBrokerToMove,
+                                                      SortedSet<Replica> replicasInBrokerToMove,
                                                       Set<Goal> optimizedGoals,
                                                       Set<String> excludedTopics)
       throws AnalysisInputException {

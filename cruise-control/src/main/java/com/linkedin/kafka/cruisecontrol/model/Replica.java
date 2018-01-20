@@ -15,13 +15,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+import java.util.Objects;
 import org.apache.kafka.common.TopicPartition;
 
 /**
  * A class that holds the information of the replica, including its load, leader, topic partition, and broker. A replica
  * object is created as part of a broker structure.
  */
-public class Replica implements Serializable {
+public class Replica implements Serializable, Comparable<Replica> {
   private final TopicPartition _tp;
   private final Load _load;
   private final Broker _originalBroker;
@@ -210,5 +211,45 @@ public class Replica implements Serializable {
     return String.format("Replica[isLeader=%s,rack=%s,broker=%d,TopicPartition=%s,origBroker=%d]", _isLeader,
                          _broker.rack().id(), _broker.id(), _tp,
                          _originalBroker == null ? -1 : _originalBroker.id());
+  }
+
+  /**
+   * Compare (1) by partition id then (2) by broker id then (3) by topic name.
+   */
+  @Override
+  public int compareTo(Replica o) {
+    // Primary sort: by partition id.
+    if (_tp.partition() > o.topicPartition().partition()) {
+      return 1;
+    } else if (_tp.partition() < o.topicPartition().partition()) {
+      return -1;
+    }
+
+    // Secondary sort: by broker id.
+    if (_broker.id() > o.broker().id()) {
+      return 1;
+    } else if (_broker.id() < o.broker().id()) {
+      return -1;
+    }
+
+    // Final sort: by topic name.
+    return _tp.topic().compareTo(o.topicPartition().topic());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Replica replica = (Replica) o;
+    return Objects.equals(_tp, replica._tp) && _broker.id() == replica._broker.id();
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(_tp, _broker.id());
   }
 }
