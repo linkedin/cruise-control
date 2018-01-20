@@ -101,8 +101,9 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    *
    * If the destination broker has:
    * (1) no other replica from the same partition, move the replica to there.
-   * (2) the current replica under consideration, do nothing.
-   * (3) a replica with a larger position, swap positions.
+   * (2) a replica with a larger position AND the source broker is alive, swap positions.
+   * (3) the conditions (1-2) are false AND the source broker is dead.
+   * (4) the current replica under consideration, do nothing -- i.e. do not move replica or swap positions.
    *
    * @param clusterModel The state of the cluster.
    * @param sourcePartition The partition whose replica might be moved.
@@ -132,27 +133,33 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
       Replica sourceReplica = replicaInPositionFor(sourcePartition, replicaPosition);
 
       if (destinationReplica == null) {
+        // The destination broker has no replica from the source partition: move the source replica to the destination broker.
         LOG.trace("Destination broker {} has no other replica from the same partition, move the replica {} to there.",
                   destinationBroker, sourceReplica);
         applyBalancingAction(clusterModel, sourceReplica, destinationBroker, BalancingAction.REPLICA_MOVEMENT);
       } else if (destinationBroker.id() != sourceReplica.broker().id() && sourceReplica.broker().isAlive()) {
+        // The destination broker contains a replica from the source partition AND the destination broker is different
+        // from the source replica broker AND the source broker is alive. Hence, we can safely swap replica positions.
         LOG.trace("Destination broker has a replica {} with a larger position than source replica {}, swap positions.",
                   destinationReplica, sourceReplica);
         if (replicaPosition == 0) {
-          // Transfer leadership.
+          // Transfer leadership -- i.e swap the position of leader with its follower in destination broker.
           applyBalancingAction(clusterModel, sourceReplica, destinationBroker, BalancingAction.LEADERSHIP_MOVEMENT);
         } else {
-          // Swap followers.
+          // Swap the follower position of this replica with the follower position of destination replica.
           int otherPos = followerPosition(sourcePartition, destinationBroker.id());
           sourcePartition.swapFollowerPositions(replicaPosition - 1, otherPos - 1);
         }
       } else if (!sourceReplica.broker().isAlive()) {
+        // The broker of source replica is dead. Hence, we have to move the source replica away from it. But, destination
+        // broker contains a replica from the same source partition. This prevents moving the source replica to it.
         LOG.trace("Source broker {} is dead and either the destination broker {} is the same as the source, or has a "
                   + "replica from the same partition.", sourceReplica.broker(), destinationBroker);
         // Unable apply any valid move.
         continue;
       }
-      // Increment the replica count on the destination.
+      // Increment the replica count on the destination. Note that if the source and the destination brokers are the
+      // same, then the source replica will simply stay in the same broker.
       eligibleBrokerReplicaCount = healthyBrokerReplicaCount;
       it.remove();
       break;
@@ -164,7 +171,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
       _healthyBrokerReplicaCountByPosition.get(replicaPosition).add(eligibleBrokerReplicaCount);
       return true;
     }
-    // Failure: Unable to apply any move.
+    // Failure: Unable to apply any valid move -- i.e. optimization failed to place the source replica to a valid broker.
     return false;
   }
 
