@@ -9,7 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * A step indicating that the cluster model generation is in progress. The cluster model generation could be time
- * consuming and take up to 30 seconds.
+ * consuming and may take up to 30 seconds.
  */
 public class GeneratingClusterModel implements OperationStep {
   private final int _totalNumPartitions;

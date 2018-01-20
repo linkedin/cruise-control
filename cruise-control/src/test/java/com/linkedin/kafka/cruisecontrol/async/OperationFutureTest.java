@@ -44,7 +44,7 @@ public class OperationFutureTest {
     TestThread t = new TestThread(future::get);
     t.start();
     Exception cause = new Exception();
-    future.fail(cause);
+    future.completeExceptionally(cause);
     assertTrue(future.isDone());
     t.join();
     assertEquals(0, t.result());
@@ -82,21 +82,20 @@ public class OperationFutureTest {
     t.join();
     executionThread.join();
     assertEquals(0, t.result());
-    assertTrue(t.exception() instanceof ExecutionException);
-    assertTrue("Cause is " + t.exception().getCause(), t.exception().getCause() instanceof CancellationException);
+    assertTrue(t.exception() instanceof CancellationException);
     assertTrue(future.isDone());
     assertTrue(future.isCancelled());
     assertTrue(interrupted.get());
   }
   
   @Test
-  public void testCancelPendingFuture() throws InterruptedException {
+  public void testCancelPendingFuture() throws InterruptedException, ExecutionException {
     OperationFuture<Integer> future = new OperationFuture<>("testCancelPendingFuture");
     future.cancel(true);
     try {
       future.get();
-    } catch (ExecutionException ee) {
-      assertTrue(ee.getCause() instanceof CancellationException);
+    } catch (CancellationException ee) {
+      // let it go.
     }
   }
   
@@ -109,34 +108,6 @@ public class OperationFutureTest {
                future.setExecutionThread(null));
     assertFalse("Should failed to set execution thread for the canceled future.",
                 future.setExecutionThread(new Thread()));
-  }
-  
-  @Test (expected = IllegalStateException.class)
-  public void testCompleteTwice() {
-    OperationFuture<Integer> future = new OperationFuture<>("testCompleteTwice");
-    future.complete(1);
-    future.complete(1);
-  }
-
-  @Test (expected = IllegalStateException.class)
-  public void testCompleteFailedFuture() {
-    OperationFuture<Integer> future = new OperationFuture<>("testCompleteFailedFuture");
-    future.fail(new Exception());
-    future.complete(1);
-  }
-
-  @Test (expected = IllegalStateException.class)
-  public void testFailTwice() {
-    OperationFuture<Integer> future = new OperationFuture<>("testFailTwice");
-    future.fail(new Exception());
-    future.fail(new Exception());
-  }
-
-  @Test (expected = IllegalStateException.class)
-  public void testFailCompleted() {
-    OperationFuture<Integer> future = new OperationFuture<>("testFailCompleted");
-    future.complete(1);
-    future.fail(new Exception());
   }
   
   @FunctionalInterface

@@ -50,6 +50,7 @@ public class SessionManager {
    * @param capacity the maximum of sessions allowed to exist at the same time.
    * @param sessionExpiryMs the maximum time to wait before expire an inactive session.
    * @param time the time object for unit test.
+   * @param dropwizardMetricRegistry the metric registry to record metrics.
    */
   SessionManager(int capacity, long sessionExpiryMs, Time time, MetricRegistry dropwizardMetricRegistry) {
     _capacity = capacity;

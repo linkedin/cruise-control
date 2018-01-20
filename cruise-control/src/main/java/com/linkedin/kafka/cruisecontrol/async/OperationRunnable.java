@@ -42,7 +42,7 @@ abstract class OperationRunnable<T> implements Runnable {
         _future.complete(getResult());
       }
     } catch (Exception e) {
-      _future.fail(e);
+      _future.completeExceptionally(e);
     } finally {
       _future.setExecutionThread(null);
       // Clear the interrupt flag after removing itself from the execution thread.

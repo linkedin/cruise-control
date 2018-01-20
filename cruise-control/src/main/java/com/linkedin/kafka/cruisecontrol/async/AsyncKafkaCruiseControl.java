@@ -46,6 +46,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * Construct the Cruise Control
    * 
    * @param config the configuration of Cruise Control.
+   * @param dropwizardMetricRegistry the metric registry for metrics.              
    */
   public AsyncKafkaCruiseControl(KafkaCruiseControlConfig config, MetricRegistry dropwizardMetricRegistry) {
     super(config, dropwizardMetricRegistry);
@@ -99,7 +100,8 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   public OperationFuture<ClusterModel> clusterModel(long startMs,
                                                     long endMs,
                                                     ModelCompletenessRequirements requirements) {
-    OperationFuture<ClusterModel> future = new OperationFuture<>("Get cluster model");
+    OperationFuture<ClusterModel> future = 
+        new OperationFuture<>(String.format("Get cluster model from %d to %d", startMs, endMs));
     pending(future.operationProgress());
     _sessionExecutor.submit(new GetClusterModelInRangeRunnable(this, future, startMs, endMs, requirements));
     return future;
@@ -122,7 +124,8 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * @see KafkaCruiseControl#getOptimizationProposals(OperationProgress) 
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> getOptimizationProposals() {
-    OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Get optimization proposals.");
+    OperationFuture<GoalOptimizer.OptimizerResult> future = 
+        new OperationFuture<>("Get default optimization proposals");
     pending(future.operationProgress());
     _sessionExecutor.submit(new GetOptimizationProposalsRunnable(this, future, null, null));
     return future;
@@ -133,7 +136,8 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> getOptimizationProposals(List<String> goals,
                                                                                  ModelCompletenessRequirements requirements) {
-    OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Get optimization proposals.");
+    OperationFuture<GoalOptimizer.OptimizerResult> future = 
+        new OperationFuture<>("Get customized optimization proposals");
     pending(future.operationProgress());
     _sessionExecutor.submit(new GetOptimizationProposalsRunnable(this, future, goals, requirements));
     return future;

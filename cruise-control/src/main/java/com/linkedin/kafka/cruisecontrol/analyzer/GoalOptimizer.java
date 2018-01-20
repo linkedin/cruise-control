@@ -223,6 +223,8 @@ public class GoalOptimizer implements Runnable {
   /**
    * Get the cached proposals. If the cached proposal is not valid, block waiting on the cache update.
    * We do this to avoid duplicate optimization cluster model construction and proposal computation.
+   * 
+   * @param operationProgress to report the job progress.
    */
   public OptimizerResult optimizations(OperationProgress operationProgress) throws InterruptedException {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();

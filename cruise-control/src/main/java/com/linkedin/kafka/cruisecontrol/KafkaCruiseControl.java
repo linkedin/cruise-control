@@ -58,8 +58,7 @@ public class KafkaCruiseControl {
    *
    * @param config the configuration of Cruise Control.
    */
-  public KafkaCruiseControl(KafkaCruiseControlConfig config,
-                            MetricRegistry dropwizardMetricRegistry) {
+  public KafkaCruiseControl(KafkaCruiseControlConfig config, MetricRegistry dropwizardMetricRegistry) {
     _config = config;
     _time = new SystemTime();
     // initialize some of the static state of Kafka Cruise Control;
@@ -115,6 +114,7 @@ public class KafkaCruiseControl {
    * @param dryRun throw
    * @param throttleDecommissionedBroker whether throttle the brokers that are being decommissioned.
    * @param goals the goals to be met when decommissioning the brokers. When empty all goals will be used.
+   * @param requirements The cluster model completeness requirements. 
    * @param operationProgress the progress to report.
    * @return the optimization result.
    *
@@ -152,6 +152,7 @@ public class KafkaCruiseControl {
    * @param dryRun whether it is a dry run or not.
    * @param throttleAddedBrokers whether throttle the brokers that are being added.
    * @param goals the goals to be met when adding the brokers. When empty all goals will be used.
+   * @param requirements The cluster model completeness requirements.             
    * @param operationProgress The progress of the job to update.
    * @return The optimization result.
    * @throws KafkaCruiseControlException when any exception occurred during the broker addition.
@@ -233,18 +234,18 @@ public class KafkaCruiseControl {
    * Get the cluster model for a given time window.
    * @param from the start time of the window
    * @param to the end time of the window
-   * @param modelCompletenessRequirements the model completeness requirement to enforce.
+   * @param requirements the model completeness requirement to enforce.
    * @param operationProgress the progress of the job to report.
    * @return the cluster workload model.
    * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
    */
   public ClusterModel clusterModel(long from, 
                                    long to, 
-                                   ModelCompletenessRequirements modelCompletenessRequirements,
+                                   ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
       throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      return _loadMonitor.clusterModel(from, to, modelCompletenessRequirements, operationProgress);
+      return _loadMonitor.clusterModel(from, to, requirements, operationProgress);
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;
     } catch (Exception e) {
