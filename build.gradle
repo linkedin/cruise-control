@@ -53,6 +53,7 @@ subprojects {
     useJUnit {}
     testLogging {
       events "passed", "failed", "skipped"
+      exceptionFormat = 'full'
     }
     if (!project.hasProperty("maxParallelForks")) {
       maxParallelForks = Runtime.runtime.availableProcessors()

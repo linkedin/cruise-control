@@ -247,7 +247,7 @@ public abstract class AbstractGoal implements Goal {
       return candidateBrokers;
     } else {
       List<Broker> eligibleBrokers = new ArrayList<>();
-      // When there is new brokers, we should only allow the replicas to be moved to the new brokers.
+      // When there are new brokers, we should only allow the replicas to be moved to the new brokers.
       candidateBrokers.forEach(b -> {
         if (b.isNew() || b == replica.originalBroker()) {
           eligibleBrokers.add(b);

@@ -1,0 +1,482 @@
+/*
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ *
+ */
+
+package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
+
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
+import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
+import com.linkedin.kafka.cruisecontrol.model.Partition;
+import com.linkedin.kafka.cruisecontrol.model.Replica;
+import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
+public class KafkaAssignerEvenRackAwareGoal implements Goal {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaAssignerEvenRackAwareGoal.class);
+  private final Map<Integer, SortedSet<BrokerReplicaCount>> _healthyBrokerReplicaCountByPosition;
+  private Map<String, List<Partition>> _partitionsByTopic;
+
+  public KafkaAssignerEvenRackAwareGoal() {
+    _partitionsByTopic = null;
+    _healthyBrokerReplicaCountByPosition = new HashMap<>();
+  }
+
+  /**
+   * Sanity Check: There exists sufficient number of racks for achieving rack-awareness.
+   * 1. Initialize partitions by topic.
+   * 2. Initialize the number of excluded replicas by position for each broker.
+   * 3. Initialize the healthy broker replica count by position.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   */
+  private void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+      throws OptimizationFailureException {
+    // Sanity check: Ensure that rack awareness is satisfiable.
+    ensureRackAwareSatisfiable(clusterModel, excludedTopics);
+
+    // 1. Initialize partitions by topic.
+    _partitionsByTopic = clusterModel.getPartitionsByTopic();
+
+    // 2. Initialize the number of excluded replicas by position for each broker.
+    Map<Integer, Map<Integer, Integer>> numExcludedReplicasByPositionInBroker = new HashMap<>();
+    clusterModel.brokers().forEach(broker -> numExcludedReplicasByPositionInBroker.put(broker.id(), new HashMap<>()));
+    for (String excludedTopic : excludedTopics) {
+      for (Partition partition : _partitionsByTopic.get(excludedTopic)) {
+        // Add 1 to the number of excluded replicas in relevant position for the broker that the replica resides in.
+        // Leader is at position 0.
+        int position = 0;
+        numExcludedReplicasByPositionInBroker.get(partition.leader().broker().id()).merge(position, 1, Integer::sum);
+
+        // Followers are ordered in positions [1, numFollowers].
+        for (Broker followerBroker : partition.followerBrokers()) {
+          position++;
+          numExcludedReplicasByPositionInBroker.get(followerBroker.id()).merge(position, 1, Integer::sum);
+        }
+      }
+    }
+
+    // 3. Initialize the healthy broker replica count by position.
+    int maxReplicationFactor = clusterModel.maxReplicationFactor();
+    for (int i = 0; i < maxReplicationFactor; i++) {
+      SortedSet<BrokerReplicaCount> healthyBrokersByReplicaCount = new TreeSet<>();
+      for (Broker broker : clusterModel.healthyBrokers()) {
+        int numExcludedReplicasInPosition = numExcludedReplicasByPositionInBroker.get(broker.id()).getOrDefault(i, 0);
+        BrokerReplicaCount brokerReplicaCount = new BrokerReplicaCount(broker, numExcludedReplicasInPosition);
+        healthyBrokersByReplicaCount.add(brokerReplicaCount);
+      }
+      _healthyBrokerReplicaCountByPosition.put(i, healthyBrokersByReplicaCount);
+    }
+  }
+
+  /**
+   * Optimize the given cluster model as needed for this goal.
+   *
+   * @param clusterModel   The state of the cluster.
+   * @param optimizedGoals Goals that have already been optimized. These goals cannot be violated.
+   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @return true if the goal is met after the optimization, throws an exceptions if the goal is not met.
+   */
+  @Override
+  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
+      throws KafkaCruiseControlException {
+    LOG.debug("Starting {} with excluded topics = {}", name(), excludedTopics);
+
+    if (!optimizedGoals.isEmpty()) {
+      throw new IllegalArgumentException(String.format("Goals %s cannot be optimized before %s.", optimizedGoals, name()));
+    }
+
+    initGoalState(clusterModel, excludedTopics);
+
+    int maxReplicationFactor = clusterModel.maxReplicationFactor();
+    Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();
+    for (int position = 0; position < maxReplicationFactor; position++) {
+      for (Map.Entry<String, List<Partition>> entry : _partitionsByTopic.entrySet()) {
+        if (replicationFactorByTopic.get(entry.getKey()) < position + 1) {
+          // The topic replication factor is smaller than the position index.
+          continue;
+        }
+        for (Partition partition : entry.getValue()) {
+          if (shouldExclude(partition, position, excludedTopics)) {
+            continue;
+          }
+          // Apply the necessary move (if needed).
+          if (!maybeApplyMove(clusterModel, partition, position)) {
+            throw new OptimizationFailureException(
+                String.format("Unable to apply move for replica %s.", replicaInPositionFor(partition, position)));
+          }
+        }
+      }
+    }
+    ensureRackAware(clusterModel, excludedTopics);
+    return true;
+  }
+
+  /**
+   * Apply the move to the first eligible destination broker selected from _healthyBrokerReplicaCountByPosition for the
+   * relevant replica position.
+   *
+   * An eligible destination broker must reside in a rack that has no other replicas from the same partition, which has
+   * a position smaller than the given replicaPosition.
+   *
+   * If the destination broker has:
+   * (1) no other replica from the same partition, move the replica to there.
+   * (2) a replica with a larger position AND the source broker is alive, swap positions.
+   * (3) the conditions (1-2) are false AND the source broker is dead.
+   * (4) the current replica under consideration, do nothing -- i.e. do not move replica or swap positions.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param sourcePartition The partition whose replica might be moved.
+   * @param replicaPosition The position of the replica in the given partition.
+   * @return true if a move is applied, false otherwise.
+   */
+  private boolean maybeApplyMove(ClusterModel clusterModel, Partition sourcePartition, int replicaPosition)
+      throws AnalysisInputException, ModelInputException {
+    // Initialize ineligible broker rack ids based on rack-awareness.
+    Set<String> ineligibleBrokersRackIds = new HashSet<>();
+    for (int pos = 0; pos < replicaPosition; pos++) {
+      Replica replica = replicaInPositionFor(sourcePartition, pos);
+      ineligibleBrokersRackIds.add(replica.broker().rack().id());
+    }
+    // Find an eligible destination and apply the relevant move.
+    BrokerReplicaCount eligibleBrokerReplicaCount = null;
+    for (final Iterator<BrokerReplicaCount> it = _healthyBrokerReplicaCountByPosition.get(replicaPosition).iterator();
+         it.hasNext(); ) {
+      BrokerReplicaCount healthyBrokerReplicaCount = it.next();
+      if (ineligibleBrokersRackIds.contains(healthyBrokerReplicaCount.broker().rack().id())) {
+        continue;
+      }
+
+      // Get the replica in the destination broker (if any)
+      Replica destinationReplica = replicaInBrokerFor(sourcePartition, healthyBrokerReplicaCount.broker().id());
+      Broker destinationBroker = healthyBrokerReplicaCount.broker();
+      Replica sourceReplica = replicaInPositionFor(sourcePartition, replicaPosition);
+
+      if (destinationReplica == null) {
+        // The destination broker has no replica from the source partition: move the source replica to the destination broker.
+        LOG.trace("Destination broker {} has no other replica from the same partition, move the replica {} to there.",
+                  destinationBroker, sourceReplica);
+        applyBalancingAction(clusterModel, sourceReplica, destinationBroker, BalancingAction.REPLICA_MOVEMENT);
+      } else if (destinationBroker.id() != sourceReplica.broker().id() && sourceReplica.broker().isAlive()) {
+        // The destination broker contains a replica from the source partition AND the destination broker is different
+        // from the source replica broker AND the source broker is alive. Hence, we can safely swap replica positions.
+        LOG.trace("Destination broker has a replica {} with a larger position than source replica {}, swap positions.",
+                  destinationReplica, sourceReplica);
+        if (replicaPosition == 0) {
+          // Transfer leadership -- i.e swap the position of leader with its follower in destination broker.
+          applyBalancingAction(clusterModel, sourceReplica, destinationBroker, BalancingAction.LEADERSHIP_MOVEMENT);
+        } else {
+          // Swap the follower position of this replica with the follower position of destination replica.
+          int otherPos = followerPosition(sourcePartition, destinationBroker.id());
+          sourcePartition.swapFollowerPositions(replicaPosition - 1, otherPos - 1);
+        }
+      } else if (!sourceReplica.broker().isAlive()) {
+        // The broker of source replica is dead. Hence, we have to move the source replica away from it. But, destination
+        // broker contains a replica from the same source partition. This prevents moving the source replica to it.
+        LOG.trace("Source broker {} is dead and either the destination broker {} is the same as the source, or has a "
+                  + "replica from the same partition.", sourceReplica.broker(), destinationBroker);
+        // Unable apply any valid move.
+        continue;
+      }
+      // Increment the replica count on the destination. Note that if the source and the destination brokers are the
+      // same, then the source replica will simply stay in the same broker.
+      eligibleBrokerReplicaCount = healthyBrokerReplicaCount;
+      it.remove();
+      break;
+    }
+
+    if (eligibleBrokerReplicaCount != null) {
+      // Success: Increment the replica count on the destination.
+      eligibleBrokerReplicaCount.incReplicaCount();
+      _healthyBrokerReplicaCountByPosition.get(replicaPosition).add(eligibleBrokerReplicaCount);
+      return true;
+    }
+    // Failure: Unable to apply any valid move -- i.e. optimization failed to place the source replica to a valid broker.
+    return false;
+  }
+
+  /**
+   * Get the position of follower that is part of the given partition and reside in the broker with the given id.
+   *
+   * @param partition The partition that the follower is a part of.
+   * @param brokerId Id of the broker that the follower resides.
+   * @return the position of follower that is part of the given partition and reside in the broker with the given id.
+   */
+  private int followerPosition(Partition partition, int brokerId) {
+    int followerPos = 1;
+    for (Broker follower: partition.followerBrokers()) {
+      if (follower.id() == brokerId) {
+        return followerPos;
+      }
+      followerPos++;
+    }
+    throw new IllegalArgumentException(String.format("Partition %s has no follower on %d.", partition, brokerId));
+  }
+
+  /**
+   * Apply the given balancing action.
+   *
+   * @param clusterModel The state of the cluster
+   * @param sourceReplica The source replica to be moved or giving its leadership.
+   * @param destinationBroker The broker that will receive the source broker or its leadership.
+   * @param action The balancing action is either replica or leadership move.
+   */
+  private void applyBalancingAction(ClusterModel clusterModel,
+                                    Replica sourceReplica,
+                                    Broker destinationBroker,
+                                    BalancingAction action)
+      throws ModelInputException, AnalysisInputException {
+
+    if (action == BalancingAction.LEADERSHIP_MOVEMENT) {
+      clusterModel.relocateLeadership(sourceReplica.topicPartition(), sourceReplica.broker().id(), destinationBroker.id());
+    } else if (action == BalancingAction.REPLICA_MOVEMENT) {
+      clusterModel.relocateReplica(sourceReplica.topicPartition(), sourceReplica.broker().id(), destinationBroker.id());
+    }
+  }
+
+  /**
+   * Get replica of the given partition residing in the given position.
+   *
+   * @param sourcePartition Partition whose replica will be returned.
+   * @param position The position of replica in the partition, i.e. 0 means leader, 1 is the first follower, and so on.
+   */
+  private Replica replicaInPositionFor(Partition sourcePartition, int position) {
+    if (position == 0) {
+      return sourcePartition.leader();
+    }
+    return sourcePartition.followers().get(position - 1);
+  }
+
+  /**
+   * Get replica of the given partition residing in the broker with the given brokerId. If there is no replica of the
+   * given partition in the broker with the given brokerId, return null.
+   *
+   * @param sourcePartition Partition whose replica will be returned (if any).
+   * @param brokerId The id of the broker in which the replica resides (if any).
+   */
+  private Replica replicaInBrokerFor(Partition sourcePartition, int brokerId) {
+    if (sourcePartition.leader().broker().id() == brokerId) {
+      return sourcePartition.leader();
+    }
+
+    for (Replica replica : sourcePartition.followers()) {
+      if (replica.broker().id() == brokerId) {
+        return replica;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if its topic
+   * is in the excluded topics set and its broker is still alive.
+   *
+   * @param partition The partition of replica to be checked.
+   * @param position The position of replica in the given partition.
+   * @param excludedTopics The excluded topics set.
+   * @return True if the replica should be excluded, false otherwise.
+   */
+  private boolean shouldExclude(Partition partition, int position, Set<String> excludedTopics) {
+    Replica replica = replicaInPositionFor(partition, position);
+    return excludedTopics.contains(replica.topicPartition().topic()) && replica.originalBroker().isAlive();
+  }
+
+  /**
+   * Sanity Check: There exists sufficient number of racks for achieving rack-awareness.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   */
+  private void ensureRackAwareSatisfiable(ClusterModel clusterModel, Set<String> excludedTopics)
+      throws OptimizationFailureException {
+    // Sanity Check: not enough racks to satisfy rack awareness.
+    int numHealthyRacks = clusterModel.numHealthyRacks();
+    if (!excludedTopics.isEmpty()) {
+      int maxReplicationFactorOfIncludedTopics = 1;
+      Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();
+
+      for (Map.Entry<String, Integer> replicationFactorByTopicEntry: replicationFactorByTopic.entrySet()) {
+        if (!excludedTopics.contains(replicationFactorByTopicEntry.getKey())) {
+          maxReplicationFactorOfIncludedTopics =
+              Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
+          if (maxReplicationFactorOfIncludedTopics > numHealthyRacks) {
+            throw new OptimizationFailureException("Insufficient number of racks to distribute included replicas.");
+          }
+        }
+      }
+    } else if (clusterModel.maxReplicationFactor() > numHealthyRacks) {
+      throw new OptimizationFailureException("Insufficient number of racks to distribute each replica.");
+    }
+  }
+
+  /**
+   * Sanity Check: Replicas are distributed in a rack-aware way.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   */
+  private void ensureRackAware(ClusterModel clusterModel, Set<String> excludedTopics)
+      throws OptimizationFailureException {
+    // Sanity check to confirm that the final distribution is rack aware.
+    for (Replica leader : clusterModel.leaderReplicas()) {
+      if (excludedTopics.contains(leader.topicPartition().topic())) {
+        continue;
+      }
+
+      Set<String> replicaBrokersRackIds = new HashSet<>();
+      Set<Broker> followerBrokers = new HashSet<>(clusterModel.partition(leader.topicPartition()).followerBrokers());
+
+      // Add rack Id of replicas.
+      for (Broker followerBroker : followerBrokers) {
+        String followerRackId = followerBroker.rack().id();
+        replicaBrokersRackIds.add(followerRackId);
+      }
+      replicaBrokersRackIds.add(leader.broker().rack().id());
+      if (replicaBrokersRackIds.size() != (followerBrokers.size() + 1)) {
+        throw new OptimizationFailureException("Optimization for goal " + name() + " failed for rack-awareness of "
+                                               + "partition " + leader.topicPartition());
+      }
+    }
+  }
+
+  /**
+   * Check whether the given proposal is acceptable by this goal. This goal is used to generate an initially balanced,
+   * rack-aware distribution. Hence, as long as the rack awareness is preserved, it is acceptable to break the
+   * distribution generated by this goal for the sake of satisfying the requirements of the other goals.
+   *
+   * @param proposal     Proposal to be checked for acceptance.
+   * @param clusterModel The state of the cluster.
+   * @return True if proposal is acceptable by this goal, false otherwise.
+   */
+  @Override
+  public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
+    if (proposal.balancingAction().equals(BalancingAction.REPLICA_MOVEMENT)) {
+      Replica sourceReplica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
+      Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
+
+      // Destination broker cannot be in a rack that violates rack awareness.
+      Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
+      partitionBrokers.remove(sourceReplica.broker());
+
+      // Remove brokers in partition broker racks except the brokers in replica broker rack.
+      for (Broker broker : partitionBrokers) {
+        if (broker.rack().brokers().contains(destinationBroker)) {
+          return false;
+        }
+      }
+    }
+    return true;
+  }
+
+  @Override
+  public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
+    // We only need the latest snapshot and include all the topics.
+    return new ModelCompletenessRequirements(1, 0.0, true);
+  }
+
+  /**
+   * Get the name of this goal. Name of a goal provides an identification for the goal in human readable format.
+   */
+  @Override
+  public String name() {
+    return KafkaAssignerEvenRackAwareGoal.class.getSimpleName();
+  }
+
+  @Override
+  public ClusterModelStatsComparator clusterModelStatsComparator() {
+    return new EvenRackAwareGoalStatsComparator();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    // No external config is used.
+  }
+
+  private static class EvenRackAwareGoalStatsComparator implements ClusterModelStatsComparator {
+
+    @Override
+    public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
+      // This goal does not care about stats. The optimization would have already failed if the goal is not met.
+      return 0;
+    }
+
+    @Override
+    public String explainLastComparison() {
+      return null;
+    }
+  }
+
+  /**
+   * A helper class for this goal to keep track of the number of replicas assigned to brokers at each position during
+   * the optimization process.
+   */
+  private static class BrokerReplicaCount implements Comparable<BrokerReplicaCount> {
+    private final Broker _broker;
+    private int _replicaCount;
+
+    BrokerReplicaCount(Broker broker, int replicaCount) {
+      _broker = broker;
+      _replicaCount = replicaCount;
+    }
+
+    public Broker broker() {
+      return _broker;
+    }
+
+    int replicaCount() {
+      return _replicaCount;
+    }
+
+    void incReplicaCount() {
+      _replicaCount++;
+    }
+
+    @Override
+    public int compareTo(BrokerReplicaCount o) {
+      if (_replicaCount > o.replicaCount()) {
+        return 1;
+      } else if (_replicaCount < o.replicaCount()) {
+        return -1;
+      } else {
+        return Integer.compare(_broker.id(), o.broker().id());
+      }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+      if (this == o) {
+        return true;
+      }
+      if (o == null || getClass() != o.getClass()) {
+        return false;
+      }
+      BrokerReplicaCount that = (BrokerReplicaCount) o;
+      return _replicaCount == that._replicaCount && _broker.id() == that._broker.id();
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(_broker.id(), _replicaCount);
+    }
+  }
+}

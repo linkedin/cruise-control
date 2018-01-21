@@ -53,7 +53,7 @@ public class RandomSelfHealingTest {
    *
    * @return Parameters for the {@link OptimizationVerifier}.
    */
-  @Parameters
+  @Parameters(name = "{2}-{0}")
   public static Collection<Object[]> data() throws AnalysisInputException {
     Collection<Object[]> params = new ArrayList<>();
 
@@ -83,12 +83,13 @@ public class RandomSelfHealingTest {
     // Test: Single Goal.
     Map<ClusterProperty, Number> singleDeadBroker = new HashMap<>();
     singleDeadBroker.put(ClusterProperty.NUM_DEAD_BROKERS, 1);
+    int testId = 0;
     for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
-      Object[] singleDeadSingleSoftParams = {singleDeadBroker, Collections.singletonMap(entry.getKey(),
+      Object[] singleDeadSingleSoftParams = {testId++, singleDeadBroker, Collections.singletonMap(entry.getKey(),
           entry.getValue()), balancingConstraint, Collections.emptySet()};
       params.add(singleDeadSingleSoftParams);
-      Object[] singleDeadSingleSoftParamsWithExcludedTopics = 
-          {singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()), balancingConstraint, 
+      Object[] singleDeadSingleSoftParamsWithExcludedTopics =
+          {testId++, singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()), balancingConstraint,
           Collections.singleton("T0")};
       params.add(singleDeadSingleSoftParamsWithExcludedTopics);
     }
@@ -98,11 +99,11 @@ public class RandomSelfHealingTest {
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
     // Test: All Goals.
-    Object[] singleDeadMultiAllGoalsParams = 
-        {singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.emptySet()};
+    Object[] singleDeadMultiAllGoalsParams =
+        {testId++, singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.emptySet()};
     params.add(singleDeadMultiAllGoalsParams);
-    Object[] singleDeadMultiAllGoalsParamsWithExcludedTopics = 
-        {singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.singleton("T0")};
+    Object[] singleDeadMultiAllGoalsParamsWithExcludedTopics =
+        {testId++, singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.singleton("T0")};
     params.add(singleDeadMultiAllGoalsParamsWithExcludedTopics);
 
     // -- TEST DECK #2: MULTIPLE DEAD BROKERS.
@@ -110,26 +111,27 @@ public class RandomSelfHealingTest {
     Map<ClusterProperty, Number> multipleDeadBrokers = new HashMap<>();
     multipleDeadBrokers.put(ClusterProperty.NUM_DEAD_BROKERS, 5);
     for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
-      Object[] multiDeadSingleSoftParams = 
-          {multipleDeadBrokers, Collections.singletonMap(entry.getKey(), entry.getValue()), balancingConstraint, 
+      Object[] multiDeadSingleSoftParams =
+          {testId++, multipleDeadBrokers, Collections.singletonMap(entry.getKey(), entry.getValue()), balancingConstraint,
           Collections.emptySet()};
       params.add(multiDeadSingleSoftParams);
       Object[] multiDeadSingleSoftParamsWithExcludedTopics =
-          {multipleDeadBrokers, Collections.singletonMap(entry.getKey(), entry.getValue()), balancingConstraint,
+          {testId++, multipleDeadBrokers, Collections.singletonMap(entry.getKey(), entry.getValue()), balancingConstraint,
               Collections.singleton("T0")};
       params.add(multiDeadSingleSoftParamsWithExcludedTopics);
     }
     // Test: All Goals.
-    Object[] multiDeadMultiAllGoalsParams = 
-        {multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.emptySet()};
+    Object[] multiDeadMultiAllGoalsParams =
+        {testId++, multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.emptySet()};
     params.add(multiDeadMultiAllGoalsParams);
-    Object[] multiDeadMultiAllGoalsParamsWithExcludedTopics = 
-        {multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.singleton("T0")};
+    Object[] multiDeadMultiAllGoalsParamsWithExcludedTopics =
+        {testId++, multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.singleton("T0")};
     params.add(multiDeadMultiAllGoalsParamsWithExcludedTopics);
-    
+
     return params;
   }
 
+  private int _testId;
   private Map<ClusterProperty, Number> _modifiedProperties;
   private Map<Integer, String> _goalNameByPriority;
   private BalancingConstraint _balancingConstraint;
@@ -138,13 +140,18 @@ public class RandomSelfHealingTest {
   /**
    * Constructor of Self Healing Test.
    *
+   * @param testId Test id.
    * @param modifiedProperties Modified cluster properties over the {@link TestConstants#BASE_PROPERTIES}.
    * @param goalNameByPriority Goal name by priority.
+   * @param balancingConstraint Balancing constraint.
+   * @param excludedTopics Excluded topics.
    */
-  public RandomSelfHealingTest(Map<ClusterProperty, Number> modifiedProperties,
+  public RandomSelfHealingTest(int testId,
+                               Map<ClusterProperty, Number> modifiedProperties,
                                Map<Integer, String> goalNameByPriority,
                                BalancingConstraint balancingConstraint,
                                Collection<String> excludedTopics) {
+    _testId = testId;
     _modifiedProperties = modifiedProperties;
     _goalNameByPriority = goalNameByPriority;
     _balancingConstraint = balancingConstraint;
