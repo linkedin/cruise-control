@@ -33,12 +33,58 @@ import org.slf4j.LoggerFactory;
 
 public class KafkaAssignerEvenRackAwareGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaAssignerEvenRackAwareGoal.class);
+  private final Map<Integer, SortedSet<BrokerReplicaCount>> _healthyBrokerReplicaCountByPosition;
+  private final Map<Integer, Map<Integer, Integer>> _numExcludedReplicasByPositionInBroker;
   private Map<String, List<Partition>> _partitionsByTopic;
-  private Map<Integer, SortedSet<BrokerReplicaCount>> _healthyBrokerReplicaCountByPosition;
 
   public KafkaAssignerEvenRackAwareGoal() {
     _partitionsByTopic = null;
     _healthyBrokerReplicaCountByPosition = new HashMap<>();
+    _numExcludedReplicasByPositionInBroker = new HashMap<>();
+  }
+
+  /**
+   * Get the number of excluded replicas by position for the given broker.
+   *
+   * @param broker Broker for which the number of excluded replicas is requested.
+   * @param position The position for which the number of excluded replicas is requested.
+   */
+  private int numExcludedReplicasInPosition(Broker broker, int position) {
+    return _numExcludedReplicasByPositionInBroker.get(broker.id()).getOrDefault(position, 0);
+  }
+
+  /**
+   * Sanity Check: There exists sufficient number of racks for achieving rack-awareness.
+   * 1. Initialize partitions by topic.
+   * 2. Initialize the number of excluded replicas by position for each broker.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   */
+  private void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+      throws OptimizationFailureException {
+    // Sanity check: Ensure that rack awareness is satisfiable.
+    ensureRackAwareSatisfiable(clusterModel, excludedTopics);
+
+    // 1. Initialize partitions by topic.
+    _partitionsByTopic = clusterModel.getPartitionsByTopic();
+
+    // 2. Initialize the number of excluded replicas by position for each broker.
+    clusterModel.brokers().forEach(broker -> _numExcludedReplicasByPositionInBroker.put(broker.id(), new HashMap<>()));
+    for (String excludedTopic : excludedTopics) {
+      for (Partition partition : _partitionsByTopic.get(excludedTopic)) {
+        // Add 1 to the number of excluded replicas in relevant position for the broker that the replica resides in.
+        // Leader is at position 0.
+        int position = 0;
+        _numExcludedReplicasByPositionInBroker.get(partition.leader().broker().id()).merge(position, 1, Integer::sum);
+
+        // Followers are ordered in positions [1, numFollowers].
+        for (Broker followerBroker : partition.followerBrokers()) {
+          position++;
+          _numExcludedReplicasByPositionInBroker.get(followerBroker.id()).merge(position, 1, Integer::sum);
+        }
+      }
+    }
   }
 
   /**
@@ -58,15 +104,16 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
       throw new IllegalArgumentException(String.format("Goals %s cannot be optimized before %s.", optimizedGoals, name()));
     }
 
-    ensureRackAwareSatisfiable(clusterModel, excludedTopics);
+    initGoalState(clusterModel, excludedTopics);
 
-    _partitionsByTopic = clusterModel.getPartitionsByTopic();
     int maxReplicationFactor = clusterModel.maxReplicationFactor();
     Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();
-
     for (int i = 0; i < maxReplicationFactor; i++) {
       SortedSet<BrokerReplicaCount> healthyBrokersByReplicaCount = new TreeSet<>();
-      clusterModel.healthyBrokers().stream().map(BrokerReplicaCount::new).forEach(healthyBrokersByReplicaCount::add);
+      for (Broker broker : clusterModel.healthyBrokers()) {
+        BrokerReplicaCount brokerReplicaCount = new BrokerReplicaCount(broker, numExcludedReplicasInPosition(broker, i));
+        healthyBrokersByReplicaCount.add(brokerReplicaCount);
+      }
       _healthyBrokerReplicaCountByPosition.put(i, healthyBrokersByReplicaCount);
     }
 
@@ -394,9 +441,9 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     private final Broker _broker;
     private int _replicaCount;
 
-    BrokerReplicaCount(Broker broker) {
+    BrokerReplicaCount(Broker broker, int replicaCount) {
       _broker = broker;
-      _replicaCount = 0;
+      _replicaCount = replicaCount;
     }
 
     public Broker broker() {
