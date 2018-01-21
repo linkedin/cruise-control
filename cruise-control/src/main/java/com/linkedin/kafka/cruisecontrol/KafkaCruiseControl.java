@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import com.codahale.metrics.JmxReporter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
@@ -16,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Load;
@@ -52,32 +52,27 @@ public class KafkaCruiseControl {
   private final Executor _executor;
   private final AnomalyDetector _anomalyDetector;
   private final Time _time;
-  private final MetricRegistry _dropwizardMetricRegistry;
-  private final JmxReporter _reporter;
-  private final String _metricsPrefix = "kafka.cruisecontrol";
 
   /**
    * Construct the Cruise Control
    *
    * @param config the configuration of Cruise Control.
    */
-  public KafkaCruiseControl(KafkaCruiseControlConfig config) {
+  public KafkaCruiseControl(KafkaCruiseControlConfig config, MetricRegistry dropwizardMetricRegistry) {
     _config = config;
     _time = new SystemTime();
     // initialize some of the static state of Kafka Cruise Control;
     Load.init(config);
     ModelUtils.init(config);
     ModelParameters.init(config);
-    _dropwizardMetricRegistry = new MetricRegistry();
-    _reporter = JmxReporter.forRegistry(_dropwizardMetricRegistry).inDomain(_metricsPrefix).build();
 
     // Instantiate the components.
-    _loadMonitor = new LoadMonitor(config, _time, _dropwizardMetricRegistry);
+    _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry);
     _goalOptimizerExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
-    _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, _dropwizardMetricRegistry);
-    _executor = new Executor(config, _time, _dropwizardMetricRegistry);
-    _anomalyDetector = new AnomalyDetector(config, _loadMonitor, this, _time, _dropwizardMetricRegistry);
+    _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry);
+    _executor = new Executor(config, _time, dropwizardMetricRegistry);
+    _anomalyDetector = new AnomalyDetector(config, _loadMonitor, this, _time, dropwizardMetricRegistry);
   }
 
   /**
@@ -85,7 +80,6 @@ public class KafkaCruiseControl {
    */
   public void startUp() {
     LOG.info("Starting Kafka Cruise Control...");
-    _reporter.start();
     _loadMonitor.startUp();
     _anomalyDetector.startDetection();
     _goalOptimizerExecutor.submit(_goalOptimizer);
@@ -101,7 +95,6 @@ public class KafkaCruiseControl {
         _executor.shutdown();
         _anomalyDetector.shutdown();
         _goalOptimizer.shutdown();
-        _reporter.close();
         LOG.info("Kafka Cruise Control shutdown completed.");
       }
     };
@@ -121,6 +114,8 @@ public class KafkaCruiseControl {
    * @param dryRun throw
    * @param throttleDecommissionedBroker whether throttle the brokers that are being decommissioned.
    * @param goals the goals to be met when decommissioning the brokers. When empty all goals will be used.
+   * @param requirements The cluster model completeness requirements. 
+   * @param operationProgress the progress to report.
    * @return the optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
@@ -129,15 +124,17 @@ public class KafkaCruiseControl {
                                                            boolean dryRun,
                                                            boolean throttleDecommissionedBroker,
                                                            List<String> goals,
-                                                           ModelCompletenessRequirements requirements)
+                                                           ModelCompletenessRequirements requirements,
+                                                           OperationProgress operationProgress)
       throws KafkaCruiseControlException {
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
-    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration()) {
-      ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements);
+    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
+                                                            operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
-      GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel, goalsByPriority);
+      GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel, goalsByPriority, operationProgress);
       if (!dryRun) {
         executeProposals(result.goalProposals(), throttleDecommissionedBroker ? Collections.emptyList() : brokerIds);
       }
@@ -155,6 +152,8 @@ public class KafkaCruiseControl {
    * @param dryRun whether it is a dry run or not.
    * @param throttleAddedBrokers whether throttle the brokers that are being added.
    * @param goals the goals to be met when adding the brokers. When empty all goals will be used.
+   * @param requirements The cluster model completeness requirements.             
+   * @param operationProgress The progress of the job to update.
    * @return The optimization result.
    * @throws KafkaCruiseControlException when any exception occurred during the broker addition.
    */
@@ -162,14 +161,16 @@ public class KafkaCruiseControl {
                                                   boolean dryRun,
                                                   boolean throttleAddedBrokers,
                                                   List<String> goals,
-                                                  ModelCompletenessRequirements requirements) throws KafkaCruiseControlException {
-    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration()) {
+                                                  ModelCompletenessRequirements requirements,
+                                                  OperationProgress operationProgress) throws KafkaCruiseControlException {
+    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
       ModelCompletenessRequirements modelCompletenessRequirements =
           modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
-      ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements);
+      ClusterModel clusterModel = 
+          _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements, operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.NEW));
-      GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel, goalsByPriority);
+      GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel, goalsByPriority, operationProgress);
       if (!dryRun) {
         executeProposals(result.goalProposals(), throttleAddedBrokers ? Collections.emptyList() : brokerIds);
       }
@@ -186,13 +187,15 @@ public class KafkaCruiseControl {
    * @param goals the goals to be met during the rebalance. When empty all goals will be used.
    * @param dryRun whether it is a dry run or not.
    * @param requirements The cluster model completeness requirements.
+   * @param operationProgress the progress of the job to report.
    * @return the optimization result.
    * @throws KafkaCruiseControlException when the rebalacnce encounter errors.
    */
   public GoalOptimizer.OptimizerResult rebalance(List<String> goals,
                                                  boolean dryRun,
-                                                 ModelCompletenessRequirements requirements) throws KafkaCruiseControlException {
-    GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements);
+                                                 ModelCompletenessRequirements requirements,
+                                                 OperationProgress operationProgress) throws KafkaCruiseControlException {
+    GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet());
     }
@@ -210,13 +213,16 @@ public class KafkaCruiseControl {
    * Get the cluster model cutting off at a certain timestamp.
    * @param now time.
    * @param requirements the model completeness requirements.
+   * @param operationProgress the progress of the job to report.
    * @return the cluster workload model.
    * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
    */
-  public ClusterModel clusterModel(long now, ModelCompletenessRequirements requirements)
+  public ClusterModel clusterModel(long now, 
+                                   ModelCompletenessRequirements requirements, 
+                                   OperationProgress operationProgress)
       throws KafkaCruiseControlException {
-    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration()) {
-      return _loadMonitor.clusterModel(now, requirements);
+    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      return _loadMonitor.clusterModel(now, requirements, operationProgress);
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;
     } catch (Exception e) {
@@ -228,13 +234,18 @@ public class KafkaCruiseControl {
    * Get the cluster model for a given time window.
    * @param from the start time of the window
    * @param to the end time of the window
+   * @param requirements the model completeness requirement to enforce.
+   * @param operationProgress the progress of the job to report.
    * @return the cluster workload model.
    * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
    */
-  public ClusterModel clusterModel(long from, long to, ModelCompletenessRequirements modelCompletenessRequirements)
+  public ClusterModel clusterModel(long from, 
+                                   long to, 
+                                   ModelCompletenessRequirements requirements,
+                                   OperationProgress operationProgress)
       throws KafkaCruiseControlException {
-    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration()) {
-      return _loadMonitor.clusterModel(from, to, modelCompletenessRequirements);
+    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      return _loadMonitor.clusterModel(from, to, requirements, operationProgress);
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;
     } catch (Exception e) {
@@ -299,22 +310,31 @@ public class KafkaCruiseControl {
   /**
    * Get the optimization proposals from the current cluster. The result would be served from the cached result if
    * it is still valid.
+   * @param operationProgress the job progress to report.
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    * @throws AnalysisInputException
    */
-  public GoalOptimizer.OptimizerResult getOptimizationProposals() throws KafkaCruiseControlException {
-      return _goalOptimizer.optimizations();
+  public GoalOptimizer.OptimizerResult getOptimizationProposals(OperationProgress operationProgress) 
+      throws KafkaCruiseControlException {
+    try {
+      return _goalOptimizer.optimizations(operationProgress);
+    } catch (InterruptedException ie) {
+      throw new KafkaCruiseControlException("Interrupted when getting the optimization proposals", ie);
+    }
   }
 
   /**
    * Optimize a cluster workload model.
    * @param goals a list of goals to optimize. When empty all goals will be used.
+   * @param requirements the model completeness requirements to enforce when generating the propsoals.
+   * @param operationProgress the progress of the job to report.
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    */
   public GoalOptimizer.OptimizerResult getOptimizationProposals(List<String> goals,
-                                                                ModelCompletenessRequirements requirements) throws KafkaCruiseControlException {
+                                                                ModelCompletenessRequirements requirements,
+                                                                OperationProgress operationProgress) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -328,27 +348,29 @@ public class KafkaCruiseControl {
         || requirementsForCache.minRequiredNumSnapshotWindows() > modelCompletenessRequirements.minRequiredNumSnapshotWindows()
         || (requirementsForCache.includeAllTopics() && !modelCompletenessRequirements.includeAllTopics());
     if ((goals != null && !goals.isEmpty()) || hasWeakerRequirement) {
-      try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration()) {
+      try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         // The cached proposals are computed with ignoreMinMonitoredPartitions = true. So if user provided a different
         // setting, we need to generate a new model.
-        ClusterModel clusterModel = _loadMonitor.clusterModel(-1, _time.milliseconds(), modelCompletenessRequirements);
-        result = getOptimizationProposals(clusterModel, goalsByPriority);
+        ClusterModel clusterModel = 
+            _loadMonitor.clusterModel(-1, _time.milliseconds(), modelCompletenessRequirements, operationProgress);
+        result = getOptimizationProposals(clusterModel, goalsByPriority, operationProgress);
       } catch (KafkaCruiseControlException kcce) {
         throw kcce;
       } catch (Exception e) {
         throw new KafkaCruiseControlException(e);
       }
     } else {
-      result = getOptimizationProposals();
+      result = getOptimizationProposals(operationProgress);
     }
     return result;
   }
 
   private GoalOptimizer.OptimizerResult getOptimizationProposals(ClusterModel clusterModel,
-                                                                 Map<Integer, Goal> goalsByPriority)
+                                                                 Map<Integer, Goal> goalsByPriority,
+                                                                 OperationProgress operationProgress)
       throws KafkaCruiseControlException {
     synchronized (this) {
-      return _goalOptimizer.optimizations(clusterModel, goalsByPriority);
+      return _goalOptimizer.optimizations(clusterModel, goalsByPriority, operationProgress);
     }
   }
 

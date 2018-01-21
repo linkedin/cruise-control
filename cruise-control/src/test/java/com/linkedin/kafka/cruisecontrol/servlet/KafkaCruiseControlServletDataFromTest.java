@@ -4,11 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -77,12 +78,13 @@ public class KafkaCruiseControlServletDataFromTest {
   
   @Test
   public void test() {
-    KafkaCruiseControl mockKCC = EasyMock.createMock(KafkaCruiseControl.class);
+    AsyncKafkaCruiseControl mockKCC = EasyMock.createMock(AsyncKafkaCruiseControl.class);
     KafkaCruiseControlState kccState = getState(_numReadyGoals, _totalGoals, _numValidWindows);
     EasyMock.expect(mockKCC.state()).andReturn(kccState).anyTimes();
     EasyMock.replay(mockKCC);
     
-    KafkaCruiseControlServlet servlet = new KafkaCruiseControlServlet(mockKCC);
+    KafkaCruiseControlServlet servlet = 
+        new KafkaCruiseControlServlet(mockKCC, 10, 100, new MetricRegistry());
     KafkaCruiseControlServlet.GoalsAndRequirements goalsAndRequirements = 
         servlet.getGoalsAndRequirements(Collections.emptyList(),
                                         _dataFrom,

@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -206,7 +207,8 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, T1P1, 0, SNAPSHOT_WINDOW_MS);
 
     ClusterModel clusterModel = loadMonitor.clusterModel(-1, Long.MAX_VALUE,
-                                                         new ModelCompletenessRequirements(2, 1.0, false));
+                                                         new ModelCompletenessRequirements(2, 1.0, false),
+                                                         new OperationProgress());
     assertEquals(6.5, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.CPU), 0.0);
     assertEquals(6.5, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.NW_IN), 0.0);
     assertEquals(6.5, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
@@ -234,13 +236,13 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 1, aggregator, T1P1, 0, SNAPSHOT_WINDOW_MS);
 
     try {
-      loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1);
+      loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, new OperationProgress());
       fail("Should have thrown NotEnoughValidSnapshotsException.");
     } catch (NotEnoughValidSnapshotsException nevse) {
       // let it go
     }
 
-    ClusterModel clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2);
+    ClusterModel clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, new OperationProgress());
     assertNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(1, clusterModel.partition(T0P0).leader().load().numSnapshots());
@@ -250,14 +252,14 @@ public class LoadMonitorTest {
     assertEquals(1.5, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
 
     try {
-      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3);
+      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3, new OperationProgress());
       fail("Should have thrown NotEnoughValidSnapshotsException.");
     } catch (NotEnoughValidSnapshotsException nevse) {
       // let it go
     }
 
     try {
-      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4);
+      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, new OperationProgress());
       fail("Should have thrown NotEnoughValidSnapshotsException.");
     } catch (NotEnoughValidSnapshotsException nevse) {
       // let it go
@@ -285,13 +287,13 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 1, aggregator, T1P1, 0, SNAPSHOT_WINDOW_MS);
 
     try {
-      loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1);
+      loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, new OperationProgress());
       fail("Should have thrown NotEnoughValidSnapshotsException.");
     } catch (NotEnoughValidSnapshotsException nevse) {
       // let it go
     }
 
-    ClusterModel clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2);
+    ClusterModel clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, new OperationProgress());
     assertNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numSnapshots());
@@ -301,13 +303,13 @@ public class LoadMonitorTest {
     assertEquals(6.5, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
 
     try {
-      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3);
+      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3, new OperationProgress());
       fail("Should have thrown NotEnoughValidSnapshotsException.");
     } catch (NotEnoughValidSnapshotsException nevse) {
       // let it go
     }
 
-    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4);
+    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, new OperationProgress());
     assertNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numSnapshots());
@@ -338,7 +340,7 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 1, aggregator, T1P1, 0, SNAPSHOT_WINDOW_MS);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, T1P1, 1, SNAPSHOT_WINDOW_MS);
 
-    ClusterModel clusterModel =  loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1);
+    ClusterModel clusterModel =  loadMonitor.clusterModel(-1, Long.MAX_VALUE, requirements1, new OperationProgress());
     for (TopicPartition tp : Arrays.asList(T0P0, T0P1, T1P0, T1P1)) {
       assertNotNull(clusterModel.partition(tp));
     }
@@ -353,7 +355,7 @@ public class LoadMonitorTest {
     assertEquals(10, clusterModel.partition(T1P1).leader().load().expectedUtilizationFor(Resource.NW_IN), 0.0);
     assertEquals(10, clusterModel.partition(T1P1).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
 
-    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2);
+    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements2, new OperationProgress());
     assertNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numSnapshots());
@@ -363,13 +365,13 @@ public class LoadMonitorTest {
     assertEquals(6.5, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
 
     try {
-      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3);
+      loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3, new OperationProgress());
       fail("Should have thrown NotEnoughValidSnapshotsException.");
     } catch (NotEnoughValidSnapshotsException nevse) {
       // let it go
     }
 
-    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4);
+    clusterModel = loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, new OperationProgress());
     assertNull(clusterModel.partition(T1P0));
     assertNull(clusterModel.partition(T1P1));
     assertEquals(2, clusterModel.partition(T0P0).leader().load().numSnapshots());

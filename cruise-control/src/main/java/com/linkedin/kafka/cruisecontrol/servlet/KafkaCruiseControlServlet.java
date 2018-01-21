@@ -4,19 +4,20 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
+import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult;
+import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -33,18 +34,24 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.EndPoint.*;
+import static javax.servlet.http.HttpServletResponse.*;
 
 
 /**
@@ -162,10 +169,23 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     STOP_PROPOSAL_EXECUTION
   }
 
-  private KafkaCruiseControl _kafkaCruiseControl;
+  private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
+  private final SessionManager _sessionManager;
+  private final long _maxBlockMs;
 
-  public KafkaCruiseControlServlet(KafkaCruiseControl kafkaCruiseControl) {
-    _kafkaCruiseControl = kafkaCruiseControl;
+  public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl,
+                                   long maxBlockMs,
+                                   long sessionExpiryMs,
+                                   MetricRegistry dropwizardMetricRegistry) {
+    _asyncKafkaCruiseControl = asynckafkaCruiseControl;
+    _sessionManager = new SessionManager(5, sessionExpiryMs, Time.SYSTEM, dropwizardMetricRegistry);
+    _maxBlockMs = maxBlockMs;
+  }
+
+  @Override
+  public void destroy() {
+    super.destroy();
+    _sessionManager.close();
   }
 
   /**
@@ -174,7 +194,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Examples_of_access_control_scenarios
    */
   protected void doOptions(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-    response.setStatus(HttpServletResponse.SC_OK);
+    response.setStatus(SC_OK);
     response.setHeader("Access-Control-Allow-Origin", "*");
     response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
   }
@@ -217,7 +237,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
     ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
-                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
+                    KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       EndPoint endPoint = endPoint(request);
       if (endPoint != null) {
@@ -247,13 +267,19 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               train(request, response);
               break;
             case LOAD:
-              getClusterLoad(request, response);
+              if (getClusterLoad(request, response)) {
+                _sessionManager.closeSession(request);
+              }
               break;
             case PARTITION_LOAD:
-              getPartitionLoad(request, response);
+              if (getPartitionLoad(request, response)) {
+                _sessionManager.closeSession(request);
+              }
               break;
             case PROPOSALS:
-              getProposals(request, response);
+              if (getProposals(request, response)) {
+                _sessionManager.closeSession(request);
+              }
               break;
             case STATE:
               getState(request, response);
@@ -334,10 +360,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           switch (endPoint) {
             case ADD_BROKER:
             case REMOVE_BROKER:
-              addOrRemoveBroker(request, response, endPoint);
+              if (addOrRemoveBroker(request, response, endPoint)) {
+                _sessionManager.closeSession(request);
+              }
               break;
             case REBALANCE:
-              rebalance(request, response);
+              if (rebalance(request, response)) {
+                _sessionManager.closeSession(request);
+              }
               break;
             case STOP_PROPOSAL_EXECUTION:
               stopProposalExecution();
@@ -391,19 +421,19 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
 
     if (startMs != null && endMs != null) {
-      _kafkaCruiseControl.bootstrapLoadMonitor(startMs, endMs, clearMetrics);
+      _asyncKafkaCruiseControl.bootstrapLoadMonitor(startMs, endMs, clearMetrics);
     } else if (startMs != null) {
-      _kafkaCruiseControl.bootstrapLoadMonitor(startMs, clearMetrics);
+      _asyncKafkaCruiseControl.bootstrapLoadMonitor(startMs, clearMetrics);
     } else {
-      _kafkaCruiseControl.bootstrapLoadMonitor(clearMetrics);
+      _asyncKafkaCruiseControl.bootstrapLoadMonitor(clearMetrics);
     }
     String resp;
     if (json) {
       resp = "{\"message\": \"Bootstrap started.\"}";
-      setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+      setJSONResponseCode(request, response, SC_OK);
     } else {
       resp = "Bootstrap started. Check status through " + getStateCheckUrl(request);
-      setResponseCode(response, HttpServletResponse.SC_OK);
+      setResponseCode(response, SC_OK);
     }
     response.setContentLength(resp.length());
     response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
@@ -423,21 +453,21 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-    _kafkaCruiseControl.trainLoadModel(startMs, endMs);
+    _asyncKafkaCruiseControl.trainLoadModel(startMs, endMs);
     String resp;
     if (json) {
       resp = "{\"message\": \"Load model training started.\"}";
-      setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+      setJSONResponseCode(request, response, SC_OK);
     } else {
       resp = "Load model training started. Check status through " + getStateCheckUrl(request);
-      setResponseCode(response, HttpServletResponse.SC_OK);
+      setResponseCode(response, SC_OK);
     }
     response.setContentLength(resp.length());
     response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
     response.getOutputStream().flush();
   }
 
-  private void getClusterLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
+  private boolean getClusterLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
     long time;
     String granularity;
     boolean json = false;
@@ -453,7 +483,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, false);
     if (granularity == null || granularity.toLowerCase().equals(GRANULARITY_BROKER)) {
-      ClusterModel.BrokerStats brokerStats = _kafkaCruiseControl.cachedBrokerLoadStats();
+      ClusterModel.BrokerStats brokerStats = _asyncKafkaCruiseControl.cachedBrokerLoadStats();
       String brokerLoad;
       if (brokerStats != null) {
         if (json) {
@@ -462,29 +492,39 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           brokerLoad = brokerStats.toString();
         }
       } else {
-        ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(time, requirements);
+        // Get the broker stats asynchronously.
+        brokerStats = getAndMaybeReturnProgress(request, response, 
+                                                () -> _asyncKafkaCruiseControl.getBrokerStats(time, requirements));
+        if (brokerStats == null) {
+          return false;
+        }
         if (json) {
-          brokerLoad = clusterModel.brokerStatsJSON();
+          brokerLoad = brokerStats.getJSONString();
         } else {
-          brokerLoad = clusterModel.brokerStats().toString();
+          brokerLoad = brokerStats.toString();
         }
       }
       if (json) {
-        setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+        setJSONResponseCode(request, response, SC_OK);
       } else {
-        setResponseCode(response, HttpServletResponse.SC_OK);
+        setResponseCode(response, SC_OK);
       }
       response.setContentLength(brokerLoad.length());
       response.getOutputStream().write(brokerLoad.getBytes(StandardCharsets.UTF_8));
     } else if (granularity.toLowerCase().equals(GRANULARITY_REPLICA)) {
-      ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(time, requirements);
+      // Get the cluster model asynchronously
+      ClusterModel clusterModel = getAndMaybeReturnProgress(request, response,
+                                                            () -> _asyncKafkaCruiseControl.clusterModel(time, requirements));
+      if (clusterModel == null) {
+        return false;
+      }
       if (json) {
         String data = clusterModel.getJSONString();
-        setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+        setJSONResponseCode(request, response, SC_OK);
         response.setContentLength(data.length());
         response.getOutputStream().write(data.getBytes(StandardCharsets.UTF_8));
       } else {
-        setResponseCode(response, HttpServletResponse.SC_OK);
+        setResponseCode(response, SC_OK);
         // Write to stream to avoid expensive toString() call.
         clusterModel.writeTo(response.getOutputStream());
       }
@@ -492,9 +532,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throw new UserRequestException("Unknown granularity " + granularity);
     }
     response.getOutputStream().flush();
+    return true;
   }
 
-  private void getPartitionLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
+  private boolean getPartitionLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
     Resource resource;
     Long startMs;
     Long endMs;
@@ -517,12 +558,18 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
 
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, false);
-    ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(startMs, endMs, requirements);
+    // Get cluster model asynchronously.
+    ClusterModel clusterModel = 
+        getAndMaybeReturnProgress(request, response,
+                                  () -> _asyncKafkaCruiseControl.clusterModel(startMs, endMs, requirements));
+    if (clusterModel == null) {
+      return false;
+    }
     List<Partition> sortedPartitions = clusterModel.replicasSortedByUtilization(resource);
     OutputStream out = response.getOutputStream();
     if (!json) {
       int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
-      setResponseCode(response, HttpServletResponse.SC_OK);
+      setResponseCode(response, SC_OK);
       out.write(String.format("%" + topicNameLength + "s%10s%30s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
                               "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)")
                       .getBytes(StandardCharsets.UTF_8));
@@ -559,14 +606,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       partitionMap.put("records", partitionList);
       Gson gson = new Gson();
       String g = gson.toJson(partitionMap);
-      setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+      setJSONResponseCode(request, response, SC_OK);
       response.setContentLength(g.length());
       out.write(g.getBytes(StandardCharsets.UTF_8));
     }
     out.flush();
+    return true;
   }
 
-  private void getProposals(HttpServletRequest request, HttpServletResponse response) throws Exception {
+  private boolean getProposals(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean verbose;
     boolean ignoreProposalCache;
     DataFrom dataFrom = DataFrom.VALID_WINDOWS;
@@ -590,10 +638,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throw new UserRequestException(e);
     }
     GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(goals, dataFrom, ignoreProposalCache);
-
-    GoalOptimizer.OptimizerResult optimizerResult =
-        _kafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(),
-                                                     goalsAndRequirements.requirements());
+    // Get the optimization result asynchronously.
+    GoalOptimizer.OptimizerResult optimizerResult = 
+        getAndMaybeReturnProgress(request, response,
+                                  () -> _asyncKafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(), 
+                                                                                          goalsAndRequirements.requirements()));
+    if (optimizerResult == null) {
+      return false;
+    }
     String loadBeforeOptimization = json ?
       optimizerResult.brokerStatsBeforeOptimization().getJSONString() :
       optimizerResult.brokerStatsBeforeOptimization().toString();
@@ -601,12 +653,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       optimizerResult.brokerStatsAfterOptimization().getJSONString() :
       optimizerResult.brokerStatsAfterOptimization().toString();
 
-    setResponseCode(response, HttpServletResponse.SC_OK);
+    setResponseCode(response, SC_OK);
     OutputStream out = response.getOutputStream();
 
     if (!json) {
       if (!verbose) {
-        out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
+        out.write(
+            KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
       } else {
         out.write(optimizerResult.goalProposals().toString().getBytes(StandardCharsets.UTF_8));
       }
@@ -616,7 +669,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             .getBytes(StandardCharsets.UTF_8));
         out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
       }
-      setResponseCode(response, HttpServletResponse.SC_OK);
+      setResponseCode(response, SC_OK);
       // Print summary before & after optimization
       out.write(String.format("%n%nCurrent load:").getBytes(StandardCharsets.UTF_8));
       out.write(loadBeforeOptimization.getBytes(StandardCharsets.UTF_8));
@@ -624,7 +677,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       out.write(loadAfterOptimization.getBytes(StandardCharsets.UTF_8));
     } else {
       if (!verbose) {
-        out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
+        out.write(
+            KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
       }
       // Build all the goal summary
       List<Map<String, Object>> allGoals = new ArrayList<>();
@@ -646,10 +700,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                       .serializeSpecialFloatingPointValues()
                       .create();
       String proposalsString = gson.toJson(proposalMap);
-      setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+      setJSONResponseCode(request, response, SC_OK);
       out.write(proposalsString.getBytes(StandardCharsets.UTF_8));
     }
     out.flush();
+    return true;
   }
 
   private String goalResultDescription(Goal goal, GoalOptimizer.OptimizerResult optimizerResult) {
@@ -692,16 +747,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-    KafkaCruiseControlState state = _kafkaCruiseControl.state();
+    KafkaCruiseControlState state = _asyncKafkaCruiseControl.state();
     OutputStream out = response.getOutputStream();
     if (json) {
       String stateString = state.getJSONString();
-      setJSONResponseCode(request, response, HttpServletResponse.SC_OK);
+      setJSONResponseCode(request, response, SC_OK);
       response.setContentLength(stateString.length());
       out.write(stateString.getBytes(StandardCharsets.UTF_8));
     } else {
       String stateString = state.toString();
-      setResponseCode(response, HttpServletResponse.SC_OK);
+      setResponseCode(response, SC_OK);
       out.write(stateString.getBytes(StandardCharsets.UTF_8));
       if (verbose || superVerbose) {
         out.write(String.format("%n%nMonitored Windows:%n").getBytes(StandardCharsets.UTF_8));
@@ -744,8 +799,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     response.getOutputStream().flush();
   }
 
-  private void addOrRemoveBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
-      throws KafkaCruiseControlException, IOException {
+  private boolean addOrRemoveBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
+      throws Exception {
     List<Integer> brokerIds = new ArrayList<>();
     boolean dryrun;
     DataFrom dataFrom = DataFrom.VALID_WINDOWS; // by default we use ValidWindows
@@ -775,18 +830,30 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throw new UserRequestException(e);
     }
     GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(goals, dataFrom, false);
+    // Get proposals asynchronously.
     GoalOptimizer.OptimizerResult optimizerResult;
     if (endPoint == EndPoint.ADD_BROKER) {
-      optimizerResult = _kafkaCruiseControl.addBrokers(brokerIds, dryrun, throttleAddedOrRemovedBrokers,
-                                                       goalsAndRequirements.goals(),
-                                                       goalsAndRequirements.requirements());
+      optimizerResult = 
+          getAndMaybeReturnProgress(request, response, 
+                                    () -> _asyncKafkaCruiseControl.addBrokers(brokerIds, 
+                                                                              dryrun, 
+                                                                              throttleAddedOrRemovedBrokers, 
+                                                                              goalsAndRequirements.goals(), 
+                                                                              goalsAndRequirements.requirements()));
     } else {
-      optimizerResult = _kafkaCruiseControl.decommissionBrokers(brokerIds, dryrun, throttleAddedOrRemovedBrokers,
-                                                                goalsAndRequirements.goals(),
-                                                                goalsAndRequirements.requirements());
+      optimizerResult = 
+          getAndMaybeReturnProgress(request, response,
+                                    () -> _asyncKafkaCruiseControl.decommissionBrokers(brokerIds, 
+                                                                                       dryrun, 
+                                                                                       throttleAddedOrRemovedBrokers, 
+                                                                                       goalsAndRequirements.goals(), 
+                                                                                       goalsAndRequirements.requirements()));
+    }
+    if (optimizerResult == null) {
+      return false;
     }
 
-    setResponseCode(response, HttpServletResponse.SC_OK);
+    setResponseCode(response, SC_OK);
     OutputStream out = response.getOutputStream();
     out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult)
                                             .getBytes(StandardCharsets.UTF_8));
@@ -802,10 +869,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     out.write(optimizerResult.brokerStatsAfterOptimization().toString()
                              .getBytes(StandardCharsets.UTF_8));
     out.flush();
+    return true;
   }
 
-  private void rebalance(HttpServletRequest request, HttpServletResponse response)
-      throws KafkaCruiseControlException, IOException {
+  private boolean rebalance(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean dryrun;
     DataFrom dataFrom = DataFrom.VALID_WINDOWS; // default to with available windows.
     List<String> goals;
@@ -825,13 +892,19 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throw new UserRequestException(e);
     }
     GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(goals, dataFrom, false);
-    GoalOptimizer.OptimizerResult optimizerResult = _kafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
-                                                                                  dryrun,
-                                                                                  goalsAndRequirements.requirements());
+    GoalOptimizer.OptimizerResult optimizerResult = 
+        getAndMaybeReturnProgress(request, response,
+                                  () -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
+                                                                           dryrun,
+                                                                           goalsAndRequirements.requirements()));
+    if (optimizerResult == null) {
+      return false;
+    }
 
-    setResponseCode(response, HttpServletResponse.SC_OK);
+    setResponseCode(response, SC_OK);
     OutputStream out = response.getOutputStream();
-    out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
+    out.write(
+        KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
     for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
       Goal goal = entry.getKey();
       out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
@@ -841,10 +914,24 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     out.write(String.format("%nCluster load after rebalance:%n").getBytes(StandardCharsets.UTF_8));
     out.write(optimizerResult.brokerStatsAfterOptimization().toString().getBytes(StandardCharsets.UTF_8));
     out.flush();
+    return true;
   }
 
   private void stopProposalExecution() {
-    _kafkaCruiseControl.stopProposalExecution();
+    _asyncKafkaCruiseControl.stopProposalExecution();
+  }
+  
+  private <T> T getAndMaybeReturnProgress(HttpServletRequest request, 
+                                          HttpServletResponse response, 
+                                          Supplier<OperationFuture<T>> supplier)
+      throws ExecutionException, InterruptedException, IOException {
+    OperationFuture<T> future = _sessionManager.getAndCreateSessionIfNotExist(request, supplier);
+    try {
+      return future.get(_maxBlockMs, TimeUnit.MILLISECONDS);
+    } catch (TimeoutException te) {
+      returnProgress(response, future);
+      return null;
+    }
   }
 
   private EndPoint endPoint(HttpServletRequest request) {
@@ -880,6 +967,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     response.getOutputStream().write(errorMessage.getBytes(StandardCharsets.UTF_8));
     response.getOutputStream().flush();
   }
+  
+  private void returnProgress(HttpServletResponse response, OperationFuture future) throws IOException {
+    String progressString = future.progressString();
+    setResponseCode(response, SC_OK);
+    response.setContentLength(progressString.length());
+    response.getOutputStream().write(progressString.getBytes(StandardCharsets.UTF_8));
+    response.getOutputStream().flush();
+  }
 
   private String getStateCheckUrl(HttpServletRequest request) {
     String url = request.getRequestURL().toString();
@@ -898,11 +993,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     if (!userProvidedGoals.isEmpty() || dataFrom == DataFrom.VALID_PARTITIONS) {
       return new GoalsAndRequirements(userProvidedGoals, getRequirements(dataFrom));
     }
-    KafkaCruiseControlState state = _kafkaCruiseControl.state();
+    KafkaCruiseControlState state = _asyncKafkaCruiseControl.state();
     int availableWindows = state.monitorState().numValidSnapshotWindows();
     List<String> allGoals = new ArrayList<>();
     List<String> readyGoals = new ArrayList<>();
-    _kafkaCruiseControl.state().analyzerState().readyGoals().forEach((goal, ready) -> {
+    state.analyzerState().readyGoals().forEach((goal, ready) -> {
       allGoals.add(goal.name());
       if (ready) {
         readyGoals.add(goal.name());

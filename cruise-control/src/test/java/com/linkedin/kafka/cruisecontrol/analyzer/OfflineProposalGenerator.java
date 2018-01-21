@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -50,7 +51,7 @@ public class OfflineProposalGenerator {
     // Instantiate the components.
     GoalOptimizer goalOptimizer = new GoalOptimizer(config, null, new SystemTime(), new MetricRegistry());
     start = System.currentTimeMillis();
-    GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel);
+    GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel, new OperationProgress());
     end = System.currentTimeMillis();
     duration = (end - start) / 1000.0;
     String loadAfterOptimization = clusterModel.brokerStats().toString();

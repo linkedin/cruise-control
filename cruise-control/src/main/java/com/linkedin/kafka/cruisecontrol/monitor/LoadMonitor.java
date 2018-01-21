@@ -16,6 +16,9 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.NotEnoughValidSnapshotsException;
 import com.linkedin.kafka.cruisecontrol.exception.NotEnoughSnapshotsException;
+import com.linkedin.kafka.cruisecontrol.async.progress.GeneratingClusterModel;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricCompletenessChecker;
@@ -325,14 +328,18 @@ public class LoadMonitor {
 
   /**
    * Acquire the semaphore for the cluster model generation.
+   * @param operationProgress the progress for the job.
    * @throws InterruptedException
    */
-  public AutoCloseableSemaphore acquireForModelGeneration() throws InterruptedException {
+  public AutoCloseableSemaphore acquireForModelGeneration(OperationProgress operationProgress) throws InterruptedException {
     if (_acquiredClusterModelSemaphore.get()) {
       throw new IllegalStateException("The thread has already acquired the semaphore for cluster model generation.");
     }
+    WaitingForClusterModel step = new WaitingForClusterModel();
+    operationProgress.addStep(step);
     _clusterModelSemaphore.acquire();
     _acquiredClusterModelSemaphore.set(true);
+    step.done();
     return new AutoCloseableSemaphore();
   }
 
@@ -341,11 +348,12 @@ public class LoadMonitor {
    *
    * @param now The current time in millisecond.
    * @param requirements the load requirements for getting the cluster model.
+   * @param operationProgress the progress to report.
    * @return A cluster model with the configured number of snapshots whose timestamp is before given timestamp.
    */
-  public ClusterModel clusterModel(long now, ModelCompletenessRequirements requirements)
+  public ClusterModel clusterModel(long now, ModelCompletenessRequirements requirements, OperationProgress operationProgress)
       throws ModelInputException, NotEnoughValidSnapshotsException, NotEnoughSnapshotsException {
-    ClusterModel clusterModel = clusterModel(-1L, now, requirements);
+    ClusterModel clusterModel = clusterModel(-1L, now, requirements, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
     ClusterModel.BrokerStats brokerStats = clusterModel.brokerStats();
     // update the cached brokerLoadStats
@@ -362,12 +370,16 @@ public class LoadMonitor {
    * @param from start of the time window
    * @param to end of the time window
    * @param requirements the load completeness requirements.
+   * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
    * @throws ModelInputException
    * @throws NotEnoughValidSnapshotsException
    * @throws NotEnoughSnapshotsException
    */
-  public ClusterModel clusterModel(long from, long to, ModelCompletenessRequirements requirements)
+  public ClusterModel clusterModel(long from, 
+                                   long to, 
+                                   ModelCompletenessRequirements requirements, 
+                                   OperationProgress operationProgress)
       throws ModelInputException, NotEnoughValidSnapshotsException, NotEnoughSnapshotsException {
     long start = System.currentTimeMillis();
 
@@ -379,7 +391,9 @@ public class LoadMonitor {
     MetricSampleAggregationResult metricSampleAggregationResult =
         aggregateMetrics(from, to, clusterAndGeneration, requirements, totalNumPartitions);
     Map<TopicPartition, Snapshot[]> loadSnapshots = metricSampleAggregationResult.snapshots();
-
+    GeneratingClusterModel step = new GeneratingClusterModel(loadSnapshots.size());
+    operationProgress.addStep(step);
+    
     // Create an empty cluster model first.
     long currentLoadGeneration = metricSampleAggregationResult.generation();
     ModelGeneration modelGeneration = new ModelGeneration(clusterAndGeneration.generation(), currentLoadGeneration);
@@ -415,6 +429,7 @@ public class LoadMonitor {
         TopicPartition tp = entry.getKey();
         Snapshot[] leaderLoadSnapshots = entry.getValue();
         populateSnapshots(kafkaCluster, clusterModel, tp, leaderLoadSnapshots);
+        step.incrementPopulatedNumPartitions();
       }
 
       // If the caller asks for all the topics and some of the partitions are missing, we need to fill empty
@@ -544,8 +559,8 @@ public class LoadMonitor {
    * metric aggregation result.
    */
   private void fillInMissingPartitions(Map<TopicPartition, Snapshot[]> loadSnapshots,
-                                              Cluster kafkaCluster,
-                                              ClusterModel clusterModel) throws ModelInputException {
+                                       Cluster kafkaCluster,
+                                       ClusterModel clusterModel) throws ModelInputException {
     // There must be at least one entry, otherwise there will be exception thrown earlier. So we don't need to
     // check if it has next
     Snapshot[] snapshotsForTimestamps = loadSnapshots.values().iterator().next();
