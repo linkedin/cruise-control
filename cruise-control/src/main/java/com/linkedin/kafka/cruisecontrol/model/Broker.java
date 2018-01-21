@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.apache.kafka.common.TopicPartition;
@@ -28,7 +29,7 @@ import org.apache.kafka.common.TopicPartition;
  * A class that holds the information of the broker, including its liveness and load for replicas. A broker object is
  * created as part of a rack structure.
  */
-public class Broker implements Serializable {
+public class Broker implements Serializable, Comparable<Broker> {
 
   public enum State {
     ALIVE, DEAD, NEW
@@ -436,5 +437,30 @@ public class Broker implements Serializable {
   @Override
   public String toString() {
     return String.format("Broker[id=%d,rack=%s,state=%s,replicaCount=%d]", _id, rack().id(), _state, _replicas.size());
+  }
+
+  /**
+   * Compare by broker id.
+   */
+  @Override
+  public int compareTo(Broker o) {
+    return Integer.compare(_id, o.id());
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Broker broker = (Broker) o;
+    return _id == broker._id;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(_id);
   }
 }

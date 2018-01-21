@@ -18,12 +18,12 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -120,7 +120,7 @@ public class RackAwareGoal extends AbstractGoal {
    * they contain.
    */
   @Override
-  protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
+  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
     return clusterModel.brokers();
   }
 
@@ -190,8 +190,9 @@ public class RackAwareGoal extends AbstractGoal {
       throws AnalysisInputException, ModelInputException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     // Satisfy rack awareness requirement.
-    for (Replica replica : new ArrayList<>(broker.replicas())) {
-      if ((broker.isAlive() && satisfiedRackAwareness(replica, clusterModel)) 
+    SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());
+    for (Replica replica : replicas) {
+      if ((broker.isAlive() && satisfiedRackAwareness(replica, clusterModel))
           || shouldExclude(replica, excludedTopics)) {
         continue;
       }
@@ -236,7 +237,7 @@ public class RackAwareGoal extends AbstractGoal {
    * @param clusterModel The state of the cluster.
    * @return A list of rack aware eligible brokers for the given replica in the given cluster.
    */
-  private List<Broker> rackAwareEligibleBrokers(Replica replica, ClusterModel clusterModel) {
+  private SortedSet<Broker> rackAwareEligibleBrokers(Replica replica, ClusterModel clusterModel) {
     // Populate partition rack ids.
     List<String> partitionRackIds = clusterModel.partition(replica.topicPartition()).partitionBrokers()
         .stream().map(partitionBroker -> partitionBroker.rack().id()).collect(Collectors.toList());
@@ -245,9 +246,15 @@ public class RackAwareGoal extends AbstractGoal {
     // same cluster, keep its rack id in the list.
     partitionRackIds.remove(replica.broker().rack().id());
 
+    SortedSet<Broker> rackAwareEligibleBrokers = new TreeSet<>((o1, o2) -> {
+      return Integer.compare(o1.id(), o2.id()); });
+    for (Broker broker : clusterModel.healthyBrokers()) {
+      if (!partitionRackIds.contains(broker.rack().id())) {
+        rackAwareEligibleBrokers.add(broker);
+      }
+    }
     // Return eligible brokers.
-    return clusterModel.healthyBrokers().stream().filter(broker -> !partitionRackIds.contains(broker.rack().id()))
-        .collect(Collectors.toList());
+    return rackAwareEligibleBrokers;
   }
 
   /**

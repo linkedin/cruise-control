@@ -18,13 +18,13 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,16 +99,16 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * they contain.
    */
   @Override
-  protected Collection<Broker> brokersToBalance(ClusterModel clusterModel) {
+  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
     if (!clusterModel.deadBrokers().isEmpty()) {
       return clusterModel.deadBrokers();
     }
 
     if (_currentRebalanceTopic == null) {
-      return Collections.emptySet();
+      return Collections.emptySortedSet();
     }
     // Brokers having over minimum number of replicas per broker for the current rebalance topic are eligible for balancing.
-    Set<Broker> brokersToBalance = new HashSet<>();
+    SortedSet<Broker> brokersToBalance = new TreeSet<>();
     int minNumReplicasPerBroker = _replicaDistributionTargetByTopic.get(_currentRebalanceTopic).minNumReplicasPerBroker();
     brokersToBalance.addAll(clusterModel.brokers().stream()
         .filter(broker -> broker.replicasOfTopicInBroker(_currentRebalanceTopic).size() > minNumReplicasPerBroker)
@@ -229,12 +229,12 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && !broker.isAlive() && !broker.replicas().isEmpty()) {
       healCluster(clusterModel, optimizedGoals);
     } else {
-      Set<Replica> topicReplicasInBroker = new HashSet<>(broker.replicasOfTopicInBroker(_currentRebalanceTopic));
+      SortedSet<Replica> topicReplicasInBroker = new TreeSet<>(broker.replicasOfTopicInBroker(_currentRebalanceTopic));
       // Move local topic replicas to eligible brokers.
       _replicaDistributionTargetByTopic.get(_currentRebalanceTopic)
-                                       .moveReplicasInSourceBrokerToEligibleBrokers(clusterModel, 
-                                                                                    topicReplicasInBroker, 
-                                                                                    optimizedGoals, 
+                                       .moveReplicasInSourceBrokerToEligibleBrokers(clusterModel,
+                                                                                    topicReplicasInBroker,
+                                                                                    optimizedGoals,
                                                                                     excludedTopics);
     }
   }
