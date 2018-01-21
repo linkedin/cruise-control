@@ -34,29 +34,18 @@ import org.slf4j.LoggerFactory;
 public class KafkaAssignerEvenRackAwareGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaAssignerEvenRackAwareGoal.class);
   private final Map<Integer, SortedSet<BrokerReplicaCount>> _healthyBrokerReplicaCountByPosition;
-  private final Map<Integer, Map<Integer, Integer>> _numExcludedReplicasByPositionInBroker;
   private Map<String, List<Partition>> _partitionsByTopic;
 
   public KafkaAssignerEvenRackAwareGoal() {
     _partitionsByTopic = null;
     _healthyBrokerReplicaCountByPosition = new HashMap<>();
-    _numExcludedReplicasByPositionInBroker = new HashMap<>();
-  }
-
-  /**
-   * Get the number of excluded replicas by position for the given broker.
-   *
-   * @param broker Broker for which the number of excluded replicas is requested.
-   * @param position The position for which the number of excluded replicas is requested.
-   */
-  private int numExcludedReplicasInPosition(Broker broker, int position) {
-    return _numExcludedReplicasByPositionInBroker.get(broker.id()).getOrDefault(position, 0);
   }
 
   /**
    * Sanity Check: There exists sufficient number of racks for achieving rack-awareness.
    * 1. Initialize partitions by topic.
    * 2. Initialize the number of excluded replicas by position for each broker.
+   * 3. Initialize the healthy broker replica count by position.
    *
    * @param clusterModel The state of the cluster.
    * @param excludedTopics The topics that should be excluded from the optimization proposal.
@@ -70,20 +59,33 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     _partitionsByTopic = clusterModel.getPartitionsByTopic();
 
     // 2. Initialize the number of excluded replicas by position for each broker.
-    clusterModel.brokers().forEach(broker -> _numExcludedReplicasByPositionInBroker.put(broker.id(), new HashMap<>()));
+    Map<Integer, Map<Integer, Integer>> numExcludedReplicasByPositionInBroker = new HashMap<>();
+    clusterModel.brokers().forEach(broker -> numExcludedReplicasByPositionInBroker.put(broker.id(), new HashMap<>()));
     for (String excludedTopic : excludedTopics) {
       for (Partition partition : _partitionsByTopic.get(excludedTopic)) {
         // Add 1 to the number of excluded replicas in relevant position for the broker that the replica resides in.
         // Leader is at position 0.
         int position = 0;
-        _numExcludedReplicasByPositionInBroker.get(partition.leader().broker().id()).merge(position, 1, Integer::sum);
+        numExcludedReplicasByPositionInBroker.get(partition.leader().broker().id()).merge(position, 1, Integer::sum);
 
         // Followers are ordered in positions [1, numFollowers].
         for (Broker followerBroker : partition.followerBrokers()) {
           position++;
-          _numExcludedReplicasByPositionInBroker.get(followerBroker.id()).merge(position, 1, Integer::sum);
+          numExcludedReplicasByPositionInBroker.get(followerBroker.id()).merge(position, 1, Integer::sum);
         }
       }
+    }
+
+    // 3. Initialize the healthy broker replica count by position.
+    int maxReplicationFactor = clusterModel.maxReplicationFactor();
+    for (int i = 0; i < maxReplicationFactor; i++) {
+      SortedSet<BrokerReplicaCount> healthyBrokersByReplicaCount = new TreeSet<>();
+      for (Broker broker : clusterModel.healthyBrokers()) {
+        int numExcludedReplicasInPosition = numExcludedReplicasByPositionInBroker.get(broker.id()).getOrDefault(i, 0);
+        BrokerReplicaCount brokerReplicaCount = new BrokerReplicaCount(broker, numExcludedReplicasInPosition);
+        healthyBrokersByReplicaCount.add(brokerReplicaCount);
+      }
+      _healthyBrokerReplicaCountByPosition.put(i, healthyBrokersByReplicaCount);
     }
   }
 
@@ -108,15 +110,6 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
 
     int maxReplicationFactor = clusterModel.maxReplicationFactor();
     Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();
-    for (int i = 0; i < maxReplicationFactor; i++) {
-      SortedSet<BrokerReplicaCount> healthyBrokersByReplicaCount = new TreeSet<>();
-      for (Broker broker : clusterModel.healthyBrokers()) {
-        BrokerReplicaCount brokerReplicaCount = new BrokerReplicaCount(broker, numExcludedReplicasInPosition(broker, i));
-        healthyBrokersByReplicaCount.add(brokerReplicaCount);
-      }
-      _healthyBrokerReplicaCountByPosition.put(i, healthyBrokersByReplicaCount);
-    }
-
     for (int position = 0; position < maxReplicationFactor; position++) {
       for (Map.Entry<String, List<Partition>> entry : _partitionsByTopic.entrySet()) {
         if (replicationFactorByTopic.get(entry.getKey()) < position + 1) {
