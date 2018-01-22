@@ -202,7 +202,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
         _balancingConstraint.lowUtilizationThreshold(Resource.NW_IN) * clusterModel.broker(brokerId).capacityFor(Resource.NW_IN);
     // We only balance leader bytes in rate of the brokers whose leader bytes in rate is higher than the minimum
     // balancing threshold.
-    return Math.max(_meanLeaderBytesIn * _balancingConstraint.balancePercentage(Resource.NW_IN), lowUtilizationThreshold);
+    return Math.max(_meanLeaderBytesIn * _balancingConstraint.resourceBalancePercentage(Resource.NW_IN), lowUtilizationThreshold);
   }
 
   private class LeaderBytesInDistributionGoalStatsComparator implements ClusterModelStatsComparator {
@@ -212,7 +212,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
       double[] stat1 = stats1.utilizationMatrix()[RawAndDerivedResource.LEADER_NW_IN.ordinal()];
       double meanPreLeaderBytesIn = new Mean().evaluate(stat1, 0, stat1.length);
-      double threshold = meanPreLeaderBytesIn * _balancingConstraint.balancePercentage(Resource.NW_IN);
+      double threshold = meanPreLeaderBytesIn * _balancingConstraint.resourceBalancePercentage(Resource.NW_IN);
       if (Arrays.stream(stat1).noneMatch(v -> v > threshold)) {
         return 1;
       }

@@ -670,22 +670,12 @@ public class ClusterModel implements Serializable {
    * @param resource Resource for which the given replicas will be sorted.
    */
   public void sortReplicasInAscendingOrderByBrokerResourceUtilization(List<Replica> replicas, Resource resource) {
-    replicas.sort((o1, o2) -> {
-      Double expectedBrokerLoad1 = o1.broker().load().expectedUtilizationFor(resource);
-      Double expectedBrokerLoad2 = o2.broker().load().expectedUtilizationFor(resource);
-      return Double.compare(expectedBrokerLoad1, expectedBrokerLoad2);
+    replicas.sort((r1, r2) -> {
+      Double expectedBrokerLoad1 = r1.broker().load().expectedUtilizationFor(resource);
+      Double expectedBrokerLoad2 = r2.broker().load().expectedUtilizationFor(resource);
+      int result = Double.compare(expectedBrokerLoad1, expectedBrokerLoad2);
+      return result == 0 ? Integer.compare(r1.broker().id(), r2.broker().id()) : result;
     });
-  }
-
-  /**
-   * Sort brokers in the cluster in ascending order by their broker id.
-   *
-   * @return Sorted list of brokers.
-   */
-  public List<Broker> sortBrokersInAscendingOrderById() {
-    List<Broker> brokers = new ArrayList<>(brokers());
-    Collections.sort(brokers, (o1, o2) -> Integer.compare(o1.id(), o2.id()));
-    return brokers;
   }
 
   /**
@@ -861,7 +851,7 @@ public class ClusterModel implements Serializable {
   public List<Map<String, Object>> getJsonStructure() {
     List<Map<String, Object>> finalClusterStats = new ArrayList<>();
 
-    for (Broker broker : sortBrokersInAscendingOrderById()) {
+    for (Broker broker : brokers()) {
       double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
 
       Map<String, Object> hostEntry = new HashMap<>();
@@ -896,20 +886,19 @@ public class ClusterModel implements Serializable {
    */
   public BrokerStats brokerStats() {
     BrokerStats brokerStats = new BrokerStats();
-    sortBrokersInAscendingOrderById()
-        .forEach(broker -> {
-          double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
-          brokerStats.addSingleBrokerStats(broker.host().name(),
-                                           broker.id(),
-                                           broker.getState(),
-                                           broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
-                                           broker.load().expectedUtilizationFor(Resource.CPU),
-                                           leaderBytesInRate,
-                                           broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
-                                           broker.load().expectedUtilizationFor(Resource.NW_OUT),
-                                           potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-                                           broker.replicas().size(), broker.leaderReplicas().size());
-        });
+    brokers().forEach(broker -> {
+      double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
+      brokerStats.addSingleBrokerStats(broker.host().name(),
+                                       broker.id(),
+                                       broker.getState(),
+                                       broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
+                                       broker.load().expectedUtilizationFor(Resource.CPU),
+                                       leaderBytesInRate,
+                                       broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
+                                       broker.load().expectedUtilizationFor(Resource.NW_OUT),
+                                       potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
+                                       broker.replicas().size(), broker.leaderReplicas().size());
+    });
     return brokerStats;
   }
 
@@ -1179,10 +1168,9 @@ public class ClusterModel implements Serializable {
   public double[][] utilizationMatrix() {
     RawAndDerivedResource[] resources = RawAndDerivedResource.values();
     double[][] utilization = new double[resources.length][brokers().size()];
-    List<Broker> brokers = sortBrokersInAscendingOrderById();
-    for (int brokerIndex = 0; brokerIndex < brokers.size(); brokerIndex++) {
+    int brokerIndex = 0;
+    for (Broker broker : brokers()) {
       double leaderBytesInRate = 0.0;
-      Broker broker = brokers.get(brokerIndex);
       for (Replica leaderReplica : broker.leaderReplicas()) {
         leaderBytesInRate += leaderReplica.load().expectedUtilizationFor(Resource.NW_IN);
       }
@@ -1211,6 +1199,7 @@ public class ClusterModel implements Serializable {
             throw new IllegalStateException("Unhandled case " + derivedResource + ".");
         }
       }
+      brokerIndex++;
     }
     return utilization;
   }

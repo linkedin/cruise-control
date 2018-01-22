@@ -200,6 +200,18 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return A list of sorted replicas chosen from the replicas residing in the given broker.
    */
   public List<Replica> sortedReplicas(Resource resource) {
+    return sortedReplicas(resource, false);
+  }
+
+  /**
+   * Sort replicas that needs to be sorted to balance the given resource by descending order of resource cost.
+   * If resource is outbound network traffic, only leaders in the broker are sorted. Otherwise all replicas in
+   * the broker are sorted.
+   *
+   * @param resource Type of the resource.
+   * @return A list of sorted replicas chosen from the replicas residing in the given broker.
+   */
+  public List<Replica> sortedReplicas(Resource resource, boolean isReverse) {
     Set<Replica> candidateReplicas;
     // If a broker is already dead, we do not distinguish leader replica vs. non-leader replica anymore.
     if (resource.equals(Resource.NW_OUT) && isAlive()) {
@@ -207,10 +219,11 @@ public class Broker implements Serializable, Comparable<Broker> {
     } else {
       candidateReplicas = _replicas;
     }
-    return sortedReplicas(resource, candidateReplicas);
+
+    return sortedReplicas(resource, candidateReplicas, isReverse);
   }
 
-  private List<Replica> sortedReplicas(Resource resource, Set<Replica> candidateReplicas) {
+  private List<Replica> sortedReplicas(Resource resource, Set<Replica> candidateReplicas, boolean isReverse) {
     List<Replica> replicasToBeBalanced = new ArrayList<>();
     List<Replica> nativeReplicasToBeBalanced = new ArrayList<>();
     for (Replica replica : candidateReplicas) {
@@ -221,18 +234,20 @@ public class Broker implements Serializable, Comparable<Broker> {
       }
     }
 
-    Collections.sort(replicasToBeBalanced,
-        (o1, o2) -> Double.compare(loadDensity(o2, resource),
-            loadDensity(o1, resource)));
-    Collections.sort(nativeReplicasToBeBalanced,
-        (o1, o2) -> Double.compare(loadDensity(o2, resource),
-            loadDensity(o1, resource)));
+    if (isReverse) {
+      replicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o1, resource), loadDensity(o2, resource)));
+      nativeReplicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o1, resource), loadDensity(o2, resource)));
+    } else {
+      replicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o2, resource), loadDensity(o1, resource)));
+      nativeReplicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o2, resource), loadDensity(o1, resource)));
+    }
+
     replicasToBeBalanced.addAll(nativeReplicasToBeBalanced);
     return replicasToBeBalanced;
   }
 
   public List<Replica> sortedLeadersFor(Resource resource) {
-    return sortedReplicas(resource, _leaderReplicas);
+    return sortedReplicas(resource, _leaderReplicas, false);
   }
 
   /**

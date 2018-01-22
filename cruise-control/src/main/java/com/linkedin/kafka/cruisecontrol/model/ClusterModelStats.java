@@ -219,9 +219,9 @@ public class ClusterModelStats {
     Map<Resource, Double> stDevUtilizationByResource = new HashMap<>();
     for (Resource resource : Resource.values()) {
       double balanceUpperThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))
-          * _balancingConstraint.balancePercentage(resource);
+          * _balancingConstraint.resourceBalancePercentage(resource);
       double balanceLowerThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))
-          * Math.max(0, (2 - _balancingConstraint.balancePercentage(resource)));
+          * Math.max(0, (2 - _balancingConstraint.resourceBalancePercentage(resource)));
       // Average utilization for the resource.
       double avgUtilization = clusterModel.load().expectedUtilizationFor(resource) / _numBrokers;
       avgUtilizationByResource.put(resource, avgUtilization);

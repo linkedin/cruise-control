@@ -69,10 +69,11 @@ public class RandomGoalTest {
     List<String> goalsSortedByPriority = Arrays.asList(
         RackAwareGoal.class.getName(),
         ReplicaCapacityGoal.class.getName(),
-        CpuCapacityGoal.class.getName(),
         DiskCapacityGoal.class.getName(),
         NetworkInboundCapacityGoal.class.getName(),
         NetworkOutboundCapacityGoal.class.getName(),
+        CpuCapacityGoal.class.getName(),
+        ReplicaDistributionGoal.class.getName(),
         PotentialNwOutGoal.class.getName(),
         TopicReplicaDistributionGoal.class.getName(),
         DiskUsageDistributionGoal.class.getName(),
@@ -80,13 +81,12 @@ public class RandomGoalTest {
         NetworkOutboundUsageDistributionGoal.class.getName(),
         CpuUsageDistributionGoal.class.getName(),
         PreferredLeaderElectionGoal.class.getName(),
-        LeaderBytesInDistributionGoal.class.getName(),
-        ReplicaDistributionGoal.class.getName());
+        LeaderBytesInDistributionGoal.class.getName());
 
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1500L));
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
-    balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
+    balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
     List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, DEAD_BROKERS, REGRESSION);

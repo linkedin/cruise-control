@@ -327,7 +327,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                              ActionType actionType,
                                              Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
-    // Get th eligible brokers.
+    // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>((b1, b2) -> {
         int result = Double.compare(utilizationPercentage(b1), utilizationPercentage(b2));
         return result != 0 ? result : Integer.compare(b1.id(), b2.id());
@@ -490,11 +490,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
   /**
    * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
-   * threshold to be balancePercentage, we use (balancePercentage-1)*balanceMargin instead.
+   * threshold to be resourceBalancePercentage, we use (resourceBalancePercentage-1)*balanceMargin instead.
    * @return the rebalance threshold with a margin.
    */
   private double balancePercentageWithMargin(Resource resource) {
-    return (_balancingConstraint.balancePercentage(resource) - 1) * BALANCE_MARGIN;
+    return (_balancingConstraint.resourceBalancePercentage(resource) - 1) * BALANCE_MARGIN;
   }
 
   private class ResourceDistributionGoalStatsComparator implements ClusterModelStatsComparator {

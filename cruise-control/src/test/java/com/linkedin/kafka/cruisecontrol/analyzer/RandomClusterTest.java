@@ -70,20 +70,19 @@ public class RandomClusterTest {
     Map<Integer, String> goalNameByPriority = new HashMap<>();
     goalNameByPriority.put(1, RackAwareGoal.class.getName());
     goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
-    goalNameByPriority.put(3, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(4, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(5, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(6, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(7, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(8, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, PreferredLeaderElectionGoal.class.getName());
-    goalNameByPriority.put(14, LeaderBytesInDistributionGoal.class.getName());
-    goalNameByPriority.put(15, ReplicaDistributionGoal.class.getName());
-
+    goalNameByPriority.put(3, DiskCapacityGoal.class.getName());
+    goalNameByPriority.put(4, NetworkInboundCapacityGoal.class.getName());
+    goalNameByPriority.put(5, NetworkOutboundCapacityGoal.class.getName());
+    goalNameByPriority.put(6, CpuCapacityGoal.class.getName());
+    goalNameByPriority.put(7, ReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(8, PotentialNwOutGoal.class.getName());
+    goalNameByPriority.put(9, TopicReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(10, DiskUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(11, NetworkInboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(12, NetworkOutboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(13, CpuUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(14, PreferredLeaderElectionGoal.class.getName());
+    goalNameByPriority.put(15, LeaderBytesInDistributionGoal.class.getName());
 
     Map<Integer, String> kafkaAssignerGoals = new HashMap<>();
     kafkaAssignerGoals.put(1, KafkaAssignerEvenRackAwareGoal.class.getName());
@@ -96,7 +95,7 @@ public class RandomClusterTest {
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1500L));
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
-    balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
+    balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
     Map<ClusterProperty, Number> modifiedProperties;
@@ -111,7 +110,7 @@ public class RandomClusterTest {
     // Test: Increase Replica Count
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(3000L));
     balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
-    balancingConstraint.setBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
+    balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
     for (int i = 7; i <= 12; i++) {
       modifiedProperties = new HashMap<>();

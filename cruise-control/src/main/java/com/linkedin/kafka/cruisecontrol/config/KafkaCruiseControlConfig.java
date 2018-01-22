@@ -239,6 +239,15 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       "be above 1.10x of average network outbound usage of all the brokers.";
 
   /**
+   * <code>replica.count.balance.threshold</code>
+   */
+  public static final String REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "replica.count.balance.threshold";
+  private static final String REPLICA_COUNT_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for replica "
+                                                                    + "distribution. For example, 1.10 means the highest "
+                                                                    + "replica count of a broker should not be above "
+                                                                    + "1.10x of average replica count of all brokers.";
+
+  /**
    * <code>cpu.capacity.threshold</code>
    */
   public static final String CPU_CAPACITY_THRESHOLD_CONFIG = "cpu.capacity.threshold";
@@ -572,6 +581,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.HIGH,
                 NETWORK_OUTBOUND_BALANCE_THRESHOLD_DOC)
+        .define(REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                1.10,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
         .define(CPU_CAPACITY_THRESHOLD_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 0.8,
@@ -668,18 +683,18 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 new StringJoiner(",")
                     .add(RackAwareGoal.class.getName())
                     .add(ReplicaCapacityGoal.class.getName())
-                    .add(CpuCapacityGoal.class.getName())
                     .add(DiskCapacityGoal.class.getName())
                     .add(NetworkInboundCapacityGoal.class.getName())
                     .add(NetworkOutboundCapacityGoal.class.getName())
+                    .add(CpuCapacityGoal.class.getName())
+                    .add(ReplicaDistributionGoal.class.getName())
                     .add(PotentialNwOutGoal.class.getName())
                     .add(DiskUsageDistributionGoal.class.getName())
                     .add(NetworkInboundUsageDistributionGoal.class.getName())
                     .add(NetworkOutboundUsageDistributionGoal.class.getName())
                     .add(CpuUsageDistributionGoal.class.getName())
                     .add(LeaderBytesInDistributionGoal.class.getName())
-                    .add(TopicReplicaDistributionGoal.class.getName())
-                    .add(ReplicaDistributionGoal.class.getName()).toString(),
+                    .add(TopicReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
                 GOALS_DOC)
         .define(DEFAULT_GOALS_CONFIG,
@@ -701,18 +716,18 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 new StringJoiner(",")
                     .add(RackAwareGoal.class.getName())
                     .add(ReplicaCapacityGoal.class.getName())
-                    .add(CpuCapacityGoal.class.getName())
                     .add(DiskCapacityGoal.class.getName())
                     .add(NetworkInboundCapacityGoal.class.getName())
                     .add(NetworkOutboundCapacityGoal.class.getName())
+                    .add(CpuCapacityGoal.class.getName())
+                    .add(ReplicaDistributionGoal.class.getName())
                     .add(PotentialNwOutGoal.class.getName())
                     .add(DiskUsageDistributionGoal.class.getName())
                     .add(NetworkInboundUsageDistributionGoal.class.getName())
                     .add(NetworkOutboundUsageDistributionGoal.class.getName())
                     .add(CpuUsageDistributionGoal.class.getName())
                     .add(LeaderBytesInDistributionGoal.class.getName())
-                    .add(TopicReplicaDistributionGoal.class.getName())
-                    .add(ReplicaDistributionGoal.class.getName()).toString(),
+                    .add(TopicReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.MEDIUM,
                 ANOMALY_DETECTION_GOALS_DOC)
         .define(FAILED_BROKERS_ZK_PATH_CONFIG,
