@@ -206,6 +206,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @param toSwapWith the broker that provides a replica to swap with the broker <tt>toSwap</tt>
    * @param meanDiskUsage the average usage of the cluster.
    * @param clusterModel the cluster model.
+   * @param excludedTopics the topics to exclude from swapping.                    
    * @return true if a swap has been done, false otherwise.
    * 
    * @throws AnalysisInputException
@@ -397,7 +398,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * 1. r1 and r2 are in the same rack (this assumes the initial assignment is already rack aware), OR
    * 2. partition of r1 does not have replica in the rack of r2, and vice versa
    * 
-   * In addition, r1 and r2 must have the same role.
+   * In addition, r1 and r2 must have the same role, i.e. either both are leaders or both are followers.
    * @param r1 the first replica to swap
    * @param r2 the second replica to swap with the first replica
    * @param clusterModel the cluster model
@@ -425,12 +426,12 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    *                          When the value is -1, the method returns the position of the replica whose size is 
    *                          just less than the target size.
    *                          
-   * @return the index of the replica whose size is closest to but greater than (or equals to if inclusive=true) the 
-   * target size
+   * @return the index of the replica whose size is closest but greater than or equals to (shiftOnExactMatch = 0)
+   * or greater than (shiftOnExactMatch = 1) or less than (shiftOnExactMatch = -1) the target size.
    */
   private int findReplicaPos(List<ReplicaWrapper> sortedReplicas, double targetSize, int shiftOnExactMatch) {
     if (shiftOnExactMatch != 1 && shiftOnExactMatch != -1 && shiftOnExactMatch != 0) {
-      throw new IllegalArgumentException("The shift on exact match must be either 1 or -1");
+      throw new IllegalArgumentException("The shiftOnExactMatch value must be in {-1, 0, 1}");
     }
     int index = Collections.binarySearch(sortedReplicas, new ReplicaWrapper(null, targetSize),
                                          Comparator.comparingDouble(ReplicaWrapper::size));

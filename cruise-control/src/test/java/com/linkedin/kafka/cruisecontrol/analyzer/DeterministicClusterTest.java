@@ -45,7 +45,9 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.*;
+import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.DEAD_BROKERS;
+import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.NEW_BROKERS;
+import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.REGRESSION;
 import static org.junit.Assert.assertTrue;
 
 

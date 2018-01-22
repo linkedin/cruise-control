@@ -58,7 +58,7 @@ public class RandomSelfHealingTest {
    *
    * @return Parameters for the {@link OptimizationVerifier}.
    */
-  @Parameters(name = "{2}-{0}")
+  @Parameters(name = "{1}-{0}")
   public static Collection<Object[]> data() throws AnalysisInputException {
     Collection<Object[]> p = new ArrayList<>();
 

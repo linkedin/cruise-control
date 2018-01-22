@@ -27,8 +27,11 @@ import java.util.Properties;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.common.Resource.*;
-import static org.junit.Assert.*;
+import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertEquals;
 
 
 public class KafkaAssignerDiskUsageDistributionGoalTest {
