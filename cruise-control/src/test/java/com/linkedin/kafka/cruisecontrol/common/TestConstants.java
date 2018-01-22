@@ -19,6 +19,17 @@ public class TestConstants {
   static final long REPLICATION_SEED = 5234;
   static final long LEADER_SEED = 72033;
   static final long REPLICA_ASSIGNMENT_SEED = 1240;
+  static final long TOPIC_POPULARITY_SEED = 7234;
+  static final Map<Resource, Long> UTILIZATION_SEED_BY_RESOURCE;
+  static {
+    Map<Resource, Long> utilizationSeedByResource = new HashMap<>();
+    utilizationSeedByResource.put(Resource.CPU, 100000L);
+    utilizationSeedByResource.put(Resource.DISK, 300000L);
+    utilizationSeedByResource.put(Resource.NW_IN, 500000L);
+    utilizationSeedByResource.put(Resource.NW_OUT, 700000L);
+    UTILIZATION_SEED_BY_RESOURCE = Collections.unmodifiableMap(utilizationSeedByResource);
+  }
+
   public static final double LOW_BALANCE_PERCENTAGE = 1.05;
   public static final double MEDIUM_BALANCE_PERCENTAGE = 1.25;
   public static final double HIGH_BALANCE_PERCENTAGE = 1.65;

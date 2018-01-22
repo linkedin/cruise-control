@@ -20,7 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
-import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.kafka.common.TopicPartition;
 
@@ -170,8 +169,14 @@ public class RandomCluster {
     }
     // Create replicas and set their distribution
     int replicaIndex = 0;
+    Map<Resource, Random> randomByResource = new HashMap<>();
+    for (Resource resource : Resource.cachedValues()) {
+      long seed = TestConstants.UTILIZATION_SEED_BY_RESOURCE.get(resource);
+      randomByResource.put(resource, new Random(seed));
+    }
+    Random randomForTopicPopularity = new Random(TestConstants.TOPIC_POPULARITY_SEED);
     for (TopicMetadata datum : metadata) {
-      double topicPopularity = exponentialRandom(1.0);
+      double topicPopularity = exponentialRandom(1.0, randomForTopicPopularity);
       String topic = datum.topic();
       for (int i = 1; i <= datum.numTopicLeaders(); i++) {
         Set<Integer> replicaBrokerIds = new HashSet<>();
@@ -242,15 +247,19 @@ public class RandomCluster {
           // Set leadership properties and replica load.
           Map<Resource, Double> utilizationByResource = new HashMap<>();
           utilizationByResource.put(Resource.CPU,
-              exponentialRandom(properties.get(ClusterProperty.MEAN_CPU).doubleValue() * topicPopularity));
+              exponentialRandom(properties.get(ClusterProperty.MEAN_CPU).doubleValue() * topicPopularity,
+                  randomByResource.get(Resource.CPU)));
           utilizationByResource.put(Resource.NW_IN,
-              exponentialRandom(properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() * topicPopularity));
+              exponentialRandom(properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() * topicPopularity,
+                  randomByResource.get(Resource.NW_IN)));
           utilizationByResource.put(Resource.DISK,
-              exponentialRandom(properties.get(ClusterProperty.MEAN_DISK).doubleValue() * topicPopularity));
+              exponentialRandom(properties.get(ClusterProperty.MEAN_DISK).doubleValue() * topicPopularity,
+                  randomByResource.get(Resource.DISK)));
 
           if (j == 1) {
             utilizationByResource.put(Resource.NW_OUT,
-                exponentialRandom(properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() * topicPopularity));
+                exponentialRandom(properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() * topicPopularity,
+                    randomByResource.get(Resource.NW_OUT)));
             cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, true);
           } else {
             utilizationByResource.put(Resource.NW_OUT, 0.0);
@@ -287,13 +296,14 @@ public class RandomCluster {
   }
 
   /**
-   * Generated an exponentially random double with the given mean value.
+   * Generated an exponentially random double with the given mean value using the random object.
    *
    * @param mean Mean value of the exponentially random distribution.
+   * @param random Random object to be used for random number generator.
    * @return An exponential random number.
    */
-  private static double exponentialRandom(double mean) {
-    return Math.log(1.0 - ThreadLocalRandom.current().nextDouble()) * (-mean);
+  private static double exponentialRandom(double mean, Random random) {
+    return Math.log(1.0 - random.nextDouble()) * (-mean);
   }
 
   /**
