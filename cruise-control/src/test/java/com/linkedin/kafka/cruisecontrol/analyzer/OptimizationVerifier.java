@@ -19,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import java.lang.reflect.Constructor;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -27,6 +28,7 @@ import java.util.StringJoiner;
 import java.util.TreeMap;
 
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import java.util.stream.Collectors;
 import org.apache.kafka.common.utils.SystemTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,14 +64,16 @@ class OptimizationVerifier {
    * @param constraint         Balancing constraint for the given cluster.
    * @param clusterModel       The state of the cluster.
    * @param goalNameByPriority Name of goals by the order of execution priority.
+   * @param verifications      The verifications to make after the optimization.                          
    * @return Pass / fail status of a test.
    * @throws ModelInputException
    * @throws AnalysisInputException
    */
   static boolean executeGoalsFor(BalancingConstraint constraint,
                                  ClusterModel clusterModel,
-                                 Map<Integer, String> goalNameByPriority) throws Exception {
-    return executeGoalsFor(constraint, clusterModel, goalNameByPriority, Collections.emptySet());
+                                 Map<Integer, String> goalNameByPriority,
+                                 List<Verification> verifications) throws Exception {
+    return executeGoalsFor(constraint, clusterModel, goalNameByPriority, Collections.emptySet(), verifications);
   }
 
   /**
@@ -84,14 +88,16 @@ class OptimizationVerifier {
    * @param clusterModel       The state of the cluster.
    * @param goalNameByPriority Name of goals by the order of execution priority.
    * @param excludedTopics     The excluded topics.
+   * @param verifications      The verifications to make after the optimization.
    * @return Pass / fail status of a test.
    * @throws ModelInputException
    * @throws AnalysisInputException
    */
-  static boolean executeGoalsFor(BalancingConstraint constraint,
-                                 ClusterModel clusterModel,
-                                 Map<Integer, String> goalNameByPriority,
-                                 Collection<String> excludedTopics) throws Exception {
+  static boolean executeGoalsFor(BalancingConstraint constraint, 
+                                 ClusterModel clusterModel, 
+                                 Map<Integer, String> goalNameByPriority, 
+                                 Collection<String> excludedTopics,
+                                 List<Verification> verifications) throws Exception {
     // Get the initial stats from the cluster.
     ClusterModelStats preOptimizedStats = clusterModel.getClusterStats(constraint);
 
@@ -127,58 +133,109 @@ class OptimizationVerifier {
                                                                                 new OperationProgress());
     LOG.trace("Took {} ms to execute {} to generate {} proposals.", System.currentTimeMillis() - startTime,
               goalByPriority, optimizerResult.goalProposals().size());
-
-    // Check whether test has failed for self healing: fails if there are replicas on dead brokers after self healing.
-    if (!clusterModel.selfHealingEligibleReplicas().isEmpty()) {
-      Set<Broker> deadBrokers = clusterModel.brokers();
-      deadBrokers.removeAll(clusterModel.healthyBrokers());
-      for (Broker deadBroker : deadBrokers) {
-        if (deadBroker.replicas().size() > 0) {
-          LOG.error("Failed to move {} replicas on dead broker {} to other brokers.", deadBroker.replicas().size(),
-                    deadBroker.id());
-          return false;
-        }
-      }
-    } else {
-      // Check whether test has failed for rebalance: fails if rebalance caused a worse goal state after rebalance.
-      Map<Goal, ClusterModelStats> clusterStatsByPriority = optimizerResult.statsByGoalPriority();
-      for (Map.Entry<Goal, ClusterModelStats> entry : clusterStatsByPriority.entrySet()) {
-        Goal.ClusterModelStatsComparator comparator = entry.getKey().clusterModelStatsComparator();
-        boolean success = comparator.compare(entry.getValue(), preOptimizedStats) >= 0;
-        if (!success) {
-          LOG.error("Failed goal comparison " + entry.getKey().name() + ". " + comparator.explainLastComparison());
-          return false;
-        }
-        preOptimizedStats = entry.getValue();
+    
+    for (Verification verification : verifications) {
+      switch (verification) {
+        case GOAL_VIOLATION:
+          if (!verifyGoalViolations(optimizerResult)) {
+            return false;
+          }
+          break;
+        case NEW_BROKERS:
+          if (!clusterModel.newBrokers().isEmpty() && !verifyNewBrokers(clusterModel, constraint)) {
+            return false;
+          }
+          break;
+        case DEAD_BROKERS:
+          if (!clusterModel.deadBrokers().isEmpty() && !verifyDeadBrokers(clusterModel)) {
+            return false;
+          }
+          break;
+        case REGRESSION:
+          if (clusterModel.selfHealingEligibleReplicas().isEmpty() 
+              && !verifyRegression(optimizerResult, preOptimizedStats)) {
+            return false;
+          }
+          break;
+        default:
+          throw new IllegalStateException("Invalid verification " + verification);
       }
     }
+    return true;
+  }
+  
+  private static boolean verifyGoalViolations(GoalOptimizer.OptimizerResult optimizerResult) {
+    // Check if there are still goals violated after the optimization.
+    Set<String> violatedGoals = optimizerResult.violatedGoalsAfterOptimization()
+                                               .stream()
+                                               .map(Goal::name)
+                                               .collect(Collectors.toSet());
+    if (!violatedGoals.isEmpty()) {
+      LOG.error("Failed to optimize goal {}", violatedGoals);
+      System.out.println(optimizerResult.clusterModelStats().toString());
+      return false;
+    } else {
+      return true;
+    }
+  }
+  
+  private static boolean verifyDeadBrokers(ClusterModel clusterModel) {
+    Set<Broker> deadBrokers = clusterModel.brokers();
+    deadBrokers.removeAll(clusterModel.healthyBrokers());
+    for (Broker deadBroker : deadBrokers) {
+      if (deadBroker.replicas().size() > 0) {
+        LOG.error("Failed to move {} replicas on dead broker {} to other brokers.", deadBroker.replicas().size(),
+                  deadBroker.id());
+        return false;
+      }
+    }
+    return true;
+  }
 
-    // When there are new brokers, ensure replicas are only moved from the old brokers to the new broker.
-    if (!clusterModel.newBrokers().isEmpty()) {
-      for (Broker broker : clusterModel.healthyBrokers()) {
-        if (!broker.isNew()) {
-          for (Replica replica : broker.replicas()) {
-            if (replica.originalBroker() != broker) {
-              LOG.error("Broker {} is not a new broker but has received new replicas", broker.id());
-              return false;
-            }
+  private static boolean verifyNewBrokers(ClusterModel clusterModel, BalancingConstraint constraint) {
+    for (Broker broker : clusterModel.healthyBrokers()) {
+      if (!broker.isNew()) {
+        for (Replica replica : broker.replicas()) {
+          if (replica.originalBroker() != broker) {
+            LOG.error("Broker {} is not a new broker but has received new replicas", broker.id());
+            return false;
           }
         }
       }
-      for (Broker broker : clusterModel.newBrokers()) {
-        // We can only check the first resource.
-        Resource r = constraint.resources().get(0);
-        double utilizationLowerThreshold =
-            clusterModel.load().expectedUtilizationFor(r) / clusterModel.capacityFor(r) * (2 - constraint.balancePercentage(r));
-        double brokerUtilization = broker.load().expectedUtilizationFor(r) / broker.capacityFor(r);
-        if (brokerUtilization < utilizationLowerThreshold) {
-          LOG.error("Broker {} is still under utilized for resource {}. Broker utilization is {}, the "
-                        + "lower threshold is {}", broker, r, brokerUtilization, utilizationLowerThreshold);
-          return false;
-        }
+    }
+    for (Broker broker : clusterModel.newBrokers()) {
+      // We can only check the first resource.
+      Resource r = constraint.resources().get(0);
+      double utilizationLowerThreshold =
+          clusterModel.load().expectedUtilizationFor(r) / clusterModel.capacityFor(r) * (2 - constraint.balancePercentage(r));
+      double brokerUtilization = broker.load().expectedUtilizationFor(r) / broker.capacityFor(r);
+      if (brokerUtilization < utilizationLowerThreshold) {
+        LOG.error("Broker {} is still under utilized for resource {}. Broker utilization is {}, the " 
+                      + "lower threshold is {}", broker, r, brokerUtilization, utilizationLowerThreshold);
+        return false;
       }
     }
-
     return true;
+  }
+
+  private static boolean verifyRegression(GoalOptimizer.OptimizerResult optimizerResult, 
+                                          ClusterModelStats preOptimizationStats) {
+    // Check whether test has failed for rebalance: fails if rebalance caused a worse goal state after rebalance.
+    Map<Goal, ClusterModelStats> clusterStatsByPriority = optimizerResult.statsByGoalPriority();
+    ClusterModelStats preStats = preOptimizationStats;
+    for (Map.Entry<Goal, ClusterModelStats> entry : clusterStatsByPriority.entrySet()) {
+      Goal.ClusterModelStatsComparator comparator = entry.getKey().clusterModelStatsComparator();
+      boolean success = comparator.compare(entry.getValue(), preStats) >= 0;
+      if (!success) {
+        LOG.error("Failed goal comparison " + entry.getKey().name() + ". " + comparator.explainLastComparison());
+        return false;
+      }
+      preStats = entry.getValue();
+    }
+    return true;
+  }
+  
+  enum Verification {
+    GOAL_VIOLATION, DEAD_BROKERS, NEW_BROKERS, REGRESSION, 
   }
 }

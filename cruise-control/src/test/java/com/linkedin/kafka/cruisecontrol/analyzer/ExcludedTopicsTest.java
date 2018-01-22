@@ -21,11 +21,13 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
@@ -169,7 +171,32 @@ public class ExcludedTopicsTest {
       // for excluded topic, Expected to look optimized)
       p.add(params(3, goalClass, excludeAllTopics, null, unbalanced(), deadBroker0, true));
     }
-
+    
+    // With excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(0, KafkaAssignerEvenRackAwareGoal.class, excludeT1, null,
+                 DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
+    // With excluded topics, rack aware satisfiable cluster, one dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(1, KafkaAssignerEvenRackAwareGoal.class, excludeT1, null,
+                 DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
+    // Without excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, Proposal expected, Expected to look optimized)
+    p.add(params(2, KafkaAssignerEvenRackAwareGoal.class, noExclusion, null,
+                 DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
+    // Without excluded topics, rack aware satisfiable cluster, one dead broker (No exception, Proposal expected, Expected to look optimized)
+    p.add(params(3, KafkaAssignerEvenRackAwareGoal.class, noExclusion, null,
+                 DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
+    // With excluded topics, rack aware unsatisfiable cluster, no dead broker (No exception, No proposal, Expected to look optimized)
+    p.add(params(4, KafkaAssignerEvenRackAwareGoal.class, excludeT1, null,
+                 DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true));
+    // With excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception)
+    p.add(params(5, KafkaAssignerEvenRackAwareGoal.class, excludeT1, OptimizationFailureException.class,
+                 DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+    // Test: Without excluded topics, rack aware unsatisfiable cluster, no dead brokers (Exception expected)
+    p.add(params(6, KafkaAssignerEvenRackAwareGoal.class, noExclusion, OptimizationFailureException.class,
+                 DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
+    // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
+    p.add(params(7, KafkaAssignerEvenRackAwareGoal.class, noExclusion, OptimizationFailureException.class,
+                 DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+    
     return p;
   }
 
