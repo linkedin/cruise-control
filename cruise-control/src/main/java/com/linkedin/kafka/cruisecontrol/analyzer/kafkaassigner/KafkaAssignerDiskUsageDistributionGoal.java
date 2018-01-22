@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -165,11 +166,12 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
                                    double lowerThreshold,
                                    double upperThreshold,
                                    Set<String> excludedTopics) throws AnalysisInputException {
-    LOG.debug("Optimizing broker {}. BrokerDiskUsage = {}, meanDiskUsage = {}", 
+    LOG.trace("Optimizing broker {}. BrokerDiskUsage = {}, meanDiskUsage = {}", 
               broker, diskUsage(broker), meanDiskUsage);
     double brokerDiskUsage = diskUsage(broker);
     boolean improved = false;
     if (brokerDiskUsage > upperThreshold) {
+      LOG.debug("Broker {} disk usage {} is above upper threshold of {}", broker.id(), brokerDiskUsage, upperThreshold);
       List<Broker> brokersAscend = clusterModel.sortedHealthyBrokersUnderThreshold(DISK, brokerDiskUsage);
       for (Broker toSwapWith : brokersAscend) {
         if (toSwapWith == broker) {
@@ -181,6 +183,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
         }
       }
     } else if (brokerDiskUsage < lowerThreshold) {
+      LOG.debug("Broker {} disk usage {} is below lower threshold of {}", broker.id(), brokerDiskUsage, lowerThreshold);
       List<Broker> brokersDescend = sortedBrokersAboveSizeDescend(clusterModel, brokerDiskUsage);
       for (Broker toSwapWith : brokersDescend) {
         if (toSwapWith == broker) {
@@ -238,6 +241,11 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     for (int i = startPos; i >= 0 && i < sortedReplicasToSwap.size(); i += delta) {
       Replica replicaToSwap = sortedReplicasToSwap.get(i).replica();
       if (excludedTopics.contains(replicaToSwap.topicPartition().topic())) {
+        continue;
+      }
+      // First make sure the replica is possible to be moved to the broker toSwapWith. If this check fails,
+      // don't bother to search for replica to swap with.
+      if (!possibleToMove(replicaToSwap, toSwapWith, clusterModel)) {
         continue;
       }
       List<ReplicaWrapper> sortedReplicasToSwapWith = 
@@ -391,6 +399,28 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
       double rightSizeDiff = Math.abs(replicaSize(sortedReplicas.get(high).replica()) - targetSize);
       return leftSizeDiff <= rightSizeDiff ? low : high;
     }
+  }
+
+  /**
+   * Checks if a replica is possible to be moved to a broker.
+   * 
+   * A replica is possible to move to a broker if 
+   * 1. the rack of the broker does not contain a replica of the same partition, OR
+   * 2. the rack of the broker contains the replica, but the replica is not in the given broker.
+   * 
+   * @param replica the replica to move. 
+   * @param destinationBroker the broker to move the replica to.
+   * @param clusterModel the cluster model.
+   *                     
+   * @return true if it is possible to move the replica to the broker, false otherwise.
+   */
+  private boolean possibleToMove(Replica replica, Broker destinationBroker, ClusterModel clusterModel) {
+    TopicPartition tp = replica.topicPartition();
+    
+    boolean case1 = !clusterModel.partition(tp).partitionRacks().contains(destinationBroker.rack());
+    boolean case2 = replica.broker().rack() == destinationBroker.rack() && destinationBroker.replica(tp) == null;
+    
+    return case1 || case2;
   }
 
   /**
