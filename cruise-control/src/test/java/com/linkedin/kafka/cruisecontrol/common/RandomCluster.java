@@ -169,9 +169,14 @@ public class RandomCluster {
     }
     // Create replicas and set their distribution
     int replicaIndex = 0;
-    int topicIndex = 0;
+    Map<Resource, Random> randomByResource = new HashMap<>();
+    for (Resource resource : Resource.cachedValues()) {
+      long seed = TestConstants.UTILIZATION_SEED_BY_RESOURCE.get(resource);
+      randomByResource.put(resource, new Random(seed));
+    }
+    Random randomForTopicPopularity = new Random(TestConstants.TOPIC_POPULARITY_SEED);
     for (TopicMetadata datum : metadata) {
-      double topicPopularity = exponentialRandom(1.0, TestConstants.TOPIC_POPULARITY_SEED + topicIndex++);
+      double topicPopularity = exponentialRandom(1.0, randomForTopicPopularity);
       String topic = datum.topic();
       for (int i = 1; i <= datum.numTopicLeaders(); i++) {
         Set<Integer> replicaBrokerIds = new HashSet<>();
@@ -243,18 +248,18 @@ public class RandomCluster {
           Map<Resource, Double> utilizationByResource = new HashMap<>();
           utilizationByResource.put(Resource.CPU,
               exponentialRandom(properties.get(ClusterProperty.MEAN_CPU).doubleValue() * topicPopularity,
-                  TestConstants.UTILIZATION_SEEDS_BY_RESOURCE.get(Resource.CPU) + replicaIndex));
+                  randomByResource.get(Resource.CPU)));
           utilizationByResource.put(Resource.NW_IN,
               exponentialRandom(properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() * topicPopularity,
-                  TestConstants.UTILIZATION_SEEDS_BY_RESOURCE.get(Resource.NW_IN) + replicaIndex));
+                  randomByResource.get(Resource.NW_IN)));
           utilizationByResource.put(Resource.DISK,
               exponentialRandom(properties.get(ClusterProperty.MEAN_DISK).doubleValue() * topicPopularity,
-                  TestConstants.UTILIZATION_SEEDS_BY_RESOURCE.get(Resource.DISK) + replicaIndex));
+                  randomByResource.get(Resource.DISK)));
 
           if (j == 1) {
             utilizationByResource.put(Resource.NW_OUT,
                 exponentialRandom(properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() * topicPopularity,
-                    TestConstants.UTILIZATION_SEEDS_BY_RESOURCE.get(Resource.NW_OUT) + replicaIndex));
+                    randomByResource.get(Resource.NW_OUT)));
             cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, true);
           } else {
             utilizationByResource.put(Resource.NW_OUT, 0.0);
@@ -291,14 +296,14 @@ public class RandomCluster {
   }
 
   /**
-   * Generated an exponentially random double with the given mean value using the seed.
+   * Generated an exponentially random double with the given mean value using the random object.
    *
    * @param mean Mean value of the exponentially random distribution.
-   * @param seed Seed for the random number generator.
+   * @param random Random object to be used for random number generator.
    * @return An exponential random number.
    */
-  private static double exponentialRandom(double mean, long seed) {
-    return Math.log(1.0 - (new Random(seed)).nextDouble()) * (-mean);
+  private static double exponentialRandom(double mean, Random random) {
+    return Math.log(1.0 - random.nextDouble()) * (-mean);
   }
 
   /**
