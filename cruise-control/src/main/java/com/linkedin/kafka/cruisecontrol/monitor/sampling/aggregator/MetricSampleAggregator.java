@@ -4,6 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator;
 
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationStep;
+import com.linkedin.kafka.cruisecontrol.async.progress.RetrievingMetrics;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -233,10 +236,13 @@ public class MetricSampleAggregator {
    *
    * @param cluster The current cluster information.
    * @param now the current time.
+   * @param progress The progress of this operation.  
+   *                 
    * @return A mapping between the partition info and the snapshots.
    */
-  public MetricSampleAggregationResult recentSnapshots(Cluster cluster, long now) throws NotEnoughSnapshotsException {
-    return snapshots(cluster, -1L, now, _numSnapshots, false);
+  public MetricSampleAggregationResult recentSnapshots(Cluster cluster, long now, OperationProgress progress) 
+      throws NotEnoughSnapshotsException {
+    return snapshots(cluster, -1L, now, _numSnapshots, false, progress);
   }
 
   /**
@@ -256,13 +262,15 @@ public class MetricSampleAggregator {
    * @param requiredNumSnapshots the required exact number of snapshot windows to get. The value must be positive.
    * @param includeAllTopics include all the topics regardless of the number of samples we have. An empty snapshot will
    *                         be used if there is no sample for a partition.
+   * @param progress The progress of this operation.                        
    * @return A mapping between the partition info and the snapshots.
    */
   public MetricSampleAggregationResult snapshots(Cluster cluster,
                                                  long from,
                                                  long to,
                                                  int requiredNumSnapshots,
-                                                 boolean includeAllTopics) throws NotEnoughSnapshotsException {
+                                                 boolean includeAllTopics,
+                                                 OperationProgress progress) throws NotEnoughSnapshotsException {
     if (requiredNumSnapshots <= 0) {
       throw new IllegalArgumentException("The required number of snapshots can not be " + requiredNumSnapshots
           + ". It must be positive.");
@@ -275,7 +283,9 @@ public class MetricSampleAggregator {
     long requestedUpperBoundWindow = MonitorUtils.toSnapshotWindow(Math.max(to, 0), _snapshotWindowMs) - _snapshotWindowMs;
     long mostRecentAvailableWindow;
     long actualUpperBoundWindow;
+    RetrievingMetrics step = new RetrievingMetrics(cluster.topics().size());
     try {
+      progress.addStep(step);
       // Synchronize with addSamples() here.
       synchronized (this) {
         // Disable the snapshot window eviction to avoid inconsistency of data.
@@ -317,6 +327,7 @@ public class MetricSampleAggregator {
           LOG.trace("Added topic {} to the cluster load snapshot.", topic);
         }
         aggregationResult.merge(topicResult);
+        step.incrementRetrievedTopics();
       }
       // Maybe update cache.
       if (from <= 0 && actualUpperBoundWindow == mostRecentAvailableWindow
@@ -329,6 +340,7 @@ public class MetricSampleAggregator {
       return aggregationResult;
     } finally {
       _snapshotCollectionInProgress.decrementAndGet();
+      step.done();
     }
   }
 

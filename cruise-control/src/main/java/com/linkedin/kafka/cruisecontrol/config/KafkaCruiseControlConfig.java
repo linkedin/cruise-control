@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -369,7 +370,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG = "execution.progress.check.interval.ms";
   private static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC = "The interval in milliseconds that the " +
       "executor will check on the execution progress.";
-
+  
   /**
    * <code>goals</code>
    */
@@ -377,6 +378,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String GOALS_DOC = "A list of case insensitive goals in the order of priority. The high "
       + "priority goals will be executed first.";
 
+  /**
+   * <code>default.gaols</code>
+   */
+  public static final String DEFAULT_GOALS_CONFIG = "default.goals";
+  private static final String DEFAULT_GOALS_DOC = "THe list of goals that will be used by default if no goal list " 
+      + "is provided. This list of goal will also be used for proposal pre computation. If default.goals is not " 
+      + "specified, it will be default to goals config.";
+  
   /**
    * <code>anomaly.notifier.class</code>
    */
@@ -674,6 +683,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(ReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
                 GOALS_DOC)
+        .define(DEFAULT_GOALS_CONFIG,
+                ConfigDef.Type.LIST,
+                "",
+                ConfigDef.Importance.MEDIUM,
+                DEFAULT_GOALS_DOC)
         .define(ANOMALY_NOTIFIER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS,
                 DEFAULT_ANOMALY_NOTIFIER_CLASS,

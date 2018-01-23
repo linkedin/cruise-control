@@ -397,8 +397,8 @@ public class KafkaCruiseControl {
   /**
    * Get the state for Kafka Cruise Control.
    */
-  public KafkaCruiseControlState state() {
-    return new KafkaCruiseControlState(_executor.state(), _loadMonitor.state(), _goalOptimizer.state());
+  public KafkaCruiseControlState state(OperationProgress operationProgress) {
+    return new KafkaCruiseControlState(_executor.state(), _loadMonitor.state(operationProgress), _goalOptimizer.state());
   }
 
   /**

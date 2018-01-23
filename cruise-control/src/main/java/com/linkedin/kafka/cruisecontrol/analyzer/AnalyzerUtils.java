@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -215,7 +216,13 @@ public class AnalyzerUtils {
    * Get a priority to goal mapping. This is a default mapping.
    */
   public static SortedMap<Integer, Goal> getGoalMapByPriority(KafkaCruiseControlConfig config) {
-    List<Goal> goals = config.getConfiguredInstances(KafkaCruiseControlConfig.GOALS_CONFIG, Goal.class);
+    List<String> defaultGoalsConfig = config.getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG);
+    List<Goal> goals;
+    if (defaultGoalsConfig == null || defaultGoalsConfig.isEmpty()) {
+      goals = config.getConfiguredInstances(KafkaCruiseControlConfig.GOALS_CONFIG, Goal.class);
+    } else {
+      goals = config.getConfiguredInstances(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, Goal.class);
+    }
     SortedMap<Integer, Goal> orderedGoals = new TreeMap<>();
     int i = 0;
     for (Goal goal: goals) {
@@ -236,7 +243,7 @@ public class AnalyzerUtils {
     return caseInsensitiveGoalsByName;
   }
 
- /**
+  /**
    * Test if two clusters are significantly different in the metrics we look at for balancing.
    *
    * @param orig the utilization matrix from the original cluster
