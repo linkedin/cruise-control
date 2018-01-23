@@ -13,8 +13,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -98,10 +96,7 @@ public class SessionManager {
     // Session exists.
     if (info != null) {
       LOG.debug("Found existing session {}", session);
-      if (!info.sameRequest(requestString, request.getParameterMap())) {
-        throw new IllegalStateException("The session has an ongoing operation " + info.requestUrl() +
-                                            " while it is trying another operation of " + requestString);
-      }
+      info.ensureSameRequest(requestString, request.getParameterMap());
       // If there is next future return it.
       if (info.hasNextFuture()) {
         return (OperationFuture<T>) info.nextFuture();
@@ -266,8 +261,13 @@ public class SessionManager {
       return _requestUrl;
     }
 
-    private boolean sameRequest(String requestUrl, Map<String, String[]> parameters) {
-      return _requestUrl.equals(requestUrl) && _requestParameters.equals(parameters);
+    private void ensureSameRequest(String requestUrl, Map<String, String[]> parameters) {
+      if (!_requestUrl.equals(requestUrl) || !_requestParameters.equals(parameters)) {
+        throw new IllegalStateException(String.format(
+            "The session has an ongoing operation [URL: %s, Parameters: %s] "
+                + "while it is trying another operation of [URL: %s, Parameters: %s].",
+            _requestUrl, _requestParameters, requestUrl, parameters));
+      }
     }
   }
 
