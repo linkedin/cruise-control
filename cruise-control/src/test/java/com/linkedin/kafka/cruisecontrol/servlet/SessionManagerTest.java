@@ -174,6 +174,7 @@ public class SessionManagerTest {
       requests.add(request);
       sessions.add(session);
       EasyMock.expect(request.getSession()).andReturn(session).anyTimes();
+      EasyMock.expect(request.getSession(false)).andReturn(session).anyTimes();
       EasyMock.expect(request.getMethod()).andReturn("GET").anyTimes();
       EasyMock.expect(request.getRequestURI()).andReturn("/test").anyTimes();
       EasyMock.expect(session.getLastAccessedTime()).andReturn(time.milliseconds()).anyTimes();
