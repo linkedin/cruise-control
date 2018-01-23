@@ -262,9 +262,10 @@ public class SessionManager {
   }
 
   private String toRequestString(HttpServletRequest request) {
-    String s = request.toString();
-    int position = s.lastIndexOf('@');
-    return position > 0? s.substring(0, s.lastIndexOf('@')) : s;
+    return String.format("%s(%s %s)",
+                         request.getClass().getSimpleName(),
+                         request.getMethod(),
+                         request.getRequestURI());
   }
 
   /**

@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator;
 
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
-import com.linkedin.kafka.cruisecontrol.async.progress.OperationStep;
 import com.linkedin.kafka.cruisecontrol.async.progress.RetrievingMetrics;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
@@ -143,7 +142,7 @@ public class MetricSampleAggregator {
     boolean newWindow = false;
     // Find the snapshot window
     long snapshotWindow = MonitorUtils.toSnapshotWindow(sample.sampleTime(), _snapshotWindowMs);
-    if (_windowedAggregatedPartitionMetrics.size() >= _numSnapshotsToKeep 
+    if (_windowedAggregatedPartitionMetrics.size() >= _numSnapshotsToKeep
         && snapshotWindow < _windowedAggregatedPartitionMetrics.firstKey()) {
       return false;
     }
@@ -236,11 +235,11 @@ public class MetricSampleAggregator {
    *
    * @param cluster The current cluster information.
    * @param now the current time.
-   * @param progress The progress of this operation.  
-   *                 
+   * @param progress The progress of this operation.
+   *
    * @return A mapping between the partition info and the snapshots.
    */
-  public MetricSampleAggregationResult recentSnapshots(Cluster cluster, long now, OperationProgress progress) 
+  public MetricSampleAggregationResult recentSnapshots(Cluster cluster, long now, OperationProgress progress)
       throws NotEnoughSnapshotsException {
     return snapshots(cluster, -1L, now, _numSnapshots, false, progress);
   }
@@ -262,7 +261,7 @@ public class MetricSampleAggregator {
    * @param requiredNumSnapshots the required exact number of snapshot windows to get. The value must be positive.
    * @param includeAllTopics include all the topics regardless of the number of samples we have. An empty snapshot will
    *                         be used if there is no sample for a partition.
-   * @param progress The progress of this operation.                        
+   * @param progress The progress of this operation.
    * @return A mapping between the partition info and the snapshots.
    */
   public MetricSampleAggregationResult snapshots(Cluster cluster,

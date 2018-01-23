@@ -15,9 +15,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
-import org.eclipse.jetty.server.HttpChannel;
-import org.eclipse.jetty.server.HttpInput;
-import org.eclipse.jetty.server.Request;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
@@ -177,6 +174,8 @@ public class SessionManagerTest {
       requests.add(request);
       sessions.add(session);
       EasyMock.expect(request.getSession()).andReturn(session).anyTimes();
+      EasyMock.expect(request.getMethod()).andReturn("GET").anyTimes();
+      EasyMock.expect(request.getRequestURI()).andReturn("/test").anyTimes();
       EasyMock.expect(session.getLastAccessedTime()).andReturn(time.milliseconds()).anyTimes();
       if (expectSessionInvalidation) {
         session.invalidate();

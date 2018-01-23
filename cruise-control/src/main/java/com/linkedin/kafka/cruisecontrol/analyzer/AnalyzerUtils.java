@@ -17,7 +17,6 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -135,7 +134,7 @@ public class AnalyzerUtils {
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       if (!replica.broker().isAlive()) {
         throw new AnalysisInputException(String.format(
-            "Self healing failed to move the replica %s away from decommissioned broker %d for goal. There are still " 
+            "Self healing failed to move the replica %s away from decommissioned broker %d for goal. There are still "
                 + "%d replicas on the broker.",
             replica, replica.broker().id(), replica.broker().replicas().size()));
       }

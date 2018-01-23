@@ -42,14 +42,14 @@ public class KafkaCruiseControlServletDataFromTest {
       new ModelCompletenessRequirements(1, 1.0, true);
   private static final ModelCompletenessRequirements FOR_AVAILABLE_PARTITIONS =
       new ModelCompletenessRequirements(Integer.MAX_VALUE, 0.0, true);
-  
+
   private final int _numReadyGoals;
   private final int _totalGoals;
   private final int _numValidWindows;
   private final KafkaCruiseControlServlet.DataFrom _dataFrom;
   private final List<String> _expectedGoalsToUse;
   private final ModelCompletenessRequirements _expectedRequirements;
-  
+
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     List<Object[]> params = new ArrayList<>();
@@ -61,13 +61,13 @@ public class KafkaCruiseControlServletDataFromTest {
     params.add(new Object[]{3, 3, 1, KafkaCruiseControlServlet.DataFrom.VALID_PARTITIONS, Collections.emptyList(), FOR_AVAILABLE_PARTITIONS});
     // 2 out of 3 goals are ready, 1 valid window, with available partitions.
     params.add(new Object[]{2, 3, 1, KafkaCruiseControlServlet.DataFrom.VALID_PARTITIONS, Collections.emptyList(), FOR_AVAILABLE_PARTITIONS});
-    // 2 out of 3 goals are ready, 0 valid window, with available windows. 
+    // 2 out of 3 goals are ready, 0 valid window, with available windows.
     params.add(new Object[]{2, 3, 0, KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS, Arrays.asList("0", "1"), null});
-    // No goal is ready, 0 valid window, with available windows. 
+    // No goal is ready, 0 valid window, with available windows.
     params.add(new Object[]{0, 3, 0, KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS, Collections.emptyList(), null});
     return params;
   }
-  
+
   public KafkaCruiseControlServletDataFromTest(int numReadyGoals, int totalGoals, int numValidWindows,
                                                KafkaCruiseControlServlet.DataFrom dataFrom,
                                                List<String> expectedGoalsToUse,
@@ -79,7 +79,7 @@ public class KafkaCruiseControlServletDataFromTest {
     _expectedGoalsToUse = expectedGoalsToUse;
     _expectedRequirements = expectedRequirements;
   }
-  
+
   @Test
   public void test() throws Exception {
     AsyncKafkaCruiseControl mockKCC = EasyMock.createMock(AsyncKafkaCruiseControl.class);
@@ -87,29 +87,31 @@ public class KafkaCruiseControlServletDataFromTest {
     HttpServletResponse response = EasyMock.createMock(HttpServletResponse.class);
     HttpSession session = EasyMock.createMock(HttpSession.class);
     EasyMock.expect(request.getSession()).andReturn(session).anyTimes();
+    EasyMock.expect(request.getMethod()).andReturn("GET").anyTimes();
+    EasyMock.expect(request.getRequestURI()).andReturn("/test").anyTimes();
     EasyMock.expect(session.getLastAccessedTime()).andReturn(Long.MAX_VALUE);
     KafkaCruiseControlState kccState = getState(_numReadyGoals, _totalGoals, _numValidWindows);
     OperationFuture<KafkaCruiseControlState> kccStateFuture = new OperationFuture<>("test");
     kccStateFuture.complete(kccState);
     EasyMock.expect(mockKCC.state()).andReturn(kccStateFuture).anyTimes();
     EasyMock.replay(mockKCC, request, response, session);
-    
-    KafkaCruiseControlServlet servlet = 
+
+    KafkaCruiseControlServlet servlet =
         new KafkaCruiseControlServlet(mockKCC, 10, 100, new MetricRegistry());
-    KafkaCruiseControlServlet.GoalsAndRequirements goalsAndRequirements = 
-        servlet.getGoalsAndRequirements(request, 
+    KafkaCruiseControlServlet.GoalsAndRequirements goalsAndRequirements =
+        servlet.getGoalsAndRequirements(request,
                                         response,
                                         Collections.emptyList(),
                                         _dataFrom,
                                         false);
-    
+
     assertEquals(new HashSet<>(goalsAndRequirements.goals()), new HashSet<>(_expectedGoalsToUse));
     if (_expectedRequirements != null) {
-      assertEquals(_expectedRequirements.minRequiredNumSnapshotWindows(), 
+      assertEquals(_expectedRequirements.minRequiredNumSnapshotWindows(),
                    goalsAndRequirements.requirements().minRequiredNumSnapshotWindows());
-      assertEquals(_expectedRequirements.minMonitoredPartitionsPercentage(), 
+      assertEquals(_expectedRequirements.minMonitoredPartitionsPercentage(),
                    goalsAndRequirements.requirements().minMonitoredPartitionsPercentage(), 0.0);
-      assertEquals(_expectedRequirements.includeAllTopics(), 
+      assertEquals(_expectedRequirements.includeAllTopics(),
                    goalsAndRequirements.requirements().includeAllTopics());
     } else {
       assertNull("The requirement should be null", goalsAndRequirements.requirements());
