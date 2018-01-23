@@ -78,7 +78,7 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, T1P0, 0, SNAPSHOT_WINDOW_MS);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, T1P1, 0, SNAPSHOT_WINDOW_MS);
 
-    LoadMonitorState state = loadMonitor.state();
+    LoadMonitorState state = loadMonitor.state(new OperationProgress());
     assertEquals(0, state.numValidMonitoredPartitions());
     assertEquals(0, state.numValidSnapshotWindows());
     assertTrue(state.monitoredSnapshotWindows().isEmpty());
@@ -97,7 +97,7 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, T1P0, 0, SNAPSHOT_WINDOW_MS);
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 1, aggregator, T1P1, 0, SNAPSHOT_WINDOW_MS);
 
-    LoadMonitorState state = loadMonitor.state();
+    LoadMonitorState state = loadMonitor.state(new OperationProgress());
     assertEquals(0, state.numValidMonitoredPartitions());
     assertEquals(0, state.numValidSnapshotWindows());
     assertEquals(1, state.monitoredSnapshotWindows().size());
@@ -105,7 +105,7 @@ public class LoadMonitorTest {
 
     // Back fill for T1P1
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, T1P1, 0, SNAPSHOT_WINDOW_MS);
-    state = loadMonitor.state();
+    state = loadMonitor.state(new OperationProgress());
     assertEquals(0, state.numValidMonitoredPartitions());
     assertEquals(1, state.numValidSnapshotWindows());
     assertEquals(1, state.monitoredSnapshotWindows().size());
@@ -127,7 +127,7 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 1, aggregator, T1P1, 0, SNAPSHOT_WINDOW_MS);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, T1P1, 0, SNAPSHOT_WINDOW_MS);
 
-    LoadMonitorState state = loadMonitor.state();
+    LoadMonitorState state = loadMonitor.state(new OperationProgress());
     assertEquals(2, state.numValidMonitoredPartitions());
     assertEquals(0, state.numValidSnapshotWindows());
     assertEquals(2, state.monitoredSnapshotWindows().size());
@@ -137,7 +137,7 @@ public class LoadMonitorTest {
 
     // Back fill a sample for T1P1
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, T1P1, 1, SNAPSHOT_WINDOW_MS);
-    state = loadMonitor.state();
+    state = loadMonitor.state(new OperationProgress());
     assertEquals(4, state.numValidMonitoredPartitions());
     assertEquals(2, state.numValidSnapshotWindows());
     assertEquals(2, state.monitoredSnapshotWindows().size());
@@ -419,7 +419,7 @@ public class LoadMonitorTest {
     }
     ModelParameters.init(config);
     loadMonitor.startUp();
-    while (loadMonitor.state().state() != LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING) {
+    while (loadMonitor.state(new OperationProgress()).state() != LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING) {
       try {
         Thread.sleep(1);
       } catch (InterruptedException e) {

@@ -134,7 +134,7 @@ public class AnalyzerUtils {
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       if (!replica.broker().isAlive()) {
         throw new AnalysisInputException(String.format(
-            "Self healing failed to move the replica %s away from decommissioned broker %d for goal. There are still " 
+            "Self healing failed to move the replica %s away from decommissioned broker %d for goal. There are still "
                 + "%d replicas on the broker.",
             replica, replica.broker().id(), replica.broker().replicas().size()));
       }
@@ -215,7 +215,13 @@ public class AnalyzerUtils {
    * Get a priority to goal mapping. This is a default mapping.
    */
   public static SortedMap<Integer, Goal> getGoalMapByPriority(KafkaCruiseControlConfig config) {
-    List<Goal> goals = config.getConfiguredInstances(KafkaCruiseControlConfig.GOALS_CONFIG, Goal.class);
+    List<String> defaultGoalsConfig = config.getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG);
+    List<Goal> goals;
+    if (defaultGoalsConfig == null || defaultGoalsConfig.isEmpty()) {
+      goals = config.getConfiguredInstances(KafkaCruiseControlConfig.GOALS_CONFIG, Goal.class);
+    } else {
+      goals = config.getConfiguredInstances(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, Goal.class);
+    }
     SortedMap<Integer, Goal> orderedGoals = new TreeMap<>();
     int i = 0;
     for (Goal goal: goals) {
@@ -236,7 +242,7 @@ public class AnalyzerUtils {
     return caseInsensitiveGoalsByName;
   }
 
- /**
+  /**
    * Test if two clusters are significantly different in the metrics we look at for balancing.
    *
    * @param orig the utilization matrix from the original cluster

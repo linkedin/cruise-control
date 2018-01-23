@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator;
 
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -59,7 +60,7 @@ public class MetricSampleAggregatorTest {
 
     try {
       Map<TopicPartition, Snapshot[]> snapshotsForPartition =
-          metricSampleAggregator.recentSnapshots(metadata.fetch(), Long.MAX_VALUE).snapshots();
+          metricSampleAggregator.recentSnapshots(metadata.fetch(), Long.MAX_VALUE, new OperationProgress()).snapshots();
       assertEquals("The snapshots should only have one partition", 1, snapshotsForPartition.size());
       Snapshot[] snapshots = snapshotsForPartition.get(TP);
       assertNotNull(snapshots);
@@ -98,8 +99,8 @@ public class MetricSampleAggregatorTest {
 
     // The eviction should still work after throwing exceptions.
     try {
-      metricSampleAggregator.recentSnapshots(metadata.fetch(), Long.MAX_VALUE);
-      metricSampleAggregator.snapshots(metadata.fetch(), -1, Long.MAX_VALUE, -1, true);
+      metricSampleAggregator.recentSnapshots(metadata.fetch(), Long.MAX_VALUE, new OperationProgress());
+      metricSampleAggregator.snapshots(metadata.fetch(), -1, Long.MAX_VALUE, -1, true, new OperationProgress());
     } catch (IllegalArgumentException | NotEnoughSnapshotsException e) {
       // let it go.
     }
@@ -107,7 +108,7 @@ public class MetricSampleAggregatorTest {
 
     try {
       Map<TopicPartition, Snapshot[]> snapshotsForPartition =
-          metricSampleAggregator.recentSnapshots(metadata.fetch(), Long.MAX_VALUE).snapshots();
+          metricSampleAggregator.recentSnapshots(metadata.fetch(), Long.MAX_VALUE, new OperationProgress()).snapshots();
       assertEquals("Only " + NUM_SNAPSHOTS + " should be returned.",
           NUM_SNAPSHOTS, snapshotsForPartition.get(TP).length);
       for (int i = 0; i < NUM_SNAPSHOTS; i++) {
@@ -133,7 +134,7 @@ public class MetricSampleAggregatorTest {
                                                         metricSampleAggregator, TP, 2, SNAPSHOT_WINDOW_MS);
     try {
       MetricSampleAggregationResult result =
-          metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
+          metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS, new OperationProgress());
       assertTrue(result.snapshots().isEmpty());
     } catch (NotEnoughSnapshotsException nese) {
       nese.printStackTrace();
@@ -143,7 +144,7 @@ public class MetricSampleAggregatorTest {
 
     try {
       MetricSampleAggregationResult result =
-          metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
+          metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS, new OperationProgress());
       int numSnapshots = result.snapshots().get(TP).length;
       assertEquals(NUM_SNAPSHOTS, numSnapshots);
       int numFlaws = 0;
@@ -181,7 +182,9 @@ public class MetricSampleAggregatorTest {
 
     try {
       MetricSampleAggregationResult result =
-          metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS * 2);
+          metricSampleAggregator.recentSnapshots(metadata.fetch(), 
+                                                 NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS * 2,
+                                                 new OperationProgress());
       int numSnapshots = result.snapshots().get(TP).length;
       assertEquals(NUM_SNAPSHOTS, numSnapshots);
       int numFlaws = 0;
@@ -227,7 +230,9 @@ public class MetricSampleAggregatorTest {
 
     try {
       MetricSampleAggregationResult result =
-          metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS * 2);
+          metricSampleAggregator.recentSnapshots(metadata.fetch(), 
+                                                 NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS * 2, 
+                                                 new OperationProgress());
       int numSnapshots = result.snapshots().get(TP).length;
       assertEquals(NUM_SNAPSHOTS, numSnapshots);
       int numFlaws = 0;
@@ -261,7 +266,9 @@ public class MetricSampleAggregatorTest {
 
     try {
       MetricSampleAggregationResult result =
-          metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
+          metricSampleAggregator.recentSnapshots(metadata.fetch(), 
+                                                 NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS, 
+                                                 new OperationProgress());
       assertTrue(result.snapshots().isEmpty());
       assertEquals(3, result.sampleFlaw(TP).size());
     } catch (NotEnoughSnapshotsException nese) {
@@ -282,7 +289,9 @@ public class MetricSampleAggregatorTest {
 
     try {
       // Only 4 snapshots has smaller timestamp than the timestamp we passed in.
-      metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS - 1);
+      metricSampleAggregator.recentSnapshots(metadata.fetch(), 
+                                             NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS - 1,
+                                             new OperationProgress());
       fail("Should throw NotEnoughSnapshotsException");
     } catch (NotEnoughSnapshotsException nse) {
       // let it go
@@ -317,7 +326,9 @@ public class MetricSampleAggregatorTest {
     // Check the snapshot value and make sure the metric samples above are excluded.
     try {
       Map<TopicPartition, Snapshot[]> snapshotsForPartition =
-          metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS).snapshots();
+          metricSampleAggregator.recentSnapshots(metadata.fetch(), 
+                                                 NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
+                                                 new OperationProgress()).snapshots();
       Snapshot[] snapshots = snapshotsForPartition.get(TP);
       for (Resource resource : Resource.values()) {
         double expectedValue = resource == Resource.DISK ?
@@ -342,20 +353,23 @@ public class MetricSampleAggregatorTest {
     long generation = metricSampleAggregator.currentGeneration();
     assertEquals(NUM_SNAPSHOTS + 1, generation);
     MetricSampleAggregationResult result0 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
-                                                                                  NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
+                                                                                  NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
+                                                                                   new OperationProgress());
     assertTrue("result0 should have been cached.", result0 == metricSampleAggregator.cachedAggregationResult());
     assertEquals("The cached aggregated window should be 20000", NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
                  metricSampleAggregator.cachedAggregationResultWindow());
     assertEquals("The generation should be " + generation, generation, metricSampleAggregator.currentGeneration());
     MetricSampleAggregationResult result1 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
-                                                                                   NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
+                                                                                   NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
+                                                                                   new OperationProgress());
     assertTrue("result1 should be returned from cached result.", result0 == result1);
     assertEquals("The generation should be " + generation, generation, metricSampleAggregator.currentGeneration());
 
     // Adding a metric sample to the active snapshot window, it should have no impact.
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, metricSampleAggregator, TP, NUM_SNAPSHOTS, SNAPSHOT_WINDOW_MS);
     MetricSampleAggregationResult result2 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
-                                                                                   NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
+                                                                                   NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
+                                                                                   new OperationProgress());
     assertTrue("Adding sample to active snapshot window has no impact on cache. result2 should have been cached.",
                result2 == result0);
     assertEquals("The generation should be " + generation, generation, metricSampleAggregator.currentGeneration());
@@ -366,7 +380,8 @@ public class MetricSampleAggregatorTest {
     assertEquals("The cache should have been invalidated.", -1L, metricSampleAggregator.cachedAggregationResultWindow());
     assertEquals("The generation should be " + (generation + 1), generation + 1, metricSampleAggregator.currentGeneration());
     MetricSampleAggregationResult result3 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
-                                                                                   NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
+                                                                                   NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
+                                                                                   new OperationProgress());
     assertTrue("result3 should have been cached.", result3 == metricSampleAggregator.cachedAggregationResult());
     assertEquals("The cached aggregated window should be 20000", NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
                  metricSampleAggregator.cachedAggregationResultWindow());
@@ -377,7 +392,8 @@ public class MetricSampleAggregatorTest {
     assertEquals("The cached aggregated window should be -1", -1,
                  metricSampleAggregator.cachedAggregationResultWindow());
     MetricSampleAggregationResult result4 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
-                                                                                   NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
+                                                                                   NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS,
+                                                                                   new OperationProgress());
     assertNull("result4 should not be cached because it did not query latest window.", metricSampleAggregator.cachedAggregationResult());
     assertEquals("The cached aggregated window should be -1", -1,
                  metricSampleAggregator.cachedAggregationResultWindow());
@@ -385,7 +401,8 @@ public class MetricSampleAggregatorTest {
 
     // Query a new snapshot window
     MetricSampleAggregationResult result5 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
-                                                                                   (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS);
+                                                                                   (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS,
+                                                                                   new OperationProgress());
     assertTrue("The cache should have been updated.", result5 != result4);
     assertTrue("The cache should have been updated to result5.", result5 == metricSampleAggregator.cachedAggregationResult());
     assertEquals("The cached aggregated window should be 21000", (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS,
@@ -393,9 +410,10 @@ public class MetricSampleAggregatorTest {
     assertEquals("The generation should be " + (generation + 2), generation + 2, metricSampleAggregator.currentGeneration());
 
     // Query a past snapshot window, it should have no impact on the cache.
-    metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS);
+    metricSampleAggregator.recentSnapshots(metadata.fetch(), NUM_SNAPSHOTS * SNAPSHOT_WINDOW_MS, new OperationProgress());
     MetricSampleAggregationResult result6 = metricSampleAggregator.recentSnapshots(metadata.fetch(),
-                                                                                   (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS);
+                                                                                   (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS,
+                                                                                   new OperationProgress());
     assertTrue("result5 should remain cached.", result5 == metricSampleAggregator.cachedAggregationResult());
     assertEquals("The cached aggregated window should be 21000", (NUM_SNAPSHOTS + 1) * SNAPSHOT_WINDOW_MS,
                  metricSampleAggregator.cachedAggregationResultWindow());

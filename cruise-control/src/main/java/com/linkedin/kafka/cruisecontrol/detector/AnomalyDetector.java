@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult;
@@ -136,7 +137,7 @@ public class AnomalyDetector {
             break;
           }
           // We schedule a delayed check if the executor is doing some work.
-          ExecutorState.State executorState = _kafkaCruiseControl.state().executorState().state();
+          ExecutorState.State executorState = _kafkaCruiseControl.state(new OperationProgress()).executorState().state();
           if (executorState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
             LOG.debug("Schedule delayed check for anomaly {} because executor is in {} state", anomaly, executorState);
             checkWithDelay(anomaly, _anomalyDetectionIntervalMs);

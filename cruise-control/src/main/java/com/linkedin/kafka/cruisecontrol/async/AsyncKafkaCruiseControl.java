@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.Pending;
@@ -50,6 +51,16 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    */
   public AsyncKafkaCruiseControl(KafkaCruiseControlConfig config, MetricRegistry dropwizardMetricRegistry) {
     super(config, dropwizardMetricRegistry);
+  }
+
+  /**
+   * @see KafkaCruiseControl#state(OperationProgress) 
+   */
+  public OperationFuture<KafkaCruiseControlState> state() {
+    OperationFuture<KafkaCruiseControlState> future = new OperationFuture<>("Get state");
+    pending(future.operationProgress());
+    _sessionExecutor.submit(new GetStateRunnable(this, future));
+    return future;
   }
 
   /**

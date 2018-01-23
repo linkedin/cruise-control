@@ -378,6 +378,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "priority goals will be executed first.";
 
   /**
+   * <code>default.gaols</code>
+   */
+  public static final String DEFAULT_GOALS_CONFIG = "default.goals";
+  private static final String DEFAULT_GOALS_DOC = "The list of goals that will be used by default if no goal list "
+      + "is provided. This list of goal will also be used for proposal pre-computation. If default.goals is not "
+      + "specified, it will be default to goals config.";
+
+  /**
    * <code>anomaly.notifier.class</code>
    */
   public static final String ANOMALY_NOTIFIER_CLASS_CONFIG = "anomaly.notifier.class";
@@ -674,6 +682,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(ReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
                 GOALS_DOC)
+        .define(DEFAULT_GOALS_CONFIG,
+                ConfigDef.Type.LIST,
+                "",
+                ConfigDef.Importance.MEDIUM,
+                DEFAULT_GOALS_DOC)
         .define(ANOMALY_NOTIFIER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS,
                 DEFAULT_ANOMALY_NOTIFIER_CLASS,

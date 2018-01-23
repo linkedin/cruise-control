@@ -175,7 +175,7 @@ public class LoadMonitor {
   /**
    * Get the state of the load monitor.
    */
-  public LoadMonitorState state() {
+  public LoadMonitorState state(OperationProgress operationProgress) {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState state = _loadMonitorTaskRunner.state();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
     Cluster kafkaCluster = clusterAndGeneration.cluster();
@@ -209,7 +209,7 @@ public class LoadMonitor {
     if (_metricSampleAggregator.numSnapshotWindows() > _numSnapshots) {
       try {
         MetricSampleAggregationResult metricSampleAggregationResult =
-            _metricSampleAggregator.recentSnapshots(kafkaCluster, Long.MAX_VALUE);
+            _metricSampleAggregator.recentSnapshots(kafkaCluster, Long.MAX_VALUE, operationProgress);
         Map<TopicPartition, Snapshot[]> loadSnapshots = metricSampleAggregationResult.snapshots();
         sampleFlaws = metricSampleAggregationResult.sampleFlaws();
         numValidPartitions = loadSnapshots.size();
@@ -389,7 +389,7 @@ public class LoadMonitor {
 
     // Get the metric aggregation result.
     MetricSampleAggregationResult metricSampleAggregationResult =
-        aggregateMetrics(from, to, clusterAndGeneration, requirements, totalNumPartitions);
+        aggregateMetrics(from, to, clusterAndGeneration, requirements, totalNumPartitions, operationProgress);
     Map<TopicPartition, Snapshot[]> loadSnapshots = metricSampleAggregationResult.snapshots();
     GeneratingClusterModel step = new GeneratingClusterModel(loadSnapshots.size());
     operationProgress.addStep(step);
@@ -518,7 +518,8 @@ public class LoadMonitor {
                                                          long to,
                                                          MetadataClient.ClusterAndGeneration clusterAndGeneration,
                                                          ModelCompletenessRequirements requirements,
-                                                         int totalNumPartitions)
+                                                         int totalNumPartitions,
+                                                         OperationProgress progress)
       throws NotEnoughValidSnapshotsException, NotEnoughSnapshotsException {
     double minMonitoredPartitionsPercentage = requirements.minMonitoredPartitionsPercentage();
     int requiredNumSnapshotWindows = requirements.minRequiredNumSnapshotWindows();
@@ -545,9 +546,13 @@ public class LoadMonitor {
                                                                         from,
                                                                         to,
                                                                         availableNumSnapshots,
-                                                                        includeAllTopics);
+                                                                        includeAllTopics,
+                                                                        progress);
       // Check if the monitored partition percentage is met. If not, we retry get the metric aggregation result.
       if (metricSampleAggregationResult.snapshots().size() < totalNumPartitions * minMonitoredPartitionsPercentage) {
+        LOG.debug("Expecting {} partitions, while get {} partitions", 
+                  totalNumPartitions * minMonitoredPartitionsPercentage,
+                  metricSampleAggregationResult.snapshots().size());
         metricSampleAggregationResult = null;
       }
     }
@@ -673,7 +678,9 @@ public class LoadMonitor {
     Cluster kafkaCluster = clusterAndGeneration.cluster();
     MetricSampleAggregationResult metricSampleAggregationResult;
     try {
-      metricSampleAggregationResult = _metricSampleAggregator.recentSnapshots(kafkaCluster, System.currentTimeMillis());
+      metricSampleAggregationResult = _metricSampleAggregator.recentSnapshots(kafkaCluster, 
+                                                                              System.currentTimeMillis(),
+                                                                              new OperationProgress());
     } catch (NotEnoughSnapshotsException e) {
       return 0.0;
     }

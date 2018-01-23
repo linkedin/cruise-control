@@ -8,6 +8,8 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
@@ -50,6 +52,7 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.EndPoint.*;
 import static javax.servlet.http.HttpServletResponse.*;
 
@@ -70,6 +73,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final String SUPER_VERBOSE_PARM = "super_verbose";
   private static final String RESOURCE_PARAM = "resource";
   private static final String DATA_FROM_PARAM = "data_from";
+  private static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
 
   private static final String GOALS_PARAM = "goals";
   private static final String GRANULARITY_PARAM = "granularity";
@@ -113,6 +117,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     proposals.add(IGNORE_PROPOSAL_CACHE_PARAM);
     proposals.add(DATA_FROM_PARAM);
     proposals.add(GOALS_PARAM);
+    proposals.add(KAFKA_ASSIGNER_MODE_PARAM);
     proposals.add(JSON_PARAM);
 
     Set<String> state = new HashSet<>();
@@ -126,6 +131,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     addOrRemoveBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
     addOrRemoveBroker.add(DATA_FROM_PARAM);
     addOrRemoveBroker.add(GOALS_PARAM);
+    addOrRemoveBroker.add(KAFKA_ASSIGNER_MODE_PARAM);
     addOrRemoveBroker.add(JSON_PARAM);
 
     Set<String> addBroker = new HashSet<>();
@@ -139,6 +145,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Set<String> rebalance = new HashSet<>();
     rebalance.add(DRY_RUN_PARAM);
     rebalance.add(GOALS_PARAM);
+    rebalance.add(KAFKA_ASSIGNER_MODE_PARAM);
     rebalance.add(DATA_FROM_PARAM);
     rebalance.add(JSON_PARAM);
 
@@ -267,22 +274,28 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               train(request, response);
               break;
             case LOAD:
+              _sessionManager.reinitAndLockSession(request);
               if (getClusterLoad(request, response)) {
                 _sessionManager.closeSession(request);
               }
               break;
             case PARTITION_LOAD:
+              _sessionManager.reinitAndLockSession(request);
               if (getPartitionLoad(request, response)) {
                 _sessionManager.closeSession(request);
               }
               break;
             case PROPOSALS:
+              _sessionManager.reinitAndLockSession(request);
               if (getProposals(request, response)) {
                 _sessionManager.closeSession(request);
               }
               break;
             case STATE:
-              getState(request, response);
+              _sessionManager.reinitAndLockSession(request);
+              if (getState(request, response)) {
+                _sessionManager.closeSession(request);
+              }
               break;
             default:
               throw new UserRequestException("Invalid URL for GET");
@@ -304,6 +317,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       LOG.error(errorMessage);
       returnErrorMessage(response, errorMessage, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     } finally {
+      _sessionManager.unLockSession(request);
       try {
         response.getOutputStream().close();
       } catch (IOException e) {
@@ -360,11 +374,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           switch (endPoint) {
             case ADD_BROKER:
             case REMOVE_BROKER:
+              _sessionManager.reinitAndLockSession(request);
               if (addOrRemoveBroker(request, response, endPoint)) {
                 _sessionManager.closeSession(request);
               }
               break;
             case REBALANCE:
+              _sessionManager.reinitAndLockSession(request);
               if (rebalance(request, response)) {
                 _sessionManager.closeSession(request);
               }
@@ -392,6 +408,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       LOG.error(errorMessage);
       returnErrorMessage(response, errorMessage, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     } finally {
+      _sessionManager.unLockSession(request);
       try {
         response.getOutputStream().close();
       } catch (IOException e) {
@@ -493,7 +510,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         }
       } else {
         // Get the broker stats asynchronously.
-        brokerStats = getAndMaybeReturnProgress(request, response, 
+        brokerStats = getAndMaybeReturnProgress(request, response,
                                                 () -> _asyncKafkaCruiseControl.getBrokerStats(time, requirements));
         if (brokerStats == null) {
           return false;
@@ -559,7 +576,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, false);
     // Get cluster model asynchronously.
-    ClusterModel clusterModel = 
+    ClusterModel clusterModel =
         getAndMaybeReturnProgress(request, response,
                                   () -> _asyncKafkaCruiseControl.clusterModel(startMs, endMs, requirements));
     if (clusterModel == null) {
@@ -617,31 +634,32 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private boolean getProposals(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean verbose;
     boolean ignoreProposalCache;
-    DataFrom dataFrom = DataFrom.VALID_WINDOWS;
+    DataFrom dataFrom;
     boolean json;
     List<String> goals;
     try {
       json = wantJSON(request);
       String verboseString = request.getParameter(VERBOSE_PARAM);
       verbose = verboseString != null && Boolean.parseBoolean(verboseString);
+
+      goals = getGoals(request);
+      dataFrom = getDataFrom(request);
+
       String ignoreProposalCacheString = request.getParameter(IGNORE_PROPOSAL_CACHE_PARAM);
-      String dataFromString = request.getParameter(DATA_FROM_PARAM);
-      String goalsString = request.getParameter(GOALS_PARAM);
-      goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
-      goals.removeIf(String::isEmpty);
       ignoreProposalCache = (ignoreProposalCacheString != null && Boolean.parseBoolean(ignoreProposalCacheString))
           || !goals.isEmpty();
-      if (dataFromString != null) {
-        dataFrom = DataFrom.valueOf(dataFromString.toUpperCase());
-      }
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-    GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(goals, dataFrom, ignoreProposalCache);
+    GoalsAndRequirements goalsAndRequirements =
+        getGoalsAndRequirements(request, response, goals, dataFrom, ignoreProposalCache);
+    if (goalsAndRequirements == null) {
+      return false;
+    }
     // Get the optimization result asynchronously.
-    GoalOptimizer.OptimizerResult optimizerResult = 
+    GoalOptimizer.OptimizerResult optimizerResult =
         getAndMaybeReturnProgress(request, response,
-                                  () -> _asyncKafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(), 
+                                  () -> _asyncKafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(),
                                                                                           goalsAndRequirements.requirements()));
     if (optimizerResult == null) {
       return false;
@@ -734,7 +752,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return json;
   }
 
-  private void getState(HttpServletRequest request, HttpServletResponse response) throws Exception {
+  private boolean getState(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean verbose;
     boolean superVerbose;
     boolean json;
@@ -747,7 +765,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-    KafkaCruiseControlState state = _asyncKafkaCruiseControl.state();
+    KafkaCruiseControlState state = getAndMaybeReturnProgress(request, response, _asyncKafkaCruiseControl::state);
+    if (state == null) {
+      return false;
+    }
     OutputStream out = response.getOutputStream();
     if (json) {
       String stateString = state.getJSONString();
@@ -797,56 +818,55 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       }
     }
     response.getOutputStream().flush();
+    return true;
   }
 
   private boolean addOrRemoveBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
       throws Exception {
     List<Integer> brokerIds = new ArrayList<>();
     boolean dryrun;
-    DataFrom dataFrom = DataFrom.VALID_WINDOWS; // by default we use ValidWindows
+    DataFrom dataFrom;
     boolean throttleAddedOrRemovedBrokers;
     List<String> goals;
     boolean json;
     try {
-      // TODO: Handle urlencoded value (%2C instead of ,)
       String[] brokerIdsString = request.getParameter(BROKER_ID_PARAM).split(",");
       for (String brokerIdString : brokerIdsString) {
         brokerIds.add(Integer.parseInt(brokerIdString));
       }
-      String dryrunString = request.getParameter(DRY_RUN_PARAM);
-      dryrun = dryrunString == null || Boolean.parseBoolean(dryrunString);
+
+      dryrun = getDryRun(request);
+      goals = getGoals(request);
+      dataFrom = getDataFrom(request);
+
       String throttleBrokerString = endPoint == EndPoint.ADD_BROKER ?
           request.getParameter(THROTTLE_ADDED_BROKER_PARAM) : request.getParameter(THROTTLE_REMOVED_BROKER_PARAM);
       throttleAddedOrRemovedBrokers = throttleBrokerString == null || Boolean.parseBoolean(throttleBrokerString);
-      String goalsString = request.getParameter(GOALS_PARAM);
-      // TODO: Handle urlencoded value (%2C instead of ,)
-      goals = goalsString == null || goalsString.isEmpty() ? Collections.emptyList() : Arrays.asList(goalsString.split(","));
-      goals.removeIf(String::isEmpty);
-      String dataFromString = request.getParameter(DATA_FROM_PARAM);
-      if (dataFromString != null) {
-        dataFrom = DataFrom.valueOf(dataFromString);
-      }
+
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-    GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(goals, dataFrom, false);
+    GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(request, response, goals, dataFrom, false);
+    if (goalsAndRequirements == null) {
+      return false;
+    }
     // Get proposals asynchronously.
     GoalOptimizer.OptimizerResult optimizerResult;
     if (endPoint == EndPoint.ADD_BROKER) {
-      optimizerResult = 
-          getAndMaybeReturnProgress(request, response, 
-                                    () -> _asyncKafkaCruiseControl.addBrokers(brokerIds, 
-                                                                              dryrun, 
-                                                                              throttleAddedOrRemovedBrokers, 
-                                                                              goalsAndRequirements.goals(), 
+      optimizerResult =
+          getAndMaybeReturnProgress(request, response,
+                                    () -> _asyncKafkaCruiseControl.addBrokers(brokerIds,
+                                                                              dryrun,
+                                                                              throttleAddedOrRemovedBrokers,
+                                                                              goalsAndRequirements.goals(),
                                                                               goalsAndRequirements.requirements()));
     } else {
-      optimizerResult = 
+      optimizerResult =
           getAndMaybeReturnProgress(request, response,
-                                    () -> _asyncKafkaCruiseControl.decommissionBrokers(brokerIds, 
-                                                                                       dryrun, 
-                                                                                       throttleAddedOrRemovedBrokers, 
-                                                                                       goalsAndRequirements.goals(), 
+                                    () -> _asyncKafkaCruiseControl.decommissionBrokers(brokerIds,
+                                                                                       dryrun,
+                                                                                       throttleAddedOrRemovedBrokers,
+                                                                                       goalsAndRequirements.goals(),
                                                                                        goalsAndRequirements.requirements()));
     }
     if (optimizerResult == null) {
@@ -874,25 +894,20 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private boolean rebalance(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean dryrun;
-    DataFrom dataFrom = DataFrom.VALID_WINDOWS; // default to with available windows.
+    DataFrom dataFrom;
     List<String> goals;
     try {
-      String dryrunString = request.getParameter(DRY_RUN_PARAM);
-      dryrun = dryrunString == null || Boolean.parseBoolean(dryrunString);
-
-      String goalsString = request.getParameter(GOALS_PARAM);
-      goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
-      goals.removeIf(String::isEmpty);
-
-      String dataFromString = request.getParameter(DATA_FROM_PARAM);
-      if (dataFromString != null) {
-        dataFrom = DataFrom.valueOf(dataFromString);
-      }
+      dryrun = getDryRun(request);
+      goals = getGoals(request);
+      dataFrom = getDataFrom(request);
     } catch (Exception e) {
       throw new UserRequestException(e);
     }
-    GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(goals, dataFrom, false);
-    GoalOptimizer.OptimizerResult optimizerResult = 
+    GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(request, response, goals, dataFrom, false);
+    if (goalsAndRequirements == null) {
+      return false;
+    }
+    GoalOptimizer.OptimizerResult optimizerResult =
         getAndMaybeReturnProgress(request, response,
                                   () -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
                                                                            dryrun,
@@ -917,12 +932,44 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return true;
   }
 
+  private boolean getDryRun(HttpServletRequest request) {
+    String dryrunString = request.getParameter(DRY_RUN_PARAM);
+    return dryrunString == null || Boolean.parseBoolean(dryrunString);
+  }
+
+  private List<String> getGoals(HttpServletRequest request) {
+    List<String> goals;
+    boolean kafkaAssignerMode;
+    String goalsString = request.getParameter(GOALS_PARAM);
+    // TODO: Handle urlencoded value (%2C instead of ,)
+    goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
+    goals.removeIf(String::isEmpty);
+
+    // If KafkaAssigner mode is enabled (default) and goals are not specified, it overrides the goal list.
+    String kafkaAssignerModeString = request.getParameter(KAFKA_ASSIGNER_MODE_PARAM);
+    kafkaAssignerMode = kafkaAssignerModeString != null && Boolean.parseBoolean(kafkaAssignerModeString);
+    if (goals.isEmpty() && kafkaAssignerMode) {
+      goals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
+                            KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());
+    }
+    return goals;
+  }
+
+  private DataFrom getDataFrom(HttpServletRequest request) {
+    DataFrom dataFrom = VALID_WINDOWS; // default to with available windows.
+    String dataFromString = request.getParameter(DATA_FROM_PARAM);
+    if (dataFromString != null) {
+      dataFrom = DataFrom.valueOf(dataFromString);
+    }
+    return dataFrom;
+  }
+
   private void stopProposalExecution() {
     _asyncKafkaCruiseControl.stopProposalExecution();
   }
-  
-  private <T> T getAndMaybeReturnProgress(HttpServletRequest request, 
-                                          HttpServletResponse response, 
+
+  private <T> T getAndMaybeReturnProgress(HttpServletRequest request,
+                                          HttpServletResponse response,
                                           Supplier<OperationFuture<T>> supplier)
       throws ExecutionException, InterruptedException, IOException {
     OperationFuture<T> future = _sessionManager.getAndCreateSessionIfNotExist(request, supplier);
@@ -967,7 +1014,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     response.getOutputStream().write(errorMessage.getBytes(StandardCharsets.UTF_8));
     response.getOutputStream().flush();
   }
-  
+
   private void returnProgress(HttpServletResponse response, OperationFuture future) throws IOException {
     String progressString = future.progressString();
     setResponseCode(response, SC_OK);
@@ -985,15 +1032,20 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private String urlEncode(String s) throws UnsupportedEncodingException {
     return s == null ? null : URLEncoder.encode(s, StandardCharsets.UTF_8.name());
   }
-  
+
   // package private for testing.
-  GoalsAndRequirements getGoalsAndRequirements(List<String> userProvidedGoals,
+  GoalsAndRequirements getGoalsAndRequirements(HttpServletRequest request,
+                                               HttpServletResponse response,
+                                               List<String> userProvidedGoals,
                                                DataFrom dataFrom,
-                                               boolean ignoreCache) {
+                                               boolean ignoreCache) throws Exception {
     if (!userProvidedGoals.isEmpty() || dataFrom == DataFrom.VALID_PARTITIONS) {
       return new GoalsAndRequirements(userProvidedGoals, getRequirements(dataFrom));
     }
-    KafkaCruiseControlState state = _asyncKafkaCruiseControl.state();
+    KafkaCruiseControlState state = getAndMaybeReturnProgress(request, response, _asyncKafkaCruiseControl::state);
+    if (state == null) {
+      return null;
+    }
     int availableWindows = state.monitorState().numValidSnapshotWindows();
     List<String> allGoals = new ArrayList<>();
     List<String> readyGoals = new ArrayList<>();
@@ -1008,8 +1060,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), null);
     } else if (availableWindows > 0) {
       // If some valid windows are available, use it.
-      return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), 
-                                      getRequirements(DataFrom.VALID_WINDOWS));
+      return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(),
+                                      getRequirements(VALID_WINDOWS));
     } else if (readyGoals.size() > 0) {
       // If no window is valid but some goals are ready, use them.
       return new GoalsAndRequirements(readyGoals, null);
@@ -1036,7 +1088,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return _requirements;
     }
   }
-  
+
   enum DataFrom {
     VALID_WINDOWS, VALID_PARTITIONS
   }
