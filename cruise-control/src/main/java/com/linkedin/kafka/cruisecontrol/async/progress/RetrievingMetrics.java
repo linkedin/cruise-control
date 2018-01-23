@@ -5,26 +5,32 @@
 package com.linkedin.kafka.cruisecontrol.async.progress;
 
 /**
- * This is the step when retrieving the workload snapshot from 
+ * This is the step when retrieving the workload snapshot from
  * {@link com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator}
  */
 public class RetrievingMetrics implements OperationStep {
   private final int _totalNumTopics;
   private volatile int _retrievedTopics;
-  
+
   public RetrievingMetrics(int totalNumTopics) {
     _totalNumTopics = totalNumTopics;
     _retrievedTopics = 0;
   }
-  
+
+  /**
+   * Mark the step as finished.
+   */
   public void done() {
     _retrievedTopics = _totalNumTopics;
   }
-  
+
+  /**
+   * Increment the number of retrieved topics by 1.
+   */
   public void incrementRetrievedTopics() {
     _retrievedTopics++;
   }
-  
+
   @Override
   public String name() {
     return "AGGREGATING_METRICS";

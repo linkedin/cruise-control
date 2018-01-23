@@ -370,7 +370,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG = "execution.progress.check.interval.ms";
   private static final String EXECUTION_PROGRESS_CHECK_INTERVAL_MS_DOC = "The interval in milliseconds that the " +
       "executor will check on the execution progress.";
-  
+
   /**
    * <code>goals</code>
    */
@@ -382,10 +382,10 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>default.gaols</code>
    */
   public static final String DEFAULT_GOALS_CONFIG = "default.goals";
-  private static final String DEFAULT_GOALS_DOC = "THe list of goals that will be used by default if no goal list " 
-      + "is provided. This list of goal will also be used for proposal pre computation. If default.goals is not " 
+  private static final String DEFAULT_GOALS_DOC = "The list of goals that will be used by default if no goal list "
+      + "is provided. This list of goal will also be used for proposal pre-computation. If default.goals is not "
       + "specified, it will be default to goals config.";
-  
+
   /**
    * <code>anomaly.notifier.class</code>
    */

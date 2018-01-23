@@ -93,15 +93,25 @@ public class SessionManager {
     HttpSession session = request.getSession();
     SessionInfo info = _inProgressSessions.get(session);
     String requestString = toRequestString(request);
-    if (info != null && info.hasNextFuture()) {
+    // Session exists.
+    if (info != null) {
       LOG.debug("Found existing session {}", session);
       if (!info.requestUrl().equals(requestString)) {
-        throw new IllegalStateException("The session has an ongoing operation " + info.requestUrl()
-                                           + " while it " + "is trying another operation of " + requestString);
-      } else {
+        throw new IllegalStateException("The session has an ongoing operation " + info.requestUrl() +
+                                            " while it is trying another operation of " + requestString);
+      }
+      // If there is next future return it.
+      if (info.hasNextFuture()) {
         return (OperationFuture<T>) info.nextFuture();
+      } else {
+        LOG.debug("Adding new future to existing session {}.", session);
+        // if there is no next future, add the future to the next list.
+        OperationFuture<T> future = operation.get();
+        info.addFuture(future);
+        return future;
       }
     } else {
+      // The session does not exist, add it.
       if (_inProgressSessions.size() >= _capacity) {
         throw new RuntimeException("There are already " + _inProgressSessions.size() + " active sessions, which "
                                        + "has reached the servlet capacity.");
@@ -111,7 +121,7 @@ public class SessionManager {
       OperationFuture<T> future = operation.get();
       info.addFuture(future);
       _inProgressSessions.put(session, info);
-      return future;
+      return (OperationFuture<T>) info.nextFuture();
     }
   }
 
@@ -151,12 +161,9 @@ public class SessionManager {
    * @param request the request whose session needs to be unlocked.
    */
   synchronized void unLockSession(HttpServletRequest request) {
-    HttpSession session = request.getSession(false);
-    if (session != null) {
-      SessionInfo info = _inProgressSessions.get(request.getSession());
-      if (info != null) {
-        info.unlockSession();
-      }
+    SessionInfo info = _inProgressSessions.get(request.getSession());
+    if (info != null) {
+      info.unlockSession();
     }
   }
 
@@ -256,7 +263,8 @@ public class SessionManager {
 
   private String toRequestString(HttpServletRequest request) {
     String s = request.toString();
-    return s.substring(0, s.lastIndexOf('@'));
+    int position = s.lastIndexOf('@');
+    return position > 0? s.substring(0, s.lastIndexOf('@')) : s;
   }
 
   /**
