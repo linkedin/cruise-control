@@ -161,9 +161,12 @@ public class SessionManager {
    * @param request the request whose session needs to be unlocked.
    */
   synchronized void unLockSession(HttpServletRequest request) {
-    SessionInfo info = _inProgressSessions.get(request.getSession());
-    if (info != null) {
-      info.unlockSession();
+    HttpSession session = request.getSession(false);
+    if (session != null) {
+      SessionInfo info = _inProgressSessions.get(session);
+      if (info != null) {
+        info.unlockSession();
+      }
     }
   }
 
