@@ -96,10 +96,7 @@ public class SessionManager {
     // Session exists.
     if (info != null) {
       LOG.debug("Found existing session {}", session);
-      if (!info.requestUrl().equals(requestString)) {
-        throw new IllegalStateException("The session has an ongoing operation " + info.requestUrl() +
-                                            " while it is trying another operation of " + requestString);
-      }
+      info.ensureSameRequest(requestString, request.getParameterMap());
       // If there is next future return it.
       if (info.hasNextFuture()) {
         return (OperationFuture<T>) info.nextFuture();
@@ -117,7 +114,7 @@ public class SessionManager {
                                        + "has reached the servlet capacity.");
       }
       LOG.debug("Created session for {}", session);
-      info = new SessionInfo(requestString);
+      info = new SessionInfo(requestString, request.getParameterMap());
       OperationFuture<T> future = operation.get();
       info.addFuture(future);
       _inProgressSessions.put(session, info);
@@ -212,15 +209,17 @@ public class SessionManager {
    */
   private static class SessionInfo {
     private final String _requestUrl;
+    private final Map<String, String[]> _requestParameters;
     private final List<OperationFuture> _operationFuture;
     private Thread _lockedBy;
     private int _index;
 
-    private SessionInfo(String requestUrl) {
+    private SessionInfo(String requestUrl, Map<String, String[]> requestParameters) {
       _index = 0;
       _lockedBy = Thread.currentThread();
       _operationFuture = new ArrayList<>();
       _requestUrl = requestUrl;
+      _requestParameters = requestParameters;
     }
 
     private void lockSession() {
@@ -262,9 +261,17 @@ public class SessionManager {
       return _requestUrl;
     }
 
+    private void ensureSameRequest(String requestUrl, Map<String, String[]> parameters) {
+      if (!_requestUrl.equals(requestUrl) || !_requestParameters.equals(parameters)) {
+        throw new IllegalStateException(String.format(
+            "The session has an ongoing operation [URL: %s, Parameters: %s] "
+                + "while it is trying another operation of [URL: %s, Parameters: %s].",
+            _requestUrl, _requestParameters, requestUrl, parameters));
+      }
+    }
   }
 
-  private String toRequestString(HttpServletRequest request) {
+  private static String toRequestString(HttpServletRequest request) {
     return String.format("%s(%s %s)",
                          request.getClass().getSimpleName(),
                          request.getMethod(),

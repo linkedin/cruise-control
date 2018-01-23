@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -177,6 +178,7 @@ public class SessionManagerTest {
       EasyMock.expect(request.getSession(false)).andReturn(session).anyTimes();
       EasyMock.expect(request.getMethod()).andReturn("GET").anyTimes();
       EasyMock.expect(request.getRequestURI()).andReturn("/test").anyTimes();
+      EasyMock.expect(request.getParameterMap()).andReturn(Collections.emptyMap()).anyTimes();
       EasyMock.expect(session.getLastAccessedTime()).andReturn(time.milliseconds()).anyTimes();
       if (expectSessionInvalidation) {
         session.invalidate();
