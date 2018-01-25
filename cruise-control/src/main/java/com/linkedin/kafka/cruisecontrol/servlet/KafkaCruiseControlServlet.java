@@ -309,6 +309,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       LOG.error("Why are you failing?", ure);
       String errorMessage = String.format("Bad GET request '%s'", request.getPathInfo());
       returnErrorMessage(response, errorMessage, HttpServletResponse.SC_BAD_REQUEST);
+      _sessionManager.closeSession(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
@@ -316,6 +317,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String errorMessage = String.format("Error processing GET request '%s'%n%s", request.getPathInfo(), sw.toString());
       LOG.error(errorMessage);
       returnErrorMessage(response, errorMessage, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      _sessionManager.closeSession(request);
     } finally {
       _sessionManager.unLockSession(request);
       try {
@@ -400,6 +402,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       LOG.error("Why are you failing?", ure);
       String errorMessage = String.format("Bad POST request '%s'", request.getPathInfo());
       returnErrorMessage(response, errorMessage, HttpServletResponse.SC_BAD_REQUEST);
+      _sessionManager.closeSession(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
@@ -407,6 +410,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String errorMessage = String.format("Error processing POST request '%s'%n%s", request.getPathInfo(), sw.toString());
       LOG.error(errorMessage);
       returnErrorMessage(response, errorMessage, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      _sessionManager.closeSession(request);
     } finally {
       _sessionManager.unLockSession(request);
       try {

@@ -9,10 +9,13 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -261,8 +264,22 @@ public class SessionManager {
       return _requestUrl;
     }
 
+    private boolean paramEquals(Map<String, String[]> parameters) {
+      boolean isSameParameters = _requestParameters.keySet().equals(parameters.keySet());
+      if (isSameParameters) {
+        for (Map.Entry<String, String[]> entry : _requestParameters.entrySet()) {
+          Set<String> param1 = new HashSet<>(Arrays.asList(entry.getValue()));
+          Set<String> param2 = new HashSet<>(Arrays.asList(parameters.get(entry.getKey())));
+          if (!param1.equals(param2)) {
+            return false;
+          }
+        }
+      }
+      return isSameParameters;
+    }
+
     private void ensureSameRequest(String requestUrl, Map<String, String[]> parameters) {
-      if (!_requestUrl.equals(requestUrl) || !_requestParameters.equals(parameters)) {
+      if (!_requestUrl.equals(requestUrl) || !paramEquals(parameters)) {
         throw new IllegalStateException(String.format(
             "The session has an ongoing operation [URL: %s, Parameters: %s] "
                 + "while it is trying another operation of [URL: %s, Parameters: %s].",
