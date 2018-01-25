@@ -48,6 +48,8 @@ public class Partition implements Serializable {
    * Add follower to the partition.
    *
    * @param follower Follower replica.
+   * @param index the index the follower should be at.
+   *
    * @throws ModelInputException
    */
   void addFollower(Replica follower, int index) throws ModelInputException {
@@ -175,9 +177,15 @@ public class Partition implements Serializable {
    * Set the leader to the value specified by the leader parameter.
    *
    * @param leader Leader replica of partition.
+   * @param index the index the leader replica should be at.
    * @throws ModelInputException
    */
   void addLeader(Replica leader, int index) throws ModelInputException {
+    if (_leader != null) {
+      throw new ModelInputException(String.format("Partition %s already has a leader replica %s. Cannot "
+                                                      + "add a new leader replica %s",
+                                                  _tp, _leader, leader));
+    }
     if (!leader.isLeader()) {
       throw new ModelInputException("Inconsistent leadership information. Trying to set " + leader.broker() +
                                     " as the leader for partition " + _tp + " while the replica is not marked as a leader.");

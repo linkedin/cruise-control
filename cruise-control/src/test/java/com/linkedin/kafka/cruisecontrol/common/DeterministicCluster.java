@@ -48,7 +48,7 @@ public class DeterministicCluster {
     ClusterModel cluster = rackAwareSatisfiable();
     TopicPartition pInfoT10 = new TopicPartition("T1", 0);
 
-    cluster.createReplica("1", 2, pInfoT10, 0, false);
+    cluster.createReplica("1", 2, pInfoT10, 2, false);
     cluster.pushLatestSnapshot("1", 2, pInfoT10, new Snapshot(1L, 100.0, 100.0, 130.0, 75.0));
 
     return cluster;
