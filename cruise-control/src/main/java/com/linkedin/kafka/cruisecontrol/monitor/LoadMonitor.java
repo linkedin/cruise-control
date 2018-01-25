@@ -376,9 +376,9 @@ public class LoadMonitor {
    * @throws NotEnoughValidSnapshotsException
    * @throws NotEnoughSnapshotsException
    */
-  public ClusterModel clusterModel(long from, 
-                                   long to, 
-                                   ModelCompletenessRequirements requirements, 
+  public ClusterModel clusterModel(long from,
+                                   long to,
+                                   ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
       throws ModelInputException, NotEnoughValidSnapshotsException, NotEnoughSnapshotsException {
     long start = System.currentTimeMillis();
@@ -393,7 +393,7 @@ public class LoadMonitor {
     Map<TopicPartition, Snapshot[]> loadSnapshots = metricSampleAggregationResult.snapshots();
     GeneratingClusterModel step = new GeneratingClusterModel(loadSnapshots.size());
     operationProgress.addStep(step);
-    
+
     // Create an empty cluster model first.
     long currentLoadGeneration = metricSampleAggregationResult.generation();
     ModelGeneration modelGeneration = new ModelGeneration(clusterAndGeneration.generation(), currentLoadGeneration);
@@ -550,7 +550,7 @@ public class LoadMonitor {
                                                                         progress);
       // Check if the monitored partition percentage is met. If not, we retry get the metric aggregation result.
       if (metricSampleAggregationResult.snapshots().size() < totalNumPartitions * minMonitoredPartitionsPercentage) {
-        LOG.debug("Expecting {} partitions, while get {} partitions", 
+        LOG.debug("Expecting {} partitions, while get {} partitions",
                   totalNumPartitions * minMonitoredPartitionsPercentage,
                   metricSampleAggregationResult.snapshots().size());
         metricSampleAggregationResult = null;
@@ -611,14 +611,21 @@ public class LoadMonitor {
     PartitionInfo partitionInfo = kafkaCluster.partition(tp);
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
-      for (Node replica : partitionInfo.replicas()) {
-        boolean isLeader = partitionInfo.leader() != null && replica.id() == partitionInfo.leader().id();
+      for (int index = 0; index < partitionInfo.replicas().length; index++) {
+        Node replica = partitionInfo.replicas()[index];
+        boolean isLeader;
+        if (partitionInfo.leader() == null) {
+          LOG.warn("Detected offline partition {}-{}, skipping", partitionInfo.topic(), partitionInfo.partition());
+          continue;
+        } else {
+          isLeader = replica.id() == partitionInfo.leader().id();
+        }
         String rack = getRackHandleNull(replica);
         // Note that we assume the capacity resolver can still return the broker capacity even if the broker
         // is dead. We need this to get the host resource capacity.
         Map<Resource, Double> brokerCapacity =
             _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
-        clusterModel.createReplicaHandleDeadBroker(rack, replica.id(), tp, isLeader, brokerCapacity);
+        clusterModel.createReplicaHandleDeadBroker(rack, replica.id(), tp, index, isLeader, brokerCapacity);
         // Push the load snapshot to the replica one by one.
         for (int i = 0; i < leaderLoadSnapshots.length; i++) {
           clusterModel.pushLatestSnapshot(rack, replica.id(), tp,
@@ -678,7 +685,7 @@ public class LoadMonitor {
     Cluster kafkaCluster = clusterAndGeneration.cluster();
     MetricSampleAggregationResult metricSampleAggregationResult;
     try {
-      metricSampleAggregationResult = _metricSampleAggregator.recentSnapshots(kafkaCluster, 
+      metricSampleAggregationResult = _metricSampleAggregator.recentSnapshots(kafkaCluster,
                                                                               System.currentTimeMillis(),
                                                                               new OperationProgress());
     } catch (NotEnoughSnapshotsException e) {

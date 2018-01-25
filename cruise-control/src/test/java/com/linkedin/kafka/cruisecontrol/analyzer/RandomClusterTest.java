@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistri
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
@@ -29,6 +30,7 @@ import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
+import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -78,8 +80,9 @@ public class RandomClusterTest {
     goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
     goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
     goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, LeaderBytesInDistributionGoal.class.getName());
-    goalNameByPriority.put(14, ReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(13, PreferredLeaderElectionGoal.class.getName());
+    goalNameByPriority.put(14, LeaderBytesInDistributionGoal.class.getName());
+    goalNameByPriority.put(15, ReplicaDistributionGoal.class.getName());
 
 
     Map<Integer, String> kafkaAssignerGoals = new HashMap<>();
@@ -87,9 +90,9 @@ public class RandomClusterTest {
     kafkaAssignerGoals.put(2, KafkaAssignerDiskUsageDistributionGoal.class.getName());
 
     List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, DEAD_BROKERS, REGRESSION);
-    List<OptimizationVerifier.Verification> kafkaAssignerVerifications = 
+    List<OptimizationVerifier.Verification> kafkaAssignerVerifications =
         Arrays.asList(GOAL_VIOLATION, DEAD_BROKERS, REGRESSION);
-    
+
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1500L));
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
@@ -132,7 +135,7 @@ public class RandomClusterTest {
       p.add(params(modifiedProperties, goalNameByPriority, distribution, balancingConstraint, verifications));
       p.add(params(modifiedProperties, kafkaAssignerGoals, distribution, balancingConstraint, kafkaAssignerVerifications));
     }
-    
+
     return p;
   }
 
@@ -204,7 +207,9 @@ public class RandomClusterTest {
       clusterWithNewBroker.createRack(b.rack().id());
       clusterWithNewBroker.createBroker(b.rack().id(), Integer.toString(b.id()), b.id(), TestConstants.BROKER_CAPACITY);
       for (Replica replica : b.replicas()) {
-        clusterWithNewBroker.createReplica(b.rack().id(), b.id(), replica.topicPartition(), replica.isLeader());
+        Partition p = clusterWithNewBroker.partition(replica.topicPartition());
+        int index = p == null ? 0 : p.replicas().size();
+        clusterWithNewBroker.createReplica(b.rack().id(), b.id(), replica.topicPartition(), index, replica.isLeader());
       }
     }
 
@@ -227,7 +232,7 @@ public class RandomClusterTest {
     }
 
     assertTrue("Random Cluster Test failed to improve the existing state.",
-               OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterWithNewBroker, _goalNameByPriority, 
+               OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterWithNewBroker, _goalNameByPriority,
                                                     _verifications));
   }
 }

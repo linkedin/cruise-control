@@ -11,9 +11,9 @@ import javax.servlet.http.HttpSession;
 
 
 /**
- * A class to track the progress of a task. This class is used to allow different users to trigger 
- * an endpoint which may take a while for Cruise Control to respond, e.g. getting a complicated proposal. 
- * Cruise Control will use {@link HttpSession} to keep track the progress of such requests and 
+ * A class to track the progress of a task. This class is used to allow different users to trigger
+ * an endpoint which may take a while for Cruise Control to respond, e.g. getting a complicated proposal.
+ * Cruise Control will use {@link HttpSession} to keep track the progress of such requests and
  * report the progress to the users.
  */
 public class OperationProgress {
@@ -34,10 +34,10 @@ public class OperationProgress {
   /**
    * Refer this operation progress to another one. This is useful when multiple operations are waiting for the
    * same background task to finish.
-   * 
+   *
    * Once this OperationProgress is referring to another OperationProgress, this OperationProgress becomes immutable
    * to avoid accidental change of the referred OperationProgress.
-   * 
+   *
    * @param other the other operation progress to refer to.
    */
   public void refer(OperationProgress other) {
@@ -71,19 +71,19 @@ public class OperationProgress {
     _steps.clear();
     _startTimes.clear();
   }
-  
+
   @Override
   public synchronized String toString() {
     StringBuilder sb = new StringBuilder();
     for (int i = 0; i < _steps.size(); i++) {
       OperationStep step = _steps.get(i);
       long time = (i == _steps.size() - 1 ? System.currentTimeMillis() : _startTimes.get(i + 1)) - _startTimes.get(i);
-      sb.append(String.format("(%6d ms) - %s (%.1f%%): %s%n", 
-                              time, step.name(), step.completionPercentage() * 100, step.description()));
+      sb.append(String.format("(%6d ms) - (%3.1f%%) %s: %s%n",
+                              time,  step.completionPercentage() * 100, step.name(), step.description()));
     }
     return sb.toString();
   }
-  
+
   private void ensureMutable() {
     if (!_mutable) {
       throw new IllegalStateException("Cannot change this operation progress because it is immutable.");

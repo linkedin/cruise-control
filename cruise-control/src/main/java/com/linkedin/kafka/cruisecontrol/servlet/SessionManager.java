@@ -87,12 +87,14 @@ public class SessionManager {
    *
    * @param request the HttpServletRequest to create session for.
    * @param operation the async operation that returns an {@link OperationFuture}
+   * @param step the index of the step whose future needs to be added or get.
    *
    * @return the {@link OperationFuture} for the provided async operation.
    */
   @SuppressWarnings("unchecked")
   synchronized <T> OperationFuture<T> getAndCreateSessionIfNotExist(HttpServletRequest request,
-                                                                    Supplier<OperationFuture<T>> operation) {
+                                                                    Supplier<OperationFuture<T>> operation,
+                                                                    int step) {
     HttpSession session = request.getSession();
     SessionInfo info = _inProgressSessions.get(session);
     String requestString = toRequestString(request);
@@ -101,16 +103,22 @@ public class SessionManager {
       LOG.debug("Found existing session {}", session);
       info.ensureSameRequest(requestString, request.getParameterMap());
       // If there is next future return it.
-      if (info.hasNextFuture()) {
-        return (OperationFuture<T>) info.nextFuture();
-      } else {
+      if (step < info.numFutures()) {
+        return (OperationFuture<T>) info.future(step);
+      } else if (step == info.numFutures()) {
         LOG.debug("Adding new future to existing session {}.", session);
         // if there is no next future, add the future to the next list.
         OperationFuture<T> future = operation.get();
         info.addFuture(future);
         return future;
+      } else {
+        throw new IllegalArgumentException(String.format("There are %d steps in the session. Cannot add step %d.",
+                                                         info.numFutures(), step));
       }
     } else {
+      if (step > 0) {
+        throw new IllegalArgumentException(String.format("There are no step in the session. Cannot add step %d.", step));
+      }
       // The session does not exist, add it.
       if (_inProgressSessions.size() >= _capacity) {
         throw new RuntimeException("There are already " + _inProgressSessions.size() + " active sessions, which "
@@ -121,7 +129,7 @@ public class SessionManager {
       OperationFuture<T> future = operation.get();
       info.addFuture(future);
       _inProgressSessions.put(session, info);
-      return (OperationFuture<T>) info.nextFuture();
+      return future;
     }
   }
 
@@ -141,33 +149,6 @@ public class SessionManager {
                                          + "is trying another operation of " + toRequestString(request));
     }
     return (T) info.lastFuture();
-  }
-
-  /**
-   * Reinitialize the session state and lock the session to avoid the same session being used by another thread.
-   *
-   * @param request the request whose session needs to be reinitialized and locked.
-   */
-  synchronized void reinitAndLockSession(HttpServletRequest request) {
-    SessionInfo info = _inProgressSessions.get(request.getSession());
-    if (info != null) {
-      info.lockSession();
-      info.resetIndex();
-    }
-  }
-
-  /**
-   * Unlock the session of the request.
-   * @param request the request whose session needs to be unlocked.
-   */
-  synchronized void unLockSession(HttpServletRequest request) {
-    HttpSession session = request.getSession(false);
-    if (session != null) {
-      SessionInfo info = _inProgressSessions.get(session);
-      if (info != null) {
-        info.unlockSession();
-      }
-    }
   }
 
   /**
@@ -214,46 +195,23 @@ public class SessionManager {
     private final String _requestUrl;
     private final Map<String, String[]> _requestParameters;
     private final List<OperationFuture> _operationFuture;
-    private Thread _lockedBy;
-    private int _index;
 
     private SessionInfo(String requestUrl, Map<String, String[]> requestParameters) {
-      _index = 0;
-      _lockedBy = Thread.currentThread();
       _operationFuture = new ArrayList<>();
       _requestUrl = requestUrl;
       _requestParameters = requestParameters;
     }
 
-    private void lockSession() {
-      if (_lockedBy != null && _lockedBy != Thread.currentThread()) {
-        throw new IllegalStateException("The session is locked by another thread.");
-      }
-      _lockedBy = Thread.currentThread();
-    }
-
-    private void unlockSession() {
-      if (_lockedBy != null && _lockedBy == Thread.currentThread()) {
-        _lockedBy = null;
-      }
+    private int numFutures() {
+      return _operationFuture.size();
     }
 
     private void addFuture(OperationFuture future) {
       _operationFuture.add(future);
     }
 
-    private boolean hasNextFuture() {
-      return _index < _operationFuture.size();
-    }
-
-    private void resetIndex() {
-      _index = 0;
-    }
-
-    private OperationFuture nextFuture() {
-      OperationFuture future = _operationFuture.get(_index);
-      _index++;
-      return future;
+    private OperationFuture future(int index) {
+      return _operationFuture.get(index);
     }
 
     private OperationFuture lastFuture() {

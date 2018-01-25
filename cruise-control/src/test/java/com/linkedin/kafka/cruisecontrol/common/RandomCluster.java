@@ -260,10 +260,10 @@ public class RandomCluster {
             utilizationByResource.put(Resource.NW_OUT,
                 exponentialRandom(properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() * topicPopularity,
                     randomByResource.get(Resource.NW_OUT)));
-            cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, true);
+            cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, j - 1, true);
           } else {
             utilizationByResource.put(Resource.NW_OUT, 0.0);
-            cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, false);
+            cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, j - 1, false);
           }
           cluster.pushLatestSnapshot(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo,
               new Snapshot(1L, utilizationByResource.get(Resource.CPU), utilizationByResource.get(Resource.NW_IN),

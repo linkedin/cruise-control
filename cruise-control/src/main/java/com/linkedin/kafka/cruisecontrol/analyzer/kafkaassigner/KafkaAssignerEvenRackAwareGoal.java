@@ -120,10 +120,14 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
           if (shouldExclude(partition, position, excludedTopics)) {
             continue;
           }
+          // Ensure the first replica is the leader.
+          if (partition.replicas().get(0) != partition.leader()) {
+            partition.swapReplicaPositions(0, partition.replicas().indexOf(partition.leader()));
+          }
           // Apply the necessary move (if needed).
           if (!maybeApplyMove(clusterModel, partition, position)) {
             throw new OptimizationFailureException(
-                String.format("Unable to apply move for replica %s.", replicaInPositionFor(partition, position)));
+                String.format("Unable to apply move for replica %s.", replicaAtPosition(partition, position)));
           }
         }
       }
@@ -146,61 +150,61 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * (4) the current replica under consideration, do nothing -- i.e. do not move replica or swap positions.
    *
    * @param clusterModel The state of the cluster.
-   * @param sourcePartition The partition whose replica might be moved.
+   * @param partition The partition whose replica might be moved.
    * @param replicaPosition The position of the replica in the given partition.
    * @return true if a move is applied, false otherwise.
    */
-  private boolean maybeApplyMove(ClusterModel clusterModel, Partition sourcePartition, int replicaPosition)
+  private boolean maybeApplyMove(ClusterModel clusterModel, Partition partition, int replicaPosition)
       throws AnalysisInputException, ModelInputException {
-    // Initialize ineligible broker rack ids based on rack-awareness.
-    Set<String> ineligibleBrokersRackIds = new HashSet<>();
+    // Racks with replica whose position is in [0, replicaPosition - 1] are ineligible for assignment.
+    Set<String> ineligibleRackIds = new HashSet<>();
     for (int pos = 0; pos < replicaPosition; pos++) {
-      Replica replica = replicaInPositionFor(sourcePartition, pos);
-      ineligibleBrokersRackIds.add(replica.broker().rack().id());
+      Replica replica = replicaAtPosition(partition, pos);
+      ineligibleRackIds.add(replica.broker().rack().id());
     }
     // Find an eligible destination and apply the relevant move.
     BrokerReplicaCount eligibleBrokerReplicaCount = null;
     for (final Iterator<BrokerReplicaCount> it = _healthyBrokerReplicaCountByPosition.get(replicaPosition).iterator();
          it.hasNext(); ) {
-      BrokerReplicaCount healthyBrokerReplicaCount = it.next();
-      if (ineligibleBrokersRackIds.contains(healthyBrokerReplicaCount.broker().rack().id())) {
+      BrokerReplicaCount destinationBrokerReplicaCount = it.next();
+      if (ineligibleRackIds.contains(destinationBrokerReplicaCount.broker().rack().id())) {
         continue;
       }
 
       // Get the replica in the destination broker (if any)
-      Replica destinationReplica = replicaInBrokerFor(sourcePartition, healthyBrokerReplicaCount.broker().id());
-      Broker destinationBroker = healthyBrokerReplicaCount.broker();
-      Replica sourceReplica = replicaInPositionFor(sourcePartition, replicaPosition);
+      Broker destinationBroker = destinationBrokerReplicaCount.broker();
+      Replica destinationReplica = destinationBroker.replica(partition.topicPartition());
+      Replica replicaAtPosition = partition.replicas().get(replicaPosition);
 
       if (destinationReplica == null) {
         // The destination broker has no replica from the source partition: move the source replica to the destination broker.
         LOG.trace("Destination broker {} has no other replica from the same partition, move the replica {} to there.",
-                  destinationBroker, sourceReplica);
-        applyBalancingAction(clusterModel, sourceReplica, destinationBroker, BalancingAction.REPLICA_MOVEMENT);
-      } else if (destinationBroker.id() != sourceReplica.broker().id() && sourceReplica.broker().isAlive()) {
+                  destinationBroker, replicaAtPosition);
+        applyBalancingAction(clusterModel, replicaAtPosition, destinationBroker, BalancingAction.REPLICA_MOVEMENT);
+      } else if (destinationBroker.id() != replicaAtPosition.broker().id() && replicaAtPosition.broker().isAlive()) {
         // The destination broker contains a replica from the source partition AND the destination broker is different
         // from the source replica broker AND the source broker is alive. Hence, we can safely swap replica positions.
         LOG.trace("Destination broker has a replica {} with a larger position than source replica {}, swap positions.",
-                  destinationReplica, sourceReplica);
+                  destinationReplica, replicaAtPosition);
         if (replicaPosition == 0) {
           // Transfer leadership -- i.e swap the position of leader with its follower in destination broker.
-          applyBalancingAction(clusterModel, sourceReplica, destinationBroker, BalancingAction.LEADERSHIP_MOVEMENT);
+          applyBalancingAction(clusterModel, replicaAtPosition, destinationBroker, BalancingAction.LEADERSHIP_MOVEMENT);
         } else {
           // Swap the follower position of this replica with the follower position of destination replica.
-          int otherPos = followerPosition(sourcePartition, destinationBroker.id());
-          sourcePartition.swapFollowerPositions(replicaPosition - 1, otherPos - 1);
+          int destinationPos = followerPosition(partition, destinationBroker.id());
+          partition.swapFollowerPositions(replicaPosition, destinationPos);
         }
-      } else if (!sourceReplica.broker().isAlive()) {
+      } else if (!replicaAtPosition.broker().isAlive()) {
         // The broker of source replica is dead. Hence, we have to move the source replica away from it. But, destination
         // broker contains a replica from the same source partition. This prevents moving the source replica to it.
         LOG.trace("Source broker {} is dead and either the destination broker {} is the same as the source, or has a "
-                  + "replica from the same partition.", sourceReplica.broker(), destinationBroker);
+                  + "replica from the same partition.", replicaAtPosition.broker(), destinationBroker);
         // Unable apply any valid move.
         continue;
       }
       // Increment the replica count on the destination. Note that if the source and the destination brokers are the
       // same, then the source replica will simply stay in the same broker.
-      eligibleBrokerReplicaCount = healthyBrokerReplicaCount;
+      eligibleBrokerReplicaCount = destinationBrokerReplicaCount;
       it.remove();
       break;
     }
@@ -223,9 +227,9 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * @return the position of follower that is part of the given partition and reside in the broker with the given id.
    */
   private int followerPosition(Partition partition, int brokerId) {
-    int followerPos = 1;
-    for (Broker follower: partition.followerBrokers()) {
-      if (follower.id() == brokerId) {
+    int followerPos = 0;
+    for (Replica replica: partition.replicas()) {
+      if (replica.broker().id() == brokerId) {
         return followerPos;
       }
       followerPos++;
@@ -260,26 +264,26 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * @param sourcePartition Partition whose replica will be returned.
    * @param position The position of replica in the partition, i.e. 0 means leader, 1 is the first follower, and so on.
    */
-  private Replica replicaInPositionFor(Partition sourcePartition, int position) {
+  private Replica replicaAtPosition(Partition sourcePartition, int position) {
     if (position == 0) {
       return sourcePartition.leader();
     }
-    return sourcePartition.followers().get(position - 1);
+    return sourcePartition.replicas().get(position);
   }
 
   /**
    * Get replica of the given partition residing in the broker with the given brokerId. If there is no replica of the
    * given partition in the broker with the given brokerId, return null.
    *
-   * @param sourcePartition Partition whose replica will be returned (if any).
+   * @param partition Partition whose replica will be returned (if any).
    * @param brokerId The id of the broker in which the replica resides (if any).
    */
-  private Replica replicaInBrokerFor(Partition sourcePartition, int brokerId) {
-    if (sourcePartition.leader().broker().id() == brokerId) {
-      return sourcePartition.leader();
+  private Replica replicaInBrokerFor(Partition partition, int brokerId) {
+    if (partition.leader().broker().id() == brokerId) {
+      return partition.leader();
     }
 
-    for (Replica replica : sourcePartition.followers()) {
+    for (Replica replica : partition.followers()) {
       if (replica.broker().id() == brokerId) {
         return replica;
       }
@@ -297,7 +301,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * @return True if the replica should be excluded, false otherwise.
    */
   private boolean shouldExclude(Partition partition, int position, Set<String> excludedTopics) {
-    Replica replica = replicaInPositionFor(partition, position);
+    Replica replica = replicaAtPosition(partition, position);
     return excludedTopics.contains(replica.topicPartition().topic()) && replica.originalBroker().isAlive();
   }
 
