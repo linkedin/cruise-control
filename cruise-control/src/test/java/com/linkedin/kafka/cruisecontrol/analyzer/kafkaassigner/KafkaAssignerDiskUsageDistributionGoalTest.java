@@ -38,11 +38,11 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
   private static final String TOPIC0 = "topic0";
   private static final String TOPIC1 = "topic1";
   private static final String TOPIC2 = "topic2";
-  
-  private static final TopicPartition T0P0 = new TopicPartition(TOPIC0, 0); 
-  private static final TopicPartition T0P1 = new TopicPartition(TOPIC0, 1); 
+
+  private static final TopicPartition T0P0 = new TopicPartition(TOPIC0, 0);
+  private static final TopicPartition T0P1 = new TopicPartition(TOPIC0, 1);
   private static final TopicPartition T0P2 = new TopicPartition(TOPIC0, 2);
-  
+
   private static final TopicPartition T1P0 = new TopicPartition(TOPIC1, 0);
   private static final TopicPartition T1P1 = new TopicPartition(TOPIC1, 1);
   private static final TopicPartition T1P2 = new TopicPartition(TOPIC1, 2);
@@ -50,12 +50,12 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
   private static final TopicPartition T2P0 = new TopicPartition(TOPIC2, 0);
   private static final TopicPartition T2P1 = new TopicPartition(TOPIC2, 1);
   private static final TopicPartition T2P2 = new TopicPartition(TOPIC2, 2);
-  
+
   @Test
   public void testCanSwap() throws ModelInputException {
     KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal();
     ClusterModel clusterModel = createClusterModel();
-    
+
     Replica r1 = clusterModel.broker(0).replica(T0P0);
     Replica r2 = clusterModel.broker(1).replica(T2P0);
     assertTrue("Replicas in the same rack should be good to swap", goal.canSwap(r1, r2, clusterModel));
@@ -72,13 +72,13 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     r2 = clusterModel.broker(3).replica(T2P2);
     assertFalse("Should not be able to put two replicas in the same rack", goal.canSwap(r1, r2, clusterModel));
     assertFalse("Should not be able to put two replicas in the same rack", goal.canSwap(r2, r1, clusterModel));
-    
+
     r1 = clusterModel.broker(3).replica(T0P2);
     r2 = clusterModel.broker(4).replica(T1P2);
     assertTrue("Should be able to swap", goal.canSwap(r1, r2, clusterModel));
     assertTrue("Should be able to swap", goal.canSwap(r2, r1, clusterModel));
   }
-  
+
   @Test
   public void testFindReplicaToSwapWith() throws KafkaCruiseControlException {
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
@@ -87,12 +87,12 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal(balancingConstraint);
     ClusterModel clusterModel = createClusterModel();
-    
+
     Broker b2 = clusterModel.broker(2);
     Replica r = b2.replica(T0P1);
-    assertNull(goal.findReplicaToSwapWith(r, sortedReplicaAscend(clusterModel.broker(1)), 
+    assertNull(goal.findReplicaToSwapWith(r, sortedReplicaAscend(clusterModel.broker(1)),
                                           30, 10, 90, clusterModel));
-    
+
     // The replicas on broker 3 are of the following sizes
     // T0P0: 10
     // T0P2: 20
@@ -117,9 +117,9 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     findReplicaToSwapWithAndVerify(Arrays.asList(-1.0, 5.0, 10.0, 20.0, 21.0, 60.0, 100.0),
                                    Arrays.asList(null, null, null, null, null, null, null),
                                    10, 30, r, 3, clusterModel, goal);
-    
+
   }
-  
+
   @Test
   public void testSwapReplicas() throws ModelInputException, AnalysisInputException {
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
@@ -128,7 +128,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal(balancingConstraint);
     ClusterModel clusterModel = createClusterModel();
-    
+
     double meanDiskUsage = clusterModel.load().expectedUtilizationFor(DISK) / clusterModel.capacityFor(DISK);
     assertTrue(goal.swapReplicas(clusterModel.broker(0),
                                  clusterModel.broker(1),
@@ -136,9 +136,9 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
                                  clusterModel,
                                  Collections.emptySet()));
 
-    assertFalse(goal.swapReplicas(clusterModel.broker(0), 
-                                  clusterModel.broker(2), 
-                                  meanDiskUsage, 
+    assertFalse(goal.swapReplicas(clusterModel.broker(0),
+                                  clusterModel.broker(2),
+                                  meanDiskUsage,
                                   clusterModel,
                                   Collections.emptySet()));
 
@@ -148,7 +148,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
                                  clusterModel,
                                  Collections.emptySet()));
   }
-  
+
   @Test
   public void test() throws KafkaCruiseControlException {
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
@@ -157,13 +157,13 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal(balancingConstraint);
     ClusterModel clusterModel = createClusterModel();
-    
+
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
     for (Broker b : clusterModel.brokers()) {
       System.out.println("Broker " + b.id() + " = " + b.load().expectedUtilizationFor(DISK));
     }
   }
-  
+
   private void findReplicaToSwapWithAndVerify(List<Double> targetSizes,
                                               List<TopicPartition> expectedResults,
                                               double minSize,
@@ -174,12 +174,12 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
                                               KafkaAssignerDiskUsageDistributionGoal goal) {
     for (int i = 0; i < targetSizes.size(); i++) {
       Replica toSwapWith =
-          goal.findReplicaToSwapWith(replica, sortedReplicaAscend(clusterModel.broker(brokerIdToSwapWith)), 
+          goal.findReplicaToSwapWith(replica, sortedReplicaAscend(clusterModel.broker(brokerIdToSwapWith)),
                                      targetSizes.get(i), minSize, maxSize, clusterModel);
-      assertEquals(String.format("Wrong answer for targetSize = %f. Expected %s, but the result was %s", 
-                                 targetSizes.get(i), expectedResults.get(i), toSwapWith), 
+      assertEquals(String.format("Wrong answer for targetSize = %f. Expected %s, but the result was %s",
+                                 targetSizes.get(i), expectedResults.get(i), toSwapWith),
                    expectedResults.get(i), toSwapWith == null ? null : toSwapWith.topicPartition());
-     
+
     }
   }
 
@@ -195,11 +195,11 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
 
   /**
    * The replica distribution is as below.
-   * 
+   *
    * L - Leader
    * F - Follower
    * S - Secondary Follower
-   * 
+   *
    *         r0             r1         r2          r3
    *        /  \             |          |           |
    *      b0    b1          b2         b3          b4
@@ -215,7 +215,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
    * b2: 360
    * b3: 250
    * b4: 290
-   * 
+   *
    * The average broker size should be: 270
    */
   private ClusterModel createClusterModel() throws ModelInputException {
@@ -236,14 +236,14 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     snapshots.put(T2P0, new Snapshot(0, 0.0, 0.0, 0.0, 40));
     snapshots.put(T2P1, new Snapshot(0, 0.0, 0.0, 0.0, 60));
     snapshots.put(T2P2, new Snapshot(0, 0.0, 0.0, 0.0, 50));
-    
+
     final int numRacks = 4;
     ClusterModel clusterModel = new ClusterModel(new ModelGeneration(0, 0),
                                                  1.0);
     for (int i = 0; i < numRacks; i++) {
       clusterModel.createRack("r" + i);
     }
-    
+
     int i = 0;
     for (; i < 2; i++) {
       clusterModel.createBroker("r0", "h" + i, i, TestConstants.BROKER_CAPACITY);
@@ -251,38 +251,37 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     for (int j = 1; j < numRacks; j++, i++) {
       clusterModel.createBroker("r" + j, "h" + i, i, TestConstants.BROKER_CAPACITY);
     }
-    
-    clusterModel.createReplica("r0", 0, T0P0, true);
-    clusterModel.createReplica("r0", 0, T1P2, true);
-    clusterModel.createReplica("r0", 0, T0P2, false);
-    clusterModel.createReplica("r0", 0, T2P1, false);
-    clusterModel.createReplica("r0", 0, T1P1, false);
-    
-    clusterModel.createReplica("r0", 1, T0P1, true);
-    clusterModel.createReplica("r0", 1, T2P0, true);
-    clusterModel.createReplica("r0", 1, T1P0, false);
-    clusterModel.createReplica("r0", 1, T2P2, false);
 
-    clusterModel.createReplica("r1", 2, T0P2, true);
-    clusterModel.createReplica("r1", 2, T2P1, true);
-    clusterModel.createReplica("r1", 2, T0P1, false);
-    clusterModel.createReplica("r1", 2, T2P0, false);
-    clusterModel.createReplica("r1", 2, T1P0, false);
-    clusterModel.createReplica("r1", 2, T1P2, false);
+    clusterModel.createReplica("r0", 0, T0P0, 0, true);
+    clusterModel.createReplica("r0", 0, T1P2, 0, true);
+    clusterModel.createReplica("r0", 1, T0P1, 0, true);
+    clusterModel.createReplica("r0", 1, T2P0, 0, true);
+    clusterModel.createReplica("r1", 2, T0P2, 0, true);
+    clusterModel.createReplica("r1", 2, T2P1, 0, true);
+    clusterModel.createReplica("r2", 3, T1P0, 0, true);
+    clusterModel.createReplica("r2", 3, T2P2, 0, true);
+    clusterModel.createReplica("r3", 4, T1P1, 0, true);
 
-    clusterModel.createReplica("r2", 3, T1P0, true);
-    clusterModel.createReplica("r2", 3, T2P2, true);
-    clusterModel.createReplica("r2", 3, T1P1, false);
-    clusterModel.createReplica("r2", 3, T0P0, false);
-    clusterModel.createReplica("r2", 3, T0P2, false);
-    clusterModel.createReplica("r2", 3, T2P1, false);
+    clusterModel.createReplica("r0", 0, T0P2, 1, false);
+    clusterModel.createReplica("r0", 0, T2P1, 1, false);
+    clusterModel.createReplica("r0", 1, T1P0, 1, false);
+    clusterModel.createReplica("r0", 1, T2P2, 1, false);
+    clusterModel.createReplica("r1", 2, T0P1, 1, false);
+    clusterModel.createReplica("r1", 2, T2P0, 1, false);
+    clusterModel.createReplica("r2", 3, T1P1, 1, false);
+    clusterModel.createReplica("r3", 4, T0P0, 1, false);
+    clusterModel.createReplica("r3", 4, T1P2, 1, false);
 
-    clusterModel.createReplica("r3", 4, T1P1, true);
-    clusterModel.createReplica("r3", 4, T0P0, false);
-    clusterModel.createReplica("r3", 4, T1P2, false);
-    clusterModel.createReplica("r3", 4, T0P1, false);
-    clusterModel.createReplica("r3", 4, T2P0, false);
-    clusterModel.createReplica("r3", 4, T2P2, false);
+
+    clusterModel.createReplica("r0", 0, T1P1, 2, false);
+    clusterModel.createReplica("r1", 2, T1P0, 2, false);
+    clusterModel.createReplica("r1", 2, T1P2, 2, false);
+    clusterModel.createReplica("r2", 3, T0P0, 2, false);
+    clusterModel.createReplica("r2", 3, T0P2, 2, false);
+    clusterModel.createReplica("r2", 3, T2P1, 2, false);
+    clusterModel.createReplica("r3", 4, T0P1, 2, false);
+    clusterModel.createReplica("r3", 4, T2P0, 2, false);
+    clusterModel.createReplica("r3", 4, T2P2, 2, false);
 
 
     clusterModel.pushLatestSnapshot("r0", 0, T0P0, snapshots.get(T0P0).duplicate());

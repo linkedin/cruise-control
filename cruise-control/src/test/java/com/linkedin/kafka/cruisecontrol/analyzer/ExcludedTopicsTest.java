@@ -171,7 +171,7 @@ public class ExcludedTopicsTest {
       // for excluded topic, Expected to look optimized)
       p.add(params(3, goalClass, excludeAllTopics, null, unbalanced(), deadBroker0, true));
     }
-    
+
     // With excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
     p.add(params(0, KafkaAssignerEvenRackAwareGoal.class, excludeT1, null,
                  DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
@@ -196,7 +196,7 @@ public class ExcludedTopicsTest {
     // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
     p.add(params(7, KafkaAssignerEvenRackAwareGoal.class, noExclusion, OptimizationFailureException.class,
                  DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
-    
+
     return p;
   }
 
@@ -304,8 +304,8 @@ public class ExcludedTopicsTest {
     TopicPartition pInfoT20 = new TopicPartition("T2", 0);
 
     // Create replicas for topic: T1.
-    cluster.createReplica("0", 0, pInfoT10, true);
-    cluster.createReplica("0", 0, pInfoT20, true);
+    cluster.createReplica("0", 0, pInfoT10, 0, true);
+    cluster.createReplica("0", 0, pInfoT20, 0, true);
 
     // Create snapshots and push them to the cluster.
     cluster.pushLatestSnapshot("0", 0, pInfoT10, new Snapshot(1L,

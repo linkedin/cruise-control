@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.Future;
-import java.util.concurrent.atomic.AtomicBoolean;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 import org.apache.kafka.common.utils.MockTime;
@@ -33,7 +32,8 @@ public class SessionManagerTest {
     SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry());
 
     sessionManager.getAndCreateSessionIfNotExist(context.request(0),
-                                                 () -> new OperationFuture<>("testCreateSession"));
+                                                 () -> new OperationFuture<>("testCreateSession"),
+                                                 0);
     assertEquals(1, sessionManager.numSessions());
 
     sessionManager.closeSession(context.request(0));
@@ -48,7 +48,8 @@ public class SessionManagerTest {
     List<OperationFuture<Integer>> futures = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
       futures.add(sessionManager.getAndCreateSessionIfNotExist(context.request(i),
-                                                               () -> new OperationFuture<>("testSessionExpiration")));
+                                                               () -> new OperationFuture<>("testSessionExpiration"),
+                                                               0));
     }
     assertEquals(2, sessionManager.numSessions());
 
@@ -76,47 +77,22 @@ public class SessionManagerTest {
     SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry());
 
     sessionManager.getAndCreateSessionIfNotExist(context.request(0),
-                                                 () -> new OperationFuture<>("testCreateSession"));
+                                                 () -> new OperationFuture<>("testCreateSession"),
+                                                 0);
     assertEquals(1, sessionManager.numSessions());
     assertNull(sessionManager.getFuture(context.request(1)));
     // Adding same request again should have no impact
     sessionManager.getAndCreateSessionIfNotExist(context.request(0),
-                                                 () -> new OperationFuture<>("testCreateSession"));
+                                                 () -> new OperationFuture<>("testCreateSession"),
+                                                 1);
     assertEquals(1, sessionManager.numSessions());
 
     try {
       sessionManager.getAndCreateSessionIfNotExist(context.request(1),
-                                                   () -> new OperationFuture<>("testCreateSession"));
+                                                   () -> new OperationFuture<>("testCreateSession"),
+                                                   0);
       fail("Should have thrown exception due to session capacity reached.");
     } catch (RuntimeException e) {
-      // let it go.
-    }
-  }
-
-  @Test
-  public void testMultiThreadOnSameSession() throws InterruptedException {
-    TestContext context = prepareRequests(false, 1);
-    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry());
-
-    // Lock the session.
-    sessionManager.getAndCreateSessionIfNotExist(context.request(0),
-                                                 () -> new OperationFuture<>("testMultiThreadOnSameSession"));
-
-    // The other thread should fail to lock.
-    AtomicBoolean receivedException = new AtomicBoolean(false);
-    tryReinitSessionAndLock(sessionManager, context.request(0), receivedException);
-    assertTrue(receivedException.get());
-
-    // After unlock the session, the other thread will be able to reinit the session and lock it.
-    sessionManager.unLockSession(context.request(0));
-    tryReinitSessionAndLock(sessionManager, context.request(0), receivedException);
-    assertFalse(receivedException.get());
-
-    // Should throw exception because the session is locked by another thread.
-    try {
-      sessionManager.reinitAndLockSession(context.request(0));
-      fail("Should have thrown exception.");
-    } catch (IllegalStateException ise) {
       // let it go.
     }
   }
@@ -128,41 +104,24 @@ public class SessionManagerTest {
     HttpServletRequest request = context.request(0);
     OperationFuture<Integer> future1 = new OperationFuture<>("future1");
     OperationFuture<String> future2 = new OperationFuture<>("future2");
-    // Create the first future.
-    OperationFuture<Integer> intFuture = sessionManager.getAndCreateSessionIfNotExist(request, () -> future1);
-    assertTrue(intFuture == future1);
-    future1.complete(100);
-    // create the second future.
-    OperationFuture<String> stringFuture = sessionManager.getAndCreateSessionIfNotExist(request, () -> future2);
-    assertTrue(stringFuture == future2);
-    future2.complete("abc");
-    sessionManager.unLockSession(request);
-
-    // Now reinit the session and see if we can get the results in order.
-    sessionManager.reinitAndLockSession(request);
-    intFuture = sessionManager.getAndCreateSessionIfNotExist(request, () -> new OperationFuture<>("future3"));
-    assertTrue(intFuture == future1);
-    stringFuture = sessionManager.getAndCreateSessionIfNotExist(request, () -> new OperationFuture<>("future4"));
-    assertTrue(stringFuture == future2);
-
+    for (int i = 0; i < 2; i++) {
+      // Create the first future.
+      OperationFuture<Integer> intFuture = sessionManager.getAndCreateSessionIfNotExist(request, () -> future1, 0);
+      assertTrue(intFuture == future1);
+      future1.complete(100);
+      // create the second future.
+      OperationFuture<String> stringFuture = sessionManager.getAndCreateSessionIfNotExist(request, () -> future2, 1);
+      assertTrue(stringFuture == future2);
+      future2.complete("abc");
+    }
   }
 
-  private void tryReinitSessionAndLock(SessionManager sessionManager,
-                                      HttpServletRequest request,
-                                      AtomicBoolean receivedException) throws InterruptedException {
-    receivedException.set(false);
-    Thread t = new Thread() {
-      @Override
-      public void run() {
-        try {
-          sessionManager.reinitAndLockSession(request);
-        } catch (IllegalStateException ise) {
-          receivedException.set(true);
-        }
-      }
-    };
-    t.start();
-    t.join();
+  @Test (expected = IllegalArgumentException.class)
+  public void testSkipStep() {
+    TestContext context = prepareRequests(false, 1);
+    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry());
+    HttpServletRequest request = context.request(0);
+    sessionManager.getAndCreateSessionIfNotExist(request, () -> null, 1);
   }
 
   private TestContext prepareRequests(boolean expectSessionInvalidation, int numRequests) {

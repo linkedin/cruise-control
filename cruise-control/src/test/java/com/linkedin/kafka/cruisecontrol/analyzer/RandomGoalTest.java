@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistri
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
@@ -78,6 +79,7 @@ public class RandomGoalTest {
         NetworkInboundUsageDistributionGoal.class.getName(),
         NetworkOutboundUsageDistributionGoal.class.getName(),
         CpuUsageDistributionGoal.class.getName(),
+        PreferredLeaderElectionGoal.class.getName(),
         LeaderBytesInDistributionGoal.class.getName(),
         ReplicaDistributionGoal.class.getName());
 
@@ -88,7 +90,7 @@ public class RandomGoalTest {
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
     List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, DEAD_BROKERS, REGRESSION);
-    
+
     // Test: Single goal at a time.
     int goalPriority = 1;
     for (String goalName: goalsSortedByPriority) {
@@ -107,7 +109,7 @@ public class RandomGoalTest {
       }
       p.add(params(Collections.emptyMap(), repeatedGoalNamesByPriority, balancingConstraint, verifications));
     }
-    
+
     // Test: Nested repetition of the same goal (goalRepetition times each).
     goalPriority = 1;
     Map<Integer, String> nonRepetitiveGoalNamesByPriority = new HashMap<>();
@@ -143,7 +145,7 @@ public class RandomGoalTest {
 
     return p;
   }
-  
+
   private static Object[] params(Map<ClusterProperty, Number> modifiedProperties,
                                  Map<Integer, String> goalNameByPriority,
                                  BalancingConstraint balancingConstraint,

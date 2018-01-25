@@ -179,6 +179,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
   private final SessionManager _sessionManager;
   private final long _maxBlockMs;
+  private final ThreadLocal<Integer> _asyncOperationStep;
 
   public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                    long maxBlockMs,
@@ -187,6 +188,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
     _sessionManager = new SessionManager(5, sessionExpiryMs, Time.SYSTEM, dropwizardMetricRegistry);
     _maxBlockMs = maxBlockMs;
+    _asyncOperationStep = new ThreadLocal<>();
+    _asyncOperationStep.set(0);
   }
 
   @Override
@@ -246,6 +249,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
+      _asyncOperationStep.set(0);
       EndPoint endPoint = endPoint(request);
       if (endPoint != null) {
         Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
@@ -274,25 +278,21 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               train(request, response);
               break;
             case LOAD:
-              _sessionManager.reinitAndLockSession(request);
               if (getClusterLoad(request, response)) {
                 _sessionManager.closeSession(request);
               }
               break;
             case PARTITION_LOAD:
-              _sessionManager.reinitAndLockSession(request);
               if (getPartitionLoad(request, response)) {
                 _sessionManager.closeSession(request);
               }
               break;
             case PROPOSALS:
-              _sessionManager.reinitAndLockSession(request);
               if (getProposals(request, response)) {
                 _sessionManager.closeSession(request);
               }
               break;
             case STATE:
-              _sessionManager.reinitAndLockSession(request);
               if (getState(request, response)) {
                 _sessionManager.closeSession(request);
               }
@@ -319,7 +319,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       returnErrorMessage(response, errorMessage, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
       _sessionManager.closeSession(request);
     } finally {
-      _sessionManager.unLockSession(request);
       try {
         response.getOutputStream().close();
       } catch (IOException e) {
@@ -353,6 +352,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
+      _asyncOperationStep.set(0);
       EndPoint endPoint = endPoint(request);
       if (endPoint != null) {
         Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
@@ -376,13 +376,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           switch (endPoint) {
             case ADD_BROKER:
             case REMOVE_BROKER:
-              _sessionManager.reinitAndLockSession(request);
               if (addOrRemoveBroker(request, response, endPoint)) {
                 _sessionManager.closeSession(request);
               }
               break;
             case REBALANCE:
-              _sessionManager.reinitAndLockSession(request);
               if (rebalance(request, response)) {
                 _sessionManager.closeSession(request);
               }
@@ -412,7 +410,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       returnErrorMessage(response, errorMessage, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
       _sessionManager.closeSession(request);
     } finally {
-      _sessionManager.unLockSession(request);
       try {
         response.getOutputStream().close();
       } catch (IOException e) {
@@ -976,7 +973,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                           HttpServletResponse response,
                                           Supplier<OperationFuture<T>> supplier)
       throws ExecutionException, InterruptedException, IOException {
-    OperationFuture<T> future = _sessionManager.getAndCreateSessionIfNotExist(request, supplier);
+    int step = _asyncOperationStep.get();
+    OperationFuture<T> future = _sessionManager.getAndCreateSessionIfNotExist(request, supplier, step);
+    _asyncOperationStep.set(step + 1);
     try {
       return future.get(_maxBlockMs, TimeUnit.MILLISECONDS);
     } catch (TimeoutException te) {

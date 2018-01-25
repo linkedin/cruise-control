@@ -513,21 +513,27 @@ public class ClusterModel implements Serializable {
    *
    * @param rackId         Rack id under which the replica will be created.
    * @param brokerId       Broker id under which the replica will be created.
-   * @param tp Topic partition information of the replica.
-   * @param isLeader         True if the replica is a leader, false otherwise.
+   * @param tp             Topic partition information of the replica.
+   * @param index          The index of the replica in the replica list.
+   * @param isLeader       True if the replica is a leader, false otherwise.
    * @param brokerCapacity The broker capacity to use if the broker does not exist.
    * @return Created replica.
    * @throws ModelInputException
    */
-  public Replica createReplicaHandleDeadBroker(String rackId, int brokerId, TopicPartition tp, boolean isLeader,
-                                               Map<Resource, Double> brokerCapacity) throws ModelInputException {
+  public Replica createReplicaHandleDeadBroker(String rackId,
+                                               int brokerId,
+                                               TopicPartition tp,
+                                               int index,
+                                               boolean isLeader,
+                                               Map<Resource, Double> brokerCapacity)
+      throws ModelInputException {
     if (rack(rackId) == null) {
       createRack(rackId);
     }
     if (broker(brokerId) == null) {
       createBroker(rackId, "UNKNOWN_HOST", brokerId, brokerCapacity);
     }
-    return createReplica(rackId, brokerId, tp, isLeader);
+    return createReplica(rackId, brokerId, tp, index, isLeader);
   }
 
   /**
@@ -536,11 +542,12 @@ public class ClusterModel implements Serializable {
    *
    * @param rackId         Rack id under which the replica will be created.
    * @param brokerId       Broker id under which the replica will be created.
-   * @param tp Topic partition information of the replica.
-   * @param isLeader         True if the replica is a leader, false otherwise.
+   * @param tp             Topic partition information of the replica.
+   * @param index          The index of the replica in the replica list.
+   * @param isLeader       True if the replica is a leader, false otherwise.
    * @return Created replica.
    */
-  public Replica createReplica(String rackId, int brokerId, TopicPartition tp, boolean isLeader)
+  public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader)
       throws ModelInputException {
     Replica replica = new Replica(tp, broker(brokerId), isLeader);
     rack(rackId).addReplica(replica);
@@ -548,17 +555,17 @@ public class ClusterModel implements Serializable {
     // Add replica to its partition.
     if (!_partitionsByTopicPartition.containsKey(tp)) {
       // Partition has not been created before.
-      _partitionsByTopicPartition.put(tp, new Partition(tp, null));
+      _partitionsByTopicPartition.put(tp, new Partition(tp));
       _replicationFactorByTopic.putIfAbsent(tp.topic(), 1);
     }
 
     Partition partition = _partitionsByTopicPartition.get(tp);
     if (replica.isLeader()) {
-      partition.setLeader(replica);
+      partition.addLeader(replica, index);
       return replica;
     }
 
-    partition.addFollower(replica);
+    partition.addFollower(replica, index);
     // If leader of this follower was already created and load was pushed to it, add that load to the follower.
     Replica leaderReplica = partition(tp).leader();
     if (leaderReplica != null) {
