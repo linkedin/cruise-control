@@ -781,7 +781,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       setResponseCode(response, SC_OK);
       out.write(stateString.getBytes(StandardCharsets.UTF_8));
       if (verbose || superVerbose) {
-        out.write(String.format("%n%nMonitored Windows:%n").getBytes(StandardCharsets.UTF_8));
+        out.write(String.format("%n%nMonitored Windows [End-Time (provided), Start-Time(omitted)):%n").getBytes(StandardCharsets.UTF_8));
         StringJoiner joiner = new StringJoiner(", ", "{", "}");
         for (Map.Entry<Long, Double> entry : state.monitorState().monitoredSnapshotWindows().entrySet()) {
           joiner.add(String.format("%d=%.3f%%", entry.getKey(), entry.getValue() * 100));
