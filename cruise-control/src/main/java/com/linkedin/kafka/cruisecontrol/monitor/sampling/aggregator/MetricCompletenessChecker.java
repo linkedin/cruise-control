@@ -84,7 +84,7 @@ public class MetricCompletenessChecker {
     long activeSnapshotWindow = _activeSnapshotWindow;
     for (long window : _validPartitionsByWindows.keySet()) {
       // Exclude the active window.
-      if (window >= from && window <= to && window != activeSnapshotWindow) {
+      if (window > from && window <= to && window != activeSnapshotWindow) {
         i++;
       }
     }
