@@ -41,7 +41,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -54,7 +53,11 @@ import com.google.gson.GsonBuilder;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.EndPoint.*;
-import static javax.servlet.http.HttpServletResponse.*;
+import static javax.servlet.http.HttpServletResponse.SC_OK;
+import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
+import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
+import static javax.servlet.http.HttpServletResponse.SC_NOT_IMPLEMENTED;
+import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 
 
 /**
@@ -85,6 +88,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final String THROTTLE_ADDED_BROKER_PARAM = "throttle_added_broker";
   private static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
   private static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
+  private static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
+  private static final int JSON_VERSION = 1;
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
@@ -203,7 +208,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *
    * https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS#Examples_of_access_control_scenarios
    */
-  protected void doOptions(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+  protected void doOptions(HttpServletRequest request, HttpServletResponse response) {
     response.setStatus(SC_OK);
     response.setHeader("Access-Control-Allow-Origin", "*");
     response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
@@ -245,7 +250,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * </pre>
    */
   @Override
-  protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+  protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
     ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
@@ -260,15 +265,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         }
         if (!userParams.isEmpty()) {
           // User request specifies parameters that are not a subset of the valid parameters.
-          String errorResp;
-          if (wantJSON(request)) {
-            errorResp = "{\"error\": \"Unrecognized endpoint parameters in " + endPoint + " get request: " +
-                userParams.toString() + "\"}";
-          } else {
-            errorResp = "Unrecognized endpoint parameters in " + endPoint + " get request: " +
-                userParams.toString() + ".";
-          }
-          returnErrorMessage(response, errorResp, HttpServletResponse.SC_NOT_IMPLEMENTED);
+          String errorResp = String.format("Unrecognized endpoint parameters in %s get request: %s.",
+                                           endPoint, userParams.toString());
+          setErrorResponse(response, "", errorResp, SC_NOT_IMPLEMENTED, wantJSON(request));
         } else {
           switch (endPoint) {
             case BOOTSTRAP:
@@ -303,20 +302,22 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         }
       } else {
         String errorMessage = String.format("Bad GET request '%s'", request.getPathInfo());
-        returnErrorMessage(response, errorMessage, HttpServletResponse.SC_NOT_FOUND);
+        setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
       }
     } catch (UserRequestException ure) {
       LOG.error("Why are you failing?", ure);
       String errorMessage = String.format("Bad GET request '%s'", request.getPathInfo());
-      returnErrorMessage(response, errorMessage, HttpServletResponse.SC_BAD_REQUEST);
+      StringWriter sw = new StringWriter();
+      ure.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
       _sessionManager.closeSession(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
       e.printStackTrace(pw);
-      String errorMessage = String.format("Error processing GET request '%s'%n%s", request.getPathInfo(), sw.toString());
-      LOG.error(errorMessage);
-      returnErrorMessage(response, errorMessage, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      String errorMessage = String.format("Error processing GET request '%s'", request.getPathInfo());
+      LOG.error(errorMessage, e);
+      setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
       _sessionManager.closeSession(request);
     } finally {
       try {
@@ -348,7 +349,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * </pre>
    */
   @Override
-  protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+  protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
     ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
@@ -363,15 +364,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         }
         if (!userParams.isEmpty()) {
           // User request specifies parameters that are not a subset of the valid parameters.
-          String errorResp;
-          if (wantJSON(request)) {
-            errorResp = "{\"error\": \"Unrecognized endpoint parameters in " + endPoint + " post request: " +
-                userParams.toString() + "\"}";
-          } else {
-            errorResp = "Unrecognized endpoint parameters in " + endPoint + " post request: " +
-                userParams.toString() + ".";
-          }
-          returnErrorMessage(response, errorResp, HttpServletResponse.SC_NOT_IMPLEMENTED);
+          String errorResp = String.format("Unrecognized endpoint parameters in %s post request: %s.",
+                                           endPoint, userParams.toString());
+          setErrorResponse(response, "", errorResp, SC_NOT_IMPLEMENTED, wantJSON(request));
         } else {
           switch (endPoint) {
             case ADD_BROKER:
@@ -394,20 +389,22 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         }
       } else {
         String errorMessage = String.format("Bad POST request '%s'", request.getPathInfo());
-        returnErrorMessage(response, errorMessage, HttpServletResponse.SC_NOT_FOUND);
+        setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
       }
     } catch (UserRequestException ure) {
       LOG.error("Why are you failing?", ure);
       String errorMessage = String.format("Bad POST request '%s'", request.getPathInfo());
-      returnErrorMessage(response, errorMessage, HttpServletResponse.SC_BAD_REQUEST);
+      StringWriter sw = new StringWriter();
+      ure.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
       _sessionManager.closeSession(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
       e.printStackTrace(pw);
-      String errorMessage = String.format("Error processing POST request '%s'%n%s", request.getPathInfo(), sw.toString());
-      LOG.error(errorMessage);
-      returnErrorMessage(response, errorMessage, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+      String errorMessage = String.format("Error processing POST request '%s'", request.getPathInfo());
+      LOG.error(errorMessage, e);
+      setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
       _sessionManager.closeSession(request);
     } finally {
       try {
@@ -422,7 +419,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Long startMs;
     Long endMs;
     boolean clearMetrics;
-    boolean json;
+    boolean json = wantJSON(request);
     try {
       String startMsString = request.getParameter(START_MS_PARAM);
       String endMsString = request.getParameter(END_MS_PARAM);
@@ -430,12 +427,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       startMs = startMsString == null ? null : Long.parseLong(startMsString);
       endMs = endMsString == null ? null : Long.parseLong(endMsString);
       clearMetrics = clearMetricsString == null || Boolean.parseBoolean(clearMetricsString);
-      json = wantJSON(request);
       if (startMs == null && endMs != null) {
-        throw new IllegalArgumentException("The start time cannot be empty when end time is specified.");
+        String errorMsg = "The start time cannot be empty when end time is specified.";
+        setErrorResponse(response, "", errorMsg, SC_BAD_REQUEST, json);
+        return;
       }
     } catch (Exception e) {
-      throw new UserRequestException(e);
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      return;
     }
 
     if (startMs != null && endMs != null) {
@@ -445,13 +446,25 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } else {
       _asyncKafkaCruiseControl.bootstrapLoadMonitor(clearMetrics);
     }
+
+    String errorMsg = String.format("Bootstrap started. Check status through %s", getStateCheckUrl(request));
+    setErrorResponse(response, "", errorMsg, SC_OK, json);
+  }
+
+  private void setErrorResponse(HttpServletResponse response,
+                                String stackTrace,
+                                String errorMessage,
+                                int responseCode,
+                                boolean json)
+      throws IOException {
     String resp;
     if (json) {
-      resp = "{\"message\": \"Bootstrap started.\"}";
-      setJSONResponseCode(request, response, SC_OK);
+      resp = String.format("{\"version\":\"%d\",\"stackTrace\":\"%s\",\"error\": \"%s\"}",
+                           JSON_VERSION, stackTrace, errorMessage);
+      setJSONResponseCode(response, responseCode);
     } else {
-      resp = "Bootstrap started. Check status through " + getStateCheckUrl(request);
-      setResponseCode(response, SC_OK);
+      resp = errorMessage;
+      setResponseCode(response, responseCode);
     }
     response.setContentLength(resp.length());
     response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
@@ -461,42 +474,38 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void train(HttpServletRequest request, HttpServletResponse response) throws Exception {
     Long startMs;
     Long endMs;
-    boolean json;
+    boolean json = wantJSON(request);
     try {
       String startMsString = request.getParameter(START_MS_PARAM);
       String endMsString = request.getParameter(END_MS_PARAM);
       startMs = Long.parseLong(startMsString);
       endMs = Long.parseLong(endMsString);
-      json = wantJSON(request);
     } catch (Exception e) {
-      throw new UserRequestException(e);
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      return;
     }
     _asyncKafkaCruiseControl.trainLoadModel(startMs, endMs);
-    String resp;
-    if (json) {
-      resp = "{\"message\": \"Load model training started.\"}";
-      setJSONResponseCode(request, response, SC_OK);
-    } else {
-      resp = "Load model training started. Check status through " + getStateCheckUrl(request);
-      setResponseCode(response, SC_OK);
-    }
-    response.setContentLength(resp.length());
-    response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
-    response.getOutputStream().flush();
+    String errorMsg = String.format("Load model training started. Check status through %s", getStateCheckUrl(request));
+    setErrorResponse(response, "", errorMsg, SC_OK, json);
   }
 
   private boolean getClusterLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
     long time;
     String granularity;
-    boolean json = false;
+    boolean json = wantJSON(request);
     try {
       String timeString = request.getParameter(TIME_PARAM);
       time = (timeString == null || timeString.toUpperCase().equals("NOW"))
           ? System.currentTimeMillis() : Long.parseLong(timeString);
       granularity = request.getParameter(GRANULARITY_PARAM);
-      json = wantJSON(request);
     } catch (Exception e) {
-      throw new UserRequestException(e);
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      // Close session
+      return true;
     }
 
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, false);
@@ -505,7 +514,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String brokerLoad;
       if (brokerStats != null) {
         if (json) {
-          brokerLoad = brokerStats.getJSONString();
+          brokerLoad = brokerStats.getJSONString(JSON_VERSION);
         } else {
           brokerLoad = brokerStats.toString();
         }
@@ -517,13 +526,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           return false;
         }
         if (json) {
-          brokerLoad = brokerStats.getJSONString();
+          brokerLoad = brokerStats.getJSONString(JSON_VERSION);
         } else {
           brokerLoad = brokerStats.toString();
         }
       }
       if (json) {
-        setJSONResponseCode(request, response, SC_OK);
+        setJSONResponseCode(response, SC_OK);
       } else {
         setResponseCode(response, SC_OK);
       }
@@ -537,8 +546,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         return false;
       }
       if (json) {
-        String data = clusterModel.getJSONString();
-        setJSONResponseCode(request, response, SC_OK);
+        String data = clusterModel.getJSONString(JSON_VERSION);
+        setJSONResponseCode(response, SC_OK);
         response.setContentLength(data.length());
         response.getOutputStream().write(data.getBytes(StandardCharsets.UTF_8));
       } else {
@@ -547,7 +556,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         clusterModel.writeTo(response.getOutputStream());
       }
     } else {
-      throw new UserRequestException("Unknown granularity " + granularity);
+      String errorMsg = String.format("Unknown granularity %s", granularity);
+      setErrorResponse(response, "", errorMsg, SC_BAD_REQUEST, json);
+      // Close session
+      return true;
     }
     response.getOutputStream().flush();
     return true;
@@ -557,22 +569,33 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Resource resource;
     Long startMs;
     Long endMs;
-    boolean json;
+    boolean json = wantJSON(request);
     try {
       String resourceString = request.getParameter(RESOURCE_PARAM);
-      json = wantJSON(request);
       try {
+        if (resourceString == null) {
+          resourceString = DEFAULT_PARTITION_LOAD_RESOURCE;
+        }
         resource = Resource.valueOf(resourceString.toUpperCase());
       } catch (IllegalArgumentException iae) {
-        throw new IllegalArgumentException("Invalid resource type " + resourceString +
-                                               ". The resource type must be one of the following: CPU, DISK, NW_IN, NW_OUT");
+        String errorMsg = String.format("Invalid resource type %s. The resource type must be one of the following: "
+                                        + "CPU, DISK, NW_IN, NW_OUT", resourceString);
+        StringWriter sw = new StringWriter();
+        iae.printStackTrace(new PrintWriter(sw));
+        setErrorResponse(response, sw.toString(), errorMsg, SC_BAD_REQUEST, json);
+        // Close session
+        return true;
       }
       String startMsString = request.getParameter(START_MS_PARAM);
       String endMsString = request.getParameter(END_MS_PARAM);
       startMs = startMsString == null ? -1L : Long.parseLong(startMsString);
       endMs = endMsString == null ? System.currentTimeMillis() : Long.parseLong(endMsString);
     } catch (Exception e) {
-      throw new UserRequestException(e);
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      // Close session
+      return true;
     }
 
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, false);
@@ -606,7 +629,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } else {
       Map<String, Object> partitionMap = new HashMap<>();
       List<Object> partitionList = new ArrayList<>();
-      List<String> header = new ArrayList<String>(Arrays.asList("topic", "partition", "leader", "followers", "CPU", "DISK", "NW_IN", "NW_OUT"));
+      List<String> header = new ArrayList<>(Arrays.asList("topic", "partition", "leader", "followers", "CPU", "DISK", "NW_IN", "NW_OUT"));
+      partitionMap.put("version", JSON_VERSION);
       partitionMap.put("header", header);
       for (Partition p : sortedPartitions) {
         List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
@@ -624,7 +648,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       partitionMap.put("records", partitionList);
       Gson gson = new Gson();
       String g = gson.toJson(partitionMap);
-      setJSONResponseCode(request, response, SC_OK);
+      setJSONResponseCode(response, SC_OK);
       response.setContentLength(g.length());
       out.write(g.getBytes(StandardCharsets.UTF_8));
     }
@@ -636,10 +660,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean verbose;
     boolean ignoreProposalCache;
     DataFrom dataFrom;
-    boolean json;
     List<String> goals;
+    boolean json = wantJSON(request);
     try {
-      json = wantJSON(request);
       String verboseString = request.getParameter(VERBOSE_PARAM);
       verbose = verboseString != null && Boolean.parseBoolean(verboseString);
 
@@ -650,7 +673,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       ignoreProposalCache = (ignoreProposalCacheString != null && Boolean.parseBoolean(ignoreProposalCacheString))
           || !goals.isEmpty();
     } catch (Exception e) {
-      throw new UserRequestException(e);
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      // Close session
+      return true;
     }
     GoalsAndRequirements goalsAndRequirements =
         getGoalsAndRequirements(request, response, goals, dataFrom, ignoreProposalCache);
@@ -665,17 +692,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     if (optimizerResult == null) {
       return false;
     }
-    String loadBeforeOptimization = json ?
-      optimizerResult.brokerStatsBeforeOptimization().getJSONString() :
-      optimizerResult.brokerStatsBeforeOptimization().toString();
-    String loadAfterOptimization = json ?
-      optimizerResult.brokerStatsAfterOptimization().getJSONString() :
-      optimizerResult.brokerStatsAfterOptimization().toString();
 
     setResponseCode(response, SC_OK);
     OutputStream out = response.getOutputStream();
 
     if (!json) {
+      String loadBeforeOptimization = optimizerResult.brokerStatsBeforeOptimization().toString();
+      String loadAfterOptimization = optimizerResult.brokerStatsAfterOptimization().toString();
       if (!verbose) {
         out.write(
             KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
@@ -711,6 +734,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         allGoals.add(goalMap);
       }
       Map<String, Object> proposalMap = new HashMap<>();
+      proposalMap.put("version", JSON_VERSION);
       proposalMap.put("goals", allGoals);
       proposalMap.put("loadBeforeOptimization", optimizerResult.brokerStatsBeforeOptimization().getJsonStructure());
       proposalMap.put("loadAfterOptimization", optimizerResult.brokerStatsAfterOptimization().getJsonStructure());
@@ -719,7 +743,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                       .serializeSpecialFloatingPointValues()
                       .create();
       String proposalsString = gson.toJson(proposalMap);
-      setJSONResponseCode(request, response, SC_OK);
+      setJSONResponseCode(response, SC_OK);
       out.write(proposalsString.getBytes(StandardCharsets.UTF_8));
     }
     out.flush();
@@ -727,15 +751,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private String goalResultDescription(Goal goal, GoalOptimizer.OptimizerResult optimizerResult) {
-    if (optimizerResult.violatedGoalsBeforeOptimization().contains(goal)) {
-      if (optimizerResult.violatedGoalsAfterOptimization().contains(goal)) {
-        return "(VIOLATED)";
-      } else {
-        return "(FIXED)";
-      }
-    } else {
-      return "(NO-ACTION)";
-    }
+    return optimizerResult.violatedGoalsBeforeOptimization().contains(goal) ?
+           optimizerResult.violatedGoalsAfterOptimization().contains(goal) ? "(VIOLATED)" : "(FIXED)" : "(NO-ACTION)";
   }
 
   private ModelCompletenessRequirements getRequirements(DataFrom dataFrom) {
@@ -747,24 +764,25 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private boolean wantJSON(HttpServletRequest request) {
-    boolean json;
     String jsonString = request.getParameter(JSON_PARAM);
-    json = jsonString != null && Boolean.parseBoolean(jsonString);
-    return json;
+    return jsonString != null && Boolean.parseBoolean(jsonString);
   }
 
   private boolean getState(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean verbose;
     boolean superVerbose;
-    boolean json;
+    boolean json = wantJSON(request);
     try {
       String verboseString = request.getParameter(VERBOSE_PARAM);
       verbose = verboseString != null && Boolean.parseBoolean(verboseString);
       String superVerboseString = request.getParameter(SUPER_VERBOSE_PARM);
       superVerbose = superVerboseString != null && Boolean.parseBoolean(superVerboseString);
-      json = wantJSON(request);
     } catch (Exception e) {
-      throw new UserRequestException(e);
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      // Close session
+      return true;
     }
     KafkaCruiseControlState state = getAndMaybeReturnProgress(request, response, _asyncKafkaCruiseControl::state);
     if (state == null) {
@@ -772,8 +790,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     OutputStream out = response.getOutputStream();
     if (json) {
-      String stateString = state.getJSONString();
-      setJSONResponseCode(request, response, SC_OK);
+      String stateString = state.getJSONString(JSON_VERSION);
+      setJSONResponseCode(response, SC_OK);
       response.setContentLength(stateString.length());
       out.write(stateString.getBytes(StandardCharsets.UTF_8));
     } else {
@@ -829,7 +847,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     DataFrom dataFrom;
     boolean throttleAddedOrRemovedBrokers;
     List<String> goals;
-    boolean json;
+    boolean json = wantJSON(request);
     try {
       String[] brokerIdsString = request.getParameter(BROKER_ID_PARAM).split(",");
       for (String brokerIdString : brokerIdsString) {
@@ -845,7 +863,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throttleAddedOrRemovedBrokers = throttleBrokerString == null || Boolean.parseBoolean(throttleBrokerString);
 
     } catch (Exception e) {
-      throw new UserRequestException(e);
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      // Close session
+      return true;
     }
     GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(request, response, goals, dataFrom, false);
     if (goalsAndRequirements == null) {
@@ -897,12 +919,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean dryrun;
     DataFrom dataFrom;
     List<String> goals;
+    boolean json = wantJSON(request);
     try {
       dryrun = getDryRun(request);
       goals = getGoals(request);
       dataFrom = getDataFrom(request);
     } catch (Exception e) {
-      throw new UserRequestException(e);
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      // Close session
+      return true;
     }
     GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(request, response, goals, dataFrom, false);
     if (goalsAndRequirements == null) {
@@ -1002,20 +1029,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
   }
 
-  private void setJSONResponseCode(HttpServletRequest request, HttpServletResponse response, int code) {
+  private void setJSONResponseCode(HttpServletResponse response, int code) {
     response.setStatus(code);
     response.setContentType("application/json");
     response.setCharacterEncoding("utf-8");
     response.setHeader("Access-Control-Allow-Origin", "*");
     response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
-  }
-
-  private void returnErrorMessage(HttpServletResponse response, String errorMessage, int responseCode)
-      throws IOException {
-    setResponseCode(response, responseCode);
-    response.setContentLength(errorMessage.length());
-    response.getOutputStream().write(errorMessage.getBytes(StandardCharsets.UTF_8));
-    response.getOutputStream().flush();
   }
 
   private void returnProgress(HttpServletResponse response, OperationFuture future) throws IOException {
