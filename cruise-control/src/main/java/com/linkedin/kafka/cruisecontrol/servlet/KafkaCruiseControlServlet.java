@@ -734,7 +734,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         return "(FIXED)";
       }
     } else {
-      return "";
+      return "(NO-ACTION)";
     }
   }
 
