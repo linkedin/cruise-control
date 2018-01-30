@@ -109,7 +109,6 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     initGoalState(clusterModel, excludedTopics);
 
     int maxReplicationFactor = clusterModel.maxReplicationFactor();
-    Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();
     for (int position = 0; position < maxReplicationFactor; position++) {
       for (Map.Entry<String, List<Partition>> entry : _partitionsByTopic.entrySet()) {
         for (Partition partition : entry.getValue()) {
