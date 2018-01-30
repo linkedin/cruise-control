@@ -112,11 +112,10 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();
     for (int position = 0; position < maxReplicationFactor; position++) {
       for (Map.Entry<String, List<Partition>> entry : _partitionsByTopic.entrySet()) {
-        if (replicationFactorByTopic.get(entry.getKey()) < position + 1) {
-          // The topic replication factor is smaller than the position index.
-          continue;
-        }
         for (Partition partition : entry.getValue()) {
+          if (partition.replicas().size() <=  position) {
+            continue;
+          }
           if (shouldExclude(partition, position, excludedTopics)) {
             continue;
           }
