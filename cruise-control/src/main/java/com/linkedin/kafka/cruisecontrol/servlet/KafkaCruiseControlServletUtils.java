@@ -56,8 +56,8 @@ class KafkaCruiseControlServletUtils {
       }
     }
     return String.format("%n%nThe optimization proposal has %d replica(%d MB) movements and %d leadership movements "
-                             + "based on the cluster model with %d recent snapshot windows and %.3f%% valid monitored "
-                             + "partitions", numReplicaMovements, dataToMove, numLeaderMovements,
+                             + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions "
+                             + "covered.", numReplicaMovements, dataToMove, numLeaderMovements,
                          result.clusterModelStats().numSnapshotWindows(),
                          result.clusterModelStats().monitoredPartitionsPercentage() * 100);
   }

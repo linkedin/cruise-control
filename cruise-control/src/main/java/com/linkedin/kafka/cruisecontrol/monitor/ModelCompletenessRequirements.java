@@ -118,7 +118,7 @@ public class ModelCompletenessRequirements {
 
   @Override
   public String toString() {
-    return String.format("(requiredNumSnapshots=%d, minMonitoredPartitionPercentage=%.3f, includedAllTopics=%s)",
+    return String.format("(requiredNumWindows=%d, minMonitoredPartitionPercentage=%.3f, includedAllTopics=%s)",
                          _minRequiredNumSnapshotWindows, _minMonitoredPartitionsPercentage, _includeAllTopics);
   }
 
