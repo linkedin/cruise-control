@@ -58,6 +58,7 @@ public class ClusterModel implements Serializable {
   private Map<String, Integer> _replicationFactorByTopic;
   private Map<Integer, Load> _potentialLeadershipLoadByBrokerId;
   private Set<Long> _validSnapshotTimes;
+  private int _unknownHostId;
 
   /**
    * Constructor for the cluster class. It creates data structures to hold a list of racks, a map for partitions by
@@ -83,6 +84,7 @@ public class ClusterModel implements Serializable {
     _potentialLeadershipLoadByBrokerId = new HashMap<>();
     _validSnapshotTimes = new HashSet<>();
     _monitoredPartitionsPercentage = monitoredPartitionsPercentage;
+    _unknownHostId = 0;
   }
 
   /**
@@ -531,7 +533,7 @@ public class ClusterModel implements Serializable {
       createRack(rackId);
     }
     if (broker(brokerId) == null) {
-      createBroker(rackId, "UNKNOWN_HOST", brokerId, brokerCapacity);
+      createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacity);
     }
     return createReplica(rackId, brokerId, tp, index, isLeader);
   }
@@ -899,7 +901,7 @@ public class ClusterModel implements Serializable {
                                            broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
                                            broker.load().expectedUtilizationFor(Resource.NW_OUT),
                                            potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-                                           broker.replicas().size());
+                                           broker.replicas().size(), broker.leaderReplicas().size());
         });
     return brokerStats;
   }
@@ -914,15 +916,15 @@ public class ClusterModel implements Serializable {
 
     private void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                                       double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                                      int numReplicas) {
+                                      int numReplicas, int numLeaders) {
 
       SingleBrokerStats singleBrokerStats =
           new SingleBrokerStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                                potentialBytesOutRate, numReplicas);
+                                potentialBytesOutRate, numReplicas, numLeaders);
       _brokerStats.add(singleBrokerStats);
       _hostFieldLength = Math.max(_hostFieldLength, host.length());
       _hostStats.computeIfAbsent(host, h -> new BasicStats(0.0, 0.0, 0.0, 0.0,
-                                                           0.0, 0.0, 0))
+                                                           0.0, 0.0, 0, 0))
                 .addBasicStats(singleBrokerStats.basicStats());
     }
 
@@ -978,12 +980,12 @@ public class ClusterModel implements Serializable {
     public String toString() {
       StringBuilder sb = new StringBuilder();
       // put host stats.
-      sb.append(String.format("%n%" + _hostFieldLength + "s%20s%15s%25s%25s%20s%20s%15s%n",
+      sb.append(String.format("%n%" + _hostFieldLength + "s%20s%15s%25s%25s%20s%20s%20s%n",
                               "HOST", "DISK(MB)", "CPU(%)", "LEADER_NW_IN(KB/s)",
-                              "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "REPLICAS"));
+                              "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
       for (Map.Entry<String, BasicStats> entry : _hostStats.entrySet()) {
         BasicStats stats = entry.getValue();
-        sb.append(String.format("%" + _hostFieldLength + "s,%19.3f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d%n",
+        sb.append(String.format("%" + _hostFieldLength + "s,%19.3f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
                                 entry.getKey(),
                                 stats.diskUtil(),
                                 stats.cpuUtil(),
@@ -991,15 +993,16 @@ public class ClusterModel implements Serializable {
                                 stats.followerBytesInRate(),
                                 stats.bytesOutRate(),
                                 stats.potentialBytesOutRate(),
+                                stats.numLeaders(),
                                 stats.numReplicas()));
       }
 
       // put broker stats.
-      sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%20s%15s%25s%25s%20s%20s%15s%n",
+      sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%20s%15s%25s%25s%20s%20s%20s%n",
                               "HOST", "BROKER", "DISK(MB)", "CPU(%)", "LEADER_NW_IN(KB/s)",
-                              "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "REPLICAS"));
+                              "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
       for (SingleBrokerStats stats : _brokerStats) {
-        sb.append(String.format("%" + _hostFieldLength + "s,%14d,%19.3f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d%n",
+        sb.append(String.format("%" + _hostFieldLength + "s,%14d,%19.3f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
                                 stats.host(),
                                 stats.id(),
                                 stats.basicStats().diskUtil(),
@@ -1008,6 +1011,7 @@ public class ClusterModel implements Serializable {
                                 stats.basicStats().followerBytesInRate(),
                                 stats.basicStats().bytesOutRate(),
                                 stats.basicStats().potentialBytesOutRate(),
+                                stats.basicStats().numLeaders(),
                                 stats.basicStats().numReplicas()));
       }
 
@@ -1023,12 +1027,12 @@ public class ClusterModel implements Serializable {
 
     private SingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                               double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                              int numReplicas) {
+                              int numReplicas, int numLeaders) {
       _host = host;
       _id = id;
       _state = state;
       _basicStats = new BasicStats(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                                   potentialBytesOutRate, numReplicas);
+                                   potentialBytesOutRate, numReplicas, numLeaders);
     }
 
     public String host() {
@@ -1068,10 +1072,11 @@ public class ClusterModel implements Serializable {
     private double _bytesOutRate;
     private double _potentialBytesOutRate;
     private int _numReplicas;
+    private int _numLeaders;
 
     private BasicStats(double diskUtil, double cpuUtil, double leaderBytesInRate,
                        double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                       int numReplicas) {
+                       int numReplicas, int numLeaders) {
       _diskUtil = diskUtil < 0.0 ? 0.0 : diskUtil;
       _cpuUtil = cpuUtil < 0.0 ? 0.0 : cpuUtil;
       _leaderBytesInRate = leaderBytesInRate < 0.0 ? 0.0 : leaderBytesInRate;
@@ -1079,6 +1084,7 @@ public class ClusterModel implements Serializable {
       _bytesOutRate = bytesOutRate < 0.0 ? 0.0 : bytesOutRate;
       _potentialBytesOutRate =  potentialBytesOutRate < 0.0 ? 0.0 : potentialBytesOutRate;
       _numReplicas = numReplicas < 1 ? 0 : numReplicas;
+      _numLeaders =  numLeaders < 1 ? 0 : numLeaders;
     }
 
     double diskUtil() {
@@ -1109,6 +1115,10 @@ public class ClusterModel implements Serializable {
       return _numReplicas;
     }
 
+    int numLeaders() {
+      return _numLeaders;
+    }
+
     void addBasicStats(BasicStats basicStats) {
       _diskUtil += basicStats.diskUtil();
       _cpuUtil += basicStats.cpuUtil();
@@ -1117,6 +1127,7 @@ public class ClusterModel implements Serializable {
       _bytesOutRate += basicStats.bytesOutRate();
       _potentialBytesOutRate  += basicStats.potentialBytesOutRate();
       _numReplicas += basicStats.numReplicas();
+      _numLeaders += basicStats.numLeaders();
     }
 
     /*
@@ -1132,6 +1143,7 @@ public class ClusterModel implements Serializable {
       entry.put("NnwOutRate", bytesOutRate());
       entry.put("PnwOutRate", potentialBytesOutRate());
       entry.put("Replicas", numReplicas());
+      entry.put("Leaders", numLeaders());
       return entry;
     }
   }
