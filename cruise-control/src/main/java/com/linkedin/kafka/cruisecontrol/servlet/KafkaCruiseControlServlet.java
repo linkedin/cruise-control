@@ -30,12 +30,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.StringJoiner;
+import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -95,29 +95,29 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   static {
     Map<EndPoint, Set<String>> validParamNames = new HashMap<>();
 
-    Set<String> bootstrap = new HashSet<>();
+    Set<String> bootstrap = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     bootstrap.add(START_MS_PARAM);
     bootstrap.add(END_MS_PARAM);
     bootstrap.add(CLEAR_METRICS_PARAM);
     bootstrap.add(JSON_PARAM);
 
-    Set<String> train = new HashSet<>();
+    Set<String> train = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     train.add(START_MS_PARAM);
     train.add(END_MS_PARAM);
     train.add(JSON_PARAM);
 
-    Set<String> load = new HashSet<>();
+    Set<String> load = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     load.add(TIME_PARAM);
     load.add(GRANULARITY_PARAM);
     load.add(JSON_PARAM);
 
-    Set<String> partitionLoad = new HashSet<>();
+    Set<String> partitionLoad = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     partitionLoad.add(RESOURCE_PARAM);
     partitionLoad.add(START_MS_PARAM);
     partitionLoad.add(END_MS_PARAM);
     partitionLoad.add(JSON_PARAM);
 
-    Set<String> proposals = new HashSet<>();
+    Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     proposals.add(VERBOSE_PARAM);
     proposals.add(IGNORE_PROPOSAL_CACHE_PARAM);
     proposals.add(DATA_FROM_PARAM);
@@ -125,12 +125,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     proposals.add(KAFKA_ASSIGNER_MODE_PARAM);
     proposals.add(JSON_PARAM);
 
-    Set<String> state = new HashSet<>();
+    Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     state.add(VERBOSE_PARAM);
     state.add(SUPER_VERBOSE_PARM);
     state.add(JSON_PARAM);
 
-    Set<String> addOrRemoveBroker = new HashSet<>();
+    Set<String> addOrRemoveBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addOrRemoveBroker.add(BROKER_ID_PARAM);
     addOrRemoveBroker.add(DRY_RUN_PARAM);
     addOrRemoveBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
@@ -139,15 +139,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     addOrRemoveBroker.add(KAFKA_ASSIGNER_MODE_PARAM);
     addOrRemoveBroker.add(JSON_PARAM);
 
-    Set<String> addBroker = new HashSet<>();
+    Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
     addBroker.addAll(addOrRemoveBroker);
 
-    Set<String> removeBroker = new HashSet<>();
+    Set<String> removeBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     removeBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
     removeBroker.addAll(addOrRemoveBroker);
 
-    Set<String> rebalance = new HashSet<>();
+    Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
     rebalance.add(GOALS_PARAM);
     rebalance.add(KAFKA_ASSIGNER_MODE_PARAM);
@@ -258,7 +258,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       EndPoint endPoint = endPoint(request);
       if (endPoint != null) {
         Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
-        Set<String> userParams = new HashSet<>();
+        Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         if (validParamNames != null) {
           userParams.addAll(request.getParameterMap().keySet());
           userParams.removeAll(validParamNames);
@@ -357,7 +357,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       EndPoint endPoint = endPoint(request);
       if (endPoint != null) {
         Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
-        Set<String> userParams = new HashSet<>();
+        Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         if (validParamNames != null) {
           userParams.addAll(request.getParameterMap().keySet());
           userParams.removeAll(validParamNames);
@@ -987,7 +987,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     DataFrom dataFrom = VALID_WINDOWS; // default to with available windows.
     String dataFromString = request.getParameter(DATA_FROM_PARAM);
     if (dataFromString != null) {
-      dataFrom = DataFrom.valueOf(dataFromString);
+      dataFrom = DataFrom.valueOf(dataFromString.toUpperCase());
     }
     return dataFrom;
   }
