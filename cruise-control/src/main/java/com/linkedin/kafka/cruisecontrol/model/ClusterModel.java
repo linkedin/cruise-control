@@ -933,13 +933,16 @@ public class ClusterModel implements Serializable {
       return _brokerStats;
     }
 
-
-    /*
-    * Return a valid JSON encoded string
-    */
-    public String getJSONString() {
+    /**
+     * Return a valid JSON encoded string
+     *
+     * @param version JSON version
+     */
+    public String getJSONString(int version) {
       Gson gson = new Gson();
-      return gson.toJson(getJsonStructure());
+      Map<String, Object> jsonStructure = getJsonStructure();
+      jsonStructure.put("version", version);
+      return gson.toJson(jsonStructure);
     }
 
     /**
@@ -1195,10 +1198,14 @@ public class ClusterModel implements Serializable {
 
   /**
    * Return a valid JSON encoded string
+   *
+   * @param version JSON version
    */
-  public String getJSONString() {
+  public String getJSONString(int version) {
     Gson gson = new Gson();
-    return gson.toJson(getJsonStructure2());
+    Map<String, Object> jsonStructure = getJsonStructure2();
+    jsonStructure.put("version", version);
+    return gson.toJson(jsonStructure);
   }
 
   /**

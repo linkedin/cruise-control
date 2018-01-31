@@ -36,13 +36,16 @@ public class KafkaCruiseControlState {
     return _analyzerState;
   }
 
-  /*
+  /**
    * Return a valid JSON encoded string
+   *
+   * @param version JSON version
    */
-  public String getJSONString() {
+  public String getJSONString(int version) {
     Gson gson = new Gson();
-    String state = gson.toJson(getJsonStructure());
-    return state;
+    Map<String, Object> jsonStructure = getJsonStructure();
+    jsonStructure.put("version", version);
+    return gson.toJson(jsonStructure);
   }
 
   /*
