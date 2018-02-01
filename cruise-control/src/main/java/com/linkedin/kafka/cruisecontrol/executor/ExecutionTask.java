@@ -17,18 +17,18 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 
 /**
  * A class that wraps the execution information of a balancing proposal
- * 
+ *
  * The task state machine is the following:
- * 
+ *
  * <pre>
  * PENDING ---> IN_PROGRESS ------------> COMPLETED
- *                  |           
- *                  |           
+ *                  |
+ *                  |
  *                  |----> ABORTING ----> ABORTED
  *                  |          |
  *                  |          v
  *                  |-------------------> DEAD
- *                  
+ *
  * A newly created task is in <tt>PENDING</tt> state.
  * A <tt>PENDING</tt> task becomes <tt>IN_PROGRESS</tt> when it is drained from the {@link ExecutionTaskPlanner}
  * An <tt>IN_PROGRESS</tt> task becomes <tt>COMPLETED</tt> if the execution is done without error.
@@ -45,7 +45,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   // The corresponding balancing proposal of this task.
   public final BalancingProposal proposal;
   private volatile State _state;
-  
+
   static {
     VALID_TRANSFER.put(PENDING, new HashSet<>(Collections.singleton(IN_PROGRESS)));
     VALID_TRANSFER.put(IN_PROGRESS, new HashSet<>(Arrays.asList(ABORTING, DEAD, COMPLETED)));
@@ -54,7 +54,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     VALID_TRANSFER.put(DEAD, Collections.emptySet());
     VALID_TRANSFER.put(ABORTED, Collections.emptySet());
   }
-  
+
   public ExecutionTask(long executionId, BalancingProposal proposal) {
     this.executionId = executionId;
     this.proposal = proposal;
@@ -158,7 +158,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     executionStatsMap.put("proposal", proposal.getJsonStructure());
     return executionStatsMap;
   }
-  
+
   private void ensureValidTransfer(State targetState) {
     if (!canTransferToState(targetState)) {
       throw new IllegalStateException("Cannot mark a task in " + _state + " to" + targetState + "state. The "

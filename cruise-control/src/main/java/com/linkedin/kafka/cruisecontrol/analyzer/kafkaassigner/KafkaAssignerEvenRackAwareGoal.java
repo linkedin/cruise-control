@@ -112,7 +112,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     for (int position = 0; position < maxReplicationFactor; position++) {
       for (Map.Entry<String, List<Partition>> entry : _partitionsByTopic.entrySet()) {
         for (Partition partition : entry.getValue()) {
-          if (partition.replicas().size() <=  position) {
+          if (partition.replicas().size() <= position) {
             continue;
           }
           if (shouldExclude(partition, position, excludedTopics)) {
@@ -263,30 +263,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * @param position The position of replica in the partition, i.e. 0 means leader, 1 is the first follower, and so on.
    */
   private Replica replicaAtPosition(Partition sourcePartition, int position) {
-    if (position == 0) {
-      return sourcePartition.leader();
-    }
     return sourcePartition.replicas().get(position);
-  }
-
-  /**
-   * Get replica of the given partition residing in the broker with the given brokerId. If there is no replica of the
-   * given partition in the broker with the given brokerId, return null.
-   *
-   * @param partition Partition whose replica will be returned (if any).
-   * @param brokerId The id of the broker in which the replica resides (if any).
-   */
-  private Replica replicaInBrokerFor(Partition partition, int brokerId) {
-    if (partition.leader().broker().id() == brokerId) {
-      return partition.leader();
-    }
-
-    for (Replica replica : partition.followers()) {
-      if (replica.broker().id() == brokerId) {
-        return replica;
-      }
-    }
-    return null;
   }
 
   /**

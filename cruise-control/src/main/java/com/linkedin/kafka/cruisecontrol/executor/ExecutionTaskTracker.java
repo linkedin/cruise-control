@@ -18,7 +18,7 @@ import java.util.Set;
 public class ExecutionTaskTracker {
   // Dead tasks indicate cancelled/killed executions affecting the original state before the balancing action execution.
   private final Map<BalancingAction, Set<ExecutionTask>> _deadTasks;
-  // Aborting tasks due to cancelled balancing actions not affecting the state before the execution of balancing 
+  // Aborting tasks due to cancelled balancing actions not affecting the state before the execution of balancing
   // action.
   private final Map<BalancingAction, Set<ExecutionTask>> _abortingTasks;
   // Tasks that have been successfully aborted.
@@ -109,7 +109,8 @@ public class ExecutionTaskTracker {
    */
   public boolean hasTaskInProgress() {
     for (BalancingAction balancingAction : BalancingAction.cachedValues()) {
-      if (!_inProgressTasks.get(balancingAction).isEmpty()) {
+      if (!_inProgressTasks.get(balancingAction).isEmpty()
+          || !_abortingTasks.get(balancingAction).isEmpty()) {
         return true;
       }
     }
@@ -179,7 +180,7 @@ public class ExecutionTaskTracker {
   public int numDeadReplicaDeletion() {
     return _deadTasks.get(BalancingAction.REPLICA_DELETION).size();
   }
-  
+
   public int numAbortingReplicaMove() {
     return _abortingTasks.get(BalancingAction.REPLICA_MOVEMENT).size();
   }

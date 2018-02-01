@@ -811,12 +811,28 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           out.write(String.format("%50s, %s, %s%n", goal.getClass().getSimpleName(), goal.clusterModelCompletenessRequirements(),
               entry.getValue() ? "Ready" : "NotReady").getBytes(StandardCharsets.UTF_8));
         }
-        if (state.executorState().state() == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
+        ExecutorState.State executorState = state.executorState().state();
+        if (executorState == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS
+            || executorState == ExecutorState.State.STOPPING_EXECUTION) {
           out.write(String.format("%n%nIn progress partition movements:%n").getBytes(StandardCharsets.UTF_8));
           for (ExecutionTask task : state.executorState().inProgressPartitionMovements()) {
             out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
           }
-          out.write(String.format("%n%nPending partition movements:%n").getBytes(StandardCharsets.UTF_8));
+          out.write(String.format("%n%nAborting partition movements:%n").getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : state.executorState().abortingPartitionMovements()) {
+            out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
+          }
+          out.write(String.format("%n%nAborted partition movements:%n").getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : state.executorState().abortedPartitionMovements()) {
+            out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
+          }
+          out.write(String.format("%n%nDead partition movements:%n").getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : state.executorState().deadPartitionMovements()) {
+            out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
+          }
+          out.write(String.format("%n%n%s partition movements:%n",
+                                  executorState == ExecutorState.State.STOPPING_EXECUTION ? "Cancelled" : "Pending")
+                        .getBytes(StandardCharsets.UTF_8));
           for (ExecutionTask task : state.executorState().pendingPartitionMovements()) {
             out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
           }

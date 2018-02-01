@@ -16,13 +16,17 @@ public class ExecutorState {
     NO_TASK_IN_PROGRESS,
     EXECUTION_STARTED,
     REPLICA_MOVEMENT_TASK_IN_PROGRESS,
-    LEADER_MOVEMENT_TASK_IN_PROGRESS;
+    LEADER_MOVEMENT_TASK_IN_PROGRESS,
+    STOPPING_EXECUTION
   }
 
   private final State _state;
   private final Set<ExecutionTask> _pendingPartitionMovements;
   private final int _numFinishedPartitionMovements;
   private final Set<ExecutionTask> _inProgressPartitionMovements;
+  private final Set<ExecutionTask> _abortingPartitionMovements;
+  private final Set<ExecutionTask> _abortedPartitionMovements;
+  private final Set<ExecutionTask> _deadPartitionMovements;
   private final long _remainingDataToMoveInMB;
   private final long _finishedDataMovementInMB;
 
@@ -30,6 +34,9 @@ public class ExecutorState {
                         int numFinishedPartitionMovements,
                         Set<ExecutionTask> pendingPartitionMovements,
                         Set<ExecutionTask> inProgressPartitionMovements,
+                        Set<ExecutionTask> abortingPartitionMovements,
+                        Set<ExecutionTask> abortedPartitionMovements,
+                        Set<ExecutionTask> deadPartitionMovements,
                         long remainingDataToMoveInMB,
                         long finishedDataMovementInMB) {
     _state = state;
@@ -38,11 +45,17 @@ public class ExecutorState {
     _numFinishedPartitionMovements = numFinishedPartitionMovements;
     _remainingDataToMoveInMB = remainingDataToMoveInMB;
     _finishedDataMovementInMB = finishedDataMovementInMB;
+    _abortingPartitionMovements = abortingPartitionMovements;
+    _abortedPartitionMovements = abortedPartitionMovements;
+    _deadPartitionMovements = deadPartitionMovements;
   }
 
   public static ExecutorState noTaskInProgress() {
     return new ExecutorState(State.NO_TASK_IN_PROGRESS,
                              0,
+                             Collections.emptySet(),
+                             Collections.emptySet(),
+                             Collections.emptySet(),
                              Collections.emptySet(),
                              Collections.emptySet(),
                              0L,
@@ -54,6 +67,9 @@ public class ExecutorState {
                              0,
                              Collections.emptySet(),
                              Collections.emptySet(),
+                             Collections.emptySet(),
+                             Collections.emptySet(),
+                             Collections.emptySet(),
                              0L,
                              0L);
   }
@@ -61,12 +77,18 @@ public class ExecutorState {
   public static ExecutorState replicaMovementInProgress(int finishedPartitionMovements,
                                                         Set<ExecutionTask> pendingPartitionMovements,
                                                         Set<ExecutionTask> inProgressPartitionMovements,
+                                                        Set<ExecutionTask> abortingPartitionMovements,
+                                                        Set<ExecutionTask> abortedPartitionMovements,
+                                                        Set<ExecutionTask> deadPartitionMovements,
                                                         long remainingDataToMoveInMB,
                                                         long finishedDataMovementInMB) {
     return new ExecutorState(State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
                              finishedPartitionMovements,
                              pendingPartitionMovements,
                              inProgressPartitionMovements,
+                             abortingPartitionMovements,
+                             abortedPartitionMovements,
+                             deadPartitionMovements,
                              remainingDataToMoveInMB,
                              finishedDataMovementInMB);
   }
@@ -76,8 +98,30 @@ public class ExecutorState {
                              0,
                              Collections.emptySet(),
                              Collections.emptySet(),
+                             Collections.emptySet(),
+                             Collections.emptySet(),
+                             Collections.emptySet(),
                              0L,
                              0L);
+  }
+
+  public static ExecutorState stopping(int finishedPartitionMovements,
+                                       Set<ExecutionTask> pendingPartitionMovements,
+                                       Set<ExecutionTask> inProgressPartitionMovements,
+                                       Set<ExecutionTask> abortingPartitionMovements,
+                                       Set<ExecutionTask> abortedPartitionMovements,
+                                       Set<ExecutionTask> deadParitionMovements,
+                                       long remainingDataToMoveInMB,
+                                       long finishedDataMovementInMB) {
+    return new ExecutorState(State.STOPPING_EXECUTION,
+                             finishedPartitionMovements,
+                             pendingPartitionMovements,
+                             inProgressPartitionMovements,
+                             abortingPartitionMovements,
+                             abortedPartitionMovements,
+                             deadParitionMovements,
+                             remainingDataToMoveInMB,
+                             finishedDataMovementInMB);
   }
 
   public State state() {
@@ -87,7 +131,9 @@ public class ExecutorState {
   public int numTotalPartitionMovements() {
     return _pendingPartitionMovements.size()
         + _inProgressPartitionMovements.size()
-        + _numFinishedPartitionMovements;
+        + _numFinishedPartitionMovements
+        + _abortingPartitionMovements.size()
+        + _abortedPartitionMovements.size();
   }
 
   public long totalDataToMoveInMB() {
@@ -106,6 +152,18 @@ public class ExecutorState {
     return _inProgressPartitionMovements;
   }
 
+  public Set<ExecutionTask> abortingPartitionMovements() {
+    return _abortingPartitionMovements;
+  }
+
+  public Set<ExecutionTask> abortedPartitionMovements() {
+    return _abortedPartitionMovements;
+  }
+
+  public Set<ExecutionTask> deadPartitionMovements() {
+    return _deadPartitionMovements;
+  }
+
   /*
    * Return an object that can be further used
    * to encode into JSON
@@ -119,11 +177,15 @@ public class ExecutorState {
         execState.put("state", _state);
         break;
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
+      case STOPPING_EXECUTION:
         execState.put("state", _state);
         execState.put("numTotalPartitions", numTotalPartitionMovements());
         execState.put("totalDataToMove", totalDataToMoveInMB());
         execState.put("numFinishedPartitions", _numFinishedPartitionMovements);
         execState.put("finishedDataMovement", _finishedDataMovementInMB);
+        execState.put("abortingPartitions", _abortingPartitionMovements);
+        execState.put("abortedPartitions", _abortedPartitionMovements);
+        execState.put("deadPartitions", _deadPartitionMovements);
         break;
       default:
         execState.put("state", _state);
@@ -142,9 +204,13 @@ public class ExecutorState {
         return String.format("{state: %s}", _state);
 
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
-        return String.format("{state: %s, total partitions(MB): %d/%d, finished partitions: %d/%d}",
-                             _state, _finishedDataMovementInMB, totalDataToMoveInMB(),
-                             _numFinishedPartitionMovements, numTotalPartitionMovements());
+      case STOPPING_EXECUTION:
+        return String.format("{state: %s, in-progress/aborting partitions: %d/%d, completed/total bytes(MB): %d/%d, "
+                                 + "finished/aborted/dead/total partitions: %d/%d/%d/%d}",
+                             _state, _inProgressPartitionMovements.size(), _abortingPartitionMovements.size(),
+                             _finishedDataMovementInMB, totalDataToMoveInMB(), _numFinishedPartitionMovements,
+                             _abortedPartitionMovements.size(), _deadPartitionMovements.size(),
+                             numTotalPartitionMovements());
       default:
         throw new IllegalStateException("This should never happen");
     }

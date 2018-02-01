@@ -13,9 +13,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -57,7 +55,6 @@ public class Executor {
   // Some state for external service to query
   private AtomicReference<ExecutorState.State> _state;
   private volatile boolean _stopRequested;
-  private volatile int _numTotalPartitionMovements;
   private volatile int _numFinishedPartitionMovements;
   private volatile long _finishedDataMovementInMB;
 
@@ -97,6 +94,9 @@ public class Executor {
             ExecutorState.replicaMovementInProgress(_numFinishedPartitionMovements,
                                                     _executionTaskManager.remainingPartitionMovements(),
                                                     _executionTaskManager.inProgressTasks(),
+                                                    _executionTaskManager.abortingTasks(),
+                                                    _executionTaskManager.abortedTasks(),
+                                                    _executionTaskManager.deadTasks(),
                                                     _executionTaskManager.remainingDataToMoveInMB(),
                                                     _finishedDataMovementInMB);
         if (_state.get() == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
@@ -104,7 +104,15 @@ public class Executor {
         } else {
           return state();
         }
-
+      case STOPPING_EXECUTION:
+        return ExecutorState.stopping(_numFinishedPartitionMovements,
+                                      _executionTaskManager.remainingPartitionMovements(),
+                                      _executionTaskManager.inProgressTasks(),
+                                      _executionTaskManager.abortingTasks(),
+                                      _executionTaskManager.abortedTasks(),
+                                      _executionTaskManager.deadTasks(),
+                                      _executionTaskManager.remainingDataToMoveInMB(),
+                                      _finishedDataMovementInMB);
       default:
         throw new IllegalStateException("Should never be here!");
     }
@@ -114,15 +122,24 @@ public class Executor {
    * Kick off the execution.
    */
   public void startExecution(LoadMonitor loadMonitor) {
-    if (_state.compareAndSet(ExecutorState.State.NO_TASK_IN_PROGRESS, ExecutorState.State.EXECUTION_STARTED)) {
-      _proposalExecutor.submit(new ProposalExecution(loadMonitor));
-    } else {
-      throw new IllegalStateException("The execution is already in progress.");
+    _zkUtils = ZkUtils.apply(_zkConnect, 30000, 30000, false);
+    try {
+      if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
+        throw new IllegalStateException("There are ongoing partition reassignments.");
+      }
+      if (_state.compareAndSet(ExecutorState.State.NO_TASK_IN_PROGRESS, ExecutorState.State.EXECUTION_STARTED)) {
+        _proposalExecutor.submit(new ProposalExecution(loadMonitor));
+      } else {
+        throw new IllegalStateException("Cannot execute proposals because the executor is in " + _state + " state.");
+      }
+    } finally {
+      _zkUtils.close();
     }
   }
 
   public void stopExecution() {
     if (_state.get() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+      _state.set(ExecutorState.State.STOPPING_EXECUTION);
       _stopRequested = true;
     }
   }
@@ -168,20 +185,6 @@ public class Executor {
     _executionTaskManager.addBalancingProposals(proposals, unthrottledBrokers);
   }
 
-  /**
-   * Get the number of total partition movements for this round of execution..
-   */
-  public int numTotalPartitionMovements() {
-    return _state.get() == ExecutorState.State.NO_TASK_IN_PROGRESS ? 0 : _numTotalPartitionMovements;
-  }
-
-  /**
-   * Get the number of finished partition movements for this round of execution.
-   */
-  public int numFinishedPartitionMovements() {
-    return _state.get() == ExecutorState.State.NO_TASK_IN_PROGRESS ? 0 : _numFinishedPartitionMovements;
-  }
-
   private class ProposalExecution implements Runnable {
     private final LoadMonitor _loadMonitor;
     ProposalExecution(LoadMonitor loadMonitor) {
@@ -200,11 +203,15 @@ public class Executor {
     private void execute() {
       _zkUtils = ZkUtils.apply(_zkConnect, 30000, 30000, false);
       try {
-        _state.set(ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS);
-        moveReplicas();
+        if (_state.compareAndSet(ExecutorState.State.EXECUTION_STARTED,
+                                 ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS)) {
+          moveReplicas();
+        }
         // Start leader movements.
-        _state.set(ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS);
-        moveLeaders();
+        if (_state.compareAndSet(ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+                                 ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS)) {
+          moveLeaders();
+        }
       } catch (Throwable t) {
         LOG.error("Executor got exception during execution", t);
       } finally {
@@ -216,14 +223,15 @@ public class Executor {
         _executionTaskManager.clear();
         KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, 10000);
         _state.set(ExecutorState.State.NO_TASK_IN_PROGRESS);
+        _zkUtils.close();
       }
     }
 
     private void moveReplicas() {
-      _numTotalPartitionMovements = _executionTaskManager.remainingPartitionMovements().size();
+      int numTotalPartitionMovements = _executionTaskManager.remainingPartitionMovements().size();
       long totalDataToMoveInMB = _executionTaskManager.remainingDataToMoveInMB();
-      int partitionsToMove = _numTotalPartitionMovements;
-      LOG.info("Starting {} partition movements.", _numTotalPartitionMovements);
+      int partitionsToMove = numTotalPartitionMovements;
+      LOG.info("Starting {} partition movements.", numTotalPartitionMovements);
       // Exhaust all the pending partition movements.
       while ((partitionsToMove > 0 || _executionTaskManager.hasTaskInProgress()) && !_stopRequested) {
         // Get tasks to execute.
@@ -240,17 +248,19 @@ public class Executor {
         partitionsToMove = _executionTaskManager.remainingPartitionMovements().size();
         long dataToMove = _executionTaskManager.remainingDataToMoveInMB();
         _numFinishedPartitionMovements =
-            _numTotalPartitionMovements - partitionsToMove - _executionTaskManager.inProgressTasks().size();
+            numTotalPartitionMovements - partitionsToMove - _executionTaskManager.inExecutionTasks().size();
         _finishedDataMovementInMB = totalDataToMoveInMB - dataToMove;
         LOG.info("{}/{} ({}%) partition movements completed. {}/{} ({}%) MB have been moved.",
-                 _numFinishedPartitionMovements, _numTotalPartitionMovements,
-                 _numFinishedPartitionMovements * 100 / _numTotalPartitionMovements,
+                 _numFinishedPartitionMovements, numTotalPartitionMovements,
+                 _numFinishedPartitionMovements * 100 / numTotalPartitionMovements,
                  _finishedDataMovementInMB, totalDataToMoveInMB,
                  totalDataToMoveInMB == 0 ? 100 : (_finishedDataMovementInMB * 100) / totalDataToMoveInMB);
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
       // ensures a clean stop when the execution is stopped in the middle.
-      while (!_executionTaskManager.inProgressTasks().isEmpty() && !_stopRequested) {
+      while (!_executionTaskManager.inExecutionTasks().isEmpty()) {
+        LOG.info("Waiting for {} tasks to finish: {}", _executionTaskManager.inExecutionTasks().size(),
+                 _executionTaskManager.inExecutionTasks());
         waitForExecutionTaskToFinish();
       }
       if (_executionTaskManager.inProgressTasks().isEmpty()) {
@@ -323,40 +333,43 @@ public class Executor {
       List<ExecutionTask> finishedTasks = new ArrayList<>();
       do {
         Cluster cluster = _metadataClient.refreshMetadata().cluster();
-        LOG.debug("Tasks in progress: {}", _executionTaskManager.inProgressTasks());
-        for (ExecutionTask task : _executionTaskManager.inProgressTasks()) {
+        LOG.debug("Tasks in execution: {}", _executionTaskManager.inExecutionTasks());
+        List<ExecutionTask> deadOrAbortingTasks = new ArrayList<>();
+        for (ExecutionTask task : _executionTaskManager.inExecutionTasks()) {
           TopicPartition tp = task.proposal.topicPartition();
           if (cluster.partition(tp) == null) {
+            // Handle topic deletion during the execution.
             LOG.debug("Task {} is marked as finished because the topic has been deleted", task);
             finishedTasks.add(task);
             _executionTaskManager.markTaskAborting(task);
             _executionTaskManager.markTaskDone(task);
-            continue;
-          }
-          boolean taskDone;
-          switch (task.proposal.balancingAction()) {
-            case REPLICA_MOVEMENT:
-              taskDone = isReplicaMovementDone(cluster, tp, task);
-                break;
-            case REPLICA_DELETION:
-              taskDone = isReplicaDeletionDone(cluster, tp, task);
-              break;
-            case REPLICA_ADDITION:
-              taskDone = isReplicaAdditionDone(cluster, tp, task);
-              break;
-            case LEADERSHIP_MOVEMENT:
-              taskDone = isLeadershipMovementDone(cluster, tp, task);
-              break;
-            default:
-              throw new IllegalStateException("Should never be here.");
-          }
-          if (taskDone) {
+          } else if (isTaskDone(cluster, tp, task)) {
+            // Check to see if the task is done.
             finishedTasks.add(task);
             _executionTaskManager.markTaskDone(task);
+          } else if (maybeMarkTaskAsDeadOrAborting(cluster, task)) {
+            // Only add the dead or aborted tasks to execute if it is not a leadership movement.
+            if (task.proposal.balancingAction() != BalancingAction.LEADERSHIP_MOVEMENT) {
+              deadOrAbortingTasks.add(task);
+            }
+            // A dead or aborted task is considered as finished.
+            if (task.state() == DEAD || task.state() == ABORTED) {
+              finishedTasks.add(task);
+            }
           }
         }
+        // TODO: Execute the dead or aborted tasks.
+        if (!deadOrAbortingTasks.isEmpty()) {
+          // TODO: re-enable this rollback action when KAFKA-6304 is available.
+          // ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, deadOrAbortingTasks);
+          if (!_stopRequested) {
+            // If there is task aborted or dead, we stop the execution.
+            stopExecution();
+          }
+        }
+
+        // If there is no finished tasks, we need to check if anything is blocked.
         if (finishedTasks.isEmpty()) {
-          maybeAbortTasks(_executionTaskManager.inProgressTasks());
           maybeReexecuteTasks();
           try {
             Thread.sleep(_statusCheckingIntervalMs);
@@ -364,12 +377,38 @@ public class Executor {
             // let it go
           }
         }
-      } while (!_executionTaskManager.inProgressTasks().isEmpty() && finishedTasks.size() == 0 && !_stopRequested);
+      } while (!_executionTaskManager.inExecutionTasks().isEmpty() && finishedTasks.size() == 0);
       // Some tasks have finished, remove them from in progress task map.
-      _executionTaskManager.completeTasks(finishedTasks);
       LOG.info("Completed tasks: {}", finishedTasks);
     }
 
+    /**
+     * Check if a task is done.
+     */
+    private boolean isTaskDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
+      switch (task.proposal.balancingAction()) {
+        case REPLICA_MOVEMENT:
+          return isReplicaMovementDone(cluster, tp, task);
+        case REPLICA_DELETION:
+          return isReplicaDeletionDone(cluster, tp, task);
+        case REPLICA_ADDITION:
+          return isReplicaAdditionDone(cluster, tp, task);
+        case LEADERSHIP_MOVEMENT:
+          return isLeadershipMovementDone(cluster, tp, task);
+        default:
+          throw new IllegalStateException("Should never be here.");
+      }
+    }
+
+    /**
+     * For a replica movement, the completion depends on the task state:
+     * IN_PROGRESS: done when source is not in the replica list while the destination is there.
+     * ABORTING: done when destination is not in the replica list but the source is there. Due to race condition,
+     *           we also accept the completion condition for IN_PROGRESS tasks.
+     * DEAD: always considered as done because we neither move forward or rollback.
+     *
+     * There should be no other task state seen here.
+     */
     private boolean isReplicaMovementDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
       boolean destinationExists = false;
       boolean sourceExists = false;
@@ -381,14 +420,19 @@ public class Executor {
         case IN_PROGRESS:
           return destinationExists && !sourceExists;
         case ABORTING:
-          return !destinationExists && sourceExists;
+          // There could be a race condition that when we abort a task, it is already completed.
+          // in that case, we treat it as aborted as well.
+          return (!destinationExists && sourceExists) || (destinationExists && !sourceExists);
         case DEAD:
-          return !destinationExists && !sourceExists;
+          return true;
         default:
           throw new IllegalStateException("Should never be here. State " + task.state());
       }
     }
 
+    /**
+     * A replica deletion is done when the the source node is no longer in the replica list.
+     */
     private boolean isReplicaDeletionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
       boolean sourceExists = false;
       for (Node node : cluster.partition(tp).replicas()) {
@@ -397,6 +441,13 @@ public class Executor {
       return !sourceExists;
     }
 
+    /**
+     * The completeness of replica addition depends on the task state:
+     * IN_PROGRESS: done when the destination shows in the replica list.
+     * ABORTING or DEAD: always considered as done because there is nothing that can be added.
+     *
+     * There should be no other task state seen here.
+     */
     private boolean isReplicaAdditionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
       boolean destinationExists = false;
       for (Node node : cluster.partition(tp).replicas()) {
@@ -413,6 +464,13 @@ public class Executor {
       }
     }
 
+    /**
+     * The completeness of leadership movement depends on the task state:
+     * IN_PROGRESS: done when the leader becomes the destination.
+     * ABORTING or DEAD: always considered as done the destination cannot become leader anymore.
+     *
+     * There should be no other task state seen here.
+     */
     private boolean isLeadershipMovementDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
       Node leader = cluster.leaderFor(tp);
       switch (task.state()) {
@@ -427,48 +485,37 @@ public class Executor {
 
     }
 
-    private void maybeAbortTasks(Collection<ExecutionTask> tasks) {
-      List<ExecutionTask> abortingTasks = new ArrayList<>();
-      List<ExecutionTask> deadTasks = new ArrayList<>();
-      List<ExecutionTask> abortingOrDeadLeaderMoveTasks = new ArrayList<>();
-      Set<Integer> aliveNodes = new HashSet<>();
-      Cluster cluster = _metadataClient.cluster();
-      cluster.nodes().forEach(node -> aliveNodes.add(node.id()));
-      for (ExecutionTask task : tasks) {
-        if (task.state() == IN_PROGRESS || task.state() == ABORTING) {
-          boolean destinationAlive = task.destinationBrokerId() == null || aliveNodes.contains(task.destinationBrokerId());
-          boolean sourceAlive = task.sourceBrokerId() == null || aliveNodes.contains(task.sourceBrokerId());
-          if (!destinationAlive) {
-            if (sourceAlive) {
-              _executionTaskManager.markTaskAborting(task);
-              abortingTasks.add(task);
-              LOG.error("Aborting execution for task {} because destination broker is down.", task);
-            } else {
-              _executionTaskManager.markTaskDead(task);
-              deadTasks.add(task);
-              LOG.error("Killing execution for task {} because both source and destination broker are down.", task);
-            }
-            // Keep track of leadership movement tasks.
-            if (task.proposal.balancingAction() == BalancingAction.LEADERSHIP_MOVEMENT) {
-              abortingOrDeadLeaderMoveTasks.add(task);
-            }
-          }
+    /**
+     * Mark the task as aborting or dead if needed.
+     *
+     * Ideally, the task should be marked as:
+     * 1. ABORTING: when the execution is stopped by the users.
+     * 2. ABORTING: When the destination broker is dead so the task cannot make progress, but the source broker is
+     *              still alive.
+     * 3. DEAD: when both the source and destination brokers are dead.
+     *
+     * Currently KafkaController does not support updates on the partitions that is being reassigned. (KAFKA-6034)
+     * Therefore once a proposals is written to ZK, we cannot revoke it. So the actual behavior we are using is to
+     * set the task state to:
+     * 1. IN_PROGRESS: when the execution is stopped by the users. i.e. do nothing but let the task finish normally.
+     * 2. DEAD: when the destination broker is dead. i.e. do not block on the execution.
+     *
+     * @param cluster the kafka cluster
+     * @param task the task to check
+     * @return true if the task is marked as dead or aborting, false otherwise.
+     */
+    private boolean maybeMarkTaskAsDeadOrAborting(Cluster cluster, ExecutionTask task) {
+      // Only check tasks with IN_PROGRESS or ABORTING state.
+      if (task.state() == IN_PROGRESS || task.state() == ABORTING) {
+        boolean destinationAlive =
+            task.destinationBrokerId() == null || cluster.nodeById(task.destinationBrokerId()) != null;
+        if (!destinationAlive) {
+          _executionTaskManager.markTaskDead(task);
+          LOG.warn("Killing execution for task {} because both source and destination broker are down.", task);
+          return true;
         }
       }
-      if (!abortingTasks.isEmpty() || !deadTasks.isEmpty()) {
-        // The aborted or dead relocation tasks include replica movement, addition, and deletion tasks.
-        List<ExecutionTask> abortedOrDeadReassignmentTasks = new ArrayList<>(abortingTasks);
-        abortedOrDeadReassignmentTasks.addAll(deadTasks);
-        abortedOrDeadReassignmentTasks.removeAll(abortingOrDeadLeaderMoveTasks);
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, abortedOrDeadReassignmentTasks);
-        LOG.error("Aborting tasks: {} , dead tasks: {}, stopping proposal execution.", abortingTasks, deadTasks);
-        stopExecution();
-      }
+      return false;
     }
 
     /**
@@ -476,12 +523,12 @@ public class Executor {
      * deleted by controller without being executed. We will resubmit those tasks in that case.
      */
     private void maybeReexecuteTasks() {
-      boolean shouldReexecuteTasks = !_executionTaskManager.inProgressTasks().isEmpty() &&
+      boolean shouldReexecuteTasks = !_executionTaskManager.inExecutionTasks().isEmpty() &&
           ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty();
       if (shouldReexecuteTasks) {
-        LOG.info("Reexecuting tasks {}", _executionTaskManager.inProgressTasks());
+        LOG.info("Reexecuting tasks {}", _executionTaskManager.inExecutionTasks());
         List<ExecutionTask> tasksToReexecute = new ArrayList<>();
-        for (ExecutionTask executionTask : _executionTaskManager.inProgressTasks()) {
+        for (ExecutionTask executionTask : _executionTaskManager.inExecutionTasks()) {
           if (executionTask.proposal.balancingAction() != BalancingAction.LEADERSHIP_MOVEMENT) {
             tasksToReexecute.add(executionTask);
           }
