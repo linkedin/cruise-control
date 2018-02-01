@@ -55,7 +55,6 @@ public class Executor {
   // Some state for external service to query
   private AtomicReference<ExecutorState.State> _state;
   private volatile boolean _stopRequested;
-  private volatile int _numTotalPartitionMovements;
   private volatile int _numFinishedPartitionMovements;
   private volatile long _finishedDataMovementInMB;
 
@@ -105,7 +104,7 @@ public class Executor {
         } else {
           return state();
         }
-      case STOPPING:
+      case STOPPING_EXECUTION:
         return ExecutorState.stopping(_numFinishedPartitionMovements,
                                       _executionTaskManager.remainingPartitionMovements(),
                                       _executionTaskManager.inProgressTasks(),
@@ -126,12 +125,12 @@ public class Executor {
     _zkUtils = ZkUtils.apply(_zkConnect, 30000, 30000, false);
     try {
       if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
-        throw new IllegalStateException("There are on going partition reassignments");
+        throw new IllegalStateException("There are ongoing partition reassignments.");
       }
       if (_state.compareAndSet(ExecutorState.State.NO_TASK_IN_PROGRESS, ExecutorState.State.EXECUTION_STARTED)) {
         _proposalExecutor.submit(new ProposalExecution(loadMonitor));
       } else {
-        throw new IllegalStateException("The execution is already in progress.");
+        throw new IllegalStateException("Cannot execute proposals because the executor is in " + _state + " state.");
       }
     } finally {
       _zkUtils.close();
@@ -140,7 +139,7 @@ public class Executor {
 
   public void stopExecution() {
     if (_state.get() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      _state.set(ExecutorState.State.STOPPING);
+      _state.set(ExecutorState.State.STOPPING_EXECUTION);
       _stopRequested = true;
     }
   }
@@ -186,20 +185,6 @@ public class Executor {
     _executionTaskManager.addBalancingProposals(proposals, unthrottledBrokers);
   }
 
-  /**
-   * Get the number of total partition movements for this round of execution..
-   */
-  public int numTotalPartitionMovements() {
-    return _state.get() == ExecutorState.State.NO_TASK_IN_PROGRESS ? 0 : _numTotalPartitionMovements;
-  }
-
-  /**
-   * Get the number of finished partition movements for this round of execution.
-   */
-  public int numFinishedPartitionMovements() {
-    return _state.get() == ExecutorState.State.NO_TASK_IN_PROGRESS ? 0 : _numFinishedPartitionMovements;
-  }
-
   private class ProposalExecution implements Runnable {
     private final LoadMonitor _loadMonitor;
     ProposalExecution(LoadMonitor loadMonitor) {
@@ -243,10 +228,10 @@ public class Executor {
     }
 
     private void moveReplicas() {
-      _numTotalPartitionMovements = _executionTaskManager.remainingPartitionMovements().size();
+      int numTotalPartitionMovements = _executionTaskManager.remainingPartitionMovements().size();
       long totalDataToMoveInMB = _executionTaskManager.remainingDataToMoveInMB();
-      int partitionsToMove = _numTotalPartitionMovements;
-      LOG.info("Starting {} partition movements.", _numTotalPartitionMovements);
+      int partitionsToMove = numTotalPartitionMovements;
+      LOG.info("Starting {} partition movements.", numTotalPartitionMovements);
       // Exhaust all the pending partition movements.
       while ((partitionsToMove > 0 || _executionTaskManager.hasTaskInProgress()) && !_stopRequested) {
         // Get tasks to execute.
@@ -263,11 +248,11 @@ public class Executor {
         partitionsToMove = _executionTaskManager.remainingPartitionMovements().size();
         long dataToMove = _executionTaskManager.remainingDataToMoveInMB();
         _numFinishedPartitionMovements =
-            _numTotalPartitionMovements - partitionsToMove - _executionTaskManager.inExecutionTasks().size();
+            numTotalPartitionMovements - partitionsToMove - _executionTaskManager.inExecutionTasks().size();
         _finishedDataMovementInMB = totalDataToMoveInMB - dataToMove;
         LOG.info("{}/{} ({}%) partition movements completed. {}/{} ({}%) MB have been moved.",
-                 _numFinishedPartitionMovements, _numTotalPartitionMovements,
-                 _numFinishedPartitionMovements * 100 / _numTotalPartitionMovements,
+                 _numFinishedPartitionMovements, numTotalPartitionMovements,
+                 _numFinishedPartitionMovements * 100 / numTotalPartitionMovements,
                  _finishedDataMovementInMB, totalDataToMoveInMB,
                  totalDataToMoveInMB == 0 ? 100 : (_finishedDataMovementInMB * 100) / totalDataToMoveInMB);
       }
@@ -362,7 +347,7 @@ public class Executor {
             // Check to see if the task is done.
             finishedTasks.add(task);
             _executionTaskManager.markTaskDone(task);
-          } else if (maybeMarkTaskAsDeadOrAborted(cluster, task, _stopRequested)) {
+          } else if (maybeMarkTaskAsDeadOrAborting(cluster, task)) {
             // Only add the dead or aborted tasks to execute if it is not a leadership movement.
             if (task.proposal.balancingAction() != BalancingAction.LEADERSHIP_MOVEMENT) {
               deadOrAbortingTasks.add(task);
@@ -373,7 +358,7 @@ public class Executor {
             }
           }
         }
-        // Execute the dead or aborted tasks.
+        // TODO: Execute the dead or aborted tasks.
         if (!deadOrAbortingTasks.isEmpty()) {
           // TODO: re-enable this rollback action when KAFKA-6304 is available.
           // ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, deadOrAbortingTasks);
@@ -416,9 +401,10 @@ public class Executor {
     }
 
     /**
-     * For a replica movement, the completeness depends on the task state:
+     * For a replica movement, the completion depends on the task state:
      * IN_PROGRESS: done when source is not in the replica list while the destination is there.
-     * ABORTING: done when destination is not in the replica list but the source is there.
+     * ABORTING: done when destination is not in the replica list but the source is there. Due to race condition,
+     *           we also accept the completion condition for IN_PROGRESS tasks.
      * DEAD: always considered as done because we neither move forward or rollback.
      *
      * There should be no other task state seen here.
@@ -499,33 +485,31 @@ public class Executor {
 
     }
 
-    private boolean maybeMarkTaskAsDeadOrAborted(Cluster cluster, ExecutionTask task, boolean rollbackOnStopping) {
+    /**
+     * Mark the task as aborting or dead if needed.
+     *
+     * Ideally, the task should be marked as:
+     * 1. ABORTING: when the execution is stopped by the users.
+     * 2. ABORTING: When the destination broker is dead so the task cannot make progress, but the source broker is
+     *              still alive.
+     * 3. DEAD: when both the source and destination brokers are dead.
+     *
+     * Currently KafkaController does not support updates on the partitions that is being reassigned. (KAFKA-6034)
+     * Therefore once a proposals is written to ZK, we cannot revoke it. So the actual behavior we are using is to
+     * set the task state to:
+     * 1. IN_PROGRESS: when the execution is stopped by the users. i.e. do nothing but let the task finish normally.
+     * 2. DEAD: when the destination broker is dead. i.e. do not block on the execution.
+     *
+     * @param cluster the kafka cluster
+     * @param task the task to check
+     * @return true if the task is marked as dead or aborting, false otherwise.
+     */
+    private boolean maybeMarkTaskAsDeadOrAborting(Cluster cluster, ExecutionTask task) {
       // Only check tasks with IN_PROGRESS or ABORTING state.
       if (task.state() == IN_PROGRESS || task.state() == ABORTING) {
         boolean destinationAlive =
             task.destinationBrokerId() == null || cluster.nodeById(task.destinationBrokerId()) != null;
-        boolean needInterrupt = !destinationAlive || rollbackOnStopping;
-
-        if (!needInterrupt) {
-          return false;
-        }
-
-        boolean sourceAlive = task.sourceBrokerId() == null || cluster.nodeById(task.sourceBrokerId()) != null;
-        if (sourceAlive) { // source is alive, can be rolled back.
-          if (task.state() == IN_PROGRESS) {
-            _executionTaskManager.markTaskAborting(task);
-            String reason = rollbackOnStopping ? "execution is stopped" : "destination broker is down";
-            LOG.warn("Aborting execution of task {} because {}.", task, reason);
-            // TODO: We are currently marking the task as aborted directly if the destination is dead
-            // because KafkaController does not support aborting an ongoing partition reassignment.
-            // This needs to be removed once we have
-            if (!destinationAlive) {
-              _executionTaskManager.markTaskDone(task);
-            }
-            return true;
-          }
-        } else { // source is dead, cannot make rollback.
-          // Only add the new dead tasks.
+        if (!destinationAlive) {
           _executionTaskManager.markTaskDead(task);
           LOG.warn("Killing execution for task {} because both source and destination broker are down.", task);
           return true;

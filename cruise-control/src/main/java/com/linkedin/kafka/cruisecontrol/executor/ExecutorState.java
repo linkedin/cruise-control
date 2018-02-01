@@ -17,7 +17,7 @@ public class ExecutorState {
     EXECUTION_STARTED,
     REPLICA_MOVEMENT_TASK_IN_PROGRESS,
     LEADER_MOVEMENT_TASK_IN_PROGRESS,
-    STOPPING
+    STOPPING_EXECUTION
   }
 
   private final State _state;
@@ -113,7 +113,7 @@ public class ExecutorState {
                                        Set<ExecutionTask> deadParitionMovements,
                                        long remainingDataToMoveInMB,
                                        long finishedDataMovementInMB) {
-    return new ExecutorState(State.STOPPING,
+    return new ExecutorState(State.STOPPING_EXECUTION,
                              finishedPartitionMovements,
                              pendingPartitionMovements,
                              inProgressPartitionMovements,
@@ -177,7 +177,7 @@ public class ExecutorState {
         execState.put("state", _state);
         break;
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
-      case STOPPING:
+      case STOPPING_EXECUTION:
         execState.put("state", _state);
         execState.put("numTotalPartitions", numTotalPartitionMovements());
         execState.put("totalDataToMove", totalDataToMoveInMB());
@@ -185,6 +185,7 @@ public class ExecutorState {
         execState.put("finishedDataMovement", _finishedDataMovementInMB);
         execState.put("abortingPartitions", _abortingPartitionMovements);
         execState.put("abortedPartitions", _abortedPartitionMovements);
+        execState.put("deadPartitions", _deadPartitionMovements);
         break;
       default:
         execState.put("state", _state);
@@ -203,7 +204,7 @@ public class ExecutorState {
         return String.format("{state: %s}", _state);
 
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
-      case STOPPING:
+      case STOPPING_EXECUTION:
         return String.format("{state: %s, in-progress/aborting partitions: %d/%d, completed/total bytes(MB): %d/%d, "
                                  + "finished/aborted/dead/total partitions: %d/%d/%d/%d}",
                              _state, _inProgressPartitionMovements.size(), _abortingPartitionMovements.size(),

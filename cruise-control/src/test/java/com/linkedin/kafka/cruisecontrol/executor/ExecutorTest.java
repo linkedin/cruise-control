@@ -149,6 +149,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     // We are not doing the rollback.
     assertEquals(Collections.singletonList(initialLeader0 == 0 ? 1 : 0),
                  ExecutorUtils.newAssignmentForPartition(zkUtils, tp0));
+    assertEquals(initialLeader0, zkUtils.getLeaderForPartition(topic1, partition).get());
   }
 
   private void executeAndVerifyProposals(ZkUtils zkUtils,
