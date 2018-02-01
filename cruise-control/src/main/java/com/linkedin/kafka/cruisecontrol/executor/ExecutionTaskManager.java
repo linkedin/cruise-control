@@ -191,6 +191,17 @@ public class ExecutionTaskManager {
   }
 
   /**
+   * Get all the tasks that are not completed yet.
+   * The uncompleted tasks include tasks in IN_PROGRESS and ABORTING state.
+   */
+  public Set<ExecutionTask> inExecutionTasks() {
+    Set<ExecutionTask> inExecution = new HashSet<>();
+    inExecution.addAll(_executionTaskTracker.inProgressTasks());
+    inExecution.addAll(_executionTaskTracker.abortingTasks());
+    return inExecution;
+  }
+
+  /**
    * Get all the in progress execution tasks.
    */
   public Set<ExecutionTask> inProgressTasks() {
@@ -276,8 +287,10 @@ public class ExecutionTaskManager {
   public void markTaskDone(ExecutionTask task) {
     if (task.state() == ExecutionTask.State.IN_PROGRESS) {
       markTaskState(task, ExecutionTask.State.COMPLETED);
+      completeTask(task);
     } else if (task.state() == ExecutionTask.State.ABORTING) {
       markTaskState(task, ExecutionTask.State.ABORTED);
+      completeTask(task);
     }
   }
 
@@ -296,6 +309,7 @@ public class ExecutionTaskManager {
   public void markTaskDead(ExecutionTask task) {
     if (task.state() != ExecutionTask.State.DEAD) {
       markTaskState(task, ExecutionTask.State.DEAD);
+      completeTask(task);
     }
   }
 
@@ -349,20 +363,15 @@ public class ExecutionTaskManager {
   /**
    * Mark a given tasks as completed.
    */
-  public void completeTasks(List<ExecutionTask> tasks) {
-    for (ExecutionTask task : tasks) {
-      BalancingAction balancingAction = task.proposal.balancingAction();
-      _executionTaskTracker.inProgressTasksFor(balancingAction).remove(task);
-      _inProgressPartitions.remove(task.proposal.topicPartition());
-      if (balancingAction == BalancingAction.REPLICA_MOVEMENT) {
-        if (task.sourceBrokerId() != null) {
-          _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
-                                                 _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) - 1);
-        }
-        if (task.destinationBrokerId() != null) {
-          _inProgressPartMovementsByBrokerId.put(task.destinationBrokerId(),
-                                                 _inProgressPartMovementsByBrokerId.get(task.destinationBrokerId()) - 1);
-        }
+  private void completeTask(ExecutionTask task) {
+    if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
+      if (task.sourceBrokerId() != null) {
+        _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
+                                               _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) - 1);
+      }
+      if (task.destinationBrokerId() != null) {
+        _inProgressPartMovementsByBrokerId.put(task.destinationBrokerId(),
+                                               _inProgressPartMovementsByBrokerId.get(task.destinationBrokerId()) - 1);
       }
     }
   }

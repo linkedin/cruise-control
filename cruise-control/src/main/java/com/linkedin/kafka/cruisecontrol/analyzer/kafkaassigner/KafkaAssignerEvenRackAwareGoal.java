@@ -112,7 +112,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     for (int position = 0; position < maxReplicationFactor; position++) {
       for (Map.Entry<String, List<Partition>> entry : _partitionsByTopic.entrySet()) {
         for (Partition partition : entry.getValue()) {
-          if (partition.replicas().size() <=  position) {
+          if (partition.replicas().size() <= position) {
             continue;
           }
           if (shouldExclude(partition, position, excludedTopics)) {
@@ -263,9 +263,6 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * @param position The position of replica in the partition, i.e. 0 means leader, 1 is the first follower, and so on.
    */
   private Replica replicaAtPosition(Partition sourcePartition, int position) {
-    if (position == 0) {
-      return sourcePartition.leader();
-    }
     return sourcePartition.replicas().get(position);
   }
 

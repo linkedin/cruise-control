@@ -895,7 +895,7 @@ public class ClusterModel implements Serializable {
           brokerStats.addSingleBrokerStats(broker.host().name(),
                                            broker.id(),
                                            broker.getState(),
-                                           broker.load().expectedUtilizationFor(Resource.DISK),
+                                           broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
                                            broker.load().expectedUtilizationFor(Resource.CPU),
                                            leaderBytesInRate,
                                            broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
