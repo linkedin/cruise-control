@@ -268,10 +268,8 @@ public class ExecutionTaskManager {
         markTaskState(task, ExecutionTask.State.IN_PROGRESS);
         _inProgressPartitions.add(task.proposal.topicPartition());
         if (task.proposal.actionType() == ActionType.REPLICA_MOVEMENT) {
-          if (task.oldLeader() >= 0) {
-            _inProgressPartMovementsByBrokerId.put(task.oldLeader(),
-                                                   _inProgressPartMovementsByBrokerId.get(task.oldLeader()) + 1);
-          }
+          _inProgressPartMovementsByBrokerId.put(task.oldLeader(),
+                                                 _inProgressPartMovementsByBrokerId.get(task.oldLeader()) + 1);
           for (int broker : task.replicasToAdd()) {
             _inProgressPartMovementsByBrokerId.put(broker, _inProgressPartMovementsByBrokerId.get(broker) + 1);
           }
@@ -365,10 +363,8 @@ public class ExecutionTaskManager {
    */
   private void completeTask(ExecutionTask task) {
     if (task.proposal.actionType() == ActionType.REPLICA_MOVEMENT) {
-      if (task.oldLeader() >= 0) {
-        _inProgressPartMovementsByBrokerId.put(task.oldLeader(),
-                                               _inProgressPartMovementsByBrokerId.get(task.oldLeader()) - 1);
-      }
+      _inProgressPartMovementsByBrokerId.put(task.oldLeader(),
+                                             _inProgressPartMovementsByBrokerId.get(task.oldLeader()) - 1);
       for (int broker : task.replicasToAdd()) {
         _inProgressPartMovementsByBrokerId.put(broker, _inProgressPartMovementsByBrokerId.get(broker) - 1);
       }

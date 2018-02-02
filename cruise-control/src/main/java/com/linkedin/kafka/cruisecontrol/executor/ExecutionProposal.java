@@ -162,6 +162,11 @@ public class ExecutionProposal {
   }
 
   private void validate() {
+    // Verify old leader exists.
+    if (_oldLeader >= 0 && !_oldReplicas.contains(_oldLeader)) {
+      throw new IllegalArgumentException(String.format("The old leader %d does not exit in the old replica list %s",
+                                                       _oldLeader, _oldReplicas));
+    }
     // verify empty new replica list.
     if (_newReplicas == null || _newReplicas.isEmpty()) {
       throw new IllegalArgumentException("The new replica list " + _newReplicas + " cannot be empty.");

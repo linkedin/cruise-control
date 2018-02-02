@@ -225,7 +225,7 @@ public class ExecutionTaskPlanner {
   ExecutionProposal toLeaderMovementProposal(ExecutionProposal proposal) {
     return new ExecutionProposal(proposal.topicPartition(),
                                  proposal.partitionSize(),
-                                 proposal.oldLeader(),
+                                 proposal.newReplicas().get(0),
                                  proposal.newReplicas(),
                                  proposal.newReplicas());
   }

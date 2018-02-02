@@ -224,7 +224,7 @@ public class GoalOptimizer implements Runnable {
   /**
    * Get the cached proposals. If the cached proposal is not valid, block waiting on the cache update.
    * We do this to avoid duplicate optimization cluster model construction and proposal computation.
-   * 
+   *
    * @param operationProgress to report the job progress.
    */
   public OptimizerResult optimizations(OperationProgress operationProgress) throws InterruptedException {
@@ -265,7 +265,7 @@ public class GoalOptimizer implements Runnable {
    * @return Results of optimization containing the proposals and stats.
    * @throws KafkaCruiseControlException
    */
-  public OptimizerResult optimizations(ClusterModel clusterModel, OperationProgress operationProgress) 
+  public OptimizerResult optimizations(ClusterModel clusterModel, OperationProgress operationProgress)
       throws KafkaCruiseControlException {
     return optimizations(clusterModel, _goalsByPriority, operationProgress);
   }
@@ -284,7 +284,7 @@ public class GoalOptimizer implements Runnable {
    * @return Results of optimization containing the proposals and stats.
    * @throws KafkaCruiseControlException
    */
-  public OptimizerResult optimizations(ClusterModel clusterModel, 
+  public OptimizerResult optimizations(ClusterModel clusterModel,
                                        Map<Integer, Goal> goalsByPriority,
                                        OperationProgress operationProgress)
       throws KafkaCruiseControlException {
@@ -296,7 +296,7 @@ public class GoalOptimizer implements Runnable {
     if (!clusterModel.isClusterAlive()) {
       throw new AnalysisInputException("All brokers are dead in the cluster.");
     }
-    
+
     LOG.trace("Cluster before optimization is {}", clusterModel);
     ClusterModel.BrokerStats brokerStatsBeforeOptimization = clusterModel.brokerStats();
     Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
@@ -325,7 +325,7 @@ public class GoalOptimizer implements Runnable {
       statsByGoalPriority.put(goal, clusterModel.getClusterStats(_balancingConstraint));
 
       Set<ExecutionProposal> goalProposals = AnalyzerUtils.getDiff(preOptimizedReplicaDistribution,
-                                                                   initLeaderDistribution,
+                                                                   preOptimizedLeaderDistribution,
                                                                    clusterModel);
       if (!goalProposals.isEmpty() || !succeeded) {
         violatedGoalsBeforeOptimization.add(goal);
@@ -495,7 +495,7 @@ public class GoalOptimizer implements Runnable {
         LOG.warn("No load monitor available. Skip computing proposal candidate.");
         return;
       }
-      OperationProgress operationProgress = 
+      OperationProgress operationProgress =
           _progressUpdateLock.compareAndSet(false, true) ? _proposalPrecomputingProgress : new OperationProgress();
       while (_totalProposalCandidateComputed.incrementAndGet() <= _maxProposalCandidates) {
         try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {

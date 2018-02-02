@@ -78,7 +78,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   }
 
   /**
-   * @return The source broker of this execution task.
+   * @return The old leader before the execution of this task.
    */
   public Integer oldLeader() {
     return proposal.oldLeader();
@@ -161,7 +161,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   public int hashCode() {
     return (int) executionId;
   }
-  
+
   /**
    * Return an object that can be further used
    * to encode into JSON
