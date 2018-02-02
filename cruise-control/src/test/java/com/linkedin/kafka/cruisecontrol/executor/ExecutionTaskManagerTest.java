@@ -5,8 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
-import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,12 +17,12 @@ import static org.junit.Assert.*;
 
 
 public class ExecutionTaskManagerTest {
-  
+
   @Test
   public void testStateChangeSequences() {
     TopicPartition tp = new TopicPartition("topic", 0);
     ExecutionTaskManager taskManager = new ExecutionTaskManager(1, 1, new MetricRegistry());
-    
+
     List<List<ExecutionTask.State>> testSequences = new ArrayList<>();
     // Completed successfully.
     testSequences.add(Arrays.asList(IN_PROGRESS, COMPLETED));
@@ -34,10 +32,12 @@ public class ExecutionTaskManagerTest {
     testSequences.add(Arrays.asList(IN_PROGRESS, ABORTING, DEAD));
     // Cannot rollback.
     testSequences.add(Arrays.asList(IN_PROGRESS, DEAD));
-    
+
     for (List<ExecutionTask.State> sequence : testSequences) {
       taskManager.clear();
-      BalancingAction proposal = new BalancingAction(tp, 0, 1, ActionType.REPLICA_MOVEMENT);
+      // Make sure the proposal does not involve leader movement.
+      ExecutionProposal proposal =
+          new ExecutionProposal(tp, 0, 2, Arrays.asList(0, 2), Arrays.asList(2, 1));
       taskManager.addBalancingProposals(Collections.singletonList(proposal), Collections.emptySet());
       List<ExecutionTask> tasks = taskManager.getReplicaMovementTasks();
       assertEquals(1, tasks.size());
@@ -45,13 +45,13 @@ public class ExecutionTaskManagerTest {
       verifyStateChangeSequence(sequence, task, taskManager);
     }
   }
-  
-  private void verifyStateChangeSequence(List<ExecutionTask.State> stateSequence, 
-                                         ExecutionTask task, 
+
+  private void verifyStateChangeSequence(List<ExecutionTask.State> stateSequence,
+                                         ExecutionTask task,
                                          ExecutionTaskManager taskManager) {
     stateSequence.forEach(s -> changeTaskState(s, task, taskManager));
   }
-  
+
   private void changeTaskState(ExecutionTask.State state, ExecutionTask task, ExecutionTaskManager taskManager) {
     switch (state) {
       case IN_PROGRESS:

@@ -18,7 +18,6 @@ public class BalancingAction {
   private final Integer _sourceBrokerId;
   private final Integer _destinationBrokerId;
   private final ActionType _actionType;
-  private final long _dataToMove;
 
   /**
    * Constructor for creating a balancing proposal with given topic partition, source broker and destination id, and
@@ -28,35 +27,18 @@ public class BalancingAction {
    * @param sourceBrokerId      Source broker id of the replica.
    * @param destinationBrokerId Destination broker id of the replica.
    * @param actionType     Leadership transfer or replica relocation.
-   */
-  public BalancingAction(TopicPartition tp, Integer sourceBrokerId, Integer destinationBrokerId,
-                         ActionType actionType) {
-    this(tp, sourceBrokerId, destinationBrokerId, actionType, 0L);
-  }
-
-  /**
-   * Constructor for creating a balancing proposal with given topic partition, source broker and destination id, and
-   * balancing action.
-   *
-   * @param tp                  Topic partition of the replica.
-   * @param sourceBrokerId      Source broker id of the replica.
-   * @param destinationBrokerId Destination broker id of the replica.
-   * @param actionType     Leadership transfer or replica relocation.
-   * @param dataToMove          The data to move with this proposal. The unit should be MB.
    */
   public BalancingAction(TopicPartition tp,
                          Integer sourceBrokerId,
                          Integer destinationBrokerId,
-                         ActionType actionType,
-                         long dataToMove) {
+                         ActionType actionType) {
     _tp = tp;
     _sourceBrokerId = sourceBrokerId;
     _destinationBrokerId = destinationBrokerId;
     _actionType = actionType;
-    _dataToMove = dataToMove;
     validate();
   }
-  
+
   private void validate() {
     switch (_actionType) {
       case REPLICA_ADDITION:
@@ -129,13 +111,6 @@ public class BalancingAction {
   }
 
   /**
-   * Get the data to move with the proposal. The unit should be MB.
-   */
-  public long dataToMove() {
-    return _dataToMove;
-  }
-
-  /*
    * Return an object that can be further used
    * to encode into JSON
    */
@@ -144,7 +119,7 @@ public class BalancingAction {
     proposalMap.put("topicPartition", _tp);
     proposalMap.put("sourceBrokerId", _sourceBrokerId);
     proposalMap.put("destinationBrokerId", _destinationBrokerId);
-    proposalMap.put("balancingAction", _actionType);
+    proposalMap.put("actionType", _actionType);
     return proposalMap;
   }
 
@@ -171,25 +146,25 @@ public class BalancingAction {
     if (this == other) {
       return true;
     }
-    
-    BalancingAction otherProposal = (BalancingAction) other;
+
+    BalancingAction otherAction = (BalancingAction) other;
     if (_sourceBrokerId == null) {
-      if (otherProposal._sourceBrokerId != null) {
+      if (otherAction._sourceBrokerId != null) {
         return false;
       }
-    } else if (!_sourceBrokerId.equals(otherProposal._sourceBrokerId)) {
+    } else if (!_sourceBrokerId.equals(otherAction._sourceBrokerId)) {
       return false;
     }
 
     if (_destinationBrokerId == null) {
-      if (otherProposal._destinationBrokerId != null) {
+      if (otherAction._destinationBrokerId != null) {
         return false;
       }
-    } else if (!_destinationBrokerId.equals(otherProposal._destinationBrokerId)) {
+    } else if (!_destinationBrokerId.equals(otherAction._destinationBrokerId)) {
       return false;
     }
-    
-    return _tp.equals(otherProposal._tp) && _actionType == otherProposal._actionType;
+
+    return _tp.equals(otherAction._tp) && _actionType == otherAction._actionType;
   }
 
   @Override

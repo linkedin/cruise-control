@@ -7,10 +7,10 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.NotEnoughValidSnapshotsException;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -158,9 +158,11 @@ public class GoalViolationDetector implements Runnable {
       LOG.info("Skipping goal violation detection because the cluster model does not have any topic.");
       return false;
     }
-    Map<TopicPartition, List<Integer>> initDistribution = clusterModel.getReplicaDistribution();
+    Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
+    Map<TopicPartition, Integer> initLeaderDistribution = clusterModel.getLeaderDistribution();
     goal.optimize(clusterModel, new HashSet<>(), excludedTopics(clusterModel));
-    Set<BalancingAction> proposals = AnalyzerUtils.getDiff(initDistribution, clusterModel);
+    Set<ExecutionProposal> proposals =
+        AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
     LOG.trace("{} generated {} proposals", goal.name(), proposals.size());
     if (!proposals.isEmpty()) {
       goalViolations.addViolation(priority, goal.name(), proposals);

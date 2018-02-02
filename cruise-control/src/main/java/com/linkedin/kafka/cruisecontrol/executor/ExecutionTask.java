@@ -4,11 +4,11 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -43,8 +43,8 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   // The execution id of the proposal so we can keep track of the task when execute it.
   public final long executionId;
   // The corresponding balancing proposal of this task.
-  public final BalancingAction proposal;
-  private volatile State _state;
+  public final ExecutionProposal proposal;
+  private State _state;
 
   static {
     VALID_TRANSFER.put(PENDING, new HashSet<>(Collections.singleton(IN_PROGRESS)));
@@ -55,7 +55,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     VALID_TRANSFER.put(ABORTED, Collections.emptySet());
   }
 
-  public ExecutionTask(long executionId, BalancingAction proposal) {
+  public ExecutionTask(long executionId, ExecutionProposal proposal) {
     this.executionId = executionId;
     this.proposal = proposal;
     this._state = State.PENDING;
@@ -78,17 +78,31 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   }
 
   /**
-   * @return The source broker of this execution task.
+   * @return The old leader before the execution of this task.
    */
-  public Integer sourceBrokerId() {
-    return proposal.sourceBrokerId();
+  public Integer oldLeader() {
+    return proposal.oldLeader();
   }
 
   /**
-   * @return The destination broker of this execution task.
+   * @return the new replica list.
    */
-  public Integer destinationBrokerId() {
-    return proposal.destinationBrokerId();
+  public List<Integer> newReplicas() {
+    return proposal.newReplicas();
+  }
+
+  /**
+   * @return The broker ids of the newly added replicas of this execution task.
+   */
+  public Set<Integer> replicasToAdd() {
+    return proposal.replicasToAdd();
+  }
+
+  /**
+   * @return The broker ids of the removed replicas of this execution task.
+   */
+  public Set<Integer> replicasToRemove() {
+    return proposal.replicasToRemove();
   }
 
   /**
@@ -148,7 +162,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     return (int) executionId;
   }
 
-  /*
+  /**
    * Return an object that can be further used
    * to encode into JSON
    */
@@ -177,12 +191,6 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
 
   @Override
   public int compareTo(ExecutionTask o) {
-    if (this.executionId > o.executionId) {
-      return 1;
-    } else if (this.executionId == o.executionId) {
-      return 0;
-    } else {
-      return -1;
-    }
+    return Long.compare(this.executionId, o.executionId);
   }
 }

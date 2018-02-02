@@ -132,16 +132,23 @@ public class ClusterModel implements Serializable {
       TopicPartition tp = entry.getKey();
       Partition partition = entry.getValue();
       List<Integer> brokerIds = new ArrayList<>();
-      // Set broker id of the leader.
-      brokerIds.add(partition.leader().broker().id());
-      // Set broker id of followers.
-      brokerIds.addAll(
-          partition.followers().stream().map(follower -> follower.broker().id()).collect(Collectors.toList()));
+      partition.replicas().forEach(r -> brokerIds.add(r.broker().id()));
       // Add distribution of replicas in the partition.
       replicaDistribution.put(tp, brokerIds);
     }
 
     return replicaDistribution;
+  }
+
+  /**
+   * @retrun the leader broker ids for each partition.
+   */
+  public Map<TopicPartition, Integer> getLeaderDistribution() {
+    Map<TopicPartition, Integer> leaders = new HashMap<>();
+    for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
+      leaders.put(entry.getKey(), entry.getValue().leader().broker().id());
+    }
+    return leaders;
   }
 
   /**

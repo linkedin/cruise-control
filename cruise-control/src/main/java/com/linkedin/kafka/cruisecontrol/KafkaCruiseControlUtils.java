@@ -8,6 +8,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
+import java.util.Set;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.common.config.ConfigException;
 
@@ -60,5 +61,20 @@ public class KafkaCruiseControlUtils {
     if (t.isAlive()) {
       t.interrupt();
     }
+  }
+
+  /**
+   * Check if set a contains any element in set b.
+   * @param a the first set.
+   * @param b the second set.
+   * @return true if a contains at least one of the element in b. false otherwise; 
+   */
+  public static boolean containsAny(Set<Integer> a, Set<Integer> b) {
+    for (int i : b) {
+      if (a.contains(i)) {
+        return true;
+      }
+    }
+    return false;
   }
 }

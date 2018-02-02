@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -26,7 +25,7 @@ public class ExecutionTaskTracker {
   // Tasks in progress indicate the ongoing balancing action.
   private final Map<ActionType, Set<ExecutionTask>> _inProgressTasks;
   // Pending proposals indicate the phase before submitted proposals become executable task.
-  private final Map<ActionType, Set<BalancingAction>> _pendingProposals;
+  private final Map<ActionType, Set<ExecutionProposal>> _pendingProposals;
 
   ExecutionTaskTracker() {
     _deadTasks = new HashMap<>();
@@ -100,7 +99,7 @@ public class ExecutionTaskTracker {
    * @param actionType The balancing action of the requested pending proposals.
    * @return The set of pending proposals for the given balancing action.
    */
-  public Set<BalancingAction> pendingProposalsFor(ActionType actionType) {
+  public Set<ExecutionProposal> pendingProposalsFor(ActionType actionType) {
     return _pendingProposals.get(actionType);
   }
 

@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
@@ -14,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -114,7 +114,7 @@ public class KafkaCruiseControl {
    * @param dryRun throw
    * @param throttleDecommissionedBroker whether throttle the brokers that are being decommissioned.
    * @param goals the goals to be met when decommissioning the brokers. When empty all goals will be used.
-   * @param requirements The cluster model completeness requirements. 
+   * @param requirements The cluster model completeness requirements.
    * @param operationProgress the progress to report.
    * @return the optimization result.
    *
@@ -152,7 +152,7 @@ public class KafkaCruiseControl {
    * @param dryRun whether it is a dry run or not.
    * @param throttleAddedBrokers whether throttle the brokers that are being added.
    * @param goals the goals to be met when adding the brokers. When empty all goals will be used.
-   * @param requirements The cluster model completeness requirements.             
+   * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to update.
    * @return The optimization result.
    * @throws KafkaCruiseControlException when any exception occurred during the broker addition.
@@ -167,7 +167,7 @@ public class KafkaCruiseControl {
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
       ModelCompletenessRequirements modelCompletenessRequirements =
           modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
-      ClusterModel clusterModel = 
+      ClusterModel clusterModel =
           _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements, operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.NEW));
       GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel, goalsByPriority, operationProgress);
@@ -217,8 +217,8 @@ public class KafkaCruiseControl {
    * @return the cluster workload model.
    * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
    */
-  public ClusterModel clusterModel(long now, 
-                                   ModelCompletenessRequirements requirements, 
+  public ClusterModel clusterModel(long now,
+                                   ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
       throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
@@ -239,8 +239,8 @@ public class KafkaCruiseControl {
    * @return the cluster workload model.
    * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
    */
-  public ClusterModel clusterModel(long from, 
-                                   long to, 
+  public ClusterModel clusterModel(long from,
+                                   long to,
                                    ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
       throws KafkaCruiseControlException {
@@ -315,7 +315,7 @@ public class KafkaCruiseControl {
    * @throws KafkaCruiseControlException
    * @throws AnalysisInputException
    */
-  public GoalOptimizer.OptimizerResult getOptimizationProposals(OperationProgress operationProgress) 
+  public GoalOptimizer.OptimizerResult getOptimizationProposals(OperationProgress operationProgress)
       throws KafkaCruiseControlException {
     try {
       return _goalOptimizer.optimizations(operationProgress);
@@ -351,7 +351,7 @@ public class KafkaCruiseControl {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         // The cached proposals are computed with ignoreMinMonitoredPartitions = true. So if user provided a different
         // setting, we need to generate a new model.
-        ClusterModel clusterModel = 
+        ClusterModel clusterModel =
             _loadMonitor.clusterModel(-1, _time.milliseconds(), modelCompletenessRequirements, operationProgress);
         result = getOptimizationProposals(clusterModel, goalsByPriority, operationProgress);
       } catch (KafkaCruiseControlException kcce) {
@@ -379,11 +379,11 @@ public class KafkaCruiseControl {
    * @param proposals the given balancing proposals
    * @param unthrottledBrokers Brokers for which the rate of replica movements from/to will not be throttled.
    */
-  public void executeProposals(Collection<BalancingAction> proposals,
+  public void executeProposals(Collection<ExecutionProposal> proposals,
                                Collection<Integer> unthrottledBrokers) {
     // Pause the load monitor before the proposal execution.
     _loadMonitor.pauseMetricSampling();
-    _executor.addBalancingProposals(proposals, unthrottledBrokers);
+    _executor.addExecutionProposals(proposals, unthrottledBrokers);
     _executor.startExecution(_loadMonitor);
   }
 
