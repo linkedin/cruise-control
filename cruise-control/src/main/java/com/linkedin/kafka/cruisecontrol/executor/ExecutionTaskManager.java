@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 
 import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import java.util.Collection;
@@ -237,19 +236,21 @@ public class ExecutionTaskManager {
    * @param proposals the balancing proposals to execute.
    * @param brokersToSkipConcurrencyCheck the brokers that does not need to be throttled when move the partitions.
    */
-  public void addBalancingProposals(Collection<BalancingAction> proposals,
+  public void addBalancingProposals(Collection<ExecutionProposal> proposals,
                                     Collection<Integer> brokersToSkipConcurrencyCheck) {
-    _executionTaskPlanner.addBalancingProposals(proposals);
-    for (BalancingAction p : proposals) {
-      if (!_inProgressPartMovementsByBrokerId.containsKey(p.sourceBrokerId())) {
-        _inProgressPartMovementsByBrokerId.put(p.sourceBrokerId(), 0);
+    _executionTaskPlanner.addExecutionProposals(proposals);
+    for (ExecutionProposal p : proposals) {
+      if (!_inProgressPartMovementsByBrokerId.containsKey(p.oldLeader())) {
+        _inProgressPartMovementsByBrokerId.put(p.oldLeader(), 0);
       }
-      if (!_inProgressPartMovementsByBrokerId.containsKey(p.destinationBrokerId())) {
-        _inProgressPartMovementsByBrokerId.put(p.destinationBrokerId(), 0);
+      for (int broker : p.replicasToAdd()) {
+        if (!_inProgressPartMovementsByBrokerId.containsKey(broker)) {
+          _inProgressPartMovementsByBrokerId.put(broker, 0);
+        }
       }
 
       // Add pending proposals to indicate the phase before they become an executable task.
-      _executionTaskTracker.pendingProposalsFor(p.balancingAction()).add(p);
+      _executionTaskTracker.pendingProposalsFor(p.actionType()).add(p);
     }
     _brokersToSkipConcurrencyCheck.clear();
     if (brokersToSkipConcurrencyCheck != null) {
@@ -266,14 +267,13 @@ public class ExecutionTaskManager {
         // Add task to the relevant task in progress.
         markTaskState(task, ExecutionTask.State.IN_PROGRESS);
         _inProgressPartitions.add(task.proposal.topicPartition());
-        if (task.proposal.balancingAction() == ActionType.REPLICA_MOVEMENT) {
-          if (task.sourceBrokerId() != null) {
-            _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
-                                                   _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) + 1);
+        if (task.proposal.actionType() == ActionType.REPLICA_MOVEMENT) {
+          if (task.oldLeader() >= 0) {
+            _inProgressPartMovementsByBrokerId.put(task.oldLeader(),
+                                                   _inProgressPartMovementsByBrokerId.get(task.oldLeader()) + 1);
           }
-          if (task.destinationBrokerId() != null) {
-            _inProgressPartMovementsByBrokerId.put(task.destinationBrokerId(),
-                                                   _inProgressPartMovementsByBrokerId.get(task.destinationBrokerId()) + 1);
+          for (int broker : task.replicasToAdd()) {
+            _inProgressPartMovementsByBrokerId.put(broker, _inProgressPartMovementsByBrokerId.get(broker) + 1);
           }
         }
       }
@@ -316,7 +316,7 @@ public class ExecutionTaskManager {
   private void markTaskState(ExecutionTask task, ExecutionTask.State targetState) {
     if (task.canTransferToState(targetState)) {
       ExecutionTask.State currentState = task.state();
-      ActionType actionType = task.proposal.balancingAction();
+      ActionType actionType = task.proposal.actionType();
       switch (currentState) {
         case PENDING:
           _executionTaskTracker.pendingProposalsFor(actionType).remove(task.proposal);
@@ -364,14 +364,13 @@ public class ExecutionTaskManager {
    * Mark a given tasks as completed.
    */
   private void completeTask(ExecutionTask task) {
-    if (task.proposal.balancingAction() == ActionType.REPLICA_MOVEMENT) {
-      if (task.sourceBrokerId() != null) {
-        _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
-                                               _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) - 1);
+    if (task.proposal.actionType() == ActionType.REPLICA_MOVEMENT) {
+      if (task.oldLeader() >= 0) {
+        _inProgressPartMovementsByBrokerId.put(task.oldLeader(),
+                                               _inProgressPartMovementsByBrokerId.get(task.oldLeader()) - 1);
       }
-      if (task.destinationBrokerId() != null) {
-        _inProgressPartMovementsByBrokerId.put(task.destinationBrokerId(),
-                                               _inProgressPartMovementsByBrokerId.get(task.destinationBrokerId()) - 1);
+      for (int broker : task.replicasToAdd()) {
+        _inProgressPartMovementsByBrokerId.put(broker, _inProgressPartMovementsByBrokerId.get(broker) - 1);
       }
     }
   }

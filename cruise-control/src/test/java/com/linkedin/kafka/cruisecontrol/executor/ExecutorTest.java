@@ -6,10 +6,8 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
-import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import java.util.Arrays;
@@ -69,12 +67,16 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     }
     int initialLeader0 = (Integer) zkUtils.getLeaderForPartition(topic0, partition).get();
     int initialLeader1 = (Integer) zkUtils.getLeaderForPartition(topic1, partition).get();
-    BalancingAction proposal0 =
-        new BalancingAction(tp0, initialLeader0, initialLeader0 == 0 ? 1 : 0, ActionType.REPLICA_MOVEMENT);
-    BalancingAction proposal1 =
-        new BalancingAction(tp1, initialLeader1, initialLeader1 == 0 ? 1 : 0, ActionType.LEADERSHIP_MOVEMENT);
+    ExecutionProposal proposal0 =
+        new ExecutionProposal(tp0, 0, initialLeader0,
+                              Collections.singletonList(initialLeader0),
+                              Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
+    ExecutionProposal proposal1 =
+        new ExecutionProposal(tp1, 0, initialLeader1,
+                              Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
+                              Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
-    Collection<BalancingAction> proposals = Arrays.asList(proposal0, proposal1);
+    Collection<ExecutionProposal> proposals = Arrays.asList(proposal0, proposal1);
     executeAndVerifyProposals(zkUtils, proposals, proposals);
   }
 
@@ -102,17 +104,25 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     }
     int initialLeader0 = (Integer) zkUtils.getLeaderForPartition(topic0, partition).get();
     int initialLeader1 = (Integer) zkUtils.getLeaderForPartition(topic1, partition).get();
-    BalancingAction proposal0 =
-        new BalancingAction(tp0, initialLeader0, initialLeader0 == 0 ? 1 : 0, ActionType.REPLICA_MOVEMENT);
-    BalancingAction proposal1 =
-        new BalancingAction(tp1, initialLeader1, initialLeader1 == 0 ? 1 : 0, ActionType.LEADERSHIP_MOVEMENT);
-    BalancingAction proposal2 =
-        new BalancingAction(tp2, 0, 1, ActionType.REPLICA_MOVEMENT);
-    BalancingAction proposal3 =
-        new BalancingAction(tp3, 0, 1, ActionType.LEADERSHIP_MOVEMENT);
+    ExecutionProposal proposal0 =
+        new ExecutionProposal(tp0, 0, initialLeader0,
+                              Collections.singletonList(initialLeader0),
+                              Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
+    ExecutionProposal proposal1 =
+        new ExecutionProposal(tp1, 0, initialLeader1,
+                              Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
+                              Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
+    ExecutionProposal proposal2 =
+        new ExecutionProposal(tp2, 0, initialLeader0,
+                              Collections.singletonList(initialLeader0),
+                              Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
+    ExecutionProposal proposal3 =
+        new ExecutionProposal(tp3, 0, initialLeader1,
+                              Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
+                              Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
-    Collection<BalancingAction> proposalsToExecute = Arrays.asList(proposal0, proposal1, proposal2, proposal3);
-    Collection<BalancingAction> proposalsToCheck = Arrays.asList(proposal0, proposal1);
+    Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1, proposal2, proposal3);
+    Collection<ExecutionProposal> proposalsToCheck = Arrays.asList(proposal0, proposal1);
     executeAndVerifyProposals(zkUtils, proposalsToExecute, proposalsToCheck);
   }
 
@@ -138,12 +148,16 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     int initialLeader0 = (Integer) zkUtils.getLeaderForPartition(topic0, partition).get();
     int initialLeader1 = (Integer) zkUtils.getLeaderForPartition(topic1, partition).get();
     _brokers.get(initialLeader0 == 0 ? 1 : 0).shutdown();
-    BalancingAction proposal0 =
-        new BalancingAction(tp0, initialLeader0, initialLeader0 == 0 ? 1 : 0, ActionType.REPLICA_MOVEMENT);
-    BalancingAction proposal1 =
-        new BalancingAction(tp1, initialLeader1, initialLeader1 == 0 ? 1 : 0, ActionType.LEADERSHIP_MOVEMENT);
+    ExecutionProposal proposal0 =
+        new ExecutionProposal(tp0, 0, initialLeader0,
+                              Collections.singletonList(initialLeader0),
+                              Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
+    ExecutionProposal proposal1 =
+        new ExecutionProposal(tp1, 0, initialLeader1,
+                              Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
+                              Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
-    Collection<BalancingAction> proposalsToExecute = Arrays.asList(proposal0, proposal1);
+    Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
     executeAndVerifyProposals(zkUtils, proposalsToExecute, Collections.emptyList());
 
     // We are not doing the rollback.
@@ -153,22 +167,22 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
   }
 
   private void executeAndVerifyProposals(ZkUtils zkUtils,
-                                         Collection<BalancingAction> proposalsToExecute,
-                                         Collection<BalancingAction> proposalsToCheck) {
+                                         Collection<ExecutionProposal> proposalsToExecute,
+                                         Collection<ExecutionProposal> proposalsToCheck) {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry());
-    executor.addBalancingProposals(proposalsToExecute, Collections.emptySet());
+    executor.addExecutionProposals(proposalsToExecute, Collections.emptySet());
     executor.startExecution(null);
 
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
-    for (BalancingAction proposal : proposalsToCheck) {
+    for (ExecutionProposal proposal : proposalsToCheck) {
       int replicationFactor = zkUtils.getReplicasForPartition(proposal.topic(), proposal.partitionId()).size();
       replicationFactors.put(new TopicPartition(proposal.topic(), proposal.partitionId()), replicationFactor);
     }
 
     long now = System.currentTimeMillis();
     while (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS
-        && System.currentTimeMillis() < now + 5000) {
+        && System.currentTimeMillis() < now + 30000) {
       try {
         Thread.sleep(100);
       } catch (InterruptedException e) {
@@ -179,19 +193,21 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
       fail("The execution did not finish in 5 seconds.");
     }
 
-    for (BalancingAction proposal : proposalsToCheck) {
+    for (ExecutionProposal proposal : proposalsToCheck) {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
       int expectedReplicationFector = replicationFactors.get(tp);
       assertEquals("Replication factor for partition " + tp + " should be " + expectedReplicationFector,
                    expectedReplicationFector, zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).size());
 
-      if (proposal.balancingAction() == ActionType.REPLICA_MOVEMENT) {
-        assertTrue("The partition should have moved for " + tp,
-                   zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).contains(proposal.destinationBrokerId()));
-      } else {
-        assertEquals("The leader should have moved for " + tp,
-                   proposal.destinationBrokerId(), zkUtils.getLeaderForPartition(tp.topic(), tp.partition()).get());
+      if (proposal.hasReplicaAction()) {
+        for (int brokerId : proposal.newReplicas()) {
+          assertTrue("The partition should have moved for " + tp,
+                     zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).contains(brokerId));
+        }
       }
+      assertEquals("The leader should have moved for " + tp,
+                 proposal.newReplicas().get(0), zkUtils.getLeaderForPartition(tp.topic(), tp.partition()).get());
+
     }
   }
 

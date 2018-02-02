@@ -5,18 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
-import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 
 import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -24,7 +23,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.stream.Collectors;
 
 import org.apache.commons.math3.random.MersenneTwister;
 import org.apache.commons.math3.random.RandomGenerator;
@@ -45,20 +43,22 @@ public class AnalyzerUtils {
   /**
    * Get the diff represented by the set of balancing proposals to move from initial to final distribution.
    *
-   * @param initialDistribution Initial distribution of replicas over the cluster.
+   * @param initialReplicaDistribution Initial distribution of replicas over the cluster.
+   * @param initialLeaderDistribution Initial distribution of the leaders.
    * @param optimizedClusterModel The optimized cluster model.
    * @return The diff represented by the set of balancing proposals to move from initial to final distribution.
    * @throws AnalysisInputException
    */
-  public static Set<BalancingAction> getDiff(Map<TopicPartition, List<Integer>> initialDistribution,
-                                             ClusterModel optimizedClusterModel)
+  public static Set<ExecutionProposal> getDiff(Map<TopicPartition, List<Integer>> initialReplicaDistribution,
+                                               Map<TopicPartition, Integer> initialLeaderDistribution,
+                                               ClusterModel optimizedClusterModel)
       throws AnalysisInputException, ModelInputException {
     Map<TopicPartition, List<Integer>> finalDistribution = optimizedClusterModel.getReplicaDistribution();
     // Sanity check to make sure that given distributions contain the same replicas.
-    if (!initialDistribution.keySet().equals(finalDistribution.keySet())) {
+    if (!initialReplicaDistribution.keySet().equals(finalDistribution.keySet())) {
       throw new AnalysisInputException("Attempt to diff distributions with different partitions.");
     }
-    for (Map.Entry<TopicPartition, List<Integer>> entry : initialDistribution.entrySet()) {
+    for (Map.Entry<TopicPartition, List<Integer>> entry : initialReplicaDistribution.entrySet()) {
       TopicPartition tp = entry.getKey();
       List<Integer> initialReplicas = entry.getValue();
       if (finalDistribution.get(tp).size() != initialReplicas.size()) {
@@ -66,40 +66,26 @@ public class AnalyzerUtils {
       }
     }
 
-    // Generate a set of balancing proposals to represent the diff between initial and final distribution.
-    Set<BalancingAction> diff = new HashSet<>();
-    for (Map.Entry<TopicPartition, List<Integer>> entry : initialDistribution.entrySet()) {
+    // Generate a set of execution proposals to represent the diff between initial and final distribution.
+    Set<ExecutionProposal> diff = new HashSet<>();
+    for (Map.Entry<TopicPartition, List<Integer>> entry : initialReplicaDistribution.entrySet()) {
       TopicPartition tp = entry.getKey();
-      List<Integer> initialBrokerIds = entry.getValue();
-      List<Integer> finalBrokerIds = finalDistribution.get(tp);
-
-      // Get order preserving difference of broker ids.
-      List<Integer> initialBrokerIdDiff = new ArrayList<>();
-      List<Integer> finalBrokerIdDiff = new ArrayList<>(finalBrokerIds);
-      initialBrokerIdDiff.addAll(initialBrokerIds.stream()
-          .filter(brokerId -> !finalBrokerIdDiff.remove(brokerId))
-          .collect(Collectors.toList()));
-
-      // Generate replica movement proposals (if needed).
-      for (int i = 0; i < initialBrokerIdDiff.size(); i++) {
-        Double partitionSize =
-            optimizedClusterModel.partition(tp).leader().load().expectedUtilizationFor(Resource.DISK);
-        BalancingAction replicaMovementProposal =
-            new BalancingAction(tp, initialBrokerIdDiff.get(i), finalBrokerIdDiff.get(i),
-                                ActionType.REPLICA_MOVEMENT, partitionSize.intValue());
-        diff.add(replicaMovementProposal);
+      List<Integer> initialReplicas = entry.getValue();
+      List<Integer> finalReplicas = finalDistribution.get(tp);
+      int finalLeaderId = optimizedClusterModel.partition(tp).leader().broker().id();
+      // The partition has no change.
+      if (finalReplicas.equals(initialReplicas) && finalLeaderId == initialLeaderDistribution.get(tp)) {
+        continue;
       }
-
-      // Get the initial leader and final leader broker ids.
-      int initialLeaderBrokerId = initialBrokerIds.get(0);
-      int finalLeaderBrokerId = finalBrokerIds.get(0);
-
-      // Generate leadership movement proposal (if needed).
-      if (initialLeaderBrokerId != finalLeaderBrokerId && !initialBrokerIdDiff.contains(initialLeaderBrokerId)) {
-        BalancingAction leadershipMovementProposal =
-            new BalancingAction(tp, initialLeaderBrokerId, finalLeaderBrokerId, ActionType.LEADERSHIP_MOVEMENT);
-        diff.add(leadershipMovementProposal);
+      // We need to adjust the final broker list order to ensure the final leader is the first replica.
+      if (finalLeaderId != finalReplicas.get(0)) {
+        int leaderPos = finalReplicas.indexOf(finalLeaderId);
+        finalReplicas.set(leaderPos, finalReplicas.get(0));
+        finalReplicas.set(0, finalLeaderId);
       }
+      Double partitionSize = optimizedClusterModel.partition(tp).leader().load().expectedUtilizationFor(Resource.DISK);
+      diff.add(new ExecutionProposal(tp, partitionSize.intValue(), initialLeaderDistribution.get(tp),
+                                     initialReplicas, finalReplicas));
     }
     return diff;
   }

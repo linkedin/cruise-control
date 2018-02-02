@@ -28,6 +28,7 @@ import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
@@ -234,7 +235,8 @@ public class ExcludedTopicsTest {
   @Test
   public void test() throws Exception {
     if (_exceptionClass == null) {
-      Map<TopicPartition, List<Integer>> initDistribution = _clusterModel.getReplicaDistribution();
+      Map<TopicPartition, List<Integer>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
+      Map<TopicPartition, Integer> initLeaderDistribution = _clusterModel.getLeaderDistribution();
 
       if (_expectedToOptimize) {
         assertTrue("Excluded Topics Test failed to optimize " + _goal.name() + " with excluded topics.",
@@ -245,17 +247,20 @@ public class ExcludedTopicsTest {
       }
       // Generated proposals cannot have the excluded topic.
       if (!_excludedTopics.isEmpty()) {
-        Set<BalancingAction> goalProposals = AnalyzerUtils.getDiff(initDistribution, _clusterModel);
+        Set<ExecutionProposal> goalProposals =
+            AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, _clusterModel);
 
         boolean proposalHasTopic = false;
-        for (BalancingAction proposal : goalProposals) {
-          proposalHasTopic = _excludedTopics.contains(proposal.topic())
-              && _clusterModel.broker(proposal.sourceBrokerId()).isAlive();
-          if (proposalHasTopic) {
-            break;
+        for (ExecutionProposal proposal : goalProposals) {
+          if (_excludedTopics.contains(proposal.topic())) {
+            for (int brokerId : proposal.replicasToRemove()) {
+              if (_clusterModel.broker(brokerId).isAlive()) {
+                fail(String.format("Proposal %s contains excluded topic %s, but the broker %d is still alive.",
+                                   proposal, proposal.topic(), brokerId));
+              }
+            }
           }
         }
-        assertTrue("Excluded topic partitions are included in proposals.", !proposalHasTopic);
       }
     } else {
       expected.expect(_exceptionClass);
