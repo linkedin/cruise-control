@@ -5,8 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -37,7 +37,7 @@ public class ExecutionTaskManagerTest {
     
     for (List<ExecutionTask.State> sequence : testSequences) {
       taskManager.clear();
-      BalancingProposal proposal = new BalancingProposal(tp, 0, 1, BalancingAction.REPLICA_MOVEMENT);
+      BalancingAction proposal = new BalancingAction(tp, 0, 1, ActionType.REPLICA_MOVEMENT);
       taskManager.addBalancingProposals(Collections.singletonList(proposal), Collections.emptySet());
       List<ExecutionTask> tasks = taskManager.getReplicaMovementTasks();
       assertEquals(1, tasks.size());

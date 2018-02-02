@@ -6,8 +6,8 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -73,7 +73,7 @@ class ReplicaDistributionTarget {
    * @param replicasInBrokerToMove Replicas to move from the given source broker.
    * @param optimizedGoals         Goals that have already been optimized. The function ensures that their requirements won't
    *                               be violated.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   boolean moveReplicasInSourceBrokerToEligibleBrokers(ClusterModel clusterModel,
                                                       SortedSet<Replica> replicasInBrokerToMove,
@@ -224,10 +224,10 @@ class ReplicaDistributionTarget {
       }
       // Check if movement is acceptable by this and optimized goals. Movement is acceptable by (1) this goal
       // if the eligible destination broker does not contain a replica in the same partition set, (2) optimized
-      // goals if for each optimized goal accepts the replica movement proposal.
-      BalancingProposal optimizedGoalProposal =
-          new BalancingProposal(replicaToMove.topicPartition(), replicaToMove.broker().id(), brokerId,
-              BalancingAction.REPLICA_MOVEMENT);
+      // goals if for each optimized goal accepts the replica movement action.
+      BalancingAction optimizedGoalProposal =
+          new BalancingAction(replicaToMove.topicPartition(), replicaToMove.broker().id(), brokerId,
+                              ActionType.REPLICA_MOVEMENT);
       boolean canMove = (clusterModel.broker(brokerId).replica(replicaToMove.topicPartition()) == null) &&
           AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel);
       if (canMove) {

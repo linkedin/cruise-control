@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
@@ -379,7 +379,7 @@ public class KafkaCruiseControl {
    * @param proposals the given balancing proposals
    * @param unthrottledBrokers Brokers for which the rate of replica movements from/to will not be throttled.
    */
-  public void executeProposals(Collection<BalancingProposal> proposals,
+  public void executeProposals(Collection<BalancingAction> proposals,
                                Collection<Integer> unthrottledBrokers) {
     // Pause the load monitor before the proposal execution.
     _loadMonitor.pauseMetricSampling();

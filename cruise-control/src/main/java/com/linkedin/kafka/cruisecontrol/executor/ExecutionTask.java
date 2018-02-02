@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,7 +43,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   // The execution id of the proposal so we can keep track of the task when execute it.
   public final long executionId;
   // The corresponding balancing proposal of this task.
-  public final BalancingProposal proposal;
+  public final BalancingAction proposal;
   private volatile State _state;
 
   static {
@@ -55,7 +55,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     VALID_TRANSFER.put(ABORTED, Collections.emptySet());
   }
 
-  public ExecutionTask(long executionId, BalancingProposal proposal) {
+  public ExecutionTask(long executionId, BalancingAction proposal) {
     this.executionId = executionId;
     this.proposal = proposal;
     this._state = State.PENDING;

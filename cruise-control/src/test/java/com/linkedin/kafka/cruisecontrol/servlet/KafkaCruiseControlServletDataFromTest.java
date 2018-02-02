@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
@@ -155,7 +155,7 @@ public class KafkaCruiseControlServletDataFromTest {
     }
 
     @Override
-    public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
+    public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
       return false;
     }
 

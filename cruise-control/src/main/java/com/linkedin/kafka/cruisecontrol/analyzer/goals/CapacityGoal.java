@@ -7,8 +7,8 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
@@ -53,29 +53,29 @@ public abstract class CapacityGoal extends AbstractGoal {
   protected abstract Resource resource();
 
   /**
-   * Check whether the given proposal is acceptable by this goal. A proposal is acceptable by a goal if it satisfies
+   * Check whether the given action is acceptable by this goal. A action is acceptable by a goal if it satisfies
    * requirements of the goal. Requirements(hard goal): Capacity.
    *
    * ## Leadership Movement: impacts only (1) network outbound and (2) CPU resources (See
-   * {@link DiskCapacityGoal#isProposalAcceptable(BalancingProposal, ClusterModel)} and
-   * {@link NetworkInboundCapacityGoal#isProposalAcceptable(BalancingProposal, ClusterModel)}).
+   * {@link DiskCapacityGoal#isActionAcceptable(BalancingAction, ClusterModel)} and
+   * {@link NetworkInboundCapacityGoal#isActionAcceptable(BalancingAction, ClusterModel)}).
    *   (1) Check if leadership NW_OUT movement is acceptable: NW_OUT movement carries all of leader's NW_OUT load.
    *   (2) Check if leadership CPU movement is acceptable: In reality, CPU movement carries only a fraction of
    * leader's CPU load.
    * To optimize CC performance, we avoid calculation of the expected leadership CPU utilization, and assume that
-   * if (proposal.balancingAction().equals(BalancingAction.LEADERSHIP_MOVEMENT) && resource().equals(Resource.CPU)),
+   * if (action.balancingAction().equals(ActionType.LEADERSHIP_MOVEMENT) && resource().equals(Resource.CPU)),
    * then the expected leadership CPU utilization would be the full CPU utilization of the leader.
    * <p>
    * ## Replica Movement: impacts any resource.
    *
-   * @param proposal Proposal to be checked for acceptance.
+   * @param action action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if the proposal is acceptable by this goal, false otherwise.
+   * @return True if the action is acceptable by this goal, false otherwise.
    */
   @Override
-  public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
-    Replica sourceReplica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
-    Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
     return isMovementAcceptableForCapacity(resource(), sourceReplica, destinationBroker);
   }
@@ -99,20 +99,20 @@ public abstract class CapacityGoal extends AbstractGoal {
 
   /**
    * This is a hard goal; hence, the proposals are not limited to dead broker replicas in case of self-healing.
-   * Check if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    *
    * @param clusterModel The state of the cluster.
-   * @param proposal Proposal containing information about
-   * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * @param action action containing information about
+   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */
   @Override
-  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal) {
-    Replica sourceReplica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
-    Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
+  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
+    Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     // To optimize CC performance, we avoid calculation of the expected leadership CPU utilization, and assume that
-    // if (proposal.balancingAction().equals(BalancingAction.LEADERSHIP_MOVEMENT) && resource().equals(Resource.CPU)),
+    // if (action.balancingAction().equals(ActionType.LEADERSHIP_MOVEMENT) && resource().equals(Resource.CPU)),
     // then the expected leadership CPU utilization would be the full CPU utilization of the leader.
     return isMovementAcceptableForCapacity(resource(), sourceReplica, destinationBroker);
   }
@@ -223,7 +223,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
@@ -259,7 +259,7 @@ public abstract class CapacityGoal extends AbstractGoal {
         List<Broker> eligibleBrokers = followers.stream().map(Replica::broker).collect(Collectors.toList());
 
         Broker b = maybeApplyBalancingAction(clusterModel, leader, eligibleBrokers,
-            BalancingAction.LEADERSHIP_MOVEMENT, optimizedGoals);
+                                             ActionType.LEADERSHIP_MOVEMENT, optimizedGoals);
         if (b == null) {
           LOG.debug("Failed to move leader replica {} to any other brokers in {}", leader, eligibleBrokers);
         }
@@ -288,7 +288,7 @@ public abstract class CapacityGoal extends AbstractGoal {
         // Unless the target broker would go over the host- and/or broker-level capacity,
         // the movement will be successful.
         Broker b = maybeApplyBalancingAction(clusterModel, replica, sortedHealthyBrokersUnderCapacityLimit,
-            BalancingAction.REPLICA_MOVEMENT, optimizedGoals);
+                                             ActionType.REPLICA_MOVEMENT, optimizedGoals);
         if (b == null) {
           LOG.debug("Failed to move replica {} to any broker in {}", replica, sortedHealthyBrokersUnderCapacityLimit);
         }
@@ -359,7 +359,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    * destination broker is acceptable for this goal, false otherwise.
    */
   private boolean isMovementAcceptableForCapacity(Resource resource, Replica sourceReplica, Broker destinationBroker) {
-    // The proposal is unacceptable if the movement of replica or leadership makes the utilization of the destination
+    // The action is unacceptable if the movement of replica or leadership makes the utilization of the destination
     // broker (or destination host for a host-resource) go out of healthy capacity for the given resource.
     double replicaUtilization = sourceReplica.load().expectedUtilizationFor(resource);
     return !isUtilizationAboveLimitAfterAddingLoad(resource, destinationBroker, replicaUtilization);

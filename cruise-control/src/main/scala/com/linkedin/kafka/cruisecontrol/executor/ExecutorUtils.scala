@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor
 
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction
+import com.linkedin.kafka.cruisecontrol.common.ActionType
 import kafka.admin.{PreferredReplicaLeaderElectionCommand, ReassignPartitionsCommand}
 import kafka.common.TopicAndPartition
 import kafka.utils.ZkUtils
@@ -64,9 +64,9 @@ object ExecutorUtils {
               Seq.empty
             } else if (task.state() == ExecutionTask.State.IN_PROGRESS) {
               // verify with in progress assignment
-              if (task.proposal.balancingAction() != BalancingAction.REPLICA_DELETION && inProgressReplicas.contains(destinationBroker))
+              if (task.proposal.balancingAction() != ActionType.REPLICA_DELETION && inProgressReplicas.contains(destinationBroker))
                 throw new RuntimeException(s"Broker $destinationBroker is already being assigned as a replica for [$topic, $partition]")
-              if (task.proposal.balancingAction() != BalancingAction.REPLICA_ADDITION && !inProgressReplicas.contains(sourceBroker))
+              if (task.proposal.balancingAction() != ActionType.REPLICA_ADDITION && !inProgressReplicas.contains(sourceBroker))
                 throw new RuntimeException(s"Broker $sourceBroker is not assigned as a replica in previous partition movement for [$topic, $partition]")
               if (destinationBroker != null)
                 (inProgressReplicas :+ destinationBroker.toInt).filter(_ != sourceBroker)
@@ -91,7 +91,7 @@ object ExecutorUtils {
                 addTask = false
                 Seq.empty
               } else {
-                if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
+                if (task.proposal.balancingAction() == ActionType.REPLICA_MOVEMENT) {
                   if (currentReplicaAssignment.contains(destinationBroker) && !currentReplicaAssignment.contains(sourceBroker)) {
                     // Reassignment is done already.
                     addTask = false
@@ -100,7 +100,7 @@ object ExecutorUtils {
                     // Get new replicas for replica movement.
                     getNewReplicasForReplicaMovement(currentReplicaAssignment, task)
                   }
-                } else if (task.proposal.balancingAction() == BalancingAction.REPLICA_ADDITION) {
+                } else if (task.proposal.balancingAction() == ActionType.REPLICA_ADDITION) {
                   if (currentReplicaAssignment.contains(destinationBroker)) {
                     // Reassignment is done already.
                     addTask = false
@@ -109,7 +109,7 @@ object ExecutorUtils {
                     // Get new replicas for replica addition.
                     getNewReplicasForReplicaAddition(currentReplicaAssignment, task)
                   }
-                } else if (task.proposal.balancingAction() == BalancingAction.REPLICA_DELETION) {
+                } else if (task.proposal.balancingAction() == ActionType.REPLICA_DELETION) {
                   if (!currentReplicaAssignment.contains(sourceBroker)) {
                     // Reassignment is done already.
                     addTask = false
@@ -156,7 +156,7 @@ object ExecutorUtils {
         (currentReplicaAssignment :+ destinationBroker.toInt).filter(_ != sourceBroker)
       } else {
         throw new IllegalStateException(s"Unexpected proposal ${task.proposal}. Neither source nor destination broker" +
-          s" is in the current replica for ${BalancingAction.REPLICA_MOVEMENT}. Current replica assignment: " +
+          s" is in the current replica for ${ActionType.REPLICA_MOVEMENT}. Current replica assignment: " +
           s"$currentReplicaAssignment.")
       }
     } else {

@@ -7,8 +7,8 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
@@ -102,7 +102,7 @@ public abstract class AbstractGoal implements Goal {
   }
 
   @Override
-  public abstract boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel);
+  public abstract boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel);
 
   @Override
   public abstract String name();
@@ -128,15 +128,15 @@ public abstract class AbstractGoal implements Goal {
   protected abstract SortedSet<Broker> brokersToBalance(ClusterModel clusterModel);
 
   /**
-   * Check if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    *
    * @param clusterModel The state of the cluster.
-   * @param proposal     Proposal containing information about
-   * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * @param action     action containing information about
+   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */
-  protected abstract boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal);
+  protected abstract boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action);
 
   /**
    * Signal for finishing the process for rebalance or self-healing for this goal.
@@ -160,7 +160,7 @@ public abstract class AbstractGoal implements Goal {
    * Update goal state after one round of self-healing / rebalance.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   protected abstract void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws AnalysisInputException, OptimizationFailureException;
@@ -196,7 +196,7 @@ public abstract class AbstractGoal implements Goal {
   protected Broker maybeApplyBalancingAction(ClusterModel clusterModel,
                                               Replica replica,
                                               Collection<Broker> candidateBrokers,
-                                              BalancingAction action,
+                                              ActionType action,
                                               Set<Goal> optimizedGoals)
       throws ModelInputException, AnalysisInputException {
     // In self healing mode, allow a move only from dead to alive brokers.
@@ -206,11 +206,11 @@ public abstract class AbstractGoal implements Goal {
     }
     Collection<Broker> eligibleBrokers = getEligibleBrokers(clusterModel, replica, candidateBrokers);
     for (Broker broker : eligibleBrokers) {
-      BalancingProposal optimizedGoalProposal =
-          new BalancingProposal(replica.topicPartition(), replica.broker().id(), broker.id(), action);
+      BalancingAction optimizedGoalProposal =
+          new BalancingAction(replica.topicPartition(), replica.broker().id(), broker.id(), action);
       // A replica should be moved if:
       // 0. The move is legit.
-      // 1. The goal requirements are not violated if this proposal is applied to the given cluster state.
+      // 1. The goal requirements are not violated if this action is applied to the given cluster state.
       // 2. The movement is acceptable by the previously optimized goals.
       boolean canMove = legitMove(replica, broker, action);
       canMove = canMove && selfSatisfied(clusterModel, optimizedGoalProposal);
@@ -219,9 +219,9 @@ public abstract class AbstractGoal implements Goal {
           optimizedGoalProposal, legitMove(replica, broker, action), selfSatisfied(clusterModel, optimizedGoalProposal),
           AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel));
       if (canMove) {
-        if (action == BalancingAction.LEADERSHIP_MOVEMENT) {
+        if (action == ActionType.LEADERSHIP_MOVEMENT) {
           clusterModel.relocateLeadership(replica.topicPartition(), replica.broker().id(), broker.id());
-        } else if (action == BalancingAction.REPLICA_MOVEMENT) {
+        } else if (action == ActionType.REPLICA_MOVEMENT) {
           clusterModel.relocateReplica(replica.topicPartition(), replica.broker().id(), broker.id());
         }
         return broker;
@@ -230,10 +230,10 @@ public abstract class AbstractGoal implements Goal {
     return null;
   }
 
-  private boolean legitMove(Replica replica, Broker destBroker, BalancingAction balancingAction) {
-    if (balancingAction == BalancingAction.REPLICA_MOVEMENT && destBroker.replica(replica.topicPartition()) == null) {
+  private boolean legitMove(Replica replica, Broker destBroker, ActionType actionType) {
+    if (actionType == ActionType.REPLICA_MOVEMENT && destBroker.replica(replica.topicPartition()) == null) {
       return true;
-    } else if (balancingAction == BalancingAction.LEADERSHIP_MOVEMENT && replica.isLeader()
+    } else if (actionType == ActionType.LEADERSHIP_MOVEMENT && replica.isLeader()
         && destBroker.replica(replica.topicPartition()) != null) {
       return true;
     }

@@ -245,10 +245,10 @@ public class ExcludedTopicsTest {
       }
       // Generated proposals cannot have the excluded topic.
       if (!_excludedTopics.isEmpty()) {
-        Set<BalancingProposal> goalProposals = AnalyzerUtils.getDiff(initDistribution, _clusterModel);
+        Set<BalancingAction> goalProposals = AnalyzerUtils.getDiff(initDistribution, _clusterModel);
 
         boolean proposalHasTopic = false;
-        for (BalancingProposal proposal : goalProposals) {
+        for (BalancingAction proposal : goalProposals) {
           proposalHasTopic = _excludedTopics.contains(proposal.topic())
               && _clusterModel.broker(proposal.sourceBrokerId()).isAlive();
           if (proposalHasTopic) {

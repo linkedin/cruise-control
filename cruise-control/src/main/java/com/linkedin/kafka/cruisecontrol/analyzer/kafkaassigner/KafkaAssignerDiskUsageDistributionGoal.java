@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -515,7 +515,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   }
 
   @Override
-  public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
     throw new IllegalStateException("No goal should be executed after " + name());
   }
 

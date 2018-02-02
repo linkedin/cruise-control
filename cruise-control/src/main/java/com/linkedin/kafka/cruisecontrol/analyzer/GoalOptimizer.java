@@ -320,7 +320,7 @@ public class GoalOptimizer implements Runnable {
       optimizedGoals.add(goal);
       statsByGoalPriority.put(goal, clusterModel.getClusterStats(_balancingConstraint));
 
-      Set<BalancingProposal> goalProposals = AnalyzerUtils.getDiff(preOptimizedDistribution, clusterModel);
+      Set<BalancingAction> goalProposals = AnalyzerUtils.getDiff(preOptimizedDistribution, clusterModel);
       if (!goalProposals.isEmpty() || !succeeded) {
         violatedGoalsBeforeOptimization.add(goal);
       }
@@ -337,7 +337,7 @@ public class GoalOptimizer implements Runnable {
       LOG.trace("Broker level stats after optimization: {}%n", clusterModel.brokerStats());
     }
 
-    Set<BalancingProposal> proposals = AnalyzerUtils.getDiff(initDistribution, clusterModel);
+    Set<BalancingAction> proposals = AnalyzerUtils.getDiff(initDistribution, clusterModel);
     return new OptimizerResult(statsByGoalPriority,
                                violatedGoalsBeforeOptimization,
                                violatedGoalsAfterOptimization,
@@ -365,7 +365,7 @@ public class GoalOptimizer implements Runnable {
   private void logProgress(boolean isSelfHeal,
                            String goalName,
                            int numOptimizedGoals,
-                           Set<BalancingProposal> proposals) {
+                           Set<BalancingAction> proposals) {
     LOG.debug("[{}/{}] Generated {} proposals for {}{}.", numOptimizedGoals, _goalsByPriority.size(), proposals.size(),
               isSelfHeal ? "self-healing " : "", goalName);
     LOG.trace("Proposals for {}{}.{}%n", isSelfHeal ? "self-healing " : "", goalName, proposals);
@@ -412,7 +412,7 @@ public class GoalOptimizer implements Runnable {
    */
   public static class OptimizerResult {
     private final Map<Goal, ClusterModelStats> _statsByGoalPriority;
-    private final Set<BalancingProposal> _optimizationProposals;
+    private final Set<BalancingAction> _optimizationProposals;
     private final Set<Goal> _violatedGoalsBeforeOptimization;
     private final Set<Goal> _violatedGoalsAfterOptimization;
     private final ClusterModel.BrokerStats _brokerStatsBeforeOptimization;
@@ -423,7 +423,7 @@ public class GoalOptimizer implements Runnable {
     OptimizerResult(Map<Goal, ClusterModelStats> statsByGoalPriority,
                     Set<Goal> violatedGoalsBeforeOptimization,
                     Set<Goal> violatedGoalsAfterOptimization,
-                    Set<BalancingProposal> optimizationProposals,
+                    Set<BalancingAction> optimizationProposals,
                     ClusterModel.BrokerStats brokerStatsBeforeOptimization,
                     ClusterModel.BrokerStats brokerStatsAfterOptimization,
                     ModelGeneration modelGeneration,
@@ -443,7 +443,7 @@ public class GoalOptimizer implements Runnable {
       return _statsByGoalPriority;
     }
 
-    public Set<BalancingProposal> goalProposals() {
+    public Set<BalancingAction> goalProposals() {
       return _optimizationProposals;
     }
 

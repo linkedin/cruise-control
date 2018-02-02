@@ -5,8 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
@@ -50,8 +50,8 @@ public class AnalyzerUtils {
    * @return The diff represented by the set of balancing proposals to move from initial to final distribution.
    * @throws AnalysisInputException
    */
-  public static Set<BalancingProposal> getDiff(Map<TopicPartition, List<Integer>> initialDistribution,
-                                               ClusterModel optimizedClusterModel)
+  public static Set<BalancingAction> getDiff(Map<TopicPartition, List<Integer>> initialDistribution,
+                                             ClusterModel optimizedClusterModel)
       throws AnalysisInputException, ModelInputException {
     Map<TopicPartition, List<Integer>> finalDistribution = optimizedClusterModel.getReplicaDistribution();
     // Sanity check to make sure that given distributions contain the same replicas.
@@ -67,7 +67,7 @@ public class AnalyzerUtils {
     }
 
     // Generate a set of balancing proposals to represent the diff between initial and final distribution.
-    Set<BalancingProposal> diff = new HashSet<>();
+    Set<BalancingAction> diff = new HashSet<>();
     for (Map.Entry<TopicPartition, List<Integer>> entry : initialDistribution.entrySet()) {
       TopicPartition tp = entry.getKey();
       List<Integer> initialBrokerIds = entry.getValue();
@@ -84,9 +84,9 @@ public class AnalyzerUtils {
       for (int i = 0; i < initialBrokerIdDiff.size(); i++) {
         Double partitionSize =
             optimizedClusterModel.partition(tp).leader().load().expectedUtilizationFor(Resource.DISK);
-        BalancingProposal replicaMovementProposal =
-            new BalancingProposal(tp, initialBrokerIdDiff.get(i), finalBrokerIdDiff.get(i),
-                                  BalancingAction.REPLICA_MOVEMENT, partitionSize.intValue());
+        BalancingAction replicaMovementProposal =
+            new BalancingAction(tp, initialBrokerIdDiff.get(i), finalBrokerIdDiff.get(i),
+                                ActionType.REPLICA_MOVEMENT, partitionSize.intValue());
         diff.add(replicaMovementProposal);
       }
 
@@ -96,8 +96,8 @@ public class AnalyzerUtils {
 
       // Generate leadership movement proposal (if needed).
       if (initialLeaderBrokerId != finalLeaderBrokerId && !initialBrokerIdDiff.contains(initialLeaderBrokerId)) {
-        BalancingProposal leadershipMovementProposal =
-            new BalancingProposal(tp, initialLeaderBrokerId, finalLeaderBrokerId, BalancingAction.LEADERSHIP_MOVEMENT);
+        BalancingAction leadershipMovementProposal =
+            new BalancingAction(tp, initialLeaderBrokerId, finalLeaderBrokerId, ActionType.LEADERSHIP_MOVEMENT);
         diff.add(leadershipMovementProposal);
       }
     }
@@ -113,10 +113,10 @@ public class AnalyzerUtils {
    * @return True if the given proposal is acceptable for all of the given optimized goals, false otherwise.
    */
   public static boolean isProposalAcceptableForOptimizedGoals(Set<Goal> optimizedGoals,
-                                                              BalancingProposal proposal,
+                                                              BalancingAction proposal,
                                                               ClusterModel clusterModel) {
     for (Goal optimizedGoal : optimizedGoals) {
-      if (!optimizedGoal.isProposalAcceptable(proposal, clusterModel)) {
+      if (!optimizedGoal.isActionAcceptable(proposal, clusterModel)) {
         return false;
       }
     }

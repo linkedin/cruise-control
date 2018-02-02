@@ -4,8 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -55,8 +55,8 @@ public class ExecutionTaskPlanner {
     _leaderMovements = new HashMap<>();
   }
 
-  public void addBalancingProposals(Collection<BalancingProposal> proposals) {
-    for (BalancingProposal proposal : proposals) {
+  public void addBalancingProposals(Collection<BalancingAction> proposals) {
+    for (BalancingAction proposal : proposals) {
       addBalancingProposal(proposal);
     }
   }
@@ -66,12 +66,12 @@ public class ExecutionTaskPlanner {
    *
    * @param proposal the proposal to execute.
    */
-  public void addBalancingProposal(BalancingProposal proposal) {
+  public void addBalancingProposal(BalancingAction proposal) {
     // Get the execution Id for this proposal;
     long proposalExecutionId = _executionId.getAndIncrement();
     ExecutionTask executionTask = new ExecutionTask(proposalExecutionId, proposal);
     // Check if partition movement is required.
-    if (proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
+    if (proposal.balancingAction() == ActionType.REPLICA_MOVEMENT) {
       _remainingReplicaMovements.add(executionTask);
       _dataToMove += proposal.dataToMove();
       // Add the proposal to source broker execution plan
@@ -216,7 +216,7 @@ public class ExecutionTaskPlanner {
    * A proposal is executable if both source broker and destination broker is ready. i.e. has slots to execute more
    * proposals.
    */
-  private boolean isExecutableProposal(BalancingProposal proposal, Map<Integer, Integer> readyBrokers) {
+  private boolean isExecutableProposal(BalancingAction proposal, Map<Integer, Integer> readyBrokers) {
     int sourceBroker = proposal.sourceBrokerId();
     int destinationBroker = proposal.destinationBrokerId();
     return readyBrokers.get(sourceBroker) > 0 && readyBrokers.get(destinationBroker) > 0;
