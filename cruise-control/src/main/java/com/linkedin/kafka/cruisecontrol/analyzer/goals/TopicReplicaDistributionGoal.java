@@ -57,10 +57,10 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * Check whether given action is acceptable by this goal. A action is acceptable if the number of topic replicas
+   * Check whether given action is acceptable by this goal. An action is acceptable if the number of topic replicas
    * at the source broker are more than the number of topic replicas at the destination (remote) broker.
    *
-   * @param action     action to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
    * @return True if action is acceptable by this goal, false otherwise.
    */
@@ -121,7 +121,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * false otherwise.
    *
    * @param clusterModel The state of the cluster.
-   * @param action     action containing information about
+   * @param action Action containing information about potential modification to the given cluster model.
    * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */

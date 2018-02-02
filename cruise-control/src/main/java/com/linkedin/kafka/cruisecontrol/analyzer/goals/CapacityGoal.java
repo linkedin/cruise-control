@@ -53,7 +53,7 @@ public abstract class CapacityGoal extends AbstractGoal {
   protected abstract Resource resource();
 
   /**
-   * Check whether the given action is acceptable by this goal. A action is acceptable by a goal if it satisfies
+   * Check whether the given action is acceptable by this goal. An action is acceptable by a goal if it satisfies
    * requirements of the goal. Requirements(hard goal): Capacity.
    *
    * ## Leadership Movement: impacts only (1) network outbound and (2) CPU resources (See
@@ -68,7 +68,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    * <p>
    * ## Replica Movement: impacts any resource.
    *
-   * @param action action to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
    * @return True if the action is acceptable by this goal, false otherwise.
    */
@@ -103,7 +103,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    * false otherwise.
    *
    * @param clusterModel The state of the cluster.
-   * @param action action containing information about
+   * @param action Action containing information about potential modification to the given cluster model.
    * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */

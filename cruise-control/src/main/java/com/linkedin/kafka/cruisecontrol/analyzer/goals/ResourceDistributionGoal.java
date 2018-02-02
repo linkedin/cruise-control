@@ -66,11 +66,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   protected abstract Resource resource();
 
   /**
-   * Check whether given action is acceptable by this goal. A action is acceptable by this goal if the movement
+   * Check whether given action is acceptable by this goal. An action is acceptable by this goal if the movement
    * specified by the given action does not lead to a utilization in destination that is more than the broker
    * balance limit (in terms of utilization) broker utilization achieved after the balancing process of this goal.
    *
-   * @param action     action to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
    * @return True if action is acceptable by this goal, false otherwise.
    */
@@ -113,13 +113,13 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
   /**
    * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
-   * false otherwise. A action is acceptable if: (1) destination broker utilization for the given resource is less
+   * false otherwise. An action is acceptable if: (1) destination broker utilization for the given resource is less
    * than the source broker utilization. (2) movement is acceptable (i.e. under the broker balance limit for balanced
    * resources) for already balanced resources. Already balanced resources are the ones that have gone through the
    * "resource distribution" process specified in this goal.
    *
    * @param clusterModel The state of the cluster.
-   * @param action     action containing information about
+   * @param action Action containing information about potential modification to the given cluster model.
    * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */

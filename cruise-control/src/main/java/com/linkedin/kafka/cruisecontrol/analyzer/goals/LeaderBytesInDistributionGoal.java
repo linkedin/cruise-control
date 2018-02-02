@@ -51,9 +51,9 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * A action is acceptable if it does not move the leader bytes in above the threshold for leader bytes in.
+   * An action is acceptable if it does not move the leader bytes in above the threshold for leader bytes in.
    *
-   * @param action     action to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel State of the cluster before application of the action.
    * @return true if the action does not unbalance leader bytes in.
    */
