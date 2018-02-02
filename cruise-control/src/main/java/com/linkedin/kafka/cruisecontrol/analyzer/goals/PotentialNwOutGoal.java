@@ -56,13 +56,13 @@ public class PotentialNwOutGoal extends AbstractGoal {
   }
 
   /**
-   * Check whether given action is acceptable by this goal. action is acceptable by this goal if it satisfies
+   * Check whether given action is acceptable by this goal. Action is acceptable by this goal if it satisfies
    * either of the following:
    * (1) it is a leadership movement,
    * (2) it satisfies {@link #selfSatisfied},
    * (3) replica movement does not make the potential nw outbound goal on destination broker more than the source.
    *
-   * @param action     action to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
    * @return True if action is acceptable by this goal, false otherwise.
    */
@@ -117,7 +117,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * out of its allowed capacity, (2) broker containing the source replica is alive.
    *
    * @param clusterModel The state of the cluster.
-   * @param action     action containing information about
+   * @param action Action containing information about potential modification to the given cluster model.
    * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */

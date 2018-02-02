@@ -66,11 +66,11 @@ public interface Goal extends Configurable {
       throws KafkaCruiseControlException;
 
   /**
-   * Check whether given action is acceptable by this goal in the given state of the cluster. A action is
+   * Check whether given action is acceptable by this goal in the given state of the cluster. An action is
    * acceptable by a goal if it satisfies requirements of the goal.
    * It is assumed that the given action does not involve replicas regarding excluded topics.
    *
-   * @param action       Action to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel State of the cluster before application of the action.
    * @return True if action is acceptable by this goal, false otherwise.
    */
