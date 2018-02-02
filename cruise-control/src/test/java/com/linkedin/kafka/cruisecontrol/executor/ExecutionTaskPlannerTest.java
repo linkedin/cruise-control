@@ -4,8 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import java.util.Collections;
 import org.apache.kafka.common.TopicPartition;
 
@@ -26,29 +26,29 @@ public class ExecutionTaskPlannerTest {
   private static final String TOPIC1 = "topic1";
   private static final String TOPIC2 = "topic2";
 
-  private final BalancingProposal leaderMovement1 = new BalancingProposal(new TopicPartition(TOPIC1, 0), 0, 1,
-      BalancingAction.LEADERSHIP_MOVEMENT);
-  private final BalancingProposal leaderMovement2 = new BalancingProposal(new TopicPartition(TOPIC1, 1), 0, 1,
-      BalancingAction.LEADERSHIP_MOVEMENT);
-  private final BalancingProposal leaderMovement3 = new BalancingProposal(new TopicPartition(TOPIC1, 2), 2, 1,
-      BalancingAction.LEADERSHIP_MOVEMENT);
-  private final BalancingProposal leaderMovement4 = new BalancingProposal(new TopicPartition(TOPIC1, 3), 3, 2,
-      BalancingAction.LEADERSHIP_MOVEMENT);
+  private final BalancingAction leaderMovement1 = new BalancingAction(new TopicPartition(TOPIC1, 0), 0, 1,
+                                                                      ActionType.LEADERSHIP_MOVEMENT);
+  private final BalancingAction leaderMovement2 = new BalancingAction(new TopicPartition(TOPIC1, 1), 0, 1,
+                                                                      ActionType.LEADERSHIP_MOVEMENT);
+  private final BalancingAction leaderMovement3 = new BalancingAction(new TopicPartition(TOPIC1, 2), 2, 1,
+                                                                      ActionType.LEADERSHIP_MOVEMENT);
+  private final BalancingAction leaderMovement4 = new BalancingAction(new TopicPartition(TOPIC1, 3), 3, 2,
+                                                                      ActionType.LEADERSHIP_MOVEMENT);
 
-  private final BalancingProposal partitionMovement1 = new BalancingProposal(new TopicPartition(TOPIC2, 0), 0, 1,
-      BalancingAction.REPLICA_MOVEMENT, 1);
-  private final BalancingProposal partitionMovement2 = new BalancingProposal(new TopicPartition(TOPIC2, 1), 0, 1,
-      BalancingAction.REPLICA_MOVEMENT, 2);
-  private final BalancingProposal partitionMovement3 = new BalancingProposal(new TopicPartition(TOPIC2, 2), 2, 1,
-      BalancingAction.REPLICA_MOVEMENT, 3);
-  private final BalancingProposal partitionMovement4 = new BalancingProposal(new TopicPartition(TOPIC2, 3), 3, 2,
-      BalancingAction.REPLICA_MOVEMENT, 4);
+  private final BalancingAction partitionMovement1 = new BalancingAction(new TopicPartition(TOPIC2, 0), 0, 1,
+                                                                         ActionType.REPLICA_MOVEMENT, 1);
+  private final BalancingAction partitionMovement2 = new BalancingAction(new TopicPartition(TOPIC2, 1), 0, 1,
+                                                                         ActionType.REPLICA_MOVEMENT, 2);
+  private final BalancingAction partitionMovement3 = new BalancingAction(new TopicPartition(TOPIC2, 2), 2, 1,
+                                                                         ActionType.REPLICA_MOVEMENT, 3);
+  private final BalancingAction partitionMovement4 = new BalancingAction(new TopicPartition(TOPIC2, 3), 3, 2,
+                                                                         ActionType.REPLICA_MOVEMENT, 4);
 
   private final AtomicLong _executionId = new AtomicLong(0L);
 
   @Test
   public void testGetLeaderMovementTasks() {
-    List<BalancingProposal> proposals = new ArrayList<>();
+    List<BalancingAction> proposals = new ArrayList<>();
     proposals.add(leaderMovement1);
     proposals.add(leaderMovement2);
     proposals.add(leaderMovement3);
@@ -71,8 +71,8 @@ public class ExecutionTaskPlannerTest {
 
   @Test
   public void testGetPartitionMovementTasks() {
-    assertEquals(partitionMovement1.balancingAction(), BalancingAction.REPLICA_MOVEMENT);
-    List<BalancingProposal> proposals = new ArrayList<>();
+    assertEquals(partitionMovement1.balancingAction(), ActionType.REPLICA_MOVEMENT);
+    List<BalancingAction> proposals = new ArrayList<>();
     proposals.add(partitionMovement1);
     proposals.add(partitionMovement2);
     proposals.add(partitionMovement3);
@@ -92,7 +92,7 @@ public class ExecutionTaskPlannerTest {
   
   @Test
   public void testClear() {
-    List<BalancingProposal> proposals = new ArrayList<>();
+    List<BalancingAction> proposals = new ArrayList<>();
     proposals.add(leaderMovement1);
     proposals.add(partitionMovement1);
     ExecutionTaskPlanner planner = new ExecutionTaskPlanner();
@@ -106,9 +106,9 @@ public class ExecutionTaskPlannerTest {
     assertEquals(0, planner.remainingReplicaMovements().size());
   }
 
-  private List<ExecutionTask> generateExecutionTasks(BalancingProposal... proposals) {
+  private List<ExecutionTask> generateExecutionTasks(BalancingAction... proposals) {
     List<ExecutionTask> tasks = new ArrayList<>();
-    for (BalancingProposal proposal : proposals) {
+    for (BalancingAction proposal : proposals) {
       tasks.add(new ExecutionTask(_executionId.getAndIncrement(), proposal));
     }
     return tasks;

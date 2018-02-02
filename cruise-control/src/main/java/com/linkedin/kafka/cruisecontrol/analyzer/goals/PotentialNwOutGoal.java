@@ -6,8 +6,8 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
@@ -56,25 +56,24 @@ public class PotentialNwOutGoal extends AbstractGoal {
   }
 
   /**
-   * Check whether given proposal is acceptable by this goal. Proposal is acceptable by this goal if it satisfies
+   * Check whether given action is acceptable by this goal. Action is acceptable by this goal if it satisfies
    * either of the following:
    * (1) it is a leadership movement,
    * (2) it satisfies {@link #selfSatisfied},
    * (3) replica movement does not make the potential nw outbound goal on destination broker more than the source.
    *
-   * @param proposal     Proposal to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if proposal is acceptable by this goal, false otherwise.
+   * @return True if action is acceptable by this goal, false otherwise.
    */
   @Override
-  public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
-    Replica replica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
-    if (proposal.balancingAction().equals(BalancingAction.LEADERSHIP_MOVEMENT) || selfSatisfied(clusterModel,
-        proposal)) {
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    Replica replica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+    if (action.balancingAction().equals(ActionType.LEADERSHIP_MOVEMENT) || selfSatisfied(clusterModel, action)) {
       return true;
     }
     double destinationBrokerUtilization =
-        clusterModel.potentialLeadershipLoadFor(clusterModel.broker(proposal.destinationBrokerId()).id()).expectedUtilizationFor(Resource.NW_OUT);
+        clusterModel.potentialLeadershipLoadFor(clusterModel.broker(action.destinationBrokerId()).id()).expectedUtilizationFor(Resource.NW_OUT);
     double sourceBrokerUtilization = clusterModel.potentialLeadershipLoadFor(replica.broker().id()).expectedUtilizationFor(Resource.NW_OUT);
     double replicaUtilization = clusterModel.partition(replica.topicPartition()).leader().load().expectedUtilizationFor(Resource.NW_OUT);
 
@@ -113,23 +112,23 @@ public class PotentialNwOutGoal extends AbstractGoal {
 
   /**
    * Check if the movement of potential outbound network utilization from the given source replica to given
-   * destination broker is acceptable for this goal. The proposal is unacceptable if both of the following conditions
+   * destination broker is acceptable for this goal. The action is unacceptable if both of the following conditions
    * are met: (1) transfer of replica makes the potential network outbound utilization of the destination broker go
    * out of its allowed capacity, (2) broker containing the source replica is alive.
    *
    * @param clusterModel The state of the cluster.
-   * @param proposal     Proposal containing information about
-   * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * @param action Action containing information about potential modification to the given cluster model.
+   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */
   @Override
-  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal) {
-    Replica sourceReplica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
-    // If the source broker is dead and currently self healing dead brokers only, then the proposal must be executed.
+  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
+    Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+    // If the source broker is dead and currently self healing dead brokers only, then the action must be executed.
     if (!sourceReplica.broker().isAlive() && _selfHealingDeadBrokersOnly) {
       return true;
     }
-    Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
+    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     double destinationBrokerUtilization = clusterModel.potentialLeadershipLoadFor(destinationBroker.id()).expectedUtilizationFor(Resource.NW_OUT);
     double allowedDestinationCapacity = destinationBroker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
     double replicaUtilization = clusterModel.partition(sourceReplica.topicPartition()).leader().load()
@@ -185,7 +184,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
@@ -217,8 +216,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
       eligibleBrokers.sort((b1, b2) -> Double.compare(b2.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_OUT),
                                                       b1.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_OUT)));
       Broker destinationBroker =
-          maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, BalancingAction.REPLICA_MOVEMENT,
-              optimizedGoals);
+          maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.REPLICA_MOVEMENT,
+                                    optimizedGoals);
       if (destinationBroker != null) {
         int destinationBrokerId = destinationBroker.id();
         // Check if broker capacity limit is satisfied now.

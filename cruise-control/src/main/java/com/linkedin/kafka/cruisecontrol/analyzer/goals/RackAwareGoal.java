@@ -7,8 +7,8 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
@@ -51,18 +51,18 @@ public class RackAwareGoal extends AbstractGoal {
   }
 
   /**
-   * Check whether given proposal is acceptable by this goal. A proposal is acceptable by a goal if it satisfies
+   * Check whether given action is acceptable by this goal. An action is acceptable by a goal if it satisfies
    * requirements of the goal. Requirements(hard goal): rack awareness.
    *
-   * @param proposal     Proposal to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if proposal is acceptable by this goal, false otherwise.
+   * @return True if action is acceptable by this goal, false otherwise.
    */
   @Override
-  public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
-    if (proposal.balancingAction().equals(BalancingAction.REPLICA_MOVEMENT)) {
-      Replica sourceReplica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
-      Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    if (action.balancingAction().equals(ActionType.REPLICA_MOVEMENT)) {
+      Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+      Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
       // Destination broker cannot be in a rack that violates rack awareness.
       Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
@@ -98,16 +98,16 @@ public class RackAwareGoal extends AbstractGoal {
   }
 
   /**
-   * Check if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    *
    * @param clusterModel The state of the cluster.
-   * @param proposal     Proposal containing information about
-   * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * @param action Action containing information about potential modification to the given cluster model.
+   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */
   @Override
-  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal) {
+  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     return true;
   }
 
@@ -161,7 +161,7 @@ public class RackAwareGoal extends AbstractGoal {
    * (2) Update the current resource that is being balanced if there are still resources to be balanced.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
@@ -180,7 +180,7 @@ public class RackAwareGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
@@ -198,7 +198,7 @@ public class RackAwareGoal extends AbstractGoal {
       }
       // Rack awareness is violated. Move replica to a broker in another rack.
       if (maybeApplyBalancingAction(clusterModel, replica, rackAwareEligibleBrokers(replica, clusterModel),
-          BalancingAction.REPLICA_MOVEMENT, optimizedGoals) == null) {
+                                    ActionType.REPLICA_MOVEMENT, optimizedGoals) == null) {
         throw new AnalysisInputException(
             "Violated rack-awareness requirement for broker with id " + broker.id() + ".");
       }

@@ -5,7 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -43,7 +43,7 @@ public interface Goal extends Configurable {
    * <p>
    *   During the optimization, the implementation should make sure that all the previously optimized goals
    *   are still satisfied after this method completes its execution. The implementation can use
-   *   {@link #isProposalAcceptable(BalancingProposal, ClusterModel)} to check whether an admin operation
+   *   {@link #isActionAcceptable(BalancingAction, ClusterModel)} to check whether an admin operation
    *   is allowed by a previously optimized goal.
    * </p>
    * <p>
@@ -57,7 +57,7 @@ public interface Goal extends Configurable {
    * @param clusterModel   The cluster model reflecting the current state of the cluster. It is a result of the
    *                       optimization of the previously optimized goals.
    * @param optimizedGoals Goals that have already been optimized. These goals cannot be violated.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param excludedTopics The topics that should be excluded from the optimization action.
    * @return true if the goal is met after the optimization, false otherwise. Note that for hard goals,
    * the implementation should just throw exceptions if the goal is not met.
    * @throws KafkaCruiseControlException
@@ -66,15 +66,15 @@ public interface Goal extends Configurable {
       throws KafkaCruiseControlException;
 
   /**
-   * Check whether given proposal is acceptable by this goal in the given state of the cluster. A proposal is
+   * Check whether given action is acceptable by this goal in the given state of the cluster. An action is
    * acceptable by a goal if it satisfies requirements of the goal.
-   * It is assumed that the given proposal does not involve replicas regarding excluded topics.
+   * It is assumed that the given action does not involve replicas regarding excluded topics.
    *
-   * @param proposal     Proposal to be checked for acceptance.
-   * @param clusterModel State of the cluster before application of the proposal.
-   * @return True if proposal is acceptable by this goal, false otherwise.
+   * @param action Action to be checked for acceptance.
+   * @param clusterModel State of the cluster before application of the action.
+   * @return True if action is acceptable by this goal, false otherwise.
    */
-  boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel);
+  boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel);
 
   /**
    * Get an instance of {@link ClusterModelStatsComparator} for this goal.

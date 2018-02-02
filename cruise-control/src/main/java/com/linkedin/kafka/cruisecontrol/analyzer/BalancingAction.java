@@ -4,22 +4,20 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import org.apache.kafka.common.TopicPartition;
 import java.util.HashMap;
 import java.util.Map;
-
-import static com.linkedin.kafka.cruisecontrol.common.BalancingAction.*;
 
 
 /**
  * Represents the load balancing operation over a replica for Kafka Load GoalOptimizer.
  */
-public class BalancingProposal {
+public class BalancingAction {
   private final TopicPartition _tp;
   private final Integer _sourceBrokerId;
   private final Integer _destinationBrokerId;
-  private final BalancingAction _balancingAction;
+  private final ActionType _actionType;
   private final long _dataToMove;
 
   /**
@@ -29,11 +27,11 @@ public class BalancingProposal {
    * @param tp                  Topic partition of the replica.
    * @param sourceBrokerId      Source broker id of the replica.
    * @param destinationBrokerId Destination broker id of the replica.
-   * @param balancingAction     Leadership transfer or replica relocation.
+   * @param actionType     Leadership transfer or replica relocation.
    */
-  public BalancingProposal(TopicPartition tp, Integer sourceBrokerId, Integer destinationBrokerId,
-                           BalancingAction balancingAction) {
-    this(tp, sourceBrokerId, destinationBrokerId, balancingAction, 0L);
+  public BalancingAction(TopicPartition tp, Integer sourceBrokerId, Integer destinationBrokerId,
+                         ActionType actionType) {
+    this(tp, sourceBrokerId, destinationBrokerId, actionType, 0L);
   }
 
   /**
@@ -43,44 +41,44 @@ public class BalancingProposal {
    * @param tp                  Topic partition of the replica.
    * @param sourceBrokerId      Source broker id of the replica.
    * @param destinationBrokerId Destination broker id of the replica.
-   * @param balancingAction     Leadership transfer or replica relocation.
+   * @param actionType     Leadership transfer or replica relocation.
    * @param dataToMove          The data to move with this proposal. The unit should be MB.
    */
-  public BalancingProposal(TopicPartition tp,
-                           Integer sourceBrokerId,
-                           Integer destinationBrokerId,
-                           BalancingAction balancingAction,
-                           long dataToMove) {
+  public BalancingAction(TopicPartition tp,
+                         Integer sourceBrokerId,
+                         Integer destinationBrokerId,
+                         ActionType actionType,
+                         long dataToMove) {
     _tp = tp;
     _sourceBrokerId = sourceBrokerId;
     _destinationBrokerId = destinationBrokerId;
-    _balancingAction = balancingAction;
+    _actionType = actionType;
     _dataToMove = dataToMove;
     validate();
   }
   
   private void validate() {
-    switch (_balancingAction) {
+    switch (_actionType) {
       case REPLICA_ADDITION:
         if (_destinationBrokerId == null) {
-          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + _balancingAction);
+          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + _actionType);
         } else if (_sourceBrokerId != null) {
-          throw new IllegalArgumentException("The source broker should be null for balancing action " + _balancingAction);
+          throw new IllegalArgumentException("The source broker should be null for balancing action " + _actionType);
         }
         break;
       case REPLICA_DELETION:
         if (_destinationBrokerId != null) {
-          throw new IllegalArgumentException("The destination broker should be null for balancing action " + _balancingAction);
+          throw new IllegalArgumentException("The destination broker should be null for balancing action " + _actionType);
         } else if (_sourceBrokerId == null) {
-          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + _balancingAction);
+          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + _actionType);
         }
         break;
       case REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
         if (_destinationBrokerId == null) {
-          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + _balancingAction);
+          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + _actionType);
         } else if (_sourceBrokerId == null) {
-          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + _balancingAction);
+          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + _actionType);
         }
         break;
       default:
@@ -126,8 +124,8 @@ public class BalancingProposal {
   /**
    * Get the type of action that provides balancing.
    */
-  public BalancingAction balancingAction() {
-    return _balancingAction;
+  public ActionType balancingAction() {
+    return _actionType;
   }
 
   /**
@@ -146,7 +144,7 @@ public class BalancingProposal {
     proposalMap.put("topicPartition", _tp);
     proposalMap.put("sourceBrokerId", _sourceBrokerId);
     proposalMap.put("destinationBrokerId", _destinationBrokerId);
-    proposalMap.put("balancingAction", _balancingAction);
+    proposalMap.put("balancingAction", _actionType);
     return proposalMap;
   }
 
@@ -155,7 +153,7 @@ public class BalancingProposal {
    */
   @Override
   public String toString() {
-    return String.format("(%s, %d->%d, %s)", _tp, _sourceBrokerId, _destinationBrokerId, _balancingAction);
+    return String.format("(%s, %d->%d, %s)", _tp, _sourceBrokerId, _destinationBrokerId, _actionType);
   }
 
   /**
@@ -166,7 +164,7 @@ public class BalancingProposal {
    */
   @Override
   public boolean equals(Object other) {
-    if (!(other instanceof BalancingProposal)) {
+    if (!(other instanceof BalancingAction)) {
       return false;
     }
 
@@ -174,7 +172,7 @@ public class BalancingProposal {
       return true;
     }
     
-    BalancingProposal otherProposal = (BalancingProposal) other;
+    BalancingAction otherProposal = (BalancingAction) other;
     if (_sourceBrokerId == null) {
       if (otherProposal._sourceBrokerId != null) {
         return false;
@@ -191,7 +189,7 @@ public class BalancingProposal {
       return false;
     }
     
-    return _tp.equals(otherProposal._tp) && _balancingAction == otherProposal._balancingAction;
+    return _tp.equals(otherProposal._tp) && _actionType == otherProposal._actionType;
   }
 
   @Override
@@ -199,7 +197,7 @@ public class BalancingProposal {
     int result = _tp.hashCode();
     result = 31 * result + _sourceBrokerId;
     result = 31 * result + _destinationBrokerId;
-    result = 31 * result + _balancingAction.hashCode();
+    result = 31 * result + _actionType.hashCode();
     return result;
   }
 }

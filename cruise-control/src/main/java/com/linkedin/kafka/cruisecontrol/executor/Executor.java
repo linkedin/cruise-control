@@ -6,9 +6,9 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
@@ -165,18 +165,18 @@ public class Executor {
   /**
    * Add the given balancing proposals for execution.
    */
-  public void addBalancingProposals(Collection<BalancingProposal> proposals,
+  public void addBalancingProposals(Collection<BalancingAction> proposals,
                                     Collection<Integer> unthrottledBrokers) {
     if (_state.get() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
       throw new IllegalStateException("Cannot add new proposals while the execution is in progress.");
     }
     // Remove any proposal that involves an excluded topic. This should not happen but if it happens we want to
     // detect this and avoid executing the proposals for those topics.
-    Iterator<BalancingProposal> iter = proposals.iterator();
+    Iterator<BalancingAction> iter = proposals.iterator();
     while (iter.hasNext()) {
-      BalancingProposal proposal = iter.next();
+      BalancingAction proposal = iter.next();
       if (_excludedTopics.matcher(proposal.topic()).matches()
-          && proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
+          && proposal.balancingAction() == ActionType.REPLICA_MOVEMENT) {
         LOG.warn("Ignoring balancing proposal {} because the topics is in the excluded topic set {}",
                  proposal, _excludedTopics);
         iter.remove();
@@ -349,7 +349,7 @@ public class Executor {
             _executionTaskManager.markTaskDone(task);
           } else if (maybeMarkTaskAsDeadOrAborting(cluster, task)) {
             // Only add the dead or aborted tasks to execute if it is not a leadership movement.
-            if (task.proposal.balancingAction() != BalancingAction.LEADERSHIP_MOVEMENT) {
+            if (task.proposal.balancingAction() != ActionType.LEADERSHIP_MOVEMENT) {
               deadOrAbortingTasks.add(task);
             }
             // A dead or aborted task is considered as finished.
@@ -529,7 +529,7 @@ public class Executor {
         LOG.info("Reexecuting tasks {}", _executionTaskManager.inExecutionTasks());
         List<ExecutionTask> tasksToReexecute = new ArrayList<>();
         for (ExecutionTask executionTask : _executionTaskManager.inExecutionTasks()) {
-          if (executionTask.proposal.balancingAction() != BalancingAction.LEADERSHIP_MOVEMENT) {
+          if (executionTask.proposal.balancingAction() != ActionType.LEADERSHIP_MOVEMENT) {
             tasksToReexecute.add(executionTask);
           }
         }

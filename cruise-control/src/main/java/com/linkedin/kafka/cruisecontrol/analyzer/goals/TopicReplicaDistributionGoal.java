@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
@@ -57,18 +57,18 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * Check whether given proposal is acceptable by this goal. A proposal is acceptable if the number of topic replicas
+   * Check whether given action is acceptable by this goal. An action is acceptable if the number of topic replicas
    * at the source broker are more than the number of topic replicas at the destination (remote) broker.
    *
-   * @param proposal     Proposal to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if proposal is acceptable by this goal, false otherwise.
+   * @return True if action is acceptable by this goal, false otherwise.
    */
   @Override
-  public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
-    String topic = proposal.topic();
-    int numLocalTopicReplicas = clusterModel.broker(proposal.sourceBrokerId()).replicasOfTopicInBroker(topic).size();
-    int numRemoteTopicReplicas = clusterModel.broker(proposal.destinationBrokerId()).replicasOfTopicInBroker(topic).size();
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    String topic = action.topic();
+    int numLocalTopicReplicas = clusterModel.broker(action.sourceBrokerId()).replicasOfTopicInBroker(topic).size();
+    int numRemoteTopicReplicas = clusterModel.broker(action.destinationBrokerId()).replicasOfTopicInBroker(topic).size();
 
     return numRemoteTopicReplicas < numLocalTopicReplicas;
   }
@@ -117,16 +117,16 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * Check if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    *
    * @param clusterModel The state of the cluster.
-   * @param proposal     Proposal containing information about
-   * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * @param action Action containing information about potential modification to the given cluster model.
+   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */
   @Override
-  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal) {
+  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     // This method is not used by this goal.
     return false;
   }
@@ -217,7 +217,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,

@@ -8,24 +8,24 @@ import java.util.Arrays;
 import java.util.List;
 
 
-public enum BalancingAction {
+public enum ActionType {
   REPLICA_MOVEMENT("REPLICA"), 
   LEADERSHIP_MOVEMENT("LEADER"), 
   REPLICA_ADDITION("ADDITION"), 
   REPLICA_DELETION("DELETE");
   
-  private static final List<BalancingAction> CACHED_VALUES;
+  private static final List<ActionType> CACHED_VALUES;
   static {
     CACHED_VALUES = Arrays.asList(REPLICA_MOVEMENT, LEADERSHIP_MOVEMENT, REPLICA_ADDITION, REPLICA_DELETION);
   }
   
-  public static List<BalancingAction> cachedValues() {
+  public static List<ActionType> cachedValues() {
     return CACHED_VALUES;
   }
 
   private final String _balancingAction;
 
-  BalancingAction(String balancingAction) {
+  ActionType(String balancingAction) {
     _balancingAction = balancingAction;
   }
 

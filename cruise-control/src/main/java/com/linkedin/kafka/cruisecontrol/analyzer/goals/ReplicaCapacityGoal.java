@@ -7,8 +7,8 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
@@ -52,18 +52,18 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   }
 
   /**
-   * Check whether given proposal is acceptable by this goal. A proposal is acceptable by a goal if it satisfies
+   * Check whether given action is acceptable by this goal. An action is acceptable by a goal if it satisfies
    * requirements of the goal. Requirements(hard goal): replica capacity goal.
    *
-   * @param proposal     Proposal to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if proposal is acceptable by this goal, false otherwise.
+   * @return True if action is acceptable by this goal, false otherwise.
    */
   @Override
-  public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
-    if (proposal.balancingAction().equals(BalancingAction.REPLICA_MOVEMENT) ||
-        proposal.balancingAction().equals(BalancingAction.REPLICA_ADDITION)) {
-      Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    if (action.balancingAction().equals(ActionType.REPLICA_MOVEMENT) ||
+        action.balancingAction().equals(ActionType.REPLICA_ADDITION)) {
+      Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
       return destinationBroker.replicas().size() < _balancingConstraint.maxReplicasPerBroker();
     }
     return true;
@@ -142,17 +142,17 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   }
 
   /**
-   * Check if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    *
    * @param clusterModel The state of the cluster.
-   * @param proposal     Proposal containing information about
-   * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * @param action Action containing information about potential modification to the given cluster model.
+   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */
   @Override
-  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal) {
-    Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
+  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
+    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     return destinationBroker.replicas().size() < _balancingConstraint.maxReplicasPerBroker();
   }
 
@@ -160,7 +160,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * Update goal state after one round of self-healing / rebalance.
    *
    *  @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
@@ -218,7 +218,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       List<Broker> eligibleBrokers =
           eligibleBrokers(replica, clusterModel).stream().map(BrokerReplicaCount::broker).collect(Collectors.toList());
 
-      Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, BalancingAction.REPLICA_MOVEMENT, optimizedGoals);
+      Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.REPLICA_MOVEMENT, optimizedGoals);
       if (b == null) {
         if (!broker.isAlive()) {
           // If the replica resides in a dead broker, throw an exception!

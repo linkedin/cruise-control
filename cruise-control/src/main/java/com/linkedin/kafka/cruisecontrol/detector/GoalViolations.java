@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import java.util.ArrayList;
@@ -21,7 +21,7 @@ import java.util.StringJoiner;
 public class GoalViolations extends Anomaly {
   private final List<Violation> _goalViolations = new ArrayList<>();
 
-  public void addViolation(int priority, String goalName, Set<BalancingProposal> balancingProposals) {
+  public void addViolation(int priority, String goalName, Set<BalancingAction> balancingProposals) {
     _goalViolations.add(new Violation(priority, goalName, balancingProposals));
   }
 
@@ -41,9 +41,9 @@ public class GoalViolations extends Anomaly {
   public static class Violation {
     private final int _priority;
     private final String _goalName;
-    private final Set<BalancingProposal> _balancingProposals;
+    private final Set<BalancingAction> _balancingProposals;
 
-    public Violation(int priority, String goalName, Set<BalancingProposal> balancingProposals) {
+    public Violation(int priority, String goalName, Set<BalancingAction> balancingProposals) {
       _priority = priority;
       _goalName = goalName;
       _balancingProposals = balancingProposals;
@@ -57,7 +57,7 @@ public class GoalViolations extends Anomaly {
       return _goalName;
     }
 
-    public Set<BalancingProposal> balancingProposals() {
+    public Set<BalancingAction> balancingProposals() {
       return _balancingProposals;
     }
   }

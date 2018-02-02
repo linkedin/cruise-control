@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.NotEnoughValidSnapshotsException;
@@ -160,7 +160,7 @@ public class GoalViolationDetector implements Runnable {
     }
     Map<TopicPartition, List<Integer>> initDistribution = clusterModel.getReplicaDistribution();
     goal.optimize(clusterModel, new HashSet<>(), excludedTopics(clusterModel));
-    Set<BalancingProposal> proposals = AnalyzerUtils.getDiff(initDistribution, clusterModel);
+    Set<BalancingAction> proposals = AnalyzerUtils.getDiff(initDistribution, clusterModel);
     LOG.trace("{} generated {} proposals", goal.name(), proposals.size());
     if (!proposals.isEmpty()) {
       goalViolations.addViolation(priority, goal.name(), proposals);

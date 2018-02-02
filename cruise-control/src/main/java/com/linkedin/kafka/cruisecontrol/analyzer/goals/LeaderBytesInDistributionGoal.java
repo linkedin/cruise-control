@@ -7,8 +7,8 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
@@ -51,16 +51,16 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * A proposal is acceptable if it does not move the leader bytes in above the threshold for leader bytes in.
+   * An action is acceptable if it does not move the leader bytes in above the threshold for leader bytes in.
    *
-   * @param proposal     Proposal to be checked for acceptance.
-   * @param clusterModel State of the cluster before application of the proposal.
-   * @return true if the proposal does not unbalance leader bytes in.
+   * @param action Action to be checked for acceptance.
+   * @param clusterModel State of the cluster before application of the action.
+   * @return true if the action does not unbalance leader bytes in.
    */
   @Override
-  public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
-    Replica sourceReplica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
-    Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
     initMeanLeaderBytesIn(clusterModel);
 
@@ -110,12 +110,12 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal) {
-    if (proposal.balancingAction() != BalancingAction.LEADERSHIP_MOVEMENT) {
-      throw new IllegalStateException("Found balancing action " + proposal.balancingAction() +
+  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
+    if (action.balancingAction() != ActionType.LEADERSHIP_MOVEMENT) {
+      throw new IllegalStateException("Found balancing action " + action.balancingAction() +
           " but expected leadership movement.");
     }
-    return isProposalAcceptable(proposal, clusterModel);
+    return isActionAcceptable(action, clusterModel);
   }
 
   @Override
@@ -160,8 +160,8 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
       List<Broker> eligibleBrokers = followers.stream().map(Replica::broker)
           .sorted(Comparator.comparingDouble(a -> a.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)))
           .collect(Collectors.toList());
-      maybeApplyBalancingAction(clusterModel, leaderReplica, eligibleBrokers, BalancingAction.LEADERSHIP_MOVEMENT,
-          optimizedGoals);
+      maybeApplyBalancingAction(clusterModel, leaderReplica, eligibleBrokers, ActionType.LEADERSHIP_MOVEMENT,
+                                optimizedGoals);
       overThreshold = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) > balanceThreshold;
     }
     if (overThreshold) {

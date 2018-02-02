@@ -4,9 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import javax.servlet.http.HttpServletRequest;
 
 
@@ -47,11 +47,11 @@ class KafkaCruiseControlServletUtils {
     int numReplicaMovements = 0;
     int numLeaderMovements = 0;
     long dataToMove = 0;
-    for (BalancingProposal p : result.goalProposals()) {
-      if (p.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
+    for (BalancingAction p : result.goalProposals()) {
+      if (p.balancingAction() == ActionType.REPLICA_MOVEMENT) {
         numReplicaMovements++;
         dataToMove += p.dataToMove();
-      } else if (p.balancingAction() == BalancingAction.LEADERSHIP_MOVEMENT) {
+      } else if (p.balancingAction() == ActionType.LEADERSHIP_MOVEMENT) {
         numLeaderMovements++;
       }
     }

@@ -6,9 +6,9 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -237,10 +237,10 @@ public class ExecutionTaskManager {
    * @param proposals the balancing proposals to execute.
    * @param brokersToSkipConcurrencyCheck the brokers that does not need to be throttled when move the partitions.
    */
-  public void addBalancingProposals(Collection<BalancingProposal> proposals,
+  public void addBalancingProposals(Collection<BalancingAction> proposals,
                                     Collection<Integer> brokersToSkipConcurrencyCheck) {
     _executionTaskPlanner.addBalancingProposals(proposals);
-    for (BalancingProposal p : proposals) {
+    for (BalancingAction p : proposals) {
       if (!_inProgressPartMovementsByBrokerId.containsKey(p.sourceBrokerId())) {
         _inProgressPartMovementsByBrokerId.put(p.sourceBrokerId(), 0);
       }
@@ -266,7 +266,7 @@ public class ExecutionTaskManager {
         // Add task to the relevant task in progress.
         markTaskState(task, ExecutionTask.State.IN_PROGRESS);
         _inProgressPartitions.add(task.proposal.topicPartition());
-        if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
+        if (task.proposal.balancingAction() == ActionType.REPLICA_MOVEMENT) {
           if (task.sourceBrokerId() != null) {
             _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
                                                    _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) + 1);
@@ -316,16 +316,16 @@ public class ExecutionTaskManager {
   private void markTaskState(ExecutionTask task, ExecutionTask.State targetState) {
     if (task.canTransferToState(targetState)) {
       ExecutionTask.State currentState = task.state();
-      BalancingAction balancingAction = task.proposal.balancingAction();
+      ActionType actionType = task.proposal.balancingAction();
       switch (currentState) {
         case PENDING:
-          _executionTaskTracker.pendingProposalsFor(balancingAction).remove(task.proposal);
+          _executionTaskTracker.pendingProposalsFor(actionType).remove(task.proposal);
           break;
         case IN_PROGRESS:
-          _executionTaskTracker.inProgressTasksFor(balancingAction).remove(task);
+          _executionTaskTracker.inProgressTasksFor(actionType).remove(task);
           break;
         case ABORTING:
-          _executionTaskTracker.abortingTasksFor(balancingAction).remove(task);
+          _executionTaskTracker.abortingTasksFor(actionType).remove(task);
           break;
         default:
           throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state");
@@ -334,19 +334,19 @@ public class ExecutionTaskManager {
       switch (targetState) {
         case IN_PROGRESS:
           task.inProgress();
-          _executionTaskTracker.inProgressTasksFor(balancingAction).add(task);
+          _executionTaskTracker.inProgressTasksFor(actionType).add(task);
           break;
         case ABORTING:
           task.abort();
-          _executionTaskTracker.abortingTasksFor(balancingAction).add(task);
+          _executionTaskTracker.abortingTasksFor(actionType).add(task);
           break;
         case DEAD:
           task.kill();
-          _executionTaskTracker.deadTasksFor(balancingAction).add(task);
+          _executionTaskTracker.deadTasksFor(actionType).add(task);
           break;
         case ABORTED:
           task.aborted();
-          _executionTaskTracker.abortedTasksFor(balancingAction).add(task);
+          _executionTaskTracker.abortedTasksFor(actionType).add(task);
           break;
         case COMPLETED:
           task.completed();
@@ -364,7 +364,7 @@ public class ExecutionTaskManager {
    * Mark a given tasks as completed.
    */
   private void completeTask(ExecutionTask task) {
-    if (task.proposal.balancingAction() == BalancingAction.REPLICA_MOVEMENT) {
+    if (task.proposal.balancingAction() == ActionType.REPLICA_MOVEMENT) {
       if (task.sourceBrokerId() != null) {
         _inProgressPartMovementsByBrokerId.put(task.sourceBrokerId(),
                                                _inProgressPartMovementsByBrokerId.get(task.sourceBrokerId()) - 1);

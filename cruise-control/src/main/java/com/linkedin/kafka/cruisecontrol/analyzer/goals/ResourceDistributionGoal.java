@@ -6,8 +6,8 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
-import com.linkedin.kafka.cruisecontrol.analyzer.BalancingProposal;
-import com.linkedin.kafka.cruisecontrol.common.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
+import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
@@ -33,8 +33,8 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal.ChangeType.ADD;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal.ChangeType.REMOVE;
-import static com.linkedin.kafka.cruisecontrol.common.BalancingAction.LEADERSHIP_MOVEMENT;
-import static com.linkedin.kafka.cruisecontrol.common.BalancingAction.REPLICA_MOVEMENT;
+import static com.linkedin.kafka.cruisecontrol.common.ActionType.LEADERSHIP_MOVEMENT;
+import static com.linkedin.kafka.cruisecontrol.common.ActionType.REPLICA_MOVEMENT;
 
 
 /**
@@ -66,18 +66,18 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   protected abstract Resource resource();
 
   /**
-   * Check whether given proposal is acceptable by this goal. A proposal is acceptable by this goal if the movement
-   * specified by the given proposal does not lead to a utilization in destination that is more than the broker
+   * Check whether given action is acceptable by this goal. An action is acceptable by this goal if the movement
+   * specified by the given action does not lead to a utilization in destination that is more than the broker
    * balance limit (in terms of utilization) broker utilization achieved after the balancing process of this goal.
    *
-   * @param proposal     Proposal to be checked for acceptance.
+   * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if proposal is acceptable by this goal, false otherwise.
+   * @return True if action is acceptable by this goal, false otherwise.
    */
   @Override
-  public boolean isProposalAcceptable(BalancingProposal proposal, ClusterModel clusterModel) {
-    Replica sourceReplica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
-    Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     // Balanced resources cannot be more imbalanced. i.e. cannot go over the broker balance limit.
     return isLoadUnderBalanceUpperLimitAfterChange(clusterModel, sourceReplica.load(), destinationBroker, ADD) &&
         isLoadAboveBalanceLowerLimitAfterChange(clusterModel, sourceReplica.load(), sourceReplica.broker(), REMOVE);
@@ -112,22 +112,22 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * Check if requirements of this goal are not violated if this proposal is applied to the given cluster state,
-   * false otherwise. A proposal is acceptable if: (1) destination broker utilization for the given resource is less
+   * Check if requirements of this goal are not violated if this action is applied to the given cluster state,
+   * false otherwise. An action is acceptable if: (1) destination broker utilization for the given resource is less
    * than the source broker utilization. (2) movement is acceptable (i.e. under the broker balance limit for balanced
    * resources) for already balanced resources. Already balanced resources are the ones that have gone through the
    * "resource distribution" process specified in this goal.
    *
    * @param clusterModel The state of the cluster.
-   * @param proposal     Proposal containing information about
-   * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
+   * @param action Action containing information about potential modification to the given cluster model.
+   * @return True if requirements of this goal are not violated if this action is applied to the given cluster state,
    * false otherwise.
    */
   @Override
-  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingProposal proposal) {
-    Broker destinationBroker = clusterModel.broker(proposal.destinationBrokerId());
-    Replica sourceReplica = clusterModel.broker(proposal.sourceBrokerId()).replica(proposal.topicPartition());
-    // If the source broker is dead and currently self healing dead brokers only, then the proposal must be executed.
+  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
+    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
+    Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+    // If the source broker is dead and currently self healing dead brokers only, then the action must be executed.
     if (!sourceReplica.broker().isAlive() && _selfHealingDeadBrokersOnly) {
       return true;
     }
@@ -222,7 +222,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
@@ -275,7 +275,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   protected boolean rebalanceByMovingLoadIn(Broker broker,
                                             ClusterModel clusterModel,
                                             Set<Goal> optimizedGoals,
-                                            BalancingAction balancingAction,
+                                            ActionType actionType,
                                             Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>(
@@ -290,8 +290,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
     // Stop when all the replicas are leaders for leader movement or there is no replicas can be moved in anymore
     // for replica movement.
-    while (!eligibleBrokers.isEmpty() && (balancingAction == REPLICA_MOVEMENT ||
-        (balancingAction == LEADERSHIP_MOVEMENT && broker.leaderReplicas().size() != broker.replicas().size()))) {
+    while (!eligibleBrokers.isEmpty() && (actionType == REPLICA_MOVEMENT ||
+        (actionType == LEADERSHIP_MOVEMENT && broker.leaderReplicas().size() != broker.replicas().size()))) {
       Broker sourceBroker = eligibleBrokers.poll();
       for (Replica replica : sourceBroker.sortedReplicas(resource())) {
         if (shouldExclude(replica, excludedTopics)) {
@@ -301,8 +301,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         if (replica.load().expectedUtilizationFor(resource()) == 0.0 && broker.isAlive()) {
           break;
         }
-        Broker b = maybeApplyBalancingAction(clusterModel, replica, Collections.singletonList(broker),
-                                                     balancingAction, optimizedGoals);
+        Broker b = maybeApplyBalancingAction(clusterModel, replica, Collections.singletonList(broker), actionType, optimizedGoals);
         // Only need to check status if the action is taken. This will also handle the case that the source broker
         // has nothing to move in. In that case we will never reenqueue that source broker.
         if (b != null) {
@@ -325,7 +324,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   protected boolean rebalanceByMovingLoadOut(Broker broker,
                                              ClusterModel clusterModel,
                                              Set<Goal> optimizedGoals,
-                                             BalancingAction balancingAction,
+                                             ActionType actionType,
                                              Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
     // Get th eligible brokers.
@@ -342,7 +341,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
     // Get the replicas to rebalance.
     List<Replica> replicasToMove;
-    if (balancingAction == LEADERSHIP_MOVEMENT) {
+    if (actionType == LEADERSHIP_MOVEMENT) {
       // Only take leader replicas to move leaders.
       replicasToMove = new ArrayList<>(broker.leaderReplicas());
       replicasToMove.sort((r1, r2) -> Double.compare(r2.load().expectedUtilizationFor(resource()),
@@ -364,7 +363,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
       // An optimization for leader movements.
       SortedSet<Broker> eligibleBrokers;
-      if (balancingAction == LEADERSHIP_MOVEMENT) {
+      if (actionType == LEADERSHIP_MOVEMENT) {
         eligibleBrokers = new TreeSet<>((b1, b2) -> {
           int result = Double.compare(utilizationPercentage(b1), utilizationPercentage(b2));
           return result != 0 ? result : Integer.compare(b1.id(), b2.id());
@@ -378,7 +377,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         eligibleBrokers = candidateBrokers;
       }
 
-      Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, balancingAction, optimizedGoals);
+      Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, actionType, optimizedGoals);
       // Only check if we successfully moved something.
       if (b != null) {
         if (isLoadUnderBalanceUpperLimit(clusterModel, broker)) {
