@@ -252,9 +252,11 @@ public class Executor {
         _finishedDataMovementInMB = totalDataToMoveInMB - dataToMove;
         LOG.info("{}/{} ({}%) partition movements completed. {}/{} ({}%) MB have been moved.",
                  _numFinishedPartitionMovements, numTotalPartitionMovements,
-                 _numFinishedPartitionMovements * 100 / numTotalPartitionMovements,
+                 String.format(java.util.Locale.US, "%.2f",
+                               _numFinishedPartitionMovements * 100.0 / numTotalPartitionMovements),
                  _finishedDataMovementInMB, totalDataToMoveInMB,
-                 totalDataToMoveInMB == 0 ? 100 : (_finishedDataMovementInMB * 100) / totalDataToMoveInMB);
+                 totalDataToMoveInMB == 0 ? 100 : String.format(java.util.Locale.US, "%.2f",
+                                                                (_finishedDataMovementInMB * 100.0) / totalDataToMoveInMB));
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
       // ensures a clean stop when the execution is stopped in the middle.
