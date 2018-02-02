@@ -100,13 +100,13 @@ public class SessionManager {
     String requestString = toRequestString(request);
     // Session exists.
     if (info != null) {
-      LOG.debug("Found existing session {}", session);
+      LOG.info("Found existing session {}", session);
       info.ensureSameRequest(requestString, request.getParameterMap());
       // If there is next future return it.
       if (step < info.numFutures()) {
         return (OperationFuture<T>) info.future(step);
       } else if (step == info.numFutures()) {
-        LOG.debug("Adding new future to existing session {}.", session);
+        LOG.info("Adding new future to existing session {}.", session);
         // if there is no next future, add the future to the next list.
         OperationFuture<T> future = operation.get();
         info.addFuture(future);
@@ -124,7 +124,7 @@ public class SessionManager {
         throw new RuntimeException("There are already " + _inProgressSessions.size() + " active sessions, which "
                                        + "has reached the servlet capacity.");
       }
-      LOG.debug("Created session for {}", session);
+      LOG.info("Created session for {}", session);
       info = new SessionInfo(requestString, request.getParameterMap());
       OperationFuture<T> future = operation.get();
       info.addFuture(future);
@@ -162,7 +162,7 @@ public class SessionManager {
     }
     SessionInfo info = _inProgressSessions.remove(session);
     if (info != null && info.lastFuture().isDone()) {
-      LOG.debug("Closing session {}", session);
+      LOG.info("Closing session {}", session);
       session.invalidate();
     }
   }
@@ -180,7 +180,7 @@ public class SessionManager {
       LOG.trace("Session {} was last accessed at {}, age is {} ms", session, session.getLastAccessedTime(),
                 now - session.getLastAccessedTime());
       if (now >= session.getLastAccessedTime() + _sessionExpiryMs) {
-        LOG.debug("Expiring session {}.", session);
+        LOG.info("Expiring session {}.", session);
         iter.remove();
         session.invalidate();
         info.lastFuture().cancel(true);
