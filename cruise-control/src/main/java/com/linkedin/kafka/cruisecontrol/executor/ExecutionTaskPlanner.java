@@ -19,6 +19,9 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.REPLICA_ACTION;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.LEADER_ACTION;
+
 
 /**
  * The class holds the execution of balance proposals for rebalance.
@@ -77,7 +80,7 @@ public class ExecutionTaskPlanner {
 
     // Get the execution Id for this proposal;
     long proposalExecutionId = _executionId.getAndIncrement();
-    ExecutionTask executionTask = new ExecutionTask(proposalExecutionId, proposal);
+    ExecutionTask executionTask = new ExecutionTask(proposalExecutionId, proposal, REPLICA_ACTION);
     _remainingReplicaMovements.add(executionTask);
     _remainingDataToMove += proposal.dataToMoveInMB();
     // Add the proposal to source broker's execution plan
@@ -96,7 +99,7 @@ public class ExecutionTaskPlanner {
     if (proposal.hasLeaderAction()) {
       // Get the execution Id for the leader action proposal execution;
       long leaderActionExecutionId = _executionId.getAndIncrement();
-      ExecutionTask leaderActionTask = new ExecutionTask(leaderActionExecutionId, toLeaderMovementProposal(proposal));
+      ExecutionTask leaderActionTask = new ExecutionTask(leaderActionExecutionId, proposal, LEADER_ACTION);
       _leaderMovements.put(proposalExecutionId, leaderActionTask);
     }
     LOG.trace("Added balancing proposal {}", proposal);
@@ -173,15 +176,15 @@ public class ExecutionTaskPlanner {
 
             // Skip this proposal if either source broker or destination broker of this proposal has already
             // involved in this round.
-            int sourceBroker = task.proposal.oldLeader();
-            Set<Integer> destinationBrokers = task.proposal.replicasToAdd();
+            int sourceBroker = task.proposal().oldLeader();
+            Set<Integer> destinationBrokers = task.proposal().replicasToAdd();
             if (brokerInvolved.contains(sourceBroker)
                 || KafkaCruiseControlUtils.containsAny(brokerInvolved, destinationBrokers)) {
               continue;
             }
-            TopicPartition tp = task.proposal.topicPartition();
+            TopicPartition tp = task.proposal().topicPartition();
             // Check if the proposal is executable.
-            if (isExecutableProposal(task.proposal, readyBrokers)
+            if (isExecutableProposal(task.proposal(), readyBrokers)
                 && !inProgressPartitions.contains(tp)
                 && !partitionsInvolved.contains(tp)) {
               partitionsInvolved.add(tp);
@@ -190,7 +193,7 @@ public class ExecutionTaskPlanner {
               brokerInvolved.add(sourceBroker);
               brokerInvolved.addAll(destinationBrokers);
               // Remove the proposal from the execution plan.
-              removeProposalForExecution(task);
+              removeReplicaActionForExecution(task);
               // Decrement the slots for both source and destination brokers
               readyBrokers.put(sourceBroker, readyBrokers.get(sourceBroker) - 1);
               for (int broker : destinationBrokers) {
@@ -220,17 +223,6 @@ public class ExecutionTaskPlanner {
   }
 
   /**
-   * Create a leader movement proposal that assumes the previous replica movement has succeeded.
-   */
-  ExecutionProposal toLeaderMovementProposal(ExecutionProposal proposal) {
-    return new ExecutionProposal(proposal.topicPartition(),
-                                 proposal.partitionSize(),
-                                 proposal.newReplicas().get(0),
-                                 proposal.newReplicas(),
-                                 proposal.newReplicas());
-  }
-
-  /**
    * A proposal is executable if the source broker and all the destination brokers are ready. i.e. has slots to
    * execute more proposals.
    */
@@ -246,14 +238,14 @@ public class ExecutionTaskPlanner {
     return true;
   }
 
-  private void removeProposalForExecution(ExecutionTask task) {
-    int sourceBroker = task.proposal.oldLeader();
-    _partMoveProposalByBrokerId.get(sourceBroker).remove(task.executionId);
-    for (int destinationBroker : task.proposal.replicasToAdd()) {
-      _partMoveProposalByBrokerId.get(destinationBroker).remove(task.executionId);
+  private void removeReplicaActionForExecution(ExecutionTask task) {
+    int sourceBroker = task.proposal().oldLeader();
+    _partMoveProposalByBrokerId.get(sourceBroker).remove(task.executionId());
+    for (int destinationBroker : task.proposal().replicasToAdd()) {
+      _partMoveProposalByBrokerId.get(destinationBroker).remove(task.executionId());
     }
     _remainingReplicaMovements.remove(task);
-    _remainingDataToMove -= task.proposal.dataToMoveInMB();
+    _remainingDataToMove -= task.proposal().dataToMoveInMB();
   }
 
 }

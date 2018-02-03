@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
-import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import javax.servlet.http.HttpServletRequest;
 
@@ -48,10 +47,10 @@ class KafkaCruiseControlServletUtils {
     int numLeaderMovements = 0;
     long dataToMove = 0;
     for (ExecutionProposal p : result.goalProposals()) {
-      if (p.actionType() == ActionType.REPLICA_MOVEMENT) {
+      if (!p.replicasToAdd().isEmpty() || !p.replicasToRemove().isEmpty()) {
         numReplicaMovements++;
         dataToMove += p.dataToMoveInMB();
-      } else if (p.actionType() == ActionType.LEADERSHIP_MOVEMENT) {
+      } else {
         numLeaderMovements++;
       }
     }

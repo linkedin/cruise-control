@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -133,25 +132,6 @@ public class ExecutionProposal {
    */
   public boolean hasLeaderAction() {
     return _oldLeader != _newReplicas.get(0);
-  }
-
-  /**
-   * @return The {@link ActionType} of this proposal. This field is going to be removed by a follow up patch.
-   */
-  public ActionType actionType() {
-    if (!_replicasToAdd.isEmpty()) {
-      if (!_replicasToRemove.isEmpty()) {
-        return ActionType.REPLICA_MOVEMENT;
-      } else {
-        return ActionType.REPLICA_ADDITION;
-      }
-    } else {
-      if (!_replicasToRemove.isEmpty()) {
-        return ActionType.REPLICA_DELETION;
-      } else {
-        return ActionType.LEADERSHIP_MOVEMENT;
-      }
-    }
   }
 
   /**

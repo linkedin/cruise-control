@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
-import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
@@ -231,7 +230,7 @@ public class Executor {
       int partitionsToMove = numTotalPartitionMovements;
       LOG.info("Starting {} partition movements.", numTotalPartitionMovements);
       // Exhaust all the pending partition movements.
-      while ((partitionsToMove > 0 || _executionTaskManager.hasTaskInProgress()) && !_stopRequested) {
+      while ((partitionsToMove > 0 || !_executionTaskManager.inExecutionTasks().isEmpty()) && !_stopRequested) {
         // Get tasks to execute.
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getReplicaMovementTasks();
         LOG.info("Executor will execute " + tasksToExecute.size() + " task(s)");
@@ -315,7 +314,7 @@ public class Executor {
         LOG.debug("Tasks in execution: {}", _executionTaskManager.inExecutionTasks());
         List<ExecutionTask> deadOrAbortingTasks = new ArrayList<>();
         for (ExecutionTask task : _executionTaskManager.inExecutionTasks()) {
-          TopicPartition tp = task.proposal.topicPartition();
+          TopicPartition tp = task.proposal().topicPartition();
           if (cluster.partition(tp) == null) {
             // Handle topic deletion during the execution.
             LOG.debug("Task {} is marked as finished because the topic has been deleted", task);
@@ -328,7 +327,7 @@ public class Executor {
             _executionTaskManager.markTaskDone(task);
           } else if (maybeMarkTaskAsDeadOrAborting(cluster, task)) {
             // Only add the dead or aborted tasks to execute if it is not a leadership movement.
-            if (task.proposal.actionType() != ActionType.LEADERSHIP_MOVEMENT) {
+            if (task.type() != ExecutionTask.TaskType.LEADER_ACTION) {
               deadOrAbortingTasks.add(task);
             }
             // A dead or aborted task is considered as finished.
@@ -365,15 +364,10 @@ public class Executor {
      * Check if a task is done.
      */
     private boolean isTaskDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
-      switch (task.proposal.actionType()) {
-        case REPLICA_MOVEMENT:
-        case REPLICA_DELETION:
-        case REPLICA_ADDITION:
-          return isReplicaActionDone(cluster, tp, task);
-        case LEADERSHIP_MOVEMENT:
-          return isLeadershipMovementDone(cluster, tp, task);
-        default:
-          throw new IllegalStateException("Should never be here.");
+      if (task.type() == ExecutionTask.TaskType.REPLICA_ACTION) {
+        return isReplicaActionDone(tp, task);
+      } else {
+        return isLeadershipMovementDone(cluster, tp, task);
       }
     }
 
@@ -386,18 +380,18 @@ public class Executor {
      *
      * There should be no other task state seen here.
      */
-    private boolean isReplicaActionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
-      List<Integer> currentReplicas = currentReplicas(cluster, tp);
-
+    private boolean isReplicaActionDone(TopicPartition tp, ExecutionTask task) {
+      // TODO: switch to use cluster instead of zkUtils once the broker is upgraded to 0.11.0 and above. 
+      List<Integer> currentReplicas = ExecutorUtils.currentReplicasForPartition(_zkUtils, tp);
       switch (task.state()) {
         case IN_PROGRESS:
-          return currentReplicas.equals(task.newReplicas());
+          return currentReplicas.equals(task.proposal().newReplicas());
         case ABORTING:
           LOG.trace("Checking replica action {}, current replicas: {}", task, currentReplicas);
           // There could be a race condition that when we abort a task, it is already completed.
           // in that case, we treat it as aborted as well.
-          return currentReplicas.equals(task.proposal.oldReplicas())
-              || currentReplicas.equals(task.proposal.newReplicas());
+          return currentReplicas.equals(task.proposal().oldReplicas())
+              || currentReplicas.equals(task.proposal().newReplicas());
         case DEAD:
           return true;
         default:
@@ -416,7 +410,7 @@ public class Executor {
       Node leader = cluster.leaderFor(tp);
       switch (task.state()) {
         case IN_PROGRESS:
-          return leader != null && leader.id() == task.newReplicas().get(0);
+          return leader != null && leader.id() == task.proposal().newReplicas().get(0);
         case ABORTING:
         case DEAD:
           return true;
@@ -427,6 +421,7 @@ public class Executor {
     }
 
     /**
+     * TODO: this method is not used now. It should be used after Kafka server is at 0.11.0+
      * Get the current replica set for a partition.
      */
     private List<Integer> currentReplicas(Cluster cluster, TopicPartition tp) {
@@ -444,7 +439,7 @@ public class Executor {
      * 1. ABORTING: when the execution is stopped by the users.
      * 2. ABORTING: When the destination broker is dead so the task cannot make progress, but the source broker is
      *              still alive.
-     * 3. DEAD: when both the source and destination brokers are dead.
+     * 3. DEAD: when any replica in the new replica list is dead.
      *
      * Currently KafkaController does not support updates on the partitions that is being reassigned. (KAFKA-6034)
      * Therefore once a proposals is written to ZK, we cannot revoke it. So the actual behavior we are using is to
@@ -459,16 +454,16 @@ public class Executor {
     private boolean maybeMarkTaskAsDeadOrAborting(Cluster cluster, ExecutionTask task) {
       // Only check tasks with IN_PROGRESS or ABORTING state.
       if (task.state() == IN_PROGRESS || task.state() == ABORTING) {
-        if (task.proposal.actionType() == ActionType.LEADERSHIP_MOVEMENT
-            && cluster.nodeById(task.newReplicas().get(0)) == null) {
+        if (task.type() == ExecutionTask.TaskType.LEADER_ACTION
+            && cluster.nodeById(task.proposal().newReplicas().get(0)) == null) {
           _executionTaskManager.markTaskDead(task);
           LOG.warn("Killing execution for task {} because the target leader is down", task);
           return true;
         } else {
-          for (int broker : task.newReplicas()) {
+          for (int broker : task.proposal().newReplicas()) {
             if (cluster.nodeById(broker) == null) {
               _executionTaskManager.markTaskDead(task);
-              LOG.warn("Killing execution for task {} because both source and destination broker are down.", task);
+              LOG.warn("Killing execution for task {} because the new replica {} is down.", task, broker);
               return true;
             }
           }
@@ -486,13 +481,13 @@ public class Executor {
           ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty();
       if (shouldReexecuteTasks) {
         LOG.info("Reexecuting tasks {}", _executionTaskManager.inExecutionTasks());
-        List<ExecutionTask> tasksToReexecute = new ArrayList<>();
+        List<ExecutionTask> replicaActionsToReexecute = new ArrayList<>();
         for (ExecutionTask executionTask : _executionTaskManager.inExecutionTasks()) {
-          if (executionTask.proposal.actionType() != ActionType.LEADERSHIP_MOVEMENT) {
-            tasksToReexecute.add(executionTask);
+          if (executionTask.type() == ExecutionTask.TaskType.REPLICA_ACTION) {
+            replicaActionsToReexecute.add(executionTask);
           }
         }
-        ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, tasksToReexecute);
+        ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, replicaActionsToReexecute);
       }
     }
   }

@@ -53,16 +53,16 @@ public class ExecutionTaskPlannerTest {
     planner.addExecutionProposals(proposals);
     List<ExecutionTask> leaderMovementTasks = planner.getLeaderMovementTasks(2);
     assertEquals("2 of the leader movements should return in one batch", 2, leaderMovementTasks.size());
-    assertEquals(1, leaderMovementTasks.get(0).executionId);
-    assertEquals(leaderMovementTasks.get(0).proposal, planner.toLeaderMovementProposal(leaderMovement1));
-    assertEquals(3, leaderMovementTasks.get(1).executionId);
-    assertEquals(leaderMovementTasks.get(1).proposal, planner.toLeaderMovementProposal(leaderMovement2));
+    assertEquals(1, leaderMovementTasks.get(0).executionId());
+    assertEquals(leaderMovementTasks.get(0).proposal(), leaderMovement1);
+    assertEquals(3, leaderMovementTasks.get(1).executionId());
+    assertEquals(leaderMovementTasks.get(1).proposal(), leaderMovement2);
     leaderMovementTasks = planner.getLeaderMovementTasks(2);
     assertEquals("2 of the leader movements should return in one batch", 2, leaderMovementTasks.size());
-    assertEquals(5, leaderMovementTasks.get(0).executionId);
-    assertEquals(leaderMovementTasks.get(0).proposal, planner.toLeaderMovementProposal(leaderMovement3));
-    assertEquals(7, leaderMovementTasks.get(1).executionId);
-    assertEquals(leaderMovementTasks.get(1).proposal, planner.toLeaderMovementProposal(leaderMovement4));
+    assertEquals(5, leaderMovementTasks.get(0).executionId());
+    assertEquals(leaderMovementTasks.get(0).proposal(), leaderMovement3);
+    assertEquals(7, leaderMovementTasks.get(1).executionId());
+    assertEquals(leaderMovementTasks.get(1).proposal(), leaderMovement4);
   }
 
   @Test
@@ -80,9 +80,9 @@ public class ExecutionTaskPlannerTest {
     readyBrokers.put(2, 1);
     readyBrokers.put(3, 1);
     List<ExecutionTask> partitionMovementTasks = planner.getReplicaMovementTasks(readyBrokers, Collections.emptySet());
-    assertEquals("First task should be partitionMovement1", partitionMovement1, partitionMovementTasks.get(0).proposal);
-    assertEquals("First task should be partitionMovement4", partitionMovement4, partitionMovementTasks.get(1).proposal);
-    assertEquals("First task should be partitionMovement2", partitionMovement2, partitionMovementTasks.get(2).proposal);
+    assertEquals("First task should be partitionMovement1", partitionMovement1, partitionMovementTasks.get(0).proposal());
+    assertEquals("First task should be partitionMovement4", partitionMovement4, partitionMovementTasks.get(1).proposal());
+    assertEquals("First task should be partitionMovement2", partitionMovement2, partitionMovementTasks.get(2).proposal());
   }
 
   @Test

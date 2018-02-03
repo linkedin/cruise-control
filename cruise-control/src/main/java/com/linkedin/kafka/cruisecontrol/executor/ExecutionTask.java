@@ -40,10 +40,9 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
  */
 public class ExecutionTask implements Comparable<ExecutionTask> {
   private static final Map<State, Set<State>> VALID_TRANSFER = new HashMap<>();
-  // The execution id of the proposal so we can keep track of the task when execute it.
-  public final long executionId;
-  // The corresponding balancing proposal of this task.
-  public final ExecutionProposal proposal;
+  private final TaskType _type;
+  private final long _executionId;
+  private final ExecutionProposal _proposal;
   private State _state;
 
   static {
@@ -55,10 +54,18 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     VALID_TRANSFER.put(ABORTED, Collections.emptySet());
   }
 
-  public ExecutionTask(long executionId, ExecutionProposal proposal) {
-    this.executionId = executionId;
-    this.proposal = proposal;
-    this._state = State.PENDING;
+  /**
+   * Construct an execution task.
+   * 
+   * @param executionId The execution id of the proposal so we can keep track of the task when execute it.
+   * @param proposal The corresponding balancing proposal of this task.
+   * @param type the {@link TaskType} of this task.
+   */
+  public ExecutionTask(long executionId, ExecutionProposal proposal, TaskType type) {
+    _executionId = executionId;
+    _proposal = proposal;
+    _state = State.PENDING;
+    _type = type;
   }
 
   /**
@@ -78,31 +85,24 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   }
 
   /**
-   * @return The old leader before the execution of this task.
+   * @return the execution id of this execution task.
    */
-  public Integer oldLeader() {
-    return proposal.oldLeader();
+  public long executionId() {
+    return _executionId;
   }
 
   /**
-   * @return the new replica list.
+   * @return the execution proposal of this execution task.
    */
-  public List<Integer> newReplicas() {
-    return proposal.newReplicas();
+  public ExecutionProposal proposal() {
+    return _proposal;
   }
 
   /**
-   * @return The broker ids of the newly added replicas of this execution task.
+   * @return the task type of this execution task.
    */
-  public Set<Integer> replicasToAdd() {
-    return proposal.replicasToAdd();
-  }
-
-  /**
-   * @return The broker ids of the removed replicas of this execution task.
-   */
-  public Set<Integer> replicasToRemove() {
-    return proposal.replicasToRemove();
+  public TaskType type() {
+    return _type;
   }
 
   /**
@@ -154,12 +154,12 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
 
   @Override
   public boolean equals(Object o) {
-    return o instanceof ExecutionTask && this.executionId == ((ExecutionTask) o).executionId;
+    return o instanceof ExecutionTask && _executionId == ((ExecutionTask) o)._executionId;
   }
 
   @Override
   public int hashCode() {
-    return (int) executionId;
+    return (int) _executionId;
   }
 
   /**
@@ -168,8 +168,10 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> executionStatsMap = new HashMap<>();
-    executionStatsMap.put("executionId", executionId);
-    executionStatsMap.put("proposal", proposal.getJsonStructure());
+    executionStatsMap.put("executionId", _executionId);
+    executionStatsMap.put("type", _type);
+    executionStatsMap.put("state", _state);
+    executionStatsMap.put("proposal", _proposal.getJsonStructure());
     return executionStatsMap;
   }
 
@@ -179,18 +181,29 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
                                           + "valid target state are " + validTargetState());
     }
   }
+  
+  public enum TaskType {
+    REPLICA_ACTION, LEADER_ACTION
+  }
 
   public enum State {
-    PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED
+    PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED;
+    
+    private static final List<State> CACHED_VALUES = 
+        Arrays.asList(PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED);
+    
+    public static List<State> cachedValues() {
+      return CACHED_VALUES;
+    }
   }
 
   @Override
   public String toString() {
-    return String.format("{EXE_ID: %d, %s, %s}", executionId, proposal, _state);
+    return String.format("{EXE_ID: %d, %s, %s, %s}", _executionId, _type, _proposal, _state);
   }
 
   @Override
   public int compareTo(ExecutionTask o) {
-    return Long.compare(this.executionId, o.executionId);
+    return Long.compare(this._executionId, o._executionId);
   }
 }

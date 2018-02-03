@@ -42,7 +42,7 @@ object ExecutorUtils {
         val partition = task.proposal.partitionId
         val tp = TopicAndPartition(topic, partition)
         val oldReplicas = asScalaBuffer(task.proposal.oldReplicas()).map(_.toInt)
-        val newReplicas = asScalaBuffer(task.newReplicas()).map(_.toInt)
+        val newReplicas = asScalaBuffer(task.proposal().newReplicas()).map(_.toInt)
 
         val inProgressReplicasOpt = newReplicaAssignment.get(tp)
         var addTask = true
@@ -80,7 +80,7 @@ object ExecutorUtils {
                 addTask = false
                 Seq.empty
               } else {
-                if (!currentReplicaAssignment.equals(oldReplicas)) {
+                if (!currentReplicaAssignment.toSet.equals(oldReplicas.toSet)) {
                   throw new RuntimeException(s"The current replica list $currentReplicaAssignment is different " +
                     s"from the old replica list $oldReplicas in task for partition $tp")
                 }
@@ -116,5 +116,9 @@ object ExecutorUtils {
       throw new NoSuchElementException(s"Partition $tp is not being reassigned."))
 
     seqAsJavaList(inProgressReassignment.newReplicas.map(i => i : java.lang.Integer))
+  }
+  
+  def currentReplicasForPartition(zkUtils: ZkUtils, tp: TopicPartition): java.util.List[java.lang.Integer] = {
+    seqAsJavaList(zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).map(i => i : java.lang.Integer))
   }
 }
