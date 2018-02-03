@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSample
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
@@ -41,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -508,7 +510,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return true;
     }
 
-    ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, false);
+    ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, true);
     if (granularity == null || granularity.toLowerCase().equals(GRANULARITY_BROKER)) {
       ClusterModel.BrokerStats brokerStats = _asyncKafkaCruiseControl.cachedBrokerLoadStats();
       String brokerLoad;
@@ -549,7 +551,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         String data = clusterModel.getJSONString(JSON_VERSION);
         setJSONResponseCode(response, SC_OK);
         response.setContentLength(data.length());
-        response.getOutputStream().write(data.getBytes(StandardCharsets.UTF_8));
+        ServletOutputStream os = response.getOutputStream();
+        OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8);
+        writer.write(data);
+        writer.flush();
       } else {
         setResponseCode(response, SC_OK);
         // Write to stream to avoid expensive toString() call.
