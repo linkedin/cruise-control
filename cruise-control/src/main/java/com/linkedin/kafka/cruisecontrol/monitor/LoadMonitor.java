@@ -573,8 +573,8 @@ public class LoadMonitor {
     for (int i = 0; i < emptyLoadSnapshots.length; i++) {
       emptyLoadSnapshots[i] = new Snapshot(snapshotsForTimestamps[i].time());
     }
-    for (Node node : kafkaCluster.nodes()) {
-      for (PartitionInfo partitionInfo : kafkaCluster.partitionsForNode(node.id())) {
+    for (String topic : kafkaCluster.topics()) {
+      for (PartitionInfo partitionInfo : kafkaCluster.partitionsForTopic(topic)) {
         TopicPartition tp = new TopicPartition(partitionInfo.topic(), partitionInfo.partition());
         if (!loadSnapshots.containsKey(tp)) {
           populateSnapshots(kafkaCluster, clusterModel, tp, emptyLoadSnapshots);
