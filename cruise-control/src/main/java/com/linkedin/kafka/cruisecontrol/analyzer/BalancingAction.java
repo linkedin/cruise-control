@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import com.linkedin.kafka.cruisecontrol.common.ActionType;
 import org.apache.kafka.common.TopicPartition;
 import java.util.HashMap;
 import java.util.Map;
