@@ -41,11 +41,9 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 public class ExecutionTask implements Comparable<ExecutionTask> {
   private static final Map<State, Set<State>> VALID_TRANSFER = new HashMap<>();
   private final TaskType _type;
-  private State _state;
-  // The execution id of the proposal so we can keep track of the task when execute it.
   private final long _executionId;
-  // The corresponding balancing proposal of this task.
   private final ExecutionProposal _proposal;
+  private State _state;
 
   static {
     VALID_TRANSFER.put(PENDING, new HashSet<>(Collections.singleton(IN_PROGRESS)));
@@ -56,6 +54,13 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     VALID_TRANSFER.put(ABORTED, Collections.emptySet());
   }
 
+  /**
+   * Construct an execution task.
+   * 
+   * @param executionId The execution id of the proposal so we can keep track of the task when execute it.
+   * @param proposal The corresponding balancing proposal of this task.
+   * @param type the {@link TaskType} of this task.
+   */
   public ExecutionTask(long executionId, ExecutionProposal proposal, TaskType type) {
     _executionId = executionId;
     _proposal = proposal;

@@ -148,13 +148,6 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Check if there is any task in progress.
-   */
-  public boolean hasTaskInProgress() {
-    return _executionTaskTracker.hasTaskInProgress();
-  }
-
-  /**
    * Get all the tasks that are not completed yet.
    * The uncompleted tasks include tasks in IN_PROGRESS and ABORTING state.
    */
@@ -313,7 +306,7 @@ public class ExecutionTaskManager {
       }
     } else {
       throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state. The "
-                                          + "valid target state are " + task.validTargetState());
+                                          + "valid target states are " + task.validTargetState());
     }
   }
 
