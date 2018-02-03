@@ -52,7 +52,7 @@ public class ExecutionTaskTracker {
    */
   public boolean hasTaskInProgress() {
     return !_replicaActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty()
-        || _leaderActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty();
+        || !_leaderActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty();
   }
 
   /**

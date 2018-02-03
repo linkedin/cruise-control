@@ -117,4 +117,8 @@ object ExecutorUtils {
 
     seqAsJavaList(inProgressReassignment.newReplicas.map(i => i : java.lang.Integer))
   }
+  
+  def currentReplicasForPartition(zkUtils: ZkUtils, tp: TopicPartition): java.util.List[java.lang.Integer] = {
+    seqAsJavaList(zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).map(i => i : java.lang.Integer))
+  }
 }

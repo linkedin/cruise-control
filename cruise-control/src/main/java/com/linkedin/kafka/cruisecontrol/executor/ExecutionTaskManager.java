@@ -292,6 +292,25 @@ public class ExecutionTaskManager {
         _executionTaskTracker.taskForLeaderAction(currentState).remove(task);
         _executionTaskTracker.taskForLeaderAction(targetState).add(task);
       }
+      switch (targetState) {
+        case IN_PROGRESS:
+          task.inProgress();
+          break;
+        case ABORTING:
+          task.abort();
+          break;
+        case DEAD:
+          task.kill();
+          break;
+        case ABORTED:
+          task.aborted();
+          break;
+        case COMPLETED:
+          task.completed();
+          break;
+        default:
+          throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state");
+      }
     } else {
       throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state. The "
                                           + "valid target state are " + task.validTargetState());

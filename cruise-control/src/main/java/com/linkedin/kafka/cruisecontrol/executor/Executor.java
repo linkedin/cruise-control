@@ -11,7 +11,9 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -230,7 +232,7 @@ public class Executor {
       int partitionsToMove = numTotalPartitionMovements;
       LOG.info("Starting {} partition movements.", numTotalPartitionMovements);
       // Exhaust all the pending partition movements.
-      while ((partitionsToMove > 0 || _executionTaskManager.hasTaskInProgress()) && !_stopRequested) {
+      while ((partitionsToMove > 0 || !_executionTaskManager.inExecutionTasks().isEmpty()) && !_stopRequested) {
         // Get tasks to execute.
         List<ExecutionTask> tasksToExecute = _executionTaskManager.getReplicaMovementTasks();
         LOG.info("Executor will execute " + tasksToExecute.size() + " task(s)");
@@ -365,7 +367,7 @@ public class Executor {
      */
     private boolean isTaskDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
       if (task.type() == ExecutionTask.TaskType.REPLICA_ACTION) {
-        return isReplicaActionDone(cluster, tp, task);
+        return isReplicaActionDone(tp, task);
       } else {
         return isLeadershipMovementDone(cluster, tp, task);
       }
@@ -380,9 +382,9 @@ public class Executor {
      *
      * There should be no other task state seen here.
      */
-    private boolean isReplicaActionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
-      List<Integer> currentReplicas = currentReplicas(cluster, tp);
-
+    private boolean isReplicaActionDone(TopicPartition tp, ExecutionTask task) {
+      // TODO: switch to use cluster instead of zkUtils once the broker is upgraded to 0.11.0 and above. 
+      List<Integer> currentReplicas = ExecutorUtils.currentReplicasForPartition(_zkUtils, tp);
       switch (task.state()) {
         case IN_PROGRESS:
           return currentReplicas.equals(task.proposal().newReplicas());
@@ -421,6 +423,7 @@ public class Executor {
     }
 
     /**
+     * TODO: this method is not used now. It should be used after Kafka server is at 0.11.0+
      * Get the current replica set for a partition.
      */
     private List<Integer> currentReplicas(Cluster cluster, TopicPartition tp) {
