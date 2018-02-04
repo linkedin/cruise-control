@@ -80,10 +80,8 @@ object ExecutorUtils {
                 addTask = false
                 Seq.empty
               } else {
-                if (!currentReplicaAssignment.toSet.equals(oldReplicas.toSet)) {
-                  throw new RuntimeException(s"The current replica list $currentReplicaAssignment is different " +
-                    s"from the old replica list $oldReplicas in task for partition $tp")
-                }
+			    // we are not verifying the old replicas becuase the we may be reexecuting a task,
+			    // in which case the replica list could be different from the old replicas.
                 newReplicas
               }
             }
