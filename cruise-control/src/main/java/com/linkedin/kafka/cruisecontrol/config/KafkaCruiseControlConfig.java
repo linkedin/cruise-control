@@ -647,7 +647,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         .define(ZOOKEEPER_CONNECT_CONFIG, ConfigDef.Type.STRING, ConfigDef.Importance.HIGH, ZOOKEEPER_CONNECT_DOC)
         .define(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
                 ConfigDef.Type.INT,
-                1,
+                5,
                 atLeast(1),
                 ConfigDef.Importance.MEDIUM,
                 NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_DOC)

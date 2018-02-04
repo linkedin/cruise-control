@@ -173,6 +173,11 @@ public class ExecutionProposal {
   }
 
   @Override
+  public String toString() {
+    return String.format("{%s, oldLeader: %d, %s -> %s}", _tp, _oldLeader, _oldReplicas, _newReplicas);
+  }
+
+  @Override
   public boolean equals(Object other) {
     if (!(other instanceof ExecutionProposal)) {
       return false;
