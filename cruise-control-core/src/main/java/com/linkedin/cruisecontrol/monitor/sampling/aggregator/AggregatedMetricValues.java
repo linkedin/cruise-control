@@ -6,6 +6,7 @@ package com.linkedin.cruisecontrol.monitor.sampling.aggregator;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -21,7 +22,7 @@ import java.util.StringJoiner;
 public class AggregatedMetricValues implements Serializable {
   private static final long serialVersionUID = -6840253566423285966L;
   private final Map<Integer, MetricValues> _metricValues;
-  
+
   public AggregatedMetricValues() {
     _metricValues = new HashMap<>();
   }
@@ -35,13 +36,13 @@ public class AggregatedMetricValues implements Serializable {
       if (length < 0) {
         length = values.length();
       } else if (length != values.length()) {
-        throw new IllegalArgumentException("The metric values must have the same length for each metric. Saw two " 
+        throw new IllegalArgumentException("The metric values must have the same length for each metric. Saw two "
                                                + "different lengths of " + length + " and " + values.length());
       }
     }
     _metricValues = metricValues;
   }
-  
+
   public MetricValues valuesFor(int metricId) {
     return _metricValues.get(metricId);
   }
@@ -53,17 +54,17 @@ public class AggregatedMetricValues implements Serializable {
   public boolean isEmpty() {
     return _metricValues.isEmpty();
   }
-  
+
   public Set<Integer> metricIds() {
     return Collections.unmodifiableSet(_metricValues.keySet());
   }
-  
+
   public void add(int metricId, MetricValues metricValuesToAdd) {
     if (metricValuesToAdd == null) {
       throw new IllegalArgumentException("The metric values to be added cannot be null");
     }
     if (!_metricValues.isEmpty() && metricValuesToAdd.length() != length()) {
-      throw new IllegalArgumentException("The existing metric length is " + length() + " which is different from the" 
+      throw new IllegalArgumentException("The existing metric length is " + length() + " which is different from the"
                                              + " metric length of " + metricValuesToAdd.length() + " that is being added.");
     }
     MetricValues metricValues = _metricValues.computeIfAbsent(metricId, id -> new MetricValues(metricValuesToAdd.length()));
@@ -76,7 +77,7 @@ public class AggregatedMetricValues implements Serializable {
       MetricValues otherValuesForMetric = entry.getValue();
       MetricValues valuesForMetric = _metricValues.computeIfAbsent(metricId, id -> new MetricValues(otherValuesForMetric.length()));
       if (valuesForMetric.length() != otherValuesForMetric.length()) {
-        throw new IllegalStateException("The two values array has different lengths " + valuesForMetric.length()
+        throw new IllegalStateException("The two values arrays have different lengths " + valuesForMetric.length()
                                             + " and " + otherValuesForMetric.length());
       }
       valuesForMetric.add(otherValuesForMetric);
@@ -92,23 +93,24 @@ public class AggregatedMetricValues implements Serializable {
         throw new IllegalStateException("Cannot subtract a values from a non-existing MetricValues");
       }
       if (valuesForMetric.length() != otherValuesForMetric.length()) {
-        throw new IllegalStateException("The two values array has different lengths " + valuesForMetric.length()
+        throw new IllegalStateException("The two values arrays have different lengths " + valuesForMetric.length()
                                             + " and " + otherValuesForMetric.length());
       }
       valuesForMetric.subtract(otherValuesForMetric);
     }
   }
-  
+
   public void clear() {
     _metricValues.clear();
   }
-  
+
   public void writeTo(OutputStream out) throws IOException {
-    out.write("{%n".getBytes(StandardCharsets.UTF_8));
-    for (Map.Entry<Integer, MetricValues> entry : _metricValues.entrySet()) { 
-      out.write(String.format("metricId:\"%d\", values:\"", entry.getKey()).getBytes(StandardCharsets.UTF_8));
+    OutputStreamWriter osw = new OutputStreamWriter(out, StandardCharsets.UTF_8);
+    osw.write("{%n");
+    for (Map.Entry<Integer, MetricValues> entry : _metricValues.entrySet()) {
+      osw.write(String.format("metricId:\"%d\", values:\"", entry.getKey()));
       entry.getValue().writeTo(out);
-      out.write("\"".getBytes(StandardCharsets.UTF_8));
+      osw.write("\"");
     }
   }
 

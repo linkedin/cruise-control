@@ -7,7 +7,7 @@ package com.linkedin.cruisecontrol.monitor.sampling.aggregator;
 import com.linkedin.cruisecontrol.IntegerEntity;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
-import com.linkedin.cruisecontrol.metricdef.ValueComputingStrategy;
+import com.linkedin.cruisecontrol.metricdef.AggregationFunction;
 import com.linkedin.cruisecontrol.monitor.sampling.MetricSample;
 import java.util.Collections;
 import java.util.SortedSet;
@@ -30,9 +30,9 @@ public class RawMetricValuesTest {
 
   @Before
   public void setup() {
-    _metricDef = new MetricDef().define("metric1", ValueComputingStrategy.AVG.name())
-                                .define("metric2", ValueComputingStrategy.MAX.name())
-                                .define("metric3", ValueComputingStrategy.LATEST.name());
+    _metricDef = new MetricDef().define("metric1", AggregationFunction.AVG.name())
+                                .define("metric2", AggregationFunction.MAX.name())
+                                .define("metric3", AggregationFunction.LATEST.name());
   }
 
   @Test
@@ -199,17 +199,17 @@ public class RawMetricValuesTest {
     assertEquals(1, valuesAndImputations.imputations().size());
     Assert.assertEquals(Imputation.AVG_ADJACENT, valuesAndImputations.imputations().get(2));
   }
-  
+
   @Test
   public void testAdjacentAvgAtEdgeWhenNewWindowRollsOut() {
     RawMetricValues rawValues = new RawMetricValues(NUM_WINDOWS_TO_KEEP, MIN_SAMPLES_PER_WINDOW);
     prepareWindowMissingAtIndex(rawValues, NUM_WINDOWS - 1);
-    
+
     assertFalse(rawValues.isValidAtWindowIndex(NUM_WINDOWS - 1));
     assertFalse(rawValues.hasImputationAtWindowIndex(NUM_WINDOWS - 1));
-    
+
     rawValues.updateOldestWindowIndex(1);
-    
+
     assertTrue(rawValues.isValidAtWindowIndex(NUM_WINDOWS - 1));
     assertTrue(rawValues.hasImputationAtWindowIndex(NUM_WINDOWS - 1));
   }
@@ -223,7 +223,7 @@ public class RawMetricValuesTest {
     assertFalse(rawValues.hasImputationAtWindowIndex(NUM_WINDOWS - 1));
 
     rawValues.updateOldestWindowIndex(NUM_WINDOWS - 1);
-    
+
     assertFalse(rawValues.isValidAtWindowIndex(NUM_WINDOWS - 1));
     assertFalse(rawValues.hasImputationAtWindowIndex(NUM_WINDOWS - 1));
   }
@@ -246,7 +246,7 @@ public class RawMetricValuesTest {
   }
 
   private void assertAggregatedValues(AggregatedMetricValues values, float[][] expectedValues, int startingIndex) {
-    for (int metricId : _metricDef.all().keySet()) {
+    for (int metricId = 0; metricId < _metricDef.all().size(); metricId++) {
       MetricValues actualValues = values.valuesFor(metricId);
       for (int i = 0; i < NUM_WINDOWS; i++) {
         assertEquals(String.format("[%d, %d] does not match.", metricId, i),
@@ -274,7 +274,7 @@ public class RawMetricValuesTest {
         MetricSample<String, IntegerEntity> m = getMetricSample(v, v, v);
         rawValues.addSample(m, windowIdx, _metricDef);
 
-        for (MetricInfo info : _metricDef.all().values()) {
+        for (MetricInfo info : _metricDef.all()) {
           switch (info.strategy()) {
             case AVG:
               expected[info.id()][(int) (windowIdx % NUM_WINDOWS_TO_KEEP)] += v / MIN_SAMPLES_PER_WINDOW;

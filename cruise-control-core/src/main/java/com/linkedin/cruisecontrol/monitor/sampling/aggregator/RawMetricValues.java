@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * A metric array that holds a metric for all the snapshot windows.
+ * A metric array that holds a metric for all the windows.
  */
 public class RawMetricValues {
   private static final Logger LOG = LoggerFactory.getLogger(RawMetricValues.class);
@@ -79,8 +79,8 @@ public class RawMetricValues {
   public synchronized void updateOldestWindowIndex(long newOldestWindowIndex) {
     long prevLastWindowIndex = currentWindowIndex() - 1;
     _oldestWindowIndex = newOldestWindowIndex;
-    // Advancing the oldest window index will make the previous current window index become available to its 
-    // neighbour index (i.e. the previous last index) for AVG_ADJACENT imputation. We don't need to update the 
+    // Advancing the oldest window index will make the previous current window index become available to its
+    // neighbour index (i.e. the previous last index) for AVG_ADJACENT imputation. We don't need to update the
     // previous current window index because it would be up to date during the addSample call.
     if (prevLastWindowIndex >= _oldestWindowIndex) {
       updateValidityAndImputation(handleWrapping(prevLastWindowIndex));
@@ -91,12 +91,12 @@ public class RawMetricValues {
     int currentIdx = handleWrapping(currentWindowIndex());
     int numValidIndexesAdjustment = _validity.get(handleWrapping(currentIdx)) ? 1 : 0;
     boolean allIndexesValid = _validity.cardinality() - numValidIndexesAdjustment == _counts.length - 1;
-    
+
     boolean tooManyImputations = numImputations() > maxAllowedImputation;
 
     return allIndexesValid && !tooManyImputations;
   }
-  
+
   public synchronized int numImputations() {
     int currentIdx = handleWrapping(currentWindowIndex());
     int numImputationAdjustment = _imputations.get(currentIdx) ? 1 : 0;

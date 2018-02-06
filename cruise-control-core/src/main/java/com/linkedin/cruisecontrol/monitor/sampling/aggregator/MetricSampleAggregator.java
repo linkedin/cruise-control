@@ -28,8 +28,8 @@ import org.slf4j.LoggerFactory;
  *
  * <p>This class is thread safe.</p>
  *
- * @param <G> The entity group class. Note that the entity group will be used as a key to HashMaps, so it must have
- *           a valid {@link Object#hashCode()} and {@link Object#equals(Object)} implementation.
+ * @param <G> The aggregation entity group class. Note that the entity group will be used as a key to HashMaps,
+ *           so it must have a valid {@link Object#hashCode()} and {@link Object#equals(Object)} implementation.
  * @param <E> The entity class. Note that the entity will be used as a key to HashMaps, so it must have
  *           a valid {@link Object#hashCode()} and {@link Object#equals(Object)} implementation.
  */
@@ -47,7 +47,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   protected final long _windowMs;
   protected final int _maxAllowedImputations;
   protected final MetricDef _metricDef;
-  
+
   private volatile long _currentWindowIndex;
   private volatile long _oldestWindowIndex;
 
@@ -58,12 +58,15 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * @param windowMs the size of each snapshot window in milliseconds
    * @param minSamplesPerWindow minimum samples per snapshot window.
    * @param maxAllowedImputations the maximum allowed number of imputations for an entity if some windows miss data.
+   * @param completenessCacheSize the completeness cache size, i.e. the number of recent completeness query result to
+   *                              cache.
    * @param metricDef metric definitions.
    */
   public MetricSampleAggregator(int numWindows,
                                 long windowMs,
                                 int minSamplesPerWindow,
                                 int maxAllowedImputations,
+                                int completenessCacheSize,
                                 MetricDef metricDef) {
     super(0);
     _identityEntityMap = new ConcurrentHashMap<>();
@@ -76,7 +79,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     _windowRollingLock = new ReentrantLock();
     _maxAllowedImputations = maxAllowedImputations;
     _metricDef = metricDef;
-    _aggregatorState = new MetricSampleAggregatorState<>(_generation.get(), _windowMs);
+    _aggregatorState = new MetricSampleAggregatorState<>(_generation.get(), _windowMs, completenessCacheSize);
     _oldestWindowIndex = 0L;
     _currentWindowIndex = 0L;
   }
@@ -157,7 +160,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
       // Perform the aggregation.
       List<Long> windows = toWindows(completeness.validWindowIndexes());
       MetricSampleAggregationResult<G, E> result = new MetricSampleAggregationResult<>(generation(), completeness);
-      Set<E> entitiesToInclude = 
+      Set<E> entitiesToInclude =
           options.includeInvalidEntities() ? interpretedOptions.interestedEntities() : completeness.coveredEntities();
       for (E entity : entitiesToInclude) {
         RawMetricValues rawValues = _rawMetrics.get(entity);
@@ -181,6 +184,15 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     }
   }
 
+  /**
+   * Get the {@link MetricSampleCompleteness} of the MetricSampleAggregator with the given {@link AggregationOptions}
+   * for a given period of time. The current active window is excluded.
+   *
+   * @param from starting time of the period to check.
+   * @param to ending time of the period to check.
+   * @param options the {@link AggregationOptions} to use for the completeness check.
+   * @return the {@link MetricSampleCompleteness} of the MetricSampleAggregator.
+   */
   public MetricSampleCompleteness<G, E> completeness(long from, long to, AggregationOptions<G, E> options) {
     _windowRollingLock.lock();
     try {
@@ -196,28 +208,58 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     }
   }
 
+  /**
+   * Get a list of available windows in the MetricSampleAggregator. The available windows may include the windows
+   * that do not have any metric samples. It is just a consecutive list of windows starting from the oldest window
+   * that hasn't been evicted (inclusive) until the current active window (exclusive).
+   *
+   * @return a list of available windows in the MetricSampleAggregator.
+   */
   public List<Long> availableWindows() {
     return getWindowList(_oldestWindowIndex, _currentWindowIndex - 1);
   }
-  
+
+  /**
+   * @return the number of available windows in the MetricSampleAggregator.
+   */
   public int numAvailableWindows() {
     return numAvailableWindows(-1, Long.MAX_VALUE);
   }
 
+  /**
+   * Get the number of available windows in the given time range, excluding the current active window.
+   *
+   * @param from the starting time of the time range. (inclusive)
+   * @param to the end time of the time range. (inclusive)
+   * @return the number of the windows in the given time range.
+   */
   public int numAvailableWindows(long from, long to) {
     long fromWindowIndex = Math.max(windowIndex(from), _oldestWindowIndex);
     long toWindowIndex = Math.min(windowIndex(to), _currentWindowIndex - 1);
     return Math.max(0, (int) (toWindowIndex - fromWindowIndex + 1));
   }
 
+  /**
+   * @return all the windows in the MetricSampleAggregator, including the current active window.
+   */
   public List<Long> allWindows() {
     return getWindowList(_oldestWindowIndex, _currentWindowIndex);
   }
 
+  /**
+   * @return the earliest available window in the MetricSampleAggregator. Null is returned if there is
+   * no window available at all.
+   */
   public Long earliestWindow() {
     return _rawMetrics.isEmpty() ? null : _oldestWindowIndex * _windowMs;
   }
 
+  /**
+   * Get the total number of samples that is currently aggregated by the MetricSampleAggregator. The number
+   * does not include the samples in the windows that have already been evicted.
+   *
+   * @return the number of samples aggregated by the MetricSampleAggregator.
+   */
   public int numSamples() {
     int count = 0;
     for (RawMetricValues rawValues : _rawMetrics.values()) {
@@ -226,26 +268,48 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     return count;
   }
 
+  /**
+   * Keep the given set of entities in the MetricSampleAggregator and remove the rest of the entities.
+   *
+   * @param entities the entities to retain.
+   */
   public void retainEntities(Set<E> entities) {
     _rawMetrics.entrySet().removeIf(entry -> !entities.contains(entry.getKey()));
     _generation.incrementAndGet();
   }
 
+  /**
+   * remove the given set of entities from the MetricSampleAggregator.
+   * @param entities the entities to remove.
+   */
   public void removeEntities(Set<E> entities) {
     _rawMetrics.entrySet().removeIf(entry -> entities.contains(entry.getKey()));
     _generation.incrementAndGet();
   }
 
+  /**
+   * Keep the give set of entity groups in the MetricSampleAggregator and remove the reset of the
+   * entity groups.
+   * @param entityGroups the entity groups to retain.
+   */
   public void retainEntityGroup(Set<G> entityGroups) {
     _rawMetrics.entrySet().removeIf(entry -> !entityGroups.contains(entry.getKey().group()));
     _generation.incrementAndGet();
   }
 
+  /**
+   * Remove the given set of entity groups from the MetricSampleAggregator.
+   *
+   * @param entityGroups the entity groups to remove from the MetricSampleAggregator.
+   */
   public void removeEntityGroup(Set<G> entityGroups) {
     _rawMetrics.entrySet().removeIf(entry -> entityGroups.contains(entry.getKey().group()));
     _generation.incrementAndGet();
   }
-  
+
+  /**
+   * Clear the MetricSampleAggregator.
+   */
   public void clear() {
     _windowRollingLock.lock();
     try {
@@ -257,11 +321,13 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     }
   }
 
+  // package private for testing.
   MetricSampleAggregatorState<G, E> aggregatorState() {
     updateAggregatorStateIfNeeded();
     return _aggregatorState;
   }
 
+  // both from and to window indexes are inclusive.
   private List<Long> getWindowList(long fromWindowIndex, long toWindowIndex) {
     _windowRollingLock.lock();
     try {
@@ -307,13 +373,13 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
         if (_currentWindowIndex < index) {
           // find out how many windows we need to reset in the raw metrics.
           int numWindowsToRollOut = (int) (index - _currentWindowIndex);
-          // First set the oldest window index so no newly coming older samples will be added.
-          // The first valid window is actually 1 instead of 0.
+          // First set the oldest window index so newly coming older samples will not be added.
           long prevOldestWindowIndex = _oldestWindowIndex;
+          // The first valid window is actually 1 instead of 0.
           _oldestWindowIndex = Math.max(1, index - _numWindows);
           int numOldWindowIndexesToReset = (int) Math.min(_numWindowsToKeep, _oldestWindowIndex - prevOldestWindowIndex);
-          // Reset all the data. After this point no old samples cannot get into the raw metric values.
-          // We only need to reset the index if we the new index is at least _numWindows;
+          // Reset all the data starting from previous oldest window. After this point the old samples cannot get
+          // into the raw metric values. We only need to reset the index if the new index is at least _numWindows;
           if (numOldWindowIndexesToReset > 0) {
             resetIndexes(prevOldestWindowIndex, numOldWindowIndexesToReset);
           }
@@ -360,13 +426,16 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
                                                     completeness.entityGroupCoverage(), from, to, options));
     }
   }
-  
+
   private List<Long> toWindows(SortedSet<Long> windowIndexes) {
     List<Long> windows = new ArrayList<>(windowIndexes.size());
     windowIndexes.forEach(i -> windows.add(i * _windowMs));
     return windows;
   }
 
+  /**
+   * The absolute window index of the given timestamp.
+   */
   private long windowIndex(long time) {
     return time / _windowMs + 1;
   }

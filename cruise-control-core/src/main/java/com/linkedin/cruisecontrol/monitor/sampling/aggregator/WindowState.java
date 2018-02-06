@@ -33,7 +33,7 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
                     MetricSampleCompleteness<G, E> completeness,
                     AggregationOptions<G, E> options) {
     Set<G> validGroupsForWindow = fillInCoverage(windowIndex, completeness, options);
-    Set<E> validEntitiesForWindow = 
+    Set<E> validEntitiesForWindow =
         options.granularity() == ENTITY ? _validEntities : validEntitiesWithGroupGranularity(validGroupsForWindow);
     boolean meetEntityCoverageAfterMerge = meetEntityCoverageAfterMerge(completeness, validEntitiesForWindow, options);
     boolean meetGroupCoverageAfterMerge = meetEntityGroupCoverageAfterMerge(completeness, validGroupsForWindow, options);
@@ -76,7 +76,7 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
         invalidGroups.add(entity.group());
       }
     }
-    int validEntitiesWithGroupGranularity = validEntities; 
+    int validEntitiesWithGroupGranularity = validEntities;
     for (G group : invalidGroups) {
       Integer count = numValidEntitiesInGroups.remove(group);
       if (count != null) {
@@ -84,9 +84,9 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
       }
     }
     Set<G> validGroups = numValidEntitiesInGroups.keySet();
-    int totalMumEntities = options.interestedEntities().size();
-    completeness.addEntityCoverage(windowIndex, (float) validEntities / totalMumEntities);
-    completeness.addEntityCoverageWithGroupGranularity(windowIndex, (float) validEntitiesWithGroupGranularity / totalMumEntities);
+    int totalNumEntities = options.interestedEntities().size();
+    completeness.addEntityCoverage(windowIndex, (float) validEntities / totalNumEntities);
+    completeness.addEntityCoverageWithGroupGranularity(windowIndex, (float) validEntitiesWithGroupGranularity / totalNumEntities);
     completeness.addEntityGroupCoverage(windowIndex, (float) validGroups.size() / options.entityGroups().size());
     return validGroups;
   }
@@ -100,7 +100,7 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
     }
     return numValidElements;
   }
-  
+
   private Set<E> validEntitiesWithGroupGranularity(Set<G> validGroups) {
     Set<E> result = new HashSet<>(_validEntities);
     result.removeIf(entity -> !validGroups.contains(entity.group()));

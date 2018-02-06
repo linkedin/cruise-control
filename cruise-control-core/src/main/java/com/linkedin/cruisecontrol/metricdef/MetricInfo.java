@@ -10,11 +10,11 @@ package com.linkedin.cruisecontrol.metricdef;
 public class MetricInfo {
   private final String _name;
   private final int _id;
-  private final ValueComputingStrategy _strategy;
+  private final AggregationFunction _strategy;
 
   public MetricInfo(String name,
                     int id,
-                    ValueComputingStrategy strategy) {
+                    AggregationFunction strategy) {
     _name = name;
     _id = id;
     _strategy = strategy;
@@ -28,7 +28,7 @@ public class MetricInfo {
     return _id;
   }
 
-  public ValueComputingStrategy strategy() {
+  public AggregationFunction strategy() {
     return _strategy;
   }
 

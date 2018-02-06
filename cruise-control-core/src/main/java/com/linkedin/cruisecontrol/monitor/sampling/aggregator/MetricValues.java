@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.StringJoiner;
 
 
@@ -15,16 +16,15 @@ import java.util.StringJoiner;
  * A class hosting the values of a particular metric.
  */
 public class MetricValues implements Serializable {
-  private static final long serialVersionUID = -6840253566423285966L;
-  
+
   private final float[] _values;
   private volatile float _max;
-  private volatile float _sumForAvg;
+  private volatile double _sumForAvg;
 
   public MetricValues(int numWindows) {
     _values = new float[numWindows];
     _sumForAvg = 0;
-    _max = 0;
+    _max = Float.MIN_VALUE;
   }
 
   public void set(int index, double value) {
@@ -38,21 +38,19 @@ public class MetricValues implements Serializable {
   public double get(int index) {
     return _values[index];
   }
-  
+
   public void clear() {
-    for (int i = 0; i < _values.length; i++) {
-      _values[i] = 0;
-    }
+    Arrays.fill(_values, 0);
     _sumForAvg = 0;
-    _max = 0;
+    _max = Float.MIN_VALUE;
   }
 
   public int length() {
     return _values.length;
   }
-  
+
   public void add(double[] values) {
-    _max = 0;
+    _max = Float.MIN_VALUE;
     for (int i = 0; i < _values.length; i++) {
       double toAdd = values[i];
       _values[i] += toAdd;
@@ -62,7 +60,7 @@ public class MetricValues implements Serializable {
   }
 
   public void add(MetricValues metricValues) {
-    _max = 0;
+    _max = Float.MIN_VALUE;
     for (int i = 0; i < _values.length; i++) {
       double toAdd = metricValues.get(i);
       _values[i] += toAdd;
@@ -72,7 +70,7 @@ public class MetricValues implements Serializable {
   }
 
   public void subtract(double[] metricValues) {
-    _max = 0;
+    _max = Float.MIN_VALUE;
     for (int i = 0; i < _values.length; i++) {
       double toDeduct = metricValues[i];
       _values[i] -= toDeduct;
@@ -82,7 +80,7 @@ public class MetricValues implements Serializable {
   }
 
   public void subtract(MetricValues metricValues) {
-    _max = 0;
+    _max = Float.MIN_VALUE;
     for (int i = 0; i < _values.length; i++) {
       double toDeduct = metricValues.get(i);
       _values[i] -= toDeduct;
@@ -92,7 +90,7 @@ public class MetricValues implements Serializable {
   }
 
   public float avg() {
-    return _sumForAvg / _values.length;
+    return (float) (_sumForAvg / _values.length);
   }
 
   public float max() {
@@ -102,11 +100,11 @@ public class MetricValues implements Serializable {
       return updateMax();
     }
   }
-  
+
   public float latest() {
     return _values[0];
   }
-  
+
   public double[] doubleArray() {
     double[] result = new double[_values.length];
     for (int i = 0; i < _values.length; i++) {
@@ -114,7 +112,7 @@ public class MetricValues implements Serializable {
     }
     return result;
   }
-  
+
   public void writeTo(OutputStream out) throws IOException {
     out.write(String.format("{avg:\"%.3f\", max:\"%.3f\", {", avg(), max()).getBytes(StandardCharsets.UTF_8));
     for (int i = 0; i < _values.length - 1; i++) {
@@ -122,7 +120,7 @@ public class MetricValues implements Serializable {
     }
     out.write(((_values.length - 1) + ":" + _values[_values.length - 1] + "}}").getBytes(StandardCharsets.UTF_8));
   }
-  
+
   @Override
   public String toString() {
     StringJoiner joiner = new StringJoiner(", ", "{", "}");
@@ -139,5 +137,5 @@ public class MetricValues implements Serializable {
     }
     return _max;
   }
-  
+
 }

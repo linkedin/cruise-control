@@ -7,6 +7,6 @@ package com.linkedin.cruisecontrol.metricdef;
 /**
  * Define the way to pick the metric values among all the samples in a snapshot window.
  */
-public enum ValueComputingStrategy {
+public enum AggregationFunction {
   AVG, MAX, LATEST
 }

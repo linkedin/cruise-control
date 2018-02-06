@@ -6,7 +6,7 @@ package com.linkedin.cruisecontrol;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
-import com.linkedin.cruisecontrol.metricdef.ValueComputingStrategy;
+import com.linkedin.cruisecontrol.metricdef.AggregationFunction;
 import com.linkedin.cruisecontrol.model.Entity;
 import com.linkedin.cruisecontrol.monitor.sampling.MetricSample;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
@@ -31,7 +31,7 @@ public class CruiseControlUnitTestUtils {
     for (int i = startingSnapshotWindow; i < numSnapshots + startingSnapshotWindow; i++) {
       for (int j = 0; j < numSamplesPerSnapshot; j++) {
         MetricSample<G, E> sample = new MetricSample<>(entity);
-        for (MetricInfo metricInfo : metricDef.all().values()) {
+        for (MetricInfo metricInfo : metricDef.all()) {
           sample.record(metricInfo, i * 10 + j);
         }
         sample.close(i * snapshotWindowMs + 1);
@@ -41,8 +41,8 @@ public class CruiseControlUnitTestUtils {
   }
 
   public static MetricDef getMetricDef() {
-    return new MetricDef().define(METRIC1, ValueComputingStrategy.AVG.name())
-                          .define(METRIC2, ValueComputingStrategy.MAX.name())
-                          .define(METRIC3, ValueComputingStrategy.LATEST.name());
+    return new MetricDef().define(METRIC1, AggregationFunction.AVG.name())
+                          .define(METRIC2, AggregationFunction.MAX.name())
+                          .define(METRIC3, AggregationFunction.LATEST.name());
   }
 }

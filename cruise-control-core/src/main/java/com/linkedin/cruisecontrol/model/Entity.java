@@ -6,7 +6,8 @@ package com.linkedin.cruisecontrol.model;
 
 /**
  * The abstract class for an entity. We use abstract class to force implementation to implement 
- * {@link #hashCode()} and {@link #equals(Object)} method. 
+ * {@link #hashCode()} and {@link #equals(Object)} method.
+ * @param <G> the group this entity belongs to.
  */
 public abstract class Entity<G> {
 

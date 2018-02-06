@@ -14,6 +14,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
+/**
+ * A class to host a set of metric values of a given entity.
+ * @param <G> The aggregation group class of the entity.
+ * @param <E> the entity class
+ */
 public class MetricSample<G, E extends Entity<G>> {
   private static final Logger LOG = LoggerFactory.getLogger(MetricSample.class);
   protected final E _entity;
@@ -49,23 +54,24 @@ public class MetricSample<G, E extends Entity<G>> {
   }
 
   /**
-   * Record a sample value for the given resource type.
+   * Record a sample value for the given metric name.
    * This is a package private function which allows metric fetcher to override the metric if necessary.
    * Currently it is only used when user enables auto cluster model coefficient training.
    *
    * When the update is from metric fetcher, it does not override the user specified value.
    *
-   * @param name        The resource type.
-   * @param sampleValue the sample value.
+   * @param metricName  The metric name.
+   * @param sampleValue The sample value.
+   * @param metricDef   The metric definition.
    */
-  public void record(String name, double sampleValue, MetricDef metricDef) {
+  public void record(String metricName, double sampleValue, MetricDef metricDef) {
     if (_sampleTime >= 0) {
       throw new IllegalStateException("The metric sample has been closed.");
     }
 
-    Double origValue = _metrics.putIfAbsent(metricDef.metricInfo(name).id(), sampleValue);
+    Double origValue = _metrics.putIfAbsent(metricDef.metricInfo(metricName).id(), sampleValue);
     if (origValue != null) {
-      throw new IllegalStateException("Trying to record sample value " + sampleValue + " for " + name +
+      throw new IllegalStateException("Trying to record sample value " + sampleValue + " for " + metricName +
                                           ", but there is already a value " + origValue + " recorded.");
     }
   }

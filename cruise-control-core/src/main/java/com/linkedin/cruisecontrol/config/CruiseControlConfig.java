@@ -18,7 +18,7 @@ public class CruiseControlConfig extends AbstractConfig {
   private static final ConfigDef CONFIG;
 
   /**
-   * <code>load.snapshot.interval.ms</code>
+   * <code>load.snapshot.window.ms</code>
    */
   public static final String LOAD_SNAPSHOT_WINDOW_MS_CONFIG = "load.snapshot.window.ms";
   private static final String LOAD_SNAPSHOT_WINDOW_MS_DOC = "The interval in millisecond that is covered by each " +
@@ -77,7 +77,7 @@ public class CruiseControlConfig extends AbstractConfig {
     for (ConfigDef.ConfigKey configKey : definition.configKeys().values()) {
       if (!CONFIG.configKeys().containsKey(configKey.name)) {
         CONFIG.define(configKey.name, configKey.type, configKey.defaultValue, configKey.validator, configKey.importance,
-                      configKey.documentation, configKey.group, configKey.orderInGroup, configKey.width, 
+                      configKey.documentation, configKey.group, configKey.orderInGroup, configKey.width,
                       configKey.displayName, configKey.dependents, configKey.recommender);
       }
     }

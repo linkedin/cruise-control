@@ -21,7 +21,7 @@ public class ValuesAndImputations {
 
   /**
    * Package private constructor.
-   * @param metricValues the metric values. 
+   * @param metricValues the metric values.
    * @param imputations the imputations by window indexes.
    */
   ValuesAndImputations(AggregatedMetricValues metricValues,
@@ -33,8 +33,8 @@ public class ValuesAndImputations {
   /**
    * Get the metric values for all the included windows.
    * <p>
-   *   The returned metric values are store in a two-dimensional array. To get the time window associated with 
-   *   each metric values, use the array index to look up in the time window array returned by calling 
+   *   The returned metric values are store in a two-dimensional array. To get the time window associated with
+   *   each metric values, use the array index to look up in the time window array returned by calling
    *   {@link #window(int)} with the index.
    * </p>
    * @return the {@link AggregatedMetricValues} for all the included windows.
@@ -46,7 +46,7 @@ public class ValuesAndImputations {
   /**
    * Get the imputations for the values. The keys of the returned map are the indexes of the {@link AggregatedMetricValues}
    * returned by {@link #metricValues()}.
-   * 
+   *
    * @return the {@link Imputation}s for the values if exist.
    */
   public Map<Integer, Imputation> imputations() {
@@ -58,7 +58,7 @@ public class ValuesAndImputations {
    * at the same index of the array returned by this this method.
    *
    * @return the window time list associated with the metric values array in the {@link AggregatedMetricValues} returned
-   * by {@link #metricValues()} 
+   * by {@link #metricValues()}
    */
   public List<Long> windows() {
     return Collections.unmodifiableList(_windows);
@@ -84,7 +84,7 @@ public class ValuesAndImputations {
 
   static ValuesAndImputations empty(int numWindows, MetricDef metricDef) {
     Map<Integer, MetricValues> values = new HashMap<>();
-    for (int i : metricDef.all().keySet()) {
+    for (int i = 0; i <  metricDef.all().size(); i++) {
       values.put(i, new MetricValues(numWindows));
     }
     Map<Integer, Imputation> imputations = new HashMap<>();

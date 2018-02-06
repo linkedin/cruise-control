@@ -19,19 +19,19 @@ import java.util.TreeMap;
 /**
  * The state of the {@link MetricSampleAggregator}.
  */
-public class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGenerationed {
+class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGenerationed {
   private final Map<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>> _completenessCache;
   private final SortedMap<Long, WindowState<G, E>> _windowStates;
   private final SortedMap<Long, Long> _windowGenerations;
   private final long _windowMs;
 
-  MetricSampleAggregatorState(long generation, long windowMs) {
+  MetricSampleAggregatorState(long generation, long windowMs, int completenessCacheSize) {
     super(generation);
     // Only keep 5 completeness caches.
     _completenessCache = new LinkedHashMap<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>> eldest) {
-        return _windowStates.size() > 5;
+        return _windowStates.size() > completenessCacheSize;
       }
     };
     _windowStates = new TreeMap<>(Collections.reverseOrder());
@@ -39,15 +39,33 @@ public class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGen
     _windowMs = windowMs;
   }
 
+  /**
+   * Update the generation for a particular window.
+   * @param windowIndex the index of the window to update.
+   * @param generation the new generation of the window.
+   */
   synchronized void updateWindowGeneration(long windowIndex, long generation) {
     _windowGenerations.compute(windowIndex, (w, g) -> (g == null || g < generation) ? generation : g);
   }
 
-  void updateWindowState(long windowIdx, WindowState<G, E> windowState) {
+  /**
+   * Update the state of a window.
+   * @param windowIdx the index of the window to update.
+   * @param windowState the new state of the window.
+   */
+  synchronized void updateWindowState(long windowIdx, WindowState<G, E> windowState) {
     _windowStates.put(windowIdx, windowState);
   }
 
-  List<Long> windowIndexesToUpdate(long generation, long oldestWindowIndex, long currentWindowIndex) {
+  /**
+   * Get the list of window indexes that need to be updated based on the current generation.
+   *
+   * @param generation the current generation of the MetricSampleAggregator.
+   * @param oldestWindowIndex the index of the oldest window in the MetricSampleAggregator.
+   * @param currentWindowIndex the index fo the current window in the MetricSampleAggregator.
+   * @return A list of window indexes that need to be updated.
+   */
+  synchronized List<Long> windowIndexesToUpdate(long generation, long oldestWindowIndex, long currentWindowIndex) {
     List<Long> windowIndexesToUpdate = new ArrayList<>();
     if (this.generation() < generation) {
       for (long windowIdx = oldestWindowIndex; windowIdx < currentWindowIndex; windowIdx++) {
@@ -68,9 +86,18 @@ public class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGen
     return windowIndexesToUpdate;
   }
 
-  MetricSampleCompleteness<G, E> completeness(long fromWindowIndex,
-                                              long toWindowIndex,
-                                              AggregationOptions<G, E> options) {
+  /**
+   * Get the completeness of the MetricSampleAggregator based on the given {@link AggregationOptions} for
+   * a given time range.
+   *
+   * @param fromWindowIndex the index of the starting window (inclusive)
+   * @param toWindowIndex the index of the end window (inclusive)
+   * @param options the {@link AggregationOptions}
+   * @return the {@link MetricSampleCompleteness} for the given parameters.
+   */
+  synchronized MetricSampleCompleteness<G, E> completeness(long fromWindowIndex,
+                                                           long toWindowIndex,
+                                                           AggregationOptions<G, E> options) {
     MetricSampleCompleteness<G, E> completeness = _completenessCache.get(options);
     if (completeness == null
         || completeness.generation() < generation()
@@ -88,15 +115,24 @@ public class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGen
     return completeness;
   }
 
-  Map<Long, WindowState<G, E>> windowStates() {
+  /**
+   * @return The state of all the windows.
+   */
+  synchronized Map<Long, WindowState<G, E>> windowStates() {
     return _windowStates;
   }
 
-  Map<Long, Long> windowGenerations() {
+  /**
+   * @return the generation of all the windows.
+   */
+  synchronized Map<Long, Long> windowGenerations() {
     return _windowGenerations;
   }
-  
-  void clear() {
+
+  /**
+   * Clear all the states.
+   */
+  synchronized void clear() {
     _completenessCache.clear();
     _windowStates.clear();
     _windowGenerations.clear();
