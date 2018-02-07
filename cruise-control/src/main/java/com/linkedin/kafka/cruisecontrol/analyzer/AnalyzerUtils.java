@@ -29,6 +29,8 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest;
 import org.apache.kafka.common.TopicPartition;
 
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+
 
 /**
  * A util class for Analyzer.
@@ -98,15 +100,16 @@ public class AnalyzerUtils {
    * @param clusterModel   The state of the cluster.
    * @return True if the given proposal is acceptable for all of the given optimized goals, false otherwise.
    */
-  public static boolean isProposalAcceptableForOptimizedGoals(Set<Goal> optimizedGoals,
-                                                              BalancingAction proposal,
-                                                              ClusterModel clusterModel) {
+  public static ActionAcceptance isProposalAcceptableForOptimizedGoals(Set<Goal> optimizedGoals,
+                                                                       BalancingAction proposal,
+                                                                       ClusterModel clusterModel) {
     for (Goal optimizedGoal : optimizedGoals) {
-      if (!optimizedGoal.isActionAcceptable(proposal, clusterModel)) {
-        return false;
+      ActionAcceptance actionAcceptance = optimizedGoal.actionAcceptance(proposal, clusterModel);
+      if (!actionAcceptance.equals(ACCEPT)) {
+        return actionAcceptance;
       }
     }
-    return true;
+    return ACCEPT;
   }
 
   /**

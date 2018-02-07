@@ -210,7 +210,7 @@ class OptimizationVerifier {
           clusterModel.load().expectedUtilizationFor(r) / clusterModel.capacityFor(r) * (2 - constraint.resourceBalancePercentage(r));
       double brokerUtilization = broker.load().expectedUtilizationFor(r) / broker.capacityFor(r);
       if (brokerUtilization < utilizationLowerThreshold) {
-        LOG.error("Broker {} is still under utilized for resource {}. Broker utilization is {}, the "
+        LOG.error("Broker {} is still underutilized for resource {}. Broker utilization is {}, the "
                       + "lower threshold is {}", broker, r, brokerUtilization, utilizationLowerThreshold);
         return false;
       }

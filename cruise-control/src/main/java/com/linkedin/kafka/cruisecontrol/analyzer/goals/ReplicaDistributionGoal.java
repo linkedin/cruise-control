@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -30,6 +31,8 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal.ChangeType.ADD;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal.ChangeType.REMOVE;
 
@@ -87,22 +90,34 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   }
 
   /**
+   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   */
+  @Override
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    return actionAcceptance(action, clusterModel).equals(ACCEPT);
+  }
+
+  /**
    * Check whether the given action is acceptable by this goal. An action is acceptable if the number of replicas at
    * (1) the source broker does not go under the allowed limit.
    * (2) the destination broker does not go over the allowed limit.
    *
    * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if action is acceptable by this goal, false otherwise.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#REPLICA_REJECT} otherwise.
    */
   @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+    if (action.balancingAction() == ActionType.REPLICA_SWAP) {
+      return ACCEPT;
+    }
     Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
     //Check that destination and source would not become unbalanced.
-    return isReplicaCountUnderBalanceUpperLimitAfterChange(destinationBroker, ADD) &&
-        isReplicaCountAboveBalanceLowerLimitAfterChange(sourceBroker, REMOVE);
+    return (isReplicaCountUnderBalanceUpperLimitAfterChange(destinationBroker, ADD) &&
+           isReplicaCountAboveBalanceLowerLimitAfterChange(sourceBroker, REMOVE)) ? ACCEPT : REPLICA_REJECT;
   }
 
   private boolean isReplicaCountUnderBalanceUpperLimitAfterChange(Broker broker, ChangeType changeType) {
@@ -254,6 +269,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
       throws AnalysisInputException, ModelInputException {
+    LOG.debug("Rebalancing broker {} [limits] lower: {} upper: {}.", broker.id(), balanceLowerLimit(), balanceUpperLimit());
     int numReplicas = broker.replicas().size();
     boolean requireLessReplicas = broker.isAlive() ? numReplicas > balanceUpperLimit() : numReplicas > 0;
     boolean requireMoreReplicas = broker.isAlive() && numReplicas < balanceLowerLimit();
@@ -346,7 +362,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     // Stop when no replicas can be moved in anymore.
     while (!eligibleBrokers.isEmpty()) {
       Broker sourceBroker = eligibleBrokers.poll();
-      for (Replica replica : sourceBroker.sortedReplicas(Resource.CPU)) {
+      for (Replica replica : sourceBroker.sortedReplicas(Resource.DISK, true)) {
         if (shouldExclude(replica, excludedTopics)) {
           continue;
         }
@@ -381,8 +397,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       double stDev2 = stats2.replicaStats().get(Statistic.ST_DEV).doubleValue();
       int result = AnalyzerUtils.compare(stDev2, stDev1, AnalyzerUtils.EPSILON);
       if (result < 0) {
-        _reasonForLastNegativeResult = String.format("Violated %s. [Standard Deviation of Replica Distribution] "
-                + "post-optimization:%.3f pre-optimization:%.3f", name(), stDev1, stDev2);
+        _reasonForLastNegativeResult = String.format("Violated %s. [Std Deviation of Replica Distribution] post-"
+                                                     + "optimization:%.3f pre-optimization:%.3f", name(), stDev1, stDev2);
       }
       return result;
     }

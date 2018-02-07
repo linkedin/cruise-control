@@ -20,6 +20,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+
 
 /**
  * A class to represent the target for achieving the balanced distribution of replicas for the goal in terms of:
@@ -50,7 +52,7 @@ class ReplicaDistributionTarget {
    *                             topic, this number indicates the number of replicas of this topic in the cluster.
    * @param healthyBrokers       Healthy brokers in the cluster -- i.e. brokers that are not dead.
    */
-  ReplicaDistributionTarget(int numReplicasToBalance, Set<Broker> healthyBrokers) throws AnalysisInputException {
+  ReplicaDistributionTarget(int numReplicasToBalance, Set<Broker> healthyBrokers) {
     _minNumReplicasPerBroker = numReplicasToBalance / healthyBrokers.size();
     _warmBrokerCredits = numReplicasToBalance % healthyBrokers.size();
     _requiredNumReplicasByBrokerId = new HashMap<>();
@@ -114,7 +116,6 @@ class ReplicaDistributionTarget {
    * @param numLocalReplicas Number of local replicas.
    * @param optimizedGoals   Goals that have already been optimized. The function ensures that their requirements won't
    *                         be violated.
-   * @throws AnalysisInputException
    */
   void moveSelfHealingEligibleReplicaToEligibleBroker(ClusterModel clusterModel,
                                                       Replica replicaToMove,
@@ -229,7 +230,8 @@ class ReplicaDistributionTarget {
           new BalancingAction(replicaToMove.topicPartition(), replicaToMove.broker().id(), brokerId,
                               ActionType.REPLICA_MOVEMENT);
       boolean canMove = (clusterModel.broker(brokerId).replica(replicaToMove.topicPartition()) == null) &&
-          AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel);
+          AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel).equals(
+              ACCEPT);
       if (canMove) {
         clusterModel.relocateReplica(replicaToMove.topicPartition(), replicaToMove.broker().id(), brokerId);
         isMoveSuccessful = true;

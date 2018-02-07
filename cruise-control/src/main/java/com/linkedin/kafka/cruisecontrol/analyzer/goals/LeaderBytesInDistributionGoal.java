@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
@@ -32,6 +33,9 @@ import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+
 
 /**
  * Soft goal to distribute leader bytes evenly.
@@ -51,32 +55,55 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   /**
+   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   */
+  @Override
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    return actionAcceptance(action, clusterModel).equals(ACCEPT);
+  }
+
+  /**
    * An action is acceptable if it does not move the leader bytes in above the threshold for leader bytes in.
    *
    * @param action Action to be checked for acceptance.
    * @param clusterModel State of the cluster before application of the action.
-   * @return true if the action does not unbalance leader bytes in.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#REPLICA_REJECT} otherwise.
    */
   @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
     initMeanLeaderBytesIn(clusterModel);
 
-    if (!sourceReplica.isLeader()) {
+    if (!sourceReplica.isLeader() && (action.balancingAction() != ActionType.REPLICA_SWAP
+                                      || !destinationBroker.replica(action.destinationTp()).isLeader())) {
       // No leadership bytes are being moved so I don't care
-      return true;
+      return ACCEPT;
     }
 
-    double balanceThreshold = balanceThreshold(clusterModel, destinationBroker.id());
-    double newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) +
-        sourceReplica.load().expectedUtilizationFor(Resource.NW_IN);
-    if (newDestLeaderBytesIn > balanceThreshold) {
-      return false;
+    double sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(Resource.NW_IN);
+    double newDestLeaderBytesIn;
+    if (action.balancingAction() != ActionType.REPLICA_SWAP) {
+      newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
+                             + sourceReplicaUtilization;
+    } else {
+      double destinationReplicaUtilization = destinationBroker.replica(action.destinationTp()).load()
+                                                              .expectedUtilizationFor(Resource.NW_IN);
+      newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
+                             + sourceReplicaUtilization - destinationReplicaUtilization;
+
+      Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
+      double newSourceLeaderBytesIn = sourceBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
+                                      + destinationReplicaUtilization - sourceReplicaUtilization;
+
+      if (newSourceLeaderBytesIn > balanceThreshold(clusterModel, sourceBroker.id())) {
+        return REPLICA_REJECT;
+      }
     }
 
-    return true;
+    return !(newDestLeaderBytesIn > balanceThreshold(clusterModel, destinationBroker.id())) ? ACCEPT : REPLICA_REJECT;
   }
 
   @Override
@@ -115,20 +142,18 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
       throw new IllegalStateException("Found balancing action " + action.balancingAction() +
           " but expected leadership movement.");
     }
-    return isActionAcceptable(action, clusterModel);
+    return actionAcceptance(action, clusterModel).equals(ACCEPT);
   }
 
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
     // While proposals exclude the excludedTopics, the leader bytes in still considers replicas of the excludedTopics.
     _meanLeaderBytesIn = 0.0;
     _overLimitBrokerIds = new HashSet<>();
   }
 
   @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException {
+  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
     // While proposals exclude the excludedTopics, the leader bytes in still considers replicas of the excludedTopics.
     if (!_overLimitBrokerIds.isEmpty()) {
       LOG.warn("There were still {} brokers over the limit.", _overLimitBrokerIds.size());
@@ -147,7 +172,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     }
 
     List<Replica> leaderReplicasSortedByBytesIn = broker.replicas().stream()
-        .filter(r -> r.isLeader())
+        .filter(Replica::isLeader)
         .filter(r -> !shouldExclude(r, excludedTopics))
         .sorted((a, b) -> Double.compare(b.load().expectedUtilizationFor(Resource.NW_IN), a.load().expectedUtilizationFor(Resource.NW_IN)))
         .collect(Collectors.toList());

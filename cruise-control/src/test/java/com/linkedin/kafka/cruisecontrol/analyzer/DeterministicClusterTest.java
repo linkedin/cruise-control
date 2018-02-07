@@ -111,11 +111,11 @@ public class DeterministicClusterTest {
     goalNameByPriority.put(6, CpuCapacityGoal.class.getName());
     goalNameByPriority.put(7, ReplicaDistributionGoal.class.getName());
     goalNameByPriority.put(8, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(9, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(10, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(11, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(12, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, CpuUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
+    goalNameByPriority.put(13, TopicReplicaDistributionGoal.class.getName());
     goalNameByPriority.put(14, PreferredLeaderElectionGoal.class.getName());
     goalNameByPriority.put(15, LeaderBytesInDistributionGoal.class.getName());
 

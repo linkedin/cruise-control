@@ -47,7 +47,7 @@ public class ClusterModel implements Serializable {
   private final Map<Integer, Rack> _brokerIdToRack;
   private final Map<TopicPartition, Partition> _partitionsByTopicPartition;
   private final Set<Replica> _selfHealingEligibleReplicas;
-  private final Set<Broker> _newBrokers;
+  private final SortedSet<Broker> _newBrokers;
   private final Set<Broker> _healthyBrokers;
   private final double _monitoredPartitionsPercentage;
   private final double[] _clusterCapacity;
@@ -72,8 +72,8 @@ public class ClusterModel implements Serializable {
     // Replicas are added/removed only when broker alive status is set via setState(). Replica contents are
     // automatically updated in case of replica or leadership relocation.
     _selfHealingEligibleReplicas = new HashSet<>();
-    // A set of newly added brokers
-    _newBrokers = new HashSet<>();
+    // A sorted set of newly added brokers
+    _newBrokers = new TreeSet<>();
     // A set of healthy brokers
     _healthyBrokers = new HashSet<>();
     // Initially cluster does not contain any load.
@@ -349,7 +349,7 @@ public class ClusterModel implements Serializable {
   /**
    * Get the set of new brokers.
    */
-  public Set<Broker> newBrokers() {
+  public SortedSet<Broker> newBrokers() {
     return _newBrokers;
   }
 
@@ -634,18 +634,8 @@ public class ClusterModel implements Serializable {
    * (given utilization threshold) * (broker and/or host capacity).
    */
   public List<Broker> sortedHealthyBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
-    List<Broker> sortedTargetBrokersUnderCapacityLimit = new ArrayList<>();
+    List<Broker> sortedTargetBrokersUnderCapacityLimit = healthyBrokersUnderThreshold(resource, utilizationThreshold);
 
-    for (Broker healthyBroker : healthyBrokers()) {
-      double brokerCapacityLimit = healthyBroker.capacityFor(resource) * utilizationThreshold;
-      double brokerUtilization = healthyBroker.load().expectedUtilizationFor(resource);
-      double hostCapacityLimit = healthyBroker.host().capacityFor(resource) * utilizationThreshold;
-      double hostUtilization = healthyBroker.host().load().expectedUtilizationFor(resource);
-      if ((!resource.isBrokerResource() || brokerUtilization < brokerCapacityLimit)
-          && (!resource.isHostResource() || hostUtilization < hostCapacityLimit)) {
-        sortedTargetBrokersUnderCapacityLimit.add(healthyBroker);
-      }
-    }
     sortedTargetBrokersUnderCapacityLimit.sort((o1, o2) -> {
       Double expectedBrokerLoad1 = o1.load().expectedUtilizationFor(resource);
       Double expectedBrokerLoad2 = o2.load().expectedUtilizationFor(resource);
@@ -660,6 +650,52 @@ public class ClusterModel implements Serializable {
       return hostComparison == 0 ? Double.compare(expectedBrokerLoad1, expectedBrokerLoad2) : hostComparison;
     });
     return sortedTargetBrokersUnderCapacityLimit;
+  }
+
+  public List<Broker> healthyBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
+    List<Broker> healthyBrokersUnderThreshold = new ArrayList<>();
+
+    for (Broker healthyBroker : healthyBrokers()) {
+      if (resource.isBrokerResource()) {
+        double brokerCapacityLimit = healthyBroker.capacityFor(resource) * utilizationThreshold;
+        double brokerUtilization = healthyBroker.load().expectedUtilizationFor(resource);
+        if (brokerUtilization >= brokerCapacityLimit) {
+          continue;
+        }
+      }
+      if (resource.isHostResource()) {
+        double hostCapacityLimit = healthyBroker.host().capacityFor(resource) * utilizationThreshold;
+        double hostUtilization = healthyBroker.host().load().expectedUtilizationFor(resource);
+        if (hostUtilization >= hostCapacityLimit) {
+          continue;
+        }
+      }
+      healthyBrokersUnderThreshold.add(healthyBroker);
+    }
+    return healthyBrokersUnderThreshold;
+  }
+
+  public List<Broker> healthyBrokersOverThreshold(Resource resource, double utilizationThreshold) {
+    List<Broker> healthyBrokersOverThreshold = new ArrayList<>();
+
+    for (Broker healthyBroker : healthyBrokers()) {
+      if (resource.isBrokerResource()) {
+        double brokerCapacityLimit = healthyBroker.capacityFor(resource) * utilizationThreshold;
+        double brokerUtilization = healthyBroker.load().expectedUtilizationFor(resource);
+        if (brokerUtilization <= brokerCapacityLimit) {
+          continue;
+        }
+      }
+      if (resource.isHostResource()) {
+        double hostCapacityLimit = healthyBroker.host().capacityFor(resource) * utilizationThreshold;
+        double hostUtilization = healthyBroker.host().load().expectedUtilizationFor(resource);
+        if (hostUtilization <= hostCapacityLimit) {
+          continue;
+        }
+      }
+      healthyBrokersOverThreshold.add(healthyBroker);
+    }
+    return healthyBrokersOverThreshold;
   }
 
   /**

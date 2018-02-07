@@ -19,7 +19,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import org.apache.kafka.common.TopicPartition;
@@ -408,7 +407,6 @@ public class Broker implements Serializable, Comparable<Broker> {
    *
    * @param tp Topic partition that identifies the replica in this broker.
    * @param snapshot       Snapshot containing the latest state for each resource.
-   * @throws ModelInputException
    */
   void pushLatestSnapshot(TopicPartition tp, Snapshot snapshot)
       throws ModelInputException {
@@ -476,6 +474,6 @@ public class Broker implements Serializable, Comparable<Broker> {
 
   @Override
   public int hashCode() {
-    return Objects.hash(_id);
+    return _id;
   }
 }

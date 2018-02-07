@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
@@ -43,7 +44,7 @@ public interface Goal extends Configurable {
    * <p>
    *   During the optimization, the implementation should make sure that all the previously optimized goals
    *   are still satisfied after this method completes its execution. The implementation can use
-   *   {@link #isActionAcceptable(BalancingAction, ClusterModel)} to check whether an admin operation
+   *   {@link #actionAcceptance(BalancingAction, ClusterModel)} to check whether an admin operation
    *   is allowed by a previously optimized goal.
    * </p>
    * <p>
@@ -66,6 +67,8 @@ public interface Goal extends Configurable {
       throws KafkaCruiseControlException;
 
   /**
+   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   *
    * Check whether given action is acceptable by this goal in the given state of the cluster. An action is
    * acceptable by a goal if it satisfies requirements of the goal.
    * It is assumed that the given action does not involve replicas regarding excluded topics.
@@ -74,7 +77,20 @@ public interface Goal extends Configurable {
    * @param clusterModel State of the cluster before application of the action.
    * @return True if action is acceptable by this goal, false otherwise.
    */
+  @Deprecated
   boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel);
+
+  /**
+   * Check whether the given action is acceptable by this goal in the given state of the cluster. An action is
+   * (1) accepted by a goal if it satisfies requirements of the goal, or (2) rejected by a goal if it violates its
+   * requirements. The return value indicates whether the action is accepted or why it is rejected.
+   * It is assumed that the given action does not involve replicas regarding excluded topics.
+   *
+   * @param action Action to be checked for acceptance.
+   * @param clusterModel State of the cluster before application of the action.
+   * @return the action acceptance indicating whether an action is accepted, or why it is rejected.
+   */
+  ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel);
 
   /**
    * Get an instance of {@link ClusterModelStatsComparator} for this goal.

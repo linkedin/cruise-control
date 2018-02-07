@@ -329,12 +329,12 @@ public class ExcludedTopicsTest {
 
     // Create snapshots and push them to the cluster.
     cluster.pushLatestSnapshot("0", 0, pInfoT10, new Snapshot(1L,
-                                                              TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                                              TestConstants.TYPICAL_CPU_CAPACITY / 2,
                                                               TestConstants.LARGE_BROKER_CAPACITY / 2,
                                                               TestConstants.MEDIUM_BROKER_CAPACITY / 2,
                                                               TestConstants.LARGE_BROKER_CAPACITY / 2));
     cluster.pushLatestSnapshot("0", 0, pInfoT20, new Snapshot(1L,
-                                                              TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                                              TestConstants.TYPICAL_CPU_CAPACITY / 2,
                                                               TestConstants.LARGE_BROKER_CAPACITY / 2,
                                                               TestConstants.MEDIUM_BROKER_CAPACITY / 2,
                                                               TestConstants.LARGE_BROKER_CAPACITY / 2));

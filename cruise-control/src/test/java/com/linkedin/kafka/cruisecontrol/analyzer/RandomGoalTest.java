@@ -75,11 +75,11 @@ public class RandomGoalTest {
         CpuCapacityGoal.class.getName(),
         ReplicaDistributionGoal.class.getName(),
         PotentialNwOutGoal.class.getName(),
-        TopicReplicaDistributionGoal.class.getName(),
         DiskUsageDistributionGoal.class.getName(),
         NetworkInboundUsageDistributionGoal.class.getName(),
         NetworkOutboundUsageDistributionGoal.class.getName(),
         CpuUsageDistributionGoal.class.getName(),
+        TopicReplicaDistributionGoal.class.getName(),
         PreferredLeaderElectionGoal.class.getName(),
         LeaderBytesInDistributionGoal.class.getName());
 

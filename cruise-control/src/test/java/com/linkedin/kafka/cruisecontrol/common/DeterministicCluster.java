@@ -37,7 +37,7 @@ public class DeterministicCluster {
     cluster.createReplica("0", 1, pInfoT10, 1, false);
 
     // Create snapshots and push them to the cluster.
-    cluster.pushLatestSnapshot("0", 0, pInfoT10, new Snapshot(1L, 100.0, 100.0, 130.0, 75.0));
+    cluster.pushLatestSnapshot("0", 0, pInfoT10, new Snapshot(1L, 40.0, 100.0, 130.0, 75.0));
     cluster.pushLatestSnapshot("0", 1, pInfoT10, new Snapshot(1L, 5.0, 100.0, 0.0, 75.0));
 
     return cluster;
@@ -49,7 +49,7 @@ public class DeterministicCluster {
     TopicPartition pInfoT10 = new TopicPartition("T1", 0);
 
     cluster.createReplica("1", 2, pInfoT10, 2, false);
-    cluster.pushLatestSnapshot("1", 2, pInfoT10, new Snapshot(1L, 100.0, 100.0, 130.0, 75.0));
+    cluster.pushLatestSnapshot("1", 2, pInfoT10, new Snapshot(1L, 60.0, 100.0, 130.0, 75.0));
 
     return cluster;
   }

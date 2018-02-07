@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import java.util.Objects;
 import org.apache.kafka.common.TopicPartition;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,6 +18,7 @@ public class BalancingAction {
   private final Integer _sourceBrokerId;
   private final Integer _destinationBrokerId;
   private final ActionType _actionType;
+  private final TopicPartition _destinationTp;
 
   /**
    * Constructor for creating a balancing proposal with given topic partition, source broker and destination id, and
@@ -25,16 +27,35 @@ public class BalancingAction {
    * @param tp                  Topic partition of the replica.
    * @param sourceBrokerId      Source broker id of the replica.
    * @param destinationBrokerId Destination broker id of the replica.
-   * @param actionType     Leadership transfer or replica relocation.
+   * @param actionType          Action type.
    */
   public BalancingAction(TopicPartition tp,
                          Integer sourceBrokerId,
                          Integer destinationBrokerId,
                          ActionType actionType) {
-    _tp = tp;
+    this(tp, sourceBrokerId, destinationBrokerId, actionType, tp);
+  }
+
+  /**
+   * Constructor for creating a balancing proposal with given topic partitions, source and destination broker id,
+   * and the topic partition of replica to swap with.
+   *
+   * @param sourceTp            Topic partition of the source replica.
+   * @param sourceBrokerId      Source broker id of the replica.
+   * @param destinationBrokerId Destination broker id of the replica.
+   * @param actionType          Action type.
+   * @param destinationTp       Topic partition of the replica to swap with.
+   */
+  public BalancingAction(TopicPartition sourceTp,
+                         Integer sourceBrokerId,
+                         Integer destinationBrokerId,
+                         ActionType actionType,
+                         TopicPartition destinationTp) {
+    _tp = sourceTp;
     _sourceBrokerId = sourceBrokerId;
     _destinationBrokerId = destinationBrokerId;
     _actionType = actionType;
+    _destinationTp = destinationTp;
     validate();
   }
 
@@ -56,6 +77,7 @@ public class BalancingAction {
         break;
       case REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
+      case REPLICA_SWAP:
         if (_destinationBrokerId == null) {
           throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + _actionType);
         } else if (_sourceBrokerId == null) {
@@ -63,8 +85,22 @@ public class BalancingAction {
         }
         break;
       default:
-        throw new IllegalStateException("should never be here");
+        throw new IllegalStateException("Should never be here");
     }
+  }
+
+  /**
+   * Get the destination topic partition to swap with.
+   */
+  public TopicPartition destinationTp() {
+    return _destinationTp;
+  }
+
+  /**
+   * Get topic name of the replica to swap with at the destination.
+   */
+  public String destinationTopic() {
+    return _destinationTp.topic();
   }
 
   /**
@@ -118,6 +154,7 @@ public class BalancingAction {
     proposalMap.put("topicPartition", _tp);
     proposalMap.put("sourceBrokerId", _sourceBrokerId);
     proposalMap.put("destinationBrokerId", _destinationBrokerId);
+    proposalMap.put("destinationTp", _destinationTp);
     proposalMap.put("actionType", _actionType);
     return proposalMap;
   }
@@ -127,7 +164,7 @@ public class BalancingAction {
    */
   @Override
   public String toString() {
-    return String.format("(%s, %d->%d, %s)", _tp, _sourceBrokerId, _destinationBrokerId, _actionType);
+    return String.format("(%s->%s, %d->%d, %s)", _tp, _destinationTp, _sourceBrokerId, _destinationBrokerId, _actionType);
   }
 
   /**
@@ -163,15 +200,11 @@ public class BalancingAction {
       return false;
     }
 
-    return _tp.equals(otherAction._tp) && _actionType == otherAction._actionType;
+    return _tp.equals(otherAction._tp) && _actionType == otherAction._actionType && _destinationTp.equals(otherAction._destinationTp);
   }
 
   @Override
   public int hashCode() {
-    int result = _tp.hashCode();
-    result = 31 * result + _sourceBrokerId;
-    result = 31 * result + _destinationBrokerId;
-    result = 31 * result + _actionType.hashCode();
-    return result;
+    return Objects.hash(_tp, _sourceBrokerId, _destinationBrokerId, _actionType, _destinationTp);
   }
 }

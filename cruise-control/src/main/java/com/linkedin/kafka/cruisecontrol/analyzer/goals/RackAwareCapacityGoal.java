@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
@@ -30,6 +31,10 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
 
 
 /**
@@ -61,26 +66,43 @@ public class RackAwareCapacityGoal extends AbstractGoal {
   }
 
   /**
+   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   */
+  @Override
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    return actionAcceptance(action, clusterModel).equals(ACCEPT);
+  }
+
+  /**
    * Check whether given action is acceptable by this goal. An action is acceptable by a goal if it satisfies
    * requirements of the goal. Requirements(hard goal): (1) rack awareness and (2) capacity.
    *
    * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if action is acceptable by this goal, false otherwise.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#BROKER_REJECT} if the action is rejected due to violating rack awareness in the destination
+   * broker after moving source replica to destination broker, {@link ActionAcceptance#REPLICA_REJECT} otherwise.
    */
   @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
     if (action.balancingAction().equals(ActionType.LEADERSHIP_MOVEMENT)) {
       return isMovementAcceptableForCapacity(Resource.NW_OUT, sourceReplica, destinationBroker) &&
-          isMovementAcceptableForCapacity(Resource.CPU, sourceReplica, destinationBroker);
+          isMovementAcceptableForCapacity(Resource.CPU, sourceReplica, destinationBroker) ? ACCEPT : REPLICA_REJECT;
     }
-    // Replica Movement: impacts all resources.
-    for (Resource resource : _balancingConstraint.resources()) {
-      if (!isMovementAcceptableForCapacity(resource, sourceReplica, destinationBroker)) {
-        return false;
+    // Replica Movement/Swap: impacts all resources.
+    if (action.balancingAction() != ActionType.REPLICA_SWAP) {
+      for (Resource resource : _balancingConstraint.resources()) {
+        if (!isMovementAcceptableForCapacity(resource, sourceReplica, destinationBroker)) {
+          return REPLICA_REJECT;
+        }
+      }
+    } else {
+      Replica destinationReplica = destinationBroker.replica(action.destinationTp());
+      if (!isSwapAcceptableForCapacity(sourceReplica, destinationReplica)) {
+        return REPLICA_REJECT;
       }
     }
     // Destination broker cannot be in a rack that violates rack awareness.
@@ -90,10 +112,22 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     // Remove brokers in partition broker racks except the brokers in replica broker rack.
     for (Broker broker : partitionBrokers) {
       if (broker.rack().brokers().contains(destinationBroker)) {
-        return false;
+        return BROKER_REJECT;
       }
     }
-    return true;
+    if (action.balancingAction() == ActionType.REPLICA_SWAP) {
+      // Destination broker cannot be in a rack that violates rack awareness.
+      Set<Broker> swapPartitionBrokers = clusterModel.partition(action.destinationTp()).partitionBrokers();
+      swapPartitionBrokers.remove(destinationBroker);
+      // Remove brokers in partition broker racks except the brokers in replica broker rack.
+      Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
+      for (Broker broker : swapPartitionBrokers) {
+        if (broker.rack().brokers().contains(sourceBroker)) {
+          return REPLICA_REJECT;
+        }
+      }
+    }
+    return ACCEPT;
   }
 
   @Override
@@ -367,11 +401,11 @@ public class RackAwareCapacityGoal extends AbstractGoal {
       if (_currentResource == Resource.DISK) {
         // Utilization is above the capacity limit after all replicas in the given source broker were checked.
         throw new AnalysisInputException("Violated capacity limit of " + brokerCapacityLimit + " via broker "
-            + "utilization of " + broker.load().expectedUtilizationFor(_currentResource) + " with id "
+            + "utilization of " + broker.load().expectedUtilizationFor(_currentResource) + " with broker id "
             + broker.id() + " for resource " + _currentResource);
       } else {
         throw new AnalysisInputException("Violated capacity limit of " + hostCapacityLimit + " via host "
-            + "utilization of " + broker.host().load().expectedUtilizationFor(_currentResource) + " with name "
+            + "utilization of " + broker.host().load().expectedUtilizationFor(_currentResource) + " with hostname "
             + broker.host().name() + " for resource " + _currentResource);
       }
     }
@@ -401,7 +435,6 @@ public class RackAwareCapacityGoal extends AbstractGoal {
   }
 
   private void ensureUtilizationUnderCapacity(ClusterModel clusterModel) throws OptimizationFailureException {
-
     for (Resource resource : Resource.values()) {
       double capacityThreshold = _balancingConstraint.capacityThreshold(resource);
       for (Broker broker : clusterModel.brokers()) {
@@ -412,8 +445,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
         if (!broker.replicas().isEmpty() && utilization > capacityLimit) {
           // The utilization of the broker for the resource is over the capacity limit.
           throw new OptimizationFailureException(String.format("Optimization for goal %s failed because %s utilization "
-                                                                   + "for broker %d is %f which is above capacity "
-                                                                   + "limit %f",
+                                                               + "for broker %d is %f which is above capacity limit %f",
                                                                name(), resource, broker.id(), utilization, capacityLimit));
         }
       }
@@ -527,6 +559,41 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     // destination broker go out of healthy capacity for the given resource.
     double replicaUtilization = sourceReplica.load().expectedUtilizationFor(resource);
     return !isUtilizationAboveLimitAfterAddingLoad(resource, destinationBroker, replicaUtilization);
+  }
+
+  private boolean isSwapAcceptableForCapacity(Replica sourceReplica, Replica destinationReplica) {
+    for (Resource resource : _balancingConstraint.resources()) {
+      double sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(resource);
+      double destinationReplicaUtilization = destinationReplica.load().expectedUtilizationFor(resource);
+
+      double capacityThreshold = _balancingConstraint.capacityThreshold(resource);
+
+      // Check violation for source.
+      double sourceUtilization = resource.isHostResource()
+                                 ? sourceReplica.broker().host().load().expectedUtilizationFor(resource)
+                                 : sourceReplica.broker().load().expectedUtilizationFor(resource);
+
+      double sourceCapacity = resource.isHostResource() ? sourceReplica.broker().host().capacityFor(resource)
+                                                        : sourceReplica.broker().capacityFor(resource);
+      double sourceCapacityLimit = sourceCapacity * capacityThreshold;
+      if (sourceUtilization + destinationReplicaUtilization - sourceReplicaUtilization > sourceCapacityLimit) {
+        return false;
+      }
+
+      // Check violation for destination.
+      double destinationUtilization = resource.isHostResource()
+                                      ? destinationReplica.broker().host().load().expectedUtilizationFor(resource)
+                                      : destinationReplica.broker().load().expectedUtilizationFor(resource);
+
+      double destinationCapacity = resource.isHostResource() ? destinationReplica.broker().host().capacityFor(resource)
+                                                             : destinationReplica.broker().capacityFor(resource);
+
+      double destinationCapacityLimit = destinationCapacity * capacityThreshold;
+      if (destinationUtilization + sourceReplicaUtilization - destinationReplicaUtilization > destinationCapacityLimit) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private boolean isUtilizationAboveLimitAfterAddingLoad(Resource resource, Broker broker, double loadToAdd) {

@@ -335,6 +335,7 @@ public class GoalOptimizer implements Runnable {
       }
       logProgress(isSelfHealing, goal.name(), optimizedGoals.size(), goalProposals);
       step.done();
+      LOG.debug("Broker level stats after optimization: {}", clusterModel.brokerStats());
     }
 
     clusterModel.sanityCheck();
