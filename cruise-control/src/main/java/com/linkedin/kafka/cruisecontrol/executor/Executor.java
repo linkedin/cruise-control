@@ -11,12 +11,10 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.regex.Pattern;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
@@ -46,7 +44,6 @@ public class Executor {
   private final MetadataClient _metadataClient;
   private final long _statusCheckingIntervalMs;
   private final ExecutorService _proposalExecutor;
-  private final Pattern _excludedTopics;
   private final String _zkConnect;
   private volatile ZkUtils _zkUtils;
 
@@ -69,7 +66,6 @@ public class Executor {
     _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     _metadataClient = new MetadataClient(config, new Metadata(), -1L, time);
     _statusCheckingIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
-    _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
     _proposalExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));
     _state = new AtomicReference<>(ExecutorState.State.NO_TASK_IN_PROGRESS);
@@ -167,17 +163,6 @@ public class Executor {
                                     Collection<Integer> unthrottledBrokers) {
     if (_state.get() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
       throw new IllegalStateException("Cannot add new proposals while the execution is in progress.");
-    }
-    // Remove any proposal that involves an excluded topic. This should not happen but if it happens we want to
-    // detect this and avoid executing the proposals for those topics.
-    Iterator<ExecutionProposal> iter = proposals.iterator();
-    while (iter.hasNext()) {
-      ExecutionProposal proposal = iter.next();
-      if (_excludedTopics.matcher(proposal.topic()).matches() && proposal.hasReplicaAction()) {
-        LOG.warn("Ignoring balancing proposal {} because the topics is in the excluded topic set {}",
-                 proposal, _excludedTopics);
-        iter.remove();
-      }
     }
     _executionTaskManager.addBalancingProposals(proposals, unthrottledBrokers);
   }
@@ -381,7 +366,7 @@ public class Executor {
      * There should be no other task state seen here.
      */
     private boolean isReplicaActionDone(TopicPartition tp, ExecutionTask task) {
-      // TODO: switch to use cluster instead of zkUtils once the broker is upgraded to 0.11.0 and above. 
+      // TODO: switch to use cluster instead of zkUtils once the broker is upgraded to 0.11.0 and above.
       List<Integer> currentReplicas = ExecutorUtils.currentReplicasForPartition(_zkUtils, tp);
       switch (task.state()) {
         case IN_PROGRESS:
