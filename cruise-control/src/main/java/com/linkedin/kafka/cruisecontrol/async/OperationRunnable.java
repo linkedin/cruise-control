@@ -45,7 +45,7 @@ abstract class OperationRunnable<T> implements Runnable {
         _future.complete(getResult());
       }
     } catch (Exception e) {
-      LOG.debug("Received exception when try to execute runnable for \"" + _future.operation() + "\"");
+      LOG.debug("Received exception when trying to execute runnable for \"" + _future.operation() + "\"", e);
       _future.completeExceptionally(e);
     } finally {
       _future.setExecutionThread(null);
