@@ -13,21 +13,21 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * The future to support async operations in KafkaCruiseControl 
+ * The future to support async operations in KafkaCruiseControl
  * @param <T> the return type.
  */
 public class OperationFuture<T> extends CompletableFuture<T> {
-  private static final Logger LOG = LoggerFactory.getLogger(OperationFuture.class); 
+  private static final Logger LOG = LoggerFactory.getLogger(OperationFuture.class);
   // The url encoded request url
   private final String _operation;
   private final OperationProgress _operationProgress;
   private volatile Thread _executionThread = null;
-  
+
   public OperationFuture(String operation) {
     _operation = "'" + operation + "'";
     _operationProgress = new OperationProgress();
   }
-  
+
   @Override
   public synchronized boolean cancel(boolean mayInterruptIfRunning) {
     boolean canceled = false;
@@ -51,7 +51,7 @@ public class OperationFuture<T> extends CompletableFuture<T> {
       try {
         Field f = Throwable.class.getDeclaredField("detailMessage");
         f.setAccessible(true);
-        f.set(t, String.format("Operation '%s' received exception. ", _operation) 
+        f.set(t, String.format("Operation '%s' received exception. ", _operation)
             + (t.getMessage() == null ? "" : t.getMessage()));
       } catch (IllegalAccessException | NoSuchFieldException e) {
         // let it go
@@ -61,9 +61,16 @@ public class OperationFuture<T> extends CompletableFuture<T> {
   }
 
   /**
-   * Set the execution thread to allow cancellation. The set will be successful unless the future is canceled 
+   * @return the operation for this future.
+   */
+  public String operation() {
+    return _operation;
+  }
+
+  /**
+   * Set the execution thread to allow cancellation. The set will be successful unless the future is canceled
    * and a non-null thread is set to be execution thread.
-   * 
+   *
    * @param t the thread working for this future.
    * @return true if the execution thread is set successfully, false otherwise.
    */

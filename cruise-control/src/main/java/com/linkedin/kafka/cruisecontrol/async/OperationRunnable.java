@@ -8,6 +8,8 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationStep;
 import com.linkedin.kafka.cruisecontrol.async.progress.Pending;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
@@ -15,9 +17,10 @@ import java.util.List;
  * @param <T>
  */
 abstract class OperationRunnable<T> implements Runnable {
+  private static final Logger LOG = LoggerFactory.getLogger(OperationRunnable.class);
   protected final KafkaCruiseControl _kafkaCruiseControl;
   protected final OperationFuture<T> _future;
-  
+
   OperationRunnable(KafkaCruiseControl kafkaCruiseControl, OperationFuture<T> future) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _future = future;
@@ -42,6 +45,7 @@ abstract class OperationRunnable<T> implements Runnable {
         _future.complete(getResult());
       }
     } catch (Exception e) {
+      LOG.debug("Received exception when try to execute runnable for \"" + _future.operation() + "\"");
       _future.completeExceptionally(e);
     } finally {
       _future.setExecutionThread(null);
@@ -49,6 +53,6 @@ abstract class OperationRunnable<T> implements Runnable {
       Thread.interrupted();
     }
   }
-  
+
   protected abstract T getResult() throws Exception;
 }
