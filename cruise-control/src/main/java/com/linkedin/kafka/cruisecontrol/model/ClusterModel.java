@@ -28,7 +28,7 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Collectors;
 
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
@@ -919,7 +919,7 @@ public class ClusterModel implements Serializable {
   public static class BrokerStats {
     private final List<SingleBrokerStats> _brokerStats = new ArrayList<>();
     private int _hostFieldLength = 0;
-    private Map<String, BasicStats> _hostStats = new ConcurrentHashMap<>();
+    private SortedMap<String, BasicStats> _hostStats = new ConcurrentSkipListMap<>();
 
     private void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                                       double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
