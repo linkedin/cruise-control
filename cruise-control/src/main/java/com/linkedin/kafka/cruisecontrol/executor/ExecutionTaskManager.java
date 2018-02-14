@@ -198,21 +198,16 @@ public class ExecutionTaskManager {
                                     Collection<Integer> brokersToSkipConcurrencyCheck) {
     _executionTaskPlanner.addExecutionProposals(proposals);
     for (ExecutionProposal p : proposals) {
-      if (!_inProgressReplicaMovementsByBrokerId.containsKey(p.oldLeader())) {
-        _inProgressReplicaMovementsByBrokerId.put(p.oldLeader(), 0);
-      }
+      _inProgressReplicaMovementsByBrokerId.putIfAbsent(p.oldLeader(), 0);
       for (int broker : p.replicasToAdd()) {
-        if (!_inProgressReplicaMovementsByBrokerId.containsKey(broker)) {
-          _inProgressReplicaMovementsByBrokerId.put(broker, 0);
-        }
+        _inProgressReplicaMovementsByBrokerId.putIfAbsent(broker, 0);
       }
-
-      // Add pending proposals to indicate the phase before they become an executable task.
-      _executionTaskTracker.taskForReplicaAction(ExecutionTask.State.PENDING)
-                           .addAll(_executionTaskPlanner.remainingReplicaMovements());
-      _executionTaskTracker.taskForLeaderAction(ExecutionTask.State.PENDING)
-                           .addAll(_executionTaskPlanner.remainingLeaderMovements());
     }
+    // Add pending proposals to indicate the phase before they become an executable task.
+    _executionTaskTracker.taskForReplicaAction(ExecutionTask.State.PENDING)
+                         .addAll(_executionTaskPlanner.remainingReplicaMovements());
+    _executionTaskTracker.taskForLeaderAction(ExecutionTask.State.PENDING)
+                         .addAll(_executionTaskPlanner.remainingLeaderMovements());
     _brokersToSkipConcurrencyCheck.clear();
     if (brokersToSkipConcurrencyCheck != null) {
       _brokersToSkipConcurrencyCheck.addAll(brokersToSkipConcurrencyCheck);
@@ -281,7 +276,7 @@ public class ExecutionTaskManager {
       if (task.type() == ExecutionTask.TaskType.REPLICA_ACTION) {
         _executionTaskTracker.taskForReplicaAction(currentState).remove(task);
         _executionTaskTracker.taskForReplicaAction(targetState).add(task);
-      } else { 
+      } else {
         _executionTaskTracker.taskForLeaderAction(currentState).remove(task);
         _executionTaskTracker.taskForLeaderAction(targetState).add(task);
       }
