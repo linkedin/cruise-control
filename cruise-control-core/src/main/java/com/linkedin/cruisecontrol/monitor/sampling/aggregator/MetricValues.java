@@ -6,7 +6,6 @@ package com.linkedin.cruisecontrol.monitor.sampling.aggregator;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.StringJoiner;
@@ -15,41 +14,73 @@ import java.util.StringJoiner;
 /**
  * A class hosting the values of a particular metric.
  */
-public class MetricValues implements Serializable {
+public class MetricValues {
 
   private final float[] _values;
   private volatile float _max;
   private volatile double _sumForAvg;
 
+  /**
+   * Construct a MetricValues.
+   * 
+   * @param numWindows the number of windows the metric values should contain (i.e the length of the value array).
+   */
   public MetricValues(int numWindows) {
     _values = new float[numWindows];
     _sumForAvg = 0;
     _max = Float.MIN_VALUE;
   }
 
+  /**
+   * Set the value at the given index.
+   * @param index the index to set the value.
+   * @param value the value to use.
+   */
   public void set(int index, double value) {
     if (_max == _values[index] && value < _max) {
-      _max = -1.0f;
+      _max = Float.MIN_VALUE;
     }
     _sumForAvg += value - _values[index];
     _values[index] = (float) value;
   }
 
+  /**
+   * Get value at the given index. 
+   * @param index the index to get value from.
+   * @return the value at the given index.
+   */
   public double get(int index) {
     return _values[index];
   }
 
+  /**
+   * Clear the entire MetricValues.
+   */
   public void clear() {
     Arrays.fill(_values, 0);
     _sumForAvg = 0;
     _max = Float.MIN_VALUE;
   }
 
+  /**
+   * The length of the value array. i.e. the number of windows kept by this MetricValues.
+   * @return the length of the value array.
+   */
   public int length() {
     return _values.length;
   }
 
+  /**
+   * Add a value array to the existing value array. The length of the two arrays must be the same.
+   * 
+   * @param values the value array to add.
+   */
   public void add(double[] values) {
+    if (values.length != _values.length) {
+      throw new IllegalArgumentException(String.format("The value array of length %d cannot be added to the " 
+                                                           + "MetricValue with length %d", 
+                                                       values.length, _values.length));
+    }
     _max = Float.MIN_VALUE;
     for (int i = 0; i < _values.length; i++) {
       double toAdd = values[i];
@@ -59,7 +90,17 @@ public class MetricValues implements Serializable {
     }
   }
 
+  /**
+   * Add another MetricValue to this MetricValues. The length of the two MetricValues must be the same.
+   * 
+   * @param metricValues the MetricValues to add.
+   */
   public void add(MetricValues metricValues) {
+    if (metricValues.length() != _values.length) {
+      throw new IllegalArgumentException(String.format("The value array of length %d cannot be added to the "
+                                                           + "MetricValue with length %d",
+                                                       metricValues.length(), _values.length));
+    }
     _max = Float.MIN_VALUE;
     for (int i = 0; i < _values.length; i++) {
       double toAdd = metricValues.get(i);
@@ -69,17 +110,37 @@ public class MetricValues implements Serializable {
     }
   }
 
-  public void subtract(double[] metricValues) {
+  /**
+   * Subtract a value array from the existing value array. The length of the two arrays must be the same.
+   *
+   * @param values the value array to add.
+   */
+  public void subtract(double[] values) {
+    if (values.length != _values.length) {
+      throw new IllegalArgumentException(String.format("The value array of length %d cannot be subtracted from the "
+                                                           + "MetricValue with length %d",
+                                                       values.length, _values.length));
+    }
     _max = Float.MIN_VALUE;
     for (int i = 0; i < _values.length; i++) {
-      double toDeduct = metricValues[i];
+      double toDeduct = values[i];
       _values[i] -= toDeduct;
       _sumForAvg -= toDeduct;
       _max = Math.max(_max, _values[i]);
     }
   }
 
+  /**
+   * Subtract another MetricValue from this MetricValues. The length of the two MetricValues must be the same.
+   *
+   * @param metricValues the MetricValues to add.
+   */
   public void subtract(MetricValues metricValues) {
+    if (metricValues.length() != _values.length) {
+      throw new IllegalArgumentException(String.format("The value array of length %d cannot be subtracted from the "
+                                                           + "MetricValue with length %d",
+                                                       metricValues.length(), _values.length));
+    }
     _max = Float.MIN_VALUE;
     for (int i = 0; i < _values.length; i++) {
       double toDeduct = metricValues.get(i);
@@ -89,10 +150,16 @@ public class MetricValues implements Serializable {
     }
   }
 
+  /**
+   * @return the average value of all the values in this MetricValues.
+   */
   public float avg() {
     return (float) (_sumForAvg / _values.length);
   }
 
+  /**
+   * @return the max value of all the values in this MetricValues.
+   */
   public float max() {
     if (_max >= 0) {
       return _max;
@@ -101,10 +168,16 @@ public class MetricValues implements Serializable {
     }
   }
 
+  /**
+   * @return the last value of all the values in this MetricValues.
+   */
   public float latest() {
     return _values[0];
   }
 
+  /**
+   * @return the value array in double precision.
+   */
   public double[] doubleArray() {
     double[] result = new double[_values.length];
     for (int i = 0; i < _values.length; i++) {
@@ -113,6 +186,11 @@ public class MetricValues implements Serializable {
     return result;
   }
 
+  /**
+   * Write the MetricValues directly into a OutputStream to avoid string conversion.
+   * @param out the output stream to write to.
+   * @throws IOException
+   */
   public void writeTo(OutputStream out) throws IOException {
     out.write(String.format("{avg:\"%.3f\", max:\"%.3f\", {", avg(), max()).getBytes(StandardCharsets.UTF_8));
     for (int i = 0; i < _values.length - 1; i++) {

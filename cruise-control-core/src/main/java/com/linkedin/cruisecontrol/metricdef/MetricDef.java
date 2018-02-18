@@ -43,8 +43,7 @@ public class MetricDef {
    * @param valueComputingStrategy the {@link AggregationFunction} for this metric.
    * @return this MetricDef
    */
-  public synchronized MetricDef define(String metricName,
-                                       String valueComputingStrategy) {
+  public synchronized MetricDef define(String metricName, String valueComputingStrategy) {
     return define(metricName, valueComputingStrategy, false);
   }
 
@@ -56,9 +55,7 @@ public class MetricDef {
    * @param toPredict whether the metric is a metric to be predicted.
    * @return this MetricDef
    */
-  public synchronized MetricDef define(String metricName,
-                                       String valueComputingStrategy,
-                                       boolean toPredict) {
+  public synchronized MetricDef define(String metricName, String valueComputingStrategy, boolean toPredict) {
     if (_doneDefinition) {
       throw new IllegalStateException("Cannot add definition after the metric definition is done.");
     }
@@ -73,9 +70,7 @@ public class MetricDef {
       if (toPredict) {
         _metricsToPredict.add(metricId);
       }
-      return new MetricInfo(metricName,
-                            metricId,
-                            AggregationFunction.valueOf(valueComputingStrategy.toUpperCase()));
+      return new MetricInfo(metricName, metricId, AggregationFunction.valueOf(valueComputingStrategy.toUpperCase()));
     });
     MetricInfo info = _metricInfoByName.get(metricName);
     _metricInfoByIndex.add(info.id(), info);

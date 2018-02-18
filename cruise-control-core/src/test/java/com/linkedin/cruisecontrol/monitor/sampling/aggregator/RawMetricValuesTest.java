@@ -9,6 +9,8 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import com.linkedin.cruisecontrol.metricdef.AggregationFunction;
 import com.linkedin.cruisecontrol.monitor.sampling.MetricSample;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.SortedSet;
 import java.util.TreeSet;
@@ -33,6 +35,52 @@ public class RawMetricValuesTest {
     _metricDef = new MetricDef().define("metric1", AggregationFunction.AVG.name())
                                 .define("metric2", AggregationFunction.MAX.name())
                                 .define("metric3", AggregationFunction.LATEST.name());
+  }
+  
+  @Test
+  public void testAddSampleToEvictedWindows() {
+    RawMetricValues rawValues = new RawMetricValues(2, MIN_SAMPLES_PER_WINDOW);
+    rawValues.updateOldestWindowIndex(2);
+    MetricSample<String, IntegerEntity> m1 = getMetricSample(10, 10, 10);
+    rawValues.addSample(m1, 1, _metricDef);
+    assertEquals(0, rawValues.numSamples());
+  }
+  
+  @Test
+  public void testAddSampleUpdateImputation() {
+    // Let the minSamplePerWindow to be MIN_SAMPLE_PER_WINDOW + 1 so all the windows needs imputation.
+    RawMetricValues rawValues = new RawMetricValues(NUM_WINDOWS_TO_KEEP, MIN_SAMPLES_PER_WINDOW + 1);
+    // All the window index should be 2,3,4,5,6,7
+    prepareWindowMissingAtIndex(rawValues, Arrays.asList(3, 5), 2);
+    // now add sample to window 2 and 6 to make them valid without flaws.
+    MetricSample<String, IntegerEntity> m = getMetricSample(10, 10, 10);
+    rawValues.addSample(m, 2, _metricDef);
+    rawValues.addSample(m, 6, _metricDef);
+    assertTrue(rawValues.isValidAtWindowIndex(2));
+    assertFalse(rawValues.isFlawedAtWindowIndex(2));
+    assertTrue(rawValues.isValidAtWindowIndex(6));
+    assertFalse(rawValues.isFlawedAtWindowIndex(6));
+    // At this point window 3 and 5 should still be invalid
+    assertFalse(rawValues.isValidAtWindowIndex(3));
+    assertFalse(rawValues.isFlawedAtWindowIndex(3));
+    assertFalse(rawValues.isValidAtWindowIndex(5));
+    assertFalse(rawValues.isFlawedAtWindowIndex(5));
+    
+    // now adding sample to 4 should make 3 and 5 valid with flaw of ADJACENT_AVG
+    rawValues.addSample(m, 4, _metricDef);
+    assertTrue(rawValues.isValidAtWindowIndex(4));
+    assertFalse(rawValues.isFlawedAtWindowIndex(4));
+    assertTrue(rawValues.isValidAtWindowIndex(3));
+    assertTrue(rawValues.isFlawedAtWindowIndex(3));
+    assertTrue(rawValues.isValidAtWindowIndex(5));
+    assertTrue(rawValues.isFlawedAtWindowIndex(5));
+  }
+  
+  @Test (expected = IllegalArgumentException.class)
+  public void testAddToWindowLargerThanCurrentWindow() {
+    RawMetricValues rawValues = new RawMetricValues(NUM_WINDOWS_TO_KEEP, MIN_SAMPLES_PER_WINDOW);
+    rawValues.updateOldestWindowIndex(0);
+    rawValues.addSample(getMetricSample(10, 10, 10), NUM_WINDOWS_TO_KEEP, _metricDef);
   }
 
   @Test
@@ -79,7 +127,7 @@ public class RawMetricValuesTest {
     assertEquals(1, valuesAndImputations.imputations().size());
     Assert.assertEquals(Imputation.AVG_AVAILABLE, valuesAndImputations.imputations().get(0));
 
-    // Add the forth sample
+    // Add the fourth sample
     addSample(rawValues, m4, 0);
     valuesAndImputations = aggregate(rawValues, new TreeSet<>(Collections.singleton(0L)));
     assertEquals(9, valuesAndImputations.metricValues().valuesFor(0).get(0), EPSILON);
@@ -206,12 +254,12 @@ public class RawMetricValuesTest {
     prepareWindowMissingAtIndex(rawValues, NUM_WINDOWS - 1);
 
     assertFalse(rawValues.isValidAtWindowIndex(NUM_WINDOWS - 1));
-    assertFalse(rawValues.hasImputationAtWindowIndex(NUM_WINDOWS - 1));
+    assertFalse(rawValues.isFlawedAtWindowIndex(NUM_WINDOWS - 1));
 
     rawValues.updateOldestWindowIndex(1);
 
     assertTrue(rawValues.isValidAtWindowIndex(NUM_WINDOWS - 1));
-    assertTrue(rawValues.hasImputationAtWindowIndex(NUM_WINDOWS - 1));
+    assertTrue(rawValues.isFlawedAtWindowIndex(NUM_WINDOWS - 1));
   }
 
   @Test
@@ -220,12 +268,12 @@ public class RawMetricValuesTest {
     prepareWindowMissingAtIndex(rawValues, NUM_WINDOWS - 1);
 
     assertFalse(rawValues.isValidAtWindowIndex(NUM_WINDOWS - 1));
-    assertFalse(rawValues.hasImputationAtWindowIndex(NUM_WINDOWS - 1));
+    assertFalse(rawValues.isFlawedAtWindowIndex(NUM_WINDOWS - 1));
 
     rawValues.updateOldestWindowIndex(NUM_WINDOWS - 1);
 
     assertFalse(rawValues.isValidAtWindowIndex(NUM_WINDOWS - 1));
-    assertFalse(rawValues.hasImputationAtWindowIndex(NUM_WINDOWS - 1));
+    assertFalse(rawValues.isFlawedAtWindowIndex(NUM_WINDOWS - 1));
   }
 
   @Test
@@ -258,12 +306,16 @@ public class RawMetricValuesTest {
   }
 
   private void prepareWindowMissingAtIndex(RawMetricValues rawValues, int idx) {
-    rawValues.updateOldestWindowIndex(0);
-    populate(rawValues, 0);
+    prepareWindowMissingAtIndex(rawValues, Collections.singleton(idx), 0);
+  }
+  
+  private void prepareWindowMissingAtIndex(RawMetricValues rawValues, Collection<Integer> indexes, int oldestWindowIndex) {
+    rawValues.updateOldestWindowIndex(oldestWindowIndex);
+    populate(rawValues, oldestWindowIndex);
     // reset index, we need to play the trick to change the oldest window index temporarily to make it work.
-    rawValues.updateOldestWindowIndex(100);
-    rawValues.resetWindowIndexes(idx, 1);
-    rawValues.updateOldestWindowIndex(0);
+    rawValues.updateOldestWindowIndex(oldestWindowIndex + 100);
+    indexes.forEach(idx -> rawValues.resetWindowIndexes(idx, 1));
+    rawValues.updateOldestWindowIndex(oldestWindowIndex);
   }
 
   private float[][] populate(RawMetricValues rawValues, long startingWindowIndex) {

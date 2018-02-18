@@ -15,24 +15,37 @@ import java.util.Set;
  * The metric sample aggregation options.
  */
 public class AggregationOptions<G, E extends Entity<G>> {
-  private final double _minEntityCoverage;
-  private final double _minEntityGroupCoverage;
+  private final double _minValidEntityRatio;
+  private final double _minValidEntityGroupRatio;
   private final int _minValidWindows;
-  private final Set<E> _entitiesToInclude;
+  private final Set<E> _interestedEntities;
   private final Granularity _granularity;
   private final boolean _includeInvalidEntities;
-  private final Set<G> _entityGroups;
+  private final Set<G> _interestedEntityGroups;
 
-  public AggregationOptions(double minEntityCoverage,
-                            double minEntityGroupCoverage,
-                            int minValidWindows,
-                            Set<E> interestedEntities,
-                            Granularity granularity) {
-    this(minEntityCoverage, minEntityGroupCoverage, minValidWindows, interestedEntities, granularity, true);
-  }
-  
-  public AggregationOptions(double minEntityCoverage, 
-                            double minEntityGroupCoverage, 
+  /**
+   * Construct an AggregationOptions. The aggregation options are used to instruct {@link MetricSampleAggregator} how
+   * to aggregate the metrics.
+   *
+   * @param minValidEntityRatio The minimum required percentage of valid entities out of all the interestedEntities.
+   * @param minValidEntityGroupRatio The minimum required percentage of the valid entity groups out of all the interested 
+   *                               entities groups (the groups of interested entities).
+   * @param minValidWindows The minimum required number of valid windows required in the result. A valid window 
+   *                        is a window within which both <tt>Min Valid Entity Ratio</tt> and
+   *                        <tt>Min Valid Entity Group Ratio</tt> are met.
+   * @param interestedEntities All the entities to include in this aggregation. Sometimes not all the entities are 
+   *                           interested. This option allows users to aggregate only part of the entities.
+   * @param granularity The granularity of the aggregation.
+   * @param includeInvalidEntities Whether to include invalid entities in the aggregation result as well. The
+   *                               metric values of the invalid entities are provided at the best effort. When no
+   *                               metric value is available, 0 will be used.
+   *                               
+   * @see MetricSampleAggregator
+   * @see MetricSampleAggregationResult
+   * @see MetricSampleCompleteness
+   */
+  public AggregationOptions(double minValidEntityRatio,
+                            double minValidEntityGroupRatio,
                             int minValidWindows,
                             Set<E> interestedEntities,
                             Granularity granularity,
@@ -40,51 +53,80 @@ public class AggregationOptions<G, E extends Entity<G>> {
     if (minValidWindows < 1) {
       throw new IllegalArgumentException("The minimum valid windows must be at least 1");
     }
-    _minEntityCoverage = minEntityCoverage;
-    _minEntityGroupCoverage = minEntityGroupCoverage;
+    _minValidEntityRatio = minValidEntityRatio;
+    _minValidEntityGroupRatio = minValidEntityGroupRatio;
     _minValidWindows = minValidWindows;
-    _entitiesToInclude = interestedEntities == null ? Collections.emptySet() : interestedEntities;
+    _interestedEntities = interestedEntities == null ? Collections.emptySet() : interestedEntities;
     _granularity = granularity == null ? Granularity.ENTITY : granularity;
     _includeInvalidEntities = includeInvalidEntities;
-    _entityGroups = new HashSet<>();
-    _entitiesToInclude.forEach(entity -> _entityGroups.add(entity.group()));
+    _interestedEntityGroups = new HashSet<>();
+    _interestedEntities.forEach(entity -> _interestedEntityGroups.add(entity.group()));
   }
 
-  public double minEntityCoverage() {
-    return _minEntityCoverage;
+  /**
+   * @return The minimum required percentage of valid entities out of all the interestedEntities.
+   */
+  public double minValidEntityRatio() {
+    return _minValidEntityRatio;
   }
 
-  public double minEntityGroupCoverage() {
-    return _minEntityGroupCoverage;
+  /**
+   * @return The minimum required percentage of the valid entity groups of all entity groups in the interested entities.
+   */
+  public double minValidEntityGroupRatio() {
+    return _minValidEntityGroupRatio;
   }
 
+  /**
+   * @return the minimum required number of valid windows required in the result.
+   */
   public int minValidWindows() {
     return _minValidWindows;
   }
 
+  /**
+   * @return All the entities to include in this aggregation.
+   */
   public Set<E> interestedEntities() {
-    return Collections.unmodifiableSet(_entitiesToInclude);
+    return Collections.unmodifiableSet(_interestedEntities);
   }
 
+  /**
+   * @return The granularity of the aggregation.
+   */
   public Granularity granularity() {
     return _granularity;
   }
-  
+
+  /**
+   * @return whether to include invalid entities in the aggregation result as well.
+   */
   public boolean includeInvalidEntities() {
     return _includeInvalidEntities;
   }
-  
-  public Set<G> entityGroups() {
-    return Collections.unmodifiableSet(_entityGroups);
+
+  /**
+   * @return get all the entity groups in the interested entities.
+   */
+  public Set<G> interestedEntityGroups() {
+    return Collections.unmodifiableSet(_interestedEntityGroups);
   }
 
+  /**
+   * The granularity of the aggregation. When set to {@link Granularity#ENTITY}, if an entity group contains both 
+   * valid and invalid entities, the aggregation will still consider the valid entities as valid. 
+   * When set to {@link Granularity#ENTITY_GROUP}, when there are invalid entities in an entity group, all the 
+   * entities in the same entity group are considered invalid.
+   */
   public enum Granularity {
     ENTITY, ENTITY_GROUP
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(_minEntityCoverage, _minEntityGroupCoverage, _minValidWindows, _granularity, _entitiesToInclude.size());
+    // We do not compare the full interested entities here to avoid expensive hashCode computation.
+    return Objects.hash(_minValidEntityRatio, _minValidEntityGroupRatio, _minValidWindows, _granularity, _interestedEntities
+        .size());
   }
 
   @Override
@@ -96,17 +138,17 @@ public class AggregationOptions<G, E extends Entity<G>> {
       return false;
     }
     AggregationOptions other = (AggregationOptions) obj;
-    if (_minEntityCoverage != other.minEntityCoverage()) {
+    if (_minValidEntityRatio != other.minValidEntityRatio()) {
       return false;
-    } else if (_minEntityGroupCoverage != other.minEntityGroupCoverage()) {
+    } else if (_minValidEntityGroupRatio != other.minValidEntityGroupRatio()) {
       return false;
     } else if (_minValidWindows != other.minValidWindows()) {
       return false;
     } else if (_granularity != other.granularity()) {
       return false;
-    } else if (_entitiesToInclude.size() != other.interestedEntities().size()) {
+    } else if (_interestedEntities.size() != other.interestedEntities().size()) {
       return false;
-    } else if (!_entitiesToInclude.containsAll(other.interestedEntities())) {
+    } else if (!_interestedEntities.containsAll(other.interestedEntities())) {
       return false;
     }
     return true;
@@ -114,8 +156,9 @@ public class AggregationOptions<G, E extends Entity<G>> {
 
   @Override
   public String toString() {
-    return String.format("(minEntityCoverage=%f, minEntityGroupCoverage=%f, minValidWindows=%d, " 
-                             + "numEntitiesToInclude=%d, granularity=%s)", _minEntityCoverage, _minEntityGroupCoverage, 
-                         _minValidWindows, _entitiesToInclude.size(), _granularity);
+    return String.format("(minValidEntityRatio=%.2f, minValidEntityGroupRatio=%.2f, minValidWindows=%d, "
+                             + "numEntitiesToInclude=%d, granularity=%s)", _minValidEntityRatio,
+                         _minValidEntityGroupRatio,
+                         _minValidWindows, _interestedEntities.size(), _granularity);
   }
 }

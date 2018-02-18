@@ -49,7 +49,7 @@ public class MetricSampleAggregatorTest {
 
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(1, 1, NUM_WINDOWS, Collections.emptySet(),
-                                 AggregationOptions.Granularity.ENTITY_GROUP);
+                                 AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleAggregationResult<String, IntegerEntity> aggResults =
         aggregator.aggregate(-1, Long.MAX_VALUE, options);
     assertNotNull(aggResults);
@@ -83,7 +83,7 @@ public class MetricSampleAggregatorTest {
   }
 
   @Test
-  public void testGeneration() throws NotEnoughValidWindowsException {
+  public void testGeneration() {
     MetricSampleAggregator<String, IntegerEntity> aggregator =
         new MetricSampleAggregator<>(NUM_WINDOWS, SNAPSHOT_WINDOW_MS, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
                                      0, 5, _metricDef);
@@ -95,7 +95,7 @@ public class MetricSampleAggregatorTest {
 
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(1, 1, NUM_WINDOWS, Collections.emptySet(),
-                                 AggregationOptions.Granularity.ENTITY_GROUP);
+                                 AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleAggregatorState<String, IntegerEntity> windowState = aggregator.aggregatorState();
     for (int i = 1; i < NUM_WINDOWS + 1; i++) {
       assertEquals(NUM_WINDOWS + 1, windowState.windowStates().get((long) i).generation().intValue());
@@ -164,69 +164,73 @@ public class MetricSampleAggregatorTest {
     // Let the group coverage to be 1
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.5, 1, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), AggregationOptions.Granularity.ENTITY);
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness =
         aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertTrue(completeness.validWindowIndexes().isEmpty());
-    assertTrue(completeness.coveredEntities().isEmpty());
-    assertTrue(completeness.coveredEntityGroups().isEmpty());
+    assertTrue(completeness.validEntities().isEmpty());
+    assertTrue(completeness.validEntityGroups().isEmpty());
     assertCompletenessByWindowIndex(completeness);
   }
 
   @Test
   public void testAggregationOption2() {
     MetricSampleAggregator<String, IntegerEntity> aggregator = prepareCompletenessTestEnv();
-    // Change the group coverage requirement to 0, window 3, 4, 20 will be excluded because minEntityCoverage is not met.
+    // Change the group coverage requirement to 0, window 3, 4, 20 will be excluded because minValidEntityRatio is not met.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.5, 0.0, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), AggregationOptions.Granularity.ENTITY);
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(17, completeness.validWindowIndexes().size());
     assertFalse(completeness.validWindowIndexes().contains(3L));
     assertFalse(completeness.validWindowIndexes().contains(4L));
     assertFalse(completeness.validWindowIndexes().contains(20L));
-    assertEquals(2, completeness.coveredEntities().size());
-    assertTrue(completeness.coveredEntities().contains(ENTITY1));
-    assertTrue(completeness.coveredEntities().contains(ENTITY3));
-    assertEquals(1, completeness.coveredEntityGroups().size());
-    assertTrue(completeness.coveredEntityGroups().contains(ENTITY3.group()));
+    assertEquals(2, completeness.validEntities().size());
+    assertTrue(completeness.validEntities().contains(ENTITY1));
+    assertTrue(completeness.validEntities().contains(ENTITY3));
+    assertEquals(1, completeness.validEntityGroups().size());
+    assertTrue(completeness.validEntityGroups().contains(ENTITY3.group()));
     assertCompletenessByWindowIndex(completeness);
   }
 
   @Test
   public void testAggregationOption3() {
     MetricSampleAggregator<String, IntegerEntity> aggregator = prepareCompletenessTestEnv();
-    // Change the option to have 0.5 as minEntityGroupCoverage. This will exclude window index 3, 4, 20.
+    // Change the option to have 0.5 as minValidEntityGroupRatio. This will exclude window index 3, 4, 20.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.0, 0.5, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), AggregationOptions.Granularity.ENTITY);
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(17, completeness.validWindowIndexes().size());
     assertFalse(completeness.validWindowIndexes().contains(3L));
     assertFalse(completeness.validWindowIndexes().contains(4L));
     assertFalse(completeness.validWindowIndexes().contains(20L));
-    assertEquals(2, completeness.coveredEntities().size());
-    assertTrue(completeness.coveredEntities().contains(ENTITY1));
-    assertTrue(completeness.coveredEntities().contains(ENTITY3));
-    assertEquals(1, completeness.coveredEntityGroups().size());
-    assertTrue(completeness.coveredEntityGroups().contains(ENTITY3.group()));
+    assertEquals(2, completeness.validEntities().size());
+    assertTrue(completeness.validEntities().contains(ENTITY1));
+    assertTrue(completeness.validEntities().contains(ENTITY3));
+    assertEquals(1, completeness.validEntityGroups().size());
+    assertTrue(completeness.validEntityGroups().contains(ENTITY3.group()));
     assertCompletenessByWindowIndex(completeness);
   }
 
   @Test
   public void testAggregationOption4() {
     MetricSampleAggregator<String, IntegerEntity> aggregator = prepareCompletenessTestEnv();
-    // Change the option to have 0.5 as minEntityGroupCoverage. This will exclude window index 3, 4, 20.
+    // Change the option to have 0.5 as minValidEntityGroupRatio. This will exclude window index 3, 4, 20.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.0, 0.0, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), AggregationOptions.Granularity.ENTITY);
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(20, completeness.validWindowIndexes().size());
-    assertEquals(1, completeness.coveredEntities().size());
-    assertTrue(completeness.coveredEntities().contains(ENTITY1));
-    assertTrue(completeness.coveredEntityGroups().isEmpty());
+    assertEquals(1, completeness.validEntities().size());
+    assertTrue(completeness.validEntities().contains(ENTITY1));
+    assertTrue(completeness.validEntityGroups().isEmpty());
     assertCompletenessByWindowIndex(completeness);
   }
 
@@ -237,31 +241,33 @@ public class MetricSampleAggregatorTest {
     // so there will be no valid windows.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.5, 0.0, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), AggregationOptions.Granularity.ENTITY_GROUP);
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertTrue(completeness.validWindowIndexes().isEmpty());
-    assertTrue(completeness.coveredEntities().isEmpty());
-    assertTrue(completeness.coveredEntityGroups().isEmpty());
+    assertTrue(completeness.validEntities().isEmpty());
+    assertTrue(completeness.validEntityGroups().isEmpty());
     assertCompletenessByWindowIndex(completeness);
   }
 
   @Test
   public void testAggregationOption6() {
     MetricSampleAggregator<String, IntegerEntity> aggregator = prepareCompletenessTestEnv();
-    // Change the option to use entity group granularity and reduce the minEntityCoverage to 0.3. This will
+    // Change the option to use entity group granularity and reduce the minValidEntityRatio to 0.3. This will
     // include ENTITY3 except in window 3, 4, 20.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.3, 0.0, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), AggregationOptions.Granularity.ENTITY_GROUP);
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(17, completeness.validWindowIndexes().size());
     assertFalse(completeness.validWindowIndexes().contains(3L));
     assertFalse(completeness.validWindowIndexes().contains(4L));
     assertFalse(completeness.validWindowIndexes().contains(20L));
-    assertEquals(1, completeness.coveredEntities().size());
-    assertTrue(completeness.coveredEntities().contains(ENTITY3));
-    assertEquals(1, completeness.coveredEntityGroups().size());
-    assertTrue(completeness.coveredEntityGroups().contains(ENTITY3.group()));
+    assertEquals(1, completeness.validEntities().size());
+    assertTrue(completeness.validEntities().contains(ENTITY3));
+    assertEquals(1, completeness.validEntityGroups().size());
+    assertTrue(completeness.validEntityGroups().contains(ENTITY3.group()));
     assertCompletenessByWindowIndex(completeness);
   }
 
@@ -307,7 +313,7 @@ public class MetricSampleAggregatorTest {
 
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(1, 1, NUM_WINDOWS, Collections.emptySet(),
-                                 AggregationOptions.Granularity.ENTITY_GROUP);
+                                 AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleAggregationResult<String, IntegerEntity> aggResult =
         aggregator.aggregate(-1, Long.MAX_VALUE, options);
     assertEquals(numEntities, aggResult.valuesAndImputations().size());
@@ -332,13 +338,13 @@ public class MetricSampleAggregatorTest {
   private void assertCompletenessByWindowIndex(MetricSampleCompleteness<String, IntegerEntity> completeness) {
     for (long wi = 1; wi <= NUM_WINDOWS; wi++) {
       if (wi == 3L || wi == 4L || wi == 20L) {
-        assertEquals(1.0f / 3, completeness.entityCoverageByWindowIndex().get(wi), EPSILON);
-        assertEquals(0, completeness.entityCoverageWithGroupGranularityByWindowIndex().get(wi), EPSILON);
-        assertEquals(0.0, completeness.entityGroupCoverageByWindowIndex().get(wi), EPSILON);
+        assertEquals(1.0f / 3, completeness.validEntityRatioByWindowIndex().get(wi), EPSILON);
+        assertEquals(0, completeness.validEntityRatioWithGroupGranularityByWindowIndex().get(wi), EPSILON);
+        assertEquals(0.0, completeness.validEntityGroupRatioByWindowIndex().get(wi), EPSILON);
       } else {
-        assertEquals(2.0f / 3, completeness.entityCoverageByWindowIndex().get(wi), EPSILON);
-        assertEquals(1.0f / 3, completeness.entityCoverageWithGroupGranularityByWindowIndex().get(wi), EPSILON);
-        assertEquals(0.5, completeness.entityGroupCoverageByWindowIndex().get(wi), EPSILON);
+        assertEquals(2.0f / 3, completeness.validEntityRatioByWindowIndex().get(wi), EPSILON);
+        assertEquals(1.0f / 3, completeness.validEntityRatioWithGroupGranularityByWindowIndex().get(wi), EPSILON);
+        assertEquals(0.5, completeness.validEntityGroupRatioByWindowIndex().get(wi), EPSILON);
       }
     }
   }

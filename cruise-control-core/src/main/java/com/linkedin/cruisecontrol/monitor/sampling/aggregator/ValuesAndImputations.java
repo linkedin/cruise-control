@@ -22,14 +22,13 @@ public class ValuesAndImputations {
   /**
    * Package private constructor.
    * @param metricValues the metric values.
-   * @param imputations the imputations by window indexes.
+   * @param imputations the imputations by corresponding metric value indexes.
    */
-  ValuesAndImputations(AggregatedMetricValues metricValues,
-                       Map<Integer, Imputation> imputations) {
+  ValuesAndImputations(AggregatedMetricValues metricValues, Map<Integer, Imputation> imputations) {
     _metricValues = metricValues;
     _imputations = imputations;
   }
-
+  
   /**
    * Get the metric values for all the included windows.
    * <p>
@@ -82,6 +81,12 @@ public class ValuesAndImputations {
     _windows = windows;
   }
 
+  /**
+   * Create an empty ValuesAndImputations.
+   * @param numWindows the number of windows.
+   * @param metricDef the metric definition.
+   * @return an empty ValuesAndImputations.
+   */
   static ValuesAndImputations empty(int numWindows, MetricDef metricDef) {
     Map<Integer, MetricValues> values = new HashMap<>();
     for (int i = 0; i <  metricDef.all().size(); i++) {

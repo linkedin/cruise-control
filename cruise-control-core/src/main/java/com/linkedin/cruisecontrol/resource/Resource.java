@@ -19,7 +19,7 @@ public enum Resource {
   private final String _resource;
   private final int _id;
   private final boolean _isHostResource;
-  private double _epsilon;
+  private final double _epsilon;
 
   private static final List<Resource> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 

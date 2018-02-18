@@ -20,105 +20,108 @@ import java.util.TreeSet;
  * The completeness information is based on a given {@link AggregationOptions}
  */
 public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenerationed {
-  private final SortedMap<Long, Float> _entityCoverageByWindowIndex;
-  private final SortedMap<Long, Float> _entityCoverageWithGroupGranularityByWindowIndex;
-  private final SortedMap<Long, Float> _entityGroupCoverageByWindowIndex;
+  private final SortedMap<Long, Float> _validEntityRatioByWindowIndex;
+  private final SortedMap<Long, Float> _validEntityRatioWithGroupGranularityByWindowIndex;
+  private final SortedMap<Long, Float> _validEntityGroupRatioByWindowIndex;
   private final SortedSet<Long> _validWindowIndexes;
   private final long _windowMs;
-  private final Set<E> _coveredEntities;
-  private final Set<G> _coveredEntityGroups;
-  private float _entityCoverage;
-  private float _entityGroupCoverage;
+  private final Set<E> _validEntities;
+  private final Set<G> _validEntityGroups;
+  private float _validEntityRatio;
+  private float _validEntityGroupRatio;
 
   public MetricSampleCompleteness(long generation, long windowMs) {
     super(generation);
-    _entityCoverageByWindowIndex = new TreeMap<>(Collections.reverseOrder());
-    _entityCoverageWithGroupGranularityByWindowIndex = new TreeMap<>(Collections.reverseOrder());
-    _entityGroupCoverageByWindowIndex = new TreeMap<>(Collections.reverseOrder());
+    _validEntityRatioByWindowIndex = new TreeMap<>(Collections.reverseOrder());
+    _validEntityRatioWithGroupGranularityByWindowIndex = new TreeMap<>(Collections.reverseOrder());
+    _validEntityGroupRatioByWindowIndex = new TreeMap<>(Collections.reverseOrder());
     _validWindowIndexes = new TreeSet<>(Collections.reverseOrder());
-    _coveredEntities = new HashSet<>();
-    _coveredEntityGroups = new HashSet<>();
-    _entityCoverage = 0.0f;
-    _entityGroupCoverage = 0.0f;
+    _validEntities = new HashSet<>();
+    _validEntityGroups = new HashSet<>();
+    _validEntityRatio = 0.0f;
+    _validEntityGroupRatio = 0.0f;
     _windowMs = windowMs;
   }
 
-  void addEntityCoverage(long windowIndex, float coverage) {
-    _entityCoverageByWindowIndex.put(windowIndex, coverage);
+  void addValidEntityRatio(long windowIndex, float validEntityRatio) {
+    _validEntityRatioByWindowIndex.put(windowIndex, validEntityRatio);
   }
 
-  void addEntityCoverageWithGroupGranularity(long windowIndex, float coverage) {
-    _entityCoverageWithGroupGranularityByWindowIndex.put(windowIndex, coverage);
+  void addValidEntityRatioWithGroupGranularity(long windowIndex, float validEntityRatio) {
+    _validEntityRatioWithGroupGranularityByWindowIndex.put(windowIndex, validEntityRatio);
   }
 
-  void addEntityGroupCoverage(long windowIndex, float coverage) {
-    _entityGroupCoverageByWindowIndex.put(windowIndex, coverage);
+  void addValidEntityGroupRatio(long windowIndex, float validEntityGroupRatio) {
+    _validEntityGroupRatioByWindowIndex.put(windowIndex, validEntityGroupRatio);
   }
 
   void addValidWindowIndex(long windowIndex) {
     _validWindowIndexes.add(windowIndex);
   }
 
-  void setEntityCoverage(float entityCoverage) {
-    _entityCoverage = entityCoverage;
+  void setValidEntityRatio(float validEntityRatio) {
+    _validEntityRatio = validEntityRatio;
   }
 
-  void setEntityGroupCoverage(float entityGroupCoverage) {
-    _entityGroupCoverage = entityGroupCoverage;
+  void setValidEntityGroupRatio(float validEntityGroupRatio) {
+    _validEntityGroupRatio = validEntityGroupRatio;
   }
 
-  void addCoveredEntities(Set<E> coveredEntities) {
-    _coveredEntities.addAll(coveredEntities);
+  void addValidEntities(Set<E> coveredEntities) {
+    _validEntities.addAll(coveredEntities);
   }
 
-  void addCoveredEntityGroups(Set<G> coveredEntityGroups) {
-    _coveredEntityGroups.addAll(coveredEntityGroups);
+  void addValidEntityGroups(Set<G> coveredEntityGroups) {
+    _validEntityGroups.addAll(coveredEntityGroups);
   }
 
-  void retainAllCoveredEntities(Set<E> coveredEntitiesToRetain) {
-    _coveredEntities.retainAll(coveredEntitiesToRetain);
+  void retainAllValidEntities(Set<E> coveredEntitiesToRetain) {
+    _validEntities.retainAll(coveredEntitiesToRetain);
   }
 
-  void retainAllCoveredEntityGroups(Set<G> coveredEntityGroupsToRetain) {
-    _coveredEntityGroups.retainAll(coveredEntityGroupsToRetain);
+  void retainAllValidEntityGroups(Set<G> coveredEntityGroupsToRetain) {
+    _validEntityGroups.retainAll(coveredEntityGroupsToRetain);
   }
 
   /**
-   * Get the coverage of independent entities for each window.
-   * <p>The coverage is</p>
+   * Get the valid entity ratio of independent entities for each window.
+   * <p>The ratio is</p>
    * <pre>NUM_VALID_ENTITIES / NUM_ALL_ENTITIES_TO_INCLUDE</pre>
    *
-   * @return The coverage of independent entities for each window.
+   * @return The ratio of independent entities for each window.
    */
-  public SortedMap<Long, Float> entityCoverageByWindowIndex() {
-    return _entityCoverageByWindowIndex;
+  public SortedMap<Long, Float> validEntityRatioByWindowIndex() {
+    return _validEntityRatioByWindowIndex;
   }
 
   /**
-   * Get the coverage of entities whose entity group has complete metric sample data.
-   * <p>The coverage is</p>
+   * Get the ratio of entities whose entity group has complete metric sample data.
+   * <p>The ratio is</p>
    * <pre>NUM_ENTITIES_IN_VALID_ENTITY_GROUP / NUM_ALL_ENTITIES_TO_INCLUDE</pre>
    *
-   * @return The coverage of entity groups that has complete metric sample data.
+   * @return The ratio of entity groups that has complete metric sample data.
    */
-  public SortedMap<Long, Float> entityCoverageWithGroupGranularityByWindowIndex() {
-    return _entityCoverageWithGroupGranularityByWindowIndex;
+  public SortedMap<Long, Float> validEntityRatioWithGroupGranularityByWindowIndex() {
+    return _validEntityRatioWithGroupGranularityByWindowIndex;
   }
 
   /**
-   * Get the coverage of the entity groups.
-   * <p>The coverage is</p>
+   * Get the ratio of the entity groups.
+   * <p>The ratio is</p>
    * <pre>NUM_VALID_ENTITY_GROUPS / NUM_ALL_ENTITY_GROUPS.</pre>
    *
-   * @return The coverage of entity groups.
+   * @return The ratio of entity groups by window index.
    */
-  public SortedMap<Long, Float> entityGroupCoverageByWindowIndex() {
-    return _entityGroupCoverageByWindowIndex;
+  public SortedMap<Long, Float> validEntityGroupRatioByWindowIndex() {
+    return _validEntityGroupRatioByWindowIndex;
   }
 
   /**
-   * Get the valid window indexes. The entity and entity group coverage requirements can still meet the requirement
-   * after all these windows are included.
+   * Get the valid window indexes. A window starts from <I><tt>(windowIndex - 1) * windowMs</tt></I> and ends at 
+   * <I><tt>windowIndex * windowMs</tt></I>.
+   * The entity and valid entity group ratio requirements can still meet the requirement after all these windows 
+   * are included.
+   * 
    * @return A sorted set of valid window indexes.
    */
   public SortedSet<Long> validWindowIndexes() {
@@ -128,29 +131,29 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   /**
    * @return the set of valid entities based on the specified granularity.
    */
-  public Set<E> coveredEntities() {
-    return _coveredEntities;
+  public Set<E> validEntities() {
+    return _validEntities;
   }
 
   /**
    * @return the set of valid entity groups.
    */
-  public Set<G> coveredEntityGroups() {
-    return _coveredEntityGroups;
+  public Set<G> validEntityGroups() {
+    return _validEntityGroups;
   }
   
   /**
-   * @return the actual entity coverage after including all the {@link #validWindowIndexes()}
+   * @return the actual valid entity ratio after including all the {@link #validWindowIndexes()}
    */
-  public float entityCoverage() {
-    return _entityCoverage;
+  public float validEntityRatio() {
+    return _validEntityRatio;
   }
 
   /**
-   * @return the actual entity group coverage after including all the {@link #validWindowIndexes()}
+   * @return the actual valid entity group ratio after including all the {@link #validWindowIndexes()}
    */
-  public float entityGroupCoverage() {
-    return _entityGroupCoverage;
+  public float validEntityGroupRatio() {
+    return _validEntityGroupRatio;
   }
 
   /**
@@ -158,7 +161,7 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
    */
   public long firstWindowIndex() {
     // The map is in the reverse order.
-    return _entityCoverageByWindowIndex.lastKey();
+    return _validEntityRatioByWindowIndex.lastKey();
   }
 
   /**
@@ -166,7 +169,7 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
    */
   public long lastWindowIndex() {
     // The map is in the reverse order.
-    return _entityCoverageByWindowIndex.firstKey();
+    return _validEntityRatioByWindowIndex.firstKey();
   }
 
   /**

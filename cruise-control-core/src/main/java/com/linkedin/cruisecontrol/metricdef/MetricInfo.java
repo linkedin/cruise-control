@@ -12,9 +12,7 @@ public class MetricInfo {
   private final int _id;
   private final AggregationFunction _strategy;
 
-  public MetricInfo(String name,
-                    int id,
-                    AggregationFunction strategy) {
+  public MetricInfo(String name, int id, AggregationFunction strategy) {
     _name = name;
     _id = id;
     _strategy = strategy;

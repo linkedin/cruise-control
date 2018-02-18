@@ -18,46 +18,69 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * A metric array that holds a metric for all the windows.
+ * <p>
+ *   This class is responsible for bookkeeping raw values of each kind of metrics defined in the 
+ *   {@link MetricDef}. It also performs the {@link Imputation} if some of the values are missing from the 
+ *   metrics samples.
+ * </p>
  */
 public class RawMetricValues {
   private static final Logger LOG = LoggerFactory.getLogger(RawMetricValues.class);
-  private final int _minSamplesPerSnapshotWindow;
-  private final Map<Integer, float[]> _values;
+  // The minimum required samples for a window to not involve any imputation.
+  private final int _minSamplesPerWindow;
+  // The metric id to value array mapping. The array is a cyclic buffer. Each array slot represents a window.
+  private final Map<Integer, float[]> _valuesByMetricId;
+  // The number of samples per window. The array is a cyclic buffer. Each array slot represents a window.
   private final short[] _counts;
+  // A bit set to indicate whether a given window has imputation or not.
   private final BitSet _imputations;
+  // A bit set to indicate whether a given window is valid or not. 
   private final BitSet _validity;
+  // The oldest window index.
   private long _oldestWindowIndex;
 
-  public RawMetricValues(int numWindows, int minSamplesPerSnapshotWindow) {
-    if (numWindows == 1) {
-      throw new IllegalArgumentException("The number of windows should be at least 2 because at least one stable"
+  /**
+   * Construct a RawMetricValues.
+   * 
+   * @param numWindowsToKeep the total number of windows to keep track of.
+   * @param minSamplesPerWindow the minimum required samples for a window to not involve any {@link Imputation}.
+   */
+  public RawMetricValues(int numWindowsToKeep, int minSamplesPerWindow) {
+    if (numWindowsToKeep <= 1) {
+      throw new IllegalArgumentException("The number of windows should be at least 2 because at least one available"
                                              + " window and one current window are needed.");
     }
-    _values = new HashMap<>();
-    _counts = new short[numWindows];
-    _imputations = new BitSet(numWindows);
-    _validity = new BitSet(numWindows);
-    _minSamplesPerSnapshotWindow = minSamplesPerSnapshotWindow;
+    _valuesByMetricId = new HashMap<>();
+    _counts = new short[numWindowsToKeep];
+    _imputations = new BitSet(numWindowsToKeep);
+    _validity = new BitSet(numWindowsToKeep);
+    _minSamplesPerWindow = minSamplesPerWindow;
     _oldestWindowIndex = Long.MAX_VALUE;
   }
 
+  /**
+   * Add a {@link MetricSample} to the raw metric values.
+   * 
+   * @param sample The metric sample to add.
+   * @param windowIndex the window index of the metric sample.
+   * @param metricDef the metric definitions.
+   */
   public synchronized void addSample(MetricSample<?, ?> sample, long windowIndex, MetricDef metricDef) {
     // This sample is being added during window rolling.
     if (windowIndex < _oldestWindowIndex) {
       return;
-    } else if (windowIndex > _oldestWindowIndex + _counts.length) {
+    } else if (windowIndex > currentWindowIndex()) {
       throw new IllegalArgumentException("Cannot add sample to window index " + windowIndex + ", which is larger "
                                              + "than the current window index " + currentWindowIndex());
     }
     int idx = (int) (windowIndex % _counts.length);
-    for (Map.Entry<Integer, Double> entry : sample.allMetrics().entrySet()) {
-      _values.computeIfAbsent(entry.getKey(), k -> new float[_counts.length]);
+    for (Map.Entry<Integer, Double> entry : sample.allMetricValues().entrySet()) {
+      _valuesByMetricId.computeIfAbsent(entry.getKey(), k -> new float[_counts.length]);
       updateValue(entry.getValue(), metricDef.metricInfo(entry.getKey()), idx);
     }
     _counts[idx]++;
     updateValidityAndImputation(idx);
-    if (_counts[idx] >= _minSamplesPerSnapshotWindow) {
+    if (_counts[idx] >= _minSamplesPerWindow) {
       _imputations.clear(idx);
       if (idx != firstIdx()) {
         int prevIdx = prevIdx(idx);
@@ -65,7 +88,9 @@ public class RawMetricValues {
           updateAvgAdjacent(prevIdx);
         }
       }
-      if (idx != lastIdx()) {
+      // Adding sample to the last window index should not update imputation of the current window index. 
+      // Adding sample to the current window index has no next index to update.
+      if (idx != currentWindowIndex() && idx != lastIdx()) {
         int nextIdx = nextIdx(idx);
         if (_counts[nextIdx] < halfMinRequiredSamples()) {
           updateAvgAdjacent(nextIdx);
@@ -76,48 +101,82 @@ public class RawMetricValues {
               sample, windowIndex, idx, _counts[idx]);
   }
 
+  /**
+   * Update the oldest window index. This usually happens when a new window is rolled out. 
+   * The oldest window index should be monotonically increasing.
+   * 
+   * @param newOldestWindowIndex the new oldest window index.
+   */
   public synchronized void updateOldestWindowIndex(long newOldestWindowIndex) {
     long prevLastWindowIndex = currentWindowIndex() - 1;
     _oldestWindowIndex = newOldestWindowIndex;
     // Advancing the oldest window index will make the previous current window index become available to its
     // neighbour index (i.e. the previous last index) for AVG_ADJACENT imputation. We don't need to update the
-    // previous current window index because it would be up to date during the addSample call.
+    // current window index because it would be up to date during the addSample call.
     if (prevLastWindowIndex >= _oldestWindowIndex) {
       updateValidityAndImputation(handleWrapping(prevLastWindowIndex));
     }
   }
 
-  public synchronized boolean isValid(float maxAllowedImputation) {
+  /**
+   * Check whether this raw metric value is valid or not. The raw metric value is valid if:
+   * 1. All the windows is <tt>valid</tt> or <tt>flawed</tt>. (See {@link MetricSampleAggregator}, AND
+   * 2. The number of flawed windows is no larger than the max allowed imputations. 
+   * 
+   * @param maxAllowedFlawedWindows the maximum number of allowed flawed windows (windows with imputation).
+   * @return true if the raw metric value is valid, false otherwise.
+   */
+  public synchronized boolean isValid(int maxAllowedFlawedWindows) {
     int currentIdx = handleWrapping(currentWindowIndex());
+    // The total number of valid window indexes should exclude the current window index.
     int numValidIndexesAdjustment = _validity.get(handleWrapping(currentIdx)) ? 1 : 0;
     boolean allIndexesValid = _validity.cardinality() - numValidIndexesAdjustment == _counts.length - 1;
-
-    boolean tooManyImputations = numImputations() > maxAllowedImputation;
-
-    return allIndexesValid && !tooManyImputations;
+    // All indexes should be valid and should not have too many imputations.
+    return allIndexesValid && numFlawedWindows() <= maxAllowedFlawedWindows;
   }
 
-  public synchronized int numImputations() {
+  /**
+   * @return the number of flawed windows (windows with imputations).
+   */
+  public synchronized int numFlawedWindows() {
     int currentIdx = handleWrapping(currentWindowIndex());
     int numImputationAdjustment = _imputations.get(currentIdx) ? 1 : 0;
     return _imputations.cardinality() - numImputationAdjustment;
   }
 
+  /**
+   * Check if the window at the given window index is valid. A flawed window is still considered as 
+   * valid.
+   * 
+   * @param windowIndex the window index to check.
+   * @return true if the given window is valid, false otherwise.
+   */
   public synchronized boolean isValidAtWindowIndex(long windowIndex) {
     validateIndex(windowIndex);
     return _validity.get(handleWrapping(windowIndex));
   }
 
-  public synchronized boolean hasImputationAtWindowIndex(long windowIndex) {
+  /**
+   * Check if the window at the given window index is flawed (has imputation) 
+   * @param windowIndex the index of the window to check.
+   * @return true if the window is flawed, false otherwise.
+   */
+  public synchronized boolean isFlawedAtWindowIndex(long windowIndex) {
     validateIndex(windowIndex);
     return _imputations.get(handleWrapping(windowIndex));
   }
-
+  
   public synchronized int sampleCountsAtWindowIndex(long windowIndex) {
     validateIndex(windowIndex);
     return _counts[handleWrapping(windowIndex)];
   }
 
+  /**
+   * Clear the state of a given number of windows starting at the given window index.  
+   * 
+   * @param startingWindowIndex the starting index of the windows to reset.
+   * @param numWindowIndexesToReset the number of windows to reset.
+   */
   public synchronized void resetWindowIndexes(long startingWindowIndex, int numWindowIndexesToReset) {
     if (inValidRange(startingWindowIndex)
         || inValidRange(startingWindowIndex + numWindowIndexesToReset - 1)) {
@@ -134,13 +193,21 @@ public class RawMetricValues {
     }
   }
 
+  /**
+   * Get the aggregated values of the given sorted set of windows. The result ValuesAndImputations contains 
+   * the windows in the same order.
+   * 
+   * @param windowIndexes the sorted set of windows to get values for. 
+   * @param metricDef the metric definitions.
+   * @return the aggregated values and imputations of the given sorted set of windows in that order.
+   */
   public synchronized ValuesAndImputations aggregate(SortedSet<Long> windowIndexes, MetricDef metricDef) {
-    if (_values.isEmpty()) {
+    if (_valuesByMetricId.isEmpty()) {
       return ValuesAndImputations.empty(windowIndexes.size(), metricDef);
     }
     Map<Integer, MetricValues> aggValues = new HashMap<>();
     SortedMap<Integer, Imputation> imputations = new TreeMap<>();
-    for (Map.Entry<Integer, float[]> entry : _values.entrySet()) {
+    for (Map.Entry<Integer, float[]> entry : _valuesByMetricId.entrySet()) {
       int metricId = entry.getKey();
       float[] values = entry.getValue();
       MetricInfo info = metricDef.metricInfo(metricId);
@@ -153,34 +220,31 @@ public class RawMetricValues {
         validateIndex(windowIndex);
         int idx = handleWrapping(windowIndex);
         // Sufficient samples
-        if (_counts[idx] >= _minSamplesPerSnapshotWindow) {
+        if (_counts[idx] >= _minSamplesPerWindow) {
           aggValuesForMetric.set(resultIndex, getValue(info, idx, values));
         // Not quite sufficient, but have some available.
         } else if (_counts[idx] >= halfMinRequiredSamples()) {
-          if (info.id() == 0) {
-            imputations.put(resultIndex, Imputation.AVG_AVAILABLE);
-          }
+          imputations.putIfAbsent(resultIndex, Imputation.AVG_AVAILABLE);
           aggValuesForMetric.set(resultIndex, getValue(info, idx, values));
-        // Not sufficient, check the neighbors. The neighbors only exists when the index is not on the edge, i.e
+        // Not sufficient, check the neighbors. The neighbors only exist when the index is not on the edge, i.e
         // neither the first nor last index.
         } else if (idx != firstIdx() && idx != lastIdx()
-            && _counts[prevIdx(idx)] >= _minSamplesPerSnapshotWindow
-            && _counts[nextIdx(idx)] >= _minSamplesPerSnapshotWindow) {
-          if (info.id() == 0) {
-            imputations.put(resultIndex, Imputation.AVG_ADJACENT);
-          }
+            && _counts[prevIdx(idx)] >= _minSamplesPerWindow
+            && _counts[nextIdx(idx)] >= _minSamplesPerWindow) {
+          imputations.putIfAbsent(resultIndex, Imputation.AVG_ADJACENT);
           int prevIdx = prevIdx(idx);
           int nextIdx = nextIdx(idx);
-          double total = _values.get(metricId)[prevIdx] + (_counts[idx] == 0 ? 0 : _values.get(metricId)[idx])
-              + _values.get(metricId)[nextIdx];
+          double total = _valuesByMetricId.get(metricId)[prevIdx] + (_counts[idx] == 0 ? 0 : _valuesByMetricId.get(metricId)[idx])
+              + _valuesByMetricId.get(metricId)[nextIdx];
           switch (info.strategy()) {
             case AVG:
               double counts = _counts[prevIdx] + _counts[idx] + _counts[nextIdx];
-              aggValuesForMetric.set(resultIndex, (float) (total / counts));
+              aggValuesForMetric.set(resultIndex, total / counts);
               break;
-            case MAX:
+            case MAX: // fall through.
             case LATEST:
-              aggValuesForMetric.set(resultIndex, _counts[idx] > 0 ? (float) (total / 3) : (float) (total / 2));
+              // for max and latest, we already only keep the largest or last value.
+              aggValuesForMetric.set(resultIndex, _counts[idx] > 0 ?  total / 3 : total / 2);
               break;
             default:
               throw new IllegalStateException("Should never be here.");
@@ -188,15 +252,11 @@ public class RawMetricValues {
         // Neighbor not available, use the insufficient samples.
         } else if (_counts[idx] > 0) {
           aggValuesForMetric.set(resultIndex, getValue(info, idx, values));
-          if (info.id() == 0) {
-            imputations.put(resultIndex, Imputation.FORCED_INSUFFICIENT);
-          }
+          imputations.putIfAbsent(resultIndex, Imputation.FORCED_INSUFFICIENT);
         // Nothing is available, just return all 0 and NO_VALID_IMPUTATION.
         } else {
           aggValuesForMetric.set(resultIndex, 0);
-          if (info.id() == 0) {
-            imputations.put(resultIndex, Imputation.NO_VALID_IMPUTATION);
-          }
+          imputations.putIfAbsent(resultIndex, Imputation.NO_VALID_IMPUTATION);
         }
         resultIndex++;
       }
@@ -204,6 +264,9 @@ public class RawMetricValues {
     return new ValuesAndImputations(new AggregatedMetricValues(aggValues), imputations);
   }
 
+  /**
+   * @return the total number of samples added to this RawMetricValues.
+   */
   public synchronized int numSamples() {
     int count = 0;
     for (int i : _counts) {
@@ -211,7 +274,7 @@ public class RawMetricValues {
     }
     return count;
   }
-
+  
   private float getValue(MetricInfo info, int index, float[] values) {
     if (_counts[index] == 0) {
       return 0;
@@ -244,15 +307,16 @@ public class RawMetricValues {
   }
 
   private void add(double newValue, int metricId, int index) {
-    _values.get(metricId)[index] = (float) (_counts[index] == 0 ? newValue : _values.get(metricId)[index] + newValue);
+    _valuesByMetricId.get(metricId)[index] = (float) (_counts[index] == 0 ? newValue : _valuesByMetricId.get(metricId)[index] + newValue);
   }
 
   private void max(double newValue, int metricId, int index) {
-    _values.get(metricId)[index] = (float) (_counts[index] == 0 ? newValue : Math.max(_values.get(metricId)[index], newValue));
+    _valuesByMetricId.get(metricId)[index] = (float) (_counts[index] == 0 ? newValue : Math.max(
+        _valuesByMetricId.get(metricId)[index], newValue));
   }
 
   private void latest(double newValue, int metricId, int index) {
-    _values.get(metricId)[index] = (float) newValue;
+    _valuesByMetricId.get(metricId)[index] = (float) newValue;
   }
 
   private void updateValidityAndImputation(int index) {
@@ -269,12 +333,12 @@ public class RawMetricValues {
   }
 
   private boolean updateEnoughSamples(int index) {
-    if (_counts[index] == _minSamplesPerSnapshotWindow) {
+    if (_counts[index] == _minSamplesPerWindow) {
       _validity.set(index);
       _imputations.clear(index);
       return true;
     }
-    return _counts[index] >= _minSamplesPerSnapshotWindow;
+    return _counts[index] >= _minSamplesPerWindow;
   }
 
   private boolean updateAvailableAvg(int index) {
@@ -292,8 +356,8 @@ public class RawMetricValues {
     if (prevIdx < 0 || nextIdx < 0) {
       return false;
     }
-    if (_counts[prevIdx] >= _minSamplesPerSnapshotWindow
-        && _counts[nextIdx] >= _minSamplesPerSnapshotWindow) {
+    if (_counts[prevIdx] >= _minSamplesPerWindow
+        && _counts[nextIdx] >= _minSamplesPerWindow) {
       _validity.set(index);
       _imputations.set(index);
       return true;
@@ -327,7 +391,7 @@ public class RawMetricValues {
   }
 
   private int halfMinRequiredSamples() {
-    return Math.max(1, _minSamplesPerSnapshotWindow / 2);
+    return Math.max(1, _minSamplesPerWindow / 2);
   }
 
   private void validateIndex(long windowIndex) {

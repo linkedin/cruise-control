@@ -22,12 +22,12 @@ import org.slf4j.LoggerFactory;
 public class MetricSample<G, E extends Entity<G>> {
   private static final Logger LOG = LoggerFactory.getLogger(MetricSample.class);
   protected final E _entity;
-  protected final Map<Integer, Double> _metrics;
+  protected final Map<Integer, Double> _valuesByMetricId;
   protected long _sampleTime;
 
   public MetricSample(E entity) {
     _entity = entity;
-    _metrics = new HashMap<>();
+    _valuesByMetricId = new HashMap<>();
     _sampleTime = -1L;
   }
 
@@ -46,7 +46,7 @@ public class MetricSample<G, E extends Entity<G>> {
       throw new IllegalStateException("The metric sample has been closed.");
     }
 
-    Double origValue = _metrics.putIfAbsent(info.id(), sampleValue);
+    Double origValue = _valuesByMetricId.putIfAbsent(info.id(), sampleValue);
     if (origValue != null) {
       throw new IllegalStateException("Trying to record sample value " + sampleValue + " for " + info.name() +
                                           ", but there is already a value " + origValue + " recorded.");
@@ -69,7 +69,7 @@ public class MetricSample<G, E extends Entity<G>> {
       throw new IllegalStateException("The metric sample has been closed.");
     }
 
-    Double origValue = _metrics.putIfAbsent(metricDef.metricInfo(metricName).id(), sampleValue);
+    Double origValue = _valuesByMetricId.putIfAbsent(metricDef.metricInfo(metricName).id(), sampleValue);
     if (origValue != null) {
       throw new IllegalStateException("Trying to record sample value " + sampleValue + " for " + metricName +
                                           ", but there is already a value " + origValue + " recorded.");
@@ -91,17 +91,17 @@ public class MetricSample<G, E extends Entity<G>> {
   }
 
   /**
-   * The metric for the specified resource.
+   * The metric for the specified metric id.
    */
-  public Double metricFor(int metricId) {
-    return _metrics.getOrDefault(metricId, Double.NaN);
+  public Double metricValue(int metricId) {
+    return _valuesByMetricId.getOrDefault(metricId, Double.NaN);
   }
 
   /**
    * @return all the metrics.
    */
-  public Map<Integer, Double> allMetrics() {
-    return Collections.unmodifiableMap(_metrics);
+  public Map<Integer, Double> allMetricValues() {
+    return Collections.unmodifiableMap(_valuesByMetricId);
   }
 
   /**
@@ -121,11 +121,11 @@ public class MetricSample<G, E extends Entity<G>> {
    * Validate the metric sample.
    */
   public boolean isValid(MetricDef metricDef) {
-    return _metrics.size() == metricDef.size();
+    return _valuesByMetricId.size() == metricDef.size();
   }
 
   @Override
   public String toString() {
-    return String.format("(entity=%s,metrics=%s,sampleTime=%d)", _entity, _metrics, _sampleTime);
+    return String.format("(entity=%s, metrics=%s, sampleTime=%d)", _entity, _valuesByMetricId, _sampleTime);
   }
 }

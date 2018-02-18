@@ -12,7 +12,7 @@ import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 
 
 /**
- * The configuration for Cruise control.
+ * The configuration for Cruise Control.
  */
 public class CruiseControlConfig extends AbstractConfig {
   private static final ConfigDef CONFIG;
@@ -23,23 +23,26 @@ public class CruiseControlConfig extends AbstractConfig {
   public static final String LOAD_SNAPSHOT_WINDOW_MS_CONFIG = "load.snapshot.window.ms";
   private static final String LOAD_SNAPSHOT_WINDOW_MS_DOC = "The interval in millisecond that is covered by each " +
       "load snapshot. The load snapshot will aggregate all the metric samples whose timestamp fall into its window. " +
-      "The load snapshot window must be greater than the metric.sampling.interval.ms";
+      "The load snapshot window must be greater than the metric.sampling.interval.ms.";
 
   /**
    * <code>num.load.snapshots</code>
    */
   public static final String NUM_LOAD_SNAPSHOTS_CONFIG = "num.load.snapshots";
   private static final String NUM_LOAD_SNAPSHOTS_DOC = "The maximum number of load snapshots the load monitor would keep. " +
-      "Each snapshot covers a time window defined by load.snapshot.window.ms";
+      "Each snapshot covers a time window defined by load.snapshot.window.ms.";
 
   /**
    * <code>min.samples.per.load.snapshot</code>
    */
   public static final String MIN_SAMPLES_PER_LOAD_SNAPSHOT_CONFIG = "min.samples.per.load.snapshot";
   private static final String MIN_SAMPLES_PER_LOAD_SNAPSHOT_DOC = "The minimum number of metric samples a valid load " +
-      "snapshot should have. If a partition does not have enough samples in a snapshot window, the topic of the partition " +
-      "will be removed from the snapshot due to in sufficient data.";
+      "snapshot should have. If a partition does not have enough samples in a snapshot window, the entire group of the "
+      + "entity will be removed from the snapshot due to insufficient data.";
 
+  /**
+   * <code>max.allowed.imputations.per.entity</code>
+   */
   public static final String MAX_ALLOWED_IMPUTATIONS_PER_ENTITY_CONFIG = "max.allowed.imputations.per.entity";
   private static final String MAX_ALLOWED_IMPUTATIONS_PER_ENTITY_DOC = "The maximum allowed number of imputations for "
       + "each entity. An entity will be considered as invalid if the total number imputations in all the windows goes "
@@ -50,7 +53,7 @@ public class CruiseControlConfig extends AbstractConfig {
         .define(LOAD_SNAPSHOT_WINDOW_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 60 * 60 * 1000,
-                atLeast(0),
+                atLeast(1),
                 ConfigDef.Importance.HIGH,
                 LOAD_SNAPSHOT_WINDOW_MS_DOC)
         .define(NUM_LOAD_SNAPSHOTS_CONFIG,

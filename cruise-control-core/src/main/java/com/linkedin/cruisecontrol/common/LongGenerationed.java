@@ -24,6 +24,10 @@ public class LongGenerationed implements Generationed<Long> {
     return _generation.get();
   }
 
+  /**
+   * {@inheritDoc}
+   * When <tt>other</tt> is null, this LongGenerationed will be considered as a later generation.
+   */
   @Override
   public int compareGeneration(Generationed<Long> other) {
     if (other == null) {

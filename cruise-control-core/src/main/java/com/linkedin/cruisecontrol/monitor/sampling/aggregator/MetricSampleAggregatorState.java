@@ -59,6 +59,8 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGeneration
 
   /**
    * Get the list of window indexes that need to be updated based on the current generation.
+   * This method also removes the windows that are older than the oldestWindowIndex from the the internal state 
+   * of this class.
    *
    * @param generation the current generation of the MetricSampleAggregator.
    * @param oldestWindowIndex the index of the oldest window in the MetricSampleAggregator.
@@ -107,6 +109,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGeneration
       // We only cache the completeness if the completeness covers all the windows.
       // This is because in most cases, the completeness covering all the windows are more likely to be a
       // regular query while a partial windows query is more likely an ad-hoc query.
+      // Note that _windowStates is in reverse order.
       if (_windowStates.lastKey() == completeness.firstWindowIndex()
           && _windowStates.firstKey() == completeness.lastWindowIndex()) {
         _completenessCache.put(options, completeness);
@@ -142,24 +145,26 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGeneration
                                                              long toWindowIndex,
                                                              AggregationOptions<G, E> options) {
     MetricSampleCompleteness<G, E> completeness = new MetricSampleCompleteness<>(generation(), _windowMs);
-    completeness.addCoveredEntities(new HashSet<>(options.interestedEntities()));
-    completeness.addCoveredEntityGroups(new HashSet<>(options.entityGroups()));
+    completeness.addValidEntities(new HashSet<>(options.interestedEntities()));
+    completeness.addValidEntityGroups(new HashSet<>(options.interestedEntityGroups()));
 
     for (Map.Entry<Long, WindowState<G, E>> entry : _windowStates.entrySet()) {
       long windowIdx = entry.getKey();
-      if (windowIdx < fromWindowIndex || windowIdx > toWindowIndex) {
+      if (windowIdx > toWindowIndex) {
         continue;
+      } else if (windowIdx < fromWindowIndex) {
+        break;
       }
       WindowState<G, E> windowState = entry.getValue();
       windowState.maybeInclude(windowIdx, completeness, options);
     }
-    // No window is included. We need to clear the covered entity and entity group. Otherwise we keep them.
+    // No window is included. We need to clear the valid entity and entity group. Otherwise we keep them.
     if (completeness.validWindowIndexes().isEmpty()) {
-      completeness.retainAllCoveredEntities(Collections.emptySet());
-      completeness.retainAllCoveredEntityGroups(Collections.emptySet());
+      completeness.retainAllValidEntities(Collections.emptySet());
+      completeness.retainAllValidEntityGroups(Collections.emptySet());
     }
-    completeness.setEntityCoverage((float) completeness.coveredEntities().size() / options.interestedEntities().size());
-    completeness.setEntityGroupCoverage((float) completeness.coveredEntityGroups().size() / options.entityGroups().size());
+    completeness.setValidEntityRatio((float) completeness.validEntities().size() / options.interestedEntities().size());
+    completeness.setValidEntityGroupRatio((float) completeness.validEntityGroups().size() / options.interestedEntityGroups().size());
     return completeness;
   }
 }

@@ -5,8 +5,9 @@
 package com.linkedin.cruisecontrol.model;
 
 /**
- * The abstract class for an entity. We use abstract class to force implementation to implement 
- * {@link #hashCode()} and {@link #equals(Object)} method.
+ * The abstract class for an entity. We use abstract class to force implementation of {@link #hashCode()} and
+ * {@link #equals(Object)} method.
+ *
  * @param <G> the group this entity belongs to.
  */
 public abstract class Entity<G> {
@@ -18,14 +19,14 @@ public abstract class Entity<G> {
   public abstract G group();
 
   /**
-   * The entity will be used as a key of a map. So it should implement hashCode() and equals(). 
+   * The entity will be used as a key of a map. So it should implement hashCode() and equals().
    * {@inheritDoc}
    */
   @Override
   public abstract int hashCode();
 
   /**
-   * The entity will be used as a key of a map. So it should implement hashCode() and equals(). 
+   * The entity will be used as a key of a map. So it should implement hashCode() and equals().
    * {@inheritDoc}
    */
   @Override
