@@ -32,11 +32,7 @@ public class MetricSample<G, E extends Entity<G>> {
   }
 
   /**
-   * Record a sample value for the given resource type.
-   * This is a package private function which allows metric fetcher to override the metric if necessary.
-   * Currently it is only used when user enables auto cluster model coefficient training.
-   *
-   * When the update is from metric fetcher, it does not override the user specified value.
+   * Record a sample value for the given metric info.
    *
    * @param info        The {@link MetricInfo}
    * @param sampleValue the sample value.
@@ -49,29 +45,6 @@ public class MetricSample<G, E extends Entity<G>> {
     Double origValue = _valuesByMetricId.putIfAbsent(info.id(), sampleValue);
     if (origValue != null) {
       throw new IllegalStateException("Trying to record sample value " + sampleValue + " for " + info.name() +
-                                          ", but there is already a value " + origValue + " recorded.");
-    }
-  }
-
-  /**
-   * Record a sample value for the given metric name.
-   * This is a package private function which allows metric fetcher to override the metric if necessary.
-   * Currently it is only used when user enables auto cluster model coefficient training.
-   *
-   * When the update is from metric fetcher, it does not override the user specified value.
-   *
-   * @param metricName  The metric name.
-   * @param sampleValue The sample value.
-   * @param metricDef   The metric definition.
-   */
-  public void record(String metricName, double sampleValue, MetricDef metricDef) {
-    if (_sampleTime >= 0) {
-      throw new IllegalStateException("The metric sample has been closed.");
-    }
-
-    Double origValue = _valuesByMetricId.putIfAbsent(metricDef.metricInfo(metricName).id(), sampleValue);
-    if (origValue != null) {
-      throw new IllegalStateException("Trying to record sample value " + sampleValue + " for " + metricName +
                                           ", but there is already a value " + origValue + " recorded.");
     }
   }
@@ -105,7 +78,7 @@ public class MetricSample<G, E extends Entity<G>> {
   }
 
   /**
-   * Close this metric sample. The timestamp will be used to determine which snapshot the metric sample will be in.
+   * Close this metric sample. The timestamp will be used to determine which window the metric sample will be in.
    */
   public void close(long closingTime) {
     if (closingTime < 0) {

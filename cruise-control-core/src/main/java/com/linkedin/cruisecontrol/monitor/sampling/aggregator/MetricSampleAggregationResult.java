@@ -16,10 +16,10 @@ import java.util.Set;
  * The aggregation result of {@link MetricSampleAggregator#aggregate(long, long, AggregationOptions)}.
  *
  * <p>
- *   In the aggregation result, each entity will be represented with a {@link ValuesAndImputations}. It contains
+ *   In the aggregation result, each entity will be represented with a {@link ValuesAndExtrapolations}. It contains
  *   the values of each metric in each window. For memory efficiency the metric values are stored in a two-dimensional
  *   array. To get the window associated with each value, users may use the time window array returned by
- *   {@link ValuesAndImputations#windows()}, or call {@link ValuesAndImputations#window(int)} to get the time window
+ *   {@link ValuesAndExtrapolations#windows()}, or call {@link ValuesAndExtrapolations#window(int)} to get the time window
  *   in milliseconds for the index.
  * </p>
  *
@@ -29,24 +29,24 @@ import java.util.Set;
  *           a valid {@link Object#hashCode()} and {@link Object#equals(Object)} implementation.
  */
 public class MetricSampleAggregationResult<G, E extends Entity<G>> extends LongGenerationed {
-  private final Map<E, ValuesAndImputations> _entityValuesAndImputations;
+  private final Map<E, ValuesAndExtrapolations> _entityValuesAndExtrapolations;
   private final Set<E> _invalidEntities;
   private final MetricSampleCompleteness<G, E> _completeness;
 
   public MetricSampleAggregationResult(long generation, MetricSampleCompleteness<G, E> completeness) {
     super(generation);
-    _entityValuesAndImputations = new HashMap<>();
+    _entityValuesAndExtrapolations = new HashMap<>();
     _invalidEntities = new HashSet<>();
     _completeness = completeness;
   }
 
   /**
-   * Get the aggregated metric values and imputations (if any) of each entity.
+   * Get the aggregated metric values and extrapolations (if any) of each entity.
    *
-   * @return A mapping from entity to aggregated metric values and potential imputations.
+   * @return A mapping from entity to aggregated metric values and potential extrapolations.
    */
-  public Map<E, ValuesAndImputations> valuesAndImputations() {
-    return _entityValuesAndImputations;
+  public Map<E, ValuesAndExtrapolations> valuesAndExtrapolations() {
+    return _entityValuesAndExtrapolations;
   }
 
   /**
@@ -88,8 +88,8 @@ public class MetricSampleAggregationResult<G, E extends Entity<G>> extends LongG
   }
 
   // package private for modification.
-  void addResult(E entity, ValuesAndImputations valuesAndImputations) {
-    _entityValuesAndImputations.put(entity, valuesAndImputations);
+  void addResult(E entity, ValuesAndExtrapolations valuesAndExtrapolations) {
+    _entityValuesAndExtrapolations.put(entity, valuesAndExtrapolations);
   }
 
   void recordInvalidEntity(E entity) {

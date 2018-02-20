@@ -12,23 +12,23 @@ import java.util.Map;
 
 
 /**
- * The aggregated metrics for all the windows and the imputation information if there is any imputation used.
+ * The aggregated metrics for all the windows and the extrapolation information if there is any extrapolation used.
  */
-public class ValuesAndImputations {
+public class ValuesAndExtrapolations {
   private final AggregatedMetricValues _metricValues;
-  private final Map<Integer, Imputation> _imputations;
+  private final Map<Integer, Extrapolation> _extrapolations;
   private List<Long> _windows;
 
   /**
    * Package private constructor.
    * @param metricValues the metric values.
-   * @param imputations the imputations by corresponding metric value indexes.
+   * @param extrapolations the extrapolations by corresponding metric value indexes.
    */
-  ValuesAndImputations(AggregatedMetricValues metricValues, Map<Integer, Imputation> imputations) {
+  ValuesAndExtrapolations(AggregatedMetricValues metricValues, Map<Integer, Extrapolation> extrapolations) {
     _metricValues = metricValues;
-    _imputations = imputations;
+    _extrapolations = extrapolations;
   }
-  
+
   /**
    * Get the metric values for all the included windows.
    * <p>
@@ -43,13 +43,13 @@ public class ValuesAndImputations {
   }
 
   /**
-   * Get the imputations for the values. The keys of the returned map are the indexes of the {@link AggregatedMetricValues}
+   * Get the extrapolations for the values. The keys of the returned map are the indexes of the {@link AggregatedMetricValues}
    * returned by {@link #metricValues()}.
    *
-   * @return the {@link Imputation}s for the values if exist.
+   * @return the {@link Extrapolation}s for the values if exist.
    */
-  public Map<Integer, Imputation> imputations() {
-    return _imputations;
+  public Map<Integer, Extrapolation> extrapolations() {
+    return _extrapolations;
   }
 
   /**
@@ -82,20 +82,20 @@ public class ValuesAndImputations {
   }
 
   /**
-   * Create an empty ValuesAndImputations.
+   * Create an empty ValuesAndExtrapolations.
    * @param numWindows the number of windows.
    * @param metricDef the metric definition.
-   * @return an empty ValuesAndImputations.
+   * @return an empty ValuesAndExtrapolations.
    */
-  static ValuesAndImputations empty(int numWindows, MetricDef metricDef) {
+  static ValuesAndExtrapolations empty(int numWindows, MetricDef metricDef) {
     Map<Integer, MetricValues> values = new HashMap<>();
     for (int i = 0; i <  metricDef.all().size(); i++) {
       values.put(i, new MetricValues(numWindows));
     }
-    Map<Integer, Imputation> imputations = new HashMap<>();
+    Map<Integer, Extrapolation> extrapolations = new HashMap<>();
     for (int i = 0; i < numWindows; i++) {
-      imputations.put(i, Imputation.NO_VALID_IMPUTATION);
+      extrapolations.put(i, Extrapolation.NO_VALID_EXTRAPOLATION);
     }
-    return new ValuesAndImputations(new AggregatedMetricValues(values), imputations);
+    return new ValuesAndExtrapolations(new AggregatedMetricValues(values), extrapolations);
   }
 }

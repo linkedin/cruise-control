@@ -59,7 +59,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGeneration
 
   /**
    * Get the list of window indexes that need to be updated based on the current generation.
-   * This method also removes the windows that are older than the oldestWindowIndex from the the internal state 
+   * This method also removes the windows that are older than the oldestWindowIndex from the the internal state
    * of this class.
    *
    * @param generation the current generation of the MetricSampleAggregator.
@@ -108,7 +108,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGeneration
       completeness = computeCompleteness(fromWindowIndex, toWindowIndex, options);
       // We only cache the completeness if the completeness covers all the windows.
       // This is because in most cases, the completeness covering all the windows are more likely to be a
-      // regular query while a partial windows query is more likely an ad-hoc query.
+      // repeating query while a partial windows query is more likely an ad-hoc query.
       // Note that _windowStates is in reverse order.
       if (_windowStates.lastKey() == completeness.firstWindowIndex()
           && _windowStates.firstKey() == completeness.lastWindowIndex()) {

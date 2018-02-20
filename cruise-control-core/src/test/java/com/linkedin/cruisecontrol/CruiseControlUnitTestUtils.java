@@ -21,20 +21,20 @@ public class CruiseControlUnitTestUtils {
 
   }
 
-  public static <G, E extends Entity<G>> void populateSampleAggregator(int numSnapshots,
-                                                                       int numSamplesPerSnapshot,
+  public static <G, E extends Entity<G>> void populateSampleAggregator(int numWindows,
+                                                                       int numSamplesPerWindow,
                                                                        MetricSampleAggregator<G, E> metricSampleAggregator,
                                                                        E entity,
-                                                                       int startingSnapshotWindow,
-                                                                       long snapshotWindowMs,
+                                                                       int startingWindow,
+                                                                       long windowMs,
                                                                        MetricDef metricDef) {
-    for (int i = startingSnapshotWindow; i < numSnapshots + startingSnapshotWindow; i++) {
-      for (int j = 0; j < numSamplesPerSnapshot; j++) {
+    for (int i = startingWindow; i < numWindows + startingWindow; i++) {
+      for (int j = 0; j < numSamplesPerWindow; j++) {
         MetricSample<G, E> sample = new MetricSample<>(entity);
         for (MetricInfo metricInfo : metricDef.all()) {
           sample.record(metricInfo, i * 10 + j);
         }
-        sample.close(i * snapshotWindowMs + 1);
+        sample.close(i * windowMs + 1);
         metricSampleAggregator.addSample(sample);
       }
     }

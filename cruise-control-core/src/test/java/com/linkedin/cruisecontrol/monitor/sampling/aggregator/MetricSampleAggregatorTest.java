@@ -32,8 +32,8 @@ import static org.junit.Assert.assertTrue;
 public class MetricSampleAggregatorTest {
   private static final float EPSILON = 0.01f;
   private static final int NUM_WINDOWS = 20;
-  private static final long SNAPSHOT_WINDOW_MS = 1000L;
-  private static final int MIN_SAMPLES_PER_LOAD_SNAPSHOT = 4;
+  private static final long WINDOW_MS = 1000L;
+  private static final int MIN_SAMPLES_PER_WINDOW = 4;
   private static final IntegerEntity ENTITY1 = new IntegerEntity("g1", 1234);
   private static final IntegerEntity ENTITY2 = new IntegerEntity("g1", 5678);
   private static final IntegerEntity ENTITY3 = new IntegerEntity("g2", 1234);
@@ -42,10 +42,10 @@ public class MetricSampleAggregatorTest {
   @Test
   public void testAddSampleInDifferentWindows() throws NotEnoughValidWindowsException {
     MetricSampleAggregator<String, IntegerEntity> aggregator =
-        new MetricSampleAggregator<>(NUM_WINDOWS, SNAPSHOT_WINDOW_MS, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
+        new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS, MIN_SAMPLES_PER_WINDOW,
                                      0, 5, _metricDef);
-    // The remaining windows should NUM_SNAPSHOT - 2 to 2 * NUM_SNAPSHOT - 3;
-    populateSampleAggregator(2 * NUM_WINDOWS - 1, MIN_SAMPLES_PER_LOAD_SNAPSHOT, aggregator);
+    // The remaining windows should NUM_WINDOWS - 2 to 2 * NUM_WINDOWS - 3;
+    populateSampleAggregator(2 * NUM_WINDOWS - 1, MIN_SAMPLES_PER_WINDOW, aggregator);
 
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(1, 1, NUM_WINDOWS, Collections.emptySet(),
@@ -54,23 +54,23 @@ public class MetricSampleAggregatorTest {
         aggregator.aggregate(-1, Long.MAX_VALUE, options);
     assertNotNull(aggResults);
 
-    assertEquals(1, aggResults.valuesAndImputations().size());
+    assertEquals(1, aggResults.valuesAndExtrapolations().size());
 
-    for (Map.Entry<IntegerEntity, ValuesAndImputations> entry : aggResults.valuesAndImputations().entrySet()) {
-      ValuesAndImputations valuesAndImputations = entry.getValue();
-      List<Long> windows = valuesAndImputations.windows();
+    for (Map.Entry<IntegerEntity, ValuesAndExtrapolations> entry : aggResults.valuesAndExtrapolations().entrySet()) {
+      ValuesAndExtrapolations valuesAndExtrapolations = entry.getValue();
+      List<Long> windows = valuesAndExtrapolations.windows();
       assertEquals(NUM_WINDOWS, windows.size());
       for (int i = 0; i < NUM_WINDOWS; i++) {
-        assertEquals((2 * NUM_WINDOWS - 2 - i) * SNAPSHOT_WINDOW_MS, windows.get(i).longValue());
+        assertEquals((2 * NUM_WINDOWS - 2 - i) * WINDOW_MS, windows.get(i).longValue());
       }
       for (MetricInfo info : _metricDef.all()) {
-        MetricValues valuesForMetric = valuesAndImputations.metricValues().valuesFor(info.id());
+        MetricValues valuesForMetric = valuesAndExtrapolations.metricValues().valuesFor(info.id());
         for (int i = 0; i < NUM_WINDOWS; i++) {
           double expectedValue;
           if (info.strategy() == AggregationFunction.LATEST || info.strategy() == AggregationFunction.MAX) {
-            expectedValue = (2 * NUM_WINDOWS - 3 - i) * 10 + MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1;
+            expectedValue = (2 * NUM_WINDOWS - 3 - i) * 10 + MIN_SAMPLES_PER_WINDOW - 1;
           } else {
-            expectedValue = (2 * NUM_WINDOWS - 3 - i) * 10 + (MIN_SAMPLES_PER_LOAD_SNAPSHOT - 1) / 2.0;
+            expectedValue = (2 * NUM_WINDOWS - 3 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0;
           }
           assertEquals("The utilization for " + info.name() + " should be " + expectedValue,
                        expectedValue, valuesForMetric.get(i % NUM_WINDOWS), 0);
@@ -85,11 +85,11 @@ public class MetricSampleAggregatorTest {
   @Test
   public void testGeneration() {
     MetricSampleAggregator<String, IntegerEntity> aggregator =
-        new MetricSampleAggregator<>(NUM_WINDOWS, SNAPSHOT_WINDOW_MS, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
+        new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS, MIN_SAMPLES_PER_WINDOW,
                                      0, 5, _metricDef);
 
-    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
-                                                        aggregator, ENTITY1, 0, SNAPSHOT_WINDOW_MS,
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW,
+                                                        aggregator, ENTITY1, 0, WINDOW_MS,
                                                         _metricDef);
     assertEquals(NUM_WINDOWS + 1, aggregator.generation().intValue());
 
@@ -102,58 +102,58 @@ public class MetricSampleAggregatorTest {
     }
 
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1,
-                                                        aggregator, ENTITY2, 1, SNAPSHOT_WINDOW_MS, _metricDef);
+                                                        aggregator, ENTITY2, 1, WINDOW_MS, _metricDef);
     aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(NUM_WINDOWS + 2, windowState.windowStates().get((long) 2).generation().intValue());
   }
 
   @Test
-  public void testEarliestSnapshotWindow() {
+  public void testEarliestWindow() {
     MetricSampleAggregator<String, IntegerEntity> aggregator =
-        new MetricSampleAggregator<>(NUM_WINDOWS, SNAPSHOT_WINDOW_MS, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
+        new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS, MIN_SAMPLES_PER_WINDOW,
                                      0, 5, _metricDef);
     assertNull(aggregator.earliestWindow());
-    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
-                                                        aggregator, ENTITY1, 0, SNAPSHOT_WINDOW_MS,
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS, MIN_SAMPLES_PER_WINDOW,
+                                                        aggregator, ENTITY1, 0, WINDOW_MS,
                                                         _metricDef);
-    assertEquals(SNAPSHOT_WINDOW_MS, aggregator.earliestWindow().longValue());
-    CruiseControlUnitTestUtils.populateSampleAggregator(2, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
-                                                        aggregator, ENTITY1, NUM_WINDOWS, SNAPSHOT_WINDOW_MS,
+    assertEquals(WINDOW_MS, aggregator.earliestWindow().longValue());
+    CruiseControlUnitTestUtils.populateSampleAggregator(2, MIN_SAMPLES_PER_WINDOW,
+                                                        aggregator, ENTITY1, NUM_WINDOWS, WINDOW_MS,
                                                         _metricDef);
-    assertEquals(2 * SNAPSHOT_WINDOW_MS, aggregator.earliestWindow().longValue());
+    assertEquals(2 * WINDOW_MS, aggregator.earliestWindow().longValue());
   }
 
   @Test
-  public void testAllSnapshotWindows() {
+  public void testAllWindows() {
     MetricSampleAggregator<String, IntegerEntity> aggregator =
-        new MetricSampleAggregator<>(NUM_WINDOWS, SNAPSHOT_WINDOW_MS, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
+        new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS, MIN_SAMPLES_PER_WINDOW,
                                      0, 5, _metricDef);
     assertTrue(aggregator.allWindows().isEmpty());
-    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
-                                                        aggregator, ENTITY1, 0, SNAPSHOT_WINDOW_MS,
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW,
+                                                        aggregator, ENTITY1, 0, WINDOW_MS,
                                                         _metricDef);
     List<Long> allStWindows = aggregator.allWindows();
     assertEquals(NUM_WINDOWS + 1, allStWindows.size());
     for (int i = 0; i < NUM_WINDOWS + 1; i++) {
-      assertEquals((i + 1) * SNAPSHOT_WINDOW_MS, allStWindows.get(i).longValue());
+      assertEquals((i + 1) * WINDOW_MS, allStWindows.get(i).longValue());
     }
   }
 
   @Test
-  public void testAvailableSnapshotWindows() {
+  public void testAvailableWindows() {
     MetricSampleAggregator<String, IntegerEntity> aggregator =
-        new MetricSampleAggregator<>(NUM_WINDOWS, SNAPSHOT_WINDOW_MS, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
+        new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS, MIN_SAMPLES_PER_WINDOW,
                                      0, 5, _metricDef);
     assertTrue(aggregator.availableWindows().isEmpty());
-    CruiseControlUnitTestUtils.populateSampleAggregator(1, MIN_SAMPLES_PER_LOAD_SNAPSHOT, aggregator,
-                                                        ENTITY1, 0, SNAPSHOT_WINDOW_MS, _metricDef);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, MIN_SAMPLES_PER_WINDOW, aggregator,
+                                                        ENTITY1, 0, WINDOW_MS, _metricDef);
     assertTrue(aggregator.availableWindows().isEmpty());
-    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS - 2, MIN_SAMPLES_PER_LOAD_SNAPSHOT, aggregator,
-                                                        ENTITY1, 1, SNAPSHOT_WINDOW_MS, _metricDef);
-    List<Long> availableSnapshotWindows = aggregator.availableWindows();
-    assertEquals(NUM_WINDOWS - 2, availableSnapshotWindows.size());
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS - 2, MIN_SAMPLES_PER_WINDOW, aggregator,
+                                                        ENTITY1, 1, WINDOW_MS, _metricDef);
+    List<Long> availableWindows = aggregator.availableWindows();
+    assertEquals(NUM_WINDOWS - 2, availableWindows.size());
     for (int i = 0; i < NUM_WINDOWS - 2; i++) {
-      assertEquals((i + 1) * SNAPSHOT_WINDOW_MS, availableSnapshotWindows.get(i).longValue());
+      assertEquals((i + 1) * WINDOW_MS, availableWindows.get(i).longValue());
     }
   }
 
@@ -164,7 +164,7 @@ public class MetricSampleAggregatorTest {
     // Let the group coverage to be 1
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.5, 1, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness =
         aggregator.completeness(-1, Long.MAX_VALUE, options);
@@ -180,7 +180,7 @@ public class MetricSampleAggregatorTest {
     // Change the group coverage requirement to 0, window 3, 4, 20 will be excluded because minValidEntityRatio is not met.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.5, 0.0, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(17, completeness.validWindowIndexes().size());
@@ -201,7 +201,7 @@ public class MetricSampleAggregatorTest {
     // Change the option to have 0.5 as minValidEntityGroupRatio. This will exclude window index 3, 4, 20.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.0, 0.5, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
@@ -223,7 +223,7 @@ public class MetricSampleAggregatorTest {
     // Change the option to have 0.5 as minValidEntityGroupRatio. This will exclude window index 3, 4, 20.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.0, 0.0, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
@@ -241,7 +241,7 @@ public class MetricSampleAggregatorTest {
     // so there will be no valid windows.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.5, 0.0, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertTrue(completeness.validWindowIndexes().isEmpty());
@@ -257,7 +257,7 @@ public class MetricSampleAggregatorTest {
     // include ENTITY3 except in window 3, 4, 20.
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(0.3, 0.0, NUM_WINDOWS,
-                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)), 
+                                 new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(17, completeness.validWindowIndexes().size());
@@ -275,14 +275,14 @@ public class MetricSampleAggregatorTest {
   public void testConcurrency() throws NotEnoughValidWindowsException {
     final int numThreads = 10;
     final int numEntities = 5;
-    final int samplesPerSnapshot = 100;
+    final int samplesPerWindow = 100;
     final int numRandomEntities = 10;
 
-    // We set the minimum number of samples per snapshot to be the total number of samples to insert.
-    // So when there is a sample got lost we will fail to collect enough snapshot.
+    // We set the minimum number of samples per window to be the total number of samples to insert.
+    // So when there is a sample got lost we will fail to collect enough window.
     final MetricSampleAggregator<String, IntegerEntity> aggregator =
-        new MetricSampleAggregator<>(NUM_WINDOWS, SNAPSHOT_WINDOW_MS,
-                                     samplesPerSnapshot * numThreads * (numRandomEntities / numEntities),
+        new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS,
+                                     samplesPerWindow * numThreads * (numRandomEntities / numEntities),
                                      0, 5, _metricDef);
 
     final Random random = new Random();
@@ -295,7 +295,7 @@ public class MetricSampleAggregatorTest {
           int startingEntity = random.nextInt(5) % numEntities;
           for (int i = 0; i < numRandomEntities; i++) {
             IntegerEntity entity = new IntegerEntity("group", (startingEntity + i) % numEntities);
-            populateSampleAggregator(2 * NUM_WINDOWS + 1, samplesPerSnapshot, aggregator, entity);
+            populateSampleAggregator(2 * NUM_WINDOWS + 1, samplesPerWindow, aggregator, entity);
           }
         }
       };
@@ -309,29 +309,29 @@ public class MetricSampleAggregatorTest {
         // let it go.
       }
     }
-    assertEquals((NUM_WINDOWS + 1) * samplesPerSnapshot * numRandomEntities * numThreads, aggregator.numSamples());
+    assertEquals((NUM_WINDOWS + 1) * samplesPerWindow * numRandomEntities * numThreads, aggregator.numSamples());
 
     AggregationOptions<String, IntegerEntity> options =
         new AggregationOptions<>(1, 1, NUM_WINDOWS, Collections.emptySet(),
                                  AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleAggregationResult<String, IntegerEntity> aggResult =
         aggregator.aggregate(-1, Long.MAX_VALUE, options);
-    assertEquals(numEntities, aggResult.valuesAndImputations().size());
+    assertEquals(numEntities, aggResult.valuesAndExtrapolations().size());
     assertTrue(aggResult.invalidEntities().isEmpty());
-    for (ValuesAndImputations valuesAndImputations : aggResult.valuesAndImputations().values()) {
-      assertEquals(NUM_WINDOWS, valuesAndImputations.windows().size());
-      assertTrue(valuesAndImputations.imputations().isEmpty());
+    for (ValuesAndExtrapolations valuesAndExtrapolations : aggResult.valuesAndExtrapolations().values()) {
+      assertEquals(NUM_WINDOWS, valuesAndExtrapolations.windows().size());
+      assertTrue(valuesAndExtrapolations.extrapolations().isEmpty());
     }
   }
 
   private MetricSampleAggregator<String, IntegerEntity> prepareCompletenessTestEnv() {
     MetricSampleAggregator<String, IntegerEntity> aggregator =
-        new MetricSampleAggregator<>(NUM_WINDOWS, SNAPSHOT_WINDOW_MS, MIN_SAMPLES_PER_LOAD_SNAPSHOT,
+        new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS, MIN_SAMPLES_PER_WINDOW,
                                      0, 5, _metricDef);
-    populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_LOAD_SNAPSHOT, aggregator, ENTITY1);
-    populateSampleAggregator(2, MIN_SAMPLES_PER_LOAD_SNAPSHOT, aggregator, ENTITY3);
-    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS - 5, MIN_SAMPLES_PER_LOAD_SNAPSHOT, aggregator,
-                                                        ENTITY3, 4, SNAPSHOT_WINDOW_MS, _metricDef);
+    populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW, aggregator, ENTITY1);
+    populateSampleAggregator(2, MIN_SAMPLES_PER_WINDOW, aggregator, ENTITY3);
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS - 5, MIN_SAMPLES_PER_WINDOW, aggregator,
+                                                        ENTITY3, 4, WINDOW_MS, _metricDef);
     return aggregator;
   }
 
@@ -349,17 +349,17 @@ public class MetricSampleAggregatorTest {
     }
   }
 
-  private void populateSampleAggregator(int numSnapshots,
-                                        int numSamplesPerSnapshot,
+  private void populateSampleAggregator(int numWindows,
+                                        int numSamplesPerWindow,
                                         MetricSampleAggregator<String, IntegerEntity> metricSampleAggregator) {
-    populateSampleAggregator(numSnapshots, numSamplesPerSnapshot, metricSampleAggregator, ENTITY1);
+    populateSampleAggregator(numWindows, numSamplesPerWindow, metricSampleAggregator, ENTITY1);
   }
 
-  private void populateSampleAggregator(int numSnapshots,
-                                        int numSamplesPerSnapshot,
+  private void populateSampleAggregator(int numWindows,
+                                        int numSamplesPerWindow,
                                         MetricSampleAggregator<String, IntegerEntity> metricSampleAggregator,
                                         IntegerEntity entity) {
-    CruiseControlUnitTestUtils.populateSampleAggregator(numSnapshots, numSamplesPerSnapshot, metricSampleAggregator,
-                                                        entity, 0, SNAPSHOT_WINDOW_MS, _metricDef);
+    CruiseControlUnitTestUtils.populateSampleAggregator(numWindows, numSamplesPerWindow, metricSampleAggregator,
+                                                        entity, 0, WINDOW_MS, _metricDef);
   }
 }

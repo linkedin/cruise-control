@@ -22,7 +22,7 @@ public class MetricValues {
 
   /**
    * Construct a MetricValues.
-   * 
+   *
    * @param numWindows the number of windows the metric values should contain (i.e the length of the value array).
    */
   public MetricValues(int numWindows) {
@@ -45,7 +45,9 @@ public class MetricValues {
   }
 
   /**
-   * Get value at the given index. 
+   * Get value at the given index.
+   * We use double for calculation precision even if the stored value is float.
+   *
    * @param index the index to get value from.
    * @return the value at the given index.
    */
@@ -72,13 +74,13 @@ public class MetricValues {
 
   /**
    * Add a value array to the existing value array. The length of the two arrays must be the same.
-   * 
+   *
    * @param values the value array to add.
    */
   public void add(double[] values) {
     if (values.length != _values.length) {
-      throw new IllegalArgumentException(String.format("The value array of length %d cannot be added to the " 
-                                                           + "MetricValue with length %d", 
+      throw new IllegalArgumentException(String.format("The value array of length %d cannot be added to the "
+                                                           + "MetricValue with length %d",
                                                        values.length, _values.length));
     }
     _max = Float.MIN_VALUE;
@@ -92,7 +94,7 @@ public class MetricValues {
 
   /**
    * Add another MetricValue to this MetricValues. The length of the two MetricValues must be the same.
-   * 
+   *
    * @param metricValues the MetricValues to add.
    */
   public void add(MetricValues metricValues) {
