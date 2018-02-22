@@ -48,15 +48,15 @@ public class MonitorUtils {
 
     AggregatedMetricValues followerLoad = new AggregatedMetricValues();
     for (int metricId : aggregatedMetricValues.metricIds()) {
-      if (metricId != cpuId && metricId != networkInId) {
+      if (metricId != cpuId && metricId != networkOutId) {
         followerLoad.add(metricId, aggregatedMetricValues.valuesFor(metricId));
       }
     }
     MetricValues followerCpu = new MetricValues(aggregatedMetricValues.length());
     for (int i = 0; i < aggregatedMetricValues.length(); i++) {
-      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(aggregatedMetricValues.valuesFor(cpuId).get(i),
-                                                                           aggregatedMetricValues.valuesFor(networkInId).get(i),
-                                                                           aggregatedMetricValues.valuesFor(networkOutId).get(i));
+      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(aggregatedMetricValues.valuesFor(networkInId).get(i),
+                                                                           aggregatedMetricValues.valuesFor(networkOutId).get(i),
+                                                                           aggregatedMetricValues.valuesFor(cpuId).get(i));
       followerCpu.set(i, followerCpuUtil);
     }
     followerLoad.add(networkOutId, new MetricValues(aggregatedMetricValues.length()));

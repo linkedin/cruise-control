@@ -503,12 +503,10 @@ public class ClusterModel implements Serializable {
     // If this snapshot belongs to leader, update leadership load.
     Replica leader = partition(tp).leader();
     if (leader != null && leader.broker().id() == brokerId) {
-      // Leadership load must be updated for each broker containing a replica of the same partition.
-      for (Replica follower : partition(tp).followers()) {
-        _potentialLeadershipLoadByBrokerId.get(follower.broker().id()).addMetricValues(metricValues, windows);
+      // load must be updated for each broker containing a replica of the same partition.
+      for (Replica replica : partition(tp).replicas()) {
+        _potentialLeadershipLoadByBrokerId.get(replica.broker().id()).addMetricValues(metricValues, windows);
       }
-      // Make this update for the broker containing the leader as well.
-      _potentialLeadershipLoadByBrokerId.get(brokerId).addMetricValues(metricValues, windows);
     }
   }
 

@@ -270,7 +270,7 @@ public class KafkaMetricSampleAggregator extends MetricSampleAggregator<String, 
         LOG.warn("The metric sample is discarded due to invalid leader. Current leader {}, Sample: {}", leader, sample);
       }
     }
-    boolean completeMetrics = sample.numMetrics() == Resource.values().length;
+    boolean completeMetrics = sample.isValid(_metricDef);
     if (!completeMetrics) {
       LOG.warn("The metric sample is discarded due to missing metrics. Sample: {}", sample);
     }
