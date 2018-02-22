@@ -9,7 +9,6 @@ import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.async.progress.OptimizationForGoal;
@@ -263,7 +262,6 @@ public class GoalOptimizer implements Runnable {
    *                     cached proposal will be ignored.
    * @param operationProgress to report the job progress.
    * @return Results of optimization containing the proposals and stats.
-   * @throws KafkaCruiseControlException
    */
   public OptimizerResult optimizations(ClusterModel clusterModel, OperationProgress operationProgress)
       throws KafkaCruiseControlException {
@@ -282,7 +280,6 @@ public class GoalOptimizer implements Runnable {
    * @param goalsByPriority the goals ordered by priority.
    * @param operationProgress to report the job progress.
    * @return Results of optimization containing the proposals and stats.
-   * @throws KafkaCruiseControlException
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        Map<Integer, Goal> goalsByPriority,
@@ -294,7 +291,7 @@ public class GoalOptimizer implements Runnable {
 
     // Sanity check for optimizing goals.
     if (!clusterModel.isClusterAlive()) {
-      throw new AnalysisInputException("All brokers are dead in the cluster.");
+      throw new IllegalArgumentException("All brokers are dead in the cluster.");
     }
 
     LOG.trace("Cluster before optimization is {}", clusterModel);
@@ -378,8 +375,7 @@ public class GoalOptimizer implements Runnable {
     LOG.trace("Proposals for {}{}.{}%n", isSelfHeal ? "self-healing " : "", goalName, proposals);
   }
 
-  private OptimizerResult updateBestProposal(OptimizerResult result)
-      throws ModelInputException, AnalysisInputException {
+  private OptimizerResult updateBestProposal(OptimizerResult result) throws ModelInputException {
     synchronized (_cacheLock) {
       if (!validCachedProposal()) {
         LOG.debug("Updated best proposal, broker stats: \n{}",

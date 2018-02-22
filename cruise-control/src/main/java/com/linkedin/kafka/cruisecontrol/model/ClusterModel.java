@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.model;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -263,14 +262,12 @@ public class ClusterModel implements Serializable {
    * @param tp      Partition Info of the replica to be relocated.
    * @param sourceBrokerId      Source broker id.
    * @param destinationBrokerId Destination broker id.
-   * @throws AnalysisInputException
    */
-  public void relocateReplica(TopicPartition tp, int sourceBrokerId, int destinationBrokerId)
-      throws AnalysisInputException {
+  public void relocateReplica(TopicPartition tp, int sourceBrokerId, int destinationBrokerId) {
     // Removes the replica and related load from the source broker / source rack / cluster.
     Replica replica = removeReplica(sourceBrokerId, tp);
     if (replica == null) {
-      throw new AnalysisInputException("Replica is not in the cluster.");
+      throw new IllegalArgumentException("Replica is not in the cluster.");
     }
     // Updates the broker of the removed replica with destination broker.
     replica.setBroker(broker(destinationBrokerId));

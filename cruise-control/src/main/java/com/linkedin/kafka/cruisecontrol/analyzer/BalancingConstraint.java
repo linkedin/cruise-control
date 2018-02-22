@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -138,11 +137,10 @@ public class BalancingConstraint {
    *
    * @param resource          Resource for which the balance percentage will be set.
    * @param balancePercentage Balance percentage for the given resource.
-   * @throws AnalysisInputException
    */
-  private void setBalancePercentageFor(Resource resource, double balancePercentage) throws AnalysisInputException {
+  private void setBalancePercentageFor(Resource resource, double balancePercentage) {
     if (balancePercentage < 1) {
-      throw new AnalysisInputException("Balance Percentage cannot be less than 1.0");
+      throw new IllegalArgumentException("Balance Percentage cannot be less than 1.0");
     }
     _resourceBalancePercentage.put(resource, balancePercentage);
   }
@@ -152,7 +150,7 @@ public class BalancingConstraint {
    *
    * @param resourceBalancePercentage Common balance percentage for all resources.
    */
-  void setResourceBalancePercentage(double resourceBalancePercentage) throws AnalysisInputException {
+  void setResourceBalancePercentage(double resourceBalancePercentage) {
     for (Resource resource : _resources) {
       setBalancePercentageFor(resource, resourceBalancePercentage);
     }
@@ -163,11 +161,10 @@ public class BalancingConstraint {
    *
    * @param resource          Resource for which the capacity threshold will be set.
    * @param capacityThreshold Capacity threshold for the given resource.
-   * @throws AnalysisInputException
    */
-  private void setCapacityThresholdFor(Resource resource, double capacityThreshold) throws AnalysisInputException {
+  private void setCapacityThresholdFor(Resource resource, double capacityThreshold) {
     if (capacityThreshold <= 0 || capacityThreshold > 1) {
-      throw new AnalysisInputException("Capacity Threshold must be in (0, 1].");
+      throw new IllegalArgumentException("Capacity Threshold must be in (0, 1].");
     }
     _capacityThreshold.put(resource, capacityThreshold);
   }
@@ -177,7 +174,7 @@ public class BalancingConstraint {
    *
    * @param capacityThreshold Common capacity threshold for all resources in healthy brokers.
    */
-  void setCapacityThreshold(double capacityThreshold) throws AnalysisInputException {
+  void setCapacityThreshold(double capacityThreshold) {
     for (Resource resource : _resources) {
       setCapacityThresholdFor(resource, capacityThreshold);
     }

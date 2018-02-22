@@ -10,7 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -64,7 +64,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    return actionAcceptance(action, clusterModel).equals(ACCEPT);
+    return actionAcceptance(action, clusterModel) == ACCEPT;
   }
 
   /**
@@ -153,8 +153,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
     _numRebalancedTopics = 0;
     _topicsToRebalance = new ArrayList<>(clusterModel.topics());
     if (clusterModel.deadBrokers().isEmpty()) {
@@ -190,13 +189,13 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException {
+      throws OptimizationFailureException {
 
     if (!clusterModel.selfHealingEligibleReplicas().isEmpty()) {
       // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
       for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
         if (!replica.broker().isAlive()) {
-          throw new AnalysisInputException(
+          throw new OptimizationFailureException(
               "Self healing failed to move the replica away from decommissioned broker.");
         }
       }
@@ -215,7 +214,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
    */
-  private void healCluster(ClusterModel clusterModel, Set<Goal> optimizedGoals) throws AnalysisInputException {
+  private void healCluster(ClusterModel clusterModel, Set<Goal> optimizedGoals) throws OptimizationFailureException {
     // Move self healed replicas (if their broker is overloaded or they reside at dead brokers) to eligible ones.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       String topic = replica.topicPartition().topic();
@@ -237,8 +236,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics)
-      throws AnalysisInputException {
+                                    Set<String> excludedTopics) throws OptimizationFailureException {
 
     if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && !broker.isAlive() && !broker.replicas().isEmpty()) {
       healCluster(clusterModel, optimizedGoals);

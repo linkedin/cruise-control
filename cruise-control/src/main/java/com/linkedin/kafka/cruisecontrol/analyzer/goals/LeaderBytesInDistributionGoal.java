@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -59,7 +58,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
    */
   @Override
   public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    return actionAcceptance(action, clusterModel).equals(ACCEPT);
+    return actionAcceptance(action, clusterModel) == ACCEPT;
   }
 
   /**
@@ -78,7 +77,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     initMeanLeaderBytesIn(clusterModel);
 
     if (!sourceReplica.isLeader() && (action.balancingAction() != ActionType.REPLICA_SWAP
-                                      || !destinationBroker.replica(action.destinationTp()).isLeader())) {
+                                      || !destinationBroker.replica(action.destinationTopicPartition()).isLeader())) {
       // No leadership bytes are being moved so I don't care
       return ACCEPT;
     }
@@ -89,7 +88,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
       newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
                              + sourceReplicaUtilization;
     } else {
-      double destinationReplicaUtilization = destinationBroker.replica(action.destinationTp()).load()
+      double destinationReplicaUtilization = destinationBroker.replica(action.destinationTopicPartition()).load()
                                                               .expectedUtilizationFor(Resource.NW_IN);
       newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
                              + sourceReplicaUtilization - destinationReplicaUtilization;
@@ -142,7 +141,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
       throw new IllegalStateException("Found balancing action " + action.balancingAction() +
           " but expected leadership movement.");
     }
-    return actionAcceptance(action, clusterModel).equals(ACCEPT);
+    return actionAcceptance(action, clusterModel) == ACCEPT;
   }
 
   @Override
@@ -163,8 +162,11 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  protected void rebalanceForBroker(Broker broker, ClusterModel clusterModel, Set<Goal> optimizedGoals,
-      Set<String> excludedTopics) throws AnalysisInputException, ModelInputException {
+  protected void rebalanceForBroker(Broker broker,
+                                    ClusterModel clusterModel,
+                                    Set<Goal> optimizedGoals,
+                                    Set<String> excludedTopics)
+      throws ModelInputException {
 
     double balanceThreshold = balanceThreshold(clusterModel, broker.id());
     if (broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) < balanceThreshold) {

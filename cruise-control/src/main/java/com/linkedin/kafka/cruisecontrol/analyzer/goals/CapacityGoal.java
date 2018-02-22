@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -61,7 +60,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    */
   @Override
   public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    return actionAcceptance(action, clusterModel).equals(ACCEPT);
+    return actionAcceptance(action, clusterModel) == ACCEPT;
   }
 
   /**
@@ -75,7 +74,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    *   (2) Check if leadership CPU movement is acceptable: In reality, CPU movement carries only a fraction of
    * leader's CPU load.
    * To optimize CC performance, we avoid calculation of the expected leadership CPU utilization, and assume that
-   * if (action.balancingAction().equals(ActionType.LEADERSHIP_MOVEMENT) && resource().equals(Resource.CPU)),
+   * if (action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT && resource() == Resource.CPU),
    * then the expected leadership CPU utilization would be the full CPU utilization of the leader.
    * <p>
    * ## Replica Movement: impacts any resource.
@@ -92,7 +91,7 @@ public abstract class CapacityGoal extends AbstractGoal {
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
     if (action.balancingAction() == ActionType.REPLICA_SWAP) {
-      Replica destinationReplica = destinationBroker.replica(action.destinationTp());
+      Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
       return isSwapAcceptableForCapacity(sourceReplica, destinationReplica) ? ACCEPT : REPLICA_REJECT;
     }
     return isMovementAcceptableForCapacity(sourceReplica, destinationBroker) ? ACCEPT : REPLICA_REJECT;
@@ -130,7 +129,7 @@ public abstract class CapacityGoal extends AbstractGoal {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     // To optimize CC performance, we avoid calculation of the expected leadership CPU utilization, and assume that
-    // if (action.balancingAction().equals(ActionType.LEADERSHIP_MOVEMENT) && resource().equals(Resource.CPU)),
+    // if (action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT && resource() == Resource.CPU),
     // then the expected leadership CPU utilization would be the full CPU utilization of the leader.
     return isMovementAcceptableForCapacity(sourceReplica, destinationBroker);
   }
@@ -156,7 +155,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws AnalysisInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
     // Sanity Check -- i.e. not enough resources.
     Load recentClusterLoad = clusterModel.load();
 
@@ -165,7 +164,7 @@ public abstract class CapacityGoal extends AbstractGoal {
     double allowedCapacity = clusterModel.capacityFor(resource()) * _balancingConstraint.capacityThreshold(resource());
 
     if (allowedCapacity < existingUtilization) {
-      throw new AnalysisInputException("Insufficient healthy cluster capacity for resource:" + resource() +
+      throw new OptimizationFailureException("Insufficient healthy cluster capacity for resource:" + resource() +
           " existing cluster utilization " + existingUtilization + " allowed capacity " + allowedCapacity);
     }
   }
@@ -179,7 +178,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     // Ensure the resource utilization is under capacity limit.
     // While proposals exclude the excludedTopics, the utilization still considers replicas of the excludedTopics.
     ensureUtilizationUnderCapacity(clusterModel);
@@ -247,7 +246,7 @@ public abstract class CapacityGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+      throws ModelInputException, OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     Resource currentResource = resource();
     double capacityThreshold = _balancingConstraint.capacityThreshold(currentResource);
@@ -262,7 +261,7 @@ public abstract class CapacityGoal extends AbstractGoal {
     }
 
     // First try REBALANCE BY LEADERSHIP MOVEMENT:
-    if (currentResource.equals(Resource.NW_OUT) || currentResource.equals(Resource.CPU)) {
+    if (currentResource == Resource.NW_OUT || currentResource == Resource.CPU) {
       // Sort replicas by descending order of preference to relocate. Preference is based on resource cost.
       // Only leaders in the source broker are sorted.
       List<Replica> sortedLeadersInSourceBroker = broker.sortedLeadersFor(currentResource);
@@ -322,11 +321,11 @@ public abstract class CapacityGoal extends AbstractGoal {
     if (isUtilizationOverLimit) {
       if (!currentResource.isHostResource()) {
         // Utilization is above the capacity limit after all replicas in the given source broker were checked.
-        throw new AnalysisInputException("Violated capacity limit of " + brokerCapacityLimit + " via broker "
+        throw new OptimizationFailureException("Violated capacity limit of " + brokerCapacityLimit + " via broker "
             + "utilization of " + broker.load().expectedUtilizationFor(currentResource) + " with broker id "
             + broker.id() + " for resource " + currentResource);
       } else {
-        throw new AnalysisInputException("Violated capacity limit of " + hostCapacityLimit + " via host "
+        throw new OptimizationFailureException("Violated capacity limit of " + hostCapacityLimit + " via host "
             + "utilization of " + broker.host().load().expectedUtilizationFor(currentResource) + " with hostname "
             + broker.host().name() + " for resource " + currentResource);
       }

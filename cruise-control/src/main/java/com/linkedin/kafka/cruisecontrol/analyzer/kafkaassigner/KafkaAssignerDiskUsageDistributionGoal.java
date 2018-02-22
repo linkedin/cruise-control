@@ -10,8 +10,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -76,8 +74,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   }
 
   @Override
-  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
-      throws KafkaCruiseControlException {
+  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics) {
     double meanDiskUsage = clusterModel.load().expectedUtilizationFor(DISK) / clusterModel.capacityFor(DISK);
     double upperThreshold = meanDiskUsage * (1 + balancePercentageWithMargin());
     double lowerThreshold = meanDiskUsage * Math.max(0, (1 - balancePercentageWithMargin()));
@@ -158,15 +155,13 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    *
    * @return true if an action has been taken to improve the disk usage of the broker, false when a broker cannot or
    * does not need to be improved further.
-   *
-   * @throws AnalysisInputException
    */
   private boolean checkAndOptimize(Broker broker,
                                    ClusterModel clusterModel,
                                    double meanDiskUsage,
                                    double lowerThreshold,
                                    double upperThreshold,
-                                   Set<String> excludedTopics) throws AnalysisInputException {
+                                   Set<String> excludedTopics) {
     LOG.trace("Optimizing broker {}. BrokerDiskUsage = {}, meanDiskUsage = {}",
               broker, diskUsage(broker), meanDiskUsage);
     double brokerDiskUsage = diskUsage(broker);
@@ -212,14 +207,12 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @param clusterModel the cluster model.
    * @param excludedTopics the topics to exclude from swapping.
    * @return true if a swap has been done, false otherwise.
-   *
-   * @throws AnalysisInputException
    */
   boolean swapReplicas(Broker toSwap,
                        Broker toSwapWith,
                        double meanDiskUsage,
                        ClusterModel clusterModel,
-                       Set<String> excludedTopics) throws AnalysisInputException {
+                       Set<String> excludedTopics) {
     LOG.trace("Swapping replicas between broker {}({}) and broker {}({})",
              toSwap.id(), brokerSize(toSwap), toSwapWith.id(), brokerSize(toSwapWith));
     double sizeToChange = toSwap.capacityFor(DISK) * meanDiskUsage - brokerSize(toSwap);

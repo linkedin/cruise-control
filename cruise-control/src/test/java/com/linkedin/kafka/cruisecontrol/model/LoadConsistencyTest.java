@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 
 import java.util.ArrayList;
@@ -36,8 +35,7 @@ public class LoadConsistencyTest {
    * Populate parameters for the parametrized test.
    */
   @Parameterized.Parameters
-  public static Collection<Object[]> data()
-      throws AnalysisInputException, ModelInputException {
+  public static Collection<Object[]> data() throws ModelInputException {
     Collection<Object[]> params = new ArrayList<>();
 
     int numSnapshots = 2;

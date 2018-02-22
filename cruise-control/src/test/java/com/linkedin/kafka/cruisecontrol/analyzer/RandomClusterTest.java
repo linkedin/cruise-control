@@ -27,7 +27,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
 import com.linkedin.kafka.cruisecontrol.common.RandomCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
@@ -64,8 +63,7 @@ public class RandomClusterTest {
    *
    * @return Parameters for the {@link OptimizationVerifier}.
    */
-  public static Collection<Object[]> data(TestConstants.Distribution distribution)
-      throws AnalysisInputException {
+  public static Collection<Object[]> data(TestConstants.Distribution distribution) {
     Collection<Object[]> p = new ArrayList<>();
 
     Map<Integer, String> goalNameByPriority = new HashMap<>();

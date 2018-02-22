@@ -211,14 +211,8 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return A list of sorted replicas chosen from the replicas residing in the given broker.
    */
   public List<Replica> sortedReplicas(Resource resource, boolean isReverse) {
-    Set<Replica> candidateReplicas;
     // If a broker is already dead, we do not distinguish leader replica vs. non-leader replica anymore.
-    if (resource.equals(Resource.NW_OUT) && isAlive()) {
-      candidateReplicas = _leaderReplicas;
-    } else {
-      candidateReplicas = _replicas;
-    }
-
+    Set<Replica> candidateReplicas = (resource == Resource.NW_OUT && isAlive()) ? _leaderReplicas : _replicas;
     return sortedReplicas(resource, candidateReplicas, isReverse);
   }
 

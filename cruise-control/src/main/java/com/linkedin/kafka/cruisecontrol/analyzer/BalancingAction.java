@@ -92,7 +92,7 @@ public class BalancingAction {
   /**
    * Get the destination topic partition to swap with.
    */
-  public TopicPartition destinationTp() {
+  public TopicPartition destinationTopicPartition() {
     return _destinationTp;
   }
 
@@ -154,7 +154,7 @@ public class BalancingAction {
     proposalMap.put("topicPartition", _tp);
     proposalMap.put("sourceBrokerId", _sourceBrokerId);
     proposalMap.put("destinationBrokerId", _destinationBrokerId);
-    proposalMap.put("destinationTp", _destinationTp);
+    proposalMap.put("destinationTopicPartition", _destinationTp);
     proposalMap.put("actionType", _actionType);
     return proposalMap;
   }
@@ -164,7 +164,9 @@ public class BalancingAction {
    */
   @Override
   public String toString() {
-    return String.format("(%s->%s, %d->%d, %s)", _tp, _destinationTp, _sourceBrokerId, _destinationBrokerId, _actionType);
+    String actSymbol = _actionType.equals(ActionType.REPLICA_SWAP) ? "<->" : "->";
+    return String.format("(%s%s%s, %d%s%d, %s)",
+                         _tp, actSymbol, _destinationTp, _sourceBrokerId, actSymbol, _destinationBrokerId, _actionType);
   }
 
   /**

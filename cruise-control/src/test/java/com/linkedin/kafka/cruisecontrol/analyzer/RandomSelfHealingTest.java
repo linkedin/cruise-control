@@ -24,7 +24,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
 import com.linkedin.kafka.cruisecontrol.common.RandomCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
 import java.util.ArrayList;
@@ -59,7 +58,7 @@ public class RandomSelfHealingTest {
    * @return Parameters for the {@link OptimizationVerifier}.
    */
   @Parameters(name = "{1}-{0}")
-  public static Collection<Object[]> data() throws AnalysisInputException {
+  public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
 
     Map<Integer, String> goalNameByPriority = new HashMap<>();

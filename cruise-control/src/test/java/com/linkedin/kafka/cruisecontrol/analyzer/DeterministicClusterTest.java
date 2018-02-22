@@ -26,7 +26,6 @@ import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -92,7 +91,7 @@ public class DeterministicClusterTest {
    * @return Parameters for the {@link OptimizationVerifier}.
    */
   @Parameterized.Parameters
-  public static Collection<Object[]> data() throws AnalysisInputException, ModelInputException {
+  public static Collection<Object[]> data() throws ModelInputException {
     Collection<Object[]> p = new ArrayList<>();
 
     int numSnapshots = 2;
@@ -216,10 +215,10 @@ public class DeterministicClusterTest {
     try {
       assertTrue("Deterministic Cluster Test failed to improve the existing state.",
           OptimizationVerifier.executeGoalsFor(_balancingConstraint, _cluster, _goalNameByPriority, _verifications));
-    } catch (AnalysisInputException analysisInputException) {
+    } catch (OptimizationFailureException optimizationFailureException) {
       // This exception is thrown if rebalance fails due to healthy brokers having insufficient capacity.
-      if (!analysisInputException.getMessage().contains("Insufficient healthy cluster capacity for resource")) {
-        throw analysisInputException;
+      if (!optimizationFailureException.getMessage().contains("Insufficient healthy cluster capacity for resource")) {
+        throw optimizationFailureException;
       }
     }
   }

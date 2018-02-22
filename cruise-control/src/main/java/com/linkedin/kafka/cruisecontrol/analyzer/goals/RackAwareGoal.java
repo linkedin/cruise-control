@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -60,7 +59,7 @@ public class RackAwareGoal extends AbstractGoal {
    */
   @Override
   public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    return actionAcceptance(action, clusterModel).equals(ACCEPT);
+    return actionAcceptance(action, clusterModel) == ACCEPT;
   }
 
   /**
@@ -75,8 +74,8 @@ public class RackAwareGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    if (action.balancingAction().equals(ActionType.REPLICA_MOVEMENT)
-        || action.balancingAction().equals(ActionType.REPLICA_SWAP)) {
+    if (action.balancingAction() == ActionType.REPLICA_MOVEMENT
+        || action.balancingAction() == ActionType.REPLICA_SWAP) {
       Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
       Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
@@ -92,7 +91,7 @@ public class RackAwareGoal extends AbstractGoal {
       }
       if (action.balancingAction() == ActionType.REPLICA_SWAP) {
         // Destination broker cannot be in a rack that violates rack awareness.
-        Set<Broker> swapPartitionBrokers = clusterModel.partition(action.destinationTp()).partitionBrokers();
+        Set<Broker> swapPartitionBrokers = clusterModel.partition(action.destinationTopicPartition()).partitionBrokers();
         swapPartitionBrokers.remove(destinationBroker);
         // Remove brokers in partition broker racks except the brokers in replica broker rack.
         Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
@@ -160,7 +159,7 @@ public class RackAwareGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws AnalysisInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
     // Sanity Check: not enough racks to satisfy rack awareness.
     int numHealthyRacks = clusterModel.numHealthyRacks();
     if (!excludedTopics.isEmpty()) {
@@ -172,12 +171,12 @@ public class RackAwareGoal extends AbstractGoal {
           maxReplicationFactorOfIncludedTopics =
               Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
           if (maxReplicationFactorOfIncludedTopics > numHealthyRacks) {
-            throw new AnalysisInputException("Insufficient number of racks to distribute included replicas.");
+            throw new OptimizationFailureException("Insufficient number of racks to distribute included replicas.");
           }
         }
       }
     } else if (clusterModel.maxReplicationFactor() > numHealthyRacks) {
-      throw new AnalysisInputException("Insufficient number of racks to distribute each replica.");
+      throw new OptimizationFailureException("Insufficient number of racks to distribute each replica.");
     }
   }
 
@@ -192,7 +191,7 @@ public class RackAwareGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     // One pass is sufficient to satisfy or alert impossibility of this goal.
     // Sanity check to confirm that the final distribution is rack aware.
     ensureRackAware(clusterModel, excludedTopics);
@@ -211,10 +210,10 @@ public class RackAwareGoal extends AbstractGoal {
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
-      ClusterModel clusterModel,
-      Set<Goal> optimizedGoals,
-      Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+                                    ClusterModel clusterModel,
+                                    Set<Goal> optimizedGoals,
+                                    Set<String> excludedTopics)
+      throws ModelInputException, OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     // Satisfy rack awareness requirement.
     SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());
@@ -226,7 +225,7 @@ public class RackAwareGoal extends AbstractGoal {
       // Rack awareness is violated. Move replica to a broker in another rack.
       if (maybeApplyBalancingAction(clusterModel, replica, rackAwareEligibleBrokers(replica, clusterModel),
                                     ActionType.REPLICA_MOVEMENT, optimizedGoals) == null) {
-        throw new AnalysisInputException(
+        throw new OptimizationFailureException(
             "Violated rack-awareness requirement for broker with id " + broker.id() + ".");
       }
     }

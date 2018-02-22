@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.common;
 
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -24,7 +23,7 @@ public class DeterministicCluster {
   }
 
   // Two racks, three brokers, one partition, two replicas
-  public static ClusterModel rackAwareSatisfiable() throws AnalysisInputException, ModelInputException {
+  public static ClusterModel rackAwareSatisfiable() throws ModelInputException {
     List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
     ClusterModel cluster = DeterministicCluster.getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
                                                                                    TestConstants.BROKER_CAPACITY);
@@ -44,7 +43,7 @@ public class DeterministicCluster {
   }
 
   // two racks, three brokers, one partition, three replicas.
-  public static ClusterModel rackAwareUnsatisfiable() throws AnalysisInputException, ModelInputException {
+  public static ClusterModel rackAwareUnsatisfiable() throws ModelInputException {
     ClusterModel cluster = rackAwareSatisfiable();
     TopicPartition pInfoT10 = new TopicPartition("T1", 0);
 
@@ -145,7 +144,7 @@ public class DeterministicCluster {
    * @return Small scale cluster.
    */
   public static ClusterModel smallClusterModel(Map<Resource, Double> brokerCapacity)
-      throws AnalysisInputException, ModelInputException {
+      throws ModelInputException {
     List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
     ClusterModel cluster = getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
         brokerCapacity);
@@ -193,10 +192,8 @@ public class DeterministicCluster {
    * <li>Partitions/Topic: A: 6, B:2, C:2, D:2</li>
    *
    * @return A medium test cluster.
-   * @throws AnalysisInputException
-   * @throws ModelInputException
    */
-  public static ClusterModel mediumClusterModel(Map<Resource, Double> brokerCapacity) throws AnalysisInputException, ModelInputException {
+  public static ClusterModel mediumClusterModel(Map<Resource, Double> brokerCapacity) throws ModelInputException {
     List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
     ClusterModel cluster = getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
         brokerCapacity);
@@ -249,12 +246,10 @@ public class DeterministicCluster {
    * @param orderedRackIdsOfBrokers Specifies the rack id for each broker.
    * @param brokerCapacity          Healthy broker capacity.
    * @return Cluster with the specified number of racks and broker distribution.
-   * @throws AnalysisInputException
    */
   public static ClusterModel getHomogeneousDeterministicCluster(int numRacks,
                                                                 List<Integer> orderedRackIdsOfBrokers,
-                                                                Map<Resource, Double> brokerCapacity)
-      throws AnalysisInputException {
+                                                                Map<Resource, Double> brokerCapacity) {
     int numBrokers = orderedRackIdsOfBrokers.size();
     // Sanity checks.
     if (numRacks > numBrokers || numBrokers <= 0 || numRacks <= 0 ||
@@ -262,7 +257,7 @@ public class DeterministicCluster {
         brokerCapacity.get(Resource.DISK) < 0 ||
         brokerCapacity.get(Resource.NW_IN) < 0 ||
         brokerCapacity.get(Resource.NW_OUT) < 0) {
-      throw new AnalysisInputException("Deterministic cluster generation failed due to bad input.");
+      throw new IllegalArgumentException("Deterministic cluster generation failed due to bad input.");
     }
 
     // Create cluster.

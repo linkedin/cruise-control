@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
@@ -168,7 +167,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * @return true if a move is applied, false otherwise.
    */
   private boolean maybeApplyMove(ClusterModel clusterModel, Partition partition, int replicaPosition)
-      throws AnalysisInputException, ModelInputException {
+      throws ModelInputException {
     // Racks with replica whose position is in [0, replicaPosition - 1] are ineligible for assignment.
     Set<String> ineligibleRackIds = new HashSet<>();
     for (int pos = 0; pos < replicaPosition; pos++) {
@@ -262,7 +261,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
                                     Replica sourceReplica,
                                     Broker destinationBroker,
                                     ActionType action)
-      throws ModelInputException, AnalysisInputException {
+      throws ModelInputException {
 
     if (action == ActionType.LEADERSHIP_MOVEMENT) {
       clusterModel.relocateLeadership(sourceReplica.topicPartition(), sourceReplica.broker().id(), destinationBroker.id());
@@ -358,7 +357,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    */
   @Override
   public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    return actionAcceptance(action, clusterModel).equals(ACCEPT);
+    return actionAcceptance(action, clusterModel) == ACCEPT;
   }
 
   /**
@@ -373,8 +372,8 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    if (action.balancingAction().equals(ActionType.REPLICA_MOVEMENT)
-        || action.balancingAction().equals(ActionType.REPLICA_SWAP)) {
+    if (action.balancingAction() == ActionType.REPLICA_MOVEMENT
+        || action.balancingAction() == ActionType.REPLICA_SWAP) {
       Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
       Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
@@ -390,7 +389,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
       }
       if (action.balancingAction() == ActionType.REPLICA_SWAP) {
         // Destination broker cannot be in a rack that violates rack awareness.
-        Set<Broker> swapPartitionBrokers = clusterModel.partition(action.destinationTp()).partitionBrokers();
+        Set<Broker> swapPartitionBrokers = clusterModel.partition(action.destinationTopicPartition()).partitionBrokers();
         swapPartitionBrokers.remove(destinationBroker);
         // Remove brokers in partition broker racks except the brokers in replica broker rack.
         Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());

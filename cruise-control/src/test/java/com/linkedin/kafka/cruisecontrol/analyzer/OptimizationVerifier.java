@@ -10,8 +10,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -66,8 +64,6 @@ class OptimizationVerifier {
    * @param goalNameByPriority Name of goals by the order of execution priority.
    * @param verifications      The verifications to make after the optimization.
    * @return Pass / fail status of a test.
-   * @throws ModelInputException
-   * @throws AnalysisInputException
    */
   static boolean executeGoalsFor(BalancingConstraint constraint,
                                  ClusterModel clusterModel,
@@ -90,8 +86,6 @@ class OptimizationVerifier {
    * @param excludedTopics     The excluded topics.
    * @param verifications      The verifications to make after the optimization.
    * @return Pass / fail status of a test.
-   * @throws ModelInputException
-   * @throws AnalysisInputException
    */
   static boolean executeGoalsFor(BalancingConstraint constraint,
                                  ClusterModel clusterModel,

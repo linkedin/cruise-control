@@ -25,7 +25,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEven
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
@@ -51,8 +50,6 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static org.junit.Assert.*;
 
@@ -62,7 +59,6 @@ import static org.junit.Assert.*;
  */
 @RunWith(Parameterized.class)
 public class ExcludedTopicsTest {
-  private static final Logger LOG = LoggerFactory.getLogger(ExcludedTopicsTest.class);
 
   @Rule
   public ExpectedException expected = ExpectedException.none();
@@ -89,11 +85,11 @@ public class ExcludedTopicsTest {
       // With excluded topics, rack aware unsatisfiable cluster, no dead broker (No exception, No proposal, Expected to look optimized)
       p.add(params(4, goalClass, excludeT1, null, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true));
       // With excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception)
-      p.add(params(5, goalClass, excludeT1, AnalysisInputException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+      p.add(params(5, goalClass, excludeT1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
       // Test: Without excluded topics, rack aware unsatisfiable cluster, no dead brokers (Exception expected)
-      p.add(params(6, goalClass, noExclusion, AnalysisInputException.class, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
+      p.add(params(6, goalClass, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
       // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
-      p.add(params(7, goalClass, noExclusion, AnalysisInputException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+      p.add(params(7, goalClass, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
     }
 
     for (Class<? extends Goal> goalClass : Arrays.asList(CpuCapacityGoal.class,
@@ -108,7 +104,7 @@ public class ExcludedTopicsTest {
       // for excluded topic, Expected to look optimized)
       p.add(params(1, goalClass, excludeT1, null, unbalanced(), deadBroker0, true));
       // Test: With all topics excluded, no dead brokers, not satisfiable (Exception)
-      p.add(params(2, goalClass, excludeAllTopics, AnalysisInputException.class, unbalanced(), noDeadBroker, null));
+      p.add(params(2, goalClass, excludeAllTopics, OptimizationFailureException.class, unbalanced(), noDeadBroker, null));
       // Test: With all topics excluded, one dead brokers, not satisfiable, no exception.
       p.add(params(3, goalClass, excludeAllTopics, null, unbalanced(), deadBroker0, true));
     }
@@ -265,7 +261,6 @@ public class ExcludedTopicsTest {
         Set<ExecutionProposal> goalProposals =
             AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, _clusterModel);
 
-        boolean proposalHasTopic = false;
         for (ExecutionProposal proposal : goalProposals) {
           if (_excludedTopics.contains(proposal.topic())) {
             for (int brokerId : proposal.replicasToRemove()) {
@@ -313,7 +308,7 @@ public class ExcludedTopicsTest {
   }
 
   // two racks, three brokers, two partitions, one replica.
-  private static ClusterModel unbalanced() throws AnalysisInputException, ModelInputException {
+  private static ClusterModel unbalanced() throws ModelInputException {
 
     List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
     ClusterModel cluster = DeterministicCluster.getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
@@ -343,8 +338,7 @@ public class ExcludedTopicsTest {
   }
 
  // two racks, three brokers, six partitions, one replica.
-  private static ClusterModel unbalanced2()
-      throws AnalysisInputException, ModelInputException {
+  private static ClusterModel unbalanced2() throws ModelInputException {
 
     ClusterModel cluster = unbalanced();
     // Create topic partition.

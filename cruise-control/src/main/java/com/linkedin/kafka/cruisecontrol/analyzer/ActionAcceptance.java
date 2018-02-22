@@ -8,6 +8,17 @@ import java.util.Arrays;
 import java.util.List;
 
 
+/**
+ * Flags to indicate if an action is acceptable by the goal(s).
+ *
+ * <ul>
+ * <li>{@link #ACCEPT}: Action is acceptable -- i.e. it does not violate goal constraints.</li>
+ * <li>{@link #REPLICA_REJECT}: Action is rejected in replica-level; but, the destination broker may potentially accept
+ * actions of the same {@link ActionType} from the source broker specified in the given action.</li>
+ * <li>{@link #BROKER_REJECT}: Action is rejected in broker-level; hence, the destination broker does not accept actions
+ * of the same {@link ActionType} from the source broker specified in the given action.</li>
+ * </ul>
+ */
 public enum ActionAcceptance {
   ACCEPT("ACCEPT"),
   REPLICA_REJECT("REPLICA_REJECT"),
@@ -26,10 +37,6 @@ public enum ActionAcceptance {
 
   ActionAcceptance(String actionAcceptance) {
     _actionAcceptance = actionAcceptance;
-  }
-
-  public String actionAcceptance() {
-    return _actionAcceptance;
   }
 
   @Override

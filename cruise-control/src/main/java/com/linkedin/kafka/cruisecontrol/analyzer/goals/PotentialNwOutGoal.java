@@ -10,8 +10,8 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -64,7 +64,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
    */
   @Override
   public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    return actionAcceptance(action, clusterModel).equals(ACCEPT);
+    return actionAcceptance(action, clusterModel) == ACCEPT;
   }
 
   /**
@@ -84,7 +84,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     Replica replica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
-    if (action.balancingAction().equals(ActionType.LEADERSHIP_MOVEMENT) || selfSatisfied(clusterModel, action)) {
+    if (action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT || selfSatisfied(clusterModel, action)) {
       return ACCEPT;
     }
     double destinationBrokerUtilization =
@@ -95,7 +95,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
 
     double destinationReplicaUtilization = 0;
     if (action.balancingAction() == ActionType.REPLICA_SWAP) {
-      destinationReplicaUtilization = clusterModel.partition(action.destinationTp()).leader().load().expectedUtilizationFor(Resource.NW_OUT);
+      destinationReplicaUtilization = clusterModel.partition(action.destinationTopicPartition())
+                                                  .leader().load().expectedUtilizationFor(Resource.NW_OUT);
       // Check source broker potential NW_OUT violation.
       if (sourceBrokerUtilization + destinationReplicaUtilization - sourceReplicaUtilization > maxUtilization) {
         return REPLICA_REJECT;
@@ -169,7 +170,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
     }
 
     // Ensure that the destination capacity of self-satisfied for action type swap is not violated.
-    double destinationReplicaUtilization = clusterModel.partition(action.destinationTp()).leader().load()
+    double destinationReplicaUtilization = clusterModel.partition(action.destinationTopicPartition()).leader().load()
                                                        .expectedUtilizationFor(Resource.NW_OUT);
     if (destinationCapacity < destinationBrokerUtilization + sourceReplicaUtilization - destinationReplicaUtilization) {
       // Destination capacity would be violated due to swap.
@@ -202,14 +203,14 @@ public class PotentialNwOutGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException {
+      throws OptimizationFailureException {
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       if (replica.broker().isAlive()) {
         continue;
       }
       if (_selfHealingDeadBrokersOnly) {
-        throw new AnalysisInputException("Self healing failed to move the replica away from decommissioned brokers.");
+        throw new OptimizationFailureException("Self healing failed to move the replica away from decommissioned brokers.");
       }
       _selfHealingDeadBrokersOnly = true;
       LOG.warn(
@@ -233,7 +234,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+      throws ModelInputException {
     double capacityLimit = broker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
     boolean estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
         clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
