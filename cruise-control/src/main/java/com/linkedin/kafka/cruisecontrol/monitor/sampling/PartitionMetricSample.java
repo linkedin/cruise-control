@@ -46,11 +46,6 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
     return _valuesByMetricId.size();
   }
 
-  @Override
-  public boolean isValid(MetricDef metricDef) {
-    return true;
-  }
-
   /**
    * This method serialize the metric sample using a simple protocol.
    * 1 byte  - version
