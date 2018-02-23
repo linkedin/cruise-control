@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -93,41 +92,48 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
-    if (action.balancingAction() == REPLICA_SWAP) {
-      Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
-      double sourceUtilizationDelta = destinationReplica.load().expectedUtilizationFor(resource())
-                                      - sourceReplica.load().expectedUtilizationFor(resource());
+    switch (action.balancingAction()) {
+      case REPLICA_SWAP:
+        Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
+        double sourceUtilizationDelta = destinationReplica.load().expectedUtilizationFor(resource())
+                                        - sourceReplica.load().expectedUtilizationFor(resource());
 
-      if (sourceUtilizationDelta == 0) {
-        // No change in terms of load.
-        return ACCEPT;
-      }
-      // Check if the source or destination broker is within the balance limit before applying a swap that could
-      // potentially make them unbalanced -- i.e. never make a balanced broker unbalanced.
-      boolean isCurrentlyWithinLimit = sourceUtilizationDelta > 0
-                                       ? (isLoadAboveBalanceLowerLimit(clusterModel, destinationBroker)
-                                          || isLoadUnderBalanceUpperLimit(clusterModel, sourceReplica.broker()))
-                                       : (isLoadAboveBalanceLowerLimit(clusterModel, sourceReplica.broker())
-                                          || isLoadUnderBalanceUpperLimit(clusterModel, destinationBroker));
+        if (sourceUtilizationDelta == 0) {
+          // No change in terms of load.
+          return ACCEPT;
+        }
+        // Check if the source or destination broker is within the balance limit before applying a swap that could
+        // potentially make a balanced broker unbalanced -- i.e. never make a balanced broker unbalanced.
+        // Note that (1) if a source or a destination broker was within the limit before the swap, the corresponding limit
+        // cannot be violated after the swap, (2) otherwise, the swap is guaranteed not to increase the utilization
+        // difference between brokers.
+        boolean isAnyBrokerCurrentlyWithinLimit = sourceUtilizationDelta > 0
+                                                  ? (isLoadAboveBalanceLowerLimit(clusterModel, destinationBroker)
+                                                     || isLoadUnderBalanceUpperLimit(clusterModel, sourceReplica.broker()))
+                                                  : (isLoadAboveBalanceLowerLimit(clusterModel, sourceReplica.broker())
+                                                     || isLoadUnderBalanceUpperLimit(clusterModel, destinationBroker));
 
-      if (isCurrentlyWithinLimit) {
-        // Ensure that the resource utilization on brokers do not go out of limits after the swap.
-        return isLoadStillWithinLimitsAfterSwap(clusterModel, sourceReplica, destinationReplica) ? ACCEPT : REPLICA_REJECT;
-      }
-      // Ensure that the swap does not increase the utilization difference between brokers.
-      return isSelfSatisfiedAfterSwap(sourceReplica, destinationReplica) ? ACCEPT : REPLICA_REJECT;
+        if (isAnyBrokerCurrentlyWithinLimit) {
+          // Ensure that the resource utilization on balanced broker(s) do not go out of limits after the swap.
+          return isLoadStillWithinLimitsAfterSwap(clusterModel, sourceReplica, destinationReplica) ? ACCEPT : REPLICA_REJECT;
+        }
+        // Ensure that the swap does not increase the utilization difference between brokers.
+        return isSelfSatisfiedAfterSwap(sourceReplica, destinationReplica) ? ACCEPT : REPLICA_REJECT;
+      case REPLICA_MOVEMENT:
+      case LEADERSHIP_MOVEMENT:
+        if (isLoadAboveBalanceLowerLimit(clusterModel, sourceReplica.broker())
+            || isLoadUnderBalanceUpperLimit(clusterModel, destinationBroker)) {
+          // Already satisfied balance limits cannot be violated due to balancing action.
+          return (isLoadUnderBalanceUpperLimitAfterChange(clusterModel, sourceReplica.load(), destinationBroker, ADD) &&
+                  isLoadAboveBalanceLowerLimitAfterChange(clusterModel, sourceReplica.load(), sourceReplica.broker(), REMOVE))
+                 ? ACCEPT : REPLICA_REJECT;
+        }
+
+        // Check that current destination would not become more unbalanced (none of them were balanced before).
+        return isAcceptableAfterReplicaMove(sourceReplica, destinationBroker) ? ACCEPT : REPLICA_REJECT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
-
-    if (isLoadAboveBalanceLowerLimit(clusterModel, sourceReplica.broker())
-        || isLoadUnderBalanceUpperLimit(clusterModel, destinationBroker)) {
-      // Already satisfied balance limits cannot be violated due to balancing action.
-      return (isLoadUnderBalanceUpperLimitAfterChange(clusterModel, sourceReplica.load(), destinationBroker, ADD) &&
-             isLoadAboveBalanceLowerLimitAfterChange(clusterModel, sourceReplica.load(), sourceReplica.broker(), REMOVE))
-             ? ACCEPT : REPLICA_REJECT;
-    }
-
-    // Check that current destination would not become more unbalanced (none of them were balanced before).
-    return isAcceptableAfterReplicaMove(sourceReplica, destinationBroker) ? ACCEPT : REPLICA_REJECT;
   }
 
   @Override
@@ -180,18 +186,21 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       return action.balancingAction() != REPLICA_SWAP;
     }
 
-    if (action.balancingAction() == REPLICA_SWAP) {
-      Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
-      double sourceUtilizationDelta = destinationReplica.load().expectedUtilizationFor(resource())
-                                      - sourceReplica.load().expectedUtilizationFor(resource());
+    switch (action.balancingAction()) {
+      case REPLICA_SWAP:
+        Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
+        double sourceUtilizationDelta = destinationReplica.load().expectedUtilizationFor(resource())
+                                        - sourceReplica.load().expectedUtilizationFor(resource());
 
-      return !(sourceUtilizationDelta == 0) && isLoadStillWithinLimitsAfterSwap(clusterModel, sourceReplica,
-                                                                                destinationReplica);
+        return sourceUtilizationDelta != 0 && isLoadStillWithinLimitsAfterSwap(clusterModel, sourceReplica, destinationReplica);
+      case REPLICA_MOVEMENT:
+      case LEADERSHIP_MOVEMENT:
+        //Check that current destination would not become more unbalanced.
+        return isLoadUnderBalanceUpperLimitAfterChange(clusterModel, sourceReplica.load(), destinationBroker, ADD) &&
+               isLoadAboveBalanceLowerLimitAfterChange(clusterModel, sourceReplica.load(), sourceReplica.broker(), REMOVE);
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
-
-    //Check that current destination would not become more unbalanced.
-    return isLoadUnderBalanceUpperLimitAfterChange(clusterModel, sourceReplica.load(), destinationBroker, ADD) &&
-        isLoadAboveBalanceLowerLimitAfterChange(clusterModel, sourceReplica.load(), sourceReplica.broker(), REMOVE);
   }
 
   /**
@@ -287,8 +296,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics)
-      throws ModelInputException {
+                                    Set<String> excludedTopics) {
     boolean requireLessLoad = !isLoadUnderBalanceUpperLimit(clusterModel, broker);
     boolean requireMoreLoad = !isLoadAboveBalanceLowerLimit(clusterModel, broker);
     if (broker.isAlive() && !requireMoreLoad && !requireLessLoad) {
@@ -302,7 +310,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     // First try leadership movement
-    if ((resource() == Resource.NW_OUT || resource() == Resource.CPU)) {
+    if (resource() == Resource.NW_OUT || resource() == Resource.CPU) {
       if (requireLessLoad && !rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals,
                                                        LEADERSHIP_MOVEMENT, excludedTopics)) {
         LOG.debug("Successfully balanced {} for broker {} by moving out leaders.", resource(), broker.id());
@@ -335,17 +343,22 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                           ClusterModel clusterModel,
                                           Set<Goal> optimizedGoals,
                                           ActionType actionType,
-                                          Set<String> excludedTopics)
-      throws ModelInputException {
+                                          Set<String> excludedTopics) {
+
+    if (!clusterModel.newBrokers().isEmpty() && !broker.isNew()) {
+      // We have new brokers and the current broker is not a new broker.
+      return true;
+    }
 
     PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
     // Sort the replicas initially to avoid sorting it every time.
 
     double clusterUtilization = clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource());
     for (Broker candidate : clusterModel.healthyBrokers()) {
+      // Get candidate replicas on candidate broker to try moving load from -- sorted in the order of trial (descending load).
       if (utilizationPercentage(candidate) > clusterUtilization) {
-        SortedSet<Replica> candidateReplicasToSwapWith = replicasToSwapWith(candidate, excludedTopics, 0, true);
-        CandidateBroker candidateBroker = new CandidateBroker(candidate, candidateReplicasToSwapWith, false);
+        SortedSet<Replica> replicasToMoveIn = sortedCandidateReplicas(candidate, excludedTopics, 0, true);
+        CandidateBroker candidateBroker = new CandidateBroker(candidate, replicasToMoveIn, false);
         candidateBrokerPQ.add(candidateBroker);
       }
     }
@@ -389,27 +402,47 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     return true;
   }
 
-  private SortedSet<Replica> replicasToSwapWith(Broker broker,
-                                                Set<String> excludedTopics,
-                                                double swapLoadLimit,
-                                                boolean isSwapIn) {
-    SortedSet<Replica> candidateReplicasToSwapWith = new TreeSet<>((r1, r2) -> {
-      int result = isSwapIn ? Double.compare(r2.load().expectedUtilizationFor(resource()), r1.load().expectedUtilizationFor(resource()))
-                            : Double.compare(r1.load().expectedUtilizationFor(resource()), r2.load().expectedUtilizationFor(resource()));
+  /**
+   * Get the sorted replicas in the given broker whose (1) topic is not an excluded topic AND (2) do not violate the given load
+   * limit in ascending or descending order. Load limit requires the replica load to be (1) above the given limit in
+   * descending order, (2) below the given limit in ascending order.
+   *
+   * @param broker Broker whose replicas will be considered.
+   * @param excludedTopics Excluded topics for which the replicas will be remove from the returned candidate replicas.
+   * @param loadLimit Load limit determining the lower cutoff in descending order, upper cutoff in ascending order.
+   * @param isDescending True if sort requested in descending order, false otherwise.
+   * @return Sorted replicas in the given broker whose (1) topic is not an excluded topic AND (2) do not violate the
+   * given load limit in ascending or descending order.
+   */
+  private SortedSet<Replica> sortedCandidateReplicas(Broker broker,
+                                                     Set<String> excludedTopics,
+                                                     double loadLimit,
+                                                     boolean isDescending) {
+    SortedSet<Replica> candidateReplicas = new TreeSet<>((r1, r2) -> {
+      int result = isDescending
+                   ? Double.compare(r2.load().expectedUtilizationFor(resource()), r1.load().expectedUtilizationFor(resource()))
+                   : Double.compare(r1.load().expectedUtilizationFor(resource()), r2.load().expectedUtilizationFor(resource()));
       return result == 0 ? r1.topicPartition().toString().compareTo(r2.topicPartition().toString()) : result;
     });
-    candidateReplicasToSwapWith.addAll(
-        resource() == Resource.NW_OUT
-        ? broker.leaderReplicas().stream().filter(l -> (!excludedTopics.contains(l.topicPartition().topic())) &&
-                                                       (isSwapIn ? l.load().expectedUtilizationFor(resource()) > swapLoadLimit
-                                                                 : l.load().expectedUtilizationFor(resource()) < swapLoadLimit))
-                .collect(Collectors.toSet())
-        : broker.replicas().stream().filter(r -> (!excludedTopics.contains(r.topicPartition().topic())) &&
-                                                 (isSwapIn ? r.load().expectedUtilizationFor(resource()) > swapLoadLimit
-                                                           : r.load().expectedUtilizationFor(resource()) < swapLoadLimit))
-                .collect(Collectors.toSet()));
 
-    return candidateReplicasToSwapWith;
+    // If the resource is NW_OUT, candidate replicas consider only the leaders -- i.e. only the leaders have NW_OUT load,
+    // otherwise all replicas on broker are considered.
+    Set<Replica> coveredReplicas = resource() == Resource.NW_OUT ? broker.leaderReplicas() : broker.replicas();
+
+    // The given load limit determines the lower cutoff in descending order, upper cutoff in ascending order.
+    if (isDescending) {
+      candidateReplicas.addAll(coveredReplicas.stream()
+                                              .filter(l -> (!excludedTopics.contains(l.topicPartition().topic()))
+                                                           && l.load().expectedUtilizationFor(resource()) > loadLimit)
+                                              .collect(Collectors.toSet()));
+    } else {
+      candidateReplicas.addAll(coveredReplicas.stream()
+                                              .filter(l -> (!excludedTopics.contains(l.topicPartition().topic()))
+                                                           && l.load().expectedUtilizationFor(resource()) < loadLimit)
+                                              .collect(Collectors.toSet()));
+    }
+
+    return candidateReplicas;
   }
 
   private boolean rebalanceBySwappingLoadOut(Broker broker,
@@ -431,11 +464,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
     for (Broker candidate : clusterModel.healthyBrokersUnderThreshold(resource(), balanceUpperThreshold(clusterModel))
                                         .stream().filter(b -> !b.replicas().isEmpty()).collect(Collectors.toSet())) {
-      // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial.
+      // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (ascending load).
       double maxSourceReplicaLoad = sourceReplicas.first().load().expectedUtilizationFor(resource());
-      SortedSet<Replica> candidateReplicasToSwapWith = replicasToSwapWith(candidate, excludedTopics, maxSourceReplicaLoad, false);
+      SortedSet<Replica> replicasToSwapWith = sortedCandidateReplicas(candidate, excludedTopics, maxSourceReplicaLoad, false);
 
-      CandidateBroker candidateBroker = new CandidateBroker(candidate, candidateReplicasToSwapWith, true);
+      CandidateBroker candidateBroker = new CandidateBroker(candidate, replicasToSwapWith, true);
       candidateBrokerPQ.add(candidateBroker);
     }
 
@@ -498,10 +531,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // Sort the replicas initially to avoid sorting it every time.
     PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
     for (Broker candidate : clusterModel.healthyBrokersOverThreshold(resource(), balanceLowerThreshold(clusterModel))) {
-      // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial.
+      // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (descending load).
       double minSourceReplicaLoad = sourceReplicas.first().load().expectedUtilizationFor(resource());
-      SortedSet<Replica> candidateReplicasToSwapWith = replicasToSwapWith(candidate, excludedTopics, minSourceReplicaLoad, true);
-      CandidateBroker candidateBroker = new CandidateBroker(candidate, candidateReplicasToSwapWith, false);
+      SortedSet<Replica> replicasToSwapWith = sortedCandidateReplicas(candidate, excludedTopics, minSourceReplicaLoad, true);
+      CandidateBroker candidateBroker = new CandidateBroker(candidate, replicasToSwapWith, false);
       candidateBrokerPQ.add(candidateBroker);
     }
 
@@ -553,8 +586,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                            ClusterModel clusterModel,
                                            Set<Goal> optimizedGoals,
                                            ActionType actionType,
-                                           Set<String> excludedTopics)
-      throws ModelInputException {
+                                           Set<String> excludedTopics) {
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(
         Comparator.comparingDouble(this::utilizationPercentage).thenComparingInt(Broker::id));
@@ -703,10 +735,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     double prevDiff = sourceBrokerUtilization - destinationBrokerUtilization;
     double nextDiff = prevDiff + (2 * sourceUtilizationDelta);
 
-    prevDiff = (prevDiff <= 0.0F) ? 0.0F - prevDiff : prevDiff;
-    nextDiff = (nextDiff <= 0.0F) ? 0.0F - nextDiff : nextDiff;
-
-    return nextDiff < prevDiff;
+    return Math.abs(nextDiff) < Math.abs(prevDiff);
   }
 
   private boolean isLoadStillWithinLimitsAfterSwap(ClusterModel clusterModel, Replica sourceReplica, Replica destinationReplica) {

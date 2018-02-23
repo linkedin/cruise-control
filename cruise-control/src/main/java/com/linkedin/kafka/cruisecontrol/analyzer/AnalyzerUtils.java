@@ -8,7 +8,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -52,8 +51,7 @@ public class AnalyzerUtils {
    */
   public static Set<ExecutionProposal> getDiff(Map<TopicPartition, List<Integer>> initialReplicaDistribution,
                                                Map<TopicPartition, Integer> initialLeaderDistribution,
-                                               ClusterModel optimizedClusterModel)
-      throws ModelInputException {
+                                               ClusterModel optimizedClusterModel) {
     Map<TopicPartition, List<Integer>> finalDistribution = optimizedClusterModel.getReplicaDistribution();
     // Sanity check to make sure that given distributions contain the same replicas.
     if (!initialReplicaDistribution.keySet().equals(finalDistribution.keySet())) {

@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.async.progress.OptimizationForGoal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
@@ -375,7 +374,7 @@ public class GoalOptimizer implements Runnable {
     LOG.trace("Proposals for {}{}.{}%n", isSelfHeal ? "self-healing " : "", goalName, proposals);
   }
 
-  private OptimizerResult updateBestProposal(OptimizerResult result) throws ModelInputException {
+  private OptimizerResult updateBestProposal(OptimizerResult result) {
     synchronized (_cacheLock) {
       if (!validCachedProposal()) {
         LOG.debug("Updated best proposal, broker stats: \n{}",

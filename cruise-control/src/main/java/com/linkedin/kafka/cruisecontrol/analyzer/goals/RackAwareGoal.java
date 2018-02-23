@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -213,7 +212,7 @@ public class RackAwareGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
-      throws ModelInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     // Satisfy rack awareness requirement.
     SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());

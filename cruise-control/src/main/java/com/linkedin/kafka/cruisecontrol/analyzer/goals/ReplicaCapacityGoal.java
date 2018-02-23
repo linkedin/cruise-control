@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -214,7 +213,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
-      throws ModelInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     for (Replica replica : new ArrayList<>(broker.replicas())) {
       if (broker.isAlive() && broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker()) {

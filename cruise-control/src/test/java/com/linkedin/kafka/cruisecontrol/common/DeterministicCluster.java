@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.common;
 
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
@@ -23,7 +22,7 @@ public class DeterministicCluster {
   }
 
   // Two racks, three brokers, one partition, two replicas
-  public static ClusterModel rackAwareSatisfiable() throws ModelInputException {
+  public static ClusterModel rackAwareSatisfiable() {
     List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
     ClusterModel cluster = DeterministicCluster.getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
                                                                                    TestConstants.BROKER_CAPACITY);
@@ -43,7 +42,7 @@ public class DeterministicCluster {
   }
 
   // two racks, three brokers, one partition, three replicas.
-  public static ClusterModel rackAwareUnsatisfiable() throws ModelInputException {
+  public static ClusterModel rackAwareUnsatisfiable() {
     ClusterModel cluster = rackAwareSatisfiable();
     TopicPartition pInfoT10 = new TopicPartition("T1", 0);
 
@@ -143,8 +142,7 @@ public class DeterministicCluster {
    *
    * @return Small scale cluster.
    */
-  public static ClusterModel smallClusterModel(Map<Resource, Double> brokerCapacity)
-      throws ModelInputException {
+  public static ClusterModel smallClusterModel(Map<Resource, Double> brokerCapacity) {
     List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
     ClusterModel cluster = getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
         brokerCapacity);
@@ -193,7 +191,7 @@ public class DeterministicCluster {
    *
    * @return A medium test cluster.
    */
-  public static ClusterModel mediumClusterModel(Map<Resource, Double> brokerCapacity) throws ModelInputException {
+  public static ClusterModel mediumClusterModel(Map<Resource, Double> brokerCapacity) {
     List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
     ClusterModel cluster = getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
         brokerCapacity);

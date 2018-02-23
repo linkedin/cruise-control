@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -246,7 +245,7 @@ public abstract class CapacityGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
-      throws ModelInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     Resource currentResource = resource();
     double capacityThreshold = _balancingConstraint.capacityThreshold(currentResource);

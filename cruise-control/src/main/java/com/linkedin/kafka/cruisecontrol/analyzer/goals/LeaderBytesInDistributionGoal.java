@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -165,8 +164,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics)
-      throws ModelInputException {
+                                    Set<String> excludedTopics) {
 
     double balanceThreshold = balanceThreshold(clusterModel, broker.id());
     if (broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) < balanceThreshold) {

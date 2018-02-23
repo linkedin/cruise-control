@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -166,8 +165,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    * @param replicaPosition The position of the replica in the given partition.
    * @return true if a move is applied, false otherwise.
    */
-  private boolean maybeApplyMove(ClusterModel clusterModel, Partition partition, int replicaPosition)
-      throws ModelInputException {
+  private boolean maybeApplyMove(ClusterModel clusterModel, Partition partition, int replicaPosition) {
     // Racks with replica whose position is in [0, replicaPosition - 1] are ineligible for assignment.
     Set<String> ineligibleRackIds = new HashSet<>();
     for (int pos = 0; pos < replicaPosition; pos++) {
@@ -260,8 +258,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   private void applyBalancingAction(ClusterModel clusterModel,
                                     Replica sourceReplica,
                                     Broker destinationBroker,
-                                    ActionType action)
-      throws ModelInputException {
+                                    ActionType action) {
 
     if (action == ActionType.LEADERSHIP_MOVEMENT) {
       clusterModel.relocateLeadership(sourceReplica.topicPartition(), sourceReplica.broker().id(), destinationBroker.id());

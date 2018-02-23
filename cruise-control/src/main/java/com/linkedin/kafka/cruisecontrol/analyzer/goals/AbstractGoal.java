@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -71,7 +70,7 @@ public abstract class AbstractGoal implements Goal {
 
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
-      throws ModelInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     _succeeded = true;
     LOG.debug("Starting optimization for {}.", name());
     // Initialize pre-optimized stats.
@@ -158,7 +157,7 @@ public abstract class AbstractGoal implements Goal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   protected abstract void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws OptimizationFailureException, ModelInputException;
+      throws OptimizationFailureException;
 
   /**
    * Update goal state after one round of self-healing / rebalance.
@@ -181,7 +180,7 @@ public abstract class AbstractGoal implements Goal {
                                              ClusterModel clusterModel,
                                              Set<Goal> optimizedGoals,
                                              Set<String> excludedTopics)
-      throws ModelInputException, OptimizationFailureException;
+      throws OptimizationFailureException;
 
   /**
    * Attempt to apply the given balancing action to the given replica in the given cluster. The application
@@ -201,8 +200,7 @@ public abstract class AbstractGoal implements Goal {
                                              Replica replica,
                                              Collection<Broker> candidateBrokers,
                                              ActionType action,
-                                             Set<Goal> optimizedGoals)
-      throws ModelInputException {
+                                             Set<Goal> optimizedGoals) {
     // In self healing mode, allow a move only from dead to alive brokers.
     if (!clusterModel.deadBrokers().isEmpty() && replica.originalBroker().isAlive()) {
       //return null;

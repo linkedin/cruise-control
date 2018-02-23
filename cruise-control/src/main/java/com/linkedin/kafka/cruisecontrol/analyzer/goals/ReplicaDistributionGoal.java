@@ -12,7 +12,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -175,7 +174,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws ModelInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
     // Initialize the average replicas on a healthy broker.
     int numReplicasInCluster = clusterModel.getReplicaDistribution().values().stream().mapToInt(List::size).sum();
     _avgReplicasOnHealthyBroker = (numReplicasInCluster / (double) clusterModel.healthyBrokers().size());
@@ -275,8 +274,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics)
-      throws ModelInputException {
+                                    Set<String> excludedTopics) {
     LOG.debug("Rebalancing broker {} [limits] lower: {} upper: {}.", broker.id(), _balanceLowerLimit, _balanceUpperLimit);
     int numReplicas = broker.replicas().size();
     boolean requireLessReplicas = broker.isAlive() ? numReplicas > _balanceUpperLimit : numReplicas > 0;
@@ -312,8 +310,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   private boolean rebalanceByMovingReplicasOut(Broker broker,
                                                ClusterModel clusterModel,
                                                Set<Goal> optimizedGoals,
-                                               Set<String> excludedTopics)
-      throws ModelInputException {
+                                               Set<String> excludedTopics) {
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(
         Comparator.comparingInt((Broker b) -> b.replicas().size()).thenComparingInt(Broker::id));
@@ -353,8 +350,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   private boolean rebalanceByMovingReplicasIn(Broker broker,
                                               ClusterModel clusterModel,
                                               Set<Goal> optimizedGoals,
-                                              Set<String> excludedTopics)
-      throws ModelInputException {
+                                              Set<String> excludedTopics) {
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
       int result = Double.compare(b2.replicas().size(), b1.replicas().size());
       return result == 0 ? Integer.compare(b1.id(), b2.id()) : result;

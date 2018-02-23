@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.io.IOException;
@@ -102,7 +101,7 @@ public class Replica implements Serializable, Comparable<Replica> {
    *
    * @param snapshot Snapshot containing latest state for each resource.
    */
-  void pushLatestSnapshot(Snapshot snapshot) throws ModelInputException {
+  void pushLatestSnapshot(Snapshot snapshot) {
     _load.pushLatestSnapshot(snapshot);
   }
 
@@ -120,8 +119,7 @@ public class Replica implements Serializable, Comparable<Replica> {
    *
    * @return Removed leadership load by snapshot time -- i.e. outbound network and fraction of CPU load by snapshot time.
    */
-  Map<Resource, Map<Long, Double>> makeFollower()
-      throws ModelInputException {
+  Map<Resource, Map<Long, Double>> makeFollower() {
     // Remove leadership from the replica.
     setLeadership(false);
     // Clear and get the outbound network and CPU load associated with leadership from the given replica.
@@ -158,7 +156,7 @@ public class Replica implements Serializable, Comparable<Replica> {
    *
    * @param resourceToLeadershipLoadBySnapshotTime Resource to leadership load to be added by snapshot time.
    */
-  void makeLeader(Map<Resource, Map<Long, Double>> resourceToLeadershipLoadBySnapshotTime) throws ModelInputException {
+  void makeLeader(Map<Resource, Map<Long, Double>> resourceToLeadershipLoadBySnapshotTime) {
     // Add leadership to the replica.
     setLeadership(true);
     _load.setLoadFor(Resource.NW_OUT, resourceToLeadershipLoadBySnapshotTime.get(Resource.NW_OUT));

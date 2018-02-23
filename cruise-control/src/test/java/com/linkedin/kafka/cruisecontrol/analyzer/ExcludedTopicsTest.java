@@ -25,7 +25,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEven
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -308,7 +307,7 @@ public class ExcludedTopicsTest {
   }
 
   // two racks, three brokers, two partitions, one replica.
-  private static ClusterModel unbalanced() throws ModelInputException {
+  private static ClusterModel unbalanced() {
 
     List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
     ClusterModel cluster = DeterministicCluster.getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
@@ -338,7 +337,7 @@ public class ExcludedTopicsTest {
   }
 
  // two racks, three brokers, six partitions, one replica.
-  private static ClusterModel unbalanced2() throws ModelInputException {
+  private static ClusterModel unbalanced2() {
 
     ClusterModel cluster = unbalanced();
     // Create topic partition.

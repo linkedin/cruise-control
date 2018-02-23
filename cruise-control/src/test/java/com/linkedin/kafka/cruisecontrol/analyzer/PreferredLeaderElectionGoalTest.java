@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGo
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
@@ -59,7 +58,7 @@ public class PreferredLeaderElectionGoalTest {
     }
   }
 
-  private ClusterModel createClusterModel() throws ModelInputException {
+  private ClusterModel createClusterModel() {
     int numSnapshots = 2;
     if (!Load.initialized()) {
       Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();

@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.common;
 
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -76,8 +75,7 @@ public class RandomCluster {
    */
   public static void populate(ClusterModel cluster,
                               Map<ClusterProperty, Number> properties,
-                              TestConstants.Distribution replicaDistribution)
-      throws ModelInputException {
+                              TestConstants.Distribution replicaDistribution) {
     populate(cluster, properties, replicaDistribution, false);
   }
 
@@ -89,13 +87,11 @@ public class RandomCluster {
    * @param properties          Representing the cluster properties as specified in {@link ClusterProperty}.
    * @param replicaDistribution The replica distribution showing the broker of each replica in the cluster.
    * @param rackAware           Whether the replicas should be rack aware or not.
-   * @throws ModelInputException
    */
   public static void populate(ClusterModel cluster,
                               Map<ClusterProperty, Number> properties,
                               TestConstants.Distribution replicaDistribution,
-                              boolean rackAware)
-      throws ModelInputException {
+                              boolean rackAware) {
     // Sanity checks.
     int numBrokers = cluster.brokers().size();
     if (properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() < 0 ||

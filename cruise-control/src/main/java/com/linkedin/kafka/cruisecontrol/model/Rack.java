@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.io.IOException;
@@ -192,8 +191,7 @@ public class Rack implements Serializable {
    * @param tp TopicPartition of the replica for which the outbound network load will be removed.
    * @return Leadership load by snapshot time.
    */
-  Map<Resource, Map<Long, Double>> makeFollower(int brokerId,
-                                                TopicPartition tp) throws ModelInputException {
+  Map<Resource, Map<Long, Double>> makeFollower(int brokerId, TopicPartition tp) {
     Host host = _brokers.get(brokerId).host();
     Map<Resource, Map<Long, Double>> leadershipLoad = host.makeFollower(brokerId, tp);
     // Remove leadership load from recent load.
@@ -213,8 +211,7 @@ public class Rack implements Serializable {
    */
   void makeLeader(int brokerId,
                   TopicPartition tp,
-                  Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime)
-      throws ModelInputException {
+                  Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime) {
     Host host = _brokers.get(brokerId).host();
     host.makeLeader(brokerId, tp, leadershipLoadBySnapshotTime);
     // Add leadership load to recent load.
@@ -239,8 +236,7 @@ public class Rack implements Serializable {
    * @param tp Topic partition that identifies the replica in this broker.
    * @param snapshot       Snapshot containing latest state for each resource.
    */
-  void pushLatestSnapshot(int brokerId, TopicPartition tp, Snapshot snapshot)
-      throws ModelInputException {
+  void pushLatestSnapshot(int brokerId, TopicPartition tp, Snapshot snapshot) {
     Host host = _brokers.get(brokerId).host();
     host.pushLatestSnapshot(brokerId, tp, snapshot);
     // Update the recent load of this rack.

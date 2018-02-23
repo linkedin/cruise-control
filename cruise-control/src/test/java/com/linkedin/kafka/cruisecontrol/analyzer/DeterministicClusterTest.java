@@ -26,7 +26,6 @@ import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Load;
@@ -91,7 +90,7 @@ public class DeterministicClusterTest {
    * @return Parameters for the {@link OptimizationVerifier}.
    */
   @Parameterized.Parameters
-  public static Collection<Object[]> data() throws ModelInputException {
+  public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
 
     int numSnapshots = 2;

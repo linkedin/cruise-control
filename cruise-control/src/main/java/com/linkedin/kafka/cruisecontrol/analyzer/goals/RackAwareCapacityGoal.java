@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -308,7 +307,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
-      throws ModelInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     double capacityThreshold = _balancingConstraint.capacityThreshold(_currentResource);
     double brokerCapacityLimit = broker.capacityFor(_currentResource) * capacityThreshold;

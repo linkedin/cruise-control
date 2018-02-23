@@ -13,7 +13,6 @@ import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.NotEnoughValidSnapshotsException;
 import com.linkedin.kafka.cruisecontrol.exception.NotEnoughSnapshotsException;
 import com.linkedin.kafka.cruisecontrol.async.progress.GeneratingClusterModel;
@@ -352,7 +351,7 @@ public class LoadMonitor {
    * @return A cluster model with the configured number of snapshots whose timestamp is before given timestamp.
    */
   public ClusterModel clusterModel(long now, ModelCompletenessRequirements requirements, OperationProgress operationProgress)
-      throws ModelInputException, NotEnoughValidSnapshotsException, NotEnoughSnapshotsException {
+      throws NotEnoughValidSnapshotsException, NotEnoughSnapshotsException {
     ClusterModel clusterModel = clusterModel(-1L, now, requirements, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
     ClusterModel.BrokerStats brokerStats = clusterModel.brokerStats();
@@ -372,7 +371,6 @@ public class LoadMonitor {
    * @param requirements the load completeness requirements.
    * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
-   * @throws ModelInputException
    * @throws NotEnoughValidSnapshotsException
    * @throws NotEnoughSnapshotsException
    */
@@ -380,7 +378,7 @@ public class LoadMonitor {
                                    long to,
                                    ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
-      throws ModelInputException, NotEnoughValidSnapshotsException, NotEnoughSnapshotsException {
+      throws NotEnoughValidSnapshotsException, NotEnoughSnapshotsException {
     long start = System.currentTimeMillis();
 
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
@@ -565,7 +563,7 @@ public class LoadMonitor {
    */
   private void fillInMissingPartitions(Map<TopicPartition, Snapshot[]> loadSnapshots,
                                        Cluster kafkaCluster,
-                                       ClusterModel clusterModel) throws ModelInputException {
+                                       ClusterModel clusterModel) {
     // There must be at least one entry, otherwise there will be exception thrown earlier. So we don't need to
     // check if it has next
     Snapshot[] snapshotsForTimestamps = loadSnapshots.values().iterator().next();
@@ -607,7 +605,7 @@ public class LoadMonitor {
   private void populateSnapshots(Cluster kafkaCluster,
                                  ClusterModel clusterModel,
                                  TopicPartition tp,
-                                 Snapshot[] leaderLoadSnapshots) throws ModelInputException {
+                                 Snapshot[] leaderLoadSnapshots) {
     PartitionInfo partitionInfo = kafkaCluster.partition(tp);
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
