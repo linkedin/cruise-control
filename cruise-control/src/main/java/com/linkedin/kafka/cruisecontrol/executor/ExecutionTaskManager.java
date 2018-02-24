@@ -48,6 +48,8 @@ public class ExecutionTaskManager {
   private static final String ABORTING = "aborting";
   private static final String ABORTED = "aborted";
   private static final String DEAD = "dead";
+  private static final String ONGOING_EXECUTION = "ongoing-execution";
+  private static final String KAFKA_ASSIGNER_MODE = "kafka_assigner";
 
   private static final String GAUGE_REPLICA_ACTION_IN_PROGRESS = REPLICA_ACTION + "-" + IN_PROGRESS;
   private static final String GAUGE_LEADERSHIP_ACTION_IN_PROGRESS = LEADERSHIP_ACTION + "-" + IN_PROGRESS;
@@ -59,6 +61,8 @@ public class ExecutionTaskManager {
   private static final String GAUGE_LEADERSHIP_ACTION_ABORTED = LEADERSHIP_ACTION + "-" + ABORTED;
   private static final String GAUGE_REPLICA_ACTION_DEAD = REPLICA_ACTION + "-" + DEAD;
   private static final String GAUGE_LEADERSHIP_ACTION_DEAD = LEADERSHIP_ACTION + "-" + DEAD;
+  private static final String GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE = ONGOING_EXECUTION + "-"  + KAFKA_ASSIGNER_MODE;
+  private static final String GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE = ONGOING_EXECUTION + "-non-"  + KAFKA_ASSIGNER_MODE;
 
   /**
    * The constructor of The Execution task manager.
@@ -111,6 +115,10 @@ public class ExecutionTaskManager {
                                       (Gauge<Integer>) _executionTaskTracker::numDeadReplicaAction);
     dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_ACTION_DEAD),
                                       (Gauge<Integer>) _executionTaskTracker::numDeadLeadershipAction);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE),
+                                      (Gauge<Integer>) _executionTaskTracker::isOngoingExecutionInKafkaAssignerMode);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE),
+                                      (Gauge<Integer>) _executionTaskTracker::isOngoingExecutionInNonKafkaAssignerMode);
   }
 
   /**
@@ -233,10 +241,12 @@ public class ExecutionTaskManager {
    * @param proposals the execution proposals to execute.
    * @param brokersToSkipConcurrencyCheck the brokers that does not need to be throttled when move the partitions.
    * @param cluster Cluster state.
+   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
    */
   public synchronized void addExecutionProposals(Collection<ExecutionProposal> proposals,
                                                  Collection<Integer> brokersToSkipConcurrencyCheck,
-                                                 Cluster cluster) {
+                                                 Cluster cluster,
+                                                 boolean isKafkaAssignerMode) {
     _executionTaskPlanner.addExecutionProposals(proposals, cluster);
     for (ExecutionProposal p : proposals) {
       _inProgressReplicaMovementsByBrokerId.putIfAbsent(p.oldLeader(), 0);
@@ -244,6 +254,9 @@ public class ExecutionTaskManager {
         _inProgressReplicaMovementsByBrokerId.putIfAbsent(broker, 0);
       }
     }
+    // Set the execution mode for tasks.
+    _executionTaskTracker.setExecutionMode(isKafkaAssignerMode);
+
     // Add pending proposals to indicate the phase before they become an executable task.
     _executionTaskTracker.taskForReplicaAction(ExecutionTask.State.PENDING)
                          .addAll(_executionTaskPlanner.remainingReplicaMovements());

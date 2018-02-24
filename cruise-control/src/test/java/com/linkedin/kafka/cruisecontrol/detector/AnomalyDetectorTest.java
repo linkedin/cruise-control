@@ -145,7 +145,8 @@ public class AnomalyDetectorTest {
                                                      EasyMock.eq(false),
                                                      EasyMock.eq(null),
                                                      EasyMock.anyObject(OperationProgress.class),
-                                                     EasyMock.eq(true)))
+                                                     EasyMock.eq(true),
+                                                     EasyMock.eq(false)))
             .andReturn(null);
     EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(EasyMock.anyObject())).andReturn(true);
 

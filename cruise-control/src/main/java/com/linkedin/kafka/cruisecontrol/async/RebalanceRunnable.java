@@ -11,25 +11,28 @@ import java.util.List;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean)}
  */
 class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
   private final List<String> _goals;
   private final boolean _dryRun;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
+  private final boolean _isKafkaAssignerMode;
 
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture<GoalOptimizer.OptimizerResult> future,
                     List<String> goals,
                     boolean dryRun,
                     ModelCompletenessRequirements modelCompletenessRequirements,
-                    boolean allowCapacityEstimation) {
+                    boolean allowCapacityEstimation,
+                    boolean isKafkaAssignerMode) {
     super(kafkaCruiseControl, future);
     _goals = goals;
     _dryRun = dryRun;
     _modelCompletenessRequirements = modelCompletenessRequirements;
     _allowCapacityEstimation = allowCapacityEstimation;
+    _isKafkaAssignerMode = isKafkaAssignerMode;
   }
 
   @Override
@@ -38,6 +41,7 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
                                          _dryRun,
                                          _modelCompletenessRequirements,
                                          _future.operationProgress(),
-                                         _allowCapacityEstimation);
+                                         _allowCapacityEstimation,
+                                         _isKafkaAssignerMode);
   }
 }

@@ -175,7 +175,8 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient);
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
-                              EasyMock.mock(LoadMonitor.class));
+                              EasyMock.mock(LoadMonitor.class),
+                              false);
     // Wait until the execution to start so the task timestamp is set to time.milliseconds.
     while (executor.state().state() != ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS) {
       Thread.sleep(10);
@@ -221,7 +222,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
                                          Collection<ExecutionProposal> proposalsToCheck) {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry());
-    executor.executeProposals(proposalsToExecute, Collections.emptySet(), EasyMock.mock(LoadMonitor.class));
+    executor.executeProposals(proposalsToExecute, Collections.emptySet(), EasyMock.mock(LoadMonitor.class), false);
 
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
     for (ExecutionProposal proposal : proposalsToCheck) {

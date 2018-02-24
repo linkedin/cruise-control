@@ -61,7 +61,8 @@ public class ExecutionTaskManagerTest {
 
       taskManager.addExecutionProposals(Collections.singletonList(proposal),
                                         Collections.emptySet(),
-                                        generateExpectedCluster(proposal, tp));
+                                        generateExpectedCluster(proposal, tp),
+                                        false);
       List<ExecutionTask> tasks = taskManager.getReplicaMovementTasks();
       assertEquals(1, tasks.size());
       ExecutionTask task  = tasks.get(0);
