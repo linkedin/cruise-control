@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
@@ -108,6 +109,17 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
 
     initGoalState(clusterModel, excludedTopics);
 
+    // STEP1: Move leader to the first position in partition replica list.
+    for (Map.Entry<String, List<Partition>> entry : _partitionsByTopic.entrySet()) {
+      for (Partition partition : entry.getValue()) {
+        // Ensure the first replica is the leader.
+        if (partition.replicas().get(0) != partition.leader()) {
+          partition.swapReplicaPositions(0, partition.replicas().indexOf(partition.leader()));
+        }
+      }
+    }
+
+    // STEP2: Perform optimization.
     int maxReplicationFactor = clusterModel.maxReplicationFactor();
     for (int position = 0; position < maxReplicationFactor; position++) {
       for (Map.Entry<String, List<Partition>> entry : _partitionsByTopic.entrySet()) {
@@ -118,10 +130,6 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
           if (shouldExclude(partition, position, excludedTopics)) {
             continue;
           }
-          // Ensure the first replica is the leader.
-          if (partition.replicas().get(0) != partition.leader()) {
-            partition.swapReplicaPositions(0, partition.replicas().indexOf(partition.leader()));
-          }
           // Apply the necessary move (if needed).
           if (!maybeApplyMove(clusterModel, partition, position)) {
             throw new OptimizationFailureException(
@@ -131,6 +139,8 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
       }
     }
     ensureRackAware(clusterModel, excludedTopics);
+    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
+    AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);
     return true;
   }
 
