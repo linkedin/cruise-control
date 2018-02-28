@@ -9,6 +9,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
@@ -21,6 +22,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import org.apache.kafka.common.TopicPartition;
 
 
@@ -78,7 +82,7 @@ public class RandomCluster {
   public static void populate(ClusterModel cluster,
                               Map<ClusterProperty, Number> properties,
                               TestConstants.Distribution replicaDistribution) {
-    populate(cluster, properties, replicaDistribution, false);
+    populate(cluster, properties, replicaDistribution, false, true, Collections.emptySet());
   }
 
   /**
@@ -89,11 +93,15 @@ public class RandomCluster {
    * @param properties          Representing the cluster properties as specified in {@link ClusterProperty}.
    * @param replicaDistribution The replica distribution showing the broker of each replica in the cluster.
    * @param rackAware           Whether the replicas should be rack aware or not.
+   * @param leaderInFirstPosition Leader of each partition is in the first position or not.
+   * @param excludedTopics      Excluded topics.
    */
   public static void populate(ClusterModel cluster,
                               Map<ClusterProperty, Number> properties,
                               TestConstants.Distribution replicaDistribution,
-                              boolean rackAware) {
+                              boolean rackAware,
+                              boolean leaderInFirstPosition,
+                              Set<String> excludedTopics) {
     // Sanity checks.
     int numBrokers = cluster.brokers().size();
     if (properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() < 0 ||
@@ -103,11 +111,12 @@ public class RandomCluster {
         properties.get(ClusterProperty.NUM_DEAD_BROKERS).intValue() < 0 ||
         properties.get(ClusterProperty.NUM_TOPICS).intValue() <= 0 ||
         properties.get(ClusterProperty.MIN_REPLICATION).intValue() > properties.get(ClusterProperty.MAX_REPLICATION)
-            .intValue() ||
+                                                                               .intValue() ||
+        (leaderInFirstPosition && properties.get(ClusterProperty.MIN_REPLICATION).intValue() < 2) ||
         properties.get(ClusterProperty.MAX_REPLICATION).intValue() > numBrokers ||
         properties.get(ClusterProperty.NUM_TOPICS).intValue() > properties.get(ClusterProperty.NUM_REPLICAS).intValue() ||
         (properties.get(ClusterProperty.MIN_REPLICATION).intValue() == properties.get(ClusterProperty.MAX_REPLICATION).intValue() &&
-            properties.get(ClusterProperty.NUM_REPLICAS).intValue() % properties.get(ClusterProperty.MIN_REPLICATION).intValue() != 0)) {
+         properties.get(ClusterProperty.NUM_REPLICAS).intValue() % properties.get(ClusterProperty.MIN_REPLICATION).intValue() != 0)) {
       throw new IllegalArgumentException("Random cluster population failed due to bad input.");
     }
 
@@ -120,7 +129,7 @@ public class RandomCluster {
     // Increase the replication factor.
     for (int i = 0; i < properties.get(ClusterProperty.NUM_TOPICS).intValue(); i++) {
       int randomReplicationFactor = uniformlyRandom(properties.get(ClusterProperty.MIN_REPLICATION).intValue(),
-          properties.get(ClusterProperty.MAX_REPLICATION).intValue(), TestConstants.REPLICATION_SEED + i);
+                                                    properties.get(ClusterProperty.MAX_REPLICATION).intValue(), TestConstants.REPLICATION_SEED + i);
       metadata.get(i).setReplicationFactor(randomReplicationFactor);
 
       if (totalTopicReplicas(metadata) > properties.get(ClusterProperty.NUM_REPLICAS).intValue()) {
@@ -181,10 +190,10 @@ public class RandomCluster {
           if (replicaDistribution.equals(TestConstants.Distribution.UNIFORM)) {
             randomBrokerId = uniformlyRandom(0, numBrokers - 1, TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex);
             while (replicaBrokerIds.contains(randomBrokerId)
-                || (rackAware && replicaRacks.contains(cluster.broker(randomBrokerId).rack().id()))) {
+                   || (rackAware && replicaRacks.contains(cluster.broker(randomBrokerId).rack().id()))) {
               brokerConflictResolver++;
               randomBrokerId = uniformlyRandom(0, numBrokers - 1,
-                  TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex + brokerConflictResolver);
+                                               TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex + brokerConflictResolver);
             }
           } else if (replicaDistribution.equals(TestConstants.Distribution.LINEAR)) {
             int binRange = (numBrokers * (numBrokers + 1)) / 2;
@@ -199,10 +208,10 @@ public class RandomCluster {
             }
 
             while (replicaBrokerIds.contains(randomBrokerId)
-                || (rackAware && replicaRacks.contains(cluster.broker(randomBrokerId).rack().id()))) {
+                   || (rackAware && replicaRacks.contains(cluster.broker(randomBrokerId).rack().id()))) {
               brokerConflictResolver++;
               randomBinValue = uniformlyRandom(1, binRange,
-                  TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex + brokerConflictResolver);
+                                               TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex + brokerConflictResolver);
 
               for (int bin = 1; bin <= numBrokers; bin++) {
                 int binValue = (2 * randomBinValue);
@@ -223,10 +232,10 @@ public class RandomCluster {
               }
             }
             while (replicaBrokerIds.contains(randomBrokerId)
-                || (rackAware && replicaRacks.contains(cluster.broker(randomBrokerId).rack().id()))) {
+                   || (rackAware && replicaRacks.contains(cluster.broker(randomBrokerId).rack().id()))) {
               brokerConflictResolver++;
               randomBinValue = uniformlyRandom(1, binRange,
-                  TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex + brokerConflictResolver);
+                                               TestConstants.REPLICA_ASSIGNMENT_SEED + replicaIndex + brokerConflictResolver);
               for (int bin = 1; bin <= numBrokers; bin++) {
                 if (randomBinValue <= bin * bin) {
                   randomBrokerId = bin - 1;
@@ -274,11 +283,65 @@ public class RandomCluster {
           // Update next replica index
           replicaIndex++;
         }
+
+        // Move leader away from the first position if requested.
+        if (!leaderInFirstPosition) {
+          Partition partition = cluster.partition(pInfo);
+          partition.swapReplicaPositions(1, partition.replicas().indexOf(partition.leader()));
+        }
       }
     }
-    // Mark dead brokers.
-    for (int i = 0; i < properties.get(ClusterProperty.NUM_DEAD_BROKERS).intValue(); i++) {
-      cluster.setBrokerState(i, Broker.State.DEAD);
+    // Mark dead brokers
+    int numDeadBrokers = properties.get(ClusterProperty.NUM_DEAD_BROKERS).intValue();
+    markDeadBrokers(cluster, numDeadBrokers, excludedTopics, leaderInFirstPosition);
+  }
+
+  /**
+   * Mark dead brokers: Give priority to marking brokers containing excluded topic replicas. In particular, if the
+   * leader is not in first position in partition replica list, then give priority to brokers containing excluded
+   * topic replicas in the current position of the leader -- i.e. 1.
+   *
+   * @param cluster he state of the cluster.
+   * @param numDeadBrokers Number of dead brokers.
+   * @param excludedTopics Excluded topics.
+   * @param leaderInFirstPosition Leader of each partition is in the first position or not.
+   */
+  private static void markDeadBrokers(ClusterModel cluster,
+                               int numDeadBrokers,
+                               Set<String> excludedTopics,
+                               boolean leaderInFirstPosition) {
+    if (numDeadBrokers > 0) {
+      int markedBrokersContainingExcludedTopicReplicas = 0;
+
+      // Find the brokers with high priority to mark as dead (if any). These brokers are sorted by their id.
+      SortedMap<String, List<Partition>> partitionsByTopic = cluster.getPartitionsByTopic();
+      SortedSet<Broker> brokersWithExcludedReplicas = new TreeSet<>();
+      for (String excludedTopic : excludedTopics) {
+        for (Partition excludedPartition : partitionsByTopic.get(excludedTopic)) {
+          if (leaderInFirstPosition) {
+            brokersWithExcludedReplicas.addAll(excludedPartition.partitionBrokers());
+          } else {
+            brokersWithExcludedReplicas.add(excludedPartition.replicas().get(1).broker());
+          }
+        }
+      }
+
+      // Mark the brokers with high priority as dead (if any).
+      for (Broker brokerToMarkDead : brokersWithExcludedReplicas) {
+        cluster.setBrokerState(brokerToMarkDead.id(), Broker.State.DEAD);
+        if (++markedBrokersContainingExcludedTopicReplicas >= numDeadBrokers) {
+          break;
+        }
+      }
+
+      // Mark the remaining brokers as dead.
+      int remainingDeadBrokerIndex = 0;
+      while (numDeadBrokers - markedBrokersContainingExcludedTopicReplicas - remainingDeadBrokerIndex > 0) {
+        if (cluster.broker(remainingDeadBrokerIndex).isAlive()) {
+          cluster.setBrokerState(remainingDeadBrokerIndex, Broker.State.DEAD);
+        }
+        remainingDeadBrokerIndex++;
+      }
     }
   }
 

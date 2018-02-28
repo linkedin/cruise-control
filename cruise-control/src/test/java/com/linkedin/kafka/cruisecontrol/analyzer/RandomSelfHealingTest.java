@@ -97,14 +97,22 @@ public class RandomSelfHealingTest {
     int testId = 0;
     for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
       p.add(params(testId++, singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.emptySet(), verifications));
+                   balancingConstraint, Collections.emptySet(), verifications, true));
       p.add(params(testId++, singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.singleton("T0"), verifications));
+                   balancingConstraint, Collections.emptySet(), verifications, false));
+      p.add(params(testId++, singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()),
+                   balancingConstraint, Collections.singleton("T0"), verifications, true));
+      p.add(params(testId++, singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()),
+                   balancingConstraint, Collections.singleton("T0"), verifications, false));
     }
     p.add(params(testId++, singleDeadBroker, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
-                 balancingConstraint, Collections.emptySet(), kafkaAssignerVerifications));
+                 balancingConstraint, Collections.emptySet(), kafkaAssignerVerifications, true));
     p.add(params(testId++, singleDeadBroker, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
-                 balancingConstraint, Collections.singleton("T0"), kafkaAssignerVerifications));
+                 balancingConstraint, Collections.emptySet(), kafkaAssignerVerifications, false));
+    p.add(params(testId++, singleDeadBroker, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
+                 balancingConstraint, Collections.singleton("T0"), kafkaAssignerVerifications, true));
+    p.add(params(testId++, singleDeadBroker, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
+                 balancingConstraint, Collections.singleton("T0"), kafkaAssignerVerifications, false));
 
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5100L));
     balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
@@ -112,10 +120,14 @@ public class RandomSelfHealingTest {
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
     // Test: All Goals.
-    p.add(params(testId++, singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.emptySet(), verifications));
-    p.add(params(testId++, singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.singleton("T0"), verifications));
-    p.add(params(testId++, singleDeadBroker, kafkaAssignerGoals, balancingConstraint, Collections.emptySet(), kafkaAssignerVerifications));
-    p.add(params(testId++, singleDeadBroker, kafkaAssignerGoals, balancingConstraint, Collections.singleton("T0"), kafkaAssignerVerifications));
+    p.add(params(testId++, singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.emptySet(),
+                 verifications, true));
+    p.add(params(testId++, singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.singleton("T0"),
+                 verifications, true));
+    p.add(params(testId++, singleDeadBroker, kafkaAssignerGoals, balancingConstraint, Collections.emptySet(),
+                 kafkaAssignerVerifications, true));
+    p.add(params(testId++, singleDeadBroker, kafkaAssignerGoals, balancingConstraint, Collections.singleton("T0"),
+                 kafkaAssignerVerifications, true));
 
     // -- TEST DECK #2: MULTIPLE DEAD BROKERS.
     // Test: Single Goal.
@@ -123,20 +135,24 @@ public class RandomSelfHealingTest {
     multipleDeadBrokers.put(ClusterProperty.NUM_DEAD_BROKERS, 5);
     for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
       p.add(params(testId++, multipleDeadBrokers, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.emptySet(), verifications));
+                   balancingConstraint, Collections.emptySet(), verifications, true));
       p.add(params(testId++, multipleDeadBrokers, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.singleton("T0"), verifications));
+                   balancingConstraint, Collections.singleton("T0"), verifications, true));
     }
     p.add(params(testId++, multipleDeadBrokers, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
-                 balancingConstraint, Collections.emptySet(), kafkaAssignerVerifications));
+                 balancingConstraint, Collections.emptySet(), kafkaAssignerVerifications, true));
     p.add(params(testId++, multipleDeadBrokers, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
-                 balancingConstraint, Collections.singleton("T0"), kafkaAssignerVerifications));
+                 balancingConstraint, Collections.singleton("T0"), kafkaAssignerVerifications, true));
 
     // Test: All Goals.
-    p.add(params(testId++, multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.emptySet(), verifications));
-    p.add(params(testId++, multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.singleton("T0"), verifications));
-    p.add(params(testId++, multipleDeadBrokers, kafkaAssignerGoals, balancingConstraint, Collections.emptySet(), kafkaAssignerVerifications));
-    p.add(params(testId++, multipleDeadBrokers, kafkaAssignerGoals, balancingConstraint, Collections.singleton("T0"), kafkaAssignerVerifications));
+    p.add(params(testId++, multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.emptySet(),
+                 verifications, true));
+    p.add(params(testId++, multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.singleton("T0"),
+                 verifications, true));
+    p.add(params(testId++, multipleDeadBrokers, kafkaAssignerGoals, balancingConstraint, Collections.emptySet(),
+                 kafkaAssignerVerifications, true));
+    p.add(params(testId++, multipleDeadBrokers, kafkaAssignerGoals, balancingConstraint, Collections.singleton("T0"),
+                 kafkaAssignerVerifications, true));
 
     return p;
   }
@@ -146,8 +162,11 @@ public class RandomSelfHealingTest {
                                  Map<Integer, String> goalNameByPriority,
                                  BalancingConstraint balancingConstraint,
                                  Collection<String> excludedTopics,
-                                 List<OptimizationVerifier.Verification> verifications) {
-    return new Object[]{testId, modifiedProperties, goalNameByPriority, balancingConstraint, excludedTopics, verifications};
+                                 List<OptimizationVerifier.Verification> verifications,
+                                 boolean leaderInFirstPosition) {
+    return new Object[]{
+        testId, modifiedProperties, goalNameByPriority, balancingConstraint, excludedTopics, verifications, leaderInFirstPosition
+    };
   }
 
   private int _testId;
@@ -156,6 +175,7 @@ public class RandomSelfHealingTest {
   private BalancingConstraint _balancingConstraint;
   private Set<String> _excludedTopics;
   private List<OptimizationVerifier.Verification> _verifications;
+  private boolean _leaderInFirstPosition;
 
   /**
    * Constructor of Self Healing Test.
@@ -172,13 +192,15 @@ public class RandomSelfHealingTest {
                                Map<Integer, String> goalNameByPriority,
                                BalancingConstraint balancingConstraint,
                                Collection<String> excludedTopics,
-                               List<OptimizationVerifier.Verification> verifications) {
+                               List<OptimizationVerifier.Verification> verifications,
+                               boolean leaderInFirstPosition) {
     _testId = testId;
     _modifiedProperties = modifiedProperties;
     _goalNameByPriority = goalNameByPriority;
     _balancingConstraint = balancingConstraint;
     _excludedTopics = new HashSet<>(excludedTopics);
     _verifications = verifications;
+    _leaderInFirstPosition = leaderInFirstPosition;
   }
 
   @Test
@@ -189,7 +211,8 @@ public class RandomSelfHealingTest {
 
     LOG.debug("Replica distribution: {}.", TestConstants.Distribution.UNIFORM);
     ClusterModel clusterModel = RandomCluster.generate(clusterProperties);
-    RandomCluster.populate(clusterModel, clusterProperties, TestConstants.Distribution.UNIFORM, true);
+    RandomCluster.populate(clusterModel, clusterProperties, TestConstants.Distribution.UNIFORM, true,
+                           _leaderInFirstPosition, _excludedTopics);
 
     assertTrue("Self Healing Test failed to improve the existing state.",
                OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority,
