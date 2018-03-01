@@ -13,12 +13,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * A class that holds all the goal violations.
  */
 public class GoalViolations extends Anomaly {
+  private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
   private final List<Violation> _goalViolations = new ArrayList<>();
 
   public void addViolation(int priority, String goalName, Set<ExecutionProposal> balancingProposals) {
@@ -35,7 +38,11 @@ public class GoalViolations extends Anomaly {
   @Override
   void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
     // Fix the violations using a rebalance.
-    kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress());
+    try {
+      kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress());
+    } catch (IllegalArgumentException e) {
+      LOG.warn(e.getMessage());
+    }
   }
 
   public static class Violation {
