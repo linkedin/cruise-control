@@ -254,7 +254,7 @@ public abstract class AbstractGoal implements Goal {
                                Replica sourceReplica,
                                SortedSet<Replica> candidateReplicasToSwapWith,
                                Set<Goal> optimizedGoals) {
-    SortedSet<Replica> eligibleReplicas = getEligibleReplicas(clusterModel, sourceReplica, candidateReplicasToSwapWith);
+    SortedSet<Replica> eligibleReplicas = getEligibleReplicasForSwap(clusterModel, sourceReplica, candidateReplicasToSwapWith);
     if (eligibleReplicas.isEmpty()) {
       return null;
     }
@@ -312,9 +312,9 @@ public abstract class AbstractGoal implements Goal {
     return false;
   }
 
-  private SortedSet<Replica> getEligibleReplicas(ClusterModel clusterModel,
-                                                 Replica sourceReplica,
-                                                 SortedSet<Replica> candidateReplicasToSwapWith) {
+  private SortedSet<Replica> getEligibleReplicasForSwap(ClusterModel clusterModel,
+                                                        Replica sourceReplica,
+                                                        SortedSet<Replica> candidateReplicasToSwapWith) {
     // CASE#1: All candidate replicas are eligible if any of the following is true:
     // (1) there are no new brokers in the cluster,
     // (2) the given candidate set contains no replicas,

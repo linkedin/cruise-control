@@ -20,9 +20,7 @@ import java.util.List;
  * </ul>
  */
 public enum ActionAcceptance {
-  ACCEPT("ACCEPT"),
-  REPLICA_REJECT("REPLICA_REJECT"),
-  BROKER_REJECT("BROKER_REJECT");
+  ACCEPT, REPLICA_REJECT, BROKER_REJECT;
 
   private static final List<ActionAcceptance> CACHED_VALUES;
   static {
@@ -31,16 +29,5 @@ public enum ActionAcceptance {
 
   public static List<ActionAcceptance> cachedValues() {
     return CACHED_VALUES;
-  }
-
-  private final String _actionAcceptance;
-
-  ActionAcceptance(String actionAcceptance) {
-    _actionAcceptance = actionAcceptance;
-  }
-
-  @Override
-  public String toString() {
-    return _actionAcceptance;
   }
 }
