@@ -43,6 +43,7 @@ public class AnomalyDetector {
   private volatile boolean _shutdown;
   private final Meter _brokerFailureRate;
   private final Meter _goalViolationRate;
+  private final LoadMonitor _loadMonitor;
 
   public AnomalyDetector(KafkaCruiseControlConfig config,
                          LoadMonitor loadMonitor,
@@ -53,8 +54,9 @@ public class AnomalyDetector {
     _anomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
     _anomalyNotifier = config.getConfiguredInstance(KafkaCruiseControlConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
                                                     AnomalyNotifier.class);
-    _goalViolationDetector = new GoalViolationDetector(config, loadMonitor, _anomalies, time);
-    _brokerFailureDetector = new BrokerFailureDetector(config, loadMonitor, _anomalies, time);
+    _loadMonitor = loadMonitor;
+    _goalViolationDetector = new GoalViolationDetector(config, _loadMonitor, _anomalies, time);
+    _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time);
     _kafkaCruiseControl = kafkaCruiseControl;
     _detectorScheduler =
         Executors.newScheduledThreadPool(3, new KafkaCruiseControlThreadFactory("AnomalyDetector", false, LOG));
@@ -84,6 +86,7 @@ public class AnomalyDetector {
     _shutdown = false;
     _brokerFailureRate = new Meter();
     _goalViolationRate = new Meter();
+    _loadMonitor = null;
   }
 
   public void startDetection() {
@@ -195,8 +198,20 @@ public class AnomalyDetector {
     }
 
     private void fixAnomaly(Anomaly anomaly) throws KafkaCruiseControlException {
-      LOG.info("Fixing anomaly {}", anomaly);
-      anomaly.fix(_kafkaCruiseControl);
+      String skipMsg = (anomaly instanceof GoalViolations) ? "goal violation fix" : "broker failure fix";
+      boolean isLoadingOrBootstrapping = ViolationUtils.isLoadingOrBootstrapping(_loadMonitor, skipMsg);
+
+      // Fixing anomalies is possible only when (1) the state is not loading or bootstrapping and
+      // (2) the completeness requirements are met for all goals.
+      if (!isLoadingOrBootstrapping) {
+        boolean meetCompletenessRequirements = ViolationUtils.meetCompletenessRequirements(
+            _loadMonitor, _kafkaCruiseControl.goalsByPriority(Collections.emptyList()).values(), skipMsg);
+        if (meetCompletenessRequirements) {
+          LOG.info("Fixing anomaly {}", anomaly);
+          anomaly.fix(_kafkaCruiseControl);
+        }
+      }
+
       _anomalies.clear();
       // We need to add the shutdown message in case the failure detector has shutdown.
       if (_shutdown) {

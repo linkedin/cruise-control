@@ -410,7 +410,7 @@ public class KafkaCruiseControl {
   /**
    * Get a goals by priority based on the goal list.
    */
-  private Map<Integer, Goal> goalsByPriority(List<String> goals) {
+  public Map<Integer, Goal> goalsByPriority(List<String> goals) {
     if (goals == null || goals.isEmpty()) {
       return AnalyzerUtils.getGoalMapByPriority(_config);
     }

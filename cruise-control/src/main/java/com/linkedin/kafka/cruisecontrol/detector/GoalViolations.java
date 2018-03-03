@@ -24,8 +24,8 @@ public class GoalViolations extends Anomaly {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
   private final List<Violation> _goalViolations = new ArrayList<>();
 
-  public void addViolation(int priority, String goalName, Set<ExecutionProposal> balancingProposals) {
-    _goalViolations.add(new Violation(priority, goalName, balancingProposals));
+  public void addViolation(int priority, String goalName, Set<ExecutionProposal> executionProposals) {
+    _goalViolations.add(new Violation(priority, goalName, executionProposals));
   }
 
   /**
@@ -40,7 +40,7 @@ public class GoalViolations extends Anomaly {
     // Fix the violations using a rebalance.
     try {
       kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress());
-    } catch (IllegalArgumentException e) {
+    } catch (IllegalStateException e) {
       LOG.warn(e.getMessage());
     }
   }
@@ -48,12 +48,12 @@ public class GoalViolations extends Anomaly {
   public static class Violation {
     private final int _priority;
     private final String _goalName;
-    private final Set<ExecutionProposal> _balancingProposals;
+    private final Set<ExecutionProposal> _executionProposals;
 
-    public Violation(int priority, String goalName, Set<ExecutionProposal> balancingProposals) {
+    public Violation(int priority, String goalName, Set<ExecutionProposal> executionProposals) {
       _priority = priority;
       _goalName = goalName;
-      _balancingProposals = balancingProposals;
+      _executionProposals = executionProposals;
     }
 
     public int priority() {
@@ -64,8 +64,8 @@ public class GoalViolations extends Anomaly {
       return _goalName;
     }
 
-    public Set<ExecutionProposal> balancingProposals() {
-      return _balancingProposals;
+    public Set<ExecutionProposal> executionProposals() {
+      return _executionProposals;
     }
   }
 

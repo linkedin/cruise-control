@@ -4,15 +4,19 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import java.util.Collections;
+import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
@@ -126,6 +130,9 @@ public class AnomalyDetectorTest {
                                                      EasyMock.eq(null),
                                                      EasyMock.anyObject(OperationProgress.class)))
             .andReturn(null);
+    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    EasyMock.expect(mockKafkaCruiseControl.goalsByPriority(EasyMock.anyObject())).andReturn(
+        AnalyzerUtils.getGoalMapByPriority(new KafkaCruiseControlConfig(props)));
 
     EasyMock.replay(mockAnomalyNotifier);
     EasyMock.replay(mockBrokerFailureDetector);
