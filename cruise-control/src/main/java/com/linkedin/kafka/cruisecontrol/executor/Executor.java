@@ -113,12 +113,19 @@ public class Executor {
   }
 
   /**
-   * Kick off the execution.
+   * Pause the load monitor and kick off the execution.
+   *
+   * @param loadMonitor Load monitor.
    */
   public void startExecution(LoadMonitor loadMonitor) {
+    if (loadMonitor != null) {
+      // loadMonitor is null for unit tests.
+      loadMonitor.pauseMetricSampling();
+    }
     _zkUtils = ZkUtils.apply(_zkConnect, 30000, 30000, false);
     try {
       if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
+        _executionTaskManager.clear();
         throw new IllegalStateException("There are ongoing partition reassignments.");
       }
       if (_state.compareAndSet(ExecutorState.State.NO_TASK_IN_PROGRESS, ExecutorState.State.EXECUTION_STARTED)) {
