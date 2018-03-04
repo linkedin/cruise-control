@@ -29,8 +29,8 @@ public class ReadOnlyKafkaSampleStore extends KafkaSampleStore {
       throw new IllegalArgumentException("The sample store topic names must be configured.");
     }
     String numProcessingThreadsString = (String) config.get(NUM_SAMPLE_LOADING_THREADS);
-    int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty() ?
-        5 : Integer.parseInt(numProcessingThreadsString);
+    int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty()
+                               ? DEFAULT_NUM_SAMPLE_LOADING_THREADS : Integer.parseInt(numProcessingThreadsString);
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
     _consumers = new ArrayList<>(numProcessingThreads);
     for (int i = 0; i < numProcessingThreads; i++) {

@@ -57,6 +57,7 @@ public class KafkaSampleStore implements SampleStore {
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
   protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   private static final String DEFAULT_CLEANUP_POLICY = "delete";
+  public static final Integer DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   // Keep additional snapshot windows in case some of the windows do not have enough samples.
   private static final int ADDITIONAL_SNAPSHOT_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
@@ -80,8 +81,8 @@ public class KafkaSampleStore implements SampleStore {
       throw new IllegalArgumentException("The sample store topic names must be configured.");
     }
     String numProcessingThreadsString = (String) config.get(NUM_SAMPLE_LOADING_THREADS);
-    int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty() ?
-        8 : Integer.parseInt(numProcessingThreadsString);
+    int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty()
+                               ? DEFAULT_NUM_SAMPLE_LOADING_THREADS : Integer.parseInt(numProcessingThreadsString);
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
     _consumers = new ArrayList<>(numProcessingThreads);
     for (int i = 0; i < numProcessingThreads; i++) {
