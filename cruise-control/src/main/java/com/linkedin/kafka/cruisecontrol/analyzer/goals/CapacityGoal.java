@@ -89,11 +89,16 @@ public abstract class CapacityGoal extends AbstractGoal {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
-    if (action.balancingAction() == ActionType.REPLICA_SWAP) {
-      Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
-      return isSwapAcceptableForCapacity(sourceReplica, destinationReplica) ? ACCEPT : REPLICA_REJECT;
+    switch (action.balancingAction()) {
+      case REPLICA_SWAP:
+        Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
+        return isSwapAcceptableForCapacity(sourceReplica, destinationReplica) ? ACCEPT : REPLICA_REJECT;
+      case REPLICA_MOVEMENT:
+      case LEADERSHIP_MOVEMENT:
+        return isMovementAcceptableForCapacity(sourceReplica, destinationBroker) ? ACCEPT : REPLICA_REJECT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
-    return isMovementAcceptableForCapacity(sourceReplica, destinationBroker) ? ACCEPT : REPLICA_REJECT;
   }
 
   @Override
@@ -394,7 +399,7 @@ public abstract class CapacityGoal extends AbstractGoal {
     double sourceUtilizationDelta = destinationReplicaUtilization - sourceReplicaUtilization;
     return sourceUtilizationDelta > 0 ? isUtilizationUnderLimitAfterAddingLoad(sourceReplica.broker(), sourceUtilizationDelta)
                                       : isUtilizationUnderLimitAfterAddingLoad(destinationReplica.broker(),
-                                                                                0 - sourceUtilizationDelta);
+                                                                                - sourceUtilizationDelta);
   }
 
   /**

@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,35 +74,41 @@ public class RackAwareGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    if (action.balancingAction() == ActionType.REPLICA_MOVEMENT
-        || action.balancingAction() == ActionType.REPLICA_SWAP) {
-      Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
-      Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
-
-      // Destination broker cannot be in a rack that violates rack awareness.
-      Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
-      partitionBrokers.remove(sourceReplica.broker());
-
-      // Remove brokers in partition broker racks except the brokers in replica broker rack.
-      for (Broker broker : partitionBrokers) {
-        if (broker.rack().brokers().contains(destinationBroker)) {
-          return BROKER_REJECT;
-        }
+    if (action.balancingAction() == ActionType.REPLICA_MOVEMENT || action.balancingAction() == ActionType.REPLICA_SWAP) {
+      if (isReplicaMoveViolateRackAwareness(clusterModel,
+                                            c -> c.broker(action.sourceBrokerId()).replica(action.topicPartition()),
+                                            c -> c.broker(action.destinationBrokerId()))) {
+        return BROKER_REJECT;
       }
+
       if (action.balancingAction() == ActionType.REPLICA_SWAP) {
-        // Destination broker cannot be in a rack that violates rack awareness.
-        Set<Broker> swapPartitionBrokers = clusterModel.partition(action.destinationTopicPartition()).partitionBrokers();
-        swapPartitionBrokers.remove(destinationBroker);
-        // Remove brokers in partition broker racks except the brokers in replica broker rack.
-        Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
-        for (Broker broker : swapPartitionBrokers) {
-          if (broker.rack().brokers().contains(sourceBroker)) {
-            return REPLICA_REJECT;
-          }
+        if (isReplicaMoveViolateRackAwareness(clusterModel,
+                                             c -> c.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
+                                             c -> c.broker(action.sourceBrokerId()))) {
+          return REPLICA_REJECT;
         }
       }
     }
     return ACCEPT;
+  }
+
+  private boolean isReplicaMoveViolateRackAwareness(ClusterModel clusterModel,
+                                                    Function<ClusterModel, Replica> sourceReplicaFunction,
+                                                    Function<ClusterModel, Broker> destinationBrokerFunction) {
+    Replica sourceReplica = sourceReplicaFunction.apply(clusterModel);
+    Broker destinationBroker = destinationBrokerFunction.apply(clusterModel);
+    // Destination broker cannot be in a rack that violates rack awareness.
+    Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
+    partitionBrokers.remove(sourceReplica.broker());
+
+    // Remove brokers in partition broker racks except the brokers in replica broker rack.
+    for (Broker broker : partitionBrokers) {
+      if (broker.rack().brokers().contains(destinationBroker)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   @Override

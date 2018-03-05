@@ -75,30 +75,49 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
 
     initMeanLeaderBytesIn(clusterModel);
 
-    if (!sourceReplica.isLeader() && (action.balancingAction() != ActionType.REPLICA_SWAP
-                                      || !destinationBroker.replica(action.destinationTopicPartition()).isLeader())) {
-      // No leadership bytes are being moved so I don't care
-      return ACCEPT;
+    if (!sourceReplica.isLeader()) {
+      switch (action.balancingAction()) {
+        case REPLICA_SWAP:
+          if (!destinationBroker.replica(action.destinationTopicPartition()).isLeader()) {
+            // No leadership bytes are being swapped between source and destination.
+            return ACCEPT;
+          }
+          break;
+        case REPLICA_MOVEMENT:
+          // No leadership bytes are being moved to destination.
+          return ACCEPT;
+        case LEADERSHIP_MOVEMENT:
+          throw new IllegalStateException("Attempt to move leadership from the follower.");
+        default:
+          throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
+      }
     }
 
     double sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(Resource.NW_IN);
     double newDestLeaderBytesIn;
-    if (action.balancingAction() != ActionType.REPLICA_SWAP) {
-      newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
-                             + sourceReplicaUtilization;
-    } else {
-      double destinationReplicaUtilization = destinationBroker.replica(action.destinationTopicPartition()).load()
-                                                              .expectedUtilizationFor(Resource.NW_IN);
-      newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
-                             + sourceReplicaUtilization - destinationReplicaUtilization;
 
-      Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
-      double newSourceLeaderBytesIn = sourceBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
-                                      + destinationReplicaUtilization - sourceReplicaUtilization;
+    switch (action.balancingAction()) {
+      case REPLICA_SWAP:
+        double destinationReplicaUtilization = destinationBroker.replica(action.destinationTopicPartition()).load()
+            .expectedUtilizationFor(Resource.NW_IN);
+        newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
+                               + sourceReplicaUtilization - destinationReplicaUtilization;
 
-      if (newSourceLeaderBytesIn > balanceThreshold(clusterModel, sourceBroker.id())) {
-        return REPLICA_REJECT;
-      }
+        Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
+        double newSourceLeaderBytesIn = sourceBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
+                                        + destinationReplicaUtilization - sourceReplicaUtilization;
+
+        if (newSourceLeaderBytesIn > balanceThreshold(clusterModel, sourceBroker.id())) {
+          return REPLICA_REJECT;
+        }
+        break;
+      case REPLICA_MOVEMENT:
+      case LEADERSHIP_MOVEMENT:
+        newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
+                               + sourceReplicaUtilization;
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
 
     return !(newDestLeaderBytesIn > balanceThreshold(clusterModel, destinationBroker.id())) ? ACCEPT : REPLICA_REJECT;
