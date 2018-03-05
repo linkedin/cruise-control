@@ -78,14 +78,19 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    if (action.balancingAction() == REPLICA_SWAP) {
-      return ACCEPT;
-    }
-    String topic = action.topic();
-    int numLocalTopicReplicas = clusterModel.broker(action.sourceBrokerId()).replicasOfTopicInBroker(topic).size();
-    int numRemoteTopicReplicas = clusterModel.broker(action.destinationBrokerId()).replicasOfTopicInBroker(topic).size();
+    switch (action.balancingAction()) {
+      case REPLICA_SWAP:
+        return ACCEPT;
+      case LEADERSHIP_MOVEMENT:
+      case REPLICA_MOVEMENT:
+        String topic = action.topic();
+        int numLocalTopicReplicas = clusterModel.broker(action.sourceBrokerId()).replicasOfTopicInBroker(topic).size();
+        int numRemoteTopicReplicas = clusterModel.broker(action.destinationBrokerId()).replicasOfTopicInBroker(topic).size();
 
-    return numRemoteTopicReplicas < numLocalTopicReplicas ? ACCEPT : REPLICA_REJECT;
+        return numRemoteTopicReplicas < numLocalTopicReplicas ? ACCEPT : REPLICA_REJECT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
+    }
   }
 
   @Override

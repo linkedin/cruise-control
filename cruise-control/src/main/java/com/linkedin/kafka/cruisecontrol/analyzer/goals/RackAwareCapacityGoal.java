@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,23 +87,61 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
-    if (action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT) {
-      return isMovementAcceptableForCapacity(Resource.NW_OUT, sourceReplica, destinationBroker) &&
-          isMovementAcceptableForCapacity(Resource.CPU, sourceReplica, destinationBroker) ? ACCEPT : REPLICA_REJECT;
-    }
-    // Replica Movement/Swap: impacts all resources.
-    if (action.balancingAction() != ActionType.REPLICA_SWAP) {
-      for (Resource resource : _balancingConstraint.resources()) {
-        if (!isMovementAcceptableForCapacity(resource, sourceReplica, destinationBroker)) {
+    switch (action.balancingAction()) {
+      case REPLICA_MOVEMENT:
+        for (Resource resource : _balancingConstraint.resources()) {
+          if (!isMovementAcceptableForCapacity(resource, sourceReplica, destinationBroker)) {
+            return REPLICA_REJECT;
+          }
+        }
+        break;
+      case REPLICA_SWAP:
+        Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
+        if (!isSwapAcceptableForCapacity(sourceReplica, destinationReplica)) {
           return REPLICA_REJECT;
         }
-      }
-    } else {
-      Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
-      if (!isSwapAcceptableForCapacity(sourceReplica, destinationReplica)) {
-        return REPLICA_REJECT;
-      }
+        break;
+      case LEADERSHIP_MOVEMENT:
+        return isMovementAcceptableForCapacity(Resource.NW_OUT, sourceReplica, destinationBroker) &&
+               isMovementAcceptableForCapacity(Resource.CPU, sourceReplica, destinationBroker) ? ACCEPT : REPLICA_REJECT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
+
+    // Rack awareness acceptance.
+    return replicaRelocationAcceptanceForRackAwareness(action, clusterModel);
+  }
+
+  /**
+   * Check if the given replica relocation (a move or swap action) is acceptable by this goal.
+   *
+   * @param action Replica relocation action (i.e. move or swap) to be checked for acceptance.
+   * @param clusterModel The state of the cluster.
+   * @return ActionAcceptance#BROKER_REJECT} if the action is rejected due to violating rack awareness in the destination
+   * broker after moving source replica to destination broker, {@link ActionAcceptance#REPLICA_REJECT} otherwise.
+   */
+  private ActionAcceptance replicaRelocationAcceptanceForRackAwareness(BalancingAction action, ClusterModel clusterModel) {
+    if (isReplicaMoveViolateRackAwareness(clusterModel,
+                                          c -> c.broker(action.sourceBrokerId()).replica(action.topicPartition()),
+                                          c -> c.broker(action.destinationBrokerId()))) {
+      return BROKER_REJECT;
+    }
+
+    if (action.balancingAction() == ActionType.REPLICA_SWAP
+        && isReplicaMoveViolateRackAwareness(clusterModel,
+                                             c -> c.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
+                                             c -> c.broker(action.sourceBrokerId()))) {
+      return REPLICA_REJECT;
+    }
+
+    return ACCEPT;
+  }
+
+  private boolean isReplicaMoveViolateRackAwareness(ClusterModel clusterModel,
+                                                    Function<ClusterModel, Replica> sourceReplicaFunction,
+                                                    Function<ClusterModel, Broker> destinationBrokerFunction) {
+    Replica sourceReplica = sourceReplicaFunction.apply(clusterModel);
+    Broker destinationBroker = destinationBrokerFunction.apply(clusterModel);
     // Destination broker cannot be in a rack that violates rack awareness.
     Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
     partitionBrokers.remove(sourceReplica.broker());
@@ -110,22 +149,11 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     // Remove brokers in partition broker racks except the brokers in replica broker rack.
     for (Broker broker : partitionBrokers) {
       if (broker.rack().brokers().contains(destinationBroker)) {
-        return BROKER_REJECT;
+        return true;
       }
     }
-    if (action.balancingAction() == ActionType.REPLICA_SWAP) {
-      // Destination broker cannot be in a rack that violates rack awareness.
-      Set<Broker> swapPartitionBrokers = clusterModel.partition(action.destinationTopicPartition()).partitionBrokers();
-      swapPartitionBrokers.remove(destinationBroker);
-      // Remove brokers in partition broker racks except the brokers in replica broker rack.
-      Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
-      for (Broker broker : swapPartitionBrokers) {
-        if (broker.rack().brokers().contains(sourceBroker)) {
-          return REPLICA_REJECT;
-        }
-      }
-    }
-    return ACCEPT;
+
+    return false;
   }
 
   @Override

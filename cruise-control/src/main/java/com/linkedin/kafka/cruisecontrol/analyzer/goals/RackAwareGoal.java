@@ -74,22 +74,27 @@ public class RackAwareGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    if (action.balancingAction() == ActionType.REPLICA_MOVEMENT || action.balancingAction() == ActionType.REPLICA_SWAP) {
-      if (isReplicaMoveViolateRackAwareness(clusterModel,
-                                            c -> c.broker(action.sourceBrokerId()).replica(action.topicPartition()),
-                                            c -> c.broker(action.destinationBrokerId()))) {
-        return BROKER_REJECT;
-      }
-
-      if (action.balancingAction() == ActionType.REPLICA_SWAP) {
+    switch (action.balancingAction()) {
+      case LEADERSHIP_MOVEMENT:
+        return ACCEPT;
+      case REPLICA_MOVEMENT:
+      case REPLICA_SWAP:
         if (isReplicaMoveViolateRackAwareness(clusterModel,
-                                             c -> c.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
-                                             c -> c.broker(action.sourceBrokerId()))) {
+                                              c -> c.broker(action.sourceBrokerId()).replica(action.topicPartition()),
+                                              c -> c.broker(action.destinationBrokerId()))) {
+          return BROKER_REJECT;
+        }
+
+        if (action.balancingAction() == ActionType.REPLICA_SWAP
+            && isReplicaMoveViolateRackAwareness(clusterModel,
+                                                 c -> c.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
+                                                 c -> c.broker(action.sourceBrokerId()))) {
           return REPLICA_REJECT;
         }
-      }
+        return ACCEPT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
-    return ACCEPT;
   }
 
   private boolean isReplicaMoveViolateRackAwareness(ClusterModel clusterModel,

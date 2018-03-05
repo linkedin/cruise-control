@@ -70,10 +70,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * Check whether given action is acceptable by this goal. Action is acceptable by this goal if it satisfies
    * either of the following:
    * (1) it is a leadership movement,
-   * (2) it satisfies {@link #selfSatisfied},
-   * (3) replica movement does not make the potential nw outbound goal on destination broker more than the source.
-   * (4) replica swap does not make the potential nw outbound goal on source or destination broker more than the max of
-   * the initial value on brokers.
+   * (2) it is an acceptable replica relocation (i.e. move or swap): {@link #isReplicaRelocationAcceptable(BalancingAction, ClusterModel)}
    *
    * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
@@ -82,28 +79,60 @@ public class PotentialNwOutGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    Replica replica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
-    if (action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT || selfSatisfied(clusterModel, action)) {
+    switch (action.balancingAction()) {
+      case LEADERSHIP_MOVEMENT:
+        // it is a leadership movement,
+        return ACCEPT;
+      case REPLICA_SWAP:
+      case REPLICA_MOVEMENT:
+        return isReplicaRelocationAcceptable(action, clusterModel);
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
+    }
+  }
+
+  /**
+   * Check whether the given replica relocation (i.e. move or swap) is acceptable by this goal. Replica relocation is
+   * acceptable if it satisfies either of the following:
+   *
+   * (1) it satisfies {@link #selfSatisfied},
+   * (2) replica movement does not make the potential nw outbound goal on destination broker more than the source.
+   * (3) replica swap does not make the potential nw outbound goal on source or destination broker more than the max of
+   * the initial value on brokers.
+   *
+   * @param action Replica relocation action (i.e. move or swap) to be checked for acceptance.
+   * @param clusterModel The state of the cluster.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#REPLICA_REJECT} otherwise.
+   */
+  private ActionAcceptance isReplicaRelocationAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    if (selfSatisfied(clusterModel, action)) {
+      // it satisfies {@link #selfSatisfied},
       return ACCEPT;
     }
+
+    Replica replica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     double destinationBrokerUtilization =
         clusterModel.potentialLeadershipLoadFor(clusterModel.broker(action.destinationBrokerId()).id()).expectedUtilizationFor(Resource.NW_OUT);
     double sourceBrokerUtilization = clusterModel.potentialLeadershipLoadFor(replica.broker().id()).expectedUtilizationFor(Resource.NW_OUT);
     double sourceReplicaUtilization = clusterModel.partition(replica.topicPartition()).leader().load().expectedUtilizationFor(Resource.NW_OUT);
     double maxUtilization = Math.max(destinationBrokerUtilization, sourceBrokerUtilization);
 
-    double destinationReplicaUtilization = 0;
-    if (action.balancingAction() == ActionType.REPLICA_SWAP) {
-      destinationReplicaUtilization = clusterModel.partition(action.destinationTopicPartition())
-                                                  .leader().load().expectedUtilizationFor(Resource.NW_OUT);
-      // Check source broker potential NW_OUT violation.
-      if (sourceBrokerUtilization + destinationReplicaUtilization - sourceReplicaUtilization > maxUtilization) {
-        return REPLICA_REJECT;
-      }
+    switch (action.balancingAction()) {
+      case REPLICA_SWAP:
+        double destinationReplicaUtilization = clusterModel.partition(action.destinationTopicPartition())
+            .leader().load().expectedUtilizationFor(Resource.NW_OUT);
+        // Check source broker potential NW_OUT violation.
+        if (sourceBrokerUtilization + destinationReplicaUtilization - sourceReplicaUtilization > maxUtilization) {
+          return REPLICA_REJECT;
+        }
+        return destinationBrokerUtilization + sourceReplicaUtilization - destinationReplicaUtilization <= maxUtilization
+               ? ACCEPT : REPLICA_REJECT;
+      case REPLICA_MOVEMENT:
+        return destinationBrokerUtilization + sourceReplicaUtilization <= maxUtilization ? ACCEPT : REPLICA_REJECT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
-
-    return destinationBrokerUtilization + sourceReplicaUtilization - destinationReplicaUtilization <= maxUtilization
-           ? ACCEPT : REPLICA_REJECT;
   }
 
   @Override

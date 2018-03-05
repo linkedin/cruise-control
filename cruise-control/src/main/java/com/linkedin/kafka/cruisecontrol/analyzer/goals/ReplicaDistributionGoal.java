@@ -115,15 +115,20 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    if (action.balancingAction() == ActionType.REPLICA_SWAP || action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT) {
-      return ACCEPT;
-    }
-    Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
-    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
+    switch (action.balancingAction()) {
+      case REPLICA_SWAP:
+      case LEADERSHIP_MOVEMENT:
+        return ACCEPT;
+      case REPLICA_MOVEMENT:
+        Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
+        Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
-    //Check that destination and source would not become unbalanced.
-    return (isReplicaCountUnderBalanceUpperLimitAfterChange(destinationBroker, ADD) &&
-           isReplicaCountAboveBalanceLowerLimitAfterChange(sourceBroker, REMOVE)) ? ACCEPT : REPLICA_REJECT;
+        //Check that destination and source would not become unbalanced.
+        return (isReplicaCountUnderBalanceUpperLimitAfterChange(destinationBroker, ADD)
+                && isReplicaCountAboveBalanceLowerLimitAfterChange(sourceBroker, REMOVE)) ? ACCEPT : REPLICA_REJECT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
+    }
   }
 
   private boolean isReplicaCountUnderBalanceUpperLimitAfterChange(Broker broker, ChangeType changeType) {
