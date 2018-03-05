@@ -379,8 +379,7 @@ public class KafkaCruiseControl {
   public void executeProposals(Collection<ExecutionProposal> proposals,
                                Collection<Integer> unthrottledBrokers) {
     // Add execution proposals and start execution.
-    _executor.addExecutionProposals(proposals, unthrottledBrokers);
-    _executor.startExecution(_loadMonitor);
+    _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor);
   }
 
   /**
