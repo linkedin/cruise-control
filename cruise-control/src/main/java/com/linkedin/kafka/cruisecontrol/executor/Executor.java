@@ -118,10 +118,11 @@ public class Executor {
    * @param loadMonitor Load monitor.
    */
   public void startExecution(LoadMonitor loadMonitor) {
-    if (loadMonitor != null) {
-      // loadMonitor is null for unit tests.
-      loadMonitor.pauseMetricSampling();
+    if (loadMonitor == null) {
+      throw new IllegalArgumentException("Load monitor cannot be null.");
     }
+    // Pause the metric sampling to avoid the loss of accuracy during execution.
+    loadMonitor.pauseMetricSampling();
     _zkUtils = ZkUtils.apply(_zkConnect, 30000, 30000, false);
     try {
       if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {

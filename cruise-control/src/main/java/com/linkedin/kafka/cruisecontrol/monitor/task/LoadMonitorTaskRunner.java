@@ -183,7 +183,7 @@ public class LoadMonitorTaskRunner {
                                                  _configuredSnapshotWindowMs, _samplingIntervalMs, startMs, endMs));
     } else {
       throw new IllegalStateException("Cannot start model training because the load monitor is in "
-                                          + _state.get() + " state");
+                                          + _state.get() + " state.");
     }
   }
 
@@ -245,7 +245,7 @@ public class LoadMonitorTaskRunner {
    */
   public void pauseSampling() {
     if (_state.get() != PAUSED && !_state.compareAndSet(RUNNING, PAUSED)) {
-      throw new IllegalStateException("Cannot pause the load monitor because it is in " + _state.get() + " state");
+      throw new IllegalStateException("Cannot pause the load monitor because it is in " + _state.get() + " state.");
     }
   }
 
