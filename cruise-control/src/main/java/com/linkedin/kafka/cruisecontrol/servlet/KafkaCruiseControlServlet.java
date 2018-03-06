@@ -72,6 +72,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final String JSON_PARAM = "json";
   private static final String START_MS_PARAM = "start";
   private static final String END_MS_PARAM = "end";
+  private static final String ENTRIES = "entries";
   private static final String CLEAR_METRICS_PARAM = "clearmetrics";
   private static final String TIME_PARAM = "time";
   private static final String VERBOSE_PARAM = "verbose";
@@ -117,6 +118,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     partitionLoad.add(RESOURCE_PARAM);
     partitionLoad.add(START_MS_PARAM);
     partitionLoad.add(END_MS_PARAM);
+    partitionLoad.add(ENTRIES);
     partitionLoad.add(JSON_PARAM);
 
     Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -613,6 +615,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     List<Partition> sortedPartitions = clusterModel.replicasSortedByUtilization(resource);
     OutputStream out = response.getOutputStream();
+
+    String entriesString = request.getParameter(ENTRIES);
+    Integer entries = entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
+    int numEntries = 0;
     if (!json) {
       int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
       setResponseCode(response, SC_OK);
@@ -620,6 +626,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                               "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)")
                       .getBytes(StandardCharsets.UTF_8));
       for (Partition p : sortedPartitions) {
+        if (++numEntries > entries) {
+          break;
+        }
         List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
         out.write(String.format("%" + topicNameLength + "s%10s%30s%19.6f%19.3f%19.3f%19.3f%n",
                                 p.leader().topicPartition(),
@@ -638,6 +647,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       partitionMap.put("version", JSON_VERSION);
       partitionMap.put("header", header);
       for (Partition p : sortedPartitions) {
+        if (++numEntries > entries) {
+          break;
+        }
         List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
         List<Object> record = new ArrayList<>();
         record.add(p.leader().topicPartition().topic());
