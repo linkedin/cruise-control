@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
+import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
 import java.util.Random;
 import java.util.concurrent.Executors;
@@ -75,7 +76,8 @@ public class AnomalyDetector {
                   AnomalyNotifier anomalyNotifier,
                   GoalViolationDetector goalViolationDetector,
                   BrokerFailureDetector brokerFailureDetector,
-                  ScheduledExecutorService detectorScheduler) {
+                  ScheduledExecutorService detectorScheduler,
+                  LoadMonitor loadMonitor) {
     _anomalies = anomalies;
     _anomalyDetectionIntervalMs = anomalyDetectionIntervalMs;
     _anomalyNotifier = anomalyNotifier;
@@ -86,7 +88,7 @@ public class AnomalyDetector {
     _shutdown = false;
     _brokerFailureRate = new Meter();
     _goalViolationRate = new Meter();
-    _loadMonitor = null;
+    _loadMonitor = loadMonitor;
   }
 
   public void startDetection() {
@@ -197,19 +199,36 @@ public class AnomalyDetector {
       }
     }
 
-    private void fixAnomaly(Anomaly anomaly) throws KafkaCruiseControlException {
+    /**
+     * Check whether the given anomaly is fixable. An anomaly is fixable if it (1) meets completeness requirements
+     * and (2) load monitor is not in an unexpected state.
+     *
+     * @param anomaly The anomaly to check whether fixable or not.
+     * @return true if fixable, false otherwise.
+     */
+    private boolean isFixable(Anomaly anomaly) {
       String skipMsg = (anomaly instanceof GoalViolations) ? "goal violation fix" : "broker failure fix";
-      boolean isLoadingOrBootstrapping = ViolationUtils.isLoadingOrBootstrapping(_loadMonitor, skipMsg);
+      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState unavailableState = ViolationUtils.isUnavailableState(_loadMonitor);
 
-      // Fixing anomalies is possible only when (1) the state is not loading or bootstrapping and
-      // (2) the completeness requirements are met for all goals.
-      if (!isLoadingOrBootstrapping) {
-        boolean meetCompletenessRequirements = ViolationUtils.meetCompletenessRequirements(
-            _loadMonitor, _kafkaCruiseControl.goalsByPriority(Collections.emptyList()).values(), skipMsg);
+      // Fixing anomalies is possible only when (1) the state is not in and unavailable state ( e.g. loading or
+      // bootstrapping) and (2) the completeness requirements are met for all goals.
+      if (unavailableState == null) {
+        boolean meetCompletenessRequirements = _kafkaCruiseControl.meetCompletenessRequirements(Collections.emptyList());
         if (meetCompletenessRequirements) {
           LOG.info("Fixing anomaly {}", anomaly);
-          anomaly.fix(_kafkaCruiseControl);
+          return true;
+        } else {
+          LOG.debug("Skipping {} because load completeness requirement is not met for goals.", skipMsg);
         }
+      } else {
+        LOG.info("Skipping {} because load monitor is in {} state.", skipMsg, unavailableState);
+      }
+      return false;
+    }
+
+    private void fixAnomaly(Anomaly anomaly) throws KafkaCruiseControlException {
+      if (isFixable(anomaly)) {
+        anomaly.fix(_kafkaCruiseControl);
       }
 
       _anomalies.clear();

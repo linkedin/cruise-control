@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
+import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -87,7 +88,9 @@ public class GoalViolationDetector implements Runnable {
 
     AutoCloseable clusterModelSemaphore = null;
     try {
-      if (ViolationUtils.isLoadingOrBootstrapping(_loadMonitor, "goal violation detection")) {
+      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState unexpectedState = ViolationUtils.isUnavailableState(_loadMonitor);
+      if (unexpectedState != null) {
+        LOG.info("Skipping goal violation detection because load monitor is in {} state.", unexpectedState);
         return;
       }
 
@@ -96,7 +99,7 @@ public class GoalViolationDetector implements Runnable {
       ClusterModel clusterModel = null;
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
         Goal goal = entry.getValue();
-        if (ViolationUtils.meetCompletenessRequirements(_loadMonitor, Collections.singleton(goal), "goal violation detection")) {
+        if (ViolationUtils.meetCompletenessRequirements(_loadMonitor, Collections.singleton(goal))) {
           LOG.debug("Detecting if {} is violated.", entry.getValue().name());
           // Because the model generation could be slow, We only get new cluster model if needed.
           if (newModelNeeded) {
@@ -110,6 +113,8 @@ public class GoalViolationDetector implements Runnable {
           }
           int priority = entry.getKey();
           newModelNeeded = optimizeForGoal(clusterModel, priority, goal, goalViolations);
+        } else {
+          LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
         }
       }
       if (clusterModel != null) {
