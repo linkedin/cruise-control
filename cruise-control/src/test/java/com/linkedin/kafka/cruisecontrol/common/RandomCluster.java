@@ -5,8 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.common;
 
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -38,10 +36,8 @@ public class RandomCluster {
    *
    * @param clusterProperties Cluster properties specifying number of racks and brokers.
    * @return Cluster with the specified number of racks and brokers.
-   * @throws AnalysisInputException
    */
-  public static ClusterModel generate(Map<ClusterProperty, Number> clusterProperties)
-      throws AnalysisInputException {
+  public static ClusterModel generate(Map<ClusterProperty, Number> clusterProperties) {
     int numRacks = clusterProperties.get(ClusterProperty.NUM_RACKS).intValue();
     int numBrokers = clusterProperties.get(ClusterProperty.NUM_BROKERS).intValue();
     BrokerCapacityConfigFileResolver configFileResolver = new BrokerCapacityConfigFileResolver();
@@ -49,7 +45,7 @@ public class RandomCluster {
                                                           RandomCluster.class.getClassLoader().getResource("DefaultCapacityConfig.json").getFile()));
 
     if (numRacks > numBrokers || numBrokers <= 0 || numRacks <= 0) {
-      throw new AnalysisInputException("Random cluster generation failed due to bad input.");
+      throw new IllegalArgumentException("Random cluster generation failed due to bad input.");
     }
     // Create cluster.
     ClusterModel cluster = new ClusterModel(new ModelGeneration(0, 0L), 1.0);
@@ -76,13 +72,10 @@ public class RandomCluster {
    * @param cluster             The state of the cluster.
    * @param properties          Representing the cluster properties as specified in {@link ClusterProperty}.
    * @param replicaDistribution The replica distribution showing the broker of each replica in the cluster.
-   * @throws AnalysisInputException
-   * @throws ModelInputException
    */
   public static void populate(ClusterModel cluster,
                               Map<ClusterProperty, Number> properties,
-                              TestConstants.Distribution replicaDistribution)
-      throws ModelInputException, AnalysisInputException {
+                              TestConstants.Distribution replicaDistribution) {
     populate(cluster, properties, replicaDistribution, false);
   }
 
@@ -94,14 +87,11 @@ public class RandomCluster {
    * @param properties          Representing the cluster properties as specified in {@link ClusterProperty}.
    * @param replicaDistribution The replica distribution showing the broker of each replica in the cluster.
    * @param rackAware           Whether the replicas should be rack aware or not.
-   * @throws AnalysisInputException
-   * @throws ModelInputException
    */
   public static void populate(ClusterModel cluster,
                               Map<ClusterProperty, Number> properties,
                               TestConstants.Distribution replicaDistribution,
-                              boolean rackAware)
-      throws AnalysisInputException, ModelInputException {
+                              boolean rackAware) {
     // Sanity checks.
     int numBrokers = cluster.brokers().size();
     if (properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() < 0 ||
@@ -116,7 +106,7 @@ public class RandomCluster {
         properties.get(ClusterProperty.NUM_TOPICS).intValue() > properties.get(ClusterProperty.NUM_REPLICAS).intValue() ||
         (properties.get(ClusterProperty.MIN_REPLICATION).intValue() == properties.get(ClusterProperty.MAX_REPLICATION).intValue() &&
             properties.get(ClusterProperty.NUM_REPLICAS).intValue() % properties.get(ClusterProperty.MIN_REPLICATION).intValue() != 0)) {
-      throw new AnalysisInputException("Random cluster population failed due to bad input.");
+      throw new IllegalArgumentException("Random cluster population failed due to bad input.");
     }
 
     // Generate topic to number of brokers and replicas distribution.

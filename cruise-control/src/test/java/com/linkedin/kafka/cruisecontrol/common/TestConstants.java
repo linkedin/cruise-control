@@ -37,7 +37,8 @@ public class TestConstants {
   public static final double MEDIUM_CAPACITY_THRESHOLD = 0.8;
   public static final double LOW_CAPACITY_THRESHOLD = 0.7;
   public static final double LARGE_BROKER_CAPACITY = 300000.0;
-  public static final double MEDIUM_BROKER_CAPACITY = 120000.0;
+  public static final double TYPICAL_CPU_CAPACITY = 100.0;
+  public static final double MEDIUM_BROKER_CAPACITY = 200000.0;
   public static final double SMALL_BROKER_CAPACITY = 10.0;
 
   private TestConstants() {
@@ -79,7 +80,7 @@ public class TestConstants {
 
   static {
     Map<Resource, Double> capacity = new HashMap<>();
-    capacity.put(Resource.CPU, TestConstants.LARGE_BROKER_CAPACITY);
+    capacity.put(Resource.CPU, TestConstants.TYPICAL_CPU_CAPACITY);
     capacity.put(Resource.DISK, TestConstants.LARGE_BROKER_CAPACITY);
     capacity.put(Resource.NW_IN, TestConstants.LARGE_BROKER_CAPACITY);
     capacity.put(Resource.NW_OUT, TestConstants.MEDIUM_BROKER_CAPACITY);

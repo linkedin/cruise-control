@@ -5,13 +5,12 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -19,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import java.util.Map;
@@ -28,6 +28,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Collection;
 import java.util.Set;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
 
 
 /**
@@ -67,7 +70,7 @@ public abstract class AbstractGoal implements Goal {
 
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     _succeeded = true;
     LOG.debug("Starting optimization for {}.", name());
     // Initialize pre-optimized stats.
@@ -94,8 +97,8 @@ public abstract class AbstractGoal implements Goal {
       // Throw exception when the stats before optimization is preferred.
       if (comparator.compare(statsAfterOptimization, statsBeforeOptimization) < 0) {
         throw new OptimizationFailureException("Optimization for Goal " + name() + " failed because the optimized"
-                                                   + "result is worse than before. Detail reason: "
-                                                   + comparator.explainLastComparison());
+                                               + "result is worse than before. Detail reason: "
+                                               + comparator.explainLastComparison());
       }
     }
     return _succeeded;
@@ -154,7 +157,7 @@ public abstract class AbstractGoal implements Goal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   protected abstract void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException;
+      throws OptimizationFailureException;
 
   /**
    * Update goal state after one round of self-healing / rebalance.
@@ -163,7 +166,7 @@ public abstract class AbstractGoal implements Goal {
    * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   protected abstract void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, OptimizationFailureException;
+      throws OptimizationFailureException;
 
   /**
    * Rebalance the given broker without violating the constraints of the current goal and optimized goals.
@@ -177,7 +180,7 @@ public abstract class AbstractGoal implements Goal {
                                              ClusterModel clusterModel,
                                              Set<Goal> optimizedGoals,
                                              Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException, OptimizationFailureException;
+      throws OptimizationFailureException;
 
   /**
    * Attempt to apply the given balancing action to the given replica in the given cluster. The application
@@ -194,11 +197,10 @@ public abstract class AbstractGoal implements Goal {
    * @return Broker id of the destination if the movement attempt succeeds, null otherwise.
    */
   protected Broker maybeApplyBalancingAction(ClusterModel clusterModel,
-                                              Replica replica,
-                                              Collection<Broker> candidateBrokers,
-                                              ActionType action,
-                                              Set<Goal> optimizedGoals)
-      throws ModelInputException, AnalysisInputException {
+                                             Replica replica,
+                                             Collection<Broker> candidateBrokers,
+                                             ActionType action,
+                                             Set<Goal> optimizedGoals) {
     // In self healing mode, allow a move only from dead to alive brokers.
     if (!clusterModel.deadBrokers().isEmpty() && replica.originalBroker().isAlive()) {
       //return null;
@@ -206,25 +208,95 @@ public abstract class AbstractGoal implements Goal {
     }
     Collection<Broker> eligibleBrokers = getEligibleBrokers(clusterModel, replica, candidateBrokers);
     for (Broker broker : eligibleBrokers) {
-      BalancingAction optimizedGoalProposal =
-          new BalancingAction(replica.topicPartition(), replica.broker().id(), broker.id(), action);
+      BalancingAction proposal = new BalancingAction(replica.topicPartition(), replica.broker().id(), broker.id(), action);
       // A replica should be moved if:
       // 0. The move is legit.
       // 1. The goal requirements are not violated if this action is applied to the given cluster state.
       // 2. The movement is acceptable by the previously optimized goals.
-      boolean canMove = legitMove(replica, broker, action);
-      canMove = canMove && selfSatisfied(clusterModel, optimizedGoalProposal);
-      canMove = canMove && AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel);
-      LOG.trace("Trying to apply balancing action {}, legitMove = {}, selfSatisfied = {}, satisfyOptimizedGoals = {}",
-          optimizedGoalProposal, legitMove(replica, broker, action), selfSatisfied(clusterModel, optimizedGoalProposal),
-          AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel));
-      if (canMove) {
+
+      if (!legitMove(replica, broker, action)) {
+        LOG.trace("Replica move is not legit for {}.", proposal);
+        continue;
+      }
+
+      if (!selfSatisfied(clusterModel, proposal)) {
+        LOG.trace("Unable to self-satisfy proposal {}.", proposal);
+        continue;
+      }
+
+      ActionAcceptance acceptance = AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, proposal, clusterModel);
+      LOG.trace("Trying to apply legit and self-satisfied action {}, actionAcceptance = {}", proposal, acceptance);
+      if (acceptance == ACCEPT) {
         if (action == ActionType.LEADERSHIP_MOVEMENT) {
           clusterModel.relocateLeadership(replica.topicPartition(), replica.broker().id(), broker.id());
         } else if (action == ActionType.REPLICA_MOVEMENT) {
           clusterModel.relocateReplica(replica.topicPartition(), replica.broker().id(), broker.id());
         }
         return broker;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Attempt to swap the given source replica with a replica from the candidate replicas to swap with. The function
+   * returns the swapped in replica if succeeded, null otherwise.
+   * All the replicas in the given candidateReplicasToSwapWith must be from the same broker.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param sourceReplica Replica to be swapped with.
+   * @param candidateReplicasToSwapWith Candidate replicas from the same destination broker to swap in the order of
+   *                                    attempts to swap.
+   * @param optimizedGoals Optimized goals.
+   * @return True the swapped in replica if succeeded, null otherwise.
+   */
+  Replica maybeApplySwapAction(ClusterModel clusterModel,
+                               Replica sourceReplica,
+                               SortedSet<Replica> candidateReplicasToSwapWith,
+                               Set<Goal> optimizedGoals) {
+    SortedSet<Replica> eligibleReplicas = getEligibleReplicasForSwap(clusterModel, sourceReplica, candidateReplicasToSwapWith);
+    if (eligibleReplicas.isEmpty()) {
+      return null;
+    }
+
+    Broker destinationBroker = eligibleReplicas.first().broker();
+
+    for (Replica destinationReplica : eligibleReplicas) {
+      BalancingAction swapProposal = new BalancingAction(sourceReplica.topicPartition(),
+                                                         sourceReplica.broker().id(), destinationBroker.id(),
+                                                         ActionType.REPLICA_SWAP, destinationReplica.topicPartition());
+      // A sourceReplica should be swapped with a replicaToSwapWith if:
+      // 0. The swap from source to destination is legit.
+      // 1. The swap from destination to source is legit.
+      // 2. The goal requirements are not violated if this action is applied to the given cluster state.
+      // 3. The movement is acceptable by the previously optimized goals.
+      if (!legitMove(sourceReplica, destinationBroker, ActionType.REPLICA_MOVEMENT)) {
+        LOG.trace("Swap from source to destination is not legit for {}.", swapProposal);
+        return null;
+      }
+
+      if (!legitMove(destinationReplica, sourceReplica.broker(), ActionType.REPLICA_MOVEMENT)) {
+        LOG.trace("Swap from destination to source is not legit for {}.", swapProposal);
+        continue;
+      }
+
+      // The current goal is expected to know whether a swap is doable between given brokers.
+      if (!selfSatisfied(clusterModel, swapProposal)) {
+        // Unable to satisfy proposal for this eligible replica and the remaining eligible replicas in the list.
+        LOG.trace("Unable to self-satisfy swap proposal {}.", swapProposal);
+        return null;
+      }
+      ActionAcceptance acceptance = AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, swapProposal, clusterModel);
+      LOG.trace("Trying to apply legit and self-satisfied swap {}, actionAcceptance = {}.", swapProposal, acceptance);
+
+      if (acceptance == ACCEPT) {
+        Broker sourceBroker = sourceReplica.broker();
+        clusterModel.relocateReplica(sourceReplica.topicPartition(), sourceBroker.id(), destinationBroker.id());
+        clusterModel.relocateReplica(destinationReplica.topicPartition(), destinationBroker.id(), sourceBroker.id());
+        return destinationReplica;
+      } else if (acceptance == BROKER_REJECT) {
+        // Unable to swap the given source replica with any replicas in the destination broker.
+        return null;
       }
     }
     return null;
@@ -238,6 +310,35 @@ public abstract class AbstractGoal implements Goal {
       return true;
     }
     return false;
+  }
+
+  private SortedSet<Replica> getEligibleReplicasForSwap(ClusterModel clusterModel,
+                                                        Replica sourceReplica,
+                                                        SortedSet<Replica> candidateReplicasToSwapWith) {
+    // CASE#1: All candidate replicas are eligible if any of the following is true:
+    // (1) there are no new brokers in the cluster,
+    // (2) the given candidate set contains no replicas,
+    // (3) the intended swap is between replicas of new brokers,
+    // (4) the intended swap is between a replica on a new broker, which originally was in the destination broker, and
+    // any replica in the destination broker.
+    Broker sourceBroker = sourceReplica.broker();
+    Broker destinationBroker = candidateReplicasToSwapWith.isEmpty() ? null : candidateReplicasToSwapWith.first().broker();
+
+    if (clusterModel.newBrokers().isEmpty()
+        || destinationBroker == null
+        || (sourceBroker.isNew() && (destinationBroker.isNew() || sourceReplica.originalBroker() == destinationBroker))) {
+      return candidateReplicasToSwapWith;
+    }
+
+    // CASE#2: A subset of candidate replicas might be eligible if only the destination broker is a new broker and it
+    // contains replicas that were originally in the source broker.
+    if (destinationBroker.isNew()) {
+      candidateReplicasToSwapWith.removeIf(replica -> replica.originalBroker() != sourceBroker);
+      return candidateReplicasToSwapWith;
+    }
+
+    // CASE#3: No swap is possible between old brokers when there are new brokers in the cluster.
+    return Collections.emptySortedSet();
   }
 
   private Collection<Broker> getEligibleBrokers(ClusterModel clusterModel,

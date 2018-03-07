@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -14,6 +15,8 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 
 
 /**
@@ -41,9 +44,17 @@ public class PreferredLeaderElectionGoal implements Goal {
     return true;
   }
 
+  /**
+   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   */
   @Override
   public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
     return true;
+  }
+
+  @Override
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+    return ACCEPT;
   }
 
   @Override

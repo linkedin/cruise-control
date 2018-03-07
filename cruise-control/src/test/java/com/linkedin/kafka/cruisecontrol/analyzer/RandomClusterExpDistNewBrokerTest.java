@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -35,7 +34,7 @@ public class RandomClusterExpDistNewBrokerTest extends RandomClusterTest {
   }
 
   @Parameterized.Parameters
-  public static Collection<Object[]> data() throws AnalysisInputException {
+  public static Collection<Object[]> data() {
     return RandomClusterTest.data(TestConstants.Distribution.EXPONENTIAL);
   }
 

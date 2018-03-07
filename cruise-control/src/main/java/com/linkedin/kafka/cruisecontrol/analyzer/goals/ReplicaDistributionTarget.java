@@ -8,7 +8,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
@@ -19,6 +19,8 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 
 
 /**
@@ -50,7 +52,7 @@ class ReplicaDistributionTarget {
    *                             topic, this number indicates the number of replicas of this topic in the cluster.
    * @param healthyBrokers       Healthy brokers in the cluster -- i.e. brokers that are not dead.
    */
-  ReplicaDistributionTarget(int numReplicasToBalance, Set<Broker> healthyBrokers) throws AnalysisInputException {
+  ReplicaDistributionTarget(int numReplicasToBalance, Set<Broker> healthyBrokers) {
     _minNumReplicasPerBroker = numReplicasToBalance / healthyBrokers.size();
     _warmBrokerCredits = numReplicasToBalance % healthyBrokers.size();
     _requiredNumReplicasByBrokerId = new HashMap<>();
@@ -78,8 +80,7 @@ class ReplicaDistributionTarget {
   boolean moveReplicasInSourceBrokerToEligibleBrokers(ClusterModel clusterModel,
                                                       SortedSet<Replica> replicasInBrokerToMove,
                                                       Set<Goal> optimizedGoals,
-                                                      Set<String> excludedTopics)
-      throws AnalysisInputException {
+                                                      Set<String> excludedTopics) {
     // Get number of replicas to move from the local to a remote broker to achieve the distribution target.
     int numReplicasToMove = numReplicasToMove(replicasInBrokerToMove.size());
     if (numReplicasToMove == 0) {
@@ -114,13 +115,12 @@ class ReplicaDistributionTarget {
    * @param numLocalReplicas Number of local replicas.
    * @param optimizedGoals   Goals that have already been optimized. The function ensures that their requirements won't
    *                         be violated.
-   * @throws AnalysisInputException
    */
   void moveSelfHealingEligibleReplicaToEligibleBroker(ClusterModel clusterModel,
                                                       Replica replicaToMove,
                                                       int numLocalReplicas,
                                                       Set<Goal> optimizedGoals)
-      throws AnalysisInputException {
+      throws OptimizationFailureException {
     // Sanity check the number of replicas to move from the local to a remote broker to achieve the distribution
     // target. If the broker is dead, the replica must move to another broker.
     if (replicaToMove.broker().isAlive() && numReplicasToMove(numLocalReplicas) == 0) {
@@ -130,7 +130,7 @@ class ReplicaDistributionTarget {
     // Attempt to move the replica to an eligible broker.
     boolean isMoveSuccessful = moveReplicaToEligibleBroker(clusterModel, replicaToMove, optimizedGoals);
     if (!replicaToMove.broker().isAlive()) {
-      throw new AnalysisInputException("Self healing failed to move the replica away from decommissioned broker.");
+      throw new OptimizationFailureException("Self healing failed to move the replica away from decommissioned broker.");
     }
 
     // Update consumed warm broker credits. Credit is consumed because the broker was unable to move replicas.
@@ -213,8 +213,7 @@ class ReplicaDistributionTarget {
    *                       be violated.
    * @return True if replica move succeeds, false otherwise.
    */
-  private boolean moveReplicaToEligibleBroker(ClusterModel clusterModel, Replica replicaToMove, Set<Goal> optimizedGoals)
-      throws AnalysisInputException {
+  private boolean moveReplicaToEligibleBroker(ClusterModel clusterModel, Replica replicaToMove, Set<Goal> optimizedGoals) {
     boolean isMoveSuccessful = false;
     // Get eligible brokers to receive this replica.
     for (int brokerId : sortedCandidateBrokerIds()) {
@@ -228,8 +227,9 @@ class ReplicaDistributionTarget {
       BalancingAction optimizedGoalProposal =
           new BalancingAction(replicaToMove.topicPartition(), replicaToMove.broker().id(), brokerId,
                               ActionType.REPLICA_MOVEMENT);
-      boolean canMove = (clusterModel.broker(brokerId).replica(replicaToMove.topicPartition()) == null) &&
-          AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, optimizedGoalProposal, clusterModel);
+      boolean canMove = (clusterModel.broker(brokerId).replica(replicaToMove.topicPartition()) == null)
+                        && AnalyzerUtils.isProposalAcceptableForOptimizedGoals(
+                            optimizedGoals, optimizedGoalProposal, clusterModel) == ACCEPT;
       if (canMove) {
         clusterModel.relocateReplica(replicaToMove.topicPartition(), replicaToMove.broker().id(), brokerId);
         isMoveSuccessful = true;

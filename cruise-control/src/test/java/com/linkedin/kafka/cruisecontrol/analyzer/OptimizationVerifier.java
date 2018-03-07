@@ -10,8 +10,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -64,10 +62,8 @@ class OptimizationVerifier {
    * @param constraint         Balancing constraint for the given cluster.
    * @param clusterModel       The state of the cluster.
    * @param goalNameByPriority Name of goals by the order of execution priority.
-   * @param verifications      The verifications to make after the optimization.                          
+   * @param verifications      The verifications to make after the optimization.
    * @return Pass / fail status of a test.
-   * @throws ModelInputException
-   * @throws AnalysisInputException
    */
   static boolean executeGoalsFor(BalancingConstraint constraint,
                                  ClusterModel clusterModel,
@@ -90,12 +86,10 @@ class OptimizationVerifier {
    * @param excludedTopics     The excluded topics.
    * @param verifications      The verifications to make after the optimization.
    * @return Pass / fail status of a test.
-   * @throws ModelInputException
-   * @throws AnalysisInputException
    */
-  static boolean executeGoalsFor(BalancingConstraint constraint, 
-                                 ClusterModel clusterModel, 
-                                 Map<Integer, String> goalNameByPriority, 
+  static boolean executeGoalsFor(BalancingConstraint constraint,
+                                 ClusterModel clusterModel,
+                                 Map<Integer, String> goalNameByPriority,
                                  Collection<String> excludedTopics,
                                  List<Verification> verifications) throws Exception {
     // Get the initial stats from the cluster.
@@ -128,12 +122,12 @@ class OptimizationVerifier {
                                                     null,
                                                     new SystemTime(),
                                                     new MetricRegistry());
-    GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel, 
-                                                                                goalByPriority, 
+    GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel,
+                                                                                goalByPriority,
                                                                                 new OperationProgress());
     LOG.trace("Took {} ms to execute {} to generate {} proposals.", System.currentTimeMillis() - startTime,
               goalByPriority, optimizerResult.goalProposals().size());
-    
+
     for (Verification verification : verifications) {
       switch (verification) {
         case GOAL_VIOLATION:
@@ -152,7 +146,7 @@ class OptimizationVerifier {
           }
           break;
         case REGRESSION:
-          if (clusterModel.selfHealingEligibleReplicas().isEmpty() 
+          if (clusterModel.selfHealingEligibleReplicas().isEmpty()
               && !verifyRegression(optimizerResult, preOptimizedStats)) {
             return false;
           }
@@ -163,7 +157,7 @@ class OptimizationVerifier {
     }
     return true;
   }
-  
+
   private static boolean verifyGoalViolations(GoalOptimizer.OptimizerResult optimizerResult) {
     // Check if there are still goals violated after the optimization.
     Set<String> violatedGoals = optimizerResult.violatedGoalsAfterOptimization()
@@ -178,7 +172,7 @@ class OptimizationVerifier {
       return true;
     }
   }
-  
+
   private static boolean verifyDeadBrokers(ClusterModel clusterModel) {
     Set<Broker> deadBrokers = clusterModel.brokers();
     deadBrokers.removeAll(clusterModel.healthyBrokers());
@@ -207,10 +201,10 @@ class OptimizationVerifier {
       // We can only check the first resource.
       Resource r = constraint.resources().get(0);
       double utilizationLowerThreshold =
-          clusterModel.load().expectedUtilizationFor(r) / clusterModel.capacityFor(r) * (2 - constraint.balancePercentage(r));
+          clusterModel.load().expectedUtilizationFor(r) / clusterModel.capacityFor(r) * (2 - constraint.resourceBalancePercentage(r));
       double brokerUtilization = broker.load().expectedUtilizationFor(r) / broker.capacityFor(r);
       if (brokerUtilization < utilizationLowerThreshold) {
-        LOG.error("Broker {} is still under utilized for resource {}. Broker utilization is {}, the " 
+        LOG.error("Broker {} is still underutilized for resource {}. Broker utilization is {}, the "
                       + "lower threshold is {}", broker, r, brokerUtilization, utilizationLowerThreshold);
         return false;
       }
@@ -218,7 +212,7 @@ class OptimizationVerifier {
     return true;
   }
 
-  private static boolean verifyRegression(GoalOptimizer.OptimizerResult optimizerResult, 
+  private static boolean verifyRegression(GoalOptimizer.OptimizerResult optimizerResult,
                                           ClusterModelStats preOptimizationStats) {
     // Check whether test has failed for rebalance: fails if rebalance caused a worse goal state after rebalance.
     Map<Goal, ClusterModelStats> clusterStatsByPriority = optimizerResult.statsByGoalPriority();
@@ -234,8 +228,8 @@ class OptimizationVerifier {
     }
     return true;
   }
-  
+
   enum Verification {
-    GOAL_VIOLATION, DEAD_BROKERS, NEW_BROKERS, REGRESSION, 
+    GOAL_VIOLATION, DEAD_BROKERS, NEW_BROKERS, REGRESSION,
   }
 }

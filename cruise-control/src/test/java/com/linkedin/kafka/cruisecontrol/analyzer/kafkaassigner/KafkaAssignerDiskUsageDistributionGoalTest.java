@@ -8,9 +8,6 @@ import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Load;
@@ -52,7 +49,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
   private static final TopicPartition T2P2 = new TopicPartition(TOPIC2, 2);
 
   @Test
-  public void testCanSwap() throws ModelInputException {
+  public void testCanSwap() {
     KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal();
     ClusterModel clusterModel = createClusterModel();
 
@@ -80,7 +77,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
   }
 
   @Test
-  public void testFindReplicaToSwapWith() throws KafkaCruiseControlException {
+  public void testFindReplicaToSwapWith() {
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
     props.setProperty(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
@@ -121,7 +118,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
   }
 
   @Test
-  public void testSwapReplicas() throws ModelInputException, AnalysisInputException {
+  public void testSwapReplicas() {
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
     props.setProperty(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
@@ -150,7 +147,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
   }
 
   @Test
-  public void test() throws KafkaCruiseControlException {
+  public void test() {
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
     props.setProperty(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
@@ -218,7 +215,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
    *
    * The average broker size should be: 270
    */
-  private ClusterModel createClusterModel() throws ModelInputException {
+  private ClusterModel createClusterModel() {
     int numSnapshots = 2;
     if (!Load.initialized()) {
       Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();

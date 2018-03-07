@@ -4,8 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
-
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,9 +27,8 @@ public class Partition implements Serializable {
    * Constructor for Partition class.
    *
    * @param tp Topic partition information for the replica in this partition,
-   * @throws ModelInputException
    */
-  Partition(TopicPartition tp) throws ModelInputException {
+  Partition(TopicPartition tp) {
     _tp = tp;
     _replicas = new ArrayList<>();
     _leader = null;
@@ -49,17 +46,15 @@ public class Partition implements Serializable {
    *
    * @param follower Follower replica.
    * @param index the index the follower should be at.
-   *
-   * @throws ModelInputException
    */
-  void addFollower(Replica follower, int index) throws ModelInputException {
+  void addFollower(Replica follower, int index) {
     if (follower.isLeader()) {
-      throw new ModelInputException("Inconsistent leadership information. Trying to add follower replica " +
-                                        follower + " while it is a leader.");
+      throw new IllegalArgumentException("Inconsistent leadership information. Trying to add follower replica "
+                                         + follower + " while it is a leader.");
     }
     if (!follower.topicPartition().equals(_tp)) {
-      throw new ModelInputException("Inconsistent topic partition. Trying to add follower replica " + follower +
-                                        " to partition " + _tp + ".");
+      throw new IllegalArgumentException("Inconsistent topic partition. Trying to add follower replica " + follower
+                                         + " to partition " + _tp + ".");
     }
     // Add follower to the list of followers.
     _replicas.add(index, follower);
@@ -97,17 +92,15 @@ public class Partition implements Serializable {
    *
    * @param brokerId Broker id of the requested replica in this partition.
    * @return Replica with the given broker id in this partition.
-   * @throws ModelInputException
    */
-  Replica replica(long brokerId)
-      throws ModelInputException {
+  Replica replica(long brokerId) {
     for (Replica replica : _replicas) {
       if (replica.broker().id() == brokerId) {
         return replica;
       }
     }
 
-    throw new ModelInputException("Requested replica " + brokerId + " is not a replica of partition " + _tp);
+    throw new IllegalArgumentException("Requested replica " + brokerId + " is not a replica of partition " + _tp);
   }
 
   /**
@@ -178,17 +171,16 @@ public class Partition implements Serializable {
    *
    * @param leader Leader replica of partition.
    * @param index the index the leader replica should be at.
-   * @throws ModelInputException
    */
-  void addLeader(Replica leader, int index) throws ModelInputException {
+  void addLeader(Replica leader, int index) {
     if (_leader != null) {
-      throw new ModelInputException(String.format("Partition %s already has a leader replica %s. Cannot "
-                                                      + "add a new leader replica %s",
-                                                  _tp, _leader, leader));
+      throw new IllegalArgumentException(String.format("Partition %s already has a leader replica %s. Cannot "
+                                                       + "add a new leader replica %s", _tp, _leader, leader));
     }
     if (!leader.isLeader()) {
-      throw new ModelInputException("Inconsistent leadership information. Trying to set " + leader.broker() +
-                                    " as the leader for partition " + _tp + " while the replica is not marked as a leader.");
+      throw new IllegalArgumentException("Inconsistent leadership information. Trying to set " + leader.broker()
+                                         + " as the leader for partition " + _tp + " while the replica is not marked "
+                                         + "as a leader.");
     }
     _leader = leader;
     _replicas.add(index, leader);
@@ -200,7 +192,7 @@ public class Partition implements Serializable {
    *
    * @param prospectiveLeader Prospective leader.
    */
-  void relocateLeadership(Replica prospectiveLeader) throws ModelInputException {
+  void relocateLeadership(Replica prospectiveLeader) {
     int leaderPos = _replicas.indexOf(prospectiveLeader);
     swapReplicaPositions(0, leaderPos);
     _leader = prospectiveLeader;

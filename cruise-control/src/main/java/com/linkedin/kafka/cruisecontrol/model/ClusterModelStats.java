@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.model;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -51,8 +50,7 @@ public class ClusterModelStats {
    * @param balancingConstraint Balancing constraint.
    * @return Analysis stats with this cluster and given balancing constraint.
    */
-  ClusterModelStats populate(ClusterModel clusterModel, BalancingConstraint balancingConstraint)
-      throws ModelInputException {
+  ClusterModelStats populate(ClusterModel clusterModel, BalancingConstraint balancingConstraint) {
     _numBrokers = clusterModel.brokers().size();
     _numTopics = clusterModel.topics().size();
     _balancingConstraint = balancingConstraint;
@@ -219,9 +217,9 @@ public class ClusterModelStats {
     Map<Resource, Double> stDevUtilizationByResource = new HashMap<>();
     for (Resource resource : Resource.values()) {
       double balanceUpperThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))
-          * _balancingConstraint.balancePercentage(resource);
+          * _balancingConstraint.resourceBalancePercentage(resource);
       double balanceLowerThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))
-          * Math.max(0, (2 - _balancingConstraint.balancePercentage(resource)));
+          * Math.max(0, (2 - _balancingConstraint.resourceBalancePercentage(resource)));
       // Average utilization for the resource.
       double avgUtilization = clusterModel.load().expectedUtilizationFor(resource) / _numBrokers;
       avgUtilizationByResource.put(resource, avgUtilization);
@@ -299,8 +297,7 @@ public class ClusterModelStats {
    *
    * @param clusterModel The state of the cluster.
    */
-  private void numForReplicas(ClusterModel clusterModel)
-      throws ModelInputException {
+  private void numForReplicas(ClusterModel clusterModel) {
     // Average, minimum, and maximum number of replicas in brokers.
     int maxReplicasInBroker = 0;
     int minReplicasInBroker = Integer.MAX_VALUE;
@@ -329,7 +326,7 @@ public class ClusterModelStats {
    *
    * @param clusterModel The state of the cluster.
    */
-  private void numForAvgTopicReplicas(ClusterModel clusterModel) throws ModelInputException {
+  private void numForAvgTopicReplicas(ClusterModel clusterModel) {
     _topicReplicaStats.put(Statistic.AVG, 0.0);
     _topicReplicaStats.put(Statistic.MAX, 0);
     _topicReplicaStats.put(Statistic.MIN, Integer.MAX_VALUE);

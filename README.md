@@ -16,6 +16,7 @@ Cruise Control for Apache Kafka
   * Multi-goal rebalance proposal generation for:
     * Rack-awareness
     * Resource capacity violation checks (CPU, DISK, Network I/O)
+    * Per-broker replica count violation check
     * Resource utilization balance (CPU, DISK, Network I/O)
     * Leader traffic distribution
     * Replica distribution for topics

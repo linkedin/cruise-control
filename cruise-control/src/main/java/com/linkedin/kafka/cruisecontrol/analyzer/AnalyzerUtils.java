@@ -8,8 +8,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -29,6 +28,8 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.stat.inference.KolmogorovSmirnovTest;
 import org.apache.kafka.common.TopicPartition;
 
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+
 
 /**
  * A util class for Analyzer.
@@ -47,22 +48,20 @@ public class AnalyzerUtils {
    * @param initialLeaderDistribution Initial distribution of the leaders.
    * @param optimizedClusterModel The optimized cluster model.
    * @return The diff represented by the set of balancing proposals to move from initial to final distribution.
-   * @throws AnalysisInputException
    */
   public static Set<ExecutionProposal> getDiff(Map<TopicPartition, List<Integer>> initialReplicaDistribution,
                                                Map<TopicPartition, Integer> initialLeaderDistribution,
-                                               ClusterModel optimizedClusterModel)
-      throws AnalysisInputException, ModelInputException {
+                                               ClusterModel optimizedClusterModel) {
     Map<TopicPartition, List<Integer>> finalDistribution = optimizedClusterModel.getReplicaDistribution();
     // Sanity check to make sure that given distributions contain the same replicas.
     if (!initialReplicaDistribution.keySet().equals(finalDistribution.keySet())) {
-      throw new AnalysisInputException("Attempt to diff distributions with different partitions.");
+      throw new IllegalArgumentException("Attempt to diff distributions with different partitions.");
     }
     for (Map.Entry<TopicPartition, List<Integer>> entry : initialReplicaDistribution.entrySet()) {
       TopicPartition tp = entry.getKey();
       List<Integer> initialReplicas = entry.getValue();
       if (finalDistribution.get(tp).size() != initialReplicas.size()) {
-        throw new AnalysisInputException("Attempt to diff distributions with modified replication factor.");
+        throw new IllegalArgumentException("Attempt to diff distributions with modified replication factor.");
       }
     }
 
@@ -96,30 +95,32 @@ public class AnalyzerUtils {
    * @param optimizedGoals Optimized goals to check whether they accept the given proposal.
    * @param proposal       Proposal to be checked for acceptance.
    * @param clusterModel   The state of the cluster.
-   * @return True if the given proposal is acceptable for all of the given optimized goals, false otherwise.
+   * @return {@link ActionAcceptance#ACCEPT} if the given proposal is acceptable for all the given optimized goals, the
+   * reject flag (e.g. {@link ActionAcceptance#REPLICA_REJECT}, {@link ActionAcceptance#BROKER_REJECT}) otherwise.
    */
-  public static boolean isProposalAcceptableForOptimizedGoals(Set<Goal> optimizedGoals,
-                                                              BalancingAction proposal,
-                                                              ClusterModel clusterModel) {
+  public static ActionAcceptance isProposalAcceptableForOptimizedGoals(Set<Goal> optimizedGoals,
+                                                                       BalancingAction proposal,
+                                                                       ClusterModel clusterModel) {
     for (Goal optimizedGoal : optimizedGoals) {
-      if (!optimizedGoal.isActionAcceptable(proposal, clusterModel)) {
-        return false;
+      ActionAcceptance actionAcceptance = optimizedGoal.actionAcceptance(proposal, clusterModel);
+      if (actionAcceptance != ACCEPT) {
+        return actionAcceptance;
       }
     }
-    return true;
+    return ACCEPT;
   }
 
   /**
    * Checks the replicas that are supposed to be moved away from the dead brokers. If there are still replicas
    * on the dead broker, throw exception.
    * @param clusterModel the cluster model to check.
-   * @throws AnalysisInputException when there are still replicas on the dead broker.
+   * @throws OptimizationFailureException when there are still replicas on the dead broker.
    */
-  public static void ensureNoReplicaOnDeadBrokers(ClusterModel clusterModel) throws AnalysisInputException {
+  public static void ensureNoReplicaOnDeadBrokers(ClusterModel clusterModel) throws OptimizationFailureException {
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       if (!replica.broker().isAlive()) {
-        throw new AnalysisInputException(String.format(
+        throw new OptimizationFailureException(String.format(
             "Self healing failed to move the replica %s away from decommissioned broker %d for goal. There are still "
                 + "%d replicas on the broker.",
             replica, replica.broker().id(), replica.broker().replicas().size()));

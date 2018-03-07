@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.io.IOException;
@@ -19,7 +18,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 
 import org.apache.kafka.common.TopicPartition;
@@ -200,17 +198,25 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return A list of sorted replicas chosen from the replicas residing in the given broker.
    */
   public List<Replica> sortedReplicas(Resource resource) {
-    Set<Replica> candidateReplicas;
-    // If a broker is already dead, we do not distinguish leader replica vs. non-leader replica anymore.
-    if (resource.equals(Resource.NW_OUT) && isAlive()) {
-      candidateReplicas = _leaderReplicas;
-    } else {
-      candidateReplicas = _replicas;
-    }
-    return sortedReplicas(resource, candidateReplicas);
+    return sortedReplicas(resource, false);
   }
 
-  private List<Replica> sortedReplicas(Resource resource, Set<Replica> candidateReplicas) {
+  /**
+   * Sort replicas that needs to be sorted to balance the given resource by ascending or descending order of resource
+   * cost. If resource is outbound network traffic, only leaders in the broker are sorted. Otherwise all replicas in
+   * the broker are sorted.
+   *
+   * @param resource Type of the resource.
+   * @param isAscending True to sort by ascending order, false otherwise.
+   * @return A list of sorted replicas chosen from the replicas residing in the given broker.
+   */
+  public List<Replica> sortedReplicas(Resource resource, boolean isAscending) {
+    // If a broker is already dead, we do not distinguish leader replica vs. non-leader replica anymore.
+    Set<Replica> candidateReplicas = (resource == Resource.NW_OUT && isAlive()) ? _leaderReplicas : _replicas;
+    return sortedReplicas(resource, candidateReplicas, isAscending);
+  }
+
+  private List<Replica> sortedReplicas(Resource resource, Set<Replica> candidateReplicas, boolean isAscending) {
     List<Replica> replicasToBeBalanced = new ArrayList<>();
     List<Replica> nativeReplicasToBeBalanced = new ArrayList<>();
     for (Replica replica : candidateReplicas) {
@@ -221,18 +227,20 @@ public class Broker implements Serializable, Comparable<Broker> {
       }
     }
 
-    Collections.sort(replicasToBeBalanced,
-        (o1, o2) -> Double.compare(loadDensity(o2, resource),
-            loadDensity(o1, resource)));
-    Collections.sort(nativeReplicasToBeBalanced,
-        (o1, o2) -> Double.compare(loadDensity(o2, resource),
-            loadDensity(o1, resource)));
+    if (isAscending) {
+      replicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o1, resource), loadDensity(o2, resource)));
+      nativeReplicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o1, resource), loadDensity(o2, resource)));
+    } else {
+      replicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o2, resource), loadDensity(o1, resource)));
+      nativeReplicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o2, resource), loadDensity(o1, resource)));
+    }
+
     replicasToBeBalanced.addAll(nativeReplicasToBeBalanced);
     return replicasToBeBalanced;
   }
 
   public List<Replica> sortedLeadersFor(Resource resource) {
-    return sortedReplicas(resource, _leaderReplicas);
+    return sortedReplicas(resource, _leaderReplicas, false);
   }
 
   /**
@@ -306,7 +314,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param tp TopicPartition of the replica for which the outbound network load will be removed.
    * @return Leadership load by snapshot time.
    */
-  Map<Resource, Map<Long, Double>> makeFollower(TopicPartition tp) throws ModelInputException {
+  Map<Resource, Map<Long, Double>> makeFollower(TopicPartition tp) {
     Replica replica = replica(tp);
     _leadershipLoadForNwResources.subtractLoad(replica.load());
 
@@ -327,8 +335,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param leadershipLoadBySnapshotTime Resource to leadership load to be added by snapshot time.
    */
   void makeLeader(TopicPartition tp,
-                  Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime)
-      throws ModelInputException {
+                  Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime) {
     Replica replica = replica(tp);
     replica.makeLeader(leadershipLoadBySnapshotTime);
     _leadershipLoadForNwResources.addLoad(replica.load());
@@ -393,10 +400,8 @@ public class Broker implements Serializable, Comparable<Broker> {
    *
    * @param tp Topic partition that identifies the replica in this broker.
    * @param snapshot       Snapshot containing the latest state for each resource.
-   * @throws ModelInputException
    */
-  void pushLatestSnapshot(TopicPartition tp, Snapshot snapshot)
-      throws ModelInputException {
+  void pushLatestSnapshot(TopicPartition tp, Snapshot snapshot) {
     Replica replica = replica(tp);
     replica.pushLatestSnapshot(snapshot);
     if (replica.isLeader()) {
@@ -461,6 +466,6 @@ public class Broker implements Serializable, Comparable<Broker> {
 
   @Override
   public int hashCode() {
-    return Objects.hash(_id);
+    return _id;
   }
 }

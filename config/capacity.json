@@ -18,7 +18,7 @@
         "NW_IN": "50000",
         "NW_OUT": "50000"
       },
-      "doc": "This overrides the capacity for broker 0"
+      "doc": "This overrides the capacity for broker 0."
     }
   ]
 }

@@ -26,8 +26,6 @@ import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Load;
@@ -92,7 +90,7 @@ public class DeterministicClusterTest {
    * @return Parameters for the {@link OptimizationVerifier}.
    */
   @Parameterized.Parameters
-  public static Collection<Object[]> data() throws AnalysisInputException, ModelInputException {
+  public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
 
     int numSnapshots = 2;
@@ -105,20 +103,19 @@ public class DeterministicClusterTest {
     Map<Integer, String> goalNameByPriority = new HashMap<>();
     goalNameByPriority.put(1, RackAwareGoal.class.getName());
     goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
-    goalNameByPriority.put(3, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(4, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(5, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(6, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(7, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(8, TopicReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(3, DiskCapacityGoal.class.getName());
+    goalNameByPriority.put(4, NetworkInboundCapacityGoal.class.getName());
+    goalNameByPriority.put(5, NetworkOutboundCapacityGoal.class.getName());
+    goalNameByPriority.put(6, CpuCapacityGoal.class.getName());
+    goalNameByPriority.put(7, ReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(8, PotentialNwOutGoal.class.getName());
     goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
     goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
     goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
     goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, PreferredLeaderElectionGoal.class.getName());
-    goalNameByPriority.put(14, LeaderBytesInDistributionGoal.class.getName());
-    goalNameByPriority.put(15, ReplicaDistributionGoal.class.getName());
-
+    goalNameByPriority.put(13, TopicReplicaDistributionGoal.class.getName());
+    goalNameByPriority.put(14, PreferredLeaderElectionGoal.class.getName());
+    goalNameByPriority.put(15, LeaderBytesInDistributionGoal.class.getName());
 
     Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(6L));
@@ -134,19 +131,19 @@ public class DeterministicClusterTest {
 
     // -- TEST DECK #1: SMALL CLUSTER.
     for (Double balancePercentage : balancePercentages) {
-      balancingConstraint.setBalancePercentage(balancePercentage);
+      balancingConstraint.setResourceBalancePercentage(balancePercentage);
       p.add(params(balancingConstraint, DeterministicCluster.smallClusterModel(TestConstants.BROKER_CAPACITY),
                    goalNameByPriority, verifications, null));
     }
     // -- TEST DECK #2: MEDIUM CLUSTER.
     for (Double balancePercentage : balancePercentages) {
-      balancingConstraint.setBalancePercentage(balancePercentage);
+      balancingConstraint.setResourceBalancePercentage(balancePercentage);
       p.add(params(balancingConstraint, DeterministicCluster.mediumClusterModel(TestConstants.BROKER_CAPACITY),
                    goalNameByPriority, verifications, null));
     }
 
     // ----------##TEST: CAPACITY THRESHOLD.
-    balancingConstraint.setBalancePercentage(TestConstants.MEDIUM_BALANCE_PERCENTAGE);
+    balancingConstraint.setResourceBalancePercentage(TestConstants.MEDIUM_BALANCE_PERCENTAGE);
     List<Double> capacityThresholds = new ArrayList<>();
     capacityThresholds.add(TestConstants.HIGH_CAPACITY_THRESHOLD);
     capacityThresholds.add(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
@@ -217,10 +214,10 @@ public class DeterministicClusterTest {
     try {
       assertTrue("Deterministic Cluster Test failed to improve the existing state.",
           OptimizationVerifier.executeGoalsFor(_balancingConstraint, _cluster, _goalNameByPriority, _verifications));
-    } catch (AnalysisInputException analysisInputException) {
+    } catch (OptimizationFailureException optimizationFailureException) {
       // This exception is thrown if rebalance fails due to healthy brokers having insufficient capacity.
-      if (!analysisInputException.getMessage().contains("Insufficient healthy cluster capacity for resource")) {
-        throw analysisInputException;
+      if (!optimizationFailureException.getMessage().contains("Insufficient healthy cluster capacity for resource")) {
+        throw optimizationFailureException;
       }
     }
   }

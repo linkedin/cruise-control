@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
@@ -34,6 +35,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static org.junit.Assert.*;
 
 @RunWith(Parameterized.class)
@@ -157,6 +159,11 @@ public class KafkaCruiseControlServletDataFromTest {
     @Override
     public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
       return false;
+    }
+
+    @Override
+    public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+      return REPLICA_REJECT;
     }
 
     @Override

@@ -5,12 +5,11 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -24,9 +23,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
 
 
 /**
@@ -51,31 +55,65 @@ public class RackAwareGoal extends AbstractGoal {
   }
 
   /**
+   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   */
+  @Override
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    return actionAcceptance(action, clusterModel) == ACCEPT;
+  }
+
+  /**
    * Check whether given action is acceptable by this goal. An action is acceptable by a goal if it satisfies
    * requirements of the goal. Requirements(hard goal): rack awareness.
    *
    * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if action is acceptable by this goal, false otherwise.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#BROKER_REJECT} if the action is rejected due to violating rack awareness in the destination
+   * broker after moving source replica to destination broker, {@link ActionAcceptance#REPLICA_REJECT} otherwise.
    */
   @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    if (action.balancingAction().equals(ActionType.REPLICA_MOVEMENT)) {
-      Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
-      Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
-
-      // Destination broker cannot be in a rack that violates rack awareness.
-      Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
-      partitionBrokers.remove(sourceReplica.broker());
-
-      // Remove brokers in partition broker racks except the brokers in replica broker rack.
-      for (Broker broker : partitionBrokers) {
-        if (broker.rack().brokers().contains(destinationBroker)) {
-          return false;
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+    switch (action.balancingAction()) {
+      case LEADERSHIP_MOVEMENT:
+        return ACCEPT;
+      case REPLICA_MOVEMENT:
+      case REPLICA_SWAP:
+        if (isReplicaMoveViolateRackAwareness(clusterModel,
+                                              c -> c.broker(action.sourceBrokerId()).replica(action.topicPartition()),
+                                              c -> c.broker(action.destinationBrokerId()))) {
+          return BROKER_REJECT;
         }
+
+        if (action.balancingAction() == ActionType.REPLICA_SWAP
+            && isReplicaMoveViolateRackAwareness(clusterModel,
+                                                 c -> c.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
+                                                 c -> c.broker(action.sourceBrokerId()))) {
+          return REPLICA_REJECT;
+        }
+        return ACCEPT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
+    }
+  }
+
+  private boolean isReplicaMoveViolateRackAwareness(ClusterModel clusterModel,
+                                                    Function<ClusterModel, Replica> sourceReplicaFunction,
+                                                    Function<ClusterModel, Broker> destinationBrokerFunction) {
+    Replica sourceReplica = sourceReplicaFunction.apply(clusterModel);
+    Broker destinationBroker = destinationBrokerFunction.apply(clusterModel);
+    // Destination broker cannot be in a rack that violates rack awareness.
+    Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
+    partitionBrokers.remove(sourceReplica.broker());
+
+    // Remove brokers in partition broker racks except the brokers in replica broker rack.
+    for (Broker broker : partitionBrokers) {
+      if (broker.rack().brokers().contains(destinationBroker)) {
+        return true;
       }
     }
-    return true;
+
+    return false;
   }
 
   @Override
@@ -132,8 +170,7 @@ public class RackAwareGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
     // Sanity Check: not enough racks to satisfy rack awareness.
     int numHealthyRacks = clusterModel.numHealthyRacks();
     if (!excludedTopics.isEmpty()) {
@@ -145,12 +182,12 @@ public class RackAwareGoal extends AbstractGoal {
           maxReplicationFactorOfIncludedTopics =
               Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
           if (maxReplicationFactorOfIncludedTopics > numHealthyRacks) {
-            throw new AnalysisInputException("Insufficient number of racks to distribute included replicas.");
+            throw new OptimizationFailureException("Insufficient number of racks to distribute included replicas.");
           }
         }
       }
     } else if (clusterModel.maxReplicationFactor() > numHealthyRacks) {
-      throw new AnalysisInputException("Insufficient number of racks to distribute each replica.");
+      throw new OptimizationFailureException("Insufficient number of racks to distribute each replica.");
     }
   }
 
@@ -165,7 +202,7 @@ public class RackAwareGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     // One pass is sufficient to satisfy or alert impossibility of this goal.
     // Sanity check to confirm that the final distribution is rack aware.
     ensureRackAware(clusterModel, excludedTopics);
@@ -184,10 +221,10 @@ public class RackAwareGoal extends AbstractGoal {
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
-      ClusterModel clusterModel,
-      Set<Goal> optimizedGoals,
-      Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+                                    ClusterModel clusterModel,
+                                    Set<Goal> optimizedGoals,
+                                    Set<String> excludedTopics)
+      throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     // Satisfy rack awareness requirement.
     SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());
@@ -199,7 +236,7 @@ public class RackAwareGoal extends AbstractGoal {
       // Rack awareness is violated. Move replica to a broker in another rack.
       if (maybeApplyBalancingAction(clusterModel, replica, rackAwareEligibleBrokers(replica, clusterModel),
                                     ActionType.REPLICA_MOVEMENT, optimizedGoals) == null) {
-        throw new AnalysisInputException(
+        throw new OptimizationFailureException(
             "Violated rack-awareness requirement for broker with id " + broker.id() + ".");
       }
     }

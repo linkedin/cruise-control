@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.NotEnoughSnapshotsException;
 import com.linkedin.kafka.cruisecontrol.exception.NotEnoughValidSnapshotsException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -195,8 +194,7 @@ public class LoadMonitorTest {
 
   // Test the case with enough snapshot windows and valid partitions.
   @Test
-  public void testBasicClusterModel()
-      throws NotEnoughSnapshotsException, ModelInputException, NotEnoughValidSnapshotsException {
+  public void testBasicClusterModel() throws NotEnoughSnapshotsException, NotEnoughValidSnapshotsException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
     MetricSampleAggregator aggregator = context.aggregator();
@@ -218,7 +216,7 @@ public class LoadMonitorTest {
   // Not enough snapshot windows and some partitions are missing from all snapshot windows.
   @Test
   public void testClusterModelWithInvalidPartitionAndInsufficientSnapshotWindows()
-      throws NotEnoughSnapshotsException, ModelInputException, NotEnoughValidSnapshotsException {
+      throws NotEnoughSnapshotsException, NotEnoughValidSnapshotsException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
     MetricSampleAggregator aggregator = context.aggregator();
@@ -268,8 +266,7 @@ public class LoadMonitorTest {
 
   // Enough snapshot windows, some partitions are invalid in all snapshot windows.
   @Test
-  public void testClusterWithInvalidPartitions()
-      throws NotEnoughSnapshotsException, ModelInputException, NotEnoughValidSnapshotsException {
+  public void testClusterWithInvalidPartitions() throws NotEnoughSnapshotsException, NotEnoughValidSnapshotsException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
     MetricSampleAggregator aggregator = context.aggregator();
@@ -322,7 +319,7 @@ public class LoadMonitorTest {
   // Enough snapshot windows, some partitions are not available in some snapshot windows.
   @Test
   public void testClusterModelWithPartlyInvalidPartitions()
-      throws NotEnoughSnapshotsException, ModelInputException, NotEnoughValidSnapshotsException {
+      throws NotEnoughSnapshotsException, NotEnoughValidSnapshotsException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
     MetricSampleAggregator aggregator = context.aggregator();

@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.util.List;
 import org.junit.Test;
@@ -16,7 +15,7 @@ import static org.junit.Assert.assertTrue;
 public class LoadTest {
 
   @Test
-  public void testSnapshotForTime() throws ModelInputException {
+  public void testSnapshotForTime() {
     Load load = new Load(3);
     Snapshot s1 = new Snapshot(5L);
     Snapshot s2 = new Snapshot(3L);

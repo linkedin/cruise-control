@@ -6,17 +6,19 @@
         "DISK": "300000",
         "CPU": "100",
         "NW_IN": "300000",
-        "NW_OUT": "300000"
-      }
+        "NW_OUT": "200000"
+      },
+      "doc": "This is the default capacity. Capacity unit used for disk is in MB, cpu is in percentage, network throughput is in KB."
     },
     {
-      "brokerId": "0",
+      "brokerId": "314",
       "capacity": {
         "DISK": "150000",
         "CPU": "100",
         "NW_IN": "150000",
         "NW_OUT": "150000"
-      }
+      },
+      "doc": "This overrides the capacity for broker 314."
     }
   ]
 }

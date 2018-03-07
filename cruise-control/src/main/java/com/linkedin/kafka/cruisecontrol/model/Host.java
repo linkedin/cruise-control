@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -170,7 +169,7 @@ public class Host implements Serializable {
     return replica;
   }
 
-  Map<Resource, Map<Long, Double>> makeFollower(int brokerId, TopicPartition tp) throws ModelInputException {
+  Map<Resource, Map<Long, Double>> makeFollower(int brokerId, TopicPartition tp) {
     Broker broker = broker(brokerId);
     if (broker == null) {
       throw new IllegalStateException(String.format("Cannot make replica %s on broker %d as follower because the broker"
@@ -195,7 +194,7 @@ public class Host implements Serializable {
    */
   void makeLeader(int brokerId,
                   TopicPartition tp,
-                  Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime) throws ModelInputException {
+                  Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime) {
     Broker broker = _brokers.get(brokerId);
     broker.makeLeader(tp, leadershipLoadBySnapshotTime);
     // Add leadership load to recent load.
@@ -205,7 +204,7 @@ public class Host implements Serializable {
 
   void pushLatestSnapshot(int brokerId,
                           TopicPartition tp,
-                          Snapshot snapshot) throws ModelInputException {
+                          Snapshot snapshot) {
     Broker broker = _brokers.get(brokerId);
     broker.pushLatestSnapshot(tp, snapshot);
     _load.addSnapshot(snapshot);

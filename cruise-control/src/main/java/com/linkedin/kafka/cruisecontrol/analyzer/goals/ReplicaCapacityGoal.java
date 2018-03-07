@@ -5,12 +5,11 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -26,6 +25,9 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 
 
 /**
@@ -52,21 +54,36 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   }
 
   /**
+   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   */
+  @Override
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    return actionAcceptance(action, clusterModel) == ACCEPT;
+  }
+
+  /**
    * Check whether given action is acceptable by this goal. An action is acceptable by a goal if it satisfies
    * requirements of the goal. Requirements(hard goal): replica capacity goal.
    *
    * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if action is acceptable by this goal, false otherwise.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#REPLICA_REJECT} otherwise.
    */
   @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    if (action.balancingAction().equals(ActionType.REPLICA_MOVEMENT) ||
-        action.balancingAction().equals(ActionType.REPLICA_ADDITION)) {
-      Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
-      return destinationBroker.replicas().size() < _balancingConstraint.maxReplicasPerBroker();
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+    switch (action.balancingAction()) {
+      case REPLICA_MOVEMENT:
+      case REPLICA_ADDITION:
+        Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
+        return destinationBroker.replicas().size() < _balancingConstraint.maxReplicasPerBroker() ? ACCEPT : REPLICA_REJECT;
+      case REPLICA_SWAP:
+      case LEADERSHIP_MOVEMENT:
+      case REPLICA_DELETION:
+        return ACCEPT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
-    return true;
   }
 
   @Override
@@ -105,8 +122,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
     List<String> topicsToRebalance = new ArrayList<>(clusterModel.topics());
     topicsToRebalance.removeAll(excludedTopics);
     if (topicsToRebalance.isEmpty()) {
@@ -126,7 +142,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       }
 
       if (excludedReplicasInBroker > _balancingConstraint.maxReplicasPerBroker()) {
-        throw new AnalysisInputException(String.format("Replicas of excluded topics in broker: %d exceeds the maximum "
+        throw new OptimizationFailureException(String.format("Replicas of excluded topics in broker: %d exceeds the maximum "
             + "allowed number of replicas: %d.", excludedReplicasInBroker, _balancingConstraint.maxReplicasPerBroker()));
       }
       // Calculate total number of replicas for the next sanity check.
@@ -136,7 +152,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     // Sanity check: total replicas in the cluster cannot be more than the allowed replicas in the cluster.
     long maxReplicasInCluster = _balancingConstraint.maxReplicasPerBroker() * clusterModel.healthyBrokers().size();
     if (totalReplicasInCluster > maxReplicasInCluster) {
-      throw new AnalysisInputException(String.format("Total replicas in cluster: %d exceeds the maximum allowed "
+      throw new OptimizationFailureException(String.format("Total replicas in cluster: %d exceeds the maximum allowed "
           + "replicas in cluster: %d.", totalReplicasInCluster, maxReplicasInCluster));
     }
   }
@@ -163,8 +179,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization action.
    */
   @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, OptimizationFailureException {
+  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
     AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);
 
@@ -204,7 +219,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     for (Replica replica : new ArrayList<>(broker.replicas())) {
       if (broker.isAlive() && broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker()) {

@@ -5,13 +5,12 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -27,9 +26,14 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
 
 
 /**
@@ -61,28 +65,83 @@ public class RackAwareCapacityGoal extends AbstractGoal {
   }
 
   /**
+   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   */
+  @Override
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    return actionAcceptance(action, clusterModel) == ACCEPT;
+  }
+
+  /**
    * Check whether given action is acceptable by this goal. An action is acceptable by a goal if it satisfies
    * requirements of the goal. Requirements(hard goal): (1) rack awareness and (2) capacity.
    *
    * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if action is acceptable by this goal, false otherwise.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#BROKER_REJECT} if the action is rejected due to violating rack awareness in the destination
+   * broker after moving source replica to destination broker, {@link ActionAcceptance#REPLICA_REJECT} otherwise.
    */
   @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
-    if (action.balancingAction().equals(ActionType.LEADERSHIP_MOVEMENT)) {
-      return isMovementAcceptableForCapacity(Resource.NW_OUT, sourceReplica, destinationBroker) &&
-          isMovementAcceptableForCapacity(Resource.CPU, sourceReplica, destinationBroker);
+    switch (action.balancingAction()) {
+      case REPLICA_MOVEMENT:
+        for (Resource resource : _balancingConstraint.resources()) {
+          if (!isMovementAcceptableForCapacity(resource, sourceReplica, destinationBroker)) {
+            return REPLICA_REJECT;
+          }
+        }
+        break;
+      case REPLICA_SWAP:
+        Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
+        if (!isSwapAcceptableForCapacity(sourceReplica, destinationReplica)) {
+          return REPLICA_REJECT;
+        }
+        break;
+      case LEADERSHIP_MOVEMENT:
+        return isMovementAcceptableForCapacity(Resource.NW_OUT, sourceReplica, destinationBroker) &&
+               isMovementAcceptableForCapacity(Resource.CPU, sourceReplica, destinationBroker) ? ACCEPT : REPLICA_REJECT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
-    // Replica Movement: impacts all resources.
-    for (Resource resource : _balancingConstraint.resources()) {
-      if (!isMovementAcceptableForCapacity(resource, sourceReplica, destinationBroker)) {
-        return false;
-      }
+
+    // Rack awareness acceptance.
+    return replicaRelocationAcceptanceForRackAwareness(action, clusterModel);
+  }
+
+  /**
+   * Check if the given replica relocation (a move or swap action) is acceptable by this goal.
+   *
+   * @param action Replica relocation action (i.e. move or swap) to be checked for acceptance.
+   * @param clusterModel The state of the cluster.
+   * @return ActionAcceptance#BROKER_REJECT} if the action is rejected due to violating rack awareness in the destination
+   * broker after moving source replica to destination broker, {@link ActionAcceptance#REPLICA_REJECT} otherwise.
+   */
+  private ActionAcceptance replicaRelocationAcceptanceForRackAwareness(BalancingAction action, ClusterModel clusterModel) {
+    if (isReplicaMoveViolateRackAwareness(clusterModel,
+                                          c -> c.broker(action.sourceBrokerId()).replica(action.topicPartition()),
+                                          c -> c.broker(action.destinationBrokerId()))) {
+      return BROKER_REJECT;
     }
+
+    if (action.balancingAction() == ActionType.REPLICA_SWAP
+        && isReplicaMoveViolateRackAwareness(clusterModel,
+                                             c -> c.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
+                                             c -> c.broker(action.sourceBrokerId()))) {
+      return REPLICA_REJECT;
+    }
+
+    return ACCEPT;
+  }
+
+  private boolean isReplicaMoveViolateRackAwareness(ClusterModel clusterModel,
+                                                    Function<ClusterModel, Replica> sourceReplicaFunction,
+                                                    Function<ClusterModel, Broker> destinationBrokerFunction) {
+    Replica sourceReplica = sourceReplicaFunction.apply(clusterModel);
+    Broker destinationBroker = destinationBrokerFunction.apply(clusterModel);
     // Destination broker cannot be in a rack that violates rack awareness.
     Set<Broker> partitionBrokers = clusterModel.partition(sourceReplica.topicPartition()).partitionBrokers();
     partitionBrokers.remove(sourceReplica.broker());
@@ -90,10 +149,11 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     // Remove brokers in partition broker racks except the brokers in replica broker rack.
     for (Broker broker : partitionBrokers) {
       if (broker.rack().brokers().contains(destinationBroker)) {
-        return false;
+        return true;
       }
     }
-    return true;
+
+    return false;
   }
 
   @Override
@@ -174,7 +234,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
    */
   @Override
   protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+      throws OptimizationFailureException {
     _currentResource = null;
     _balancedResources = new HashSet<>();
     // Run self-healing specific sanity check.
@@ -187,11 +247,11 @@ public class RackAwareCapacityGoal extends AbstractGoal {
         // Check whether healthy brokers have multiple replicas from the same partition in the same rack.
         for (Broker followerBroker : followerBrokers) {
           if (followerBroker.isAlive() && !replicaBrokersRackIds.add(followerBroker.rack().id())) {
-            throw new AnalysisInputException("Healthy brokers fail to satisfy rack-awareness.");
+            throw new OptimizationFailureException("Healthy brokers fail to satisfy rack-awareness.");
           }
         }
         if (leader.broker().isAlive() && !replicaBrokersRackIds.add(leader.broker().rack().id())) {
-          throw new AnalysisInputException("Healthy brokers fail to satisfy rack-awareness.");
+          throw new OptimizationFailureException("Healthy brokers fail to satisfy rack-awareness.");
         }
       }
     }
@@ -202,7 +262,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
       double allowedCapacity = clusterModel.capacityFor(resource) * _balancingConstraint.capacityThreshold(resource);
 
       if (allowedCapacity < existingUtilization) {
-        throw new AnalysisInputException("Insufficient healthy cluster capacity for resource:" + resource +
+        throw new OptimizationFailureException("Insufficient healthy cluster capacity for resource:" + resource +
             " existing cluster utilization " + existingUtilization + " allowed capacity " + allowedCapacity);
       }
     }
@@ -217,12 +277,12 @@ public class RackAwareCapacityGoal extends AbstractGoal {
           maxReplicationFactorOfIncludedTopics =
               Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
           if (maxReplicationFactorOfIncludedTopics > numHealthyRacks) {
-            throw new AnalysisInputException("Insufficient number of racks to distribute included replicas.");
+            throw new OptimizationFailureException("Insufficient number of racks to distribute included replicas.");
           }
         }
       }
     } else if (clusterModel.maxReplicationFactor() > numHealthyRacks) {
-      throw new AnalysisInputException("Insufficient number of racks to distribute each replica.");
+      throw new OptimizationFailureException("Insufficient number of racks to distribute each replica.");
     }
 
     // Set the initial resource to heal or rebalance in the order of priority set in the _balancingConstraint.
@@ -236,11 +296,10 @@ public class RackAwareCapacityGoal extends AbstractGoal {
    * (2) Update the current resource that is being balanced if there are still resources to be balanced.
    *
    * @param clusterModel The state of the cluster.
-   * @throws AnalysisInputException
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, OptimizationFailureException {
+      throws OptimizationFailureException {
     // Update balanced resources.
     _balancedResources.add(_currentResource);
     if (_balancedResources.size() == _balancingConstraint.resources().size()) {
@@ -270,14 +329,13 @@ public class RackAwareCapacityGoal extends AbstractGoal {
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
    * @param excludedTopics The topics that should be excluded from the optimization action.
-   * @throws AnalysisInputException
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+      throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     double capacityThreshold = _balancingConstraint.capacityThreshold(_currentResource);
     double brokerCapacityLimit = broker.capacityFor(_currentResource) * capacityThreshold;
@@ -291,7 +349,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
       // Rack awareness is violated. Move replica to a broker in another rack.
       if (maybeApplyBalancingAction(clusterModel, replica, rackAwareEligibleBrokers(replica, clusterModel),
                                     ActionType.REPLICA_MOVEMENT, optimizedGoals) == null) {
-        throw new AnalysisInputException(
+        throw new OptimizationFailureException(
             "Violated rack-awareness requirement for broker with id " + broker.id() + ".");
       }
     }
@@ -304,7 +362,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     }
 
     // First try REBALANCE BY LEADERSHIP MOVEMENT:
-    if (_currentResource.equals(Resource.NW_OUT)) {
+    if (_currentResource == Resource.NW_OUT) {
       // Sort replicas in by descending order of preference to relocate. Preference is based on resource cost.
       List<Replica> sortedLeadersInSourceBroker = broker.sortedReplicas(_currentResource);
       for (Replica leader : sortedLeadersInSourceBroker) {
@@ -366,12 +424,12 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     if (isUtilizationOverLimit) {
       if (_currentResource == Resource.DISK) {
         // Utilization is above the capacity limit after all replicas in the given source broker were checked.
-        throw new AnalysisInputException("Violated capacity limit of " + brokerCapacityLimit + " via broker "
-            + "utilization of " + broker.load().expectedUtilizationFor(_currentResource) + " with id "
+        throw new OptimizationFailureException("Violated capacity limit of " + brokerCapacityLimit + " via broker "
+            + "utilization of " + broker.load().expectedUtilizationFor(_currentResource) + " with broker id "
             + broker.id() + " for resource " + _currentResource);
       } else {
-        throw new AnalysisInputException("Violated capacity limit of " + hostCapacityLimit + " via host "
-            + "utilization of " + broker.host().load().expectedUtilizationFor(_currentResource) + " with name "
+        throw new OptimizationFailureException("Violated capacity limit of " + hostCapacityLimit + " via host "
+            + "utilization of " + broker.host().load().expectedUtilizationFor(_currentResource) + " with hostname "
             + broker.host().name() + " for resource " + _currentResource);
       }
     }
@@ -401,7 +459,6 @@ public class RackAwareCapacityGoal extends AbstractGoal {
   }
 
   private void ensureUtilizationUnderCapacity(ClusterModel clusterModel) throws OptimizationFailureException {
-
     for (Resource resource : Resource.values()) {
       double capacityThreshold = _balancingConstraint.capacityThreshold(resource);
       for (Broker broker : clusterModel.brokers()) {
@@ -412,8 +469,7 @@ public class RackAwareCapacityGoal extends AbstractGoal {
         if (!broker.replicas().isEmpty() && utilization > capacityLimit) {
           // The utilization of the broker for the resource is over the capacity limit.
           throw new OptimizationFailureException(String.format("Optimization for goal %s failed because %s utilization "
-                                                                   + "for broker %d is %f which is above capacity "
-                                                                   + "limit %f",
+                                                               + "for broker %d is %f which is above capacity limit %f",
                                                                name(), resource, broker.id(), utilization, capacityLimit));
         }
       }
@@ -527,6 +583,41 @@ public class RackAwareCapacityGoal extends AbstractGoal {
     // destination broker go out of healthy capacity for the given resource.
     double replicaUtilization = sourceReplica.load().expectedUtilizationFor(resource);
     return !isUtilizationAboveLimitAfterAddingLoad(resource, destinationBroker, replicaUtilization);
+  }
+
+  private boolean isSwapAcceptableForCapacity(Replica sourceReplica, Replica destinationReplica) {
+    for (Resource resource : _balancingConstraint.resources()) {
+      double sourceReplicaUtilization = sourceReplica.load().expectedUtilizationFor(resource);
+      double destinationReplicaUtilization = destinationReplica.load().expectedUtilizationFor(resource);
+
+      double capacityThreshold = _balancingConstraint.capacityThreshold(resource);
+
+      // Check violation for source.
+      double sourceUtilization = resource.isHostResource()
+                                 ? sourceReplica.broker().host().load().expectedUtilizationFor(resource)
+                                 : sourceReplica.broker().load().expectedUtilizationFor(resource);
+
+      double sourceCapacity = resource.isHostResource() ? sourceReplica.broker().host().capacityFor(resource)
+                                                        : sourceReplica.broker().capacityFor(resource);
+      double sourceCapacityLimit = sourceCapacity * capacityThreshold;
+      if (sourceUtilization + destinationReplicaUtilization - sourceReplicaUtilization > sourceCapacityLimit) {
+        return false;
+      }
+
+      // Check violation for destination.
+      double destinationUtilization = resource.isHostResource()
+                                      ? destinationReplica.broker().host().load().expectedUtilizationFor(resource)
+                                      : destinationReplica.broker().load().expectedUtilizationFor(resource);
+
+      double destinationCapacity = resource.isHostResource() ? destinationReplica.broker().host().capacityFor(resource)
+                                                             : destinationReplica.broker().capacityFor(resource);
+
+      double destinationCapacityLimit = destinationCapacity * capacityThreshold;
+      if (destinationUtilization + sourceReplicaUtilization - destinationReplicaUtilization > destinationCapacityLimit) {
+        return false;
+      }
+    }
+    return true;
   }
 
   private boolean isUtilizationAboveLimitAfterAddingLoad(Resource resource, Broker broker, double loadToAdd) {

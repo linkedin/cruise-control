@@ -5,12 +5,12 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -26,6 +26,9 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 
 
 /**
@@ -56,28 +59,80 @@ public class PotentialNwOutGoal extends AbstractGoal {
   }
 
   /**
-   * Check whether given action is acceptable by this goal. Action is acceptable by this goal if it satisfies
-   * either of the following:
-   * (1) it is a leadership movement,
-   * (2) it satisfies {@link #selfSatisfied},
-   * (3) replica movement does not make the potential nw outbound goal on destination broker more than the source.
-   *
-   * @param action Action to be checked for acceptance.
-   * @param clusterModel The state of the cluster.
-   * @return True if action is acceptable by this goal, false otherwise.
+   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
    */
   @Override
   public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    Replica replica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
-    if (action.balancingAction().equals(ActionType.LEADERSHIP_MOVEMENT) || selfSatisfied(clusterModel, action)) {
-      return true;
+    return actionAcceptance(action, clusterModel) == ACCEPT;
+  }
+
+  /**
+   * Check whether given action is acceptable by this goal. Action is acceptable by this goal if it satisfies
+   * either of the following:
+   * (1) it is a leadership movement,
+   * (2) it is an acceptable replica relocation (i.e. move or swap): {@link #isReplicaRelocationAcceptable(BalancingAction, ClusterModel)}
+   *
+   * @param action Action to be checked for acceptance.
+   * @param clusterModel The state of the cluster.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#REPLICA_REJECT} otherwise.
+   */
+  @Override
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+    switch (action.balancingAction()) {
+      case LEADERSHIP_MOVEMENT:
+        // it is a leadership movement,
+        return ACCEPT;
+      case REPLICA_SWAP:
+      case REPLICA_MOVEMENT:
+        return isReplicaRelocationAcceptable(action, clusterModel);
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
+  }
+
+  /**
+   * Check whether the given replica relocation (i.e. move or swap) is acceptable by this goal. Replica relocation is
+   * acceptable if it satisfies either of the following:
+   *
+   * (1) it satisfies {@link #selfSatisfied},
+   * (2) replica movement does not make the potential nw outbound goal on destination broker more than the source.
+   * (3) replica swap does not make the potential nw outbound goal on source or destination broker more than the max of
+   * the initial value on brokers.
+   *
+   * @param action Replica relocation action (i.e. move or swap) to be checked for acceptance.
+   * @param clusterModel The state of the cluster.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#REPLICA_REJECT} otherwise.
+   */
+  private ActionAcceptance isReplicaRelocationAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    if (selfSatisfied(clusterModel, action)) {
+      // it satisfies {@link #selfSatisfied},
+      return ACCEPT;
+    }
+
+    Replica replica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     double destinationBrokerUtilization =
         clusterModel.potentialLeadershipLoadFor(clusterModel.broker(action.destinationBrokerId()).id()).expectedUtilizationFor(Resource.NW_OUT);
     double sourceBrokerUtilization = clusterModel.potentialLeadershipLoadFor(replica.broker().id()).expectedUtilizationFor(Resource.NW_OUT);
-    double replicaUtilization = clusterModel.partition(replica.topicPartition()).leader().load().expectedUtilizationFor(Resource.NW_OUT);
+    double sourceReplicaUtilization = clusterModel.partition(replica.topicPartition()).leader().load().expectedUtilizationFor(Resource.NW_OUT);
+    double maxUtilization = Math.max(destinationBrokerUtilization, sourceBrokerUtilization);
 
-    return destinationBrokerUtilization + replicaUtilization <= sourceBrokerUtilization;
+    switch (action.balancingAction()) {
+      case REPLICA_SWAP:
+        double destinationReplicaUtilization = clusterModel.partition(action.destinationTopicPartition())
+            .leader().load().expectedUtilizationFor(Resource.NW_OUT);
+        // Check source broker potential NW_OUT violation.
+        if (sourceBrokerUtilization + destinationReplicaUtilization - sourceReplicaUtilization > maxUtilization) {
+          return REPLICA_REJECT;
+        }
+        return destinationBrokerUtilization + sourceReplicaUtilization - destinationReplicaUtilization <= maxUtilization
+               ? ACCEPT : REPLICA_REJECT;
+      case REPLICA_MOVEMENT:
+        return destinationBrokerUtilization + sourceReplicaUtilization <= maxUtilization ? ACCEPT : REPLICA_REJECT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
+    }
   }
 
   @Override
@@ -114,7 +169,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * Check if the movement of potential outbound network utilization from the given source replica to given
    * destination broker is acceptable for this goal. The action is unacceptable if both of the following conditions
    * are met: (1) transfer of replica makes the potential network outbound utilization of the destination broker go
-   * out of its allowed capacity, (2) broker containing the source replica is alive.
+   * out of its allowed capacity, (2) broker containing the source replica is alive. For a swap action, this
+   * consideration is bidirectional.
    *
    * @param clusterModel The state of the cluster.
    * @param action Action containing information about potential modification to the given cluster model.
@@ -124,18 +180,35 @@ public class PotentialNwOutGoal extends AbstractGoal {
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
+    ActionType actionType = action.balancingAction();
+    Broker sourceBroker = sourceReplica.broker();
     // If the source broker is dead and currently self healing dead brokers only, then the action must be executed.
-    if (!sourceReplica.broker().isAlive() && _selfHealingDeadBrokersOnly) {
+    if (!sourceBroker.isAlive() && _selfHealingDeadBrokersOnly && actionType != ActionType.REPLICA_SWAP) {
       return true;
     }
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     double destinationBrokerUtilization = clusterModel.potentialLeadershipLoadFor(destinationBroker.id()).expectedUtilizationFor(Resource.NW_OUT);
-    double allowedDestinationCapacity = destinationBroker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
-    double replicaUtilization = clusterModel.partition(sourceReplica.topicPartition()).leader().load()
-        .expectedUtilizationFor(Resource.NW_OUT);
+    double destinationCapacity = destinationBroker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
+    double sourceReplicaUtilization = clusterModel.partition(sourceReplica.topicPartition()).leader().load()
+                                                  .expectedUtilizationFor(Resource.NW_OUT);
 
-    // Check whether replica or leadership transfer leads to violation of capacity limit requirement.
-    return destinationBrokerUtilization + replicaUtilization <= allowedDestinationCapacity;
+    if (actionType != ActionType.REPLICA_SWAP) {
+      // Check whether replica or leadership transfer leads to violation of capacity limit requirement.
+      return destinationCapacity >= destinationBrokerUtilization + sourceReplicaUtilization;
+    }
+
+    // Ensure that the destination capacity of self-satisfied for action type swap is not violated.
+    double destinationReplicaUtilization = clusterModel.partition(action.destinationTopicPartition()).leader().load()
+                                                       .expectedUtilizationFor(Resource.NW_OUT);
+    if (destinationCapacity < destinationBrokerUtilization + sourceReplicaUtilization - destinationReplicaUtilization) {
+      // Destination capacity would be violated due to swap.
+      return false;
+    }
+
+    // Ensure that the source capacity of self-satisfied for action type swap is not violated.
+    double sourceBrokerUtilization = clusterModel.potentialLeadershipLoadFor(sourceBroker.id()).expectedUtilizationFor(Resource.NW_OUT);
+    double sourceCapacity = sourceBroker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
+    return sourceCapacity >= sourceBrokerUtilization + destinationReplicaUtilization - sourceReplicaUtilization;
   }
 
   /**
@@ -146,8 +219,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
     // While proposals exclude the excludedTopics, the potential nw_out still considers replicas of the excludedTopics.
     _selfHealingDeadBrokersOnly = false;
   }
@@ -159,15 +231,14 @@ public class PotentialNwOutGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException {
+      throws OptimizationFailureException {
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       if (replica.broker().isAlive()) {
         continue;
       }
       if (_selfHealingDeadBrokersOnly) {
-        throw new AnalysisInputException(
-            "Self healing failed to move the replica away from decommissioned brokers.");
+        throw new OptimizationFailureException("Self healing failed to move the replica away from decommissioned brokers.");
       }
       _selfHealingDeadBrokersOnly = true;
       LOG.warn(
@@ -190,8 +261,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+                                    Set<String> excludedTopics) {
     double capacityLimit = broker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
     boolean estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
         clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
@@ -275,8 +345,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
       int result = Integer.compare(stat1, stat2);
       if (result < 0) {
         _reasonForLastNegativeResult = String.format("Violated %s. [Number of brokers under potential NwOut] "
-                                                         + "post-optimization:%d " + "pre-optimization:%d",
-                                                     name(), stat1, stat2);
+                                                     + "post-optimization:%d pre-optimization:%d", name(), stat1, stat2);
       }
       return result;
     }

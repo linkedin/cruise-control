@@ -5,12 +5,12 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -29,6 +29,9 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.REPLICA_SWAP;
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils.EPSILON;
 
 
@@ -57,20 +60,37 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   }
 
   /**
+   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   */
+  @Override
+  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
+    return actionAcceptance(action, clusterModel) == ACCEPT;
+  }
+
+  /**
    * Check whether given action is acceptable by this goal. An action is acceptable if the number of topic replicas
    * at the source broker are more than the number of topic replicas at the destination (remote) broker.
    *
    * @param action Action to be checked for acceptance.
    * @param clusterModel The state of the cluster.
-   * @return True if action is acceptable by this goal, false otherwise.
+   * @return {@link ActionAcceptance#ACCEPT} if the action is acceptable by this goal,
+   * {@link ActionAcceptance#REPLICA_REJECT} otherwise.
    */
   @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    String topic = action.topic();
-    int numLocalTopicReplicas = clusterModel.broker(action.sourceBrokerId()).replicasOfTopicInBroker(topic).size();
-    int numRemoteTopicReplicas = clusterModel.broker(action.destinationBrokerId()).replicasOfTopicInBroker(topic).size();
+  public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+    switch (action.balancingAction()) {
+      case REPLICA_SWAP:
+        return ACCEPT;
+      case LEADERSHIP_MOVEMENT:
+      case REPLICA_MOVEMENT:
+        String topic = action.topic();
+        int numLocalTopicReplicas = clusterModel.broker(action.sourceBrokerId()).replicasOfTopicInBroker(topic).size();
+        int numRemoteTopicReplicas = clusterModel.broker(action.destinationBrokerId()).replicasOfTopicInBroker(topic).size();
 
-    return numRemoteTopicReplicas < numLocalTopicReplicas;
+        return numRemoteTopicReplicas < numLocalTopicReplicas ? ACCEPT : REPLICA_REJECT;
+      default:
+        throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
+    }
   }
 
   @Override
@@ -138,8 +158,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
     _numRebalancedTopics = 0;
     _topicsToRebalance = new ArrayList<>(clusterModel.topics());
     if (clusterModel.deadBrokers().isEmpty()) {
@@ -175,13 +194,13 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws AnalysisInputException {
+      throws OptimizationFailureException {
 
     if (!clusterModel.selfHealingEligibleReplicas().isEmpty()) {
       // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
       for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
         if (!replica.broker().isAlive()) {
-          throw new AnalysisInputException(
+          throw new OptimizationFailureException(
               "Self healing failed to move the replica away from decommissioned broker.");
         }
       }
@@ -200,8 +219,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
    */
-  protected void healCluster(ClusterModel clusterModel, Set<Goal> optimizedGoals)
-      throws AnalysisInputException, ModelInputException {
+  private void healCluster(ClusterModel clusterModel, Set<Goal> optimizedGoals) throws OptimizationFailureException {
     // Move self healed replicas (if their broker is overloaded or they reside at dead brokers) to eligible ones.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       String topic = replica.topicPartition().topic();
@@ -223,8 +241,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics)
-      throws AnalysisInputException, ModelInputException {
+                                    Set<String> excludedTopics) throws OptimizationFailureException {
 
     if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && !broker.isAlive() && !broker.replicas().isEmpty()) {
       healCluster(clusterModel, optimizedGoals);

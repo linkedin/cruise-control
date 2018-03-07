@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.exception.ModelInputException;
 
 import com.google.gson.Gson;
 
@@ -127,10 +126,10 @@ public class Load implements Serializable {
    * @param resource           Resource for which the load will be overwritten.
    * @param loadBySnapshotTime Load for the given resource to overwrite the original load by snapshot time.
    */
-  void setLoadFor(Resource resource, Map<Long, Double> loadBySnapshotTime) throws ModelInputException {
+  void setLoadFor(Resource resource, Map<Long, Double> loadBySnapshotTime) {
     if (loadBySnapshotTime.size() != _snapshotsByTime.size()) {
-      throw new ModelInputException("Load to set and load for the resources must have exactly " +
-                                        _snapshotsByTime.size() + " entries.");
+      throw new IllegalArgumentException("Load to set and load for the resources must have exactly "
+                                         + _snapshotsByTime.size() + " entries.");
     }
 
     double delta = 0.0;
@@ -164,18 +163,17 @@ public class Load implements Serializable {
    * Push the latest snapshot.
    *
    * @param snapshot Snapshot containing latest time and state for each resource.
-   * @throws ModelInputException
    */
-  void pushLatestSnapshot(Snapshot snapshot) throws ModelInputException {
+  void pushLatestSnapshot(Snapshot snapshot) {
     if (_snapshotsByTime.size() >= _maxNumSnapshotForObject) {
-      throw new ModelInputException("Already have " + _snapshotsByTime.size() + " snapshots but see a different " +
-                                        "snapshot time" + snapshot.time() + ". Existing snapshot times: " +
-                                        Arrays.toString(allSnapshotTimes()));
+      throw new IllegalArgumentException("Already have " + _snapshotsByTime.size() + " snapshots but see a different "
+                                         + "snapshot time" + snapshot.time() + ". Existing snapshot times: "
+                                         + Arrays.toString(allSnapshotTimes()));
     }
     if (!_snapshotsByTime.isEmpty() && snapshot.time() >= _snapshotsByTime.get(_snapshotsByTime.size() - 1).time()) {
-      throw new ModelInputException("Attempt to push an out of order snapshot with timestamp " + snapshot.time() +
-                                        " to a replica. Existing snapshot times: " +
-                                        Arrays.toString(allSnapshotTimes()));
+      throw new IllegalArgumentException("Attempt to push an out of order snapshot with timestamp " + snapshot.time()
+                                         + " to a replica. Existing snapshot times: "
+                                         + Arrays.toString(allSnapshotTimes()));
     }
     _snapshotsByTime.add(snapshot);
     for (Resource r : Resource.cachedValues()) {

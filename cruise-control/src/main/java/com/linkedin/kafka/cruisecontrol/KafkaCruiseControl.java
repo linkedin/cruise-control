@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
-import com.linkedin.kafka.cruisecontrol.exception.AnalysisInputException;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
@@ -312,8 +311,6 @@ public class KafkaCruiseControl {
    * it is still valid.
    * @param operationProgress the job progress to report.
    * @return The optimization result.
-   * @throws KafkaCruiseControlException
-   * @throws AnalysisInputException
    */
   public GoalOptimizer.OptimizerResult getOptimizationProposals(OperationProgress operationProgress)
       throws KafkaCruiseControlException {
