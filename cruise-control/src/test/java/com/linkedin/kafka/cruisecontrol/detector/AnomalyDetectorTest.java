@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskManager;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import java.util.Collections;
 import java.util.concurrent.Executors;
@@ -181,14 +182,17 @@ public class AnomalyDetectorTest {
     EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject()))
             .andReturn(new KafkaCruiseControlState(
                 ExecutorState.replicaMovementInProgress(1,
-                                                        Collections.emptySet(),
-                                                        Collections.emptySet(),
-                                                        Collections.emptySet(),
-                                                        Collections.emptySet(),
-                                                        Collections.emptySet(),
-                                                        1,
+                                                        new ExecutionTaskManager.ExecutionState(Collections.emptySet(),
+                                                                                                  Collections.emptySet(),
+                                                                                                  Collections.emptySet(),
+                                                                                                  Collections.emptySet(),
+                                                                                                  Collections.emptySet(),
+                                                                                                  1L),
                                                         1),
                 null, null));
+
+
+
 
     EasyMock.replay(mockAnomalyNotifier);
     EasyMock.replay(mockBrokerFailureDetector);

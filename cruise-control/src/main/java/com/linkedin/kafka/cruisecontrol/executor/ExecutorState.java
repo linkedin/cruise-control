@@ -32,95 +32,70 @@ public class ExecutorState {
 
   private ExecutorState(State state,
                         int numFinishedPartitionMovements,
-                        Set<ExecutionTask> pendingPartitionMovements,
-                        Set<ExecutionTask> inProgressPartitionMovements,
-                        Set<ExecutionTask> abortingPartitionMovements,
-                        Set<ExecutionTask> abortedPartitionMovements,
-                        Set<ExecutionTask> deadPartitionMovements,
-                        long remainingDataToMoveInMB,
+                        ExecutionTaskManager.ExecutionState executionState,
                         long finishedDataMovementInMB) {
     _state = state;
-    _pendingPartitionMovements = pendingPartitionMovements;
-    _inProgressPartitionMovements = inProgressPartitionMovements;
     _numFinishedPartitionMovements = numFinishedPartitionMovements;
-    _remainingDataToMoveInMB = remainingDataToMoveInMB;
+    _pendingPartitionMovements = executionState.remainingPartitionMovements();
+    _inProgressPartitionMovements = executionState.inProgressTasks();
+    _abortingPartitionMovements = executionState.abortingTasks();
+    _abortedPartitionMovements = executionState.abortedTasks();
+    _deadPartitionMovements = executionState.deadTasks();
+    _remainingDataToMoveInMB = executionState.remainingDataToMoveInMB();
     _finishedDataMovementInMB = finishedDataMovementInMB;
-    _abortingPartitionMovements = abortingPartitionMovements;
-    _abortedPartitionMovements = abortedPartitionMovements;
-    _deadPartitionMovements = deadPartitionMovements;
   }
 
   public static ExecutorState noTaskInProgress() {
     return new ExecutorState(State.NO_TASK_IN_PROGRESS,
                              0,
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             0L,
+                             new ExecutionTaskManager.ExecutionState(Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     0L),
                              0L);
   }
 
   public static ExecutorState executionStarted() {
     return new ExecutorState(State.EXECUTION_STARTED,
                              0,
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             0L,
+                             new ExecutionTaskManager.ExecutionState(Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     0L),
                              0L);
   }
 
   public static ExecutorState replicaMovementInProgress(int finishedPartitionMovements,
-                                                        Set<ExecutionTask> pendingPartitionMovements,
-                                                        Set<ExecutionTask> inProgressPartitionMovements,
-                                                        Set<ExecutionTask> abortingPartitionMovements,
-                                                        Set<ExecutionTask> abortedPartitionMovements,
-                                                        Set<ExecutionTask> deadPartitionMovements,
-                                                        long remainingDataToMoveInMB,
+                                                        ExecutionTaskManager.ExecutionState executionState,
                                                         long finishedDataMovementInMB) {
     return new ExecutorState(State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
                              finishedPartitionMovements,
-                             pendingPartitionMovements,
-                             inProgressPartitionMovements,
-                             abortingPartitionMovements,
-                             abortedPartitionMovements,
-                             deadPartitionMovements,
-                             remainingDataToMoveInMB,
+                             executionState,
                              finishedDataMovementInMB);
   }
 
   public static ExecutorState leaderMovementInProgress() {
     return new ExecutorState(State.LEADER_MOVEMENT_TASK_IN_PROGRESS,
                              0,
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             Collections.emptySet(),
-                             0L,
+                             new ExecutionTaskManager.ExecutionState(Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     Collections.emptySet(),
+                                                                     0L),
                              0L);
   }
 
   public static ExecutorState stopping(int finishedPartitionMovements,
-                                       Set<ExecutionTask> pendingPartitionMovements,
-                                       Set<ExecutionTask> inProgressPartitionMovements,
-                                       Set<ExecutionTask> abortingPartitionMovements,
-                                       Set<ExecutionTask> abortedPartitionMovements,
-                                       Set<ExecutionTask> deadParitionMovements,
-                                       long remainingDataToMoveInMB,
+                                       ExecutionTaskManager.ExecutionState executionState,
                                        long finishedDataMovementInMB) {
     return new ExecutorState(State.STOPPING_EXECUTION,
                              finishedPartitionMovements,
-                             pendingPartitionMovements,
-                             inProgressPartitionMovements,
-                             abortingPartitionMovements,
-                             abortedPartitionMovements,
-                             deadParitionMovements,
-                             remainingDataToMoveInMB,
+                             executionState,
                              finishedDataMovementInMB);
   }
 

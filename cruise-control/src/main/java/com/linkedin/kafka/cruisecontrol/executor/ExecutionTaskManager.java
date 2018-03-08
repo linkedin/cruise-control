@@ -25,6 +25,8 @@ import org.apache.kafka.common.TopicPartition;
  * We only keep track of the number of concurrent partition movements but not the sizes of the partitions.
  * Because the concurrent level determines how much impact the balancing process would have on the involved
  * brokers. And the size of partitions only affect how long the impact would last.
+ *
+ * The execution task manager is thread-safe.
  */
 public class ExecutionTaskManager {
   private final Map<Integer, Integer> _inProgressReplicaMovementsByBrokerId;
@@ -104,7 +106,7 @@ public class ExecutionTaskManager {
   /**
    * Returns a list of balancing proposal that moves the partitions.
    */
-  public List<ExecutionTask> getReplicaMovementTasks() {
+  public synchronized List<ExecutionTask> getReplicaMovementTasks() {
     Map<Integer, Integer> readyBrokers = new HashMap<>();
     for (Map.Entry<Integer, Integer> entry : _inProgressReplicaMovementsByBrokerId.entrySet()) {
       // We skip the concurrency level check if caller requested so.
@@ -122,28 +124,28 @@ public class ExecutionTaskManager {
   /**
    * Returns a list of proposals that moves the leadership.
    */
-  public List<ExecutionTask> getLeaderMovementTasks() {
+  public synchronized List<ExecutionTask> getLeaderMovementTasks() {
     return _executionTaskPlanner.getLeaderMovementTasks(_leaderMovementConcurrency);
   }
 
   /**
    * Returns the remaining partition movement tasks.
    */
-  public Set<ExecutionTask> remainingPartitionMovements() {
+  public synchronized Set<ExecutionTask> remainingPartitionMovements() {
     return _executionTaskPlanner.remainingReplicaMovements();
   }
 
   /**
    * Returns the remaining leader movement tasks;
    */
-  public Collection<ExecutionTask> remainingLeaderMovements() {
+  public synchronized Collection<ExecutionTask> remainingLeaderMovements() {
     return _executionTaskPlanner.remainingLeaderMovements();
   }
 
   /**
    * Returns the remaining data to move in MB.
    */
-  public long remainingDataToMoveInMB() {
+  public synchronized long remainingDataToMoveInMB() {
     return _executionTaskPlanner.remainingDataToMoveInMB();
   }
 
@@ -151,7 +153,7 @@ public class ExecutionTaskManager {
    * Get all the tasks that are not completed yet.
    * The uncompleted tasks include tasks in IN_PROGRESS and ABORTING state.
    */
-  public Set<ExecutionTask> inExecutionTasks() {
+  public synchronized Set<ExecutionTask> inExecutionTasks() {
     Set<ExecutionTask> inExecution = new HashSet<>();
     inExecution.addAll(_executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS));
     inExecution.addAll(_executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING));
@@ -159,30 +161,30 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Get all the in progress execution tasks.
+   * Get all the in-progress execution tasks.
    */
-  public Set<ExecutionTask> inProgressTasks() {
+  public synchronized Set<ExecutionTask> inProgressTasks() {
     return _executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS);
   }
 
   /**
    * @return the aborting tasks.
    */
-  public Set<ExecutionTask> abortingTasks() {
+  public synchronized Set<ExecutionTask> abortingTasks() {
     return _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING);
   }
 
   /**
    * @return the aborted tasks.
    */
-  public Set<ExecutionTask> abortedTasks() {
+  public synchronized Set<ExecutionTask> abortedTasks() {
     return _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTED);
   }
 
   /**
    * @return the dead tasks.
    */
-  public Set<ExecutionTask> deadTasks() {
+  public synchronized Set<ExecutionTask> deadTasks() {
     return _executionTaskTracker.tasksInState(ExecutionTask.State.DEAD);
   }
 
@@ -194,8 +196,8 @@ public class ExecutionTaskManager {
    * @param proposals the balancing proposals to execute.
    * @param brokersToSkipConcurrencyCheck the brokers that does not need to be throttled when move the partitions.
    */
-  public void addBalancingProposals(Collection<ExecutionProposal> proposals,
-                                    Collection<Integer> brokersToSkipConcurrencyCheck) {
+  public synchronized void addBalancingProposals(Collection<ExecutionProposal> proposals,
+                                                 Collection<Integer> brokersToSkipConcurrencyCheck) {
     _executionTaskPlanner.addExecutionProposals(proposals);
     for (ExecutionProposal p : proposals) {
       _inProgressReplicaMovementsByBrokerId.putIfAbsent(p.oldLeader(), 0);
@@ -217,7 +219,7 @@ public class ExecutionTaskManager {
   /**
    * Mark the given tasks as in progress. Tasks are executed homogeneously -- all tasks have the same balancing action.
    */
-  public void markTasksInProgress(List<ExecutionTask> tasks) {
+  public synchronized void markTasksInProgress(List<ExecutionTask> tasks) {
     if (!tasks.isEmpty()) {
       for (ExecutionTask task : tasks) {
         // Add task to the relevant task in progress.
@@ -241,7 +243,7 @@ public class ExecutionTaskManager {
    * Mark the successful completion of a given task. In-progress execution will yield successful completion.
    * Aborting execution will yield Aborted completion.
    */
-  public void markTaskDone(ExecutionTask task) {
+  public synchronized void markTaskDone(ExecutionTask task) {
     if (task.state() == ExecutionTask.State.IN_PROGRESS) {
       markTaskState(task, ExecutionTask.State.COMPLETED);
       completeTask(task);
@@ -254,7 +256,7 @@ public class ExecutionTaskManager {
   /**
    * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is possible.
    */
-  public void markTaskAborting(ExecutionTask task) {
+  public synchronized void markTaskAborting(ExecutionTask task) {
     if (task.state() != ExecutionTask.State.ABORTING) {
       markTaskState(task, ExecutionTask.State.ABORTING);
     }
@@ -263,7 +265,7 @@ public class ExecutionTaskManager {
   /**
    * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is not possible.
    */
-  public void markTaskDead(ExecutionTask task) {
+  public synchronized void markTaskDead(ExecutionTask task) {
     if (task.state() != ExecutionTask.State.DEAD) {
       markTaskState(task, ExecutionTask.State.DEAD);
       completeTask(task);
@@ -321,11 +323,82 @@ public class ExecutionTaskManager {
     }
   }
 
-  public void clear() {
+  public synchronized void clear() {
     _brokersToSkipConcurrencyCheck.clear();
     _inProgressReplicaMovementsByBrokerId.clear();
     _inProgressPartitions.clear();
     _executionTaskPlanner.clear();
     _executionTaskTracker.clear();
+  }
+
+  public synchronized ExecutionState getExecutionState() {
+    return new ExecutionState(_executionTaskPlanner.remainingReplicaMovements(),
+                              _executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS),
+                              _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING),
+                              _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTED),
+                              _executionTaskTracker.tasksInState(ExecutionTask.State.DEAD),
+                              _executionTaskPlanner.remainingDataToMoveInMB());
+  }
+
+  public static class ExecutionState {
+    private final Set<ExecutionTask> _remainingPartitionMovements;
+    private final Set<ExecutionTask> _inProgressTasks;
+    private final Set<ExecutionTask> _abortingTasks;
+    private final Set<ExecutionTask> _abortedTasks;
+    private final Set<ExecutionTask> _deadTasks;
+    private final long _remainingDataToMoveInMB;
+
+    public ExecutionState(Set<ExecutionTask> remainingPartitionMovements, Set<ExecutionTask> inProgressTasks,
+                          Set<ExecutionTask> abortingTasks, Set<ExecutionTask> abortedTasks,
+                          Set<ExecutionTask> deadTasks, long remainingDataToMoveInMB) {
+      _remainingPartitionMovements = remainingPartitionMovements;
+      _inProgressTasks = inProgressTasks;
+      _abortingTasks = abortingTasks;
+      _abortedTasks = abortedTasks;
+      _deadTasks = deadTasks;
+      _remainingDataToMoveInMB = remainingDataToMoveInMB;
+    }
+
+    /**
+     * Returns the remaining partition movement tasks.
+     */
+    public Set<ExecutionTask> remainingPartitionMovements() {
+      return _remainingPartitionMovements;
+    }
+
+    /**
+     * Get all the in-progress execution tasks.
+     */
+    public Set<ExecutionTask> inProgressTasks() {
+      return _inProgressTasks;
+    }
+
+    /**
+     * @return the aborting tasks.
+     */
+    public Set<ExecutionTask> abortingTasks() {
+      return _abortingTasks;
+    }
+
+    /**
+     * @return the aborted tasks.
+     */
+    public Set<ExecutionTask> abortedTasks() {
+      return _abortedTasks;
+    }
+
+    /**
+     * @return the dead tasks.
+     */
+    public Set<ExecutionTask> deadTasks() {
+      return _deadTasks;
+    }
+
+    /**
+     * Returns the remaining data to move in MB.
+     */
+    public long remainingDataToMoveInMB() {
+      return _remainingDataToMoveInMB;
+    }
   }
 }
