@@ -132,7 +132,11 @@ public class KafkaSampleStore implements SampleStore {
     Properties props = new Properties();
     props.setProperty(LogConfig.RetentionMsProp(), Long.toString(retentionMs));
     props.setProperty(LogConfig.CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
-    int replicationFactor = Math.min(2, zkUtils.getAllBrokersInCluster().size());
+    int numberOfBrokersInCluster = zkUtils.getAllBrokersInCluster().size();
+    if (numberOfBrokersInCluster == 0) {
+      throw new IllegalStateException("Kafka cluster has no alive brokers.");
+    }
+    int replicationFactor = Math.min(2, numberOfBrokersInCluster);
     if (!topics.containsKey(_partitionMetricSampleStoreTopic)) {
       AdminUtils.createTopic(zkUtils, _partitionMetricSampleStoreTopic, 32, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
     } else {
