@@ -245,7 +245,7 @@ public class LoadMonitorTaskRunner {
    */
   public void pauseSampling() {
     if (_state.get() != PAUSED && !_state.compareAndSet(RUNNING, PAUSED)) {
-      throw new IllegalStateException("Cannot pause the load monitor because it is in " + _state.get() + "state");
+      throw new IllegalStateException("Cannot pause the load monitor because it is in " + _state.get() + " state");
     }
   }
 
@@ -253,7 +253,9 @@ public class LoadMonitorTaskRunner {
    * Resume the scheduled sampling tasks.
    */
   public void resumeSampling() {
-    _state.compareAndSet(PAUSED, RUNNING);
+    if (_state.get() != RUNNING && !_state.compareAndSet(PAUSED, RUNNING)) {
+      throw new IllegalStateException("Cannot resume the load monitor because it is in " + _state.get() + " state");
+    }
   }
 
 

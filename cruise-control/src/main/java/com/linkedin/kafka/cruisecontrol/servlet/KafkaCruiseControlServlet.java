@@ -166,6 +166,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     validParamNames.put(REMOVE_BROKER, Collections.unmodifiableSet(removeBroker));
     validParamNames.put(REBALANCE, Collections.unmodifiableSet(rebalance));
     validParamNames.put(STOP_PROPOSAL_EXECUTION, Collections.emptySet());
+    validParamNames.put(PAUSE_SAMPLING, Collections.emptySet());
+    validParamNames.put(RESUME_SAMPLING, Collections.emptySet());
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
@@ -180,7 +182,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     ADD_BROKER,
     REMOVE_BROKER,
     REBALANCE,
-    STOP_PROPOSAL_EXECUTION
+    STOP_PROPOSAL_EXECUTION,
+    PAUSE_SAMPLING,
+    RESUME_SAMPLING
   }
 
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
@@ -346,6 +350,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 4. Stop the proposal execution.
    *    POST /kafkacruisecontrol/stop_proposal_execution
    *
+   * 5.Pause metrics sampling. (RUNNING -> PAUSED).
+   *    POST /kafkacruisecontrol/pause_sampling
+   *
+   * 6.Resume metrics sampling. (PAUSED -> RUNNING).
+   *    POST /kafkacruisecontrol/resume_sampling
+   *
    *
    * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
    * </pre>
@@ -384,6 +394,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               break;
             case STOP_PROPOSAL_EXECUTION:
               stopProposalExecution();
+              break;
+            case PAUSE_SAMPLING:
+              pauseSampling();
+              break;
+            case RESUME_SAMPLING:
+              resumeSampling();
               break;
             default:
               throw new UserRequestException("Invalid URL for POST");
@@ -1015,6 +1031,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private void stopProposalExecution() {
     _asyncKafkaCruiseControl.stopProposalExecution();
+  }
+
+  private void pauseSampling() {
+    _asyncKafkaCruiseControl.pauseLoadMonitorActivity();
+  }
+
+  private void resumeSampling() {
+    _asyncKafkaCruiseControl.resumeLoadMonitorActivity();
   }
 
   private <T> T getAndMaybeReturnProgress(HttpServletRequest request,
