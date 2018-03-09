@@ -156,7 +156,8 @@ public class SessionManager {
    * @param request the request to close its session.
    */
   synchronized void closeSession(HttpServletRequest request) {
-    HttpSession session = request.getSession();
+    // Response associated with this request has already been flushed; hence, do not attempt to create a new session.
+    HttpSession session = request.getSession(false);
     if (session == null) {
       return;
     }
