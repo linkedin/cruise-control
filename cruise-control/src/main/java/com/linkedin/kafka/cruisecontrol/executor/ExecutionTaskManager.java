@@ -104,7 +104,7 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Returns a list of balancing proposal that moves the partitions.
+   * Returns a list of execution proposal that moves the partitions.
    */
   public synchronized List<ExecutionTask> getReplicaMovementTasks() {
     Map<Integer, Integer> readyBrokers = new HashMap<>();
@@ -189,14 +189,14 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Add a collection of balancing proposals for execution. The method allows users to skip the concurrency check
+   * Add a collection of execution proposals for execution. The method allows users to skip the concurrency check
    * on some given brokers. Notice that this method will replace the existing brokers that were in the concurrency
    * check privilege state with the new broker set.
    *
-   * @param proposals the balancing proposals to execute.
+   * @param proposals the execution proposals to execute.
    * @param brokersToSkipConcurrencyCheck the brokers that does not need to be throttled when move the partitions.
    */
-  public synchronized void addBalancingProposals(Collection<ExecutionProposal> proposals,
+  public synchronized void addExecutionProposals(Collection<ExecutionProposal> proposals,
                                                  Collection<Integer> brokersToSkipConcurrencyCheck) {
     _executionTaskPlanner.addExecutionProposals(proposals);
     for (ExecutionProposal p : proposals) {
@@ -331,7 +331,7 @@ public class ExecutionTaskManager {
     _executionTaskTracker.clear();
   }
 
-  public synchronized ExecutionState getExecutionState() {
+  public synchronized ExecutionState getExecutionTasksSummary() {
     return new ExecutionState(_executionTaskPlanner.remainingReplicaMovements(),
                               _executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS),
                               _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING),
@@ -340,7 +340,7 @@ public class ExecutionTaskManager {
                               _executionTaskPlanner.remainingDataToMoveInMB());
   }
 
-  public static class ExecutionState {
+  static class ExecutionState {
     private final Set<ExecutionTask> _remainingPartitionMovements;
     private final Set<ExecutionTask> _inProgressTasks;
     private final Set<ExecutionTask> _abortingTasks;
@@ -348,9 +348,12 @@ public class ExecutionTaskManager {
     private final Set<ExecutionTask> _deadTasks;
     private final long _remainingDataToMoveInMB;
 
-    public ExecutionState(Set<ExecutionTask> remainingPartitionMovements, Set<ExecutionTask> inProgressTasks,
-                          Set<ExecutionTask> abortingTasks, Set<ExecutionTask> abortedTasks,
-                          Set<ExecutionTask> deadTasks, long remainingDataToMoveInMB) {
+    ExecutionState(Set<ExecutionTask> remainingPartitionMovements,
+                          Set<ExecutionTask> inProgressTasks,
+                          Set<ExecutionTask> abortingTasks,
+                          Set<ExecutionTask> abortedTasks,
+                          Set<ExecutionTask> deadTasks,
+                          long remainingDataToMoveInMB) {
       _remainingPartitionMovements = remainingPartitionMovements;
       _inProgressTasks = inProgressTasks;
       _abortingTasks = abortingTasks;

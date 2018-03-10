@@ -38,7 +38,7 @@ public class ExecutionTaskManagerTest {
       // Make sure the proposal does not involve leader movement.
       ExecutionProposal proposal =
           new ExecutionProposal(tp, 0, 2, Arrays.asList(0, 2), Arrays.asList(2, 1));
-      taskManager.addBalancingProposals(Collections.singletonList(proposal), Collections.emptySet());
+      taskManager.addExecutionProposals(Collections.singletonList(proposal), Collections.emptySet());
       List<ExecutionTask> tasks = taskManager.getReplicaMovementTasks();
       assertEquals(1, tasks.size());
       ExecutionTask task  = tasks.get(0);

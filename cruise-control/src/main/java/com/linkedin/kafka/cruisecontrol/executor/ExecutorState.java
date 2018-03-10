@@ -78,6 +78,25 @@ public class ExecutorState {
                              finishedDataMovementInMB);
   }
 
+  public static ExecutorState replicaMovementInProgress(int finishedPartitionMovements,
+                                                        Set<ExecutionTask> remainingPartitionMovements,
+                                                        Set<ExecutionTask> inProgressTasks,
+                                                        Set<ExecutionTask> abortingTasks,
+                                                        Set<ExecutionTask> abortedTasks,
+                                                        Set<ExecutionTask> deadTasks,
+                                                        long remainingDataToMoveInMB,
+                                                        long finishedDataMovementInMB) {
+    return new ExecutorState(State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+                             finishedPartitionMovements,
+                             new ExecutionTaskManager.ExecutionState(remainingPartitionMovements,
+                                                                     inProgressTasks,
+                                                                     abortingTasks,
+                                                                     abortedTasks,
+                                                                     deadTasks,
+                                                                     remainingDataToMoveInMB),
+                             finishedDataMovementInMB);
+  }
+
   public static ExecutorState leaderMovementInProgress() {
     return new ExecutorState(State.LEADER_MOVEMENT_TASK_IN_PROGRESS,
                              0,
