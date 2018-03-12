@@ -193,7 +193,8 @@ public abstract class CapacityGoal extends AbstractGoal {
 
   /**
    * Ensure that for the resource, the utilization is under the capacity of the host/broker-level.
-   * {@link Resource#isHostResource()} determines the level of checks this function performs.
+   * {@link Resource#_isBrokerResource} and {@link Resource#isHostResource()} determines the level of checks this
+   * function performs.
    * @param clusterModel Cluster model.
    */
   private void ensureUtilizationUnderCapacity(ClusterModel clusterModel) throws OptimizationFailureException {
@@ -214,7 +215,7 @@ public abstract class CapacityGoal extends AbstractGoal {
         }
       }
       // Broker-level violation check.
-      if (!resource.isHostResource()) {
+      if (resource.isBrokerResource()) {
         double utilization = broker.load().expectedUtilizationFor(resource);
         double capacityLimit = broker.capacityFor(resource) * capacityThreshold;
 
@@ -231,12 +232,13 @@ public abstract class CapacityGoal extends AbstractGoal {
   /**
    * (1) REBALANCE BY LEADERSHIP MOVEMENT:
    * Perform leadership movement to ensure that the load on brokers and/or hosts (see {@link Resource#isHostResource()}
-   * for the outbound network load and CPU is under the capacity limit.
+   * and {@link Resource#isBrokerResource()}) for the outbound network load and CPU is under the capacity limit.
    *
    * <p>
    * (2) REBALANCE BY REPLICA MOVEMENT:
    * Perform optimization via replica movement for the given resource to ensure rebalance: The load on brokers and/or
-   * hosts (see {@link Resource#isHostResource()} for more details) for the given resource is under the capacity limit.
+   * hosts (see {@link Resource#isHostResource()} and {@link Resource#isBrokerResource()}) for the given resource is
+   * under the capacity limit.
    *
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
@@ -337,8 +339,8 @@ public abstract class CapacityGoal extends AbstractGoal {
   /**
    * Check whether the combined replica utilization for the given resource within the given (1) broker and (2) the
    * corresponding host are above the given capacity limits.
-   * See {@link Resource#isHostResource()} to determine whether host- and/or broker-level capacity is relevant for
-   * the given resource.
+   * See {@link Resource#isHostResource()} and {@link Resource#isBrokerResource()} to determine whether host- and/or
+   * broker-level capacity is relevant for the given resource.
    *
    * @param broker Broker to be checked for capacity limit violation.
    * @param resource Resource to be checked for capacity limit violation.
@@ -359,7 +361,7 @@ public abstract class CapacityGoal extends AbstractGoal {
       }
     }
     // Broker-level violation check.
-    if (!broker.replicas().isEmpty() && !resource.isHostResource()) {
+    if (!broker.replicas().isEmpty() && resource.isBrokerResource()) {
       double utilization = broker.load().expectedUtilizationFor(resource);
       return utilization > brokerCapacityLimit;
     }
@@ -423,7 +425,7 @@ public abstract class CapacityGoal extends AbstractGoal {
       }
     }
     // Broker-level violation check.
-    if (!resource.isHostResource()) {
+    if (resource.isBrokerResource()) {
       double utilization = destinationBroker.load().expectedUtilizationFor(resource);
       double capacityLimit = destinationBroker.capacityFor(resource) * capacityThreshold;
 

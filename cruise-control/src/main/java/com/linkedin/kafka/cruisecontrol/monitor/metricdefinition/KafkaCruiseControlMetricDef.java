@@ -23,7 +23,7 @@ import static com.linkedin.cruisecontrol.metricdef.ValueComputingStrategy.LATEST
  * The metric definitions of Kafka Cruise Control.
  *
  * The class maps the raw metric types to metric definitions to be used by the analyzer and linear regression
- * model.
+ * model (in development).
  */
 public enum KafkaCruiseControlMetricDef {
   CPU_USAGE(AVG),

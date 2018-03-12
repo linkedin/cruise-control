@@ -29,7 +29,7 @@ public class MonitorUtils {
   }
 
   /**
-   * Derive follower load snapshot from the leader load snapshot.
+   * Derive follower load from the leader load.
    * <p>
    * If linear regression model is used, the The way we derive the follower metrics is the following:
    * <ul>
@@ -40,6 +40,8 @@ public class MonitorUtils {
    * </ul>
    *
    * If linear regression model is not used, CPU utilization of the follower will be fixed to be 0.2;
+   * 
+   * @param aggregatedMetricValues the leader aggregated metric values to convert.
    */
   public static AggregatedMetricValues toFollowerMetricValues(AggregatedMetricValues aggregatedMetricValues) {
     int cpuId = KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU);

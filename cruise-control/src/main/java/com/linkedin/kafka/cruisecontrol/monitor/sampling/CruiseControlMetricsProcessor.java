@@ -22,7 +22,15 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.*;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.CPU_USAGE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.DISK_USAGE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.FETCH_RATE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.LEADER_BYTES_IN;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.LEADER_BYTES_OUT;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.MESSAGE_IN_RATE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.PRODUCE_RATE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.REPLICATION_BYTES_IN_RATE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.REPLICATION_BYTES_OUT_RATE;
 
 
 /**
@@ -52,6 +60,16 @@ public class CruiseControlMetricsProcessor {
     });
   }
 
+  /**
+   * Process all the added {@link CruiseControlMetric} to get the {@link MetricSampler.Samples} 
+   * 
+   * @param cluster the Kafka cluster.
+   * @param partitions the partitions to construct samples for.
+   * @param samplingMode the sampling mode to indicate which type of samples are needed.
+   * @param metricDef the metric definition.
+   *                  
+   * @return the constructed metric samples.
+   */
   MetricSampler.Samples process(Cluster cluster,
                                 Collection<TopicPartition> partitions,
                                 MetricSampler.SamplingMode samplingMode,

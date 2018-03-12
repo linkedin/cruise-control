@@ -39,7 +39,7 @@ import org.slf4j.LoggerFactory;
  * The metric sample aggregator performs the sanity check on the samples and aggregate the samples into the
  * corresponding window. Because the Kafka broker does not report the bytes in rate for the followers,
  * we assume the sample we get are only from the leaders, and we are going to derive the follower metrics based on
- * the leader metrics.
+ * the leader metrics. When run cruise control on 0.11.0 and above we will have more accurate metrics.
  * </p>
  */
 public class KafkaMetricSampleAggregator extends MetricSampleAggregator<String, PartitionEntity> {
@@ -192,7 +192,7 @@ public class KafkaMetricSampleAggregator extends MetricSampleAggregator<String, 
    * Get the valid partitions percentage across all the windows.
    *
    * @param clusterAndGeneration the current cluster and generation.
-   * @return The percentage of valid partitions acorss all the windows.
+   * @return The percentage of valid partitions across all the windows.
    */
   public double monitoredPercentage(MetadataClient.ClusterAndGeneration clusterAndGeneration) {
     AggregationOptions<String, PartitionEntity> options =

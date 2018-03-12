@@ -28,7 +28,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleFlaw;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -72,17 +72,15 @@ public class LoadMonitor {
   private final MetadataClient _metadataClient;
   private final BrokerCapacityConfigResolver _brokerCapacityConfigResolver;
   private final ScheduledExecutorService _sensorUpdaterExecutor;
-  private final MetricRegistry _dropwizardMetricRegistry;
   private final Timer _clusterModelCreationTimer;
   private final ThreadLocal<Boolean> _acquiredClusterModelSemaphore;
   private final ModelCompletenessRequirements _defaultModelCompletenessRequirements;
-  private final MetricDef _metricDef;
 
   // Sensor values
   private volatile int _numValidSnapshotWindows;
   private volatile double _monitoredPartitionsPercentage;
   private volatile int _totalMonitoredSnapshotWindows;
-  private volatile int _numPartitionsWithFlaw;
+  private volatile int _numPartitionsWithExtrapolations;
   private volatile long _lastUpdate;
 
   private volatile ModelGeneration _cachedBrokerLoadGeneration;
@@ -127,9 +125,7 @@ public class LoadMonitor {
     _metricSampleAggregator = new KafkaMetricSampleAggregator(config, metadataClient.metadata());
 
     _acquiredClusterModelSemaphore = ThreadLocal.withInitial(() -> false);
-
-    _metricDef = metricDef;
-
+    
     // We use the number of proposal precomputing threads config to ensure there is enough concurrency if users
     // wants that.
     int numPrecomputingThread = config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
@@ -138,22 +134,21 @@ public class LoadMonitor {
     _defaultModelCompletenessRequirements =
         MonitorUtils.combineLoadRequirementOptions(AnalyzerUtils.getGoalMapByPriority(config).values());
 
-    _dropwizardMetricRegistry = dropwizardMetricRegistry;
-    _loadMonitorTaskRunner = new LoadMonitorTaskRunner(config, _metricSampleAggregator, _metadataClient, _metricDef,
+    _loadMonitorTaskRunner = new LoadMonitorTaskRunner(config, _metricSampleAggregator, _metadataClient, metricDef,
                                                        time, dropwizardMetricRegistry);
-    _clusterModelCreationTimer = _dropwizardMetricRegistry.timer(MetricRegistry.name("LoadMonitor",
+    _clusterModelCreationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("LoadMonitor",
                                                                                      "cluster-model-creation-timer"));
     SensorUpdater sensorUpdater = new SensorUpdater();
     _sensorUpdaterExecutor = Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("LoadMonitorSensorUpdater", true, LOG));
     _sensorUpdaterExecutor.scheduleAtFixedRate(sensorUpdater, 0, SensorUpdater.UPDATE_INTERVAL_MS, TimeUnit.MILLISECONDS);
-    _dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "valid-windows"),
+    dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "valid-windows"),
                                        (Gauge<Integer>) this::numValidSnapshotWindows);
-    _dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "monitored-partitions-percentage"),
+    dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "monitored-partitions-percentage"),
                                        (Gauge<Double>) this::monitoredPartitionsPercentage);
-    _dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "total-monitored-windows"),
+    dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "total-monitored-windows"),
                                        (Gauge<Integer>) this::totalMonitoredSnapshotWindows);
-    _dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "num-partitions-with-flaw"),
-                                       (Gauge<Integer>) this::numPartitionsWithFlaw);
+    dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "num-partitions-with-extrapolations"),
+                                       (Gauge<Integer>) this::numPartitionsWithExtrapolations);
   }
 
 
@@ -190,7 +185,7 @@ public class LoadMonitor {
     double minMonitoredPartitionsPercentage = _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage();
 
     // Get the window to monitored partitions percentage mapping.
-    SortedMap<Long, Float> partitionCoverageByWindows =
+    SortedMap<Long, Float> validPartitionRatio =
         _metricSampleAggregator.partitionCoverageByWindows(clusterAndGeneration);
 
     // Get valid snapshot window number and populate the monitored partition map.
@@ -199,15 +194,15 @@ public class LoadMonitor {
                                                                         minMonitoredPartitionsPercentage);
     int numValidSnapshotWindows = validWindows.size();
 
-    // Get the number of valid partitions and sample flaws.
+    // Get the number of valid partitions and sample extrapolations.
     int numValidPartitions = 0;
-    Map<TopicPartition, List<SampleFlaw>> sampleFlaws = Collections.emptyMap();
+    Map<TopicPartition, List<SampleExtrapolation>> extrapolations = Collections.emptyMap();
     if (_metricSampleAggregator.numAvailableWindows() >= _numWindows) {
       try {
         MetricSampleAggregationResult<String, PartitionEntity> metricSampleAggregationResult =
             _metricSampleAggregator.aggregate(clusterAndGeneration, Long.MAX_VALUE, operationProgress);
         Map<PartitionEntity, ValuesAndExtrapolations> loads = metricSampleAggregationResult.valuesAndExtrapolations();
-        sampleFlaws = partitionSampleFlaws(metricSampleAggregationResult.valuesAndExtrapolations());
+        extrapolations = partitionSampleExtrapolations(metricSampleAggregationResult.valuesAndExtrapolations());
         numValidPartitions = loads.size();
       } catch (Exception e) {
         LOG.warn("Received exception when trying to get the load monitor state", e);
@@ -219,40 +214,40 @@ public class LoadMonitor {
         return LoadMonitorState.notStarted();
       case RUNNING:
         return LoadMonitorState.running(numValidSnapshotWindows,
-                                        partitionCoverageByWindows,
+                                        validPartitionRatio,
                                         numValidPartitions,
                                         totalNumPartitions,
-                                        sampleFlaws);
+                                        extrapolations);
       case SAMPLING:
         return LoadMonitorState.sampling(numValidSnapshotWindows,
-                                         partitionCoverageByWindows,
+                                         validPartitionRatio,
                                          numValidPartitions,
                                          totalNumPartitions,
-                                         sampleFlaws);
+                                         extrapolations);
       case PAUSED:
         return LoadMonitorState.paused(numValidSnapshotWindows,
-                                       partitionCoverageByWindows,
+                                       validPartitionRatio,
                                        numValidPartitions,
                                        totalNumPartitions,
-                                       sampleFlaws);
+                                       extrapolations);
       case BOOTSTRAPPING:
         double bootstrapProgress = _loadMonitorTaskRunner.bootStrapProgress();
         // Handle the race between querying the state and getting the progress.
         return LoadMonitorState.bootstrapping(numValidSnapshotWindows,
-                                              partitionCoverageByWindows,
+                                              validPartitionRatio,
                                               numValidPartitions,
                                               totalNumPartitions,
                                               bootstrapProgress >= 0 ? bootstrapProgress : 1.0,
-                                              sampleFlaws);
+                                              extrapolations);
       case TRAINING:
         return LoadMonitorState.training(numValidSnapshotWindows,
-                                         partitionCoverageByWindows,
+                                         validPartitionRatio,
                                          numValidPartitions,
                                          totalNumPartitions,
-                                         sampleFlaws);
+                                         extrapolations);
       case LOADING:
         return LoadMonitorState.loading(numValidSnapshotWindows,
-                                        partitionCoverageByWindows,
+                                        validPartitionRatio,
                                         numValidPartitions,
                                         totalNumPartitions,
                                         _loadMonitorTaskRunner.sampleLoadingProgress());
@@ -541,17 +536,17 @@ public class LoadMonitor {
     return brokersWithPartitions;
   }
 
-  private Map<TopicPartition, List<SampleFlaw>> partitionSampleFlaws(Map<PartitionEntity, ValuesAndExtrapolations> valuesAndExtrapolations) {
-    Map<TopicPartition, List<SampleFlaw>> sampleFlaws = new HashMap<>();
+  private Map<TopicPartition, List<SampleExtrapolation>> partitionSampleExtrapolations(Map<PartitionEntity, ValuesAndExtrapolations> valuesAndExtrapolations) {
+    Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations = new HashMap<>();
     for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : valuesAndExtrapolations.entrySet()) {
       TopicPartition tp = entry.getKey().tp();
       Map<Integer, Extrapolation> extrapolations = entry.getValue().extrapolations();
       if (extrapolations.isEmpty()) {
-        List<SampleFlaw> flawsForPartition = sampleFlaws.computeIfAbsent(tp, p -> new ArrayList<>());
-        extrapolations.forEach((t, imputation) -> flawsForPartition.add(new SampleFlaw(t, imputation)));
+        List<SampleExtrapolation> extrapolationForPartition = sampleExtrapolations.computeIfAbsent(tp, p -> new ArrayList<>());
+        extrapolations.forEach((t, imputation) -> extrapolationForPartition.add(new SampleExtrapolation(t, imputation)));
       }
     }
-    return sampleFlaws;
+    return sampleExtrapolations;
   }
 
   private int numValidSnapshotWindows() {
@@ -566,8 +561,8 @@ public class LoadMonitor {
     return _lastUpdate + SensorUpdater.UPDATE_TIMEOUT_MS > System.currentTimeMillis() ? _monitoredPartitionsPercentage : 0.0;
   }
 
-  private int numPartitionsWithFlaw() {
-    return _lastUpdate + SensorUpdater.UPDATE_TIMEOUT_MS > System.currentTimeMillis() ? _numPartitionsWithFlaw : -1;
+  private int numPartitionsWithExtrapolations() {
+    return _lastUpdate + SensorUpdater.UPDATE_TIMEOUT_MS > System.currentTimeMillis() ? _numPartitionsWithExtrapolations : -1;
   }
 
   private double getMonitoredPartitionsPercentage() {
@@ -583,13 +578,13 @@ public class LoadMonitor {
       return 0.0;
     }
     Map<PartitionEntity, ValuesAndExtrapolations> partitionLoads = metricSampleAggregationResult.valuesAndExtrapolations();
-    AtomicInteger numPartitionsWithFlaws = new AtomicInteger(0);
+    AtomicInteger numPartitionsWithExtrapolations = new AtomicInteger(0);
     partitionLoads.values().forEach(valuesAndExtrapolations -> {
       if (!valuesAndExtrapolations.extrapolations().isEmpty()) {
-        numPartitionsWithFlaws.incrementAndGet();
+        numPartitionsWithExtrapolations.incrementAndGet();
       }
     });
-    _numPartitionsWithFlaw = numPartitionsWithFlaws.get();
+    _numPartitionsWithExtrapolations = numPartitionsWithExtrapolations.get();
     int totalNumPartitions = MonitorUtils.totalNumPartitions(kafkaCluster);
     return totalNumPartitions > 0 ? metricSampleAggregationResult.completeness().validEntityRatio() : 0.0;
   }

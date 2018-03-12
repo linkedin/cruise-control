@@ -156,7 +156,7 @@ public class Host implements Serializable {
   Replica removeReplica(int brokerId, TopicPartition tp) {
     Broker broker = _brokers.get(brokerId);
     if (broker == null) {
-      throw new IllegalStateException(String.format("Cannot remove replica for %s from broker broker %s because "
+      throw new IllegalStateException(String.format("Cannot remove replica for %s from broker %s because "
                                                         + "it does not exist in host %s", tp, brokerId, _name));
     }
     Replica replica = broker.removeReplica(tp);

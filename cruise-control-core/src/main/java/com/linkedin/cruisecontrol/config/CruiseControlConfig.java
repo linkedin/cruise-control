@@ -23,7 +23,7 @@ public class CruiseControlConfig extends AbstractConfig {
   public static final String METRICS_WINDOW_MS_CONFIG = "metrics.window.ms";
   private static final String METRICS_WINDOW_MS_DOC = "The interval in millisecond that is covered by each window." +
       "Cruise control will aggregate all the metric samples whose timestamp fall into the same window. " +
-      "The window.ms must be greater than the metric.sampling.interval.ms.";
+      "The metrics.window.ms must be greater than the metric.sampling.interval.ms.";
 
   /**
    * <code>num.windows</code>

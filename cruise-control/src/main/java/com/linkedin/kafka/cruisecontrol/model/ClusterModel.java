@@ -55,7 +55,6 @@ public class ClusterModel implements Serializable {
   // The replication factor that each topic in the cluster created with ().
   private Map<String, Integer> _replicationFactorByTopic;
   private Map<Integer, Load> _potentialLeadershipLoadByBrokerId;
-  private Set<Long> _validSnapshotTimes;
   private int _unknownHostId;
 
   /**
@@ -80,7 +79,6 @@ public class ClusterModel implements Serializable {
     _maxReplicationFactor = 1;
     _replicationFactorByTopic = new HashMap<>();
     _potentialLeadershipLoadByBrokerId = new HashMap<>();
-    _validSnapshotTimes = new HashSet<>();
     _monitoredPartitionsPercentage = monitoredPartitionsPercentage;
     _unknownHostId = 0;
   }
@@ -310,10 +308,10 @@ public class ClusterModel implements Serializable {
     //
     // Remove the load from the source rack.
     Rack rack = broker(sourceBrokerId).rack();
-    Map<Resource, double[]> resourceToLeadershipLoadBySnapshotTime = rack.makeFollower(sourceBrokerId, tp);
+    Map<Resource, double[]> resourceToLeadershipLoadByWindowTime = rack.makeFollower(sourceBrokerId, tp);
     // Add the load to the destination rack.
     rack = broker(destinationBrokerId).rack();
-    rack.makeLeader(destinationBrokerId, tp, resourceToLeadershipLoadBySnapshotTime);
+    rack.makeLeader(destinationBrokerId, tp, resourceToLeadershipLoadByWindowTime);
 
     // Update the leader and list of followers of the partition.
     Partition partition = _partitionsByTopicPartition.get(tp);
@@ -364,7 +362,6 @@ public class ClusterModel implements Serializable {
    */
   public void clearLoad() {
     _racksById.values().forEach(Rack::clearLoad);
-    _validSnapshotTimes.clear();
     _load.clearLoad();
   }
 
@@ -616,8 +613,9 @@ public class ClusterModel implements Serializable {
 
   /**
    * Get a list of sorted (in ascending order by resource) healthy brokers having utilization under:
-   * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#_isHostResource}).
-   * Utilization threshold might be any capacity constraint thresholds such as balance or capacity.
+   * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#_isHostResource} and
+   * {@link Resource#_isBrokerResource)). Utilization threshold might be any capacity constraint thresholds such as
+   * balance or capacity.
    *
    * @param resource             Resource for which brokers will be sorted.
    * @param utilizationThreshold Utilization threshold for the given resource.
@@ -719,46 +717,46 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * (1) Check whether each load in the cluster contains exactly the number of snapshots defined by the Load.
+   * (1) Check whether each load in the cluster contains exactly the number of windows defined by the Load.
    * (2) Check whether sum of loads in the cluster / rack / broker / replica are consistent with each other.
    */
   public void sanityCheck() {
-    // SANITY CHECK #1: Each load in the cluster must contain exactly the number of snapshots defined by the Load.
-    Map<String, Integer> numSnapshotsByErrorMsg = new HashMap<>();
+    // SANITY CHECK #1: Each load in the cluster must contain exactly the number of windows defined by the Load.
+    Map<String, Integer> errorMsgAndNumWindows = new HashMap<>();
 
-    int expectedNumSnapshots = _load.numWindows();
+    int expectedNumWindows = _load.numWindows();
 
     // Check leadership loads.
     for (Map.Entry<Integer, Load> entry : _potentialLeadershipLoadByBrokerId.entrySet()) {
       int brokerId = entry.getKey();
       Load load = entry.getValue();
-      if (load.numWindows() != expectedNumSnapshots && broker(brokerId).replicas().size() != 0) {
-        numSnapshotsByErrorMsg.put("Leadership(" + brokerId + ")", load.numWindows());
+      if (load.numWindows() != expectedNumWindows && broker(brokerId).replicas().size() != 0) {
+        errorMsgAndNumWindows.put("Leadership(" + brokerId + ")", load.numWindows());
       }
     }
 
     // Check rack loads.
     for (Rack rack : _racksById.values()) {
-      if (rack.load().numWindows() != expectedNumSnapshots && rack.replicas().size() != 0) {
-        numSnapshotsByErrorMsg.put("Rack(id:" + rack.id() + ")", rack.load().numWindows());
+      if (rack.load().numWindows() != expectedNumWindows && rack.replicas().size() != 0) {
+        errorMsgAndNumWindows.put("Rack(id:" + rack.id() + ")", rack.load().numWindows());
       }
 
       // Check the host load.
       for (Host host : rack.hosts()) {
-        if (host.load().numWindows() != expectedNumSnapshots && host.replicas().size() != 0) {
-          numSnapshotsByErrorMsg.put("Host(id:" + host.name() + ")", host.load().numWindows());
+        if (host.load().numWindows() != expectedNumWindows && host.replicas().size() != 0) {
+          errorMsgAndNumWindows.put("Host(id:" + host.name() + ")", host.load().numWindows());
         }
 
         // Check broker loads.
         for (Broker broker : rack.brokers()) {
-          if (broker.load().numWindows() != expectedNumSnapshots && broker.replicas().size() != 0) {
-            numSnapshotsByErrorMsg.put("Broker(id:" + broker.id() + ")", broker.load().numWindows());
+          if (broker.load().numWindows() != expectedNumWindows && broker.replicas().size() != 0) {
+            errorMsgAndNumWindows.put("Broker(id:" + broker.id() + ")", broker.load().numWindows());
           }
 
           // Check replica loads.
           for (Replica replica : broker.replicas()) {
-            if (replica.load().numWindows() != expectedNumSnapshots) {
-              numSnapshotsByErrorMsg.put("Replica(id:" + replica.topicPartition() + "-" + broker.id() + ")",
+            if (replica.load().numWindows() != expectedNumWindows) {
+              errorMsgAndNumWindows.put("Replica(id:" + replica.topicPartition() + "-" + broker.id() + ")",
                                          replica.load().numWindows());
             }
           }
@@ -766,13 +764,13 @@ public class ClusterModel implements Serializable {
       }
     }
     StringBuilder exceptionMsg = new StringBuilder();
-    for (Map.Entry<String, Integer> entry : numSnapshotsByErrorMsg.entrySet()) {
+    for (Map.Entry<String, Integer> entry : errorMsgAndNumWindows.entrySet()) {
       exceptionMsg.append(String.format("[%s: %d]%n", entry.getKey(), entry.getValue()));
     }
 
     if (exceptionMsg.length() > 0) {
-      throw new IllegalArgumentException("Loads must have all have " + expectedNumSnapshots + " snapshots. Following "
-                                         + "loads violate this constraint with specified number of snapshots: " + exceptionMsg);
+      throw new IllegalArgumentException("Loads must have all have " + expectedNumWindows + " windows. Following "
+                                         + "loads violate this constraint with specified number of windows: " + exceptionMsg);
     }
     // SANITY CHECK #2: Sum of loads in the cluster / rack / broker / replica must be consistent with each other.
     String prologueErrorMsg = "Inconsistent load distribution.";

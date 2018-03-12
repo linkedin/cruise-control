@@ -77,16 +77,17 @@ public class LoadMonitorTest {
     KafkaMetricSampleAggregator aggregator = context.aggregator();
 
     // populate the metrics aggregator.
-    // two samples for each partition except T1P1
+    // four samples for each partition
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T0P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
 
     LoadMonitorState state = loadMonitor.state(new OperationProgress());
-    assertEquals(0, state.numValidMonitoredPartitions());
-    assertEquals(0, state.numValidSnapshotWindows());
-    assertTrue(state.monitoredSnapshotWindows().isEmpty());
+    // The load monitor only has an active window. There is no stable window.
+    assertEquals(0, state.numValidPartitions());
+    assertEquals(0, state.numValidWindows());
+    assertTrue(state.monitoredWindows().isEmpty());
   }
 
   @Test
@@ -96,25 +97,26 @@ public class LoadMonitorTest {
     KafkaMetricSampleAggregator aggregator = context.aggregator();
 
     // populate the metrics aggregator.
-    // two samples for each partition except T1P1. It has no sample in the first window and one in the second window.
+    // four samples for each partition except T1P1. T1P1 has no sample in the first window and one in the second window.
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T0P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
 
     LoadMonitorState state = loadMonitor.state(new OperationProgress());
-    assertEquals(0, state.numValidMonitoredPartitions());
-    assertEquals(0, state.numValidSnapshotWindows());
-    assertEquals(1, state.monitoredSnapshotWindows().size());
-    assertEquals(0.5, state.monitoredSnapshotWindows().get(WINDOW_MS), 0.0);
+    // The load monitor has 1 stable window with 0.5 of valid partitions ratio.
+    assertEquals(0, state.numValidPartitions());
+    assertEquals(0, state.numValidWindows());
+    assertEquals(1, state.monitoredWindows().size());
+    assertEquals(0.5, state.monitoredWindows().get(WINDOW_MS), 0.0);
 
     // Back fill for T1P1
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
     state = loadMonitor.state(new OperationProgress());
-    assertEquals(0, state.numValidMonitoredPartitions());
-    assertEquals(1, state.numValidSnapshotWindows());
-    assertEquals(1, state.monitoredSnapshotWindows().size());
-    assertEquals(1.0, state.monitoredSnapshotWindows().get(WINDOW_MS), 0.0);
-
+    // The load monitor now has one stable window with 1.0 of valid partitions ratio.
+    assertEquals(0, state.numValidPartitions());
+    assertEquals(1, state.numValidWindows());
+    assertEquals(1, state.monitoredWindows().size());
+    assertEquals(1.0, state.monitoredWindows().get(WINDOW_MS), 0.0);
   }
 
   @Test
@@ -124,7 +126,8 @@ public class LoadMonitorTest {
     KafkaMetricSampleAggregator aggregator = context.aggregator();
 
     // populate the metrics aggregator.
-    // two samples for each partition except T1P1
+    // four samples for each partition except T1P1. T1P1 has 2 samples in the first window, and 2 samples in the 
+    // active window.
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T0P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
@@ -132,21 +135,29 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 2, aggregator, PE_T1P1, 2, WINDOW_MS, METRIC_DEF);
 
     LoadMonitorState state = loadMonitor.state(new OperationProgress());
-    assertEquals(2, state.numValidMonitoredPartitions());
-    assertEquals(1, state.numValidSnapshotWindows());
-    assertEquals(2, state.monitoredSnapshotWindows().size());
-    assertEquals(1.0, state.monitoredSnapshotWindows().get(WINDOW_MS), 0.0);
-    assertEquals(0.5, state.monitoredSnapshotWindows().get(WINDOW_MS * 2), 0.0);
-
-
-    // Back fill a sample for T1P1
+    // Both partitions for topic 0 should be valid.
+    assertEquals(2, state.numValidPartitions());
+    // Both topic should be valid in the first window.
+    assertEquals(1, state.numValidWindows());
+    // There should be 2 monitored windows.
+    assertEquals(2, state.monitoredWindows().size());
+    // Both topic should be valid in the first window.
+    assertEquals(1.0, state.monitoredWindows().get(WINDOW_MS), 0.0);
+    // Only topic 2 is valid in the second window.
+    assertEquals(0.5, state.monitoredWindows().get(WINDOW_MS * 2), 0.0);
+    
+    // Back fill 3 samples for T1P1 in the second window.
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 3, aggregator, PE_T1P1, 1, WINDOW_MS, METRIC_DEF);
     state = loadMonitor.state(new OperationProgress());
-    assertEquals(4, state.numValidMonitoredPartitions());
-    assertEquals(2, state.numValidSnapshotWindows());
-    assertEquals(2, state.monitoredSnapshotWindows().size());
-    assertEquals(1.0, state.monitoredSnapshotWindows().get(WINDOW_MS), 0.0);
-    assertEquals(1.0, state.monitoredSnapshotWindows().get(WINDOW_MS * 2), 0.0);
+    // All the partitions should be valid now.
+    assertEquals(4, state.numValidPartitions());
+    // All the windows should be valid now.
+    assertEquals(2, state.numValidWindows());
+    // There should be two monitored windows.
+    assertEquals(2, state.monitoredWindows().size());
+    // Both monitored windows should have 100% completeness.
+    assertEquals(1.0, state.monitoredWindows().get(WINDOW_MS), 0.0);
+    assertEquals(1.0, state.monitoredWindows().get(WINDOW_MS * 2), 0.0);
   }
 
   @Test
@@ -155,9 +166,13 @@ public class LoadMonitorTest {
     LoadMonitor loadMonitor = context.loadmonitor();
     KafkaMetricSampleAggregator aggregator = context.aggregator();
 
+    // Require at least 1 valid window with 1.0 of valid partitions ratio.
     ModelCompletenessRequirements requirements1 = new ModelCompletenessRequirements(1, 1.0, false);
+    // Require at least 1 valid window with 0.5 of valid partitions ratio.
     ModelCompletenessRequirements requirements2 = new ModelCompletenessRequirements(1, 0.5, false);
+    // Require at least 2 valid windows with 1.0 of valid partitions ratio.
     ModelCompletenessRequirements requirements3 = new ModelCompletenessRequirements(2, 1.0, false);
+    // Require at least 2 valid windows with 0.5 of valid partitions ratio.
     ModelCompletenessRequirements requirements4 = new ModelCompletenessRequirements(2, 0.5, false);
 
     // populate the metrics aggregator.
@@ -165,7 +180,7 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T0P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
-
+    // The load monitor has one window with 0.5 valid partitions ratio.
     assertFalse(loadMonitor.meetCompletenessRequirements(requirements1));
     assertTrue(loadMonitor.meetCompletenessRequirements(requirements2));
     assertFalse(loadMonitor.meetCompletenessRequirements(requirements3));
@@ -176,20 +191,23 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T0P1, 2, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P0, 2, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, PE_T1P1, 2, WINDOW_MS, METRIC_DEF);
+    // The load monitor has two windows, both with 0.5 valid partitions ratio
     assertFalse(loadMonitor.meetCompletenessRequirements(requirements1));
     assertTrue(loadMonitor.meetCompletenessRequirements(requirements2));
     assertFalse(loadMonitor.meetCompletenessRequirements(requirements3));
     assertTrue(loadMonitor.meetCompletenessRequirements(requirements4));
 
-    // Back fill the most recent stable window for T1P1
-    CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, PE_T1P1, 1, WINDOW_MS, METRIC_DEF);
+    // Back fill the first stable window for T1P1
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
+    // The load monitor has two windows with 1.0 and 0.5 of completeness respectively.
     assertTrue(loadMonitor.meetCompletenessRequirements(requirements1));
     assertTrue(loadMonitor.meetCompletenessRequirements(requirements2));
     assertFalse(loadMonitor.meetCompletenessRequirements(requirements3));
     assertTrue(loadMonitor.meetCompletenessRequirements(requirements4));
 
     // Back fill all stable windows for T1P1
-    CruiseControlUnitTestUtils.populateSampleAggregator(1, 3, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 3, aggregator, PE_T1P1, 1, WINDOW_MS, METRIC_DEF);
+    // The load monitor has two windows both with 1.0 of completeness.
     assertTrue(loadMonitor.meetCompletenessRequirements(requirements1));
     assertTrue(loadMonitor.meetCompletenessRequirements(requirements2));
     assertTrue(loadMonitor.meetCompletenessRequirements(requirements3));
@@ -255,14 +273,14 @@ public class LoadMonitorTest {
     try {
       loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements3, new OperationProgress());
       fail("Should have thrown NotEnoughValidWindowsException.");
-    } catch (NotEnoughValidWindowsException nese) {
+    } catch (NotEnoughValidWindowsException nevwe) {
       // let it go
     }
 
     try {
       loadMonitor.clusterModel(-1L, Long.MAX_VALUE, requirements4, new OperationProgress());
       fail("Should have thrown NotEnoughValidWindowsException.");
-    } catch (NotEnoughValidWindowsException nese) {
+    } catch (NotEnoughValidWindowsException nevwe) {
       // let it go
     }
   }

@@ -395,8 +395,8 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Push the latest snapshot information containing the snapshot time and resource loads to the replica identified
-   * by its topic partition.
+   * Set the load of the replicas. The load will be added to the broker load. Note that this method should only
+   * be called once for each replica.
    *
    * @param tp Topic partition that identifies the replica in this broker.
    * @param aggregatedMetricValues The metric values of this topic partition.

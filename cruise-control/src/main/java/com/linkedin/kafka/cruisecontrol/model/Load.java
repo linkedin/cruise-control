@@ -48,7 +48,7 @@ public class Load implements Serializable {
   }
 
   /**
-   * Get the number of snapshots in the load.
+   * Get the number of windows in the load.
    */
   public int numWindows() {
     return _metricValues.length();
@@ -74,7 +74,7 @@ public class Load implements Serializable {
       return 0.0;
     }
     MetricValues metricValues = _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource));
-    return  resource.equals(Resource.DISK) ? metricValues.latest() : metricValues.avg();
+    return resource.equals(Resource.DISK) ? metricValues.latest() : metricValues.avg();
   }
 
   /**
@@ -108,8 +108,9 @@ public class Load implements Serializable {
    * @param resource Resource for which the utilization will be cleared.
    */
   void clearLoadFor(Resource resource) {
-    if (!_metricValues.isEmpty()) {
-      _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)).clear();
+    MetricValues metricValues = _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource));
+    if (metricValues != null) {
+      metricValues.clear();
     }
   }
 
@@ -118,6 +119,7 @@ public class Load implements Serializable {
    * This method is used for the entity load, which should be immutable for most cases.
    *
    * @param aggregatedMetricValues the metric values to set as initialization.
+   * @param windows the list of windows corresponding to the metric values.
    */
   void initializeMetricValues(AggregatedMetricValues aggregatedMetricValues, List<Long> windows) {
     if (!_metricValues.isEmpty()) {
@@ -160,24 +162,24 @@ public class Load implements Serializable {
   /**
    * Add the given load for the given resource to this load.
    *
-   * @param resource                Resource for which the given load will be added.
-   * @param loadToAddBySnapshotTime Load to add to this load for the given resource.
+   * @param resource           Resource for which the given load will be added.
+   * @param loadToAddByWindows Load to add to this load for the given resource.
    */
-  void addLoadFor(Resource resource, double[] loadToAddBySnapshotTime) {
+  void addLoadFor(Resource resource, double[] loadToAddByWindows) {
     if (!_metricValues.isEmpty()) {
-      _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)).add(loadToAddBySnapshotTime);
+      _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)).add(loadToAddByWindows);
     }
   }
 
   /**
    * Subtract the given load for the given resource from this load.
    *
-   * @param resource                     Resource for which the given load will be subtracted.
-   * @param loadToSubtractBySnapshotTime Load to subtract from this load for the given resource.
+   * @param resource                Resource for which the given load will be subtracted.
+   * @param loadToSubtractByWindows Load to subtract from this load for the given resource.
    */
-  void subtractLoadFor(Resource resource, double[] loadToSubtractBySnapshotTime) {
+  void subtractLoadFor(Resource resource, double[] loadToSubtractByWindows) {
     if (!_metricValues.isEmpty()) {
-      _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)).subtract(loadToSubtractBySnapshotTime);
+      _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)).subtract(loadToSubtractByWindows);
     }
   }
 
