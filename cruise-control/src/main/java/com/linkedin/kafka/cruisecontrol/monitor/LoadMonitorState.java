@@ -235,8 +235,9 @@ public class LoadMonitorState {
 
       case TRAINING:
         return String.format("{state: %s%s, NumValidWindows: (%d/%d) (%.3f%%) , NumValidPartitions: %d/%d (%.3f%%), FlawedPartitions: %d}",
-                             _loadMonitorTaskRunnerState, trained, _monitoredWindows.size(), _numValidWindows, validWindowPercent * 100, _numValidMonitoredPartitions,
-                             _totalNumPartitions, validPartitionPercent * 100, _sampleExtrapolations.size());
+                             _loadMonitorTaskRunnerState, trained, _monitoredWindows.size(), _numValidWindows, 
+                             validWindowPercent * 100, _numValidMonitoredPartitions, _totalNumPartitions, validPartitionPercent * 100, 
+                             _sampleExtrapolations.size());
 
       case LOADING:
         return String.format("{state: %s%s, LoadingProgress: %.3f%%, NumValidWindows: (%d/%d): (%.3f%%), "
