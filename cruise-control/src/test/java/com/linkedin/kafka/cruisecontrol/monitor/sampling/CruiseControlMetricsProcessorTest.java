@@ -4,12 +4,14 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
+import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.BrokerMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.PartitionMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -45,6 +47,7 @@ public class CruiseControlMetricsProcessorTest {
   private static final int BROKER_ID_0 = 0;
   private static final int BROKER_ID_1 = 1;
   private static final double DELTA = 0.001;
+  private static final MetricDef METRIC_DEF = KafkaCruiseControlMetricDef.metricDef();
   private final Time _time = new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
 
   @Test
@@ -54,22 +57,22 @@ public class CruiseControlMetricsProcessorTest {
     metrics.forEach(processor::addMetric);
 
     MetricSampler.Samples samples =
-        processor.process(getCluster(), Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+        processor.process(getCluster(), Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL, METRIC_DEF);
 
     assertEquals(4, samples.partitionMetricSamples().size());
     assertEquals(2, samples.brokerMetricSamples().size());
 
     for (PartitionMetricSample sample : samples.partitionMetricSamples()) {
-      if (sample.topicPartition().equals(T1P0)) {
+      if (sample.entity().tp().equals(T1P0)) {
         validatePartitionMetricSample(sample, _time.milliseconds() + 2, 1.27610208, 20.0, 100.0, 100.0);
-      } else if (sample.topicPartition().equals(T1P1)) {
+      } else if (sample.entity().tp().equals(T1P1)) {
         validatePartitionMetricSample(sample, _time.milliseconds() + 2, 18.5758513, 500.0, 1000.0, 300.0);
-      } else if (sample.topicPartition().equals(T2P0)) {
+      } else if (sample.entity().tp().equals(T2P0)) {
         validatePartitionMetricSample(sample, _time.milliseconds() + 2, 20.0116009, 400.0, 1050.0, 200.0);
-      } else if (sample.topicPartition().equals(T2P1)) {
+      } else if (sample.entity().tp().equals(T2P1)) {
         validatePartitionMetricSample(sample, _time.milliseconds() + 2, 20.0116009, 400.0, 1050.0, 500.0);
       } else {
-        fail("Should never have partition " + sample.topicPartition());
+        fail("Should never have partition " + sample.entity().tp());
       }
     }
 
@@ -98,7 +101,7 @@ public class CruiseControlMetricsProcessorTest {
       }
     }
     MetricSampler.Samples samples =
-        processor.process(getCluster(), Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+        processor.process(getCluster(), Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL, METRIC_DEF);
     assertEquals("Should have ignored partitions on broker 0", 1, samples.partitionMetricSamples().size());
     assertEquals("Should have ignored broker 0", 1, samples.brokerMetricSamples().size());
   }
@@ -120,7 +123,7 @@ public class CruiseControlMetricsProcessorTest {
       }
     }
     MetricSampler.Samples samples =
-        processor.process(getCluster(), Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+        processor.process(getCluster(), Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL, METRIC_DEF);
     assertEquals("Should have ignored partition " + T1P0, 3, samples.partitionMetricSamples().size());
     assertEquals("Should have reported both brokers", 2, samples.brokerMetricSamples().size());
   }
@@ -143,13 +146,13 @@ public class CruiseControlMetricsProcessorTest {
     }
 
     MetricSampler.Samples samples =
-        processor.process(getCluster(), Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+        processor.process(getCluster(), Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL, METRIC_DEF);
 
     assertEquals(4, samples.partitionMetricSamples().size());
     assertEquals(2, samples.brokerMetricSamples().size());
 
     for (PartitionMetricSample sample : samples.partitionMetricSamples()) {
-      if (sample.topicPartition().equals(T1P0)) {
+      if (sample.entity().tp().equals(T1P0)) {
         // T1P0 should not have any IO or CPU usage.
         validatePartitionMetricSample(sample, _time.milliseconds() + 2, 0.0, 0.0, 0.0, 100.0);
       }
@@ -190,10 +193,10 @@ public class CruiseControlMetricsProcessorTest {
   private void validatePartitionMetricSample(PartitionMetricSample sample, long time, double cpu, double bytesIn, double bytesOut,
                                              double disk) {
     assertEquals(time, sample.sampleTime());
-    assertEquals(cpu, sample.metricFor(Resource.CPU), DELTA);
-    assertEquals(bytesIn, sample.metricFor(Resource.NW_IN), DELTA);
-    assertEquals(bytesOut, sample.metricFor(Resource.NW_OUT), DELTA);
-    assertEquals(disk, sample.metricFor(Resource.DISK), DELTA);
+    assertEquals(cpu, sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU)), DELTA);
+    assertEquals(bytesIn, sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_IN)), DELTA);
+    assertEquals(bytesOut, sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT)), DELTA);
+    assertEquals(disk, sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.DISK)), DELTA);
   }
 
   private Cluster getCluster() {

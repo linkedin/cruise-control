@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -22,13 +23,11 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionG
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.Load;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -93,13 +92,6 @@ public class DeterministicClusterTest {
   public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
 
-    int numSnapshots = 2;
-    if (!Load.initialized()) {
-      Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
-      props.setProperty(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG, Integer.toString(numSnapshots));
-      Load.init(new KafkaCruiseControlConfig(props));
-    }
-
     Map<Integer, String> goalNameByPriority = new HashMap<>();
     goalNameByPriority.put(1, RackAwareGoal.class.getName());
     goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
@@ -117,7 +109,7 @@ public class DeterministicClusterTest {
     goalNameByPriority.put(14, PreferredLeaderElectionGoal.class.getName());
     goalNameByPriority.put(15, LeaderBytesInDistributionGoal.class.getName());
 
-    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(6L));
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, DEAD_BROKERS, REGRESSION);

@@ -5,12 +5,13 @@
 package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -22,20 +23,23 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.*;
 
 
+/**
+ * A class that is responsible for running all the LoadMonitor tasks.
+ */
 public class LoadMonitorTaskRunner {
   private static final Logger LOG = LoggerFactory.getLogger(LoadMonitorTaskRunner.class);
 
   private final Time _time;
   private final MetricFetcherManager _metricFetcherManager;
-  private final MetricSampleAggregator _metricSampleAggregator;
+  private final KafkaMetricSampleAggregator _metricSampleAggregator;
   private final MetadataClient _metadataClient;
   private final SampleStore _sampleStore;
   private final ScheduledExecutorService _samplingScheduler;
   private final long _samplingIntervalMs;
   // The following two configuration is actually for MetricSampleAggregator, the MetricFetcherManager uses it to
   // check if a bootstrap is done or not.
-  private final int _configuredNumSnapshots;
-  private final long _configuredSnapshotWindowMs;
+  private final int _configuredNumWindows;
+  private final long _configuredWindowMs;
 
   private AtomicReference<LoadMonitorTaskRunnerState> _state;
   private volatile double _bootstrapProgress;
@@ -50,16 +54,18 @@ public class LoadMonitorTaskRunner {
    * @param config The load monitor configurations.
    * @param metricSampleAggregator  The queue that holds the metric samples.
    * @param metadataClient The metadata of the cluster.
+   * @param metricDef The metric definitions.
    * @param time The time object.
    * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    */
   public LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
-                               MetricSampleAggregator metricSampleAggregator,
+                               KafkaMetricSampleAggregator metricSampleAggregator,
                                MetadataClient metadataClient,
+                               MetricDef metricDef,
                                Time time,
                                MetricRegistry dropwizardMetricRegistry) {
     this(config,
-        new MetricFetcherManager(config, metricSampleAggregator, metadataClient, time, dropwizardMetricRegistry),
+        new MetricFetcherManager(config, metricSampleAggregator, metadataClient, metricDef, time, dropwizardMetricRegistry),
         metricSampleAggregator,
         metadataClient,
         time);
@@ -76,7 +82,7 @@ public class LoadMonitorTaskRunner {
    */
   LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
                         MetricFetcherManager metricFetcherManager,
-                        MetricSampleAggregator metricSampleAggregator,
+                        KafkaMetricSampleAggregator metricSampleAggregator,
                         MetadataClient metadataClient,
                         Time time) {
     _time = time;
@@ -89,8 +95,8 @@ public class LoadMonitorTaskRunner {
     _samplingScheduler =
         Executors.newScheduledThreadPool(2, new KafkaCruiseControlThreadFactory("SamplingScheduler", true, LOG));
     _samplingIntervalMs = samplingIntervalMs;
-    _configuredNumSnapshots = config.getInt(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG);
-    _configuredSnapshotWindowMs = config.getLong(KafkaCruiseControlConfig.LOAD_SNAPSHOT_WINDOW_MS_CONFIG);
+    _configuredNumWindows = config.getInt(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG);
+    _configuredWindowMs = config.getLong(KafkaCruiseControlConfig.METRICS_WINDOW_MS_CONFIG);
 
     _state = new AtomicReference<>(NOT_STARTED);
     _bootstrapProgress = -1.0;
@@ -108,8 +114,8 @@ public class LoadMonitorTaskRunner {
 
     if (_state.compareAndSet(RUNNING, BOOTSTRAPPING)) {
       _samplingScheduler.submit(new BootstrapTask(startMs, endMs, clearMetrics, _metadataClient, _metricSampleAggregator,
-                                                  this, _metricFetcherManager, _sampleStore, _configuredNumSnapshots,
-                                                  _configuredSnapshotWindowMs, _samplingIntervalMs, _time));
+                                                  this, _metricFetcherManager, _sampleStore, _configuredNumWindows,
+                                                  _configuredWindowMs, _samplingIntervalMs, _time));
     } else {
       throw new IllegalStateException("Cannot bootstrap because the load monitor in " + _state.get() + " state.");
     }
@@ -126,8 +132,8 @@ public class LoadMonitorTaskRunner {
 
     if (_state.compareAndSet(RUNNING, BOOTSTRAPPING)) {
       _samplingScheduler.submit(new BootstrapTask(startMs, clearMetrics, _metadataClient, _metricSampleAggregator,
-                                                  this, _metricFetcherManager, _sampleStore, _configuredNumSnapshots,
-                                                  _configuredSnapshotWindowMs, _samplingIntervalMs, _time));
+                                                  this, _metricFetcherManager, _sampleStore, _configuredNumWindows,
+                                                  _configuredWindowMs, _samplingIntervalMs, _time));
     } else {
       throw new IllegalStateException("Cannot bootstrap because the load monitor in " + _state.get() + " state.");
     }
@@ -142,8 +148,8 @@ public class LoadMonitorTaskRunner {
   public void bootstrap(boolean clearMetrics) {
     if (_state.compareAndSet(RUNNING, BOOTSTRAPPING)) {
       _samplingScheduler.submit(new BootstrapTask(clearMetrics, _metadataClient, _metricSampleAggregator,
-                                                  this, _metricFetcherManager, _sampleStore, _configuredNumSnapshots,
-                                                  _configuredSnapshotWindowMs, _samplingIntervalMs, _time));
+                                                  this, _metricFetcherManager, _sampleStore, _configuredNumWindows,
+                                                  _configuredWindowMs, _samplingIntervalMs, _time));
     } else {
       throw new IllegalStateException("Cannot bootstrap because the load monitor is in " + _state.get() + " state.");
     }
@@ -179,8 +185,7 @@ public class LoadMonitorTaskRunner {
    */
   public void train(long startMs, long endMs) {
     if (_state.compareAndSet(RUNNING, TRAINING)) {
-      _samplingScheduler.submit(new TrainingTask(_time, this, _metricFetcherManager, _sampleStore,
-                                                 _configuredSnapshotWindowMs, _samplingIntervalMs, startMs, endMs));
+      _samplingScheduler.submit(new TrainingTask(_time, this, _metricFetcherManager, _sampleStore, _configuredWindowMs, _samplingIntervalMs, startMs, endMs));
     } else {
       throw new IllegalStateException("Cannot start model training because the load monitor is in "
                                           + _state.get() + " state");

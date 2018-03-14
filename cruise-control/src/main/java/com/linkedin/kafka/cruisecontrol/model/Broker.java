@@ -4,9 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -65,8 +65,8 @@ public class Broker implements Serializable, Comparable<Broker> {
     _topicReplicas = new HashMap<>();
     _immigrantReplicas = new HashSet<>();
     // Initially broker does not contain any load.
-    _load = Load.newLoad();
-    _leadershipLoadForNwResources = Load.newLoad();
+    _load = new Load();
+    _leadershipLoadForNwResources = new Load();
     _state = State.ALIVE;
   }
 
@@ -314,11 +314,11 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param tp TopicPartition of the replica for which the outbound network load will be removed.
    * @return Leadership load by snapshot time.
    */
-  Map<Resource, Map<Long, Double>> makeFollower(TopicPartition tp) {
+  Map<Resource, double[]> makeFollower(TopicPartition tp) {
     Replica replica = replica(tp);
     _leadershipLoadForNwResources.subtractLoad(replica.load());
 
-    Map<Resource, Map<Long, Double>> leadershipLoad = replica(tp).makeFollower();
+    Map<Resource, double[]> leadershipLoad = replica(tp).makeFollower();
     // Remove leadership load from load.
     _load.subtractLoadFor(Resource.NW_OUT, leadershipLoad.get(Resource.NW_OUT));
     _load.subtractLoadFor(Resource.CPU, leadershipLoad.get(Resource.CPU));
@@ -335,7 +335,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param leadershipLoadBySnapshotTime Resource to leadership load to be added by snapshot time.
    */
   void makeLeader(TopicPartition tp,
-                  Map<Resource, Map<Long, Double>> leadershipLoadBySnapshotTime) {
+                  Map<Resource, double[]> leadershipLoadBySnapshotTime) {
     Replica replica = replica(tp);
     replica.makeLeader(leadershipLoadBySnapshotTime);
     _leadershipLoadForNwResources.addLoad(replica.load());
@@ -395,19 +395,20 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Push the latest snapshot information containing the snapshot time and resource loads to the replica identified
-   * by its topic partition.
+   * Set the load of the replicas. The load will be added to the broker load. Note that this method should only
+   * be called once for each replica.
    *
    * @param tp Topic partition that identifies the replica in this broker.
-   * @param snapshot       Snapshot containing the latest state for each resource.
+   * @param aggregatedMetricValues The metric values of this topic partition.
+   * @param windows The windows list of the aggregated metric values.
    */
-  void pushLatestSnapshot(TopicPartition tp, Snapshot snapshot) {
+  void setReplicaLoad(TopicPartition tp, AggregatedMetricValues aggregatedMetricValues, List<Long> windows) {
     Replica replica = replica(tp);
-    replica.pushLatestSnapshot(snapshot);
+    replica.setMetricValues(aggregatedMetricValues, windows);
     if (replica.isLeader()) {
-      _leadershipLoadForNwResources.addSnapshot(snapshot);
+      _leadershipLoadForNwResources.addMetricValues(aggregatedMetricValues, windows);
     }
-    _load.addSnapshot(snapshot);
+    _load.addMetricValues(aggregatedMetricValues, windows);
   }
 
   /*

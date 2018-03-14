@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor;
 
 import com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState;
 import java.util.Collections;
 import java.util.List;
@@ -18,27 +18,27 @@ import java.util.HashMap;
 public class LoadMonitorState {
 
   private final LoadMonitorTaskRunnerState _loadMonitorTaskRunnerState;
-  private final int _numValidSnapshotWindows;
-  private final SortedMap<Long, Double> _monitoredSnapshotWindows;
+  private final int _numValidWindows;
+  private final SortedMap<Long, Float> _monitoredWindows;
   private final int _numValidMonitoredPartitions;
-  private final Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> _sampleFlaws;
+  private final Map<TopicPartition, List<SampleExtrapolation>> _sampleExtrapolations;
   private final int _totalNumPartitions;
   private final double _bootstrapProgress;
   private final double _loadingProgress;
 
   private LoadMonitorState(LoadMonitorTaskRunnerState state,
-                           int numValidSnapshotWindows,
-                           SortedMap<Long, Double> monitoredSnapshotWindows,
+                           int numValidWindows,
+                           SortedMap<Long, Float> monitoredWindows,
                            int numValidMonitoredPartitions,
                            int totalNumPartitions,
-                           Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws,
+                           Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations,
                            double bootstrapProgress,
                            double loadingProgress) {
     _loadMonitorTaskRunnerState = state;
-    _numValidSnapshotWindows = numValidSnapshotWindows;
-    _monitoredSnapshotWindows = monitoredSnapshotWindows;
+    _numValidWindows = numValidWindows;
+    _monitoredWindows = monitoredWindows;
     _numValidMonitoredPartitions = numValidMonitoredPartitions;
-    _sampleFlaws = sampleFlaws;
+    _sampleExtrapolations = sampleExtrapolations;
     _totalNumPartitions = totalNumPartitions;
     _bootstrapProgress = bootstrapProgress;
     _loadingProgress = loadingProgress;
@@ -49,89 +49,89 @@ public class LoadMonitorState {
   }
 
   public static LoadMonitorState running(int numValidSnapshotWindows,
-                                         SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                         SortedMap<Long, Float> partitionCoverageByWindows,
                                          int numValidMonitoredTopics,
                                          int totalNumPartitions,
-                                         Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws) {
+                                         Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.RUNNING,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                partitionCoverageByWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
-                                sampleFlaws,
+                                sampleExtrapolations,
                                 -1.0,
                                 -1.0);
   }
 
   public static LoadMonitorState paused(int numValidSnapshotWindows,
-                                        SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                        SortedMap<Long, Float> monitoredSnapshotWindows,
                                         int numValidMonitoredTopics,
                                         int totalNumPartitions,
-                                        Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws) {
+                                        Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.PAUSED,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                monitoredSnapshotWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
-                                sampleFlaws,
+                                sampleExtrapolations,
                                 -1.0,
                                 -1.0);
   }
 
   public static LoadMonitorState sampling(int numValidSnapshotWindows,
-                                          SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                          SortedMap<Long, Float> monitoredSnapshotWindows,
                                           int numValidMonitoredTopics,
                                           int totalNumPartitions,
-                                          Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws) {
+                                          Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.SAMPLING,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                monitoredSnapshotWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
-                                sampleFlaws,
+                                sampleExtrapolations,
                                 -1.0,
                                 -1.0);
   }
 
   public static LoadMonitorState bootstrapping(int numValidSnapshotWindows,
-                                               SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                               SortedMap<Long, Float> monitoredSnapshotWindows,
                                                int numValidMonitoredTopics,
                                                int totalNumPartitions,
                                                double bootstrapProgress,
-                                               Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws) {
+                                               Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.BOOTSTRAPPING,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                monitoredSnapshotWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
-                                sampleFlaws,
+                                sampleExtrapolations,
                                 bootstrapProgress,
                                 -1.0);
   }
 
   public static LoadMonitorState training(int numValidSnapshotWindows,
-                                          SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                          SortedMap<Long, Float> monitoredSnapshotWindows,
                                           int numValidMonitoredTopics,
                                           int totalNumPartitions,
-                                          Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws) {
+                                          Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.TRAINING,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                monitoredSnapshotWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
-                                sampleFlaws,
+                                sampleExtrapolations,
                                 -1.0,
                                 -1.0);
   }
 
   public static LoadMonitorState loading(int numValidSnapshotWindows,
-                                         SortedMap<Long, Double> numMonitoredSnapshotWindows,
+                                         SortedMap<Long, Float> monitoredSnapshotWindows,
                                          int numValidMonitoredTopics,
                                          int totalNumPartitions,
                                          double loadingProgress) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.LOADING,
                                 numValidSnapshotWindows,
-                                numMonitoredSnapshotWindows,
+                                monitoredSnapshotWindows,
                                 numValidMonitoredTopics,
                                 totalNumPartitions,
                                 Collections.emptyMap(),
@@ -163,12 +163,12 @@ public class LoadMonitorState {
         loadMonitorState.put("state", _loadMonitorTaskRunnerState);
         loadMonitorState.put("trained", trained);
         loadMonitorState.put("trainingPct", trainingPct);
-        loadMonitorState.put("numMonitoredWindows", _monitoredSnapshotWindows.size());
-        loadMonitorState.put("monitoredWindows", _monitoredSnapshotWindows);
+        loadMonitorState.put("numMonitoredWindows", _monitoredWindows.size());
+        loadMonitorState.put("monitoredWindows", _monitoredWindows);
         loadMonitorState.put("numValidPartitions", _numValidMonitoredPartitions);
         loadMonitorState.put("numTotalPartitions", _totalNumPartitions);
-        loadMonitorState.put("monitoringCoveragePct", nanToZero(monitoringCoverage() * 100));
-        loadMonitorState.put("numFlawedPartitions", _sampleFlaws.size());
+        loadMonitorState.put("monitoringCoveragePct", nanToZero(validPartitionsRatio() * 100));
+        loadMonitorState.put("numFlawedPartitions", _sampleExtrapolations.size());
         break;
       default:
         break;
@@ -213,7 +213,7 @@ public class LoadMonitorState {
         ? "(TRAINED)" : String.format("(%.3f%% trained)",
                                       ModelParameters.modelCoefficientTrainingCompleteness() * 100);
     float validPartitionPercent = (float) _numValidMonitoredPartitions / _totalNumPartitions;
-    float validWindowPercent = (float) _numValidSnapshotWindows / _monitoredSnapshotWindows.size();
+    float validWindowPercent = (float) _numValidWindows / _monitoredWindows.size();
     switch (_loadMonitorTaskRunnerState) {
       case NOT_STARTED:
         return String.format("{state: %s}", _loadMonitorTaskRunnerState);
@@ -222,30 +222,30 @@ public class LoadMonitorState {
       case SAMPLING:
       case PAUSED:
         return String.format("{state: %s%s, NumValidWindows: (%d/%d) (%.3f%%), NumValidPartitions: %d/%d (%.3f%%), flawedPartitions: %d}",
-                             _loadMonitorTaskRunnerState, trained, _numValidSnapshotWindows,
-                             _monitoredSnapshotWindows.size(), validWindowPercent * 100,
+                             _loadMonitorTaskRunnerState, trained, _numValidWindows,
+                             _monitoredWindows.size(), validWindowPercent * 100,
                              _numValidMonitoredPartitions, _totalNumPartitions, validPartitionPercent * 100,
-                             _sampleFlaws.size());
+                             _sampleExtrapolations.size());
       case BOOTSTRAPPING:
         return String.format("{state: %s%s, BootstrapProgress: %.3f%%, NumValidWindows: (%d/%d) (%.3f%%), "
                                  + "NumValidPartitions: %d/%d (%.3f%%), flawedPartitions: %d}",
-                             _loadMonitorTaskRunnerState, trained, _bootstrapProgress * 100,
-                             _numValidSnapshotWindows, _monitoredSnapshotWindows.size(), validWindowPercent * 100,
-                             _numValidMonitoredPartitions, _totalNumPartitions, validPartitionPercent * 100, _sampleFlaws.size());
+                             _loadMonitorTaskRunnerState, trained, _bootstrapProgress * 100, _numValidWindows, _monitoredWindows
+                .size(), validWindowPercent * 100,
+                             _numValidMonitoredPartitions, _totalNumPartitions, validPartitionPercent * 100, _sampleExtrapolations.size());
 
       case TRAINING:
         return String.format("{state: %s%s, NumValidWindows: (%d/%d) (%.3f%%) , NumValidPartitions: %d/%d (%.3f%%), FlawedPartitions: %d}",
-                             _loadMonitorTaskRunnerState, trained, _monitoredSnapshotWindows.size(),
-                             _numValidSnapshotWindows, validWindowPercent * 100, _numValidMonitoredPartitions,
-                             _totalNumPartitions, validPartitionPercent * 100, _sampleFlaws.size());
+                             _loadMonitorTaskRunnerState, trained, _monitoredWindows.size(), _numValidWindows, 
+                             validWindowPercent * 100, _numValidMonitoredPartitions, _totalNumPartitions, validPartitionPercent * 100, 
+                             _sampleExtrapolations.size());
 
       case LOADING:
         return String.format("{state: %s%s, LoadingProgress: %.3f%%, NumValidWindows: (%d/%d): (%.3f%%), "
                                  + "NumValidPartitions: %d/%d (%.3f%%), FlawedPartitions: %d}",
-                             _loadMonitorTaskRunnerState, trained, _loadingProgress * 100, _numValidSnapshotWindows,
-                             _monitoredSnapshotWindows.size(), validWindowPercent * 100,
+                             _loadMonitorTaskRunnerState, trained, _loadingProgress * 100, _numValidWindows,
+                             _monitoredWindows.size(), validWindowPercent * 100,
                              _numValidMonitoredPartitions, _totalNumPartitions, validPartitionPercent * 100,
-                             _sampleFlaws.size());
+                             _sampleExtrapolations.size());
       default:
         throw new IllegalStateException("Should never be here");
     }
@@ -255,19 +255,19 @@ public class LoadMonitorState {
     return _loadMonitorTaskRunnerState;
   }
 
-  public int numValidSnapshotWindows() {
-    return _numValidSnapshotWindows;
-  }
-  
-  public SortedMap<Long, Double> monitoredSnapshotWindows() {
-    return _monitoredSnapshotWindows;
+  public int numValidWindows() {
+    return _numValidWindows;
   }
 
-  public int numValidMonitoredPartitions() {
+  public SortedMap<Long, Float> monitoredWindows() {
+    return _monitoredWindows;
+  }
+
+  public int numValidPartitions() {
     return _numValidMonitoredPartitions;
   }
 
-  public double monitoringCoverage() {
+  public double validPartitionsRatio() {
     return (double) _numValidMonitoredPartitions / _totalNumPartitions;
   }
 
@@ -275,8 +275,8 @@ public class LoadMonitorState {
     return _bootstrapProgress;
   }
 
-  public Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws() {
-    return _sampleFlaws;
+  public Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations() {
+    return _sampleExtrapolations;
   }
 
   public LinearRegressionModelParameters.LinearRegressionModelState detailTrainingProgress() {

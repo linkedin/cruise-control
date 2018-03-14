@@ -20,23 +20,23 @@ public class CruiseControlConfig extends AbstractConfig {
   /**
    * <code>window.ms</code>
    */
-  public static final String WINDOW_MS_CONFIG = "window.ms";
-  private static final String WINDOW_MS_DOC = "The interval in millisecond that is covered by each window." +
+  public static final String METRICS_WINDOW_MS_CONFIG = "metrics.window.ms";
+  private static final String METRICS_WINDOW_MS_DOC = "The interval in millisecond that is covered by each window." +
       "Cruise control will aggregate all the metric samples whose timestamp fall into the same window. " +
-      "The window.ms must be greater than the metric.sampling.interval.ms.";
+      "The metrics.window.ms must be greater than the metric.sampling.interval.ms.";
 
   /**
    * <code>num.windows</code>
    */
-  public static final String NUM_WINDOWS_CONFIG = "num.windows";
-  private static final String NUM_WINDOWS_DOC = "The maximum number of windows the load monitor would keep. " +
+  public static final String NUM_METRICS_WINDOWS_CONFIG = "num.metrics.windows";
+  private static final String NUM_METRICS_WINDOWS_DOC = "The maximum number of windows the load monitor would keep. " +
       "Each window covers a time span defined by window.ms.";
 
   /**
    * <code>min.samples.per.window</code>
    */
-  public static final String MIN_SAMPLES_PER_WINDOW_CONFIG = "min.samples.per.window";
-  private static final String MIN_SAMPLES_PER_WINDOW_DOC = "The minimum number of metric samples a valid " +
+  public static final String MIN_SAMPLES_PER_METRICS_WINDOW_CONFIG = "min.samples.per.metrics.window";
+  private static final String MIN_SAMPLES_PER_METRICS_WINDOW_DOC = "The minimum number of metric samples a valid " +
       "window should have. If a partition does not have enough samples in a window, the entire group of the "
       + "entity will be removed from the aggregated metrics result due to insufficient data.";
 
@@ -48,29 +48,44 @@ public class CruiseControlConfig extends AbstractConfig {
       + "each entity. An entity will be considered as invalid if the total number extrapolations in all the windows goes "
       + "above this number.";
 
+  /**
+   * <code>metric.sample.aggregator.completeness.cache.size</code>
+   */
+  public static final String METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG =
+      "metric.sample.aggregator.completeness.cache.size";
+  private static final String METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC = "The metric sample aggregator "
+      + "cache the completeness metadata for fast query. This configuration configures The number of completeness "
+      + "cache slot to maintain.";
+
   static {
     CONFIG = new ConfigDef()
-        .define(WINDOW_MS_CONFIG,
+        .define(METRICS_WINDOW_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 60 * 60 * 1000,
                 atLeast(1),
-                ConfigDef.Importance.HIGH, WINDOW_MS_DOC)
-        .define(NUM_WINDOWS_CONFIG,
+                ConfigDef.Importance.HIGH, METRICS_WINDOW_MS_DOC)
+        .define(NUM_METRICS_WINDOWS_CONFIG,
                 ConfigDef.Type.INT,
                 5,
                 atLeast(1),
-                ConfigDef.Importance.HIGH, NUM_WINDOWS_DOC)
-        .define(MIN_SAMPLES_PER_WINDOW_CONFIG,
+                ConfigDef.Importance.HIGH, NUM_METRICS_WINDOWS_DOC)
+        .define(MIN_SAMPLES_PER_METRICS_WINDOW_CONFIG,
                 ConfigDef.Type.INT,
                 3,
                 atLeast(1),
-                ConfigDef.Importance.LOW, MIN_SAMPLES_PER_WINDOW_DOC)
+                ConfigDef.Importance.LOW, MIN_SAMPLES_PER_METRICS_WINDOW_DOC)
         .define(MAX_ALLOWED_EXTRAPOLATIONS_PER_ENTITY_CONFIG,
                 ConfigDef.Type.INT,
                 5,
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
-                MAX_ALLOWED_EXTRAPOLATIONS_PER_ENTITY_DOC);
+                MAX_ALLOWED_EXTRAPOLATIONS_PER_ENTITY_DOC)
+        .define(METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG,
+                ConfigDef.Type.INT,
+                5,
+                atLeast(0),
+                ConfigDef.Importance.LOW,
+                METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC);
   }
 
   private static ConfigDef mergeConfigDef(ConfigDef definition) {

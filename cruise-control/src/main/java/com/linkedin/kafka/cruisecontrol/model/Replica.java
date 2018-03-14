@@ -4,14 +4,16 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import java.util.Objects;
@@ -37,7 +39,7 @@ public class Replica implements Serializable, Comparable<Replica> {
    */
   Replica(TopicPartition tp, Broker broker, boolean isLeader) {
     _tp = tp;
-    _load = Load.newLoad();
+    _load = new Load();
     _originalBroker = broker;
     _broker = broker;
     _isLeader = isLeader;
@@ -99,10 +101,11 @@ public class Replica implements Serializable, Comparable<Replica> {
   /**
    * Pushes the latest snapshot information containing the snapshot time and resource loads for the replica.
    *
-   * @param snapshot Snapshot containing latest state for each resource.
+   * @param aggregatedMetricValues The metric values for this replica.
+   * @param windows the windows list of the aggregated metric values.
    */
-  void pushLatestSnapshot(Snapshot snapshot) {
-    _load.pushLatestSnapshot(snapshot);
+  void setMetricValues(AggregatedMetricValues aggregatedMetricValues, List<Long> windows) {
+    _load.initializeMetricValues(aggregatedMetricValues, windows);
   }
 
   /**
@@ -119,31 +122,32 @@ public class Replica implements Serializable, Comparable<Replica> {
    *
    * @return Removed leadership load by snapshot time -- i.e. outbound network and fraction of CPU load by snapshot time.
    */
-  Map<Resource, Map<Long, Double>> makeFollower() {
+  Map<Resource, double[]> makeFollower() {
     // Remove leadership from the replica.
     setLeadership(false);
-    // Clear and get the outbound network and CPU load associated with leadership from the given replica.
-    Map<Long, Double> leadershipNwOutLoad = _load.loadFor(Resource.NW_OUT);
-    Map<Long, Double> leaderCpuLoad = _load.loadFor(Resource.CPU);
+    // Clear and get the outbound network load associated with leadership from the given replica.
+    double[] leadershipNwOutLoad = _load.loadFor(Resource.NW_OUT).doubleArray();
+    MetricValues leadershipCpuLoad = _load.loadFor(Resource.CPU);
 
     // Remove the outbound network leadership load from replica.
     _load.clearLoadFor(Resource.NW_OUT);
+    double[] followerCpuLoad = new double[_load.numWindows()];
+    double[] cpuLoadChange = new double[_load.numWindows()];
 
-    // Remove the CPU leadership load from replica.
-    Map<Long, Double> followerCpuLoad = new HashMap<>();
-    Map<Long, Double> leadershipCpuLoad = new HashMap<>();
-    leaderCpuLoad.forEach((k, v) -> {
-      double newCpuUtilization = ModelUtils.getFollowerCpuUtilFromLeaderLoad(_load, k);
+    for (int i = 0; i < leadershipCpuLoad.length(); i++) {
+      double newCpuLoad = ModelUtils.getFollowerCpuUtilFromLeaderLoad(_load.loadFor(Resource.NW_IN).get(i),
+                                                                      _load.loadFor(Resource.NW_OUT).get(i),
+                                                                      leadershipCpuLoad.get(i));
+      followerCpuLoad[i] = newCpuLoad;
+      cpuLoadChange[i] = leadershipCpuLoad.get(i) - newCpuLoad;
+    }
 
-      followerCpuLoad.put(k, newCpuUtilization);
-      leadershipCpuLoad.put(k, v - newCpuUtilization);
-    });
     _load.setLoadFor(Resource.CPU, followerCpuLoad);
 
     // Get the change of the load for upper layer.
-    Map<Resource, Map<Long, Double>> leadershipLoad = new HashMap<>();
+    Map<Resource, double[]> leadershipLoad = new HashMap<>();
     leadershipLoad.put(Resource.NW_OUT, leadershipNwOutLoad);
-    leadershipLoad.put(Resource.CPU, leadershipCpuLoad);
+    leadershipLoad.put(Resource.CPU, cpuLoadChange);
 
     // Return removed leadership load.
     return leadershipLoad;
@@ -156,7 +160,7 @@ public class Replica implements Serializable, Comparable<Replica> {
    *
    * @param resourceToLeadershipLoadBySnapshotTime Resource to leadership load to be added by snapshot time.
    */
-  void makeLeader(Map<Resource, Map<Long, Double>> resourceToLeadershipLoadBySnapshotTime) {
+  void makeLeader(Map<Resource, double[]> resourceToLeadershipLoadBySnapshotTime) {
     // Add leadership to the replica.
     setLeadership(true);
     _load.setLoadFor(Resource.NW_OUT, resourceToLeadershipLoadBySnapshotTime.get(Resource.NW_OUT));

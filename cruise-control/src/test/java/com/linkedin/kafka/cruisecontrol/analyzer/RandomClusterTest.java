@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -40,7 +41,6 @@ import java.util.List;
 import java.util.Map;
 
 import com.linkedin.kafka.cruisecontrol.model.Replica;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,7 +91,7 @@ public class RandomClusterTest {
     List<OptimizationVerifier.Verification> kafkaAssignerVerifications =
         Arrays.asList(GOAL_VIOLATION, DEAD_BROKERS, REGRESSION);
 
-    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1500L));
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
@@ -182,8 +182,7 @@ public class RandomClusterTest {
     RandomCluster.populate(clusterModel, clusterProperties, _replicaDistribution);
 
     assertTrue("Random Cluster Test failed to improve the existing state.",
-               OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority, _verifications));
-
+        OptimizationVerifier.executeGoalsFor(_balancingConstraint, clusterModel, _goalNameByPriority, _verifications));
     return clusterModel;
   }
 
@@ -214,11 +213,10 @@ public class RandomClusterTest {
 
     for (Broker b : clusterModel.brokers()) {
       for (Replica replica : b.replicas()) {
-        List<Snapshot> snapshots =
-            clusterModel.broker(b.id()).replica(replica.topicPartition()).load().snapshotsByTime();
-        for (Snapshot snapshot : snapshots) {
-          clusterWithNewBroker.pushLatestSnapshot(b.rack().id(), b.id(), replica.topicPartition(), snapshot);
-        }
+        AggregatedMetricValues aggregatedMetricValues =
+            clusterModel.broker(b.id()).replica(replica.topicPartition()).load().loadByWindows();
+        clusterWithNewBroker.setReplicaLoad(b.rack().id(), b.id(), replica.topicPartition(), aggregatedMetricValues,
+                                            clusterModel.load().windows());
       }
     }
 

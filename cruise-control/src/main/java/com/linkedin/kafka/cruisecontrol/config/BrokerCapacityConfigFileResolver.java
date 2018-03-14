@@ -6,8 +6,8 @@ package com.linkedin.kafka.cruisecontrol.config;
 
 import com.google.gson.Gson;
 import com.google.gson.stream.JsonReader;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;

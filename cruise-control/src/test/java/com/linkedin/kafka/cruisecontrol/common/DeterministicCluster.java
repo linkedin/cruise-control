@@ -4,11 +4,15 @@
 
 package com.linkedin.kafka.cruisecontrol.common;
 
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -35,8 +39,13 @@ public class DeterministicCluster {
     cluster.createReplica("0", 1, pInfoT10, 1, false);
 
     // Create snapshots and push them to the cluster.
-    cluster.pushLatestSnapshot("0", 0, pInfoT10, new Snapshot(1L, 40.0, 100.0, 130.0, 75.0));
-    cluster.pushLatestSnapshot("0", 1, pInfoT10, new Snapshot(1L, 5.0, 100.0, 0.0, 75.0));
+    List<Long> windows = Collections.singletonList(1L);
+    cluster.setReplicaLoad("0", 0, pInfoT10,
+                           KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(40.0, 100.0, 130.0, 75.0),
+                           windows);
+    cluster.setReplicaLoad("0", 1, pInfoT10,
+                           KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(5.0, 100.0, 0.0, 75.0),
+                           windows);
 
     return cluster;
   }
@@ -47,7 +56,9 @@ public class DeterministicCluster {
     TopicPartition pInfoT10 = new TopicPartition("T1", 0);
 
     cluster.createReplica("1", 2, pInfoT10, 2, false);
-    cluster.pushLatestSnapshot("1", 2, pInfoT10, new Snapshot(1L, 60.0, 100.0, 130.0, 75.0));
+    cluster.setReplicaLoad("1", 2, pInfoT10,
+                           KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(60.0, 100.0, 130.0, 75.0),
+                           Collections.singletonList(1L));
 
     return cluster;
   }
@@ -167,16 +178,17 @@ public class DeterministicCluster {
     cluster.createReplica("0", 1, pInfoT22, 1, false);
 
     // Create snapshots and push them to the cluster.
-    cluster.pushLatestSnapshot("0", 0, pInfoT10, new Snapshot(1L, 100.0, 100.0, 130.0, 75.0));
-    cluster.pushLatestSnapshot("1", 2, pInfoT10, new Snapshot(1L, 5.0, 100.0, 0.0, 75.0));
-    cluster.pushLatestSnapshot("0", 1, pInfoT11, new Snapshot(1L, 40.5, 90.0, 110.0, 55.0));
-    cluster.pushLatestSnapshot("0", 0, pInfoT11, new Snapshot(1L, 80.5, 90.0, 0.0, 55.0));
-    cluster.pushLatestSnapshot("0", 1, pInfoT20, new Snapshot(1L, 5.0, 5.0, 6.0, 5.0));
-    cluster.pushLatestSnapshot("1", 2, pInfoT20, new Snapshot(1L, 4.0, 5.0, 0.0, 5.0));
-    cluster.pushLatestSnapshot("0", 0, pInfoT21, new Snapshot(1L, 100.0, 25.0, 45.0, 55.0));
-    cluster.pushLatestSnapshot("1", 2, pInfoT21, new Snapshot(1L, 20.5, 25.0, 0.0, 55.0));
-    cluster.pushLatestSnapshot("0", 0, pInfoT22, new Snapshot(1L, 85.0, 45.0, 120.0, 95.0));
-    cluster.pushLatestSnapshot("0", 1, pInfoT22, new Snapshot(1L, 55.0, 45.0, 0.0, 95.0));
+    List<Long> windows = Collections.singletonList(1L);
+    cluster.setReplicaLoad("0", 0, pInfoT10, createLoad(100.0, 100.0, 130.0, 75.0), windows);
+    cluster.setReplicaLoad("1", 2, pInfoT10, createLoad(5.0, 100.0, 0.0, 75.0), windows);
+    cluster.setReplicaLoad("0", 1, pInfoT11, createLoad(40.5, 90.0, 110.0, 55.0), windows);
+    cluster.setReplicaLoad("0", 0, pInfoT11, createLoad(80.5, 90.0, 0.0, 55.0), windows);
+    cluster.setReplicaLoad("0", 1, pInfoT20, createLoad(5.0, 5.0, 6.0, 5.0), windows);
+    cluster.setReplicaLoad("1", 2, pInfoT20, createLoad(4.0, 5.0, 0.0, 5.0), windows);
+    cluster.setReplicaLoad("0", 0, pInfoT21, createLoad(100.0, 25.0, 45.0, 55.0), windows);
+    cluster.setReplicaLoad("1", 2, pInfoT21, createLoad(20.5, 25.0, 0.0, 55.0), windows);
+    cluster.setReplicaLoad("0", 0, pInfoT22, createLoad(85.0, 45.0, 120.0, 95.0), windows);
+    cluster.setReplicaLoad("0", 1, pInfoT22, createLoad(55.0, 45.0, 0.0, 95.0), windows);
 
     return cluster;
   }
@@ -221,20 +233,38 @@ public class DeterministicCluster {
     cluster.createReplica("1", 2, pInfoD0, 1, false);
 
     // Create snapshots and push them to the cluster.
-    cluster.pushLatestSnapshot("0", 0, pInfoA0, new Snapshot(1L, 5.0, 5.0, 0.0, 4.0));
-    cluster.pushLatestSnapshot("0", 0, pInfoA1, new Snapshot(1L, 5.0, 3.0, 10.0, 8.0));
-    cluster.pushLatestSnapshot("0", 0, pInfoA2, new Snapshot(1L, 5.0, 2.0, 10.0, 6.0));
-    cluster.pushLatestSnapshot("0", 1, pInfoB0, new Snapshot(1L, 5.0, 4.0, 10.0, 7.0));
-    cluster.pushLatestSnapshot("0", 1, pInfoC0, new Snapshot(1L, 5.0, 6.0, 0.0, 4.0));
-    cluster.pushLatestSnapshot("0", 1, pInfoD0, new Snapshot(1L, 5.0, 5.0, 10.0, 6.0));
-    cluster.pushLatestSnapshot("0", 1, pInfoA0, new Snapshot(1L, 5.0, 4.0, 10.0, 10.0));
-    cluster.pushLatestSnapshot("1", 2, pInfoB0, new Snapshot(1L, 2.0, 2.0, 0.0, 5.0));
-    cluster.pushLatestSnapshot("1", 2, pInfoC0, new Snapshot(1L, 1.0, 8.0, 10.0, 4.0));
-    cluster.pushLatestSnapshot("1", 2, pInfoD0, new Snapshot(1L, 2.0, 8.0, 0.0, 7.0));
-    cluster.pushLatestSnapshot("1", 2, pInfoA1, new Snapshot(1L, 3.0, 4.0, 0.0, 6.0));
-    cluster.pushLatestSnapshot("1", 2, pInfoA2, new Snapshot(1L, 4.0, 5.0, 0.0, 3.0));
+    List<Long> windows = Collections.singletonList(1L);
+    cluster.setReplicaLoad("0", 0, pInfoA0, createLoad(5.0, 5.0, 0.0, 4.0), windows);
+    cluster.setReplicaLoad("0", 0, pInfoA1, createLoad(5.0, 3.0, 10.0, 8.0), windows);
+    cluster.setReplicaLoad("0", 0, pInfoA2, createLoad(5.0, 2.0, 10.0, 6.0), windows);
+    cluster.setReplicaLoad("0", 1, pInfoB0, createLoad(5.0, 4.0, 10.0, 7.0), windows);
+    cluster.setReplicaLoad("0", 1, pInfoC0, createLoad(5.0, 6.0, 0.0, 4.0), windows);
+    cluster.setReplicaLoad("0", 1, pInfoD0, createLoad(5.0, 5.0, 10.0, 6.0), windows);
+    cluster.setReplicaLoad("0", 1, pInfoA0, createLoad(5.0, 4.0, 10.0, 10.0), windows);
+    cluster.setReplicaLoad("1", 2, pInfoB0, createLoad(2.0, 2.0, 0.0, 5.0), windows);
+    cluster.setReplicaLoad("1", 2, pInfoC0, createLoad(1.0, 8.0, 10.0, 4.0), windows);
+    cluster.setReplicaLoad("1", 2, pInfoD0, createLoad(2.0, 8.0, 0.0, 7.0), windows);
+    cluster.setReplicaLoad("1", 2, pInfoA1, createLoad(3.0, 4.0, 0.0, 6.0), windows);
+    cluster.setReplicaLoad("1", 2, pInfoA2, createLoad(4.0, 5.0, 0.0, 3.0), windows);
 
     return cluster;
+  }
+
+  private static AggregatedMetricValues createLoad(double cpu, double networkIn, double networkOut, double disk) {
+    AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues();
+    MetricValues metricValues = new MetricValues(1);
+    metricValues.set(0, cpu);
+    aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU), metricValues);
+    metricValues = new MetricValues(1);
+    metricValues.set(0, networkIn);
+    aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_IN), metricValues);
+    metricValues = new MetricValues(1);
+    metricValues.set(0, networkOut);
+    aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
+    metricValues = new MetricValues(1);
+    metricValues.set(0, disk);
+    aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.DISK), metricValues);
+    return aggregatedMetricValues;
   }
 
   /**

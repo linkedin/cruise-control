@@ -16,7 +16,7 @@ import java.util.Map;
  * requirements can be specified:
  * </p>
  * <ul>
- *   <li><b>Number of Snapshot Windows</b> - specifies how many snapshots must be there for each partition in
+ *   <li><b>Number of Windows</b> - specifies how many snapshots must be there for each partition in
  *   order for a partition to be considered as valid for the cluster model. The snapshots are counted backwards from
  *   the current snapshot window</li>
  *
@@ -31,38 +31,37 @@ import java.util.Map;
  *
  */
 public class ModelCompletenessRequirements {
-  private final int _minRequiredNumSnapshotWindows;
+  private final int _minRequiredNumWindows;
   private final double _minMonitoredPartitionsPercentage;
   private final boolean _includeAllTopics;
 
   /**
    * Constructor for the requirements.
-   * @param minRequiredNumSnapshotWindows the minimum number of required snapshots to generate the model. Tha value
-   *                                   must positive.
-   * @param minMonitoredPartitionPercentage The minimum required percentage of monitored partitions.
+   * @param minNumValidWindows the minimum number of valid windows to generate the model. Tha value must positive.
+   * @param minValidPartitionsRatio The minimum required percentage of monitored partitions.
    * @param includeAllTopics whether all the topics should be included to the time window. When set to true, all the
    *                         topics will be included even when there is not enough snapshots. An empty snapshot will
    *                         be used if there is no sample for a partition.
    */
-  public ModelCompletenessRequirements(int minRequiredNumSnapshotWindows,
-                                       double minMonitoredPartitionPercentage,
+  public ModelCompletenessRequirements(int minNumValidWindows,
+                                       double minValidPartitionsRatio,
                                        boolean includeAllTopics) {
-    if (minRequiredNumSnapshotWindows <= 0) {
-      throw new IllegalArgumentException("Invalid minRequiredNumSnapshotWindows " + minRequiredNumSnapshotWindows +
-                                             ". The minRequiredNumSnapshotWindows must be positive.");
+    if (minNumValidWindows <= 0) {
+      throw new IllegalArgumentException("Invalid minNumValidWindows " + minNumValidWindows +
+                                             ". The minNumValidWindows must be positive.");
     }
-    if (minMonitoredPartitionPercentage < 0 || minMonitoredPartitionPercentage > 1) {
-      throw new IllegalArgumentException("Invalid minimumMonitoredPartitionsPercentage "
-                                             + minMonitoredPartitionPercentage + ". The value must be between 0 and 1"
+    if (minValidPartitionsRatio < 0 || minValidPartitionsRatio > 1) {
+      throw new IllegalArgumentException("Invalid minValidPartitionsRatio "
+                                             + minValidPartitionsRatio + ". The value must be between 0 and 1"
                                              + ", both inclusive.");
     }
-    _minRequiredNumSnapshotWindows = minRequiredNumSnapshotWindows;
+    _minRequiredNumWindows = minNumValidWindows;
     _includeAllTopics = includeAllTopics;
-    _minMonitoredPartitionsPercentage = minMonitoredPartitionPercentage;
+    _minMonitoredPartitionsPercentage = minValidPartitionsRatio;
   }
 
-  public int minRequiredNumSnapshotWindows() {
-    return _minRequiredNumSnapshotWindows;
+  public int minRequiredNumWindows() {
+    return _minRequiredNumWindows;
   }
 
   public double minMonitoredPartitionsPercentage() {
@@ -83,7 +82,7 @@ public class ModelCompletenessRequirements {
     if (other == null) {
       return this;
     }
-    return new ModelCompletenessRequirements(Math.max(_minRequiredNumSnapshotWindows, other.minRequiredNumSnapshotWindows()),
+    return new ModelCompletenessRequirements(Math.max(_minRequiredNumWindows, other.minRequiredNumWindows()),
                                              Math.max(_minMonitoredPartitionsPercentage, other.minMonitoredPartitionsPercentage()),
                                              _includeAllTopics || other.includeAllTopics());
   }
@@ -99,7 +98,7 @@ public class ModelCompletenessRequirements {
     if (other == null) {
       return this;
     }
-    return new ModelCompletenessRequirements(Math.min(_minRequiredNumSnapshotWindows, other.minRequiredNumSnapshotWindows()),
+    return new ModelCompletenessRequirements(Math.min(_minRequiredNumWindows, other.minRequiredNumWindows()),
                                              Math.min(_minMonitoredPartitionsPercentage, other.minMonitoredPartitionsPercentage()),
                                              _includeAllTopics && other.includeAllTopics());
   }
@@ -110,7 +109,7 @@ public class ModelCompletenessRequirements {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> requirements = new HashMap<>();
-    requirements.put("requiredNumSnapshots", _minRequiredNumSnapshotWindows);
+    requirements.put("requiredNumSnapshots", _minRequiredNumWindows);
     requirements.put("minMonitoredPartitionsPercentage", _minMonitoredPartitionsPercentage);
     requirements.put("includeAllTopics", _includeAllTopics);
     return requirements;
@@ -119,7 +118,7 @@ public class ModelCompletenessRequirements {
   @Override
   public String toString() {
     return String.format("(requiredNumWindows=%d, minMonitoredPartitionPercentage=%.3f, includedAllTopics=%s)",
-                         _minRequiredNumSnapshotWindows, _minMonitoredPartitionsPercentage, _includeAllTopics);
+                         _minRequiredNumWindows, _minMonitoredPartitionsPercentage, _includeAllTopics);
   }
 
 }

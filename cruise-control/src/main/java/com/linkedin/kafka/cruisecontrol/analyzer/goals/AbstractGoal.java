@@ -42,7 +42,7 @@ public abstract class AbstractGoal implements Goal {
   private boolean _finished;
   protected boolean _succeeded = true;
   protected BalancingConstraint _balancingConstraint;
-  protected int _numSnapshots = 1;
+  protected int _numWindows = 1;
   protected double _minMonitoredPartitionPercentage = 0.995;
 
   /**
@@ -56,12 +56,12 @@ public abstract class AbstractGoal implements Goal {
   @Override
   public void configure(Map<String, ?> configs) {
     _balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(configs, false));
-    String numSnapshotString = (String) configs.get(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG);
-    if (numSnapshotString != null && !numSnapshotString.isEmpty()) {
-      _numSnapshots = Integer.parseInt(numSnapshotString);
+    String numWindowsString = (String) configs.get(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG);
+    if (numWindowsString != null && !numWindowsString.isEmpty()) {
+      _numWindows = Integer.parseInt(numWindowsString);
     }
     String minMonitoredPartitionPercentageString =
-        (String) configs.get(KafkaCruiseControlConfig.MIN_MONITORED_PARTITION_PERCENTAGE_CONFIG);
+        (String) configs.get(KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
     if (minMonitoredPartitionPercentageString != null
         && !minMonitoredPartitionPercentageString.isEmpty()) {
       _minMonitoredPartitionPercentage = Double.parseDouble(minMonitoredPartitionPercentageString);

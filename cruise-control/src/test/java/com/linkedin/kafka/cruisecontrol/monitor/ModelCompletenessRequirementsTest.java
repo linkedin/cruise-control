@@ -15,7 +15,7 @@ public class ModelCompletenessRequirementsTest {
     ModelCompletenessRequirements r1 = new ModelCompletenessRequirements(1, 0.5, true);
     ModelCompletenessRequirements r2 = new ModelCompletenessRequirements(5, 0.2, false);
     ModelCompletenessRequirements combined = r1.stronger(r2);
-    assertEquals(5, combined.minRequiredNumSnapshotWindows());
+    assertEquals(5, combined.minRequiredNumWindows());
     assertEquals(0.5, combined.minMonitoredPartitionsPercentage(), 0.0);
     assertEquals(true, combined.includeAllTopics());
   }

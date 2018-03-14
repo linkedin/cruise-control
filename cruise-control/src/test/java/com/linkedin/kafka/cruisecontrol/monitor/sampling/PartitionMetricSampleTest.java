@@ -4,11 +4,14 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
+import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.*;
 import static org.junit.Assert.*;
 
 
@@ -22,7 +25,7 @@ public class PartitionMetricSampleTest {
     PartitionMetricSample sample = new PartitionMetricSample(0, new TopicPartition("topic", 0));
     sample.close(0);
     try {
-      sample.record(Resource.DISK, 0.0);
+      sample.record(KafkaCruiseControlMetricDef.resourceToMetricInfo(Resource.DISK), 0.0);
       fail("Should throw IllegalStateException");
     } catch (IllegalStateException ise) {
       // let it go.
@@ -32,9 +35,9 @@ public class PartitionMetricSampleTest {
   @Test
   public void testRecordSameResourceMetricAgain() {
     PartitionMetricSample sample = new PartitionMetricSample(0, new TopicPartition("topic", 0));
-    sample.record(Resource.DISK, 0);
+    sample.record(KafkaCruiseControlMetricDef.resourceToMetricInfo(Resource.DISK), 0);
     try {
-      sample.record(Resource.DISK, 0.0);
+      sample.record(KafkaCruiseControlMetricDef.resourceToMetricInfo(Resource.DISK), 0.0);
       fail("Should throw IllegalStateException");
     } catch (IllegalStateException ise) {
       // let it go.
@@ -43,31 +46,41 @@ public class PartitionMetricSampleTest {
 
   @Test
   public void testSerde() throws UnknownVersionException {
+    MetricDef metricDef = KafkaCruiseControlMetricDef.metricDef();
     PartitionMetricSample sample = new PartitionMetricSample(0, new TopicPartition("topic", 0));
     int i = 0;
     for (Resource r : Resource.values()) {
-      sample.record(r, i);
+      sample.record(KafkaCruiseControlMetricDef.resourceToMetricInfo(r), i);
       i++;
     }
-    sample.recordProduceRequestRate((double) i++);
-    sample.recordFetchRequestRate((double) i++);
-    sample.recordMessagesInPerSec((double) i++);
-    sample.recordReplicationBytesInPerSec((double) i++);
-    sample.recordReplicationBytesOutPerSec((double) i);
+    sample.record(metricDef.metricInfo(PRODUCE_RATE.name()), (double) i++);
+    sample.record(metricDef.metricInfo(FETCH_RATE.name()), (double) i++);
+    sample.record(metricDef.metricInfo(MESSAGE_IN_RATE.name()), (double) i++);
+    sample.record(metricDef.metricInfo(REPLICATION_BYTES_IN_RATE.name()), (double) i++);
+    sample.record(metricDef.metricInfo(REPLICATION_BYTES_OUT_RATE.name()), (double) i);
     sample.close(10);
     byte[] bytes = sample.toBytes();
     PartitionMetricSample deserializedSample = PartitionMetricSample.fromBytes(bytes);
     assertEquals(sample.brokerId(), deserializedSample.brokerId());
-    assertEquals(sample.topicPartition(), deserializedSample.topicPartition());
-    assertEquals(sample.metricFor(Resource.CPU), deserializedSample.metricFor(Resource.CPU));
-    assertEquals(sample.metricFor(Resource.DISK), deserializedSample.metricFor(Resource.DISK));
-    assertEquals(sample.metricFor(Resource.NW_IN), deserializedSample.metricFor(Resource.NW_IN));
-    assertEquals(sample.metricFor(Resource.NW_OUT), deserializedSample.metricFor(Resource.NW_OUT));
-    assertEquals(sample.produceRequestRate(), deserializedSample.produceRequestRate(), EPSILON);
-    assertEquals(sample.fetchRequestRate(), deserializedSample.fetchRequestRate(), EPSILON);
-    assertEquals(sample.messagesInPerSec(), deserializedSample.messagesInPerSec(), EPSILON);
-    assertEquals(sample.replicationBytesInPerSec(), deserializedSample.replicationBytesInPerSec(), EPSILON);
-    assertEquals(sample.replicationBytesOutPerSec(), deserializedSample.replicationBytesOutPerSec(), EPSILON);
+    assertEquals(sample.entity().tp(), deserializedSample.entity().tp());
+    assertEquals(sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU)),
+                 deserializedSample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU)));
+    assertEquals(sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.DISK)),
+                 deserializedSample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.DISK)));
+    assertEquals(sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_IN)),
+                 deserializedSample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_IN)));
+    assertEquals(sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT)),
+                 deserializedSample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT)));
+    assertEquals(sample.metricValue(metricDef.metricInfo(PRODUCE_RATE.name()).id()),
+                 deserializedSample.metricValue(metricDef.metricInfo(PRODUCE_RATE.name()).id()), EPSILON);
+    assertEquals(sample.metricValue(metricDef.metricInfo(FETCH_RATE.name()).id()),
+                 deserializedSample.metricValue(metricDef.metricInfo(FETCH_RATE.name()).id()), EPSILON);
+    assertEquals(sample.metricValue(metricDef.metricInfo(MESSAGE_IN_RATE.name()).id()),
+                 deserializedSample.metricValue(metricDef.metricInfo(MESSAGE_IN_RATE.name()).id()), EPSILON);
+    assertEquals(sample.metricValue(metricDef.metricInfo(REPLICATION_BYTES_IN_RATE.name()).id()),
+                 deserializedSample.metricValue(metricDef.metricInfo(REPLICATION_BYTES_IN_RATE.name()).id()), EPSILON);
+    assertEquals(sample.metricValue(metricDef.metricInfo(REPLICATION_BYTES_OUT_RATE.name()).id()),
+                 deserializedSample.metricValue(metricDef.metricInfo(REPLICATION_BYTES_OUT_RATE.name()).id()), EPSILON);
     assertEquals(sample.sampleTime(), deserializedSample.sampleTime());
   }
 

@@ -4,12 +4,14 @@
 
 package com.linkedin.kafka.cruisecontrol.common;
 
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -235,29 +237,36 @@ public class RandomCluster {
           }
 
           // Set leadership properties and replica load.
-          Map<Resource, Double> utilizationByResource = new HashMap<>();
-          utilizationByResource.put(Resource.CPU,
-              exponentialRandom(properties.get(ClusterProperty.MEAN_CPU).doubleValue() * topicPopularity,
-                  randomByResource.get(Resource.CPU)));
-          utilizationByResource.put(Resource.NW_IN,
-              exponentialRandom(properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() * topicPopularity,
-                  randomByResource.get(Resource.NW_IN)));
-          utilizationByResource.put(Resource.DISK,
-              exponentialRandom(properties.get(ClusterProperty.MEAN_DISK).doubleValue() * topicPopularity,
-                  randomByResource.get(Resource.DISK)));
+          AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues();
+          MetricValues metricValues = new MetricValues(1);
+          metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_CPU).doubleValue() * topicPopularity,
+                                                randomByResource.get(Resource.CPU)));
+          aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU), metricValues);
+
+          metricValues = new MetricValues(1);
+          metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() * topicPopularity,
+                                                randomByResource.get(Resource.NW_IN)));
+          aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_IN), metricValues);
+
+          metricValues = new MetricValues(1);
+          metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_DISK).doubleValue() * topicPopularity,
+                                                randomByResource.get(Resource.DISK)));
+          aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.DISK), metricValues);
 
           if (j == 1) {
-            utilizationByResource.put(Resource.NW_OUT,
-                exponentialRandom(properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() * topicPopularity,
-                    randomByResource.get(Resource.NW_OUT)));
+            metricValues = new MetricValues(1);
+            metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() * topicPopularity,
+                                                  randomByResource.get(Resource.NW_OUT)));
+            aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
             cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, j - 1, true);
           } else {
-            utilizationByResource.put(Resource.NW_OUT, 0.0);
+            metricValues = new MetricValues(1);
+            metricValues.set(0, 0.0);
+            aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
             cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, j - 1, false);
           }
-          cluster.pushLatestSnapshot(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo,
-              new Snapshot(1L, utilizationByResource.get(Resource.CPU), utilizationByResource.get(Resource.NW_IN),
-                  utilizationByResource.get(Resource.NW_OUT), utilizationByResource.get(Resource.DISK)));
+          cluster.setReplicaLoad(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo,
+                                 aggregatedMetricValues, Collections.singletonList(1L));
 
           // Update the set of replica locations.
           replicaBrokerIds.add(randomBrokerId);

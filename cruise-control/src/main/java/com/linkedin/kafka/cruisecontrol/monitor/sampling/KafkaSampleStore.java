@@ -58,8 +58,8 @@ public class KafkaSampleStore implements SampleStore {
   protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   private static final String DEFAULT_CLEANUP_POLICY = "delete";
   public static final Integer DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
-  // Keep additional snapshot windows in case some of the windows do not have enough samples.
-  private static final int ADDITIONAL_SNAPSHOT_WINDOW_TO_RETAIN_FACTOR = 2;
+  // Keep additional windows in case some of the windows do not have enough samples.
+  private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
   protected static final Random RANDOM = new Random();
   protected List<KafkaConsumer<byte[], byte[]>> _consumers;
@@ -126,9 +126,9 @@ public class KafkaSampleStore implements SampleStore {
   private void ensureTopicCreated(Map<String, ?> config) {
     ZkUtils zkUtils = createZkUtils(config);
     Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
-    long snapshotWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.LOAD_SNAPSHOT_WINDOW_MS_CONFIG));
-    int numSnapshotWindows = Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG));
-    long retentionMs = (numSnapshotWindows * ADDITIONAL_SNAPSHOT_WINDOW_TO_RETAIN_FACTOR) * snapshotWindowMs;
+    long windowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.METRICS_WINDOW_MS_CONFIG));
+    int numWindows = Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG));
+    long retentionMs = (numWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
     Properties props = new Properties();
     props.setProperty(LogConfig.RetentionMsProp(), Long.toString(retentionMs));
     props.setProperty(LogConfig.CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
@@ -169,7 +169,7 @@ public class KafkaSampleStore implements SampleStore {
                            metricSampleCount.incrementAndGet();
                          } else {
                            LOG.error("Failed to produce partition metric sample for {} of timestamp {} due to exception",
-                                     sample.topicPartition(), sample.sampleTime(), e);
+                                     sample.entity().tp(), sample.sampleTime(), e);
                          }
                        }
                      });

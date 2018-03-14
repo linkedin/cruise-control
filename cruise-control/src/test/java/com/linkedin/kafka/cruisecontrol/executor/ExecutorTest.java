@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
@@ -49,7 +49,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   @Test
   public void testBasicBalanceMovement() {
-    ZkUtils zkUtils = CruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
     String topic0 = "testPartitionMovement0";
     String topic1 = "testPartitionMovement1";
     int partition = 0;
@@ -82,7 +82,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   @Test
   public void testMoveNonExistingPartition() {
-    ZkUtils zkUtils = CruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
     String topic0 = "testPartitionMovement0";
     String topic1 = "testPartitionMovement1";
     String topic2 = "testPartitionMovement2";
@@ -128,7 +128,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   @Test
   public void testBrokerDiesWhenMovePartitions() throws Exception {
-    ZkUtils zkUtils = CruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
     String topic0 = "testPartitionMovement0";
     String topic1 = "testPartitionMovement1";
     int partition = 0;

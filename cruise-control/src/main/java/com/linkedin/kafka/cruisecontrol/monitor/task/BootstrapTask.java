@@ -6,8 +6,8 @@ package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 import org.apache.kafka.common.utils.Time;
@@ -31,7 +31,7 @@ class BootstrapTask implements Runnable {
   private final long _configuredSnapshotWindowMs;
   //
   private final MetadataClient _metadataClient;
-  private final MetricSampleAggregator _metricSampleAggregator;
+  private final KafkaMetricSampleAggregator _metricSampleAggregator;
   private final LoadMonitorTaskRunner _loadMonitorTaskRunner;
   private final MetricFetcherManager _metricFetcherManager;
   private final SampleStore _sampleStore;
@@ -42,7 +42,7 @@ class BootstrapTask implements Runnable {
   // Constructor for RECENT mode.
   BootstrapTask(boolean clearMetrics,
                 MetadataClient metadataClient,
-                MetricSampleAggregator metricSampleAggregator,
+                KafkaMetricSampleAggregator metricSampleAggregator,
                 LoadMonitorTaskRunner loadMonitorTaskRunner,
                 MetricFetcherManager metricFetcherManager,
                 SampleStore sampleStore,
@@ -72,7 +72,7 @@ class BootstrapTask implements Runnable {
   BootstrapTask(long startMs,
                 boolean clearMetrics,
                 MetadataClient metadataClient,
-                MetricSampleAggregator metricSampleAggregator,
+                KafkaMetricSampleAggregator metricSampleAggregator,
                 LoadMonitorTaskRunner loadMonitorTaskRunner,
                 MetricFetcherManager metricFetcherManager,
                 SampleStore sampleStore,
@@ -106,7 +106,7 @@ class BootstrapTask implements Runnable {
                 long endMs,
                 boolean clearMetrics,
                 MetadataClient metadataClient,
-                MetricSampleAggregator metricSampleAggregator,
+                KafkaMetricSampleAggregator metricSampleAggregator,
                 LoadMonitorTaskRunner loadMonitorTaskRunner,
                 MetricFetcherManager metricFetcherManager,
                 SampleStore sampleStore,
@@ -177,7 +177,7 @@ class BootstrapTask implements Runnable {
     LOG.trace("Mode: {}, Sampled range [{}, {}], now = {}, MetricSamplerAggregator snapshot windows: {}, "
                   + "sampling interval: {}",
               _mode, _bootstrappedRangeStartMs, _bootstrappedRangeEndMs, now,
-              _metricSampleAggregator.allSnapshotWindows(), _samplingIntervalMs);
+              _metricSampleAggregator.allWindows(), _samplingIntervalMs);
     switch (_mode) {
       case RANGE:
         return _bootstrappedRangeStartMs == _startMs && _bootstrappedRangeEndMs == _endMs;
@@ -188,7 +188,7 @@ class BootstrapTask implements Runnable {
         // Because we know that the sampling range end is always up to date. As long as we have enough snapshots
         // in the metric sample aggregator and our sampled range starting time is already no later than the
         // earliest snapshot window starting time, we know the bootstrap has finished.
-        List<Long> snapshotWindows = _metricSampleAggregator.allSnapshotWindows();
+        List<Long> snapshotWindows = _metricSampleAggregator.allWindows();
         return (snapshotWindows.size() >= _configuredNumSnapshots + 1)
             && (snapshotWindows.get(0) - _configuredSnapshotWindowMs >= _bootstrappedRangeStartMs)
             && _bootstrappedRangeEndMs > now - _samplingIntervalMs;
@@ -256,8 +256,8 @@ class BootstrapTask implements Runnable {
       throw t;
     } finally {
       LOG.info("Load monitor finished bootstrapping {} metric samples in {} snapshot windows for time "
-                   + "range [{}, {}] in {} seconds.", _metricSampleAggregator.totalNumSamples(),
-               _metricSampleAggregator.allSnapshotWindows().size(), _bootstrappedRangeStartMs, _bootstrappedRangeEndMs,
+                   + "range [{}, {}] in {} seconds.", _metricSampleAggregator.numSamples(),
+               _metricSampleAggregator.allWindows().size(), _bootstrappedRangeStartMs, _bootstrappedRangeEndMs,
                (_time.milliseconds() - bootstrapStartingMs) / 1000);
       _loadMonitorTaskRunner.compareAndSetState(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING,
                                                 LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING);

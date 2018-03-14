@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -30,7 +31,6 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -252,8 +252,8 @@ public class ExcludedTopicsTest {
         assertTrue("Excluded Topics Test failed to optimize " + _goal.name() + " with excluded topics.",
             _goal.optimize(_clusterModel, Collections.emptySet(), _excludedTopics));
       } else {
-        assertTrue("Excluded Topics Test optimized " + _goal.name() + " with excluded topics " + _excludedTopics,
-            !_goal.optimize(_clusterModel, Collections.emptySet(), _excludedTopics));
+        assertFalse("Excluded Topics Test optimized " + _goal.name() + " with excluded topics " + _excludedTopics,
+            _goal.optimize(_clusterModel, Collections.emptySet(), _excludedTopics));
       }
       // Generated proposals cannot have the excluded topic.
       if (!_excludedTopics.isEmpty()) {
@@ -290,7 +290,7 @@ public class ExcludedTopicsTest {
   }
 
   private static Goal goal(Class<? extends Goal> goalClass) throws Exception {
-    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1L));
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
@@ -321,18 +321,16 @@ public class ExcludedTopicsTest {
     cluster.createReplica("0", 0, pInfoT10, 0, true);
     cluster.createReplica("0", 0, pInfoT20, 0, true);
 
-    // Create snapshots and push them to the cluster.
-    cluster.pushLatestSnapshot("0", 0, pInfoT10, new Snapshot(1L,
-                                                              TestConstants.TYPICAL_CPU_CAPACITY / 2,
-                                                              TestConstants.LARGE_BROKER_CAPACITY / 2,
-                                                              TestConstants.MEDIUM_BROKER_CAPACITY / 2,
-                                                              TestConstants.LARGE_BROKER_CAPACITY / 2));
-    cluster.pushLatestSnapshot("0", 0, pInfoT20, new Snapshot(1L,
-                                                              TestConstants.TYPICAL_CPU_CAPACITY / 2,
-                                                              TestConstants.LARGE_BROKER_CAPACITY / 2,
-                                                              TestConstants.MEDIUM_BROKER_CAPACITY / 2,
-                                                              TestConstants.LARGE_BROKER_CAPACITY / 2));
+    AggregatedMetricValues aggregatedMetricValues =
+        KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(TestConstants.TYPICAL_CPU_CAPACITY / 2,
+                                                                  TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                                                  TestConstants.MEDIUM_BROKER_CAPACITY / 2,
+                                                                  TestConstants.LARGE_BROKER_CAPACITY / 2);
 
+    // Create snapshots and push them to the cluster.
+    cluster.setReplicaLoad("0", 0, pInfoT10, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad("0", 0, pInfoT20, aggregatedMetricValues, Collections.singletonList(1L));
+    
     return cluster;
   }
 
@@ -350,16 +348,18 @@ public class ExcludedTopicsTest {
     cluster.createReplica("0", 0, pInfoT40, 0, true);
     cluster.createReplica("0", 0, pInfoT50, 0, true);
     cluster.createReplica("0", 0, pInfoT60, 0, true);
+
+    AggregatedMetricValues aggregatedMetricValues =
+        KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                                                  TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                                                  TestConstants.MEDIUM_BROKER_CAPACITY / 2,
+                                                                  TestConstants.LARGE_BROKER_CAPACITY / 2);
+    
     // Create snapshots and push them to the cluster.
-    Snapshot commonSnapshot = new Snapshot(1L,
-                                           TestConstants.LARGE_BROKER_CAPACITY / 2,
-                                           TestConstants.LARGE_BROKER_CAPACITY / 2,
-                                           TestConstants.MEDIUM_BROKER_CAPACITY / 2,
-                                           TestConstants.LARGE_BROKER_CAPACITY / 2);
-    cluster.pushLatestSnapshot("0", 1, pInfoT30, commonSnapshot);
-    cluster.pushLatestSnapshot("0", 0, pInfoT40, commonSnapshot);
-    cluster.pushLatestSnapshot("0", 0, pInfoT50, commonSnapshot);
-    cluster.pushLatestSnapshot("0", 0, pInfoT60, commonSnapshot);
+    cluster.setReplicaLoad("0", 1, pInfoT30, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad("0", 0, pInfoT40, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad("0", 0, pInfoT50, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad("0", 0, pInfoT60, aggregatedMetricValues, Collections.singletonList(1L));
     return cluster;
   }
 }

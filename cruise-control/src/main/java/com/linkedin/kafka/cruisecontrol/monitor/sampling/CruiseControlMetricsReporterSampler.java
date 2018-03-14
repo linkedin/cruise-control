@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
+import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
@@ -52,7 +53,8 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
                             Set<TopicPartition> assignedPartitions,
                             long startTimeMs,
                             long endTimeMs,
-                            SamplingMode mode) throws MetricSamplingException {
+                            SamplingMode mode,
+                            MetricDef metricDef) throws MetricSamplingException {
     // Ensure we have an assignment.
     long pollerCount = 0L;
     while (_metricConsumer.assignment().isEmpty()) {
@@ -115,7 +117,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
 
     try {
       if (totalMetricsAdded > 0) {
-        return METRICS_PROCESSOR.process(cluster, assignedPartitions, mode);
+        return METRICS_PROCESSOR.process(cluster, assignedPartitions, mode, metricDef);
       } else {
         return new Samples(Collections.emptySet(), Collections.emptySet());
       }

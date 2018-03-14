@@ -4,14 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.common;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.model.Load;
-
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Properties;
 
 
 public class TestConstants {
@@ -68,11 +63,6 @@ public class TestConstants {
     properties.put(ClusterProperty.MEAN_NW_OUT, 100.0);
     BASE_PROPERTIES = Collections.unmodifiableMap(properties);
 
-    if (!Load.initialized()) {
-      Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
-      props.setProperty(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG, Integer.toString(NUM_SNAPSHOTS));
-      Load.init(new KafkaCruiseControlConfig(props));
-    }
   }
 
   // Broker capacity (homogeneous cluster is assumed).

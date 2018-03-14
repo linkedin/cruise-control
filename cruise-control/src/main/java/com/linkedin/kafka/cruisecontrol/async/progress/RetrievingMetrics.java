@@ -4,34 +4,18 @@
 
 package com.linkedin.kafka.cruisecontrol.async.progress;
 
-import java.util.concurrent.atomic.AtomicInteger;
-
-
 /**
  * This is the step when retrieving the workload snapshot from
- * {@link com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator}
+ * {@link com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator}
  */
 public class RetrievingMetrics implements OperationStep {
-  private final int _totalNumTopics;
-  private AtomicInteger _retrievedTopics;
-
-  public RetrievingMetrics(int totalNumTopics) {
-    _totalNumTopics = totalNumTopics;
-    _retrievedTopics = new AtomicInteger(0);
-  }
+  private volatile boolean _done = false;
 
   /**
    * Mark the step as finished.
    */
   public void done() {
-    _retrievedTopics.set(_totalNumTopics);
-  }
-
-  /**
-   * Increment the number of retrieved topics by 1.
-   */
-  public void incrementRetrievedTopics() {
-    _retrievedTopics.incrementAndGet();
+    _done = true;
   }
 
   @Override
@@ -41,7 +25,7 @@ public class RetrievingMetrics implements OperationStep {
 
   @Override
   public float completionPercentage() {
-    return _totalNumTopics <= 0 ? 1.0f : ((float) _retrievedTopics.get() / _totalNumTopics);
+    return _done ? 1.0f : 0.0f;
   }
 
   @Override

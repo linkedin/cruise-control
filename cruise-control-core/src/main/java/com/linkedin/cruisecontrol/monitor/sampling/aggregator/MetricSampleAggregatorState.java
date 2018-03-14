@@ -73,7 +73,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGeneration
       for (long windowIdx = oldestWindowIndex; windowIdx < currentWindowIndex; windowIdx++) {
         WindowState windowState = _windowStates.get(windowIdx);
         Long windowGeneration = _windowGenerations.get(windowIdx);
-        if (windowState == null || windowGeneration > windowState.generation()) {
+        if (windowState == null || windowGeneration == null || windowGeneration > windowState.generation()) {
           windowIndexesToUpdate.add(windowIdx);
         }
       }

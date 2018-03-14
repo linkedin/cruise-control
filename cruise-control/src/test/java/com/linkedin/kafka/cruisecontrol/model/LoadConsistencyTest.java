@@ -4,10 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 
 import java.util.ArrayList;
@@ -15,7 +13,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 
-import java.util.Properties;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,13 +33,6 @@ public class LoadConsistencyTest {
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
     Collection<Object[]> params = new ArrayList<>();
-
-    int numSnapshots = 2;
-    if (!Load.initialized()) {
-      Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
-      props.setProperty(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG, Integer.toString(numSnapshots));
-      Load.init(new KafkaCruiseControlConfig(props));
-    }
 
     Map<Resource, Double> brokerCapacity = new HashMap<>();
     brokerCapacity.put(Resource.CPU, TestConstants.LARGE_BROKER_CAPACITY);

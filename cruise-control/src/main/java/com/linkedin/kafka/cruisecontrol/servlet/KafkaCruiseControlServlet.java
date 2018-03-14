@@ -5,12 +5,12 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
@@ -18,7 +18,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -834,7 +834,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       if (verbose || superVerbose) {
         out.write(String.format("%n%nMonitored Windows [Window End_Time=Data_Completeness]:%n").getBytes(StandardCharsets.UTF_8));
         StringJoiner joiner = new StringJoiner(", ", "{", "}");
-        for (Map.Entry<Long, Double> entry : state.monitorState().monitoredSnapshotWindows().entrySet()) {
+        for (Map.Entry<Long, Float> entry : state.monitorState().monitoredWindows().entrySet()) {
           joiner.add(String.format("%d=%.3f%%", entry.getKey(), entry.getValue() * 100));
         }
         out.write(joiner.toString().getBytes(StandardCharsets.UTF_8));
@@ -871,17 +871,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           }
         }
         if (superVerbose) {
-          out.write(String.format("%n%nFlawed metric samples:%n").getBytes(StandardCharsets.UTF_8));
-          Map<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> sampleFlaws = state.monitorState().sampleFlaws();
+          out.write(String.format("%n%nExtrapolated metric samples:%n").getBytes(StandardCharsets.UTF_8));
+          Map<TopicPartition, List<SampleExtrapolation>> sampleFlaws = state.monitorState().sampleExtrapolations();
           if (sampleFlaws != null && !sampleFlaws.isEmpty()) {
-            for (Map.Entry<TopicPartition, List<MetricSampleAggregationResult.SampleFlaw>> entry : sampleFlaws.entrySet()) {
+            for (Map.Entry<TopicPartition, List<SampleExtrapolation>> entry : sampleFlaws.entrySet()) {
               out.write(String.format("%n%s: %s", entry.getKey(), entry.getValue()).getBytes(StandardCharsets.UTF_8));
             }
           } else {
             out.write("None".getBytes(StandardCharsets.UTF_8));
           }
           out.write(String.format("%n%nLinear Regression Model State:%n%s", state.monitorState().detailTrainingProgress())
-                          .getBytes(StandardCharsets.UTF_8));
+                        .getBytes(StandardCharsets.UTF_8));
         }
       }
     }
@@ -1125,7 +1125,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     if (state == null) {
       return null;
     }
-    int availableWindows = state.monitorState().numValidSnapshotWindows();
+    int availableWindows = state.monitorState().numValidWindows();
     List<String> allGoals = new ArrayList<>();
     List<String> readyGoals = new ArrayList<>();
     state.analyzerState().readyGoals().forEach((goal, ready) -> {

@@ -4,16 +4,15 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
-import com.linkedin.kafka.cruisecontrol.CruiseControlUnitTestUtils;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.Snapshot;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -78,7 +77,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
 
   @Test
   public void testFindReplicaToSwapWith() {
-    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
     props.setProperty(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
@@ -119,7 +118,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
 
   @Test
   public void testSwapReplicas() {
-    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
     props.setProperty(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
@@ -148,7 +147,7 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
 
   @Test
   public void test() {
-    Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
     props.setProperty(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
@@ -216,23 +215,17 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
    * The average broker size should be: 270
    */
   private ClusterModel createClusterModel() {
-    int numSnapshots = 2;
-    if (!Load.initialized()) {
-      Properties props = CruiseControlUnitTestUtils.getCruiseControlProperties();
-      props.setProperty(KafkaCruiseControlConfig.NUM_LOAD_SNAPSHOTS_CONFIG, Integer.toString(numSnapshots));
-      Load.init(new KafkaCruiseControlConfig(props));
-    }
+    Map<TopicPartition, Float> partitionSize = new HashMap<>();
 
-    Map<TopicPartition, Snapshot> snapshots = new HashMap<>();
-    snapshots.put(T0P0, new Snapshot(0, 0.0, 0.0, 0.0, 10));
-    snapshots.put(T0P1, new Snapshot(0, 0.0, 0.0, 0.0, 90));
-    snapshots.put(T0P2, new Snapshot(0, 0.0, 0.0, 0.0, 20));
-    snapshots.put(T1P0, new Snapshot(0, 0.0, 0.0, 0.0, 80));
-    snapshots.put(T1P1, new Snapshot(0, 0.0, 0.0, 0.0, 30));
-    snapshots.put(T1P2, new Snapshot(0, 0.0, 0.0, 0.0, 70));
-    snapshots.put(T2P0, new Snapshot(0, 0.0, 0.0, 0.0, 40));
-    snapshots.put(T2P1, new Snapshot(0, 0.0, 0.0, 0.0, 60));
-    snapshots.put(T2P2, new Snapshot(0, 0.0, 0.0, 0.0, 50));
+    partitionSize.put(T0P0, 10f);
+    partitionSize.put(T0P1, 90f);
+    partitionSize.put(T0P2, 20f);
+    partitionSize.put(T1P0, 80f);
+    partitionSize.put(T1P1, 30f);
+    partitionSize.put(T1P2, 70f);
+    partitionSize.put(T2P0, 40f);
+    partitionSize.put(T2P1, 60f);
+    partitionSize.put(T2P2, 50f);
 
     final int numRacks = 4;
     ClusterModel clusterModel = new ClusterModel(new ModelGeneration(0, 0),
@@ -280,38 +273,42 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     clusterModel.createReplica("r3", 4, T2P0, 2, false);
     clusterModel.createReplica("r3", 4, T2P2, 2, false);
 
+    List<Long> windows = Collections.singletonList(1L);
+    clusterModel.setReplicaLoad("r0", 0, T0P0, getAggregatedMetricValues(partitionSize.get(T0P0)), windows);
+    clusterModel.setReplicaLoad("r0", 0, T1P2, getAggregatedMetricValues(partitionSize.get(T1P2)), windows);
+    clusterModel.setReplicaLoad("r0", 0, T0P2, getAggregatedMetricValues(partitionSize.get(T0P2)), windows);
+    clusterModel.setReplicaLoad("r0", 0, T2P1, getAggregatedMetricValues(partitionSize.get(T2P1)), windows);
+    clusterModel.setReplicaLoad("r0", 0, T1P1, getAggregatedMetricValues(partitionSize.get(T1P1)), windows);
 
-    clusterModel.pushLatestSnapshot("r0", 0, T0P0, snapshots.get(T0P0).duplicate());
-    clusterModel.pushLatestSnapshot("r0", 0, T1P2, snapshots.get(T1P2).duplicate());
-    clusterModel.pushLatestSnapshot("r0", 0, T0P2, snapshots.get(T0P2).duplicate());
-    clusterModel.pushLatestSnapshot("r0", 0, T2P1, snapshots.get(T2P1).duplicate());
-    clusterModel.pushLatestSnapshot("r0", 0, T1P1, snapshots.get(T1P1).duplicate());
+    clusterModel.setReplicaLoad("r0", 1, T0P1, getAggregatedMetricValues(partitionSize.get(T0P1)), windows);
+    clusterModel.setReplicaLoad("r0", 1, T2P0, getAggregatedMetricValues(partitionSize.get(T2P0)), windows);
+    clusterModel.setReplicaLoad("r0", 1, T1P0, getAggregatedMetricValues(partitionSize.get(T1P0)), windows);
+    clusterModel.setReplicaLoad("r0", 1, T2P2, getAggregatedMetricValues(partitionSize.get(T2P2)), windows);
 
-    clusterModel.pushLatestSnapshot("r0", 1, T0P1, snapshots.get(T0P1).duplicate());
-    clusterModel.pushLatestSnapshot("r0", 1, T2P0, snapshots.get(T2P0).duplicate());
-    clusterModel.pushLatestSnapshot("r0", 1, T1P0, snapshots.get(T1P0).duplicate());
-    clusterModel.pushLatestSnapshot("r0", 1, T2P2, snapshots.get(T2P2).duplicate());
+    clusterModel.setReplicaLoad("r1", 2, T0P2, getAggregatedMetricValues(partitionSize.get(T0P2)), windows);
+    clusterModel.setReplicaLoad("r1", 2, T2P1, getAggregatedMetricValues(partitionSize.get(T2P1)), windows);
+    clusterModel.setReplicaLoad("r1", 2, T0P1, getAggregatedMetricValues(partitionSize.get(T0P1)), windows);
+    clusterModel.setReplicaLoad("r1", 2, T2P0, getAggregatedMetricValues(partitionSize.get(T2P0)), windows);
+    clusterModel.setReplicaLoad("r1", 2, T1P0, getAggregatedMetricValues(partitionSize.get(T1P0)), windows);
+    clusterModel.setReplicaLoad("r1", 2, T1P2, getAggregatedMetricValues(partitionSize.get(T1P2)), windows);
 
-    clusterModel.pushLatestSnapshot("r1", 2, T0P2, snapshots.get(T0P2).duplicate());
-    clusterModel.pushLatestSnapshot("r1", 2, T2P1, snapshots.get(T2P1).duplicate());
-    clusterModel.pushLatestSnapshot("r1", 2, T0P1, snapshots.get(T0P1).duplicate());
-    clusterModel.pushLatestSnapshot("r1", 2, T2P0, snapshots.get(T2P0).duplicate());
-    clusterModel.pushLatestSnapshot("r1", 2, T1P0, snapshots.get(T1P0).duplicate());
-    clusterModel.pushLatestSnapshot("r1", 2, T1P2, snapshots.get(T1P2).duplicate());
+    clusterModel.setReplicaLoad("r2", 3, T1P0, getAggregatedMetricValues(partitionSize.get(T1P0)), windows);
+    clusterModel.setReplicaLoad("r2", 3, T2P2, getAggregatedMetricValues(partitionSize.get(T2P2)), windows);
+    clusterModel.setReplicaLoad("r2", 3, T1P1, getAggregatedMetricValues(partitionSize.get(T1P1)), windows);
+    clusterModel.setReplicaLoad("r2", 3, T0P0, getAggregatedMetricValues(partitionSize.get(T0P0)), windows);
+    clusterModel.setReplicaLoad("r2", 3, T0P2, getAggregatedMetricValues(partitionSize.get(T0P2)), windows);
+    clusterModel.setReplicaLoad("r2", 3, T2P1, getAggregatedMetricValues(partitionSize.get(T2P1)), windows);
 
-    clusterModel.pushLatestSnapshot("r2", 3, T1P0, snapshots.get(T1P0).duplicate());
-    clusterModel.pushLatestSnapshot("r2", 3, T2P2, snapshots.get(T2P2).duplicate());
-    clusterModel.pushLatestSnapshot("r2", 3, T1P1, snapshots.get(T1P1).duplicate());
-    clusterModel.pushLatestSnapshot("r2", 3, T0P0, snapshots.get(T0P0).duplicate());
-    clusterModel.pushLatestSnapshot("r2", 3, T0P2, snapshots.get(T0P2).duplicate());
-    clusterModel.pushLatestSnapshot("r2", 3, T2P1, snapshots.get(T2P1).duplicate());
-
-    clusterModel.pushLatestSnapshot("r3", 4, T1P1, snapshots.get(T1P1).duplicate());
-    clusterModel.pushLatestSnapshot("r3", 4, T0P0, snapshots.get(T0P0).duplicate());
-    clusterModel.pushLatestSnapshot("r3", 4, T1P2, snapshots.get(T1P2).duplicate());
-    clusterModel.pushLatestSnapshot("r3", 4, T0P1, snapshots.get(T0P1).duplicate());
-    clusterModel.pushLatestSnapshot("r3", 4, T2P0, snapshots.get(T2P0).duplicate());
-    clusterModel.pushLatestSnapshot("r3", 4, T2P2, snapshots.get(T2P2).duplicate());
+    clusterModel.setReplicaLoad("r3", 4, T1P1, getAggregatedMetricValues(partitionSize.get(T1P1)), windows);
+    clusterModel.setReplicaLoad("r3", 4, T0P0, getAggregatedMetricValues(partitionSize.get(T0P0)), windows);
+    clusterModel.setReplicaLoad("r3", 4, T1P2, getAggregatedMetricValues(partitionSize.get(T1P2)), windows);
+    clusterModel.setReplicaLoad("r3", 4, T0P1, getAggregatedMetricValues(partitionSize.get(T0P1)), windows);
+    clusterModel.setReplicaLoad("r3", 4, T2P0, getAggregatedMetricValues(partitionSize.get(T2P0)), windows);
+    clusterModel.setReplicaLoad("r3", 4, T2P2, getAggregatedMetricValues(partitionSize.get(T2P2)), windows);
     return clusterModel;
+  }
+
+  private AggregatedMetricValues getAggregatedMetricValues(double value) {
+    return KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(0, 0, 0, value);
   }
 }

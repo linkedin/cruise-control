@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
+import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import java.util.Collections;
 import java.util.Set;
@@ -44,13 +45,15 @@ public interface MetricSampler extends Configurable, AutoCloseable {
    * @param startTimeMs the start time of the sampling period.
    * @param endTimeMs the end time of the sampling period.
    * @param mode The sampling mode.
+   * @param metricDef the metric definitions.
    * @return the PartitionMetricSample of the topic partition and replica id
    */
   Samples getSamples(Cluster cluster,
                      Set<TopicPartition> assignedPartitions,
                      long startTimeMs,
                      long endTimeMs,
-                     SamplingMode mode)
+                     SamplingMode mode,
+                     MetricDef metricDef)
       throws MetricSamplingException;
 
   /**
