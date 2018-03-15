@@ -115,7 +115,22 @@ public class CruiseControlMetricsProcessor {
                                      -1.0,
                                      brokerLoad.allTopicsProduceRequestRate(),
                                      brokerLoad.allTopicsFetchRequestRate(),
-                                     _maxMetricTimestamp);
+                                     _maxMetricTimestamp,
+                                     brokerLoad.requestQueueSize(),
+                                     brokerLoad.responseQueueSize(),
+                                     brokerLoad.produceRequestQueueSizeMsMax(),
+                                     brokerLoad.produceRequestQueueSizeMsMean(),
+                                     brokerLoad.consumerFetchRequestQueueTimeMsMax(),
+                                     brokerLoad.consumerFetchRequestQueueTimeMsMean(),
+                                     brokerLoad.followerFetchRequestQueueTimeMsMax(),
+                                     brokerLoad.followerFetchRequestQueueTimeMsMean(),
+                                     brokerLoad.produceTotalTimeMsMax(),
+                                     brokerLoad.produceTotalTimeMsMean(),
+                                     brokerLoad.consumerFetchTotalTimeMsMax(),
+                                     brokerLoad.consumerFetchTotalTimeMsMean(),
+                                     brokerLoad.followerFetchTotalTimeMsMax(),
+                                     brokerLoad.followerFetchTotalTimeMsMean(),
+                                     brokerLoad.logFlushRateAndTimeMs());
           LOG.debug("Added broker metric sample for broker {}", node.id());
           brokerMetricSamples.add(brokerMetricSample);
         } else {
@@ -249,6 +264,21 @@ public class CruiseControlMetricsProcessor {
     private ValueAndCount _consumerFetchRequestRate = new ValueAndCount();
     private ValueAndCount _followerFetchRequestRate = new ValueAndCount();
     private ValueAndCount _requestHandlerAvgIdlePercent = new ValueAndCount();
+    private ValueAndCount _requestQueueSize = new ValueAndCount();
+    private ValueAndCount _responseQueueSize = new ValueAndCount();
+    private ValueAndCount _produceRequestQueueTimeMsMax = new ValueAndCount();
+    private ValueAndCount _produceRequestQueueTimeMsMean = new ValueAndCount();
+    private ValueAndCount _consumerFetchRequestQueueTimeMsMax = new ValueAndCount();
+    private ValueAndCount _consumerFetchRequestQueueTimeMsMean = new ValueAndCount();
+    private ValueAndCount _followerFetchRequestQueueTimeMsMax = new ValueAndCount();
+    private ValueAndCount _followerFetchRequestQueueTimeMsMean = new ValueAndCount();
+    private ValueAndCount _produceTotalTimeMsMax = new ValueAndCount();
+    private ValueAndCount _produceTotalTimeMsMean = new ValueAndCount();
+    private ValueAndCount _consumerFetchTotalTimeMsMax = new ValueAndCount();
+    private ValueAndCount _consumerFetchTotalTimeMsMean = new ValueAndCount();
+    private ValueAndCount _followerFetchTotalTimeMsMax = new ValueAndCount();
+    private ValueAndCount _followerFetchTotalTimeMsMean = new ValueAndCount();
+    private ValueAndCount _logFlushRateAndTimeMs = new ValueAndCount();
     private boolean _valid = true;
 
     private void recordMetric(CruiseControlMetric ccm) {
@@ -279,6 +309,51 @@ public class CruiseControlMetricsProcessor {
           break;
         case PARTITION_SIZE:
           recordPartitionSize((PartitionMetric) ccm);
+          break;
+        case BROKER_REQUEST_QUEUE_SIZE:
+          _requestQueueSize.addValue(ccm.value());
+          break;
+        case BROKER_RESPONSE_QUEUE_SIZE:
+          _responseQueueSize.addValue(ccm.value());
+          break;
+        case BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MAX:
+          _produceRequestQueueTimeMsMax.addValue(ccm.value());
+          break;
+        case BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MEAN:
+          _produceRequestQueueTimeMsMean.addValue(ccm.value());
+          break;
+        case BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MAX:
+          _consumerFetchRequestQueueTimeMsMax.addValue(ccm.value());
+          break;
+        case BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN:
+          _consumerFetchRequestQueueTimeMsMean.addValue(ccm.value());
+          break;
+        case BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MAX:
+          _followerFetchRequestQueueTimeMsMax.addValue(ccm.value());
+          break;
+        case BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN:
+          _followerFetchRequestQueueTimeMsMean.addValue(ccm.value());
+          break;
+        case BROKER_PRODUCE_TOTAL_TIME_MS_MAX:
+          _produceTotalTimeMsMax.addValue(ccm.value());
+          break;
+        case BROKER_PRODUCE_TOTAL_TIME_MS_MEAN:
+          _produceTotalTimeMsMean.addValue(ccm.value());
+          break;
+        case BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MAX:
+          _consumerFetchTotalTimeMsMax.addValue(ccm.value());
+          break;
+        case BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MEAN:
+          _consumerFetchTotalTimeMsMean.addValue(ccm.value());
+          break;
+        case BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MAX:
+          _followerFetchTotalTimeMsMax.addValue(ccm.value());
+          break;
+        case BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN:
+          _followerFetchTotalTimeMsMean.addValue(ccm.value());
+          break;
+        case BROKER_LOG_FLUSH_RATE_AND_TIME_MS:
+          _logFlushRateAndTimeMs.addValue(ccm.value());
           break;
         default:
           recordCruiseControlMetric(ccm);
@@ -360,6 +435,66 @@ public class CruiseControlMetricsProcessor {
 
     private double requestHandlerAvgIdlePercent() {
       return _requestHandlerAvgIdlePercent.value();
+    }
+
+    private long requestQueueSize() {
+      return (long) _requestQueueSize.value();
+    }
+
+    private long responseQueueSize() {
+      return (long) _responseQueueSize.value();
+    }
+
+    private double produceRequestQueueSizeMsMax() {
+      return _produceRequestQueueTimeMsMax.value();
+    }
+
+    private double produceRequestQueueSizeMsMean() {
+      return _produceRequestQueueTimeMsMean.value();
+    }
+
+    private double consumerFetchRequestQueueTimeMsMax() {
+      return _consumerFetchRequestQueueTimeMsMax.value();
+    }
+
+    private double consumerFetchRequestQueueTimeMsMean() {
+      return _consumerFetchRequestQueueTimeMsMean.value();
+    }
+
+    private double followerFetchRequestQueueTimeMsMax() {
+      return _followerFetchRequestQueueTimeMsMax.value();
+    }
+
+    private double followerFetchRequestQueueTimeMsMean() {
+      return _followerFetchRequestQueueTimeMsMean.value();
+    }
+
+    private double produceTotalTimeMsMax() {
+      return _produceTotalTimeMsMax.value();
+    }
+
+    private double produceTotalTimeMsMean() {
+      return _produceTotalTimeMsMean.value();
+    }
+
+    private double consumerFetchTotalTimeMsMax() {
+      return _consumerFetchTotalTimeMsMax.value();
+    }
+
+    private double consumerFetchTotalTimeMsMean() {
+      return _consumerFetchTotalTimeMsMean.value();
+    }
+
+    private double followerFetchTotalTimeMsMax() {
+      return _followerFetchTotalTimeMsMax.value();
+    }
+
+    private double followerFetchTotalTimeMsMean() {
+      return _followerFetchTotalTimeMsMean.value();
+    }
+
+    private double logFlushRateAndTimeMs() {
+      return _logFlushRateAndTimeMs.value();
     }
 
     private IOLoad ioLoad(String topic) {

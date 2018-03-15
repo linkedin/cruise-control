@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter;
 import java.io.File;
 import java.io.IOException;
 import java.util.Properties;
+import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.protocol.SecurityProtocol;
@@ -48,6 +49,7 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
     props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG), "SSL");
     props.setProperty(CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG, "100");
     props.setProperty(CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
+    props.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), "1");
     return props;
   }
 

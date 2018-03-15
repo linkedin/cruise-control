@@ -197,7 +197,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   }
 
   private void reportKafkaMetrics(long now) {
-    LOG.debug("Reporting KafkaMetrics.");
+    LOG.debug("Reporting KafkaMetrics. {}", _interestedMetrics.values());
     for (KafkaMetric metric : _interestedMetrics.values()) {
       sendCruiseControlMetric(MetricsUtils.toCruiseControlMetric(metric, now, _brokerId));
     }
