@@ -24,6 +24,7 @@ public class MetricsUtils {
   private static final String REQUEST_QUEUE_SIZE = "RequestQueueSize";
   private static final String RESPONSE_QUEUE_SIZE = "ResponseQueueSize";
   private static final String REQUEST_QUEUE_TIME_MS = "RequestQueueTimeMs";
+  private static final String LOCAL_TIME_MS =   "LocalTimeMs";
   private static final String TOTAL_TIME_MS = "TotalTimeMs";
   private static final String TOTAL_FETCH_REQUEST_PER_SEC = "TotalFetchRequestsPerSec";
   private static final String TOTAL_PRODUCE_REQUEST_PER_SEC = "TotalProduceRequestsPerSec";
@@ -63,6 +64,7 @@ public class MetricsUtils {
                                                               REQUEST_QUEUE_SIZE,
                                                               RESPONSE_QUEUE_SIZE,
                                                               REQUEST_QUEUE_TIME_MS,
+                                                              LOCAL_TIME_MS,
                                                               TOTAL_TIME_MS)));
 
   private static final Set<String> INTERESTED_TOPIC_METRIC_NAMES =
@@ -298,6 +300,38 @@ public class MetricsUtils {
           default:
             return null;
         }
+      case LOCAL_TIME_MS:
+        switch (tags.get(REQUEST_TYPE_KEY)) {
+          case PRODUCE_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_PRODUCE_LOCAL_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_PRODUCE_LOCAL_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          case CONSUMER_FETCH_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          case FOLLOWER_FETCH_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          default:
+            return null;
+        }
       case TOTAL_TIME_MS:
         switch (tags.get(REQUEST_TYPE_KEY)) {
           case PRODUCE_REQUEST_TYPE:
@@ -339,9 +373,9 @@ public class MetricsUtils {
         } else {
           switch (attribute) {
             case ATTRIBUTE_MAX:
-              return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_TIME_MAX_MS, now, brokerId, value);
+              return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_TIME_MS_MAX, now, brokerId, value);
             case ATTRIBUTE_MEAN:
-              return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_TIME_MEAN_MS, now, brokerId, value);
+              return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_TIME_MS_MEAN, now, brokerId, value);
             default:
               return null;
           }

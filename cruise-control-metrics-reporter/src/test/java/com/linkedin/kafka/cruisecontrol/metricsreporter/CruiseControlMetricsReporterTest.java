@@ -94,7 +94,7 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     consumer.subscribe(Collections.singletonList(TOPIC));
     long startMs = System.currentTimeMillis();
     Set<Integer> metricTypes = new HashSet<>();
-    while (metricTypes.size() < 33 && System.currentTimeMillis() < startMs + 15000) {
+    while (metricTypes.size() < 39 && System.currentTimeMillis() < startMs + 15000) {
       records = consumer.poll(10);
       for (ConsumerRecord<String, CruiseControlMetric> record : records) {
         metricTypes.add((int) record.value().metricType().id());
@@ -131,8 +131,14 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
                                                                        (int) BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MAX.id(),
                                                                        (int) BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN.id(),
                                                                        (int) BROKER_LOG_FLUSH_RATE.id(),
-                                                                       (int) BROKER_LOG_FLUSH_TIME_MAX_MS.id(),
-                                                                       (int) BROKER_LOG_FLUSH_TIME_MEAN_MS.id()));
+                                                                       (int) BROKER_LOG_FLUSH_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_LOG_FLUSH_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_PRODUCE_LOCAL_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_PRODUCE_LOCAL_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN.id()));
     assertEquals("Expected to see " + expectedMetricTypes + ", but only see " + metricTypes, expectedMetricTypes, metricTypes);
   }
 
