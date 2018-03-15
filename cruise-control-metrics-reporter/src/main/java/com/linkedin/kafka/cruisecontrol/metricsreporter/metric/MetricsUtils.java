@@ -53,9 +53,9 @@ public class MetricsUtils {
   private static final String FOLLOWER_FETCH_REQUEST_TYPE = "FetchFollower";
   private static final String PRODUCE_REQUEST_TYPE = "Produce";
 
-  // SubTag
-  private static final String SUBTAG_MEAN = "Mean";
-  private static final String SUBTAG_MAX = "Max";
+  // Attribute
+  static final String ATTRIBUTE_MEAN = "Mean";
+  static final String ATTRIBUTE_MAX = "Max";
 
   // Name Set.
   private static final Set<String> INTERESTED_NETWORK_METRIC_NAMES =
@@ -121,12 +121,12 @@ public class MetricsUtils {
                                                           int brokerId,
                                                           com.yammer.metrics.core.MetricName metricName,
                                                           double value,
-                                                          String subTag) {
+                                                          String attribute) {
     CruiseControlMetric ccm =
-        toCruiseControlMetric(now, brokerId, metricName.getName(), yammerMetricScopeToTags(metricName.getScope()), value, subTag);
+        toCruiseControlMetric(now, brokerId, metricName.getName(), yammerMetricScopeToTags(metricName.getScope()), value, attribute);
     if (ccm == null) {
       throw new IllegalArgumentException(String.format("Cannot convert yammer metric %s to a Cruise Control metric for "
-                                                       + "broker %d at time %d for tag %s", metricName, brokerId, now, subTag));
+                                                       + "broker %d at time %d for tag %s", metricName, brokerId, now, attribute));
     }
     return ccm;
   }
@@ -206,7 +206,7 @@ public class MetricsUtils {
                                                            String name,
                                                            Map<String, String> tags,
                                                            double value,
-                                                           String subTag) {
+                                                           String attribute) {
     String topic = tags.get(TOPIC_KEY);
     switch (name) {
       case BYTES_IN_PER_SEC:
@@ -269,28 +269,28 @@ public class MetricsUtils {
       case REQUEST_QUEUE_TIME_MS:
         switch (tags.get(REQUEST_TYPE_KEY)) {
           case PRODUCE_REQUEST_TYPE:
-            switch (subTag) {
-              case SUBTAG_MAX:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
                 return new BrokerMetric(MetricType.BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MAX, now, brokerId, value);
-              case SUBTAG_MEAN:
+              case ATTRIBUTE_MEAN:
                 return new BrokerMetric(MetricType.BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MEAN, now, brokerId, value);
               default:
                 return null;
             }
           case CONSUMER_FETCH_REQUEST_TYPE:
-            switch (subTag) {
-              case SUBTAG_MAX:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
                 return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MAX, now, brokerId, value);
-              case SUBTAG_MEAN:
+              case ATTRIBUTE_MEAN:
                 return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN, now, brokerId, value);
               default:
                 return null;
             }
           case FOLLOWER_FETCH_REQUEST_TYPE:
-            switch (subTag) {
-              case SUBTAG_MAX:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
                 return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MAX, now, brokerId, value);
-              case SUBTAG_MEAN:
+              case ATTRIBUTE_MEAN:
                 return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN, now, brokerId, value);
               default:
                 return null;
@@ -301,28 +301,28 @@ public class MetricsUtils {
       case TOTAL_TIME_MS:
         switch (tags.get(REQUEST_TYPE_KEY)) {
           case PRODUCE_REQUEST_TYPE:
-            switch (subTag) {
-              case SUBTAG_MAX:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
                 return new BrokerMetric(MetricType.BROKER_PRODUCE_TOTAL_TIME_MS_MAX, now, brokerId, value);
-              case SUBTAG_MEAN:
+              case ATTRIBUTE_MEAN:
                 return new BrokerMetric(MetricType.BROKER_PRODUCE_TOTAL_TIME_MS_MEAN, now, brokerId, value);
               default:
                 return null;
             }
           case CONSUMER_FETCH_REQUEST_TYPE:
-            switch (subTag) {
-              case SUBTAG_MAX:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
                 return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MAX, now, brokerId, value);
-              case SUBTAG_MEAN:
+              case ATTRIBUTE_MEAN:
                 return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MEAN, now, brokerId, value);
               default:
                 return null;
             }
           case FOLLOWER_FETCH_REQUEST_TYPE:
-            switch (subTag) {
-              case SUBTAG_MAX:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
                 return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MAX, now, brokerId, value);
-              case SUBTAG_MEAN:
+              case ATTRIBUTE_MEAN:
                 return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN, now, brokerId, value);
               default:
                 return null;
@@ -334,7 +334,18 @@ public class MetricsUtils {
         int partition = Integer.parseInt(tags.get(PARTITION_KEY));
         return new PartitionMetric(MetricType.PARTITION_SIZE, now, brokerId, topic, partition, value);
       case LOG_FLUSH_RATE_AND_TIME_MS:
-        return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_RATE_AND_TIME_MS, now, brokerId, value);
+        if (attribute == null) {
+          return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_RATE, now, brokerId, value);
+        } else {
+          switch (attribute) {
+            case ATTRIBUTE_MAX:
+              return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_TIME_MAX_MS, now, brokerId, value);
+            case ATTRIBUTE_MEAN:
+              return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_TIME_MEAN_MS, now, brokerId, value);
+            default:
+              return null;
+          }
+        }
       case REQUEST_HANDLER_AVG_IDLE_PERCENT:
         return new BrokerMetric(MetricType.BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT, now, brokerId, value);
       default:

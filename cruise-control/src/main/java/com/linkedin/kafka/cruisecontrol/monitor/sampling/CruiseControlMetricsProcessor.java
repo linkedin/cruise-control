@@ -130,7 +130,9 @@ public class CruiseControlMetricsProcessor {
                                      brokerLoad.consumerFetchTotalTimeMsMean(),
                                      brokerLoad.followerFetchTotalTimeMsMax(),
                                      brokerLoad.followerFetchTotalTimeMsMean(),
-                                     brokerLoad.logFlushRateAndTimeMs());
+                                     brokerLoad.logFlushRate(),
+                                     brokerLoad.logFlushTimeMaxMs(),
+                                     brokerLoad.logFlushTimeMeanMs());
           LOG.debug("Added broker metric sample for broker {}", node.id());
           brokerMetricSamples.add(brokerMetricSample);
         } else {
@@ -278,7 +280,9 @@ public class CruiseControlMetricsProcessor {
     private ValueAndCount _consumerFetchTotalTimeMsMean = new ValueAndCount();
     private ValueAndCount _followerFetchTotalTimeMsMax = new ValueAndCount();
     private ValueAndCount _followerFetchTotalTimeMsMean = new ValueAndCount();
-    private ValueAndCount _logFlushRateAndTimeMs = new ValueAndCount();
+    private ValueAndCount _logFlushRate = new ValueAndCount();
+    private ValueAndCount _logFlushTimeMaxMs = new ValueAndCount();
+    private ValueAndCount _logFlushTimeMeanMs = new ValueAndCount();
     private boolean _valid = true;
 
     private void recordMetric(CruiseControlMetric ccm) {
@@ -352,8 +356,14 @@ public class CruiseControlMetricsProcessor {
         case BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN:
           _followerFetchTotalTimeMsMean.addValue(ccm.value());
           break;
-        case BROKER_LOG_FLUSH_RATE_AND_TIME_MS:
-          _logFlushRateAndTimeMs.addValue(ccm.value());
+        case BROKER_LOG_FLUSH_RATE:
+          _logFlushRate.addValue(ccm.value());
+          break;
+        case BROKER_LOG_FLUSH_TIME_MAX_MS:
+          _logFlushTimeMaxMs.addValue(ccm.value());
+          break;
+        case BROKER_LOG_FLUSH_TIME_MEAN_MS:
+          _logFlushTimeMeanMs.addValue(ccm.value());
           break;
         default:
           recordCruiseControlMetric(ccm);
@@ -437,36 +447,36 @@ public class CruiseControlMetricsProcessor {
       return _requestHandlerAvgIdlePercent.value();
     }
 
-    private long requestQueueSize() {
-      return (long) _requestQueueSize.value();
+    private int requestQueueSize() {
+      return (int) _requestQueueSize.value();
     }
 
-    private long responseQueueSize() {
-      return (long) _responseQueueSize.value();
+    private int responseQueueSize() {
+      return (int) _responseQueueSize.value();
     }
 
-    private double produceRequestQueueSizeMsMax() {
-      return _produceRequestQueueTimeMsMax.value();
+    private int produceRequestQueueSizeMsMax() {
+      return (int) _produceRequestQueueTimeMsMax.value();
     }
 
-    private double produceRequestQueueSizeMsMean() {
-      return _produceRequestQueueTimeMsMean.value();
+    private int produceRequestQueueSizeMsMean() {
+      return (int) _produceRequestQueueTimeMsMean.value();
     }
 
-    private double consumerFetchRequestQueueTimeMsMax() {
-      return _consumerFetchRequestQueueTimeMsMax.value();
+    private int consumerFetchRequestQueueTimeMsMax() {
+      return (int) _consumerFetchRequestQueueTimeMsMax.value();
     }
 
-    private double consumerFetchRequestQueueTimeMsMean() {
-      return _consumerFetchRequestQueueTimeMsMean.value();
+    private int consumerFetchRequestQueueTimeMsMean() {
+      return (int) _consumerFetchRequestQueueTimeMsMean.value();
     }
 
-    private double followerFetchRequestQueueTimeMsMax() {
-      return _followerFetchRequestQueueTimeMsMax.value();
+    private int followerFetchRequestQueueTimeMsMax() {
+      return (int) _followerFetchRequestQueueTimeMsMax.value();
     }
 
-    private double followerFetchRequestQueueTimeMsMean() {
-      return _followerFetchRequestQueueTimeMsMean.value();
+    private int followerFetchRequestQueueTimeMsMean() {
+      return (int) _followerFetchRequestQueueTimeMsMean.value();
     }
 
     private double produceTotalTimeMsMax() {
@@ -493,8 +503,16 @@ public class CruiseControlMetricsProcessor {
       return _followerFetchTotalTimeMsMean.value();
     }
 
-    private double logFlushRateAndTimeMs() {
-      return _logFlushRateAndTimeMs.value();
+    private double logFlushRate() {
+      return _logFlushRate.value();
+    }
+
+    private double logFlushTimeMaxMs() {
+      return _logFlushTimeMaxMs.value();
+    }
+
+    private double logFlushTimeMeanMs() {
+      return _logFlushTimeMeanMs.value();
     }
 
     private IOLoad ioLoad(String topic) {

@@ -22,8 +22,6 @@ import org.slf4j.LoggerFactory;
  */
 public class YammerMetricProcessor implements MetricProcessor<YammerMetricProcessor.Context> {
   private static final Logger LOG = LoggerFactory.getLogger(YammerMetricProcessor.class);
-  private static final String SUBTAG_MEAN = "Mean";
-  private static final String SUBTAG_MAX = "Max";
 
   @Override
   public void processMeter(MetricName metricName, Metered metered, Context context) throws Exception {
@@ -61,14 +59,14 @@ public class YammerMetricProcessor implements MetricProcessor<YammerMetricProces
                                                                    context.brokerId(),
                                                                    metricName,
                                                                    histogram.max(),
-                                                                   SUBTAG_MAX);
+                                                                   MetricsUtils.ATTRIBUTE_MAX);
       context.reporter().sendCruiseControlMetric(ccm);
 
       ccm = MetricsUtils.toCruiseControlMetric(context.time(),
                                                context.brokerId(),
                                                metricName,
                                                histogram.mean(),
-                                               SUBTAG_MEAN);
+                                               MetricsUtils.ATTRIBUTE_MEAN);
       context.reporter().sendCruiseControlMetric(ccm);
     }
   }
@@ -82,6 +80,20 @@ public class YammerMetricProcessor implements MetricProcessor<YammerMetricProces
                                                                    context.brokerId(),
                                                                    metricName,
                                                                    timer.fiveMinuteRate());
+      context.reporter().sendCruiseControlMetric(ccm);
+
+      ccm = MetricsUtils.toCruiseControlMetric(context.time(),
+                                               context.brokerId(),
+                                               metricName,
+                                               timer.max(),
+                                               MetricsUtils.ATTRIBUTE_MAX);
+      context.reporter().sendCruiseControlMetric(ccm);
+
+      ccm = MetricsUtils.toCruiseControlMetric(context.time(),
+                                               context.brokerId(),
+                                               metricName,
+                                               timer.mean(),
+                                               MetricsUtils.ATTRIBUTE_MEAN);
       context.reporter().sendCruiseControlMetric(ccm);
     }
   }

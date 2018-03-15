@@ -33,21 +33,23 @@ public class BrokerMetricSampleTest {
                                12.0,
                                13.0,
                                1000L,
-                               10000L,
-                               20000L,
-                               14.0,
-                               15.0,
-                               16.0,
-                               17.0,
-                               18.0,
-                               19.0,
-                               20.0,
-                               21.0,
+                               14,
+                               15,
+                               16,
+                               17,
+                               18,
+                               19,
+                               20,
+                               21,
                                22.0,
                                23.0,
                                24.0,
                                25.0,
-                               26.0);
+                               26.0,
+                               27.0,
+                               28.0,
+                               29.0,
+                               30.0);
     System.out.println(sample);
     byte[] bytes = sample.toBytes();
     BrokerMetricSample deserializedSample = BrokerMetricSample.fromBytes(bytes);
@@ -66,21 +68,23 @@ public class BrokerMetricSampleTest {
     assertEquals(12.0, deserializedSample.allTopicsProduceRequestRate(), DELTA);
     assertEquals(13.0, deserializedSample.allTopicsFetchRequestRate(), DELTA);
     assertEquals(1000, deserializedSample.sampleTime());
-    assertEquals(10000, deserializedSample.requestQueueSize());
-    assertEquals(20000, deserializedSample.responseQueueSize());
-    assertEquals(14.0, deserializedSample.produceRequestQueueTimeMsMax(), DELTA);
-    assertEquals(15.0, deserializedSample.produceRequestQueueTimeMsMean(), DELTA);
-    assertEquals(16.0, deserializedSample.consumerFetchRequestQueueTimeMsMax(), DELTA);
-    assertEquals(17.0, deserializedSample.consumerFetchRequestQueueTimeMsMean(), DELTA);
-    assertEquals(18.0, deserializedSample.followerFetchRequestQueueTimeMsMax(), DELTA);
-    assertEquals(19.0, deserializedSample.followerFetchRequestQueueTimeMsMean(), DELTA);
-    assertEquals(20.0, deserializedSample.produceTotalTimeMsMax(), DELTA);
-    assertEquals(21.0, deserializedSample.produceTotalTimeMsMean(), DELTA);
-    assertEquals(22.0, deserializedSample.consumerFetchTotalTimeMsMax(), DELTA);
-    assertEquals(23.0, deserializedSample.consumerFetchTotalTimeMsMean(), DELTA);
-    assertEquals(24.0, deserializedSample.followerFetchTotalTimeMsMax(), DELTA);
-    assertEquals(25.0, deserializedSample.followerFetchTotalTimeMsMean(), DELTA);
-    assertEquals(26.0, deserializedSample.logFlushRateAndTimeMs(), DELTA);
+    assertEquals(14, deserializedSample.requestQueueSize());
+    assertEquals(15, deserializedSample.responseQueueSize());
+    assertEquals(16, deserializedSample.produceRequestQueueTimeMsMax(), DELTA);
+    assertEquals(17, deserializedSample.produceRequestQueueTimeMsMean(), DELTA);
+    assertEquals(18, deserializedSample.consumerFetchRequestQueueTimeMsMax(), DELTA);
+    assertEquals(19, deserializedSample.consumerFetchRequestQueueTimeMsMean(), DELTA);
+    assertEquals(20, deserializedSample.followerFetchRequestQueueTimeMsMax(), DELTA);
+    assertEquals(21, deserializedSample.followerFetchRequestQueueTimeMsMean(), DELTA);
+    assertEquals(22.0, deserializedSample.produceTotalTimeMsMax(), DELTA);
+    assertEquals(23.0, deserializedSample.produceTotalTimeMsMean(), DELTA);
+    assertEquals(24.0, deserializedSample.consumerFetchTotalTimeMsMax(), DELTA);
+    assertEquals(25.0, deserializedSample.consumerFetchTotalTimeMsMean(), DELTA);
+    assertEquals(26.0, deserializedSample.followerFetchTotalTimeMsMax(), DELTA);
+    assertEquals(27.0, deserializedSample.followerFetchTotalTimeMsMean(), DELTA);
+    assertEquals(28.0, deserializedSample.logFlushRate(), DELTA);
+    assertEquals(29.0, deserializedSample.logFlushTimeMaxMs(), DELTA);
+    assertEquals(30.0, deserializedSample.logFlushTimeMeanMs(), DELTA);
   }
 
   @Test
