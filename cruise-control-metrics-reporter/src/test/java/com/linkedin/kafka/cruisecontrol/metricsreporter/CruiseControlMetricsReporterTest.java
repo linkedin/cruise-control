@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
@@ -31,22 +32,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.ALL_TOPIC_BYTES_IN;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.ALL_TOPIC_BYTES_OUT;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.ALL_TOPIC_FETCH_REQUEST_RATE;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.ALL_TOPIC_MESSAGES_IN_PER_SEC;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.ALL_TOPIC_PRODUCE_REQUEST_RATE;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.BROKER_CONSUMER_FETCH_REQUEST_RATE;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.BROKER_CPU_UTIL;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.BROKER_FOLLOWER_FETCH_REQUEST_RATE;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.BROKER_PRODUCE_REQUEST_RATE;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.PARTITION_SIZE;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.TOPIC_BYTES_IN;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.TOPIC_BYTES_OUT;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.TOPIC_FETCH_REQUEST_RATE;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.TOPIC_MESSAGES_IN_PER_SEC;
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.TOPIC_PRODUCE_REQUEST_RATE;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.*;
 import static org.junit.Assert.assertEquals;
 
 
@@ -89,6 +75,7 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG,
                       "100");
     props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
+    props.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), "1");
     return props;
   }
 
@@ -107,7 +94,7 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     consumer.subscribe(Collections.singletonList(TOPIC));
     long startMs = System.currentTimeMillis();
     Set<Integer> metricTypes = new HashSet<>();
-    while (metricTypes.size() < 16 && System.currentTimeMillis() < startMs + 15000) {
+    while (metricTypes.size() < 39 && System.currentTimeMillis() < startMs + 15000) {
       records = consumer.poll(10);
       for (ConsumerRecord<String, CruiseControlMetric> record : records) {
         metricTypes.add((int) record.value().metricType().id());
@@ -128,8 +115,31 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
                                                                        (int) BROKER_PRODUCE_REQUEST_RATE.id(),
                                                                        (int) BROKER_CONSUMER_FETCH_REQUEST_RATE.id(),
                                                                        (int) BROKER_FOLLOWER_FETCH_REQUEST_RATE.id(),
-                                                                       (int) BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT.id()));
-    assertEquals("Expected to see " + expectedMetricTypes + ", but only see " + metricTypes, metricTypes, expectedMetricTypes);
+                                                                       (int) BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT.id(),
+                                                                       (int) BROKER_REQUEST_QUEUE_SIZE.id(),
+                                                                       (int) BROKER_RESPONSE_QUEUE_SIZE.id(),
+                                                                       (int) BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_PRODUCE_TOTAL_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_PRODUCE_TOTAL_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_PRODUCE_LOCAL_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_PRODUCE_LOCAL_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_LOG_FLUSH_RATE.id(),
+                                                                       (int) BROKER_LOG_FLUSH_TIME_MS_MAX.id(),
+                                                                       (int) BROKER_LOG_FLUSH_TIME_MS_MEAN.id()));
+    assertEquals("Expected to see " + expectedMetricTypes + ", but only see " + metricTypes, expectedMetricTypes, metricTypes);
   }
 
   protected int findLocalPort() {

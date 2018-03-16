@@ -26,6 +26,7 @@ public class YammerMetricProcessor implements MetricProcessor<YammerMetricProces
   @Override
   public void processMeter(MetricName metricName, Metered metered, Context context) throws Exception {
     if (MetricsUtils.isInterested(metricName)) {
+      LOG.trace("Processing metric {} of type Meter.", metricName);
       double value;
       if (context.reportingInterval() <= 60000L) {
         value = metered.oneMinuteRate();
@@ -50,23 +51,57 @@ public class YammerMetricProcessor implements MetricProcessor<YammerMetricProces
   }
 
   @Override
-  public void processHistogram(MetricName metricName, Histogram histogram, Context context)
-      throws Exception {
+  public void processHistogram(MetricName metricName, Histogram histogram, Context context) throws Exception {
     if (MetricsUtils.isInterested(metricName)) {
-      LOG.warn("Not processing metric {} of type Histogram.", metricName);
+      LOG.trace("Processing metric {} of type Histogram.", metricName);
+
+      CruiseControlMetric ccm = MetricsUtils.toCruiseControlMetric(context.time(),
+                                                                   context.brokerId(),
+                                                                   metricName,
+                                                                   histogram.max(),
+                                                                   MetricsUtils.ATTRIBUTE_MAX);
+      context.reporter().sendCruiseControlMetric(ccm);
+
+      ccm = MetricsUtils.toCruiseControlMetric(context.time(),
+                                               context.brokerId(),
+                                               metricName,
+                                               histogram.mean(),
+                                               MetricsUtils.ATTRIBUTE_MEAN);
+      context.reporter().sendCruiseControlMetric(ccm);
     }
   }
 
   @Override
   public void processTimer(MetricName metricName, Timer timer, Context context) throws Exception {
     if (MetricsUtils.isInterested(metricName)) {
-      LOG.warn("Not processing metric {} of type Timer.", metricName);
+      LOG.trace("Processing metric {} of type Timer.", metricName);
+
+      CruiseControlMetric ccm = MetricsUtils.toCruiseControlMetric(context.time(),
+                                                                   context.brokerId(),
+                                                                   metricName,
+                                                                   timer.fiveMinuteRate());
+      context.reporter().sendCruiseControlMetric(ccm);
+
+      ccm = MetricsUtils.toCruiseControlMetric(context.time(),
+                                               context.brokerId(),
+                                               metricName,
+                                               timer.max(),
+                                               MetricsUtils.ATTRIBUTE_MAX);
+      context.reporter().sendCruiseControlMetric(ccm);
+
+      ccm = MetricsUtils.toCruiseControlMetric(context.time(),
+                                               context.brokerId(),
+                                               metricName,
+                                               timer.mean(),
+                                               MetricsUtils.ATTRIBUTE_MEAN);
+      context.reporter().sendCruiseControlMetric(ccm);
     }
   }
 
   @Override
   public void processGauge(MetricName metricName, Gauge<?> gauge, Context context) throws Exception {
     if (MetricsUtils.isInterested(metricName)) {
+      LOG.trace("Processing metric {} of type Gauge.", metricName);
       if (!(gauge.value() instanceof Number)) {
         throw new IllegalStateException(String.format("The value of yammer metric %s is %s, which is not a number",
                                                       metricName, gauge.value()));

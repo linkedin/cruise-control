@@ -20,12 +20,18 @@ public class MetricsUtils {
   private static final String BYTES_OUT_PER_SEC = "BytesOutPerSec";
   private static final String REPLICATION_BYTES_IN_PER_SEC = "ReplicationBytesInPerSec";
   private static final String REPLICATION_BYTES_OUT_PER_SEC = "ReplicationBytesOutPerSec";
-  private static final String REQUEST_PER_SEC = "RequestsPerSec";
+  private static final String REQUESTS_PER_SEC = "RequestsPerSec";
+  private static final String REQUEST_QUEUE_SIZE = "RequestQueueSize";
+  private static final String RESPONSE_QUEUE_SIZE = "ResponseQueueSize";
+  private static final String REQUEST_QUEUE_TIME_MS = "RequestQueueTimeMs";
+  private static final String LOCAL_TIME_MS =   "LocalTimeMs";
+  private static final String TOTAL_TIME_MS = "TotalTimeMs";
   private static final String TOTAL_FETCH_REQUEST_PER_SEC = "TotalFetchRequestsPerSec";
   private static final String TOTAL_PRODUCE_REQUEST_PER_SEC = "TotalProduceRequestsPerSec";
   private static final String MESSAGES_IN_PER_SEC = "MessagesInPerSec";
   private static final String SIZE = "Size";
   private static final String REQUEST_HANDLER_AVG_IDLE_PERCENT = "RequestHandlerAvgIdlePercent";
+  private static final String LOG_FLUSH_RATE_AND_TIME_MS = "LogFlushRateAndTimeMs";
   // Groups
   private static final String KAFKA_SERVER = "kafka.server";
   private static final String KAFKA_LOG = "kafka.log";
@@ -38,7 +44,9 @@ public class MetricsUtils {
   // Type
   private static final String BROKER_TOPIC_METRICS_GROUP = "BrokerTopicMetrics";
   private static final String LOG_GROUP = "Log";
+  private static final String LOG_FLUSH_STATS_GROUP = "LogFlushStats";
   private static final String REQUEST_METRICS_GROUP = "RequestMetrics";
+  private static final String REQUEST_CHANNEL_GROUP = "RequestChannel";
   private static final String REQUEST_KAFKA_HANDLER_POOL_GROUP = "KafkaRequestHandlerPool";
 
   // Tag Value
@@ -46,9 +54,18 @@ public class MetricsUtils {
   private static final String FOLLOWER_FETCH_REQUEST_TYPE = "FetchFollower";
   private static final String PRODUCE_REQUEST_TYPE = "Produce";
 
+  // Attribute
+  static final String ATTRIBUTE_MEAN = "Mean";
+  static final String ATTRIBUTE_MAX = "Max";
+
   // Name Set.
   private static final Set<String> INTERESTED_NETWORK_METRIC_NAMES =
-      Collections.unmodifiableSet(Collections.singleton(REQUEST_PER_SEC));
+      Collections.unmodifiableSet(new HashSet<>(Arrays.asList(REQUESTS_PER_SEC,
+                                                              REQUEST_QUEUE_SIZE,
+                                                              RESPONSE_QUEUE_SIZE,
+                                                              REQUEST_QUEUE_TIME_MS,
+                                                              LOCAL_TIME_MS,
+                                                              TOTAL_TIME_MS)));
 
   private static final Set<String> INTERESTED_TOPIC_METRIC_NAMES =
       Collections.unmodifiableSet(new HashSet<>(Arrays.asList(BYTES_IN_PER_SEC,
@@ -58,9 +75,8 @@ public class MetricsUtils {
                                                               TOTAL_FETCH_REQUEST_PER_SEC,
                                                               TOTAL_PRODUCE_REQUEST_PER_SEC,
                                                               MESSAGES_IN_PER_SEC)));
-
-  private static final Set<String> INTERESTED_LOG_METRIC_NAMES =
-      Collections.unmodifiableSet(Collections.singleton(SIZE));
+    private static final Set<String> INTERESTED_LOG_METRIC_NAMES =
+        Collections.unmodifiableSet(new HashSet<>(Arrays.asList(SIZE, LOG_FLUSH_RATE_AND_TIME_MS)));
 
   private static final Set<String> INTERESTED_SERVER_METRIC_NAMES =
       Collections.unmodifiableSet(Collections.singleton(REQUEST_HANDLER_AVG_IDLE_PERCENT));
@@ -95,12 +111,24 @@ public class MetricsUtils {
                                                           int brokerId,
                                                           com.yammer.metrics.core.MetricName metricName,
                                                           double value) {
+    return toCruiseControlMetric(now, brokerId, metricName, value, null);
+  }
 
+
+
+  /**
+   * Convert a Yammer metric to a CruiseControlMetric
+   */
+  public static CruiseControlMetric toCruiseControlMetric(long now,
+                                                          int brokerId,
+                                                          com.yammer.metrics.core.MetricName metricName,
+                                                          double value,
+                                                          String attribute) {
     CruiseControlMetric ccm =
-        toCruiseControlMetric(now, brokerId, metricName.getName(), yammerMetricScopeToTags(metricName.getScope()), value);
+        toCruiseControlMetric(now, brokerId, metricName.getName(), yammerMetricScopeToTags(metricName.getScope()), value, attribute);
     if (ccm == null) {
       throw new IllegalArgumentException(String.format("Cannot convert yammer metric %s to a Cruise Control metric for "
-                                                           + "broker %d at time %d", metricName, brokerId, now));
+                                                       + "broker %d at time %d for tag %s", metricName, brokerId, now, attribute));
     }
     return ccm;
   }
@@ -150,19 +178,13 @@ public class MetricsUtils {
    */
   private static boolean isInterested(String group, String name, String type, Map<String, String> tags) {
     if (group.equals(KAFKA_SERVER)) {
-      if ((INTERESTED_TOPIC_METRIC_NAMES.contains(name) && BROKER_TOPIC_METRICS_GROUP.equals(type))
-          || (INTERESTED_SERVER_METRIC_NAMES.contains(name) && REQUEST_KAFKA_HANDLER_POOL_GROUP.equals(type))) {
-        return true;
-      }
-    } else if (group.equals(KAFKA_NETWORK)
-        && INTERESTED_NETWORK_METRIC_NAMES.contains(name)
-        && REQUEST_METRICS_GROUP.equals(type)
-        && INTERESTED_REQUEST_TYPE.contains(tags.get(REQUEST_TYPE_KEY))) {
-      return true;
-    } else if (group.equals(KAFKA_LOG)
-        && LOG_GROUP.equals(type)
-        && INTERESTED_LOG_METRIC_NAMES.contains(name)) {
-      return true;
+      return (INTERESTED_TOPIC_METRIC_NAMES.contains(name) && BROKER_TOPIC_METRICS_GROUP.equals(type)) || (
+          INTERESTED_SERVER_METRIC_NAMES.contains(name) && REQUEST_KAFKA_HANDLER_POOL_GROUP.equals(type));
+    } else if (group.equals(KAFKA_NETWORK) && INTERESTED_NETWORK_METRIC_NAMES.contains(name)) {
+      return REQUEST_CHANNEL_GROUP.equals(type)
+                    || (REQUEST_METRICS_GROUP.equals(type) && INTERESTED_REQUEST_TYPE.contains(tags.get(REQUEST_TYPE_KEY)));
+    } else if (group.equals(KAFKA_LOG) && INTERESTED_LOG_METRIC_NAMES.contains(name)) {
+      return LOG_GROUP.equals(type) || LOG_FLUSH_STATS_GROUP.equals(type);
     }
     return false;
   }
@@ -175,6 +197,18 @@ public class MetricsUtils {
                                                            String name,
                                                            Map<String, String> tags,
                                                            double value) {
+    return toCruiseControlMetric(now, brokerId, name, tags, value, null);
+  }
+
+  /**
+   * build a CruiseControlMetric object.
+   */
+  private static CruiseControlMetric toCruiseControlMetric(long now,
+                                                           int brokerId,
+                                                           String name,
+                                                           Map<String, String> tags,
+                                                           double value,
+                                                           String attribute) {
     String topic = tags.get(TOPIC_KEY);
     switch (name) {
       case BYTES_IN_PER_SEC:
@@ -219,9 +253,8 @@ public class MetricsUtils {
         } else {
           return new BrokerMetric(MetricType.ALL_TOPIC_MESSAGES_IN_PER_SEC, now, brokerId, value);
         }
-      case REQUEST_PER_SEC:
-        String requestType = tags.get(REQUEST_TYPE_KEY);
-        switch (requestType) {
+      case REQUESTS_PER_SEC:
+        switch (tags.get(REQUEST_TYPE_KEY)) {
           case PRODUCE_REQUEST_TYPE:
             return new BrokerMetric(MetricType.BROKER_PRODUCE_REQUEST_RATE, now, brokerId, value);
           case CONSUMER_FETCH_REQUEST_TYPE:
@@ -231,9 +264,122 @@ public class MetricsUtils {
           default:
             return null;
         }
+      case REQUEST_QUEUE_SIZE:
+        return new BrokerMetric(MetricType.BROKER_REQUEST_QUEUE_SIZE, now, brokerId, value);
+      case RESPONSE_QUEUE_SIZE:
+        return new BrokerMetric(MetricType.BROKER_RESPONSE_QUEUE_SIZE, now, brokerId, value);
+      case REQUEST_QUEUE_TIME_MS:
+        switch (tags.get(REQUEST_TYPE_KEY)) {
+          case PRODUCE_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          case CONSUMER_FETCH_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          case FOLLOWER_FETCH_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          default:
+            return null;
+        }
+      case LOCAL_TIME_MS:
+        switch (tags.get(REQUEST_TYPE_KEY)) {
+          case PRODUCE_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_PRODUCE_LOCAL_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_PRODUCE_LOCAL_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          case CONSUMER_FETCH_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          case FOLLOWER_FETCH_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          default:
+            return null;
+        }
+      case TOTAL_TIME_MS:
+        switch (tags.get(REQUEST_TYPE_KEY)) {
+          case PRODUCE_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_PRODUCE_TOTAL_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_PRODUCE_TOTAL_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          case CONSUMER_FETCH_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          case FOLLOWER_FETCH_REQUEST_TYPE:
+            switch (attribute) {
+              case ATTRIBUTE_MAX:
+                return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MAX, now, brokerId, value);
+              case ATTRIBUTE_MEAN:
+                return new BrokerMetric(MetricType.BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN, now, brokerId, value);
+              default:
+                return null;
+            }
+          default:
+            return null;
+        }
       case SIZE:
         int partition = Integer.parseInt(tags.get(PARTITION_KEY));
         return new PartitionMetric(MetricType.PARTITION_SIZE, now, brokerId, topic, partition, value);
+      case LOG_FLUSH_RATE_AND_TIME_MS:
+        if (attribute == null) {
+          return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_RATE, now, brokerId, value);
+        } else {
+          switch (attribute) {
+            case ATTRIBUTE_MAX:
+              return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_TIME_MS_MAX, now, brokerId, value);
+            case ATTRIBUTE_MEAN:
+              return new BrokerMetric(MetricType.BROKER_LOG_FLUSH_TIME_MS_MEAN, now, brokerId, value);
+            default:
+              return null;
+          }
+        }
       case REQUEST_HANDLER_AVG_IDLE_PERCENT:
         return new BrokerMetric(MetricType.BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT, now, brokerId, value);
       default:

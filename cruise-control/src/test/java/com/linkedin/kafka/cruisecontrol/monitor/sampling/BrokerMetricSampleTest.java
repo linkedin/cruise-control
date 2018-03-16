@@ -32,7 +32,30 @@ public class BrokerMetricSampleTest {
                                11.0,
                                12.0,
                                13.0,
-                               1000L);
+                               1000L,
+                               14,
+                               15,
+                               16.0,
+                               17.0,
+                               18.0,
+                               19.0,
+                               20.0,
+                               21.0,
+                               22.0,
+                               23.0,
+                               24.0,
+                               25.0,
+                               26.0,
+                               27.0,
+                               28.0,
+                               29.0,
+                               30.0,
+                               31.0,
+                               32.0,
+                               33.0,
+                               34.0,
+                               35.0,
+                               36.0);
     System.out.println(sample);
     byte[] bytes = sample.toBytes();
     BrokerMetricSample deserializedSample = BrokerMetricSample.fromBytes(bytes);
@@ -51,6 +74,29 @@ public class BrokerMetricSampleTest {
     assertEquals(12.0, deserializedSample.allTopicsProduceRequestRate(), DELTA);
     assertEquals(13.0, deserializedSample.allTopicsFetchRequestRate(), DELTA);
     assertEquals(1000, deserializedSample.sampleTime());
+    assertEquals(14, deserializedSample.requestQueueSize());
+    assertEquals(15, deserializedSample.responseQueueSize());
+    assertEquals(16.0, deserializedSample.produceRequestQueueTimeMsMax(), DELTA);
+    assertEquals(17.0, deserializedSample.produceRequestQueueTimeMsMean(), DELTA);
+    assertEquals(18.0, deserializedSample.consumerFetchRequestQueueTimeMsMax(), DELTA);
+    assertEquals(19.0, deserializedSample.consumerFetchRequestQueueTimeMsMean(), DELTA);
+    assertEquals(20.0, deserializedSample.followerFetchRequestQueueTimeMsMax(), DELTA);
+    assertEquals(21.0, deserializedSample.followerFetchRequestQueueTimeMsMean(), DELTA);
+    assertEquals(22.0, deserializedSample.produceTotalTimeMsMax(), DELTA);
+    assertEquals(23.0, deserializedSample.produceTotalTimeMsMean(), DELTA);
+    assertEquals(24.0, deserializedSample.consumerFetchTotalTimeMsMax(), DELTA);
+    assertEquals(25.0, deserializedSample.consumerFetchTotalTimeMsMean(), DELTA);
+    assertEquals(26.0, deserializedSample.followerFetchTotalTimeMsMax(), DELTA);
+    assertEquals(27.0, deserializedSample.followerFetchTotalTimeMsMean(), DELTA);
+    assertEquals(28.0, deserializedSample.produceLocalTimeMsMax(), DELTA);
+    assertEquals(29.0, deserializedSample.produceLocalTimeMsMean(), DELTA);
+    assertEquals(30.0, deserializedSample.consumerFetchLocalTimeMsMax(), DELTA);
+    assertEquals(31.0, deserializedSample.consumerFetchLocalTimeMsMean(), DELTA);
+    assertEquals(32.0, deserializedSample.followerFetchLocalTimeMsMax(), DELTA);
+    assertEquals(33.0, deserializedSample.followerFetchLocalTimeMsMean(), DELTA);
+    assertEquals(34.0, deserializedSample.logFlushRate(), DELTA);
+    assertEquals(35.0, deserializedSample.logFlushTimeMsMax(), DELTA);
+    assertEquals(36.0, deserializedSample.logFlushTimeMsMean(), DELTA);
   }
 
   @Test
@@ -62,6 +108,4 @@ public class BrokerMetricSampleTest {
     pattern = Pattern.compile("");
     assertFalse(pattern.matcher("sf").matches());
   }
-
-
 }
