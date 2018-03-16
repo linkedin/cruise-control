@@ -11,7 +11,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -31,7 +31,7 @@ public class LoadMonitorTaskRunner {
 
   private final Time _time;
   private final MetricFetcherManager _metricFetcherManager;
-  private final KafkaMetricSampleAggregator _metricSampleAggregator;
+  private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
   private final MetadataClient _metadataClient;
   private final SampleStore _sampleStore;
   private final ScheduledExecutorService _samplingScheduler;
@@ -52,21 +52,22 @@ public class LoadMonitorTaskRunner {
    * Private constructor to avoid duplicate code.
    *
    * @param config The load monitor configurations.
-   * @param metricSampleAggregator  The queue that holds the metric samples.
+   * @param partitionMetricSampleAggregator The {@link KafkaPartitionMetricSampleAggregator} to aggregate partition metrics.
    * @param metadataClient The metadata of the cluster.
    * @param metricDef The metric definitions.
    * @param time The time object.
    * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    */
   public LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
-                               KafkaMetricSampleAggregator metricSampleAggregator,
+                               KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
                                MetadataClient metadataClient,
                                MetricDef metricDef,
                                Time time,
                                MetricRegistry dropwizardMetricRegistry) {
     this(config,
-        new MetricFetcherManager(config, metricSampleAggregator, metadataClient, metricDef, time, dropwizardMetricRegistry),
-        metricSampleAggregator,
+        new MetricFetcherManager(config, partitionMetricSampleAggregator, metadataClient, metricDef, time,
+                                 dropwizardMetricRegistry),
+        partitionMetricSampleAggregator,
         metadataClient,
         time);
   }
@@ -74,20 +75,20 @@ public class LoadMonitorTaskRunner {
   /**
    * Package private constructor for unit test duplicate code.
    *
-   * @param config        The load monitor configurations.
+   * @param config The load monitor configurations.
    * @param metricFetcherManager the metric fetcher manager.
-   * @param metricSampleAggregator   The queue that holds the metric samples.
+   * @param partitionMetricSampleAggregator The {@link KafkaPartitionMetricSampleAggregator} to aggregate partition metrics.
    * @param metadataClient      The metadata of the cluster.
    * @param time          The time object.
    */
   LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
                         MetricFetcherManager metricFetcherManager,
-                        KafkaMetricSampleAggregator metricSampleAggregator,
+                        KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
                         MetadataClient metadataClient,
                         Time time) {
     _time = time;
     _metricFetcherManager = metricFetcherManager;
-    _metricSampleAggregator = metricSampleAggregator;
+    _partitionMetricSampleAggregator = partitionMetricSampleAggregator;
     _metadataClient = metadataClient;
     _sampleStore = config.getConfiguredInstance(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, SampleStore.class);
     long samplingIntervalMs = config.getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
@@ -113,7 +114,8 @@ public class LoadMonitorTaskRunner {
   public void bootstrap(long startMs, long endMs, boolean clearMetrics) {
 
     if (_state.compareAndSet(RUNNING, BOOTSTRAPPING)) {
-      _samplingScheduler.submit(new BootstrapTask(startMs, endMs, clearMetrics, _metadataClient, _metricSampleAggregator,
+      _samplingScheduler.submit(new BootstrapTask(startMs, endMs, clearMetrics, _metadataClient,
+          _partitionMetricSampleAggregator,
                                                   this, _metricFetcherManager, _sampleStore, _configuredNumWindows,
                                                   _configuredWindowMs, _samplingIntervalMs, _time));
     } else {
@@ -131,7 +133,8 @@ public class LoadMonitorTaskRunner {
   public void bootstrap(long startMs, boolean clearMetrics) {
 
     if (_state.compareAndSet(RUNNING, BOOTSTRAPPING)) {
-      _samplingScheduler.submit(new BootstrapTask(startMs, clearMetrics, _metadataClient, _metricSampleAggregator,
+      _samplingScheduler.submit(new BootstrapTask(startMs, clearMetrics, _metadataClient,
+          _partitionMetricSampleAggregator,
                                                   this, _metricFetcherManager, _sampleStore, _configuredNumWindows,
                                                   _configuredWindowMs, _samplingIntervalMs, _time));
     } else {
@@ -147,7 +150,7 @@ public class LoadMonitorTaskRunner {
    */
   public void bootstrap(boolean clearMetrics) {
     if (_state.compareAndSet(RUNNING, BOOTSTRAPPING)) {
-      _samplingScheduler.submit(new BootstrapTask(clearMetrics, _metadataClient, _metricSampleAggregator,
+      _samplingScheduler.submit(new BootstrapTask(clearMetrics, _metadataClient, _partitionMetricSampleAggregator,
                                                   this, _metricFetcherManager, _sampleStore, _configuredNumWindows,
                                                   _configuredWindowMs, _samplingIntervalMs, _time));
     } else {
@@ -167,7 +170,7 @@ public class LoadMonitorTaskRunner {
    */
   private void loadSamples() {
     if (_state.compareAndSet(RUNNING, LOADING)) {
-      _samplingScheduler.submit(new SampleLoadingTask(_sampleStore, _metricSampleAggregator, this));
+      _samplingScheduler.submit(new SampleLoadingTask(_sampleStore, _partitionMetricSampleAggregator, this));
     } else {
       throw new IllegalStateException("Cannot load samples because the load monitor is in "
                                           + _state.get() + " state.");
