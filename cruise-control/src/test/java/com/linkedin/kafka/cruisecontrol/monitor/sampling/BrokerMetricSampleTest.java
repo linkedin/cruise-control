@@ -88,15 +88,15 @@ public class BrokerMetricSampleTest {
     assertEquals(25.0, deserializedSample.consumerFetchTotalTimeMsMean(), DELTA);
     assertEquals(26.0, deserializedSample.followerFetchTotalTimeMsMax(), DELTA);
     assertEquals(27.0, deserializedSample.followerFetchTotalTimeMsMean(), DELTA);
-    assertEquals(28.0, deserializedSample.logFlushRate(), DELTA);
-    assertEquals(29.0, deserializedSample.logFlushTimeMsMax(), DELTA);
-    assertEquals(30.0, deserializedSample.logFlushTimeMsMean(), DELTA);
-    assertEquals(31.0, deserializedSample.produceLocalTimeMsMax(), DELTA);
-    assertEquals(32.0, deserializedSample.produceLocalTimeMsMean(), DELTA);
-    assertEquals(33.0, deserializedSample.consumerFetchLocalTimeMsMax(), DELTA);
-    assertEquals(34.0, deserializedSample.consumerFetchLocalTimeMsMean(), DELTA);
-    assertEquals(35.0, deserializedSample.followerFetchLocalTimeMsMax(), DELTA);
-    assertEquals(36.0, deserializedSample.followerFetchLocalTimeMsMean(), DELTA);
+    assertEquals(28.0, deserializedSample.produceLocalTimeMsMax(), DELTA);
+    assertEquals(29.0, deserializedSample.produceLocalTimeMsMean(), DELTA);
+    assertEquals(30.0, deserializedSample.consumerFetchLocalTimeMsMax(), DELTA);
+    assertEquals(31.0, deserializedSample.consumerFetchLocalTimeMsMean(), DELTA);
+    assertEquals(32.0, deserializedSample.followerFetchLocalTimeMsMax(), DELTA);
+    assertEquals(33.0, deserializedSample.followerFetchLocalTimeMsMean(), DELTA);
+    assertEquals(34.0, deserializedSample.logFlushRate(), DELTA);
+    assertEquals(35.0, deserializedSample.logFlushTimeMsMax(), DELTA);
+    assertEquals(36.0, deserializedSample.logFlushTimeMsMean(), DELTA);
   }
 
   @Test

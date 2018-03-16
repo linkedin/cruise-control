@@ -40,15 +40,15 @@ public class BrokerMetricSample {
   private final double _brokerConsumerFetchTotalTimeMsMean;
   private final double _brokerFollowerFetchTotalTimeMsMax;
   private final double _brokerFollowerFetchTotalTimeMsMean;
-  private final double _brokerLogFlushRate;
-  private final double _brokerLogFlushTimeMsMax;
-  private final double _brokerLogFlushTimeMsMean;
   private final double _brokerProduceLocalTimeMsMax;
   private final double _brokerProduceLocalTimeMsMean;
   private final double _brokerConsumerFetchLocalTimeMsMax;
   private final double _brokerConsumerFetchLocalTimeMsMean;
   private final double _brokerFollowerFetchLocalTimeMsMax;
   private final double _brokerFollowerFetchLocalTimeMsMean;
+  private final double _brokerLogFlushRate;
+  private final double _brokerLogFlushTimeMsMax;
+  private final double _brokerLogFlushTimeMsMean;
 
   @Deprecated
   public BrokerMetricSample(double brokerCpuUtil,
@@ -154,15 +154,15 @@ public class BrokerMetricSample {
                             double brokerConsumerFetchTotalTimeMsMean,
                             double brokerFollowerFetchTotalTimeMsMax,
                             double brokerFollowerFetchTotalTimeMsMean,
-                            double brokerLogFlushRate,
-                            double brokerLogFlushTimeMsMax,
-                            double brokerLogFlushTimeMsMean,
                             double brokerProduceLocalTimeMsMax,
                             double brokerProduceLocalTimeMsMean,
                             double brokerConsumerFetchLocalTimeMsMax,
                             double brokerConsumerFetchLocalTimeMsMean,
                             double brokerFollowerFetchLocalTimeMsMax,
-                            double brokerFollowerFetchLocalTimeMsMean) {
+                            double brokerFollowerFetchLocalTimeMsMean,
+                            double brokerLogFlushRate,
+                            double brokerLogFlushTimeMsMax,
+                            double brokerLogFlushTimeMsMean) {
     _brokerId = brokerId;
     _brokerCpuUtil = brokerCpuUtil;
     _brokerLeaderBytesInRate = brokerLeaderBytesInRate;
@@ -192,15 +192,15 @@ public class BrokerMetricSample {
     _brokerConsumerFetchTotalTimeMsMean = brokerConsumerFetchTotalTimeMsMean;
     _brokerFollowerFetchTotalTimeMsMax = brokerFollowerFetchTotalTimeMsMax;
     _brokerFollowerFetchTotalTimeMsMean = brokerFollowerFetchTotalTimeMsMean;
-    _brokerLogFlushRate = brokerLogFlushRate;
-    _brokerLogFlushTimeMsMax = brokerLogFlushTimeMsMax;
-    _brokerLogFlushTimeMsMean = brokerLogFlushTimeMsMean;
     _brokerProduceLocalTimeMsMax = brokerProduceLocalTimeMsMax;
     _brokerProduceLocalTimeMsMean = brokerProduceLocalTimeMsMean;
     _brokerConsumerFetchLocalTimeMsMax = brokerConsumerFetchLocalTimeMsMax;
     _brokerConsumerFetchLocalTimeMsMean = brokerConsumerFetchLocalTimeMsMean;
     _brokerFollowerFetchLocalTimeMsMax = brokerFollowerFetchLocalTimeMsMax;
     _brokerFollowerFetchLocalTimeMsMean = brokerFollowerFetchLocalTimeMsMean;
+    _brokerLogFlushRate = brokerLogFlushRate;
+    _brokerLogFlushTimeMsMax = brokerLogFlushTimeMsMax;
+    _brokerLogFlushTimeMsMean = brokerLogFlushTimeMsMean;
   }
 
   public int brokerId() {
@@ -315,18 +315,6 @@ public class BrokerMetricSample {
     return _brokerFollowerFetchTotalTimeMsMean;
   }
 
-  public double logFlushRate() {
-    return _brokerLogFlushRate;
-  }
-
-  public double logFlushTimeMsMax() {
-    return _brokerLogFlushTimeMsMax;
-  }
-
-  public double logFlushTimeMsMean() {
-    return _brokerLogFlushTimeMsMean;
-  }
-
   public double produceLocalTimeMsMax() {
     return _brokerProduceLocalTimeMsMax;
   }
@@ -349,6 +337,18 @@ public class BrokerMetricSample {
 
   public double followerFetchLocalTimeMsMean() {
     return _brokerFollowerFetchLocalTimeMsMean;
+  }
+
+  public double logFlushRate() {
+    return _brokerLogFlushRate;
+  }
+
+  public double logFlushTimeMsMax() {
+    return _brokerLogFlushTimeMsMax;
+  }
+
+  public double logFlushTimeMsMean() {
+    return _brokerLogFlushTimeMsMean;
   }
 
   /**
@@ -384,15 +384,15 @@ public class BrokerMetricSample {
    * 8 bytes - broker consumer fetch total time ms (mean)
    * 8 bytes - broker follower fetch total time ms (max)
    * 8 bytes - broker follower fetch total time ms (mean)
-   * 8 bytes - broker log flush rate
-   * 8 bytes - broker log flush time ms (max)
-   * 8 bytes - broker log flush time ms (mean)
    * 8 bytes - broker produce local time ms (max)
    * 8 bytes - broker produce local time ms (mean)
    * 8 bytes - broker consumer fetch local time ms (max)
    * 8 bytes - broker consumer fetch local time ms (mean)
    * 8 bytes - broker follower fetch local time ms (max)
    * 8 bytes - broker follower fetch local time ms (mean)
+   * 8 bytes - broker log flush rate
+   * 8 bytes - broker log flush time ms (max)
+   * 8 bytes - broker log flush time ms (mean)
    * @return the serialized bytes.
    */
   public byte[] toBytes() {
@@ -427,15 +427,15 @@ public class BrokerMetricSample {
     buffer.putDouble(_brokerConsumerFetchTotalTimeMsMean);
     buffer.putDouble(_brokerFollowerFetchTotalTimeMsMax);
     buffer.putDouble(_brokerFollowerFetchTotalTimeMsMean);
-    buffer.putDouble(_brokerLogFlushRate);
-    buffer.putDouble(_brokerLogFlushTimeMsMax);
-    buffer.putDouble(_brokerLogFlushTimeMsMean);
     buffer.putDouble(_brokerProduceLocalTimeMsMax);
     buffer.putDouble(_brokerProduceLocalTimeMsMean);
     buffer.putDouble(_brokerConsumerFetchLocalTimeMsMax);
     buffer.putDouble(_brokerConsumerFetchLocalTimeMsMean);
     buffer.putDouble(_brokerFollowerFetchLocalTimeMsMax);
     buffer.putDouble(_brokerFollowerFetchLocalTimeMsMean);
+    buffer.putDouble(_brokerLogFlushRate);
+    buffer.putDouble(_brokerLogFlushTimeMsMax);
+    buffer.putDouble(_brokerLogFlushTimeMsMean);
     return buffer.array();
   }
 
@@ -480,10 +480,10 @@ public class BrokerMetricSample {
                          + "PRODUCE_TOTAL_TIME_MS_MAX=%f, PRODUCE_TOTAL_TIME_MS_MEAN=%f, "
                          + "CONSUMER_FETCH_TOTAL_TIME_MS_MAX=%f, CONSUMER_FETCH_TOTAL_TIME_MS_MEAN=%f, "
                          + "FOLLOWER_FETCH_TOTAL_TIME_MS_MAX=%f, FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN=%f, "
-                         + "LOG_FLUSH_RATE=%f, LOG_FLUSH_TIME_MS_MAX=%f, LOG_FLUSH_TIME_MS_MEAN=%f, "
                          + "PRODUCE_LOCAL_TIME_MS_MAX=%f, PRODUCE_LOCAL_TIME_MS_MEAN=%f, "
                          + "CONSUMER_FETCH_LOCAL_TIME_MS_MAX=%f, CONSUMER_FETCH_LOCAL_TIME_MS_MEAN=%f, "
-                         + "FOLLOWER_FETCH_LOCAL_TIME_MS_MAX=%f, FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN=%f",
+                         + "FOLLOWER_FETCH_LOCAL_TIME_MS_MAX=%f, FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN=%f, "
+                         + "LOG_FLUSH_RATE=%f, LOG_FLUSH_TIME_MS_MAX=%f, LOG_FLUSH_TIME_MS_MEAN=%f",
                          _brokerCpuUtil, _brokerLeaderBytesInRate, _brokerLeaderBytesOutRate,
                          _brokerReplicationBytesInRate, _brokerReplicationBytesOutRate, _brokerMessagesInRate,
                          _brokerProduceRequestRate, _brokerConsumerFetchRequestRate, _brokerReplicationFetchRequestRate,
@@ -494,11 +494,11 @@ public class BrokerMetricSample {
                          _brokerFollowerFetchRequestQueueTimeMsMax, _brokerFollowerFetchRequestQueueTimeMsMean,
                          _brokerProduceTotalTimeMsMax, _brokerProduceTotalTimeMsMean,
                          _brokerConsumerFetchTotalTimeMsMax, _brokerConsumerFetchTotalTimeMsMean,
-                         _brokerFollowerFetchTotalTimeMsMax, _brokerFollowerFetchTotalTimeMsMean, _brokerLogFlushRate,
-                         _brokerLogFlushTimeMsMax, _brokerLogFlushTimeMsMean,
+                         _brokerFollowerFetchTotalTimeMsMax, _brokerFollowerFetchTotalTimeMsMean,
                          _brokerProduceLocalTimeMsMax, _brokerProduceLocalTimeMsMean,
                          _brokerConsumerFetchLocalTimeMsMax, _brokerConsumerFetchLocalTimeMsMean,
-                         _brokerFollowerFetchLocalTimeMsMax, _brokerFollowerFetchLocalTimeMsMean);
+                         _brokerFollowerFetchLocalTimeMsMax, _brokerFollowerFetchLocalTimeMsMean, _brokerLogFlushRate,
+                         _brokerLogFlushTimeMsMax, _brokerLogFlushTimeMsMean);
   }
 
   public Double metricFor(Resource resource) {
@@ -706,15 +706,15 @@ public class BrokerMetricSample {
     double brokerConsumerFetchTotalTimeMsMean = buffer.getDouble();
     double brokerFollowerFetchTotalTimeMsMax = buffer.getDouble();
     double brokerFollowerFetchTotalTimeMsMean = buffer.getDouble();
-    double brokerLogFlushRateAndTimeMs = buffer.getDouble();
-    double brokerLogFlushTimeMaxMs = buffer.getDouble();
-    double brokerLogFlushTimeMeanMs = buffer.getDouble();
     double brokerProduceLocalTimeMsMax = buffer.getDouble();
     double brokerProduceLocalTimeMsMean = buffer.getDouble();
     double brokerConsumerFetchLocalTimeMsMax = buffer.getDouble();
     double brokerConsumerFetchLocalTimeMsMean = buffer.getDouble();
     double brokerFollowerFetchLocalTimeMsMax = buffer.getDouble();
     double brokerFollowerFetchLocalTimeMsMean = buffer.getDouble();
+    double brokerLogFlushRate = buffer.getDouble();
+    double brokerLogFlushTimeMsMax = buffer.getDouble();
+    double brokerLogFlushTimeMsMean = buffer.getDouble();
     return new BrokerMetricSample(brokerId,
                                   brokerCpuUtil,
                                   brokerLeaderBytesInRate,
@@ -744,14 +744,14 @@ public class BrokerMetricSample {
                                   brokerConsumerFetchTotalTimeMsMean,
                                   brokerFollowerFetchTotalTimeMsMax,
                                   brokerFollowerFetchTotalTimeMsMean,
-                                  brokerLogFlushRateAndTimeMs,
-                                  brokerLogFlushTimeMaxMs,
-                                  brokerLogFlushTimeMeanMs,
                                   brokerProduceLocalTimeMsMax,
                                   brokerProduceLocalTimeMsMean,
                                   brokerConsumerFetchLocalTimeMsMax,
                                   brokerConsumerFetchLocalTimeMsMean,
                                   brokerFollowerFetchLocalTimeMsMax,
-                                  brokerFollowerFetchLocalTimeMsMean);
+                                  brokerFollowerFetchLocalTimeMsMean,
+                                  brokerLogFlushRate,
+                                  brokerLogFlushTimeMsMax,
+                                  brokerLogFlushTimeMsMean);
   }
 }
