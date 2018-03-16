@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.task;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.List;
 import java.util.concurrent.TimeoutException;
 import org.apache.kafka.common.utils.Time;
@@ -31,7 +31,7 @@ class BootstrapTask implements Runnable {
   private final long _configuredSnapshotWindowMs;
   //
   private final MetadataClient _metadataClient;
-  private final KafkaMetricSampleAggregator _metricSampleAggregator;
+  private final KafkaPartitionMetricSampleAggregator _metricSampleAggregator;
   private final LoadMonitorTaskRunner _loadMonitorTaskRunner;
   private final MetricFetcherManager _metricFetcherManager;
   private final SampleStore _sampleStore;
@@ -42,7 +42,7 @@ class BootstrapTask implements Runnable {
   // Constructor for RECENT mode.
   BootstrapTask(boolean clearMetrics,
                 MetadataClient metadataClient,
-                KafkaMetricSampleAggregator metricSampleAggregator,
+                KafkaPartitionMetricSampleAggregator metricSampleAggregator,
                 LoadMonitorTaskRunner loadMonitorTaskRunner,
                 MetricFetcherManager metricFetcherManager,
                 SampleStore sampleStore,
@@ -72,7 +72,7 @@ class BootstrapTask implements Runnable {
   BootstrapTask(long startMs,
                 boolean clearMetrics,
                 MetadataClient metadataClient,
-                KafkaMetricSampleAggregator metricSampleAggregator,
+                KafkaPartitionMetricSampleAggregator metricSampleAggregator,
                 LoadMonitorTaskRunner loadMonitorTaskRunner,
                 MetricFetcherManager metricFetcherManager,
                 SampleStore sampleStore,
@@ -106,7 +106,7 @@ class BootstrapTask implements Runnable {
                 long endMs,
                 boolean clearMetrics,
                 MetadataClient metadataClient,
-                KafkaMetricSampleAggregator metricSampleAggregator,
+                KafkaPartitionMetricSampleAggregator metricSampleAggregator,
                 LoadMonitorTaskRunner loadMonitorTaskRunner,
                 MetricFetcherManager metricFetcherManager,
                 SampleStore sampleStore,

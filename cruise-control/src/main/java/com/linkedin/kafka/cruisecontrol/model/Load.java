@@ -10,7 +10,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricVa
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.io.IOException;
 import java.io.OutputStream;
 
@@ -73,7 +73,7 @@ public class Load implements Serializable {
     if (_metricValues.isEmpty()) {
       return 0.0;
     }
-    MetricValues metricValues = _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource));
+    MetricValues metricValues = _metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource));
     return resource.equals(Resource.DISK) ? metricValues.latest() : metricValues.avg();
   }
 
@@ -96,7 +96,7 @@ public class Load implements Serializable {
                                          _metricValues.length() + " entries.");
     }
 
-    MetricValues currentLoadForResource = _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource));
+    MetricValues currentLoadForResource = _metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource));
     for (int i = 0; i < loadForResource.length; i++) {
       currentLoadForResource.set(i, (float) loadForResource[i]);
     }
@@ -108,7 +108,7 @@ public class Load implements Serializable {
    * @param resource Resource for which the utilization will be cleared.
    */
   void clearLoadFor(Resource resource) {
-    MetricValues metricValues = _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource));
+    MetricValues metricValues = _metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource));
     if (metricValues != null) {
       metricValues.clear();
     }
@@ -167,7 +167,7 @@ public class Load implements Serializable {
    */
   void addLoadFor(Resource resource, double[] loadToAddByWindows) {
     if (!_metricValues.isEmpty()) {
-      _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)).add(loadToAddByWindows);
+      _metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource)).add(loadToAddByWindows);
     }
   }
 
@@ -179,7 +179,7 @@ public class Load implements Serializable {
    */
   void subtractLoadFor(Resource resource, double[] loadToSubtractByWindows) {
     if (!_metricValues.isEmpty()) {
-      _metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)).subtract(loadToSubtractByWindows);
+      _metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource)).subtract(loadToSubtractByWindows);
     }
   }
 
@@ -198,7 +198,7 @@ public class Load implements Serializable {
    */
   MetricValues loadFor(Resource resource) {
     MetricValues loadForResource = new MetricValues(_metricValues.length());
-    loadForResource.add(_metricValues.valuesFor(KafkaCruiseControlMetricDef.resourceToMetricId(resource)));
+    loadForResource.add(_metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource)));
     return loadForResource;
   }
 
@@ -207,7 +207,7 @@ public class Load implements Serializable {
    * to encode into JSON
    */
   public Map<String, Object> getJsonStructure() {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.metricDef();
+    MetricDef metricDef = KafkaMetricDef.commonMetricDef();
     Map<String, Object> loadMap = new HashMap<>();
     List<Object> metricValueList = new ArrayList<>();
     for (MetricInfo metricInfo : metricDef.all()) {

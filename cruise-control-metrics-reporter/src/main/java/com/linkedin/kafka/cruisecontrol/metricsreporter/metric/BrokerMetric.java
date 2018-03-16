@@ -11,18 +11,14 @@ import java.nio.ByteBuffer;
 /**
  * A container class to hold broker metric.
  */
-public class BrokerMetric implements CruiseControlMetric {
-  private static final byte METRIC_VERSION = 0;
-  private final MetricType _metricType;
-  private final long _time;
-  private final int _brokerId;
-  private final double _value;
+public class BrokerMetric extends CruiseControlMetric {
 
-  public BrokerMetric(MetricType metricType, long time, int brokerId, double value) {
-    _metricType = metricType;
-    _time = time;
-    _brokerId = brokerId;
-    _value = value;
+  public BrokerMetric(RawMetricType rawMetricType, long time, int brokerId, double value) {
+    super(rawMetricType, time, brokerId, value);
+    if (rawMetricType.metricScope() != RawMetricType.MetricScope.BROKER) {
+      throw new IllegalArgumentException(String.format("Cannot construct a BrokerMetric for %s whose scope is %s",
+                                                       rawMetricType, rawMetricType.metricScope()));
+    }
   }
 
   @Override
@@ -31,33 +27,13 @@ public class BrokerMetric implements CruiseControlMetric {
   }
 
   @Override
-  public MetricType metricType() {
-    return _metricType;
-  }
-
-  @Override
-  public long time() {
-    return _time;
-  }
-
-  @Override
-  public int brokerId() {
-    return _brokerId;
-  }
-
-  @Override
-  public double value() {
-    return _value;
-  }
-
-  @Override
   public ByteBuffer toBuffer(int headerPos) {
-    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* metric type */ +
+    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* raw metric type */ +
                                                 Long.BYTES /* time */ + Integer.BYTES /* broker id */ +
                                                 Double.BYTES /* value */);
     buffer.position(headerPos);
     buffer.put(METRIC_VERSION);
-    buffer.put(metricType().id());
+    buffer.put(rawMetricType().id());
     buffer.putLong(time());
     buffer.putInt(brokerId());
     buffer.putDouble(value());
@@ -70,17 +46,17 @@ public class BrokerMetric implements CruiseControlMetric {
       throw new UnknownVersionException("Cannot deserialize the topic metrics for version " + version + ". "
                                             + "Current version is " + METRIC_VERSION);
     }
-    MetricType metricType = MetricType.forId(buffer.get());
+    RawMetricType rawMetricType = RawMetricType.forId(buffer.get());
     long time = buffer.getLong();
     int brokerId = buffer.getInt();
     double value = buffer.getDouble();
-    return new BrokerMetric(metricType, time, brokerId, value);
+    return new BrokerMetric(rawMetricType, time, brokerId, value);
   }
 
   @Override
   public String toString() {
     return String.format("[%s,%s,time=%d,brokerId=%d,value=%.3f]",
-                         MetricClassId.BROKER_METRIC, metricType(), time(), brokerId(), value());
+                         MetricClassId.BROKER_METRIC, rawMetricType(), time(), brokerId(), value());
   }
 }
 
