@@ -72,7 +72,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
    * N bytes - topic string bytes
    */
   public byte[] toBytes() {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.metricDef();
+    MetricDef metricDef = KafkaCruiseControlMetricDef.commonMetricDef();
     byte[] topicStringBytes = entity().group().getBytes(UTF_8);
     // Allocate memory:
     ByteBuffer buffer = ByteBuffer.allocate(89 + topicStringBytes.length);
@@ -113,7 +113,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
 
   @Override
   public String toString() {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.metricDef();
+    MetricDef metricDef = KafkaCruiseControlMetricDef.commonMetricDef();
     StringBuilder builder = new StringBuilder().append("{");
     for (Map.Entry<Integer, Double> entry : _valuesByMetricId.entrySet()) {
       builder.append(metricDef.metricInfo(entry.getKey()).name())
@@ -127,7 +127,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
   }
 
   private static PartitionMetricSample readV0(ByteBuffer buffer) {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.metricDef();
+    MetricDef metricDef = KafkaCruiseControlMetricDef.commonMetricDef();
     int brokerId = buffer.getInt();
     int partition = buffer.getInt(45);
     String topic = new String(buffer.array(), 49, buffer.array().length - 49, UTF_8);
@@ -141,7 +141,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
   }
 
   private static PartitionMetricSample readV1(ByteBuffer buffer) {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.metricDef();
+    MetricDef metricDef = KafkaCruiseControlMetricDef.commonMetricDef();
     int brokerId = buffer.getInt();
     int partition = buffer.getInt(85);
     String topic = new String(buffer.array(), 89, buffer.array().length - 89, UTF_8);

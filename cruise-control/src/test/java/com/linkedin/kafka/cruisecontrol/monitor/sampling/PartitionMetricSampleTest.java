@@ -46,7 +46,7 @@ public class PartitionMetricSampleTest {
 
   @Test
   public void testSerde() throws UnknownVersionException {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.metricDef();
+    MetricDef metricDef = KafkaCruiseControlMetricDef.commonMetricDef();
     PartitionMetricSample sample = new PartitionMetricSample(0, new TopicPartition("topic", 0));
     int i = 0;
     for (Resource r : Resource.values()) {

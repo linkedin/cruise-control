@@ -6,16 +6,16 @@ package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 
 
 public class SampleLoadingTask implements Runnable {
   private final SampleStore _sampleStore;
-  private final KafkaMetricSampleAggregator _metricSampleAggregator;
+  private final KafkaPartitionMetricSampleAggregator _metricSampleAggregator;
   private final LoadMonitorTaskRunner _loadMonitorTaskRunner;
 
   SampleLoadingTask(SampleStore sampleStore,
-                    KafkaMetricSampleAggregator metricSampleAggregator,
+                    KafkaPartitionMetricSampleAggregator metricSampleAggregator,
                     LoadMonitorTaskRunner loadMonitorTaskRunner) {
     _sampleStore = sampleStore;
     _metricSampleAggregator = metricSampleAggregator;

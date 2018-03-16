@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import org.apache.kafka.common.Configurable;
 
 
@@ -50,9 +50,9 @@ public interface SampleStore extends Configurable {
    * This class is to simplify user interface.
    */
   class SampleLoader {
-    private final KafkaMetricSampleAggregator _metricSampleAggregator;
+    private final KafkaPartitionMetricSampleAggregator _metricSampleAggregator;
 
-    public SampleLoader(KafkaMetricSampleAggregator metricSampleAggregator) {
+    public SampleLoader(KafkaPartitionMetricSampleAggregator metricSampleAggregator) {
       _metricSampleAggregator = metricSampleAggregator;
     }
 

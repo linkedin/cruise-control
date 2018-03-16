@@ -25,7 +25,7 @@ import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
@@ -66,7 +66,7 @@ public class LoadMonitor {
   private static final long METADATA_TTL = 5000L;
   private final int _numWindows;
   private final LoadMonitorTaskRunner _loadMonitorTaskRunner;
-  private final KafkaMetricSampleAggregator _metricSampleAggregator;
+  private final KafkaPartitionMetricSampleAggregator _metricSampleAggregator;
   // A semaphore to help throttle the simultaneous cluster model creation
   private final Semaphore _clusterModelSemaphore;
   private final MetadataClient _metadataClient;
@@ -122,7 +122,7 @@ public class LoadMonitor {
                                                                  BrokerCapacityConfigResolver.class);
     _numWindows = config.getInt(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG);
 
-    _metricSampleAggregator = new KafkaMetricSampleAggregator(config, metadataClient.metadata());
+    _metricSampleAggregator = new KafkaPartitionMetricSampleAggregator(config, metadataClient.metadata());
 
     _acquiredClusterModelSemaphore = ThreadLocal.withInitial(() -> false);
     
@@ -480,7 +480,7 @@ public class LoadMonitor {
   /**
    * Package private for unit test.
    */
-  KafkaMetricSampleAggregator aggregator() {
+  KafkaPartitionMetricSampleAggregator aggregator() {
     return _metricSampleAggregator;
   }
 

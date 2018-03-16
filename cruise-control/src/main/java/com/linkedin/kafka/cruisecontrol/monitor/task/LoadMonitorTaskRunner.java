@@ -11,7 +11,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -31,7 +31,7 @@ public class LoadMonitorTaskRunner {
 
   private final Time _time;
   private final MetricFetcherManager _metricFetcherManager;
-  private final KafkaMetricSampleAggregator _metricSampleAggregator;
+  private final KafkaPartitionMetricSampleAggregator _metricSampleAggregator;
   private final MetadataClient _metadataClient;
   private final SampleStore _sampleStore;
   private final ScheduledExecutorService _samplingScheduler;
@@ -59,7 +59,7 @@ public class LoadMonitorTaskRunner {
    * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
    */
   public LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
-                               KafkaMetricSampleAggregator metricSampleAggregator,
+                               KafkaPartitionMetricSampleAggregator metricSampleAggregator,
                                MetadataClient metadataClient,
                                MetricDef metricDef,
                                Time time,
@@ -82,7 +82,7 @@ public class LoadMonitorTaskRunner {
    */
   LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
                         MetricFetcherManager metricFetcherManager,
-                        KafkaMetricSampleAggregator metricSampleAggregator,
+                        KafkaPartitionMetricSampleAggregator metricSampleAggregator,
                         MetadataClient metadataClient,
                         Time time) {
     _time = time;

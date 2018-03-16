@@ -42,8 +42,8 @@ import org.slf4j.LoggerFactory;
  * the leader metrics. When run cruise control on 0.11.0 and above we will have more accurate metrics.
  * </p>
  */
-public class KafkaMetricSampleAggregator extends MetricSampleAggregator<String, PartitionEntity> {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaMetricSampleAggregator.class);
+public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator<String, PartitionEntity> {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaPartitionMetricSampleAggregator.class);
   private final Metadata _metadata;
 
   /**
@@ -52,14 +52,14 @@ public class KafkaMetricSampleAggregator extends MetricSampleAggregator<String, 
    * @param config   The load monitor configurations.
    * @param metadata The metadata of the cluster.
    */
-  public KafkaMetricSampleAggregator(KafkaCruiseControlConfig config,
-                                     Metadata metadata) {
+  public KafkaPartitionMetricSampleAggregator(KafkaCruiseControlConfig config,
+                                              Metadata metadata) {
     super(config.getInt(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG),
           config.getLong(KafkaCruiseControlConfig.METRICS_WINDOW_MS_CONFIG),
           config.getInt(KafkaCruiseControlConfig.MIN_SAMPLES_PER_METRICS_WINDOW_CONFIG),
           config.getInt(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_ENTITY_CONFIG),
           config.getInt(KafkaCruiseControlConfig.METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG),
-          KafkaCruiseControlMetricDef.metricDef());
+          KafkaCruiseControlMetricDef.commonMetricDef());
     _metadata = metadata;
   }
 

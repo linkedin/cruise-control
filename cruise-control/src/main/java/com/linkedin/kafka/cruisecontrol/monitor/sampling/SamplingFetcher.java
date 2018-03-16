@@ -12,7 +12,7 @@ import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
@@ -32,7 +32,7 @@ class SamplingFetcher extends MetricFetcher {
   // The metadata of the cluster this metric fetcher is fetching from.
   private final MetricSampler _metricSampler;
   private final Cluster _cluster;
-  private final KafkaMetricSampleAggregator _metricSampleAggregator;
+  private final KafkaPartitionMetricSampleAggregator _metricSampleAggregator;
   private final SampleStore _sampleStore;
   private final Set<TopicPartition> _assignedPartitions;
   private final long _startTimeMs;
@@ -45,7 +45,7 @@ class SamplingFetcher extends MetricFetcher {
 
   SamplingFetcher(MetricSampler metricSampler,
                   Cluster cluster,
-                  KafkaMetricSampleAggregator metricSampleAggregator,
+                  KafkaPartitionMetricSampleAggregator metricSampleAggregator,
                   SampleStore sampleStore,
                   Set<TopicPartition> assignedPartitions,
                   long startTimeMs,
@@ -111,7 +111,7 @@ class SamplingFetcher extends MetricFetcher {
         if (_assignedPartitions.contains(tp)) {
           // we fill in the cpu utilization based on the model in case user did not fill it in.
           if (_useLinearRegressionModel && ModelParameters.trainingCompleted()) {
-            partitionMetricSample.record(KafkaCruiseControlMetricDef.metricDef().metricInfo(CPU_USAGE.name()),
+            partitionMetricSample.record(KafkaCruiseControlMetricDef.commonMetricDef().metricInfo(CPU_USAGE.name()),
                                          estimateCpuUtil(partitionMetricSample));
           }
           // we close the metric sample in case the implementation forgot to do so.

@@ -62,7 +62,7 @@ public class KafkaCruiseControl {
     ModelParameters.init(config);
 
     // Instantiate the components.
-    _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry, KafkaCruiseControlMetricDef.metricDef());
+    _loadMonitor = new LoadMonitor(config, _time, dropwizardMetricRegistry, KafkaCruiseControlMetricDef.commonMetricDef());
     _goalOptimizerExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry);

@@ -207,7 +207,7 @@ public class Load implements Serializable {
    * to encode into JSON
    */
   public Map<String, Object> getJsonStructure() {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.metricDef();
+    MetricDef metricDef = KafkaCruiseControlMetricDef.commonMetricDef();
     Map<String, Object> loadMap = new HashMap<>();
     List<Object> metricValueList = new ArrayList<>();
     for (MetricInfo metricInfo : metricDef.all()) {

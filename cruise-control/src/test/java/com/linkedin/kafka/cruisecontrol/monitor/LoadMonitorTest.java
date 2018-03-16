@@ -18,7 +18,7 @@ import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Arrays;
 import java.util.Collection;
@@ -61,7 +61,7 @@ public class LoadMonitorTest {
   private static final PartitionEntity PE_T0P1 = new PartitionEntity(T0P1);
   private static final PartitionEntity PE_T1P0 = new PartitionEntity(T1P0);
   private static final PartitionEntity PE_T1P1 = new PartitionEntity(T1P1);
-  private static final MetricDef METRIC_DEF = KafkaCruiseControlMetricDef.metricDef();
+  private static final MetricDef METRIC_DEF = KafkaCruiseControlMetricDef.commonMetricDef();
 
   private static final int NUM_WINDOWS = 2;
   private static final int MIN_SAMPLES_PER_WINDOW = 4;
@@ -74,7 +74,7 @@ public class LoadMonitorTest {
   public void testStateWithOnlyActiveSnapshotWindow() {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
-    KafkaMetricSampleAggregator aggregator = context.aggregator();
+    KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
 
     // populate the metrics aggregator.
     // four samples for each partition
@@ -94,7 +94,7 @@ public class LoadMonitorTest {
   public void testStateWithoutEnoughSnapshotWindows() {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
-    KafkaMetricSampleAggregator aggregator = context.aggregator();
+    KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
 
     // populate the metrics aggregator.
     // four samples for each partition except T1P1. T1P1 has no sample in the first window and one in the second window.
@@ -123,7 +123,7 @@ public class LoadMonitorTest {
   public void testStateWithInvalidSnapshotWindows() {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
-    KafkaMetricSampleAggregator aggregator = context.aggregator();
+    KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
 
     // populate the metrics aggregator.
     // four samples for each partition except T1P1. T1P1 has 2 samples in the first window, and 2 samples in the 
@@ -164,7 +164,7 @@ public class LoadMonitorTest {
   public void testMeetCompletenessRequirements() {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
-    KafkaMetricSampleAggregator aggregator = context.aggregator();
+    KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
 
     // Require at least 1 valid window with 1.0 of valid partitions ratio.
     ModelCompletenessRequirements requirements1 = new ModelCompletenessRequirements(1, 1.0, false);
@@ -219,7 +219,7 @@ public class LoadMonitorTest {
   public void testBasicClusterModel() throws NotEnoughValidWindowsException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
-    KafkaMetricSampleAggregator aggregator = context.aggregator();
+    KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
 
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T0P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
@@ -241,7 +241,7 @@ public class LoadMonitorTest {
       throws NotEnoughValidWindowsException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
-    KafkaMetricSampleAggregator aggregator = context.aggregator();
+    KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
 
     ModelCompletenessRequirements requirements1 = new ModelCompletenessRequirements(1, 1.0, false);
     ModelCompletenessRequirements requirements2 = new ModelCompletenessRequirements(1, 0.5, false);
@@ -290,7 +290,7 @@ public class LoadMonitorTest {
   public void testClusterWithInvalidPartitions() throws NotEnoughValidWindowsException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
-    KafkaMetricSampleAggregator aggregator = context.aggregator();
+    KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
 
     ModelCompletenessRequirements requirements1 = new ModelCompletenessRequirements(1, 1.0, false);
     ModelCompletenessRequirements requirements2 = new ModelCompletenessRequirements(1, 0.5, false);
@@ -341,7 +341,7 @@ public class LoadMonitorTest {
   public void testClusterModelWithPartlyInvalidPartitions() throws NotEnoughValidWindowsException {
     TestContext context = prepareContext();
     LoadMonitor loadMonitor = context.loadmonitor();
-    KafkaMetricSampleAggregator aggregator = context.aggregator();
+    KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
 
     ModelCompletenessRequirements requirements1 = new ModelCompletenessRequirements(1, 1.0, false);
     ModelCompletenessRequirements requirements2 = new ModelCompletenessRequirements(1, 0.5, false);
@@ -426,7 +426,7 @@ public class LoadMonitorTest {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
     LoadMonitor loadMonitor = new LoadMonitor(config, mockMetadataClient, _time, new MetricRegistry(), METRIC_DEF);
 
-    KafkaMetricSampleAggregator aggregator = loadMonitor.aggregator();
+    KafkaPartitionMetricSampleAggregator aggregator = loadMonitor.aggregator();
 
     ModelParameters.init(config);
     loadMonitor.startUp();
@@ -460,12 +460,12 @@ public class LoadMonitorTest {
 
   private static class TestContext {
     private final LoadMonitor _loadMonitor;
-    private final KafkaMetricSampleAggregator _aggregator;
+    private final KafkaPartitionMetricSampleAggregator _aggregator;
     private final KafkaCruiseControlConfig _config;
     private final Metadata _metadata;
 
     private TestContext(LoadMonitor loadMonitor,
-                        KafkaMetricSampleAggregator aggregator,
+                        KafkaPartitionMetricSampleAggregator aggregator,
                         KafkaCruiseControlConfig config,
                         Metadata metadata) {
       _loadMonitor = loadMonitor;
@@ -478,7 +478,7 @@ public class LoadMonitorTest {
       return _loadMonitor;
     }
 
-    private KafkaMetricSampleAggregator aggregator() {
+    private KafkaPartitionMetricSampleAggregator aggregator() {
       return _aggregator;
     }
 
