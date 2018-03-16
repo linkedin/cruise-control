@@ -9,12 +9,16 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 
 
-public class TopicMetric extends BrokerMetric {
+public class TopicMetric extends CruiseControlMetric {
   private static final byte METRIC_VERSION = 0;
   protected String _topic;
 
-  public TopicMetric(MetricType metricType, long time, int brokerId, String topic, double value) {
-    super(metricType, time, brokerId, value);
+  public TopicMetric(RawMetricType rawMetricType, long time, int brokerId, String topic, double value) {
+    super(rawMetricType, time, brokerId, value);
+    if (rawMetricType.metricScope() != RawMetricType.MetricScope.TOPIC) {
+      throw new IllegalArgumentException(String.format("Cannot construct a TopicMetric for %s whose scope is %s",
+                                                       rawMetricType, rawMetricType.metricScope()));
+    }
     _topic = topic;
   }
 
@@ -28,13 +32,13 @@ public class TopicMetric extends BrokerMetric {
 
   public ByteBuffer toBuffer(int headerPos) {
     byte[] topic = _topic.getBytes(StandardCharsets.UTF_8);
-    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* metric type */ +
+    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* raw metric type */ +
                                                 Long.BYTES /* time */ + Integer.BYTES /* broker id */ +
                                                 Integer.BYTES /* topic length */ + topic.length /* topic */ +
                                                 Double.BYTES /* value */);
     buffer.position(headerPos);
     buffer.put(METRIC_VERSION);
-    buffer.put(metricType().id());
+    buffer.put(rawMetricType().id());
     buffer.putLong(time());
     buffer.putInt(brokerId());
     buffer.putInt(topic.length);
@@ -49,19 +53,19 @@ public class TopicMetric extends BrokerMetric {
       throw new UnknownVersionException("Cannot deserialize the topic metrics for version " + version + ". "
                                             + "Current version is " + METRIC_VERSION);
     }
-    MetricType metricType = MetricType.forId(buffer.get());
+    RawMetricType rawMetricType = RawMetricType.forId(buffer.get());
     long time = buffer.getLong();
     int brokerId = buffer.getInt();
     int topicLength = buffer.getInt();
     String topic = new String(buffer.array(), buffer.arrayOffset() + buffer.position(), topicLength, StandardCharsets.UTF_8);
     buffer.position(buffer.position() + topicLength);
     double value = buffer.getDouble();
-    return new TopicMetric(metricType, time, brokerId, topic, value);
+    return new TopicMetric(rawMetricType, time, brokerId, topic, value);
   }
 
   @Override
   public String toString() {
     return String.format("[%s,%s,time=%d,brokerId=%d,topic=%s,value=%.3f]",
-                         MetricClassId.TOPIC_METRIC, metricType(), time(), brokerId(), topic(), value());
+                         MetricClassId.TOPIC_METRIC, rawMetricType(), time(), brokerId(), topic(), value());
   }
 }

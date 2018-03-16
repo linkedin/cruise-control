@@ -5,16 +5,19 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
+import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.PartitionMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
@@ -22,15 +25,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.CPU_USAGE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.DISK_USAGE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.FETCH_RATE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.LEADER_BYTES_IN;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.LEADER_BYTES_OUT;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.MESSAGE_IN_RATE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.PRODUCE_RATE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.REPLICATION_BYTES_IN_RATE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.REPLICATION_BYTES_OUT_RATE;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.MetricScope.*;
 
 
 /**
@@ -39,15 +35,15 @@ import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCru
  */
 public class CruiseControlMetricsProcessor {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsProcessor.class);
+  private static final double MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT = 0.01;
+  private static final double MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT = 0.01;
   private static final int BYTES_IN_KB = 1024;
   private static final int BYTES_IN_MB = 1024 * 1024;
   private final Map<Integer, BrokerLoad> _brokerLoad;
-  private final Map<Integer, Double> _brokerFollowerLoad;
   private long _maxMetricTimestamp = -1;
 
   CruiseControlMetricsProcessor() {
     _brokerLoad = new HashMap<>();
-    _brokerFollowerLoad = new HashMap<>();
   }
 
   void addMetric(CruiseControlMetric metric) {
@@ -61,37 +57,71 @@ public class CruiseControlMetricsProcessor {
   }
 
   /**
-   * Process all the added {@link CruiseControlMetric} to get the {@link MetricSampler.Samples} 
-   * 
+   * Process all the added {@link CruiseControlMetric} to get the {@link MetricSampler.Samples}
+   *
    * @param cluster the Kafka cluster.
    * @param partitions the partitions to construct samples for.
    * @param samplingMode the sampling mode to indicate which type of samples are needed.
-   * @param metricDef the metric definition.
-   *                  
+   *
    * @return the constructed metric samples.
    */
   MetricSampler.Samples process(Cluster cluster,
                                 Collection<TopicPartition> partitions,
-                                MetricSampler.SamplingMode samplingMode,
-                                MetricDef metricDef) {
+                                MetricSampler.SamplingMode samplingMode) {
     Map<Integer, Map<String, Integer>> leaderDistributionStats = leaderDistributionStats(cluster);
-    fillInFollowerBytesInRate(cluster, leaderDistributionStats);
-    //TODO: maybe need to skip the entire processing logic if broker load is not consistent.
     // Theoretically we should not move forward at all if a broker reported a different all topic bytes in from all
     // its resident replicas. However, it is not clear how often this would happen yet. At this point we still
     // continue process the other brokers. Later on if in practice all topic bytes in and the aggregation value is
     // rarely inconsistent we can just stop the sample generation when the this happens.
-    _brokerLoad.values().forEach(BrokerLoad::validate);
+    _brokerLoad.forEach((broker, load) -> load.prepareBrokerMetrics(cluster, broker, _maxMetricTimestamp));
 
     Set<PartitionMetricSample> partitionMetricSamples = new HashSet<>();
     Set<BrokerMetricSample> brokerMetricSamples = new HashSet<>();
 
+    // Get partition metric samples.
     int skippedPartition = 0;
     if (samplingMode == MetricSampler.SamplingMode.ALL
         || samplingMode == MetricSampler.SamplingMode.PARTITION_METRICS_ONLY) {
+      skippedPartition = addPartitionMetricSamples(cluster, partitions, leaderDistributionStats, partitionMetricSamples);
+    }
+
+    // Get broker metric samples.
+    int skippedBroker = 0;
+    if (samplingMode == MetricSampler.SamplingMode.ALL
+        || samplingMode == MetricSampler.SamplingMode.BROKER_METRICS_ONLY) {
+      skippedBroker = addBrokerMetricSamples(cluster, brokerMetricSamples);
+    }
+
+    LOG.info("Generated {}{} partition metric samples and {}{} broker metric samples for timestamp {}",
+             partitionMetricSamples.size(), skippedPartition > 0 ? "(" + skippedPartition + " skipped)" : "",
+             brokerMetricSamples.size(), skippedBroker > 0 ? "(" + skippedBroker + " skipped)" : "",
+             _maxMetricTimestamp);
+    return new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples);
+  }
+
+  void clear() {
+    _brokerLoad.clear();
+    _maxMetricTimestamp = -1L;
+  }
+
+  /**
+   * Add the partition metric samples to the provided set.
+   *
+   * @param cluster the Kafka cluster
+   * @param partitions the partitions to get samples.
+   * @param leaderDistributionStats the leader count per topic/broker
+   * @param partitionMetricSamples the set to add the partition samples to.
+   * @return the number of skipped partitions.
+   */
+  private int addPartitionMetricSamples(Cluster cluster,
+                                        Collection<TopicPartition> partitions,
+                                        Map<Integer, Map<String, Integer>> leaderDistributionStats,
+                                        Set<PartitionMetricSample> partitionMetricSamples) {
+    int skippedPartition = 0;
+
       for (TopicPartition tp : partitions) {
         try {
-          PartitionMetricSample sample = buildPartitionMetricSample(cluster, tp, leaderDistributionStats, metricDef);
+          PartitionMetricSample sample = buildPartitionMetricSample(cluster, tp, leaderDistributionStats);
           if (sample != null) {
             LOG.debug("Added partition metrics sample for {}", tp);
             partitionMetricSamples.add(sample);
@@ -103,113 +133,58 @@ public class CruiseControlMetricsProcessor {
           skippedPartition++;
         }
       }
-    }
+    return skippedPartition;
+  }
 
+  /**
+   * Add the broker metric samples to the provided set.
+   *
+   * @param cluster the Kafka cluster
+   * @param brokerMetricSamples the set to add the broker samples to.
+   * @return the number of skipped brokers.
+   */
+  private int addBrokerMetricSamples(Cluster cluster,
+                                     Set<BrokerMetricSample> brokerMetricSamples) {
     int skippedBroker = 0;
-    if (samplingMode == MetricSampler.SamplingMode.ALL
-        || samplingMode == MetricSampler.SamplingMode.BROKER_METRICS_ONLY) {
-      for (Node node : cluster.nodes()) {
-        BrokerLoad brokerLoad = _brokerLoad.get(node.id());
-        if (brokerLoad == null || !brokerLoad.isValid()) {
-          // A new broker or broker metrics are not consistent.
-          LOG.debug("Skip generating broker metric sample for broker {} because it does not have IO load metrics or "
-                        + "the metrics are inconsistent.", node.id());
+    MetricDef brokerMetricDef = KafkaMetricDef.brokerMetricDef();
+    for (Node node : cluster.nodes()) {
+      BrokerLoad brokerLoad = _brokerLoad.get(node.id());
+      if (brokerLoad == null || !brokerLoad.allBrokerMetricsAvailable()) {
+        // A new broker or broker metrics are not consistent.
+        LOG.debug("Skip generating broker metric sample for broker {} because the following metrics are missing {}",
+                  node.id(), brokerLoad == null ? "All Broker Metrics" : brokerLoad.missingBrokerMetrics());
+        skippedBroker++;
+        continue;
+      }
+
+      boolean validSample = true;
+      BrokerMetricSample brokerMetricSample = new BrokerMetricSample(node.rack(), node.id());
+      for (RawMetricType rawBrokerMetricType : RawMetricType.brokerMetricTypes()) {
+        // We require the broker to report all the metric types. Otherwise we skip the broker.
+        if (!brokerLoad.brokerMetricAvailable(rawBrokerMetricType)) {
           skippedBroker++;
-          continue;
-        }
-        double leaderCpuUtil = brokerLoad.cpuUtil();
-        if (leaderCpuUtil > 0) {
-          BrokerMetricSample brokerMetricSample =
-              new BrokerMetricSample(node.id(),
-                                     leaderCpuUtil,
-                                     brokerLoad.bytesIn() / BYTES_IN_KB,
-                                     brokerLoad.bytesOut() / BYTES_IN_KB,
-                                     // The replication bytes in is only available from Kafka 0.11.0 and above.
-                                     (brokerLoad.replicationBytesIn() > 0 ?
-                                         brokerLoad.replicationBytesIn() : _brokerFollowerLoad.get(node.id())) / BYTES_IN_KB,
-                                     brokerLoad.replicationBytesOut() / BYTES_IN_KB,
-                                     brokerLoad.messagesInRate(),
-                                     brokerLoad.produceRequestRate(),
-                                     brokerLoad.consumerFetchRequestRate(),
-                                     brokerLoad.followerFetchRequestRate(),
-                                     brokerLoad.requestHandlerAvgIdlePercent(),
-                                     -1.0,
-                                     brokerLoad.allTopicsProduceRequestRate(),
-                                     brokerLoad.allTopicsFetchRequestRate(),
-                                     _maxMetricTimestamp,
-                                     brokerLoad.requestQueueSize(),
-                                     brokerLoad.responseQueueSize(),
-                                     brokerLoad.produceRequestQueueSizeMsMax(),
-                                     brokerLoad.produceRequestQueueSizeMsMean(),
-                                     brokerLoad.consumerFetchRequestQueueTimeMsMax(),
-                                     brokerLoad.consumerFetchRequestQueueTimeMsMean(),
-                                     brokerLoad.followerFetchRequestQueueTimeMsMax(),
-                                     brokerLoad.followerFetchRequestQueueTimeMsMean(),
-                                     brokerLoad.produceTotalTimeMsMax(),
-                                     brokerLoad.produceTotalTimeMsMean(),
-                                     brokerLoad.consumerFetchTotalTimeMsMax(),
-                                     brokerLoad.consumerFetchTotalTimeMsMean(),
-                                     brokerLoad.followerFetchTotalTimeMsMax(),
-                                     brokerLoad.followerFetchTotalTimeMsMean(),
-                                     brokerLoad.produceLocalTimeMsMax(),
-                                     brokerLoad.produceLocalTimeMsMean(),
-                                     brokerLoad.consumerFetchLocalTimeMsMax(),
-                                     brokerLoad.consumerFetchLocalTimeMsMean(),
-                                     brokerLoad.followerFetchLocalTimeMsMax(),
-                                     brokerLoad.followerFetchLocalTimeMsMean(),
-                                     brokerLoad.logFlushRate(),
-                                     brokerLoad.logFlushTimeMsMax(),
-                                     brokerLoad.logFlushTimeMsMean());
-          LOG.debug("Added broker metric sample for broker {}", node.id());
-          brokerMetricSamples.add(brokerMetricSample);
+          validSample = false;
+          LOG.debug("Skip generating broker metric sample for broker {} because it does not have %s metrics or "
+                        + "the metrics are inconsistent.", node.id(), rawBrokerMetricType);
+          break;
         } else {
-          skippedBroker++;
+          MetricInfo metricInfo = brokerMetricDef.metricInfo(KafkaMetricDef.forRawMetricType(rawBrokerMetricType).name());
+          double metricValue = brokerLoad.brokerMetric(rawBrokerMetricType);
+          brokerMetricSample.record(metricInfo, metricValue);
         }
+      }
+
+      if (validSample) {
+        // Disk usage is not one of the broker raw metric type.
+        brokerMetricSample.record(brokerMetricDef.metricInfo(KafkaMetricDef.DISK_USAGE.name()),
+                                  brokerLoad.diskUsage());
+        brokerMetricSample.close(_maxMetricTimestamp);
+
+        LOG.debug("Added broker metric sample for broker {}", node.id());
+        brokerMetricSamples.add(brokerMetricSample);
       }
     }
-    LOG.info("Generated {}{} partition metric samples and {}{} broker metric samples for timestamp {}",
-             partitionMetricSamples.size(), skippedPartition > 0 ? "(" + skippedPartition + " skipped)" : "",
-             brokerMetricSamples.size(), skippedBroker > 0 ? "(" + skippedBroker + " skipped)" : "",
-             _maxMetricTimestamp);
-    return new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples);
-  }
-
-  void clear() {
-    _brokerLoad.clear();
-    _brokerFollowerLoad.clear();
-    _maxMetricTimestamp = -1L;
-  }
-
-  private void fillInFollowerBytesInRate(Cluster cluster, Map<Integer, Map<String, Integer>> leaderDistributionStats) {
-    synchronized (this) {
-      if (!_brokerFollowerLoad.isEmpty()) {
-        return;
-      }
-      for (Node node : cluster.nodes()) {
-        _brokerFollowerLoad.putIfAbsent(node.id(), 0.0);
-        BrokerLoad brokerLoad = _brokerLoad.get(node.id());
-        if (brokerLoad == null) {
-          // new broker?
-          continue;
-        }
-        for (PartitionInfo partitionInfo : cluster.partitionsForNode(node.id())) {
-          IOLoad topicIOLoad = brokerLoad.ioLoad(partitionInfo.topic(), partitionInfo.partition());
-          if (topicIOLoad == null) {
-            // The topic did not report any IO metric and the partition does not exist on the broker.
-            LOG.debug("No IO load reported from broker {} for partition {}-{}",
-                      node.id(), partitionInfo.topic(), partitionInfo.partition());
-            continue;
-          }
-          int numLeadersOnBroker = leaderDistributionStats.get(node.id()).get(partitionInfo.topic());
-          double partitionBytesIn = topicIOLoad.bytesIn() / numLeadersOnBroker;
-          for (Node replica : partitionInfo.replicas()) {
-            if (replica.id() != node.id()) {
-              _brokerFollowerLoad.merge(replica.id(), partitionBytesIn, (v0, v1) -> v0 + v1);
-            }
-          }
-        }
-      }
-    }
+    return skippedBroker;
   }
 
   /**
@@ -231,57 +206,54 @@ public class CruiseControlMetricsProcessor {
 
   private PartitionMetricSample buildPartitionMetricSample(Cluster cluster,
                                                            TopicPartition tp,
-                                                           Map<Integer, Map<String, Integer>> leaderDistributionStats,
-                                                           MetricDef metricDef) {
+                                                           Map<Integer, Map<String, Integer>> leaderDistributionStats) {
     TopicPartition tpWithDotHandled = partitionHandleDotInTopicName(tp);
     int leaderId = cluster.leaderFor(tp).id();
+    //TODO: switch to linear regression model without computing partition level CPU usage.
     BrokerLoad brokerLoad = _brokerLoad.get(leaderId);
-    if (brokerLoad == null || !brokerLoad.isValid()) {
-      LOG.debug("Skip generating metric samples for partition {} because broker {} has no metric or has inconsistent IO load.",
+    // Ensure broker load is available.
+    if (brokerLoad == null || !brokerLoad.brokerMetricAvailable(BROKER_CPU_UTIL)) {
+      LOG.debug("Skip generating metric sample for partition {} because broker metric for broker {} is unavailable.",
                 tp, leaderId);
       return null;
     }
-    double leaderCpuUtil = brokerLoad.cpuUtil();
-    if (leaderCpuUtil < 0) {
-      LOG.debug("Skip generating metric sample for partition {} because broker {} did not report CPU utilization.", tp, leaderId);
+    // Ensure the topic load is available.
+    if (!brokerLoad.allTopicMetricsAvailable(tp.topic())) {
+      LOG.debug("Skip generating metric samples for partition {} because broker {} has no metric or topic metrics "
+                    + "are not available", tp, leaderId);
       return null;
     }
-    ValueAndTime partSize = brokerLoad.size(tpWithDotHandled);
-    if (partSize == null) {
+    if (!brokerLoad.partitionMetricAvailable(tp, PARTITION_SIZE)) {
       // This broker is no longer the leader.
-      LOG.debug("Skip generating metric sample for partition {} because broker {} is no longer the leader.", tp, leaderId);
+      LOG.debug("Skip generating metric sample for partition {} because broker {} no long host the partition.", tp, leaderId);
       return null;
     }
-
-    int numLeaderPartitionsOnBroker = leaderDistributionStats.get(leaderId).get(tp.topic());
-
-    IOLoad topicIOLoad = brokerLoad.ioLoad(tpWithDotHandled.topic());
-    double topicBytesInInBroker = topicIOLoad.bytesIn();
-    double topicBytesOutInBroker = topicIOLoad.bytesOut();
-    double partitionBytesInRate = topicBytesInInBroker / numLeaderPartitionsOnBroker;
-    double partitionBytesOutRate = topicBytesOutInBroker / numLeaderPartitionsOnBroker;
-    double partitionProduceRate = topicIOLoad.produceRequestRate() / numLeaderPartitionsOnBroker;
-    double partitionFetchRate = topicIOLoad.fetchRequestRate() / numLeaderPartitionsOnBroker;
-    double partitionMessageInRate = topicIOLoad.messagesInRate() / numLeaderPartitionsOnBroker;
-    double partitionReplicationBytesInRate = topicIOLoad.replicationBytesIn() / numLeaderPartitionsOnBroker;
-    double partitionReplicationBytesOutRate = topicIOLoad.replicationBytesOut() / numLeaderPartitionsOnBroker;
-
+    // Ensure there is a partition size.
+    double partSize = brokerLoad.partitionMetric(tpWithDotHandled.topic(), tpWithDotHandled.partition(), PARTITION_SIZE);
+    // Fill in all the common metrics.
     PartitionMetricSample pms = new PartitionMetricSample(leaderId, tp);
-    pms.record(metricDef.metricInfo(LEADER_BYTES_IN.name()), partitionBytesInRate / BYTES_IN_KB);
-    // TODO: After Kafka 0.11 the bytes out will exclude replication bytes, we need to take replication factor into consideration as well.
-    pms.record(metricDef.metricInfo(LEADER_BYTES_OUT.name()), partitionBytesOutRate / BYTES_IN_KB);
-    pms.record(metricDef.metricInfo(DISK_USAGE.name()), partSize.value() / BYTES_IN_MB);
-    pms.record(metricDef.metricInfo(CPU_USAGE.name()), ModelUtils.estimateLeaderCpuUtil(brokerLoad.cpuUtil(),
-                                                                                        brokerLoad.bytesIn(),
-                                                                                        brokerLoad.bytesOut(),
-                                                                                        _brokerFollowerLoad.get(leaderId),
-                                                                                        partitionBytesInRate,
-                                                                                        partitionBytesOutRate));
-    pms.record(metricDef.metricInfo(PRODUCE_RATE.name()), partitionProduceRate);
-    pms.record(metricDef.metricInfo(FETCH_RATE.name()), partitionFetchRate);
-    pms.record(metricDef.metricInfo(MESSAGE_IN_RATE.name()), partitionMessageInRate);
-    pms.record(metricDef.metricInfo(REPLICATION_BYTES_IN_RATE.name()), partitionReplicationBytesInRate);
-    pms.record(metricDef.metricInfo(REPLICATION_BYTES_OUT_RATE.name()), partitionReplicationBytesOutRate);
+    MetricDef commonMetricDef = KafkaMetricDef.commonMetricDef();
+    int numLeaderPartitionsOnBroker = leaderDistributionStats.get(leaderId).get(tp.topic());
+    for (RawMetricType rawTopicMetricType : RawMetricType.topicMetricTypes()) {
+      MetricInfo metricInfo = commonMetricDef.metricInfo(KafkaMetricDef.forRawMetricType(rawTopicMetricType).name());
+      double metricValue = brokerLoad.topicMetrics(tpWithDotHandled.topic(), rawTopicMetricType);
+      pms.record(metricInfo, numLeaderPartitionsOnBroker == 0 ? 0 : metricValue / numLeaderPartitionsOnBroker);
+    }
+    // Fill in disk usage are not a topic metric type
+    pms.record(commonMetricDef.metricInfo(KafkaMetricDef.DISK_USAGE.name()), partSize);
+    // fill in CPU usage, which is not a topic metric type
+    double partitionBytesInRate = pms.metricValue(commonMetricDef.metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name()).id());
+    double partitionBytesOutRate = pms.metricValue(commonMetricDef.metricInfo(KafkaMetricDef.LEADER_BYTES_OUT.name()).id());
+    double partitionReplicationBytesOutRate =
+        pms.metricValue(commonMetricDef.metricInfo(KafkaMetricDef.REPLICATION_BYTES_OUT_RATE.name()).id());
+    double brokerTotalBytesOut = brokerLoad.brokerMetric(ALL_TOPIC_BYTES_OUT) + brokerLoad.brokerMetric(ALL_TOPIC_REPLICATION_BYTES_OUT);
+    double cpuUsage = ModelUtils.estimateLeaderCpuUtil(brokerLoad.brokerMetric(BROKER_CPU_UTIL),
+                                                       brokerLoad.brokerMetric(ALL_TOPIC_BYTES_IN),
+                                                       brokerTotalBytesOut,
+                                                       brokerLoad.brokerMetric(ALL_TOPIC_REPLICATION_BYTES_IN),
+                                                       partitionBytesInRate,
+                                                       partitionBytesOutRate + partitionReplicationBytesOutRate);
+    pms.record(commonMetricDef.metricInfo(KafkaMetricDef.CPU_USAGE.name()), cpuUsage);
     pms.close(_maxMetricTimestamp);
     return pms;
   }
@@ -292,449 +264,356 @@ public class CruiseControlMetricsProcessor {
       new TopicPartition(tp.topic().replace('.', '_'), tp.partition());
   }
 
+  private static double convertUnit(double value, RawMetricType rawMetricType) {
+    switch (rawMetricType) {
+      case ALL_TOPIC_BYTES_IN:
+      case ALL_TOPIC_BYTES_OUT:
+      case ALL_TOPIC_REPLICATION_BYTES_IN:
+      case ALL_TOPIC_REPLICATION_BYTES_OUT:
+      case TOPIC_BYTES_IN:
+      case TOPIC_BYTES_OUT:
+      case TOPIC_REPLICATION_BYTES_IN:
+      case TOPIC_REPLICATION_BYTES_OUT:
+        return value / BYTES_IN_KB;
+
+      case PARTITION_SIZE:
+        return value / BYTES_IN_MB;
+
+      default:
+        return value;
+    }
+  }
+
   /**
    * Some helper classes.
    */
-  private class BrokerLoad extends IOLoad {
-    private Map<String, IOLoad> _topicIOLoad = new HashMap<>();
-    private Map<TopicPartition, ValueAndTime> _partitionSize = new HashMap<>();
-    private ValueAndCount _cpuUtil = new ValueAndCount();
-    private ValueAndCount _allTopicsProduceRequestRate = new ValueAndCount();
-    private ValueAndCount _allTopicsFetchRequestRate = new ValueAndCount();
-    private ValueAndCount _consumerFetchRequestRate = new ValueAndCount();
-    private ValueAndCount _followerFetchRequestRate = new ValueAndCount();
-    private ValueAndCount _requestHandlerAvgIdlePercent = new ValueAndCount();
-    private ValueAndCount _requestQueueSize = new ValueAndCount();
-    private ValueAndCount _responseQueueSize = new ValueAndCount();
-    private ValueAndCount _produceRequestQueueTimeMsMax = new ValueAndCount();
-    private ValueAndCount _produceRequestQueueTimeMsMean = new ValueAndCount();
-    private ValueAndCount _consumerFetchRequestQueueTimeMsMax = new ValueAndCount();
-    private ValueAndCount _consumerFetchRequestQueueTimeMsMean = new ValueAndCount();
-    private ValueAndCount _followerFetchRequestQueueTimeMsMax = new ValueAndCount();
-    private ValueAndCount _followerFetchRequestQueueTimeMsMean = new ValueAndCount();
-    private ValueAndCount _produceTotalTimeMsMax = new ValueAndCount();
-    private ValueAndCount _produceTotalTimeMsMean = new ValueAndCount();
-    private ValueAndCount _consumerFetchTotalTimeMsMax = new ValueAndCount();
-    private ValueAndCount _consumerFetchTotalTimeMsMean = new ValueAndCount();
-    private ValueAndCount _followerFetchTotalTimeMsMax = new ValueAndCount();
-    private ValueAndCount _followerFetchTotalTimeMsMean = new ValueAndCount();
-    private ValueAndCount _produceLocalTimeMsMax = new ValueAndCount();
-    private ValueAndCount _produceLocalTimeMsMean = new ValueAndCount();
-    private ValueAndCount _consumerFetchLocalTimeMsMax = new ValueAndCount();
-    private ValueAndCount _consumerFetchLocalTimeMsMean = new ValueAndCount();
-    private ValueAndCount _followerFetchLocalTimeMsMax = new ValueAndCount();
-    private ValueAndCount _followerFetchLocalTimeMsMean = new ValueAndCount();
-    private ValueAndCount _logFlushRate = new ValueAndCount();
-    private ValueAndCount _logFlushTimeMsMax = new ValueAndCount();
-    private ValueAndCount _logFlushTimeMsMean = new ValueAndCount();
+  private static class BrokerLoad {
+    private final RawMetricsHolder _brokerMetrics = new RawMetricsHolder();
+    private final Map<String, RawMetricsHolder> _topicMetrics = new HashMap<>();
+    private final Map<TopicPartition, RawMetricsHolder> _partitionMetrics = new HashMap<>();
+    // Remember which topic has partition size reported. Because the topic level IO metrics are only created when
+    // there is IO, the topic level IO metrics may be missing if there was no traffic to the topic on the broker.
+    // However, because the partition size will always be reported, when we see partition size was reported for
+    // a topic but the topic level IO metrics are not reported, we assume there was no traffic to the topic.
+    private final Set<String> _topicsWithPartitionSizeReported = new HashSet<>();
+    private final Set<RawMetricType> _missingBrokerMetrics = new HashSet<>();
 
-    private boolean _valid = true;
+    private static final Map<RawMetricType, RawMetricType> METRIC_TYPES_TO_SUM = new HashMap<>();
+    static {
+      METRIC_TYPES_TO_SUM.put(TOPIC_PRODUCE_REQUEST_RATE, ALL_TOPIC_PRODUCE_REQUEST_RATE);
+      METRIC_TYPES_TO_SUM.put(TOPIC_FETCH_REQUEST_RATE, ALL_TOPIC_FETCH_REQUEST_RATE);
+      METRIC_TYPES_TO_SUM.put(TOPIC_BYTES_IN, ALL_TOPIC_BYTES_IN);
+      METRIC_TYPES_TO_SUM.put(TOPIC_BYTES_OUT, ALL_TOPIC_BYTES_OUT);
+      METRIC_TYPES_TO_SUM.put(TOPIC_REPLICATION_BYTES_IN, ALL_TOPIC_REPLICATION_BYTES_IN);
+      METRIC_TYPES_TO_SUM.put(TOPIC_REPLICATION_BYTES_OUT, ALL_TOPIC_REPLICATION_BYTES_OUT);
+      METRIC_TYPES_TO_SUM.put(TOPIC_MESSAGES_IN_PER_SEC, ALL_TOPIC_MESSAGES_IN_PER_SEC);
+    }
+
+    private boolean _brokerMetricsAvailable = false;
 
     private void recordMetric(CruiseControlMetric ccm) {
-      switch (ccm.metricType()) {
-        case TOPIC_BYTES_IN:
-          recordTopicBytesIn((TopicMetric) ccm);
+      RawMetricType rawMetricType = ccm.rawMetricType();
+      switch (rawMetricType.metricScope()) {
+        case BROKER:
+          _brokerMetrics.recordCruiseControlMetric(ccm);
           break;
-        case TOPIC_BYTES_OUT:
-          recordTopicBytesOut((TopicMetric) ccm);
+        case TOPIC:
+          TopicMetric tm = (TopicMetric) ccm;
+          _topicMetrics.computeIfAbsent(tm.topic(), t -> new RawMetricsHolder())
+                       .recordCruiseControlMetric(ccm);
           break;
-        case ALL_TOPIC_PRODUCE_REQUEST_RATE:
-          _allTopicsProduceRequestRate.addValue(ccm.value());
+        case PARTITION:
+          PartitionMetric pm = (PartitionMetric) ccm;
+          _partitionMetrics.computeIfAbsent(new TopicPartition(pm.topic(), pm.partition()), tp -> new RawMetricsHolder())
+                           .recordCruiseControlMetric(ccm);
+          _topicsWithPartitionSizeReported.add(pm.topic());
           break;
-        case ALL_TOPIC_FETCH_REQUEST_RATE:
-          _allTopicsFetchRequestRate.addValue(ccm.value());
-          break;
-        case BROKER_CONSUMER_FETCH_REQUEST_RATE:
-          _consumerFetchRequestRate.addValue(ccm.value());
-          break;
-        case BROKER_FOLLOWER_FETCH_REQUEST_RATE:
-          _followerFetchRequestRate.addValue(ccm.value());
-          break;
-        case BROKER_REQUEST_HANDLER_AVG_IDLE_PERCENT:
-          _requestHandlerAvgIdlePercent.addValue(ccm.value());
-          break;
-        case BROKER_CPU_UTIL:
-          _cpuUtil.addValue(ccm.value());
-          break;
-        case PARTITION_SIZE:
-          recordPartitionSize((PartitionMetric) ccm);
-          break;
-        case BROKER_REQUEST_QUEUE_SIZE:
-          _requestQueueSize.addValue(ccm.value());
-          break;
-        case BROKER_RESPONSE_QUEUE_SIZE:
-          _responseQueueSize.addValue(ccm.value());
-          break;
-        case BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MAX:
-          _produceRequestQueueTimeMsMax.addValue(ccm.value());
-          break;
-        case BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MEAN:
-          _produceRequestQueueTimeMsMean.addValue(ccm.value());
-          break;
-        case BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MAX:
-          _consumerFetchRequestQueueTimeMsMax.addValue(ccm.value());
-          break;
-        case BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN:
-          _consumerFetchRequestQueueTimeMsMean.addValue(ccm.value());
-          break;
-        case BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MAX:
-          _followerFetchRequestQueueTimeMsMax.addValue(ccm.value());
-          break;
-        case BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN:
-          _followerFetchRequestQueueTimeMsMean.addValue(ccm.value());
-          break;
-        case BROKER_PRODUCE_TOTAL_TIME_MS_MAX:
-          _produceTotalTimeMsMax.addValue(ccm.value());
-          break;
-        case BROKER_PRODUCE_TOTAL_TIME_MS_MEAN:
-          _produceTotalTimeMsMean.addValue(ccm.value());
-          break;
-        case BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MAX:
-          _consumerFetchTotalTimeMsMax.addValue(ccm.value());
-          break;
-        case BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MEAN:
-          _consumerFetchTotalTimeMsMean.addValue(ccm.value());
-          break;
-        case BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MAX:
-          _followerFetchTotalTimeMsMax.addValue(ccm.value());
-          break;
-        case BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN:
-          _followerFetchTotalTimeMsMean.addValue(ccm.value());
-          break;
-        case BROKER_PRODUCE_LOCAL_TIME_MS_MAX:
-          _produceLocalTimeMsMax.addValue(ccm.value());
-          break;
-        case BROKER_PRODUCE_LOCAL_TIME_MS_MEAN:
-          _produceLocalTimeMsMean.addValue(ccm.value());
-          break;
-        case BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX:
-          _consumerFetchLocalTimeMsMax.addValue(ccm.value());
-          break;
-        case BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN:
-          _consumerFetchLocalTimeMsMean.addValue(ccm.value());
-          break;
-        case BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX:
-          _followerFetchLocalTimeMsMax.addValue(ccm.value());
-          break;
-        case BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN:
-          _followerFetchLocalTimeMsMean.addValue(ccm.value());
-          break;
-        case BROKER_LOG_FLUSH_RATE:
-          _logFlushRate.addValue(ccm.value());
-          break;
-        case BROKER_LOG_FLUSH_TIME_MS_MAX:
-          _logFlushTimeMsMax.addValue(ccm.value());
-          break;
-        case BROKER_LOG_FLUSH_TIME_MS_MEAN:
-          _logFlushTimeMsMean.addValue(ccm.value());
-          break;
-
         default:
-          recordCruiseControlMetric(ccm);
-          break;
+          throw new IllegalStateException(String.format("Should never be here. Unrecognized metric scope %s",
+                                                        rawMetricType.metricScope()));
       }
     }
 
-    private void recordTopicBytesIn(TopicMetric tm) {
-      _topicIOLoad.compute(tm.topic(), (topic, load) -> {
-        IOLoad ioLoad = load == null ? new IOLoad() : load;
-        ioLoad.recordCruiseControlMetric(tm);
-        return ioLoad;
-      });
+    private boolean allTopicMetricsAvailable(String topic) {
+      // We rely on the partition size metric to determine whether a topic metric is available or not.
+      return _topicsWithPartitionSizeReported.contains(topic);
     }
 
-    private void recordTopicBytesOut(TopicMetric tm) {
-      _topicIOLoad.compute(tm.topic(), (topic, load) -> {
-        IOLoad ioLoad = load == null ? new IOLoad() : load;
-        ioLoad.recordCruiseControlMetric(tm);
-        return ioLoad;
-      });
+    private boolean allBrokerMetricsAvailable() {
+      return _brokerMetricsAvailable;
     }
 
-    private void recordPartitionSize(PartitionMetric pm) {
-      _partitionSize.compute(new TopicPartition(pm.topic(), pm.partition()), (tp, vat) -> {
-        ValueAndTime valueAndTime = vat == null ? new ValueAndTime() : vat;
-        valueAndTime.recordValue(pm.value(), pm.time());
-        return valueAndTime;
-      });
+    private boolean brokerMetricAvailable(RawMetricType rawMetricType) {
+      return _brokerMetrics.metricValue(rawMetricType) != null;
     }
 
-    private void validate() {
-      double aggAllBytesIn = 0.0;
-      double aggAllBytesOut = 0.0;
-      for (IOLoad topicLoad : _topicIOLoad.values()) {
-        aggAllBytesIn += topicLoad.bytesIn();
-        aggAllBytesOut += topicLoad.bytesOut();
-      }
-      double allBytesIn = bytesIn();
-      double allBytesInError = Math.abs((aggAllBytesIn - allBytesIn) / allBytesIn);
-      if (allBytesIn > 100 && allBytesInError > 0.05) {
-        LOG.warn("Aggregated Topic Bytes In value {} does not match the broker AllByteIn metric value {}, error = {}",
-                 aggAllBytesIn, allBytesIn, allBytesInError);
-        _valid = false;
-      }
+    private boolean topicMetricAvailable(String topic, RawMetricType rawMetricType) {
+      RawMetricsHolder rawMetricsHolder = _topicMetrics.get(topic);
+      return rawMetricsHolder != null && rawMetricsHolder.metricValue(rawMetricType) != null;
+    }
 
-      double allBytesOut = bytesOut();
-      double allBytesOutError = Math.abs((aggAllBytesOut - allBytesOut) / allBytesOut);
-      if (allBytesOut > 100 && allBytesOutError > 0.05) {
-        LOG.warn("Aggregated Topic Bytes Out value {} does not match the broker AllByteOut metric value {}, error = {}",
-                 aggAllBytesOut, allBytesOut, allBytesOutError);
-        _valid = false;
+    private boolean partitionMetricAvailable(TopicPartition tp, RawMetricType rawMetricType) {
+      RawMetricsHolder rawMetricsHolder = _partitionMetrics.get(tp);
+      return rawMetricsHolder != null && rawMetricsHolder.metricValue(rawMetricType) != null;
+    }
+
+    private Set<RawMetricType> missingBrokerMetrics() {
+      return _missingBrokerMetrics;
+    }
+
+    private double brokerMetric(RawMetricType rawMetricType) {
+      checkMetricScope(rawMetricType, BROKER);
+      ValueHolder valueHolder = _brokerMetrics.metricValue(rawMetricType);
+      if (valueHolder == null) {
+        throw new IllegalArgumentException(String.format("Broker metric %s does not exist.", rawMetricType));
+      } else {
+        return convertUnit(valueHolder.value(), rawMetricType);
       }
     }
 
-    private boolean isValid() {
-      return _valid;
+    private double topicMetrics(String topic, RawMetricType rawMetricType) {
+      return topicMetrics(topic, rawMetricType, true);
     }
 
-    private double cpuUtil() {
-      return _cpuUtil.value(true);
+    private double topicMetrics(String topic, RawMetricType rawMetricType, boolean convertUnit) {
+      checkMetricScope(rawMetricType, TOPIC);
+      if (!allTopicMetricsAvailable(topic)) {
+        throw new IllegalArgumentException(String.format("Topic metric %s does not exist.", rawMetricType));
+      }
+      RawMetricsHolder rawMetricsHolder = _topicMetrics.get(topic);
+      if (rawMetricsHolder == null || rawMetricsHolder.metricValue(rawMetricType) == null) {
+          return 0.0;
+      }
+      double rawMetricValue = rawMetricsHolder.metricValue(rawMetricType).value();
+      return convertUnit ? convertUnit(rawMetricValue, rawMetricType) : rawMetricValue;
     }
 
-    private double allTopicsProduceRequestRate() {
-      return _allTopicsProduceRequestRate.value();
+    private double partitionMetric(String topic, int partition, RawMetricType rawMetricType) {
+      checkMetricScope(rawMetricType, PARTITION);
+      RawMetricsHolder metricsHolder = _partitionMetrics.get(new TopicPartition(topic, partition));
+      if (metricsHolder == null || metricsHolder.metricValue(rawMetricType) == null) {
+        throw new IllegalArgumentException(String.format("Partition metric %s does not exist.", rawMetricType));
+      } else {
+        return convertUnit(metricsHolder.metricValue(rawMetricType).value(), rawMetricType);
+      }
     }
 
-    private double allTopicsFetchRequestRate() {
-      return _allTopicsFetchRequestRate.value();
+    private void checkMetricScope(RawMetricType rawMetricType, MetricScope expectedMetricScope) {
+      if (rawMetricType.metricScope() != expectedMetricScope) {
+        throw new IllegalArgumentException(String.format("Metric scope %s does not match the expected metric scope %s",
+                                                         rawMetricType.metricScope(), expectedMetricScope));
+      }
     }
 
-    private double consumerFetchRequestRate() {
-      return _consumerFetchRequestRate.value();
-    }
-
-    private double followerFetchRequestRate() {
-      return _followerFetchRequestRate.value();
-    }
-
-    private double requestHandlerAvgIdlePercent() {
-      return _requestHandlerAvgIdlePercent.value();
-    }
-
-    private int requestQueueSize() {
-      return (int) _requestQueueSize.value();
-    }
-
-    private int responseQueueSize() {
-      return (int) _responseQueueSize.value();
-    }
-
-    private int produceRequestQueueSizeMsMax() {
-      return (int) _produceRequestQueueTimeMsMax.value();
-    }
-
-    private int produceRequestQueueSizeMsMean() {
-      return (int) _produceRequestQueueTimeMsMean.value();
-    }
-
-    private int consumerFetchRequestQueueTimeMsMax() {
-      return (int) _consumerFetchRequestQueueTimeMsMax.value();
-    }
-
-    private int consumerFetchRequestQueueTimeMsMean() {
-      return (int) _consumerFetchRequestQueueTimeMsMean.value();
-    }
-
-    private int followerFetchRequestQueueTimeMsMax() {
-      return (int) _followerFetchRequestQueueTimeMsMax.value();
-    }
-
-    private int followerFetchRequestQueueTimeMsMean() {
-      return (int) _followerFetchRequestQueueTimeMsMean.value();
-    }
-
-    private double produceTotalTimeMsMax() {
-      return _produceTotalTimeMsMax.value();
-    }
-
-    private double produceTotalTimeMsMean() {
-      return _produceTotalTimeMsMean.value();
-    }
-
-    private double consumerFetchTotalTimeMsMax() {
-      return _consumerFetchTotalTimeMsMax.value();
-    }
-
-    private double consumerFetchTotalTimeMsMean() {
-      return _consumerFetchTotalTimeMsMean.value();
-    }
-
-    private double followerFetchTotalTimeMsMax() {
-      return _followerFetchTotalTimeMsMax.value();
-    }
-
-    private double followerFetchTotalTimeMsMean() {
-      return _followerFetchTotalTimeMsMean.value();
-    }
-
-    private double produceLocalTimeMsMax() {
-      return _produceLocalTimeMsMax.value();
-    }
-
-    private double produceLocalTimeMsMean() {
-      return _produceLocalTimeMsMean.value();
-    }
-
-    private double consumerFetchLocalTimeMsMax() {
-      return _consumerFetchLocalTimeMsMax.value();
-    }
-
-    private double consumerFetchLocalTimeMsMean() {
-      return _consumerFetchLocalTimeMsMean.value();
-    }
-
-    private double followerFetchLocalTimeMsMax() {
-      return _followerFetchLocalTimeMsMax.value();
-    }
-
-    private double followerFetchLocalTimeMsMean() {
-      return _followerFetchLocalTimeMsMean.value();
-    }
-
-    private double logFlushRate() {
-      return _logFlushRate.value();
-    }
-
-    private double logFlushTimeMsMax() {
-      return _logFlushTimeMsMax.value();
-    }
-
-    private double logFlushTimeMsMean() {
-      return _logFlushTimeMsMean.value();
-    }
-
-    private IOLoad ioLoad(String topic) {
-      return _topicIOLoad.get(topic.replace('.', '_'));
-    }
-
-    private IOLoad ioLoad(String topic, int partition) {
-      // The metric will replace . with _
-      String topicWithDotHandled = topic.replace('.', '_');
-      return _topicIOLoad.compute(topicWithDotHandled, (t, l) -> {
-        if (l != null) {
-          return l;
+    /**
+     * Due to the yammer metric exponential decaying mechanism, the broker metric and the sum of the partition metrics
+     * on the same broker may differ by a lot. Our experience shows that in that case, the sum of the topic/partition
+     * level metrics are more accurate. So we will just replace the following metrics with the sum of topic/partition
+     * level metrics:
+     * <ul>
+     *   <li>BrokerProduceRate</li>
+     *   <li>BrokerFetchRate</li>
+     *   <li>BrokerLeaderBytesInRate</li>
+     *   <li>BrokerLeaderBytesOutRate</li>
+     *   <li>BrokerReplicationBytesInRate</li>
+     *   <li>BrokerReplicationBytesOutRate</li>
+     *   <li>BrokerMessagesInRate</li>
+     * </ul>
+     *
+     * We use the cluster metadata to check if the reported topic level metrics are complete. If the reported topic
+     * level metrics are not complete, we ignore the broker metric sample by setting the _brokerMetricsAvailable flag
+     * to false.
+     *
+     * @param cluster The Kafka cluster.
+     * @param brokerId the broker id to prepare metrics for.
+     * @param time the last sample time.
+     */
+    private void prepareBrokerMetrics(Cluster cluster, int brokerId, long time) {
+      boolean enoughTopicPartitionMetrics = enoughTopicPartitionMetrics(cluster, brokerId);
+      // Ensure there are enough topic level metrics.
+      if (enoughTopicPartitionMetrics) {
+        Map<RawMetricType, Double> sumOfTopicMetrics = new HashMap<>();
+        for (String topic : _topicsWithPartitionSizeReported) {
+          METRIC_TYPES_TO_SUM.keySet().forEach(type -> {
+            double value = topicMetrics(topic, type, false);
+            sumOfTopicMetrics.compute(type, (t, v) -> (v == null ? 0 : v) + value);
+          });
         }
-        // If partition size has been reported on this partition, we create topic IO load for this topic.
-        // This is because for topics that does not have an IO, the broker will not create the sensors for IO.
-        return (_partitionSize.containsKey(new TopicPartition(topicWithDotHandled, partition))) ? new IOLoad() : null;
+        for (Map.Entry<RawMetricType, Double> entry : sumOfTopicMetrics.entrySet()) {
+          RawMetricType rawTopicMetricType = entry.getKey();
+          double value = entry.getValue();
+          _brokerMetrics.setRawMetricValue(METRIC_TYPES_TO_SUM.get(rawTopicMetricType), value, time);
+        }
+      }
+      // Check if all the broker raw metrics are available.
+      for (RawMetricType rawBrokerMetricType : RawMetricType.brokerMetricTypes()) {
+        if (_brokerMetrics.metricValue(rawBrokerMetricType) == null) {
+          _missingBrokerMetrics.add(rawBrokerMetricType);
+        }
+      }
+      // A broker metric is only available if it has enough valid topic metrics and it has reported
+      // replication bytes in/out metrics.
+      _brokerMetricsAvailable = enoughTopicPartitionMetrics && _missingBrokerMetrics.isEmpty();
+    }
+
+    /**
+     * Verify whether we have collected enough metrics to generate the broker metric samples. The broker must have
+     * collected more than 99% of the topic level and partition level metrics in the broker to generate broker
+     * level metrics.
+     *
+     * @param cluster the Kafka cluster.
+     * @param brokerId the broker id to check.
+     * @return true if there are enough topic level metrics, false otherwise.
+     */
+    private boolean enoughTopicPartitionMetrics(Cluster cluster, int brokerId) {
+      Set<String> missingTopics = new HashSet<>();
+      Set<String> topicsInBroker = new HashSet<>();
+      AtomicInteger missingPartitions = new AtomicInteger(0);
+      cluster.partitionsForNode(brokerId).forEach(info -> {
+        topicsInBroker.add(info.topic());
+        if (!_topicsWithPartitionSizeReported.contains(info.topic())) {
+          missingPartitions.incrementAndGet();
+          missingTopics.add(info.topic());
+        }
+      });
+      return ((double) missingTopics.size() / topicsInBroker.size()) <= MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT
+          && ((double) missingPartitions.get() / cluster.partitionsForNode(brokerId).size() <= MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT);
+    }
+
+    private double diskUsage() {
+      double result = 0.0;
+      for (RawMetricsHolder rawMetricsHolder : _partitionMetrics.values()) {
+        result += rawMetricsHolder.metricValue(RawMetricType.PARTITION_SIZE).value();
+      }
+      return convertUnit(result, PARTITION_SIZE);
+    }
+  }
+
+  /**
+   * A class that helps store all the {@link CruiseControlMetric} by their {@link RawMetricType}.
+   */
+  private static class RawMetricsHolder {
+    private final Map<RawMetricType, ValueHolder> _rawMetricsByType = new HashMap<>();
+
+    /**
+     * Record a cruise control metric value.
+     * @param ccm the {@link CruiseControlMetric} to record.
+     */
+    void recordCruiseControlMetric(CruiseControlMetric ccm) {
+      RawMetricType rawMetricType = ccm.rawMetricType();
+      ValueHolder valueHolder = _rawMetricsByType.computeIfAbsent(rawMetricType, mt -> getValueHolderFor(rawMetricType));
+      valueHolder.recordValue(ccm.value(), ccm.time());
+    }
+
+    /**
+     * Directly set a raw metric value. The existing metric value will be discarded.
+     * This method is used when we have to modify the raw metric values to unify the meaning of the metrics across
+     * different Kafka versions.
+     *
+     * @param rawMetricType the raw metric type to set value for.
+     * @param value the value to set
+     * @param time the time to
+     */
+    void setRawMetricValue(RawMetricType rawMetricType, double value, long time) {
+      _rawMetricsByType.compute(rawMetricType, (type, vh) -> {
+        ValueHolder valueHolder = vh == null ? getValueHolderFor(rawMetricType) : vh;
+        valueHolder.reset();
+        valueHolder.recordValue(value, time);
+        return valueHolder;
       });
     }
 
-    private ValueAndTime size(TopicPartition tp) {
-      return _partitionSize.get(partitionHandleDotInTopicName(tp));
+    /**
+     * Get the value for the given raw metric type.
+     * @param rawMetricType the raw metric type to get value for.
+     * @return the value of the given raw metric type.
+     */
+    ValueHolder metricValue(RawMetricType rawMetricType) {
+      return _rawMetricsByType.get(rawMetricType);
     }
-  }
 
-  private static class IOLoad {
-    private ValueAndCount _bytesIn = new ValueAndCount();
-    private ValueAndCount _bytesOut = new ValueAndCount();
-    private ValueAndCount _replicationBytesIn = new ValueAndCount();
-    private ValueAndCount _replicationBytesOut = new ValueAndCount();
-    private ValueAndCount _produceRequestRate = new ValueAndCount();
-    private ValueAndCount _fetchRequestRate = new ValueAndCount();
-    private ValueAndCount _messagesInRate = new ValueAndCount();
-
-    void recordCruiseControlMetric(CruiseControlMetric ccm) {
-      double value = ccm.value();
-      switch (ccm.metricType()) {
-        case ALL_TOPIC_BYTES_IN:
-        case TOPIC_BYTES_IN:
-          _bytesIn.addValue(value);
-          break;
-        case ALL_TOPIC_BYTES_OUT:
-        case TOPIC_BYTES_OUT:
-          _bytesOut.addValue(value);
-          break;
-        case ALL_TOPIC_REPLICATION_BYTES_IN:
-        case TOPIC_REPLICATION_BYTES_IN:
-          _replicationBytesIn.addValue(value);
-          break;
-        case ALL_TOPIC_REPLICATION_BYTES_OUT:
-        case TOPIC_REPLICATION_BYTES_OUT:
-          _replicationBytesOut.addValue(value);
-          break;
-        case BROKER_PRODUCE_REQUEST_RATE:
-        case TOPIC_PRODUCE_REQUEST_RATE:
-          _produceRequestRate.addValue(value);
-          break;
-        case TOPIC_FETCH_REQUEST_RATE:
-          _fetchRequestRate.addValue(value);
-          break;
-        case ALL_TOPIC_MESSAGES_IN_PER_SEC:
-        case TOPIC_MESSAGES_IN_PER_SEC:
-          _messagesInRate.addValue(value);
-          break;
+    private ValueHolder getValueHolderFor(RawMetricType rawMetricType) {
+      KafkaMetricDef kafkaMetricDef = KafkaMetricDef.forRawMetricType(rawMetricType);
+      switch (kafkaMetricDef.valueComputingStrategy()) {
+        case AVG:
+        case MAX:
+          return new ValueAndCount();
+        case LATEST:
+          return new ValueAndCount();
         default:
-          LOG.warn("CruiseControlMetric type {} should not be added to this IOLoad. This may happen when a new "
-                       + "metric type is added. The current known metric type is from 0 to {}", ccm.metricType(),
-                   MetricType.values().length - 1);
-          break;
+          throw new IllegalStateException("Should never be here");
       }
     }
-
-    double replicationBytesIn() {
-      return _replicationBytesIn.value();
-    }
-
-    double replicationBytesOut() {
-      return _replicationBytesOut.value();
-    }
-
-    double produceRequestRate() {
-      return _produceRequestRate.value();
-    }
-
-    double fetchRequestRate() {
-      return _fetchRequestRate.value();
-    }
-
-    double messagesInRate() {
-      return _messagesInRate.value();
-    }
-
-    double bytesIn() {
-      return _bytesIn.value();
-    }
-
-    double bytesOut() {
-      return _bytesOut.value();
-    }
   }
 
-  private static class ValueAndTime {
+  /**
+   * A private interface to unify the {@link ValueAndTime} and {@link ValueAndCount}
+   */
+  private interface ValueHolder {
+    void recordValue(double value, long time);
+    void reset();
+    double value();
+    double value(boolean assertNonZeroCount);
+  }
+
+  /**
+   * A private class to give average of the recorded values.
+   */
+  private static class ValueAndTime implements ValueHolder {
     private double _value = 0.0;
     private long _time = -1;
 
-    private void recordValue(double value, long time) {
+    @Override
+    public void recordValue(double value, long time) {
       if (time > _time) {
         _value = value;
         _time = time;
       }
     }
 
-    private double value() {
+    @Override
+    public void reset() {
+      _value = 0.0;
+      _time = -1;
+    }
+
+    @Override
+    public double value() {
+      return _value;
+    }
+
+    @Override
+    public double value(boolean assertNonZeroCount) {
       return _value;
     }
   }
 
-  private static class ValueAndCount {
+  /**
+   * A private class to give the latest of the recorded values.
+   */
+  private static class ValueAndCount implements ValueHolder {
     private double _value = 0.0;
     private int _count = 0;
 
-    void addValue(double value) {
+    @Override
+    public void recordValue(double value, long time) {
       _value += value;
       _count++;
     }
 
-    int count() {
-      return _count;
+    @Override
+    public void reset() {
+      _value = 0.0;
+      _count = 0;
     }
 
-    double value() {
+    @Override
+    public double value() {
       return value(false);
     }
 
-    double value(boolean assertNonZeroCount) {
+    @Override
+    public double value(boolean assertNonZeroCount) {
       return _count == 0 ? (assertNonZeroCount ? -1.0 : 0.0) : _value / _count;
     }
   }

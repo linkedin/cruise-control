@@ -10,17 +10,27 @@ import java.nio.charset.StandardCharsets;
 import org.apache.kafka.common.TopicPartition;
 
 
-public class PartitionMetric extends TopicMetric {
+public class PartitionMetric extends CruiseControlMetric {
   private static final byte METRIC_VERSION = 0;
+  private final String _topic;
   private final int _partition;
 
-  public PartitionMetric(MetricType metricType, long time, int brokerId, String topic, int partition, double value) {
-    super(metricType, time, brokerId, topic, value);
+  public PartitionMetric(RawMetricType rawMetricType, long time, int brokerId, String topic, int partition, double value) {
+    super(rawMetricType, time, brokerId, value);
+    if (rawMetricType.metricScope() != RawMetricType.MetricScope.PARTITION) {
+      throw new IllegalArgumentException(String.format("Cannot construct a PartitionMetric for %s whose scope is %s",
+                                                       rawMetricType, rawMetricType.metricScope()));
+    }
+    _topic = topic;
     _partition = partition;
   }
 
   public MetricClassId metricClassId() {
     return MetricClassId.PARTITION_METRIC;
+  }
+
+  public String topic() {
+    return _topic;
   }
 
   public int partition() {
@@ -35,7 +45,7 @@ public class PartitionMetric extends TopicMetric {
                                                 Integer.BYTES /* partition */ + Double.BYTES /* value */);
     buffer.position(headerPos);
     buffer.put(METRIC_VERSION);
-    buffer.put(metricType().id());
+    buffer.put(rawMetricType().id());
     buffer.putLong(time());
     buffer.putInt(brokerId());
     buffer.putInt(topic.length);
@@ -51,7 +61,7 @@ public class PartitionMetric extends TopicMetric {
       throw new UnknownVersionException("Cannot deserialize the topic metrics for version " + version + ". "
                                             + "Current version is " + METRIC_VERSION);
     }
-    MetricType metricType = MetricType.forId(buffer.get());
+    RawMetricType rawMetricType = RawMetricType.forId(buffer.get());
     long time = buffer.getLong();
     int brokerId = buffer.getInt();
     int topicLength = buffer.getInt();
@@ -59,13 +69,13 @@ public class PartitionMetric extends TopicMetric {
     buffer.position(buffer.position() + topicLength);
     int partition = buffer.getInt();
     double value = buffer.getDouble();
-    return new PartitionMetric(metricType, time, brokerId, topic, partition, value);
+    return new PartitionMetric(rawMetricType, time, brokerId, topic, partition, value);
   }
 
   @Override
   public String toString() {
     return String.format("[%s,%s,time=%d,brokerId=%d,partition=%s,value=%.3f]",
-                         MetricClassId.PARTITION_METRIC, metricType(), time(), brokerId(),
+                         MetricClassId.PARTITION_METRIC, rawMetricType(), time(), brokerId(),
                          new TopicPartition(topic(), partition()), value());
   }
 }
