@@ -14,7 +14,7 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -144,7 +144,7 @@ public class PreferredLeaderElectionGoalTest {
     clusterModel.createReplica(rack, brokerId, tp, index, isLeader);
     MetricValues metricValues = new MetricValues(1);
     Map<Integer, MetricValues> metricValuesByResource = new HashMap<>();
-    Resource.cachedValues().forEach(r -> metricValuesByResource.put(KafkaCruiseControlMetricDef.resourceToMetricId(r),
+    Resource.cachedValues().forEach(r -> metricValuesByResource.put(KafkaMetricDef.resourceToMetricId(r),
                                                                     metricValues));
     clusterModel.setReplicaLoad(rack, brokerId, tp, new AggregatedMetricValues(metricValuesByResource),
                                 Collections.singletonList(1L));

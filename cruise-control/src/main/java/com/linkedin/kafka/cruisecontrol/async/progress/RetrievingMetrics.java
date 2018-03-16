@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async.progress;
 
 /**
  * This is the step when retrieving the workload snapshot from
- * {@link com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaMetricSampleAggregator}
+ * {@link com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator}
  */
 public class RetrievingMetrics implements OperationStep {
   private volatile boolean _done = false;

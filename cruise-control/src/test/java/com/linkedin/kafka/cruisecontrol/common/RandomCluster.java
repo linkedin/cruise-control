@@ -12,7 +12,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -250,28 +250,28 @@ public class RandomCluster {
           MetricValues metricValues = new MetricValues(1);
           metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_CPU).doubleValue() * topicPopularity,
                                                 randomByResource.get(Resource.CPU)));
-          aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU), metricValues);
+          aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.CPU), metricValues);
 
           metricValues = new MetricValues(1);
           metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() * topicPopularity,
                                                 randomByResource.get(Resource.NW_IN)));
-          aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_IN), metricValues);
+          aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.NW_IN), metricValues);
 
           metricValues = new MetricValues(1);
           metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_DISK).doubleValue() * topicPopularity,
                                                 randomByResource.get(Resource.DISK)));
-          aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.DISK), metricValues);
+          aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.DISK), metricValues);
 
           if (j == 1) {
             metricValues = new MetricValues(1);
             metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() * topicPopularity,
                                                   randomByResource.get(Resource.NW_OUT)));
-            aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
+            aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
             cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, j - 1, true);
           } else {
             metricValues = new MetricValues(1);
             metricValues.set(0, 0.0);
-            aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
+            aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
             cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, j - 1, false);
           }
           cluster.setReplicaLoad(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo,

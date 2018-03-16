@@ -9,7 +9,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 
 import java.nio.charset.StandardCharsets;
@@ -74,13 +74,13 @@ public class KafkaCruiseControlUnitTestUtils {
                                                                  double networkOutBoundUsage,
                                                                  double diskUsage) {
     double[] values = new double[Resource.cachedValues().size()];
-    values[KafkaCruiseControlMetricDef.resourceToMetricId(CPU)] = cpuUsage;
-    values[KafkaCruiseControlMetricDef.resourceToMetricId(NW_IN)] = networkInBoundUsage;
-    values[KafkaCruiseControlMetricDef.resourceToMetricId(NW_OUT)] = networkOutBoundUsage;
-    values[KafkaCruiseControlMetricDef.resourceToMetricId(DISK)] = diskUsage;
+    values[KafkaMetricDef.resourceToMetricId(CPU)] = cpuUsage;
+    values[KafkaMetricDef.resourceToMetricId(NW_IN)] = networkInBoundUsage;
+    values[KafkaMetricDef.resourceToMetricId(NW_OUT)] = networkOutBoundUsage;
+    values[KafkaMetricDef.resourceToMetricId(DISK)] = diskUsage;
     AggregatedMetricValues aggregateMetricValues = new AggregatedMetricValues();
     for (Resource r : Resource.cachedValues()) {
-      int metricId = KafkaCruiseControlMetricDef.resourceToMetricId(r);
+      int metricId = KafkaMetricDef.resourceToMetricId(r);
       MetricValues metricValues = new MetricValues(1);
       metricValues.set(0, values[metricId]);
       aggregateMetricValues.add(metricId, metricValues);

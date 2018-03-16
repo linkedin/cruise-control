@@ -117,7 +117,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
 
     try {
       if (totalMetricsAdded > 0) {
-        return METRICS_PROCESSOR.process(cluster, assignedPartitions, mode, metricDef);
+        return METRICS_PROCESSOR.process(cluster, assignedPartitions, mode);
       } else {
         return new Samples(Collections.emptySet(), Collections.emptySet());
       }

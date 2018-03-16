@@ -19,10 +19,10 @@ public class MetricSerdeTest {
 
   @Test
   public void testBrokerMetricSerde() throws UnknownVersionException {
-    BrokerMetric brokerMetric = new BrokerMetric(MetricType.ALL_TOPIC_BYTES_IN, 123L, 0, 0.1);
+    BrokerMetric brokerMetric = new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_IN, 123L, 0, 0.1);
     CruiseControlMetric deserialized = MetricSerde.fromBytes(MetricSerde.toBytes(brokerMetric));
     assertEquals(CruiseControlMetric.MetricClassId.BROKER_METRIC.id(), deserialized.metricClassId().id());
-    assertEquals(MetricType.ALL_TOPIC_BYTES_IN.id(), deserialized.metricType().id());
+    assertEquals(RawMetricType.ALL_TOPIC_BYTES_IN.id(), deserialized.rawMetricType().id());
     assertEquals(TIME, deserialized.time());
     assertEquals(BROKER_ID, deserialized.brokerId());
     assertEquals(VALUE, deserialized.value(), 0.000001);
@@ -30,10 +30,10 @@ public class MetricSerdeTest {
 
   @Test
   public void testTopicMetricSerde() throws UnknownVersionException {
-    BrokerMetric brokerMetric = new TopicMetric(MetricType.ALL_TOPIC_BYTES_IN, 123L, 0, TOPIC, 0.1);
-    CruiseControlMetric deserialized = MetricSerde.fromBytes(MetricSerde.toBytes(brokerMetric));
+    TopicMetric topicMetric = new TopicMetric(RawMetricType.TOPIC_BYTES_IN, 123L, 0, TOPIC, 0.1);
+    CruiseControlMetric deserialized = MetricSerde.fromBytes(MetricSerde.toBytes(topicMetric));
     assertEquals(CruiseControlMetric.MetricClassId.TOPIC_METRIC.id(), deserialized.metricClassId().id());
-    assertEquals(MetricType.ALL_TOPIC_BYTES_IN.id(), deserialized.metricType().id());
+    assertEquals(RawMetricType.TOPIC_BYTES_IN.id(), deserialized.rawMetricType().id());
     assertEquals(TIME, deserialized.time());
     assertEquals(BROKER_ID, deserialized.brokerId());
     assertEquals(TOPIC, ((TopicMetric) deserialized).topic());
@@ -42,10 +42,10 @@ public class MetricSerdeTest {
 
   @Test
   public void testPartitionMetricSerde() throws UnknownVersionException {
-    BrokerMetric brokerMetric = new PartitionMetric(MetricType.ALL_TOPIC_BYTES_IN, 123L, 0, TOPIC, PARTITION, 0.1);
-    CruiseControlMetric deserialized = MetricSerde.fromBytes(MetricSerde.toBytes(brokerMetric));
+    PartitionMetric partitionMetric = new PartitionMetric(RawMetricType.PARTITION_SIZE, 123L, 0, TOPIC, PARTITION, 0.1);
+    CruiseControlMetric deserialized = MetricSerde.fromBytes(MetricSerde.toBytes(partitionMetric));
     assertEquals(CruiseControlMetric.MetricClassId.PARTITION_METRIC.id(), deserialized.metricClassId().id());
-    assertEquals(MetricType.ALL_TOPIC_BYTES_IN.id(), deserialized.metricType().id());
+    assertEquals(RawMetricType.PARTITION_SIZE.id(), deserialized.rawMetricType().id());
     assertEquals(TIME, deserialized.time());
     assertEquals(BROKER_ID, deserialized.brokerId());
     assertEquals(TOPIC, ((PartitionMetric) deserialized).topic());
