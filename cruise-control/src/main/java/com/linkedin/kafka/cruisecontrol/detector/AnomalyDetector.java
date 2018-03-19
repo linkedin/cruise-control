@@ -208,26 +208,26 @@ public class AnomalyDetector {
      */
     private boolean isFixable(Anomaly anomaly) {
       String skipMsg = (anomaly instanceof GoalViolations) ? "goal violation fix" : "broker failure fix";
-      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState unavailableState = ViolationUtils.isUnavailableState(_loadMonitor);
+      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
 
       // Fixing anomalies is possible only when (1) the state is not in and unavailable state ( e.g. loading or
       // bootstrapping) and (2) the completeness requirements are met for all goals.
-      if (unavailableState == null) {
+      if (ViolationUtils.isUnavailableState(loadMonitorTaskRunnerState)) {
+        LOG.info("Skipping {} because load monitor is in {} state.", skipMsg, loadMonitorTaskRunnerState);
+      } else {
         boolean meetCompletenessRequirements = _kafkaCruiseControl.meetCompletenessRequirements(Collections.emptyList());
         if (meetCompletenessRequirements) {
-          LOG.info("Fixing anomaly {}", anomaly);
           return true;
         } else {
           LOG.debug("Skipping {} because load completeness requirement is not met for goals.", skipMsg);
         }
-      } else {
-        LOG.info("Skipping {} because load monitor is in {} state.", skipMsg, unavailableState);
       }
       return false;
     }
 
     private void fixAnomaly(Anomaly anomaly) throws KafkaCruiseControlException {
       if (isFixable(anomaly)) {
+        LOG.info("Fixing anomaly {}", anomaly);
         anomaly.fix(_kafkaCruiseControl);
       }
 

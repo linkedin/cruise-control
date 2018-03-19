@@ -15,7 +15,6 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -88,9 +87,9 @@ public class GoalViolationDetector implements Runnable {
 
     AutoCloseable clusterModelSemaphore = null;
     try {
-      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState unexpectedState = ViolationUtils.isUnavailableState(_loadMonitor);
-      if (unexpectedState != null) {
-        LOG.info("Skipping goal violation detection because load monitor is in {} state.", unexpectedState);
+      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
+      if (ViolationUtils.isUnavailableState(loadMonitorTaskRunnerState)) {
+        LOG.info("Skipping goal violation detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
         return;
       }
 
@@ -99,7 +98,7 @@ public class GoalViolationDetector implements Runnable {
       ClusterModel clusterModel = null;
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
         Goal goal = entry.getValue();
-        if (ViolationUtils.meetCompletenessRequirements(_loadMonitor, Collections.singleton(goal))) {
+        if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
           LOG.debug("Detecting if {} is violated.", entry.getValue().name());
           // Because the model generation could be slow, We only get new cluster model if needed.
           if (newModelNeeded) {
