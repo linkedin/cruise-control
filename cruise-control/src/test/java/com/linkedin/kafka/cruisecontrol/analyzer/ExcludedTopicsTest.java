@@ -17,7 +17,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistri
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
@@ -72,24 +71,23 @@ public class ExcludedTopicsTest {
     Set<Integer> noDeadBroker = Collections.emptySet();
     Set<Integer> deadBroker0 = Collections.unmodifiableSet(Collections.singleton(0));
 
-    for (Class<? extends Goal> goalClass : Arrays.asList(RackAwareGoal.class, RackAwareCapacityGoal.class)) {
-      // With excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
-      p.add(params(0, goalClass, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
-      // With excluded topics, rack aware satisfiable cluster, one dead brokers (No exception, No proposal, Expected to look optimized)
-      p.add(params(1, goalClass, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
-      // Without excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, Proposal expected, Expected to look optimized)
-      p.add(params(2, goalClass, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
-      // Without excluded topics, rack aware satisfiable cluster, one dead broker (No exception, Proposal expected, Expected to look optimized)
-      p.add(params(3, goalClass, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
-      // With excluded topics, rack aware unsatisfiable cluster, no dead broker (No exception, No proposal, Expected to look optimized)
-      p.add(params(4, goalClass, excludeT1, null, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true));
-      // With excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception)
-      p.add(params(5, goalClass, excludeT1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
-      // Test: Without excluded topics, rack aware unsatisfiable cluster, no dead brokers (Exception expected)
-      p.add(params(6, goalClass, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
-      // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
-      p.add(params(7, goalClass, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
-    }
+    // ============RackAwareGoal============
+    // With excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(0, RackAwareGoal.class, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
+    // With excluded topics, rack aware satisfiable cluster, one dead brokers (No exception, No proposal, Expected to look optimized)
+    p.add(params(1, RackAwareGoal.class, excludeT1, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
+    // Without excluded topics, rack aware satisfiable cluster, no dead brokers (No exception, Proposal expected, Expected to look optimized)
+    p.add(params(2, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
+    // Without excluded topics, rack aware satisfiable cluster, one dead broker (No exception, Proposal expected, Expected to look optimized)
+    p.add(params(3, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
+    // With excluded topics, rack aware unsatisfiable cluster, no dead broker (No exception, No proposal, Expected to look optimized)
+    p.add(params(4, RackAwareGoal.class, excludeT1, null, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, true));
+    // With excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception)
+    p.add(params(5, RackAwareGoal.class, excludeT1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+    // Test: Without excluded topics, rack aware unsatisfiable cluster, no dead brokers (Exception expected)
+    p.add(params(6, RackAwareGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
+    // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
+    p.add(params(7, RackAwareGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
 
     for (Class<? extends Goal> goalClass : Arrays.asList(CpuCapacityGoal.class,
                                                          DiskCapacityGoal.class,
@@ -330,7 +328,7 @@ public class ExcludedTopicsTest {
     // Create snapshots and push them to the cluster.
     cluster.setReplicaLoad("0", 0, pInfoT10, aggregatedMetricValues, Collections.singletonList(1L));
     cluster.setReplicaLoad("0", 0, pInfoT20, aggregatedMetricValues, Collections.singletonList(1L));
-    
+
     return cluster;
   }
 
@@ -354,7 +352,7 @@ public class ExcludedTopicsTest {
                                                                   TestConstants.LARGE_BROKER_CAPACITY / 2,
                                                                   TestConstants.MEDIUM_BROKER_CAPACITY / 2,
                                                                   TestConstants.LARGE_BROKER_CAPACITY / 2);
-    
+
     // Create snapshots and push them to the cluster.
     cluster.setReplicaLoad("0", 1, pInfoT30, aggregatedMetricValues, Collections.singletonList(1L));
     cluster.setReplicaLoad("0", 0, pInfoT40, aggregatedMetricValues, Collections.singletonList(1L));
