@@ -13,16 +13,19 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * A class that holds all the goal violations.
  */
 public class GoalViolations extends Anomaly {
+  private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
   private final List<Violation> _goalViolations = new ArrayList<>();
 
-  public void addViolation(int priority, String goalName, Set<ExecutionProposal> balancingProposals) {
-    _goalViolations.add(new Violation(priority, goalName, balancingProposals));
+  public void addViolation(int priority, String goalName, Set<ExecutionProposal> executionProposals) {
+    _goalViolations.add(new Violation(priority, goalName, executionProposals));
   }
 
   /**
@@ -35,18 +38,22 @@ public class GoalViolations extends Anomaly {
   @Override
   void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
     // Fix the violations using a rebalance.
-    kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress());
+    try {
+      kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress());
+    } catch (IllegalStateException e) {
+      LOG.warn("Got exception when trying to fix the cluster. " + e.getMessage());
+    }
   }
 
   public static class Violation {
     private final int _priority;
     private final String _goalName;
-    private final Set<ExecutionProposal> _balancingProposals;
+    private final Set<ExecutionProposal> _executionProposals;
 
-    public Violation(int priority, String goalName, Set<ExecutionProposal> balancingProposals) {
+    public Violation(int priority, String goalName, Set<ExecutionProposal> executionProposals) {
       _priority = priority;
       _goalName = goalName;
-      _balancingProposals = balancingProposals;
+      _executionProposals = executionProposals;
     }
 
     public int priority() {
@@ -57,8 +64,8 @@ public class GoalViolations extends Anomaly {
       return _goalName;
     }
 
-    public Set<ExecutionProposal> balancingProposals() {
-      return _balancingProposals;
+    public Set<ExecutionProposal> executionProposals() {
+      return _executionProposals;
     }
   }
 

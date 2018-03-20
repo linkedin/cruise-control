@@ -32,8 +32,8 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * This class will be schedule to run periodically to check if the given goals are violated or not. An alert will be
- * triggered if one of the goal is not met.
+ * This class will be scheduled to run periodically to check if the given goals are violated or not. An alert will be
+ * triggered if one of the goals is not met.
  */
 public class GoalViolationDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolationDetector.class);
@@ -88,9 +88,8 @@ public class GoalViolationDetector implements Runnable {
     AutoCloseable clusterModelSemaphore = null;
     try {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
-      if (loadMonitorTaskRunnerState == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING ||
-          loadMonitorTaskRunnerState == LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING) {
-        LOG.info("Skipping goal violation detection because load monitor is in {} state", loadMonitorTaskRunnerState);
+      if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
+        LOG.info("Skipping goal violation detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
         return;
       }
 
@@ -98,7 +97,6 @@ public class GoalViolationDetector implements Runnable {
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
-        int priority = entry.getKey();
         Goal goal = entry.getValue();
         if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
           LOG.debug("Detecting if {} is violated.", entry.getValue().name());
@@ -112,10 +110,10 @@ public class GoalViolationDetector implements Runnable {
             clusterModel = null;
             clusterModel = _loadMonitor.clusterModel(now, goal.clusterModelCompletenessRequirements(), new OperationProgress());
           }
+          int priority = entry.getKey();
           newModelNeeded = optimizeForGoal(clusterModel, priority, goal, goalViolations);
         } else {
-          LOG.debug("Skipping goal violation for {} detection because load completeness requirement is not met.",
-                    goal.name());
+          LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
         }
       }
       if (clusterModel != null) {

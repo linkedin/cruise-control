@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationRes
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
+import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.Collections;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
@@ -73,7 +74,7 @@ public class AnomalyDetectorTest {
 
     AnomalyDetector anomalyDetector = new AnomalyDetector(anomalies, 3000L, mockKafkaCruiseControl, mockAnomalyNotifier,
                                                           mockGoalViolationDetector, mockBrokerFailureDetector,
-                                                          mockDetectorScheduler);
+                                                          mockDetectorScheduler, EasyMock.mock(LoadMonitor.class));
 
     try {
       anomalyDetector.startDetection();
@@ -126,6 +127,7 @@ public class AnomalyDetectorTest {
                                                      EasyMock.eq(null),
                                                      EasyMock.anyObject(OperationProgress.class)))
             .andReturn(null);
+    EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(EasyMock.anyObject())).andReturn(true);
 
     EasyMock.replay(mockAnomalyNotifier);
     EasyMock.replay(mockBrokerFailureDetector);
@@ -135,7 +137,7 @@ public class AnomalyDetectorTest {
 
     AnomalyDetector anomalyDetector = new AnomalyDetector(anomalies, 3000L, mockKafkaCruiseControl, mockAnomalyNotifier,
                                                           mockGoalViolationDetector, mockBrokerFailureDetector,
-                                                          mockDetectorScheduler);
+                                                          mockDetectorScheduler, EasyMock.mock(LoadMonitor.class));
 
     try {
       anomalyDetector.startDetection();
@@ -198,7 +200,7 @@ public class AnomalyDetectorTest {
 
     AnomalyDetector anomalyDetector = new AnomalyDetector(anomalies, 3000L, mockKafkaCruiseControl, mockAnomalyNotifier,
                                                           mockGoalViolationDetector, mockBrokerFailureDetector,
-                                                          mockDetectorScheduler);
+                                                          mockDetectorScheduler, EasyMock.mock(LoadMonitor.class));
 
     try {
       anomalyDetector.startDetection();
@@ -227,7 +229,8 @@ public class AnomalyDetectorTest {
 
     AnomalyDetector anomalyDetector = new AnomalyDetector(new LinkedBlockingDeque<>(), 3000L, mockKafkaCruiseControl,
                                                           mockAnomalyNotifier, mockGoalViolationDetector,
-                                                          mockBrokerFailureDetector, detectorScheduler);
+                                                          mockBrokerFailureDetector, detectorScheduler,
+                                                          EasyMock.mock(LoadMonitor.class));
 
     anomalyDetector.shutdown();
     Thread t = new Thread(anomalyDetector::shutdown);

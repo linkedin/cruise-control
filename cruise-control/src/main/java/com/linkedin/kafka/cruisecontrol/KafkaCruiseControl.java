@@ -408,6 +408,16 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Check if the given goals meet the completeness requirements.
+   *
+   * @param goalNames Goal names (and empty list of names indicates all goals).
+   */
+  public boolean meetCompletenessRequirements(List<String> goalNames) {
+    Collection<Goal> goals = goalsByPriority(goalNames).values();
+    return goals.stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(g.clusterModelCompletenessRequirements()));
+  }
+
+  /**
    * Get a goals by priority based on the goal list.
    */
   private Map<Integer, Goal> goalsByPriority(List<String> goals) {
