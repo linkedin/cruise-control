@@ -14,7 +14,7 @@ import com.linkedin.kafka.cruisecontrol.async.progress.RetrievingMetrics;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import java.util.Collections;
@@ -59,7 +59,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
           config.getInt(KafkaCruiseControlConfig.MIN_SAMPLES_PER_METRICS_WINDOW_CONFIG),
           config.getInt(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_ENTITY_CONFIG),
           config.getInt(KafkaCruiseControlConfig.METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG),
-          KafkaCruiseControlMetricDef.commonMetricDef());
+          KafkaMetricDef.commonMetricDef());
     _metadata = metadata;
   }
 

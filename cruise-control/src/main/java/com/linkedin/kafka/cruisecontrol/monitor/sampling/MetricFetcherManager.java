@@ -11,6 +11,7 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -35,7 +36,8 @@ public class MetricFetcherManager {
   private static final Logger LOG = LoggerFactory.getLogger(MetricFetcherManager.class);
 
   private final Time _time;
-  private final KafkaPartitionMetricSampleAggregator _metricSampleAggregator;
+  private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
+  private final KafkaBrokerMetricSampleAggregator _brokerMetricSampleAggregator;
   private final MetadataClient _metadataClient;
   private final int _numMetricFetchers;
   private final List<MetricSampler> _metricSamplers;
@@ -54,22 +56,25 @@ public class MetricFetcherManager {
 
   /**
    * Create a metric fetcher manager.
-   * See {@link #MetricFetcherManager(KafkaCruiseControlConfig, KafkaPartitionMetricSampleAggregator, MetadataClient, MetricDef, Time, MetricRegistry, List)}
+   * See {@link #MetricFetcherManager(KafkaCruiseControlConfig, KafkaPartitionMetricSampleAggregator, KafkaBrokerMetricSampleAggregator,
+   * MetadataClient, MetricDef, Time, MetricRegistry, List)}
    */
   public MetricFetcherManager(KafkaCruiseControlConfig config,
-                              KafkaPartitionMetricSampleAggregator metricSampleAggregator,
+                              KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
+                              KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator,
                               MetadataClient metadataClient,
                               MetricDef metricDef,
                               Time time,
                               MetricRegistry dropwizardMetricRegistry) {
-    this(config, metricSampleAggregator, metadataClient, metricDef, time, dropwizardMetricRegistry, true);
+    this(config, partitionMetricSampleAggregator, brokerMetricSampleAggregator, metadataClient, metricDef, time, dropwizardMetricRegistry, true);
   }
 
   /**
    * Constructor for unit test.
    *
    * @param config      The load monitor configurations.
-   * @param metricSampleAggregator The queue that holds the metric samples.
+   * @param partitionMetricSampleAggregator The {@link KafkaPartitionMetricSampleAggregator} to aggregate partition metrics.
+   * @param brokerMetricSampleAggregator The {@link KafkaBrokerMetricSampleAggregator} to aggregate the broker metrics.
    * @param metadataClient    The metadata of the cluster.
    * @param metricDef the metric definitions.
    * @param time        The time object.
@@ -77,13 +82,15 @@ public class MetricFetcherManager {
    * @param fetchers    A list of metric fetchers.
    */
   public MetricFetcherManager(KafkaCruiseControlConfig config,
-                              KafkaPartitionMetricSampleAggregator metricSampleAggregator,
+                              KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
+                              KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator,
                               MetadataClient metadataClient,
                               MetricDef metricDef,
                               Time time,
                               MetricRegistry dropwizardMetricRegistry,
                               List<MetricSampler> fetchers) {
-    this(config, metricSampleAggregator, metadataClient, metricDef, time, dropwizardMetricRegistry, false);
+    this(config, partitionMetricSampleAggregator, brokerMetricSampleAggregator, metadataClient, metricDef, time,
+         dropwizardMetricRegistry, false);
     _metricSamplers.addAll(fetchers);
   }
 
@@ -91,7 +98,8 @@ public class MetricFetcherManager {
    * Private constructor to avoid duplicate code.
    *
    * @param config        The load monitor configurations.
-   * @param metricSampleAggregator   The queue that holds the metric samples.
+   * @param partitionMetricSampleAggregator The {@link KafkaPartitionMetricSampleAggregator} to aggregate partition metrics.
+   * @param brokerMetricSampleAggregator The {@link KafkaBrokerMetricSampleAggregator} to aggregate broker metrics.
    * @param metadataClient      The metadata of the cluster.
    * @param metricDef the metric definitions.
    * @param time          The time object.
@@ -99,14 +107,16 @@ public class MetricFetcherManager {
    * @param createSampler Whether to create the metric fetchers or not. ( For unit test purpose)
    */
   private MetricFetcherManager(KafkaCruiseControlConfig config,
-                               KafkaPartitionMetricSampleAggregator metricSampleAggregator,
+                               KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
+                               KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator,
                                MetadataClient metadataClient,
                                MetricDef metricDef,
                                Time time,
                                MetricRegistry dropwizardMetricRegistry,
                                boolean createSampler) {
     _time = time;
-    _metricSampleAggregator = metricSampleAggregator;
+    _partitionMetricSampleAggregator = partitionMetricSampleAggregator;
+    _brokerMetricSampleAggregator = brokerMetricSampleAggregator;
     _metadataClient = metadataClient;
     _metricDef = metricDef;
     _numMetricFetchers = config.getInt(KafkaCruiseControlConfig.NUM_METRIC_FETCHERS_CONFIG);
@@ -172,7 +182,8 @@ public class MetricFetcherManager {
         _partitionAssignor.assignPartitions(_metadataClient.cluster(), _numMetricFetchers);
     List<MetricFetcher> samplingFetchers = new ArrayList<>();
     for (int i = 0; i < _numMetricFetchers; i++) {
-      samplingFetchers.add(new SamplingFetcher(_metricSamplers.get(i), _metadataClient.cluster(), _metricSampleAggregator,
+      samplingFetchers.add(new SamplingFetcher(_metricSamplers.get(i), _metadataClient.cluster(),
+          _partitionMetricSampleAggregator,
                                                sampleStore, partitionAssignment.get(i), startMs, endMs, true,
                                                _useLinearRegressionModel, _metricDef, _partitionSamplesFetcherTimer,
                                                _partitionSamplesFetcherFailureRate));

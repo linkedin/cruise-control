@@ -8,10 +8,10 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.BrokerMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.PartitionMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -25,6 +25,7 @@ import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -47,7 +48,7 @@ public class CruiseControlMetricsProcessorTest {
   private static final int BROKER_ID_0 = 0;
   private static final int BROKER_ID_1 = 1;
   private static final double DELTA = 0.001;
-  private static final MetricDef METRIC_DEF = KafkaCruiseControlMetricDef.commonMetricDef();
+  private static final MetricDef METRIC_DEF = KafkaMetricDef.commonMetricDef();
   private final Time _time = new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
 
   @Test
@@ -77,12 +78,12 @@ public class CruiseControlMetricsProcessorTest {
     }
 
     for (BrokerMetricSample sample : samples.brokerMetricSamples()) {
-      if (sample.brokerCpuUtil() == 50.0) {
-        assertEquals(500.0, sample.brokerReplicationBytesInRate(), DELTA);
-      } else if (sample.brokerCpuUtil() == 30.0) {
-        assertEquals(820.0, sample.brokerReplicationBytesInRate(), DELTA);
+      if (sample.metricValue(CPU_USAGE) == 50.0) {
+        assertEquals(500.0, sample.metricValue(REPLICATION_BYTES_IN_RATE), DELTA);
+      } else if (sample.metricValue(CPU_USAGE) == 30.0) {
+        assertEquals(820.0, sample.metricValue(REPLICATION_BYTES_IN_RATE), DELTA);
       } else {
-        fail("Should never have broker cpu util " + sample.brokerCpuUtil());
+        fail("Should never have broker cpu util " + sample.metricValue(CPU_USAGE));
       }
     }
 
@@ -94,8 +95,8 @@ public class CruiseControlMetricsProcessorTest {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor();
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     for (CruiseControlMetric metric : metrics) {
-      if (metric.metricType() == MetricType.ALL_TOPIC_BYTES_IN && metric.brokerId() == BROKER_ID_0) {
-        processor.addMetric(new BrokerMetric(MetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0, 1000.0));
+      if (metric.rawMetricType() == RawMetricType.ALL_TOPIC_BYTES_IN && metric.brokerId() == BROKER_ID_0) {
+        processor.addMetric(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0, 1000.0));
       } else {
         processor.addMetric(metric);
       }
@@ -112,7 +113,7 @@ public class CruiseControlMetricsProcessorTest {
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     for (CruiseControlMetric metric : metrics) {
       boolean shouldAdd = true;
-      if (metric.metricType() == MetricType.PARTITION_SIZE) {
+      if (metric.rawMetricType() == RawMetricType.PARTITION_SIZE) {
         PartitionMetric pm = (PartitionMetric) metric;
         if (pm.topic().equals(TOPIC1) && pm.partition() == P0) {
           shouldAdd = false;
@@ -134,7 +135,7 @@ public class CruiseControlMetricsProcessorTest {
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     for (CruiseControlMetric metric : metrics) {
       boolean shouldAdd = true;
-      if (metric.metricType() == MetricType.TOPIC_BYTES_IN || metric.metricType() == MetricType.TOPIC_BYTES_OUT) {
+      if (metric.rawMetricType() == RawMetricType.TOPIC_BYTES_IN || metric.rawMetricType() == RawMetricType.TOPIC_BYTES_OUT) {
         TopicMetric tm = (TopicMetric) metric;
         if (tm.brokerId() == BROKER_ID_0 && tm.topic().equals(TOPIC1)) {
           shouldAdd = false;
@@ -169,34 +170,34 @@ public class CruiseControlMetricsProcessorTest {
    */
   private Set<CruiseControlMetric> getCruiseControlMetrics() {
     Set<CruiseControlMetric> metrics = new HashSet<>();
-    metrics.add(new BrokerMetric(MetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0, 820.0 * BYTES_IN_KB));
-    metrics.add(new BrokerMetric(MetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_1, 500.0 * BYTES_IN_KB));
-    metrics.add(new BrokerMetric(MetricType.ALL_TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, 2200.0 * BYTES_IN_KB));
-    metrics.add(new BrokerMetric(MetricType.ALL_TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_1, 1000.0 * BYTES_IN_KB));
-    metrics.add(new BrokerMetric(MetricType.BROKER_CPU_UTIL, _time.milliseconds(), BROKER_ID_0, 50.0));
-    metrics.add(new BrokerMetric(MetricType.BROKER_CPU_UTIL, _time.milliseconds(), BROKER_ID_1, 30.0));
+    metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0, 820.0 * BYTES_IN_KB));
+    metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_1, 500.0 * BYTES_IN_KB));
+    metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, 2200.0 * BYTES_IN_KB));
+    metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_1, 1000.0 * BYTES_IN_KB));
+    metrics.add(new BrokerMetric(RawMetricType.BROKER_CPU_UTIL, _time.milliseconds(), BROKER_ID_0, 50.0));
+    metrics.add(new BrokerMetric(RawMetricType.BROKER_CPU_UTIL, _time.milliseconds(), BROKER_ID_1, 30.0));
 
-    metrics.add(new TopicMetric(MetricType.TOPIC_BYTES_IN, _time.milliseconds() + 1, BROKER_ID_0, TOPIC1, 20.0 * BYTES_IN_KB));
-    metrics.add(new TopicMetric(MetricType.TOPIC_BYTES_IN, _time.milliseconds() + 2, BROKER_ID_1, TOPIC1, 500.0 * BYTES_IN_KB));
-    metrics.add(new TopicMetric(MetricType.TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0, TOPIC2, 800.0 * BYTES_IN_KB));
-    metrics.add(new TopicMetric(MetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC1, 100.0 * BYTES_IN_KB));
-    metrics.add(new TopicMetric(MetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_1, TOPIC1, 1000.0 * BYTES_IN_KB));
-    metrics.add(new TopicMetric(MetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC2, 2100.0 * BYTES_IN_KB));
+    metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_IN, _time.milliseconds() + 1, BROKER_ID_0, TOPIC1, 20.0 * BYTES_IN_KB));
+    metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_IN, _time.milliseconds() + 2, BROKER_ID_1, TOPIC1, 500.0 * BYTES_IN_KB));
+    metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0, TOPIC2, 800.0 * BYTES_IN_KB));
+    metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC1, 100.0 * BYTES_IN_KB));
+    metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_1, TOPIC1, 1000.0 * BYTES_IN_KB));
+    metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC2, 2100.0 * BYTES_IN_KB));
 
-    metrics.add(new PartitionMetric(MetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC1, P0, 100 * BYTES_IN_MB));
-    metrics.add(new PartitionMetric(MetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_1, TOPIC1, P1, 300 * BYTES_IN_MB));
-    metrics.add(new PartitionMetric(MetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC2, P0, 200 * BYTES_IN_MB));
-    metrics.add(new PartitionMetric(MetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC2, P1, 500 * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC1, P0, 100 * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_1, TOPIC1, P1, 300 * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC2, P0, 200 * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC2, P1, 500 * BYTES_IN_MB));
     return metrics;
   }
 
   private void validatePartitionMetricSample(PartitionMetricSample sample, long time, double cpu, double bytesIn, double bytesOut,
                                              double disk) {
     assertEquals(time, sample.sampleTime());
-    assertEquals(cpu, sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU)), DELTA);
-    assertEquals(bytesIn, sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_IN)), DELTA);
-    assertEquals(bytesOut, sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT)), DELTA);
-    assertEquals(disk, sample.metricValue(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.DISK)), DELTA);
+    assertEquals(cpu, sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.CPU)), DELTA);
+    assertEquals(bytesIn, sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.NW_IN)), DELTA);
+    assertEquals(bytesOut, sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.NW_OUT)), DELTA);
+    assertEquals(disk, sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.DISK)), DELTA);
   }
 
   private Cluster getCluster() {

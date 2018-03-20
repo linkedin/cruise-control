@@ -10,6 +10,7 @@ import com.linkedin.cruisecontrol.model.Entity;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.StringJoiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -91,6 +92,15 @@ public class MetricSample<G, E extends Entity<G>> {
   }
 
   /**
+   * A method that can be overridden by subclasses to get prettier toString() format. If null is returned, 
+   * the toString() output will have the metricId instead of metric name, which is less readable.
+   * @return the {@link MetricDef} used for toString() method.
+   */
+  protected MetricDef metricDefForToString() {
+    return null;
+  }
+
+  /**
    * Validate the metric sample.
    */
   public boolean isValid(MetricDef metricDef) {
@@ -99,6 +109,17 @@ public class MetricSample<G, E extends Entity<G>> {
 
   @Override
   public String toString() {
-    return String.format("(entity=%s, metrics=%s, sampleTime=%d)", _entity, _valuesByMetricId, _sampleTime);
+    MetricDef metricDef = metricDefForToString();
+    if (metricDef == null) {
+      return String.format("{entity=%s,sampleTime=%d,metrics=%s}", _entity, _sampleTime, _valuesByMetricId);
+    } else {
+      StringJoiner sj = new StringJoiner(",", "{", "}");
+      sj.add(String.format("entity=(%s)", _entity));
+      sj.add(String.format("SampleTime=%d", _sampleTime));
+      for (MetricInfo metricInfo : metricDefForToString().all()) {
+        sj.add(String.format("%s=%.3f", metricInfo.name(), _valuesByMetricId.get(metricInfo.id())));
+      }
+      return sj.toString();
+    }
   }
 }

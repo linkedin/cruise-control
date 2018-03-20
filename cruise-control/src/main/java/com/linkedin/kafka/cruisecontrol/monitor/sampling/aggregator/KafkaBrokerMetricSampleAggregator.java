@@ -1,14 +1,12 @@
 /*
- *
- *  * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
- *  
+ * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
 
 
@@ -27,6 +25,6 @@ public class KafkaBrokerMetricSampleAggregator extends MetricSampleAggregator<St
           config.getInt(KafkaCruiseControlConfig.MIN_SAMPLES_PER_METRICS_WINDOW_CONFIG),
           config.getInt(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_ENTITY_CONFIG),
           config.getInt(KafkaCruiseControlConfig.METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG),
-          KafkaCruiseControlMetricDef.commonMetricDef());
+          KafkaMetricDef.brokerMetricDef());
   }
 }

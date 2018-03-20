@@ -15,7 +15,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
@@ -61,7 +61,7 @@ public class LoadMonitorTest {
   private static final PartitionEntity PE_T0P1 = new PartitionEntity(T0P1);
   private static final PartitionEntity PE_T1P0 = new PartitionEntity(T1P0);
   private static final PartitionEntity PE_T1P1 = new PartitionEntity(T1P1);
-  private static final MetricDef METRIC_DEF = KafkaCruiseControlMetricDef.commonMetricDef();
+  private static final MetricDef METRIC_DEF = KafkaMetricDef.commonMetricDef();
 
   private static final int NUM_WINDOWS = 2;
   private static final int MIN_SAMPLES_PER_WINDOW = 4;

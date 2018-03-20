@@ -12,11 +12,12 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +37,7 @@ import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -55,7 +57,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   private static final int NUM_PARTITIONS = 4;
   private static final int NUM_METRIC_FETCHERS = 4;
   private static final long SAMPLING_INTERVAL = 100000L;
-  private static final MetricDef METRIC_DEF = KafkaCruiseControlMetricDef.commonMetricDef();
+  private static final MetricDef METRIC_DEF = KafkaMetricDef.commonMetricDef();
   // Using autoTick = 1
   private static final Time TIME = new MockTime(1L);
 
@@ -83,17 +85,21 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
     Metadata metadata = new Metadata();
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
-    MockPartitionMetricSampleAggregator
-        mockMetricSampleAggregator = new MockPartitionMetricSampleAggregator(config, metadata);
+    MockPartitionMetricSampleAggregator mockPartitionMetricSampleAggregator =
+        new MockPartitionMetricSampleAggregator(config, metadata);
+    KafkaBrokerMetricSampleAggregator mockBrokerMetricSampleAggregator = 
+        EasyMock.mock(KafkaBrokerMetricSampleAggregator.class);
     List<MetricSampler> samplers = new ArrayList<>();
     MetricRegistry dropwizardMetricRegistry = new MetricRegistry();
     for (int i = 0; i < NUM_METRIC_FETCHERS; i++) {
       samplers.add(new MockSampler(0));
     }
     MetricFetcherManager fetcherManager =
-        new MetricFetcherManager(config, mockMetricSampleAggregator, metadataClient, METRIC_DEF, TIME, dropwizardMetricRegistry, samplers);
+        new MetricFetcherManager(config, mockPartitionMetricSampleAggregator, mockBrokerMetricSampleAggregator, 
+                                 metadataClient, METRIC_DEF, TIME, dropwizardMetricRegistry, samplers);
     LoadMonitorTaskRunner loadMonitorTaskRunner =
-        new LoadMonitorTaskRunner(config, fetcherManager, mockMetricSampleAggregator, metadataClient, TIME);
+        new LoadMonitorTaskRunner(config, fetcherManager, mockPartitionMetricSampleAggregator,
+                                  mockBrokerMetricSampleAggregator, metadataClient, TIME);
     while (metadata.fetch().topics().size() < NUM_TOPICS) {
       Thread.sleep(10);
       metadataClient.refreshMetadata();
@@ -108,7 +114,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     }
 
     long startMs = System.currentTimeMillis();
-    BlockingQueue<PartitionMetricSample> sampleQueue = mockMetricSampleAggregator.metricSampleQueue();
+    BlockingQueue<PartitionMetricSample> sampleQueue = mockPartitionMetricSampleAggregator.metricSampleQueue();
     while (!partitionsToSample.isEmpty() && System.currentTimeMillis() < startMs + 10000) {
       PartitionMetricSample sample = sampleQueue.poll();
       if (sample != null) {
@@ -128,17 +134,21 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
     Metadata metadata = new Metadata();
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
-    MockPartitionMetricSampleAggregator
-        mockMetricSampleAggregator = new MockPartitionMetricSampleAggregator(config, metadata);
+    MockPartitionMetricSampleAggregator mockMetricSampleAggregator = 
+        new MockPartitionMetricSampleAggregator(config, metadata);
+    KafkaBrokerMetricSampleAggregator mockBrokerMetricSampleAggregator = 
+        EasyMock.mock(KafkaBrokerMetricSampleAggregator.class);
     List<MetricSampler> samplers = new ArrayList<>();
     MetricRegistry dropwizardMetricRegistry = new MetricRegistry();
     for (int i = 0; i < NUM_METRIC_FETCHERS; i++) {
       samplers.add(new MockSampler(i));
     }
-    MetricFetcherManager fetcherManager = new MetricFetcherManager(config, mockMetricSampleAggregator, metadataClient,
-                                                                   METRIC_DEF, TIME, dropwizardMetricRegistry, samplers);
+    MetricFetcherManager fetcherManager = 
+        new MetricFetcherManager(config, mockMetricSampleAggregator, mockBrokerMetricSampleAggregator, metadataClient,
+                                 METRIC_DEF, TIME, dropwizardMetricRegistry, samplers);
     LoadMonitorTaskRunner loadMonitorTaskRunner =
-        new LoadMonitorTaskRunner(config, fetcherManager, mockMetricSampleAggregator, metadataClient, TIME);
+        new LoadMonitorTaskRunner(config, fetcherManager, mockMetricSampleAggregator, mockBrokerMetricSampleAggregator, 
+                                  metadataClient, TIME);
     while (metadata.fetch().topics().size() < 100) {
       metadataClient.refreshMetadata();
     }
@@ -204,7 +214,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
         PartitionMetricSample sample = new PartitionMetricSample(cluster.partition(tp).leader().id(), tp);
         long now = TIME.milliseconds();
         for (Resource resource : Resource.values()) {
-          sample.record(KafkaCruiseControlMetricDef.resourceToMetricInfo(resource), now);
+          sample.record(KafkaMetricDef.resourceToMetricInfo(resource), now);
         }
         sample.close(now);
         partitionMetricSamples.add(sample);

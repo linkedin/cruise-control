@@ -7,22 +7,22 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.monitor.sampling.MetricSample;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.nio.ByteBuffer;
 import org.apache.kafka.common.TopicPartition;
 
 import java.util.Date;
 import java.util.Map;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.CPU_USAGE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.DISK_USAGE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.FETCH_RATE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.LEADER_BYTES_IN;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.LEADER_BYTES_OUT;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.MESSAGE_IN_RATE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.PRODUCE_RATE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.REPLICATION_BYTES_IN_RATE;
-import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef.REPLICATION_BYTES_OUT_RATE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.DISK_USAGE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.FETCH_RATE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.LEADER_BYTES_IN;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.LEADER_BYTES_OUT;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.MESSAGE_IN_RATE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.PRODUCE_RATE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.REPLICATION_BYTES_IN_RATE;
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.REPLICATION_BYTES_OUT_RATE;
 import static java.nio.charset.StandardCharsets.*;
 
 
@@ -72,7 +72,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
    * N bytes - topic string bytes
    */
   public byte[] toBytes() {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.commonMetricDef();
+    MetricDef metricDef = KafkaMetricDef.commonMetricDef();
     byte[] topicStringBytes = entity().group().getBytes(UTF_8);
     // Allocate memory:
     ByteBuffer buffer = ByteBuffer.allocate(89 + topicStringBytes.length);
@@ -113,7 +113,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
 
   @Override
   public String toString() {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.commonMetricDef();
+    MetricDef metricDef = KafkaMetricDef.commonMetricDef();
     StringBuilder builder = new StringBuilder().append("{");
     for (Map.Entry<Integer, Double> entry : _valuesByMetricId.entrySet()) {
       builder.append(metricDef.metricInfo(entry.getKey()).name())
@@ -127,7 +127,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
   }
 
   private static PartitionMetricSample readV0(ByteBuffer buffer) {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.commonMetricDef();
+    MetricDef metricDef = KafkaMetricDef.commonMetricDef();
     int brokerId = buffer.getInt();
     int partition = buffer.getInt(45);
     String topic = new String(buffer.array(), 49, buffer.array().length - 49, UTF_8);
@@ -141,7 +141,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
   }
 
   private static PartitionMetricSample readV1(ByteBuffer buffer) {
-    MetricDef metricDef = KafkaCruiseControlMetricDef.commonMetricDef();
+    MetricDef metricDef = KafkaMetricDef.commonMetricDef();
     int brokerId = buffer.getInt();
     int partition = buffer.getInt(85);
     String topic = new String(buffer.array(), 89, buffer.array().length - 89, UTF_8);
