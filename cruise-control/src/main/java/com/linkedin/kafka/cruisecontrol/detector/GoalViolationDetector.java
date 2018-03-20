@@ -88,7 +88,7 @@ public class GoalViolationDetector implements Runnable {
     AutoCloseable clusterModelSemaphore = null;
     try {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
-      if (ViolationUtils.isUnavailableState(loadMonitorTaskRunnerState)) {
+      if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
         LOG.info("Skipping goal violation detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
         return;
       }

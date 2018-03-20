@@ -212,7 +212,7 @@ public class AnomalyDetector {
 
       // Fixing anomalies is possible only when (1) the state is not in and unavailable state ( e.g. loading or
       // bootstrapping) and (2) the completeness requirements are met for all goals.
-      if (ViolationUtils.isUnavailableState(loadMonitorTaskRunnerState)) {
+      if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
         LOG.info("Skipping {} because load monitor is in {} state.", skipMsg, loadMonitorTaskRunnerState);
       } else {
         boolean meetCompletenessRequirements = _kafkaCruiseControl.meetCompletenessRequirements(Collections.emptyList());
