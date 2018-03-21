@@ -11,7 +11,6 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -37,7 +36,6 @@ public class MetricFetcherManager {
 
   private final Time _time;
   private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
-  private final KafkaBrokerMetricSampleAggregator _brokerMetricSampleAggregator;
   private final MetadataClient _metadataClient;
   private final int _numMetricFetchers;
   private final List<MetricSampler> _metricSamplers;
@@ -56,17 +54,16 @@ public class MetricFetcherManager {
 
   /**
    * Create a metric fetcher manager.
-   * See {@link #MetricFetcherManager(KafkaCruiseControlConfig, KafkaPartitionMetricSampleAggregator, KafkaBrokerMetricSampleAggregator,
+   * See {@link #MetricFetcherManager(KafkaCruiseControlConfig, KafkaPartitionMetricSampleAggregator,
    * MetadataClient, MetricDef, Time, MetricRegistry, List)}
    */
   public MetricFetcherManager(KafkaCruiseControlConfig config,
                               KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
-                              KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator,
                               MetadataClient metadataClient,
                               MetricDef metricDef,
                               Time time,
                               MetricRegistry dropwizardMetricRegistry) {
-    this(config, partitionMetricSampleAggregator, brokerMetricSampleAggregator, metadataClient, metricDef, time, dropwizardMetricRegistry, true);
+    this(config, partitionMetricSampleAggregator, metadataClient, metricDef, time, dropwizardMetricRegistry, true);
   }
 
   /**
@@ -74,7 +71,6 @@ public class MetricFetcherManager {
    *
    * @param config      The load monitor configurations.
    * @param partitionMetricSampleAggregator The {@link KafkaPartitionMetricSampleAggregator} to aggregate partition metrics.
-   * @param brokerMetricSampleAggregator The {@link KafkaBrokerMetricSampleAggregator} to aggregate the broker metrics.
    * @param metadataClient    The metadata of the cluster.
    * @param metricDef the metric definitions.
    * @param time        The time object.
@@ -83,13 +79,12 @@ public class MetricFetcherManager {
    */
   public MetricFetcherManager(KafkaCruiseControlConfig config,
                               KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
-                              KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator,
                               MetadataClient metadataClient,
                               MetricDef metricDef,
                               Time time,
                               MetricRegistry dropwizardMetricRegistry,
                               List<MetricSampler> fetchers) {
-    this(config, partitionMetricSampleAggregator, brokerMetricSampleAggregator, metadataClient, metricDef, time,
+    this(config, partitionMetricSampleAggregator, metadataClient, metricDef, time,
          dropwizardMetricRegistry, false);
     _metricSamplers.addAll(fetchers);
   }
@@ -99,7 +94,6 @@ public class MetricFetcherManager {
    *
    * @param config        The load monitor configurations.
    * @param partitionMetricSampleAggregator The {@link KafkaPartitionMetricSampleAggregator} to aggregate partition metrics.
-   * @param brokerMetricSampleAggregator The {@link KafkaBrokerMetricSampleAggregator} to aggregate broker metrics.
    * @param metadataClient      The metadata of the cluster.
    * @param metricDef the metric definitions.
    * @param time          The time object.
@@ -108,7 +102,6 @@ public class MetricFetcherManager {
    */
   private MetricFetcherManager(KafkaCruiseControlConfig config,
                                KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
-                               KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator,
                                MetadataClient metadataClient,
                                MetricDef metricDef,
                                Time time,
@@ -116,7 +109,6 @@ public class MetricFetcherManager {
                                boolean createSampler) {
     _time = time;
     _partitionMetricSampleAggregator = partitionMetricSampleAggregator;
-    _brokerMetricSampleAggregator = brokerMetricSampleAggregator;
     _metadataClient = metadataClient;
     _metricDef = metricDef;
     _numMetricFetchers = config.getInt(KafkaCruiseControlConfig.NUM_METRIC_FETCHERS_CONFIG);
