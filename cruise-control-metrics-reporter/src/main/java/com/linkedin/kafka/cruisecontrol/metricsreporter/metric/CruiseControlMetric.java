@@ -24,12 +24,12 @@ public abstract class CruiseControlMetric {
     _brokerId = brokerId;
     _value = value;
   }
-  
+
   /**
    * Get the metric class id for this metric. The metric class id will be stored in the serialized metrics
    * so that the deserializer will know which class should be used to deserialize the data.
    */
-  abstract MetricClassId metricClassId();
+  public abstract MetricClassId metricClassId();
 
   /**
    * Get the {@link RawMetricType} of this metric.
@@ -70,7 +70,7 @@ public abstract class CruiseControlMetric {
    * An enum that list all the implementations of the interface. This id will be store in the serialized
    * metrics to help the metric sampler to decide using which class to deserialize the metric bytes.
    */
-  enum MetricClassId {
+  public enum MetricClassId {
     BROKER_METRIC((byte) 0), TOPIC_METRIC((byte) 1), PARTITION_METRIC((byte) 2);
 
     private final byte _id;
