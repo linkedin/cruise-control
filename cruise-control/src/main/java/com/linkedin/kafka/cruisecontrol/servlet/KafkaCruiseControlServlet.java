@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.cruisecontrol.KafkaClusterState;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
@@ -46,6 +47,9 @@ import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -158,6 +162,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     rebalance.add(DATA_FROM_PARAM);
     rebalance.add(JSON_PARAM);
 
+    Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    kafkaClusterState.add(VERBOSE_PARAM);
+    kafkaClusterState.add(JSON_PARAM);
+
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
     validParamNames.put(LOAD, Collections.unmodifiableSet(load));
@@ -170,6 +178,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     validParamNames.put(STOP_PROPOSAL_EXECUTION, Collections.emptySet());
     validParamNames.put(PAUSE_SAMPLING, Collections.emptySet());
     validParamNames.put(RESUME_SAMPLING, Collections.emptySet());
+    validParamNames.put(KAFKA_CLUSTER_STATE, Collections.unmodifiableSet(kafkaClusterState));
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
@@ -186,7 +195,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     REBALANCE,
     STOP_PROPOSAL_EXECUTION,
     PAUSE_SAMPLING,
-    RESUME_SAMPLING
+    RESUME_SAMPLING,
+    KAFKA_CLUSTER_STATE
   }
 
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
@@ -254,6 +264,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 6. query the state of Kafka Cruise Control
    *    GET /kafkacruisecontrol/state
    *
+   * 7. query the Kafka cluster state
+   *    GET /kafkacruisecontrol/kafka_cluster_state
+   *
    * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
    * </pre>
    */
@@ -301,6 +314,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               break;
             case STATE:
               if (getState(request, response)) {
+                _sessionManager.closeSession(request);
+              }
+              break;
+            case KAFKA_CLUSTER_STATE:
+              if (getKafkaClusterState(request, response)) {
                 _sessionManager.closeSession(request);
               }
               break;
@@ -799,6 +817,61 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private boolean wantJSON(HttpServletRequest request) {
     String jsonString = request.getParameter(JSON_PARAM);
     return jsonString != null && Boolean.parseBoolean(jsonString);
+  }
+
+  private boolean getKafkaClusterState(HttpServletRequest request, HttpServletResponse response) throws Exception {
+    boolean verbose;
+    boolean json = wantJSON(request);
+    try {
+      String verboseString = request.getParameter(VERBOSE_PARAM);
+      verbose = verboseString != null && Boolean.parseBoolean(verboseString);
+    } catch (Exception e) {
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      // Close session
+      return true;
+    }
+    KafkaClusterState state = _asyncKafkaCruiseControl.kafkaClusterState();
+    OutputStream out = response.getOutputStream();
+    if (json) {
+      String stateString = state.getJSONString(JSON_VERSION, verbose);
+      setJSONResponseCode(response, SC_OK);
+      response.setContentLength(stateString.length());
+      out.write(stateString.getBytes(StandardCharsets.UTF_8));
+    } else {
+      setResponseCode(response, SC_OK);
+      Cluster clusterState = state.kafkaCluster();
+      int topicNameLength = clusterState.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
+
+      String initMessage = verbose ? "All Partitions in the Cluster (verbose):"
+                                   : "Under Replicated and Offline Partitions in the Cluster:";
+      out.write(String.format("%s%n%" + topicNameLength + "s%10s%10s%30s%30s%n", initMessage, "TOPIC", "PARTITION", "LEADER",
+                              "REPLICAS", "ISR")
+                    .getBytes(StandardCharsets.UTF_8));
+
+      for (String topic : clusterState.topics()) {
+        for (PartitionInfo partitionInfo : clusterState.partitionsForTopic(topic)) {
+          boolean isURP = partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
+          if (isURP || verbose) {
+            Set<String> replicas =
+                Arrays.stream(partitionInfo.replicas()).map(Node::idString).collect(Collectors.toSet());
+            Set<String> isr =
+                Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::idString).collect(Collectors.toSet());
+
+            out.write(String.format("%" + topicNameLength + "s%10s%10s%30s%30s%n",
+                                    partitionInfo.topic(),
+                                    partitionInfo.partition(),
+                                    partitionInfo.leader().id(),
+                                    replicas,
+                                    isr)
+                          .getBytes(StandardCharsets.UTF_8));
+          }
+        }
+      }
+    }
+    response.getOutputStream().flush();
+    return true;
   }
 
   private boolean getState(HttpServletRequest request, HttpServletResponse response) throws Exception {

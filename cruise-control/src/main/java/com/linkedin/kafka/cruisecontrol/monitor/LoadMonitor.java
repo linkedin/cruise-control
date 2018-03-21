@@ -125,7 +125,7 @@ public class LoadMonitor {
     _metricSampleAggregator = new KafkaMetricSampleAggregator(config, metadataClient.metadata());
 
     _acquiredClusterModelSemaphore = ThreadLocal.withInitial(() -> false);
-    
+
     // We use the number of proposal precomputing threads config to ensure there is enough concurrency if users
     // wants that.
     int numPrecomputingThread = config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
@@ -300,6 +300,13 @@ public class LoadMonitor {
    */
   public void train(long startMs, long endMs) {
     _loadMonitorTaskRunner.train(startMs, endMs);
+  }
+
+  /**
+   * Get the cluster information from Kafka metadata.
+   */
+  public Cluster kafkaCluster() {
+    return _metadataClient.cluster();
   }
 
   /**
