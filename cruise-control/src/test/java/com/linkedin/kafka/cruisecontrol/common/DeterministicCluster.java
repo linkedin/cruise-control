@@ -10,7 +10,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -254,16 +254,16 @@ public class DeterministicCluster {
     AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues();
     MetricValues metricValues = new MetricValues(1);
     metricValues.set(0, cpu);
-    aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU), metricValues);
+    aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.CPU), metricValues);
     metricValues = new MetricValues(1);
     metricValues.set(0, networkIn);
-    aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_IN), metricValues);
+    aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.NW_IN), metricValues);
     metricValues = new MetricValues(1);
     metricValues.set(0, networkOut);
-    aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
+    aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
     metricValues = new MetricValues(1);
     metricValues.set(0, disk);
-    aggregatedMetricValues.add(KafkaCruiseControlMetricDef.resourceToMetricId(Resource.DISK), metricValues);
+    aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.DISK), metricValues);
     return aggregatedMetricValues;
   }
 

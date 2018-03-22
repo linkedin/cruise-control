@@ -9,7 +9,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaCruiseControlMetricDef;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
@@ -44,9 +44,9 @@ public class MonitorUtils {
    * @param aggregatedMetricValues the leader aggregated metric values to convert.
    */
   public static AggregatedMetricValues toFollowerMetricValues(AggregatedMetricValues aggregatedMetricValues) {
-    int cpuId = KafkaCruiseControlMetricDef.resourceToMetricId(Resource.CPU);
-    int networkInId = KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_IN);
-    int networkOutId = KafkaCruiseControlMetricDef.resourceToMetricId(Resource.NW_OUT);
+    int cpuId = KafkaMetricDef.resourceToMetricId(Resource.CPU);
+    int networkInId = KafkaMetricDef.resourceToMetricId(Resource.NW_IN);
+    int networkOutId = KafkaMetricDef.resourceToMetricId(Resource.NW_OUT);
 
     AggregatedMetricValues followerLoad = new AggregatedMetricValues();
     for (int metricId : aggregatedMetricValues.metricIds()) {

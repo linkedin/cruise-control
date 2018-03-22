@@ -32,7 +32,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricType.*;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 import static org.junit.Assert.assertEquals;
 
 
@@ -97,7 +97,7 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     while (metricTypes.size() < 39 && System.currentTimeMillis() < startMs + 15000) {
       records = consumer.poll(10);
       for (ConsumerRecord<String, CruiseControlMetric> record : records) {
-        metricTypes.add((int) record.value().metricType().id());
+        metricTypes.add((int) record.value().rawMetricType().id());
       }
     }
     HashSet<Integer> expectedMetricTypes = new HashSet<>(Arrays.asList((int) ALL_TOPIC_BYTES_IN.id(),
