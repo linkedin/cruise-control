@@ -573,8 +573,8 @@ public class LoadMonitor {
     MetricSampleAggregationResult<String, PartitionEntity> metricSampleAggregationResult;
     try {
       metricSampleAggregationResult = _partitionMetricSampleAggregator.aggregate(clusterAndGeneration,
-                                                                        System.currentTimeMillis(),
-                                                                        new OperationProgress());
+                                                                                 System.currentTimeMillis(),
+                                                                                 new OperationProgress());
     } catch (NotEnoughValidWindowsException e) {
       return 0.0;
     }
@@ -606,8 +606,8 @@ public class LoadMonitor {
         MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.clusterAndGeneration();
         double minMonitoredPartitionsPercentage = _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage();
         _numValidSnapshotWindows = _partitionMetricSampleAggregator.validWindows(clusterAndGeneration,
-                                                                        minMonitoredPartitionsPercentage)
-                                                          .size();
+                                                                                 minMonitoredPartitionsPercentage)
+                                                                   .size();
         _monitoredPartitionsPercentage = getMonitoredPartitionsPercentage();
         _totalMonitoredSnapshotWindows = _partitionMetricSampleAggregator.allWindows().size();
         _lastUpdate = System.currentTimeMillis();

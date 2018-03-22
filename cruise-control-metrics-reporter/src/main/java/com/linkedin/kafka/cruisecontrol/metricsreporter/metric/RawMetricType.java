@@ -14,7 +14,8 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
 
 
 /**
- * The metric type helps the metric sampler to distinguish what metric a value is representing.
+ * The metric type helps the metric sampler to distinguish what metric a value is representing. These metrics are
+ * called raw metrics because they are the most basic information reported by the Kafka brokers without any processing.
  * Each metric type has an id for serde purpose.
  */
 public enum RawMetricType {
@@ -67,7 +68,7 @@ public enum RawMetricType {
   BROKER_LOG_FLUSH_RATE(BROKER, (byte) 40),
   BROKER_LOG_FLUSH_TIME_MS_MAX(BROKER, (byte) 41),
   BROKER_LOG_FLUSH_TIME_MS_MEAN(BROKER, (byte) 42);
-  
+
   private static final List<RawMetricType> CACHED_VALUES = Arrays.asList(RawMetricType.values());
   private static final List<RawMetricType> BROKER_METRIC_TYPES = buildMetricTypeList(BROKER);
   private static final List<RawMetricType> TOPIC_METRIC_TYPES = buildMetricTypeList(TOPIC);
@@ -87,11 +88,11 @@ public enum RawMetricType {
   public MetricScope metricScope() {
     return _metricScope;
   }
-  
+
   public static List<RawMetricType> allMetricTypes() {
     return CACHED_VALUES;
   }
-  
+
   public static List<RawMetricType> brokerMetricTypes() {
     return BROKER_METRIC_TYPES;
   }
@@ -111,11 +112,11 @@ public enum RawMetricType {
       throw new IllegalArgumentException("CruiseControlMetric type " + id + " does not exist.");
     }
   }
-  
+
   public enum MetricScope {
     BROKER, TOPIC, PARTITION
   }
-  
+
   private static List<RawMetricType> buildMetricTypeList(MetricScope metricScope) {
     List<RawMetricType> brokerMetricTypes = new ArrayList<>();
     for (RawMetricType type : RawMetricType.values()) {

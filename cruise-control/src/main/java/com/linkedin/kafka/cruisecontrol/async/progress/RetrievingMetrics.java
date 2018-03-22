@@ -4,12 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.async.progress;
 
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
-
-
 /**
  * This is the step when retrieving the workload snapshot from
- * {@link KafkaPartitionMetricSampleAggregator}
+ * {@link com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator}
  */
 public class RetrievingMetrics implements OperationStep {
   private volatile boolean _done = false;

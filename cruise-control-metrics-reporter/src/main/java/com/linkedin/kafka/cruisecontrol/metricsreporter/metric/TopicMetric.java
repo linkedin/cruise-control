@@ -32,7 +32,7 @@ public class TopicMetric extends CruiseControlMetric {
 
   public ByteBuffer toBuffer(int headerPos) {
     byte[] topic = _topic.getBytes(StandardCharsets.UTF_8);
-    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* metric type */ +
+    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* raw metric type */ +
                                                 Long.BYTES /* time */ + Integer.BYTES /* broker id */ +
                                                 Integer.BYTES /* topic length */ + topic.length /* topic */ +
                                                 Double.BYTES /* value */);

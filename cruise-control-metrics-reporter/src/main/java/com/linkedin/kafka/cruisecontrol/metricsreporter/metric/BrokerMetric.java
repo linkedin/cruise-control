@@ -12,11 +12,6 @@ import java.nio.ByteBuffer;
  * A container class to hold broker metric.
  */
 public class BrokerMetric extends CruiseControlMetric {
-  
-  private final RawMetricType _rawMetricType;
-  private final long _time;
-  private final int _brokerId;
-  private final double _value;
 
   public BrokerMetric(RawMetricType rawMetricType, long time, int brokerId, double value) {
     super(rawMetricType, time, brokerId, value);
@@ -24,10 +19,6 @@ public class BrokerMetric extends CruiseControlMetric {
       throw new IllegalArgumentException(String.format("Cannot construct a BrokerMetric for %s whose scope is %s",
                                                        rawMetricType, rawMetricType.metricScope()));
     }
-    _rawMetricType = rawMetricType;
-    _time = time;
-    _brokerId = brokerId;
-    _value = value;
   }
 
   @Override
@@ -37,7 +28,7 @@ public class BrokerMetric extends CruiseControlMetric {
 
   @Override
   public ByteBuffer toBuffer(int headerPos) {
-    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* metric type */ +
+    ByteBuffer buffer = ByteBuffer.allocate(headerPos + 1 /* version */ + 1 /* raw metric type */ +
                                                 Long.BYTES /* time */ + Integer.BYTES /* broker id */ +
                                                 Double.BYTES /* value */);
     buffer.position(headerPos);

@@ -15,18 +15,21 @@ import java.nio.charset.StandardCharsets;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.*;
 
 
+/**
+ * The class hosting all the broker level metrics in {@link KafkaMetricDef}.
+ */
 public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
   private static final byte CURRENT_VERSION = 4;
 
   public BrokerMetricSample(String host, Integer brokerId) {
     super(new BrokerEntity(host, brokerId));
     if (host.length() >= Short.MAX_VALUE) {
-      throw new IllegalArgumentException(String.format("The length of host name %s is %d, which is longer than " 
-                                                           + "the max allowed length of %d", host, host.length(), 
+      throw new IllegalArgumentException(String.format("The length of host name %s is %d, which is longer than "
+                                                           + "the max allowed length of %d", host, host.length(),
                                                        Short.MAX_VALUE));
     }
   }
-  
+
   /**
    * Serialize the partition metric sample using the following protocol
    *
@@ -169,7 +172,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
         throw new IllegalStateException("Should never happen");
     }
   }
-  
+
   public Double metricValue(KafkaMetricDef kafkaMetricDef) {
     return _valuesByMetricId.get(KafkaMetricDef.brokerMetricDef().metricInfo(kafkaMetricDef.name()).id());
   }
@@ -272,7 +275,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     brokerMetricSample.close(sampleTime);
     return brokerMetricSample;
   }
-  
+
   private static BrokerMetricSample readV4(ByteBuffer buffer) {
     MetricDef metricDef = KafkaMetricDef.brokerMetricDef();
     int brokerId = buffer.getInt();
@@ -281,7 +284,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     buffer.get(hostBytes);
     String host = new String(hostBytes, StandardCharsets.UTF_8);
     BrokerMetricSample brokerMetricSample = new BrokerMetricSample(host, brokerId);
-    
+
     brokerMetricSample.record(metricDef.metricInfo(CPU_USAGE.name()), buffer.getDouble());
     brokerMetricSample.record(metricDef.metricInfo(LEADER_BYTES_IN.name()), buffer.getDouble());
     brokerMetricSample.record(metricDef.metricInfo(LEADER_BYTES_OUT.name()), buffer.getDouble());

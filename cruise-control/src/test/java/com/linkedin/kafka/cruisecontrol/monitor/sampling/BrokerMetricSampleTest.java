@@ -28,13 +28,12 @@ public class BrokerMetricSampleTest {
       value += 1;
     }
     sample.close((long) value);
-    System.out.println(sample);
     byte[] bytes = sample.toBytes();
     BrokerMetricSample deserializedSample = BrokerMetricSample.fromBytes(bytes);
-    
+
     assertEquals("host", deserializedSample.entity().host());
     assertEquals(0, deserializedSample.entity().brokerId());
-    
+
     value = 1.0;
     for (MetricInfo metricInfo : brokerMetricDef.all()) {
       assertEquals(value, deserializedSample.metricValue(metricInfo.id()), 0.0);

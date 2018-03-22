@@ -112,12 +112,12 @@ public class LinearRegressionModelParameters {
         byteRateObservations[index] =
             new double[]{data.metricValue(LEADER_BYTES_IN), data.metricValue(LEADER_BYTES_OUT), data.metricValue(REPLICATION_BYTES_IN_RATE)};
         cpuUtilObservation[index] = data.metricValue(CPU_USAGE);
-        int leaderToFollowerRatio = data.metricValue(REPLICATION_BYTES_IN_RATE) == 0.0 ? 10000000 :
+        int leaderToFollowerBytesInRatio = data.metricValue(REPLICATION_BYTES_IN_RATE) == 0.0 ? 10000000 :
             (int) ((data.metricValue(LEADER_BYTES_IN) / data.metricValue(REPLICATION_BYTES_IN_RATE)) * 10);
         int leaderBytesInToBytesOutRatio = data.metricValue(LEADER_BYTES_OUT) == 0.0 ? 10000000 :
             (int) ((data.metricValue(LEADER_BYTES_IN) / data.metricValue(LEADER_BYTES_OUT)) * 10);
-        int count = OBSERVED_LEADER_TO_FOLLOWER_BYTES_RATIO.getOrDefault(leaderToFollowerRatio, 0);
-        OBSERVED_LEADER_TO_FOLLOWER_BYTES_RATIO.put(leaderToFollowerRatio, count + 1);
+        int count = OBSERVED_LEADER_TO_FOLLOWER_BYTES_RATIO.getOrDefault(leaderToFollowerBytesInRatio, 0);
+        OBSERVED_LEADER_TO_FOLLOWER_BYTES_RATIO.put(leaderToFollowerBytesInRatio, count + 1);
         count = OBSERVED_LEADER_BYTES_IN_TO_BYTES_OUT_RATIO.getOrDefault(leaderBytesInToBytesOutRatio, 0);
         OBSERVED_LEADER_BYTES_IN_TO_BYTES_OUT_RATIO.put(leaderBytesInToBytesOutRatio, count + 1);
         if (!_coefficients.isEmpty()) {

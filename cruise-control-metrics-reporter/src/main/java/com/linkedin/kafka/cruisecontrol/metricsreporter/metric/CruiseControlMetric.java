@@ -9,7 +9,7 @@ import java.nio.ByteBuffer;
 
 
 /**
- * An interface for all the metrics reported by {@link CruiseControlMetricsReporter}.
+ * An interface for all the raw metrics reported by {@link CruiseControlMetricsReporter}.
  */
 public abstract class CruiseControlMetric {
   static final byte METRIC_VERSION = 0;

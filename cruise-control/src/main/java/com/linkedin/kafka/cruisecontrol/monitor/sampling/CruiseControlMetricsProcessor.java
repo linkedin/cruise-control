@@ -35,6 +35,8 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
  */
 public class CruiseControlMetricsProcessor {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsProcessor.class);
+  private static final double MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT = 0.01;
+  private static final double MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT = 0.01;
   private static final int BYTES_IN_KB = 1024;
   private static final int BYTES_IN_MB = 1024 * 1024;
   private final Map<Integer, BrokerLoad> _brokerLoad;
@@ -235,7 +237,7 @@ public class CruiseControlMetricsProcessor {
     for (RawMetricType rawTopicMetricType : RawMetricType.topicMetricTypes()) {
       MetricInfo metricInfo = commonMetricDef.metricInfo(KafkaMetricDef.forRawMetricType(rawTopicMetricType).name());
       double metricValue = brokerLoad.topicMetrics(tpWithDotHandled.topic(), rawTopicMetricType);
-      pms.record(metricInfo, metricValue / numLeaderPartitionsOnBroker);
+      pms.record(metricInfo, numLeaderPartitionsOnBroker == 0 ? 0 : metricValue / numLeaderPartitionsOnBroker);
     }
     // Fill in disk usage are not a topic metric type
     pms.record(commonMetricDef.metricInfo(KafkaMetricDef.DISK_USAGE.name()), partSize);
@@ -413,13 +415,14 @@ public class CruiseControlMetricsProcessor {
      *   <li>BrokerFetchRate</li>
      *   <li>BrokerLeaderBytesInRate</li>
      *   <li>BrokerLeaderBytesOutRate</li>
-     *   <li>BrokerReplicationBytesInRate (if exists)</li>
-     *   <li>BrokerReplicationBytesOutRate (if exists)</li>
+     *   <li>BrokerReplicationBytesInRate</li>
+     *   <li>BrokerReplicationBytesOutRate</li>
      *   <li>BrokerMessagesInRate</li>
      * </ul>
      *
      * We use the cluster metadata to check if the reported topic level metrics are complete. If the reported topic
-     * level metrics are not complete, we ignore the broker metric sample by setting the valid flat to false.
+     * level metrics are not complete, we ignore the broker metric sample by setting the _brokerMetricsAvailable flag
+     * to false.
      *
      * @param cluster The Kafka cluster.
      * @param brokerId the broker id to prepare metrics for.
@@ -473,8 +476,8 @@ public class CruiseControlMetricsProcessor {
           missingTopics.add(info.topic());
         }
       });
-      return ((double) missingTopics.size() / topicsInBroker.size()) <= 0.01
-          && ((double) missingPartitions.get() / cluster.partitionsForNode(brokerId).size() <= 0.01);
+      return ((double) missingTopics.size() / topicsInBroker.size()) <= MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT
+          && ((double) missingPartitions.get() / cluster.partitionsForNode(brokerId).size() <= MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT);
     }
 
     private double diskUsage() {
