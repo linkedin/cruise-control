@@ -32,11 +32,16 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
 import java.util.StringJoiner;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -318,9 +323,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               }
               break;
             case KAFKA_CLUSTER_STATE:
-              if (getKafkaClusterState(request, response)) {
-                _sessionManager.closeSession(request);
-              }
+              getKafkaClusterState(request, response);
               break;
             default:
               throw new UserRequestException("Invalid URL for GET");
@@ -819,7 +822,28 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return jsonString != null && Boolean.parseBoolean(jsonString);
   }
 
-  private boolean getKafkaClusterState(HttpServletRequest request, HttpServletResponse response) throws Exception {
+  private void writeKafkaClusterState(OutputStream out, SortedSet<PartitionInfo> partitions, int topicNameLength)
+      throws IOException {
+    for (PartitionInfo partitionInfo : partitions) {
+      Set<String> replicas =
+          Arrays.stream(partitionInfo.replicas()).map(Node::idString).collect(Collectors.toSet());
+      Set<String> inSyncReplicas =
+          Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::idString).collect(Collectors.toSet());
+      Set<String> outOfSyncReplicas = new HashSet<>(replicas);
+      outOfSyncReplicas.removeAll(inSyncReplicas);
+
+      out.write(String.format("%" + topicNameLength + "s%10s%10s%40s%40s%30s%n",
+                              partitionInfo.topic(),
+                              partitionInfo.partition(),
+                              partitionInfo.leader().id(),
+                              replicas,
+                              inSyncReplicas,
+                              outOfSyncReplicas)
+                      .getBytes(StandardCharsets.UTF_8));
+    }
+  }
+
+  private void getKafkaClusterState(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean verbose;
     boolean json = wantJSON(request);
     try {
@@ -829,8 +853,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       StringWriter sw = new StringWriter();
       e.printStackTrace(new PrintWriter(sw));
       setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
-      // Close session
-      return true;
+      return;
     }
     KafkaClusterState state = _asyncKafkaCruiseControl.kafkaClusterState();
     OutputStream out = response.getOutputStream();
@@ -842,36 +865,59 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } else {
       setResponseCode(response, SC_OK);
       Cluster clusterState = state.kafkaCluster();
+      // Brokers summary.
+      SortedMap<Integer, Integer> leaderCountByBrokerId = new TreeMap<>();
+      SortedMap<Integer, Integer> outOfSyncCountByBrokerId = new TreeMap<>();
+      SortedMap<Integer, Integer> replicaCountByBrokerId = new TreeMap<>();
+
+      state.populateKafkaBrokerState(leaderCountByBrokerId, outOfSyncCountByBrokerId, replicaCountByBrokerId);
+
+      String initMessage = "Brokers with replicas:";
+      out.write(String.format("%s%n%20s%20s%20s%20s%n", initMessage, "BROKER", "LEADER(S)", "REPLICAS", "OUT-OF-SYNC")
+                      .getBytes(StandardCharsets.UTF_8));
+
+      for (Integer brokerId : replicaCountByBrokerId.keySet()) {
+        out.write(String.format("%20d%20d%20d%20d%n",
+                                brokerId,
+                                leaderCountByBrokerId.getOrDefault(brokerId, 0),
+                                replicaCountByBrokerId.getOrDefault(brokerId, 0),
+                                outOfSyncCountByBrokerId.getOrDefault(brokerId, 0))
+                        .getBytes(StandardCharsets.UTF_8));
+      }
+
+      // Partitions summary.
       int topicNameLength = clusterState.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
 
-      String initMessage = verbose ? "All Partitions in the Cluster (verbose):"
+      initMessage = verbose ? "All Partitions in the Cluster (verbose):"
                                    : "Under Replicated and Offline Partitions in the Cluster:";
-      out.write(String.format("%s%n%" + topicNameLength + "s%10s%10s%30s%30s%n", initMessage, "TOPIC", "PARTITION", "LEADER",
-                              "REPLICAS", "ISR")
-                    .getBytes(StandardCharsets.UTF_8));
+      out.write(String.format("%n%s%n%" + topicNameLength + "s%10s%10s%40s%40s%30s%n", initMessage, "TOPIC", "PARTITION",
+                              "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC")
+                      .getBytes(StandardCharsets.UTF_8));
 
-      for (String topic : clusterState.topics()) {
-        for (PartitionInfo partitionInfo : clusterState.partitionsForTopic(topic)) {
-          boolean isURP = partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
-          if (isURP || verbose) {
-            Set<String> replicas =
-                Arrays.stream(partitionInfo.replicas()).map(Node::idString).collect(Collectors.toSet());
-            Set<String> isr =
-                Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::idString).collect(Collectors.toSet());
+      // Gather the cluster state.
+      Comparator<PartitionInfo> comparator = (p1, p2) -> {
+        int result = p1.topic().compareTo(p2.topic());
+        return result == 0 ? Integer.compare(p1.partition(), p2.partition()) : result;
+      };
+      SortedSet<PartitionInfo> underReplicatedPartitions = new TreeSet<>(comparator);
+      SortedSet<PartitionInfo> offlinePartitions = new TreeSet<>(comparator);
+      SortedSet<PartitionInfo> otherPartitions = new TreeSet<>(comparator);
 
-            out.write(String.format("%" + topicNameLength + "s%10s%10s%30s%30s%n",
-                                    partitionInfo.topic(),
-                                    partitionInfo.partition(),
-                                    partitionInfo.leader().id(),
-                                    replicas,
-                                    isr)
-                          .getBytes(StandardCharsets.UTF_8));
-          }
-        }
+      state.populateKafkaPartitionState(underReplicatedPartitions, offlinePartitions, otherPartitions, verbose);
+
+      // Write the cluster state.
+      out.write(String.format("Offline Partitions:%n").getBytes(StandardCharsets.UTF_8));
+      writeKafkaClusterState(out, offlinePartitions, topicNameLength);
+
+      out.write(String.format("Under Replicated Partitions:%n").getBytes(StandardCharsets.UTF_8));
+      writeKafkaClusterState(out, underReplicatedPartitions, topicNameLength);
+
+      if (verbose) {
+        out.write(String.format("Other Partitions:%n").getBytes(StandardCharsets.UTF_8));
+        writeKafkaClusterState(out, otherPartitions, topicNameLength);
       }
     }
     response.getOutputStream().flush();
-    return true;
   }
 
   private boolean getState(HttpServletRequest request, HttpServletResponse response) throws Exception {
