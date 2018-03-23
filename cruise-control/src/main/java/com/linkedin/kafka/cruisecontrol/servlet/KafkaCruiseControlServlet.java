@@ -63,11 +63,11 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.EndPoint.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.GetEndPoint.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.PostEndPoint.*;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-import static javax.servlet.http.HttpServletResponse.SC_NOT_IMPLEMENTED;
 import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 
 
@@ -188,13 +188,19 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
 
-  protected enum EndPoint {
+  interface EndPoint {
+  }
+
+  protected enum GetEndPoint implements EndPoint {
     BOOTSTRAP,
     TRAIN,
     LOAD,
     PARTITION_LOAD,
     PROPOSALS,
-    STATE,
+    STATE
+  }
+
+  protected enum PostEndPoint implements EndPoint {
     ADD_BROKER,
     REMOVE_BROKER,
     REBALANCE,
@@ -281,7 +287,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       _asyncOperationStep.set(0);
-      EndPoint endPoint = endPoint(request);
+      GetEndPoint endPoint = endPoint(request, GetEndPoint::values);
       if (endPoint != null) {
         Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
         Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -293,7 +299,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           // User request specifies parameters that are not a subset of the valid parameters.
           String errorResp = String.format("Unrecognized endpoint parameters in %s get request: %s.",
                                            endPoint, userParams.toString());
-          setErrorResponse(response, "", errorResp, SC_NOT_IMPLEMENTED, wantJSON(request));
+          setErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request));
         } else {
           switch (endPoint) {
             case BOOTSTRAP:
@@ -330,7 +336,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           }
         }
       } else {
-        String errorMessage = String.format("Bad GET request '%s'", request.getPathInfo());
+        String errorMessage = String.format("Unrecognized endpoint in GET request '%s'%nSupported GET endpoints: %s",
+                                            request.getPathInfo(),
+                                            Arrays.toString(GetEndPoint.values()));
         setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
       }
     } catch (UserRequestException ure) {
@@ -389,7 +397,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       _asyncOperationStep.set(0);
-      EndPoint endPoint = endPoint(request);
+      PostEndPoint endPoint = endPoint(request, PostEndPoint::values);
       if (endPoint != null) {
         Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
         Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -401,7 +409,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           // User request specifies parameters that are not a subset of the valid parameters.
           String errorResp = String.format("Unrecognized endpoint parameters in %s post request: %s.",
                                            endPoint, userParams.toString());
-          setErrorResponse(response, "", errorResp, SC_NOT_IMPLEMENTED, wantJSON(request));
+          setErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request));
         } else {
           switch (endPoint) {
             case ADD_BROKER:
@@ -429,7 +437,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           }
         }
       } else {
-        String errorMessage = String.format("Bad POST request '%s'", request.getPathInfo());
+        String errorMessage = String.format("Unrecognized endpoint in POST request '%s'%nSupported POST endpoints: %s",
+                                            request.getPathInfo(),
+                                            Arrays.toString(PostEndPoint.values()));
         setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
       }
     } catch (UserRequestException ure) {
@@ -1026,8 +1036,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       goals = getGoals(request);
       dataFrom = getDataFrom(request);
 
-      String throttleBrokerString = endPoint == EndPoint.ADD_BROKER ?
-          request.getParameter(THROTTLE_ADDED_BROKER_PARAM) : request.getParameter(THROTTLE_REMOVED_BROKER_PARAM);
+      String throttleBrokerString = endPoint == ADD_BROKER ? request.getParameter(THROTTLE_ADDED_BROKER_PARAM)
+                                                           : request.getParameter(THROTTLE_REMOVED_BROKER_PARAM);
       throttleAddedOrRemovedBrokers = throttleBrokerString == null || Boolean.parseBoolean(throttleBrokerString);
 
     } catch (Exception e) {
@@ -1043,7 +1053,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     // Get proposals asynchronously.
     GoalOptimizer.OptimizerResult optimizerResult;
-    if (endPoint == EndPoint.ADD_BROKER) {
+    if (endPoint == ADD_BROKER) {
       optimizerResult =
           getAndMaybeReturnProgress(request, response,
                                     () -> _asyncKafkaCruiseControl.addBrokers(brokerIds,
@@ -1075,7 +1085,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
     }
     out.write(String.format("%nCluster load after %s broker %s:%n",
-                            endPoint == EndPoint.ADD_BROKER ? "adding" : "removing", brokerIds)
+                            endPoint == ADD_BROKER ? "adding" : "removing", brokerIds)
                     .getBytes(StandardCharsets.UTF_8));
     out.write(optimizerResult.brokerStatsAfterOptimization().toString()
                              .getBytes(StandardCharsets.UTF_8));
@@ -1187,9 +1197,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
   }
 
-  private EndPoint endPoint(HttpServletRequest request) {
+  private <T> T endPoint(HttpServletRequest request, Supplier<T[]> supplier) {
     String path = request.getRequestURI().toUpperCase().replace("/KAFKACRUISECONTROL/", "");
-    for (EndPoint endPoint : EndPoint.values()) {
+    for (T endPoint : supplier.get()) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
       }
