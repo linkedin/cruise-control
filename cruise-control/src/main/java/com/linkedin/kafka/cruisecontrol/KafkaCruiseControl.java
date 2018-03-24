@@ -395,6 +395,13 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Get the cluster state for Kafka.
+   */
+  public KafkaClusterState kafkaClusterState() {
+    return new KafkaClusterState(_loadMonitor.kafkaCluster());
+  }
+
+  /**
    * Get the default model completeness requirement for Cruise Control. This is the combination of the
    * requirements of all the goals.
    */
