@@ -63,8 +63,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.GetEndPoint.*;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.PostEndPoint.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.EndPoint.*;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
@@ -188,26 +187,42 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
 
-  interface EndPoint {
-  }
-
-  protected enum GetEndPoint implements EndPoint {
+  protected enum EndPoint {
     BOOTSTRAP,
     TRAIN,
     LOAD,
     PARTITION_LOAD,
     PROPOSALS,
-    STATE
-  }
-
-  protected enum PostEndPoint implements EndPoint {
+    STATE,
     ADD_BROKER,
     REMOVE_BROKER,
     REBALANCE,
     STOP_PROPOSAL_EXECUTION,
     PAUSE_SAMPLING,
     RESUME_SAMPLING,
-    KAFKA_CLUSTER_STATE
+    KAFKA_CLUSTER_STATE;
+
+    private static final List<EndPoint> GET_ENDPOINT = Arrays.asList(BOOTSTRAP,
+                                                                     TRAIN,
+                                                                     LOAD,
+                                                                     PARTITION_LOAD,
+                                                                     PROPOSALS,
+                                                                     STATE,
+                                                                     KAFKA_CLUSTER_STATE);
+    private static final List<EndPoint> POST_ENDPOINT = Arrays.asList(ADD_BROKER,
+                                                                      REMOVE_BROKER,
+                                                                      REBALANCE,
+                                                                      STOP_PROPOSAL_EXECUTION,
+                                                                      PAUSE_SAMPLING,
+                                                                      RESUME_SAMPLING);
+
+    public static List<EndPoint> getEndpoint() {
+      return GET_ENDPOINT;
+    }
+
+    public static List<EndPoint> postEndpoint() {
+      return POST_ENDPOINT;
+    }
   }
 
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
@@ -287,7 +302,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       _asyncOperationStep.set(0);
-      GetEndPoint endPoint = endPoint(request, GetEndPoint::values);
+      EndPoint endPoint = endPoint(request);
       if (endPoint != null) {
         Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
         Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -338,7 +353,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       } else {
         String errorMessage = String.format("Unrecognized endpoint in GET request '%s'%nSupported GET endpoints: %s",
                                             request.getPathInfo(),
-                                            Arrays.toString(GetEndPoint.values()));
+                                            EndPoint.getEndpoint());
         setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
       }
     } catch (UserRequestException ure) {
@@ -397,7 +412,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       _asyncOperationStep.set(0);
-      PostEndPoint endPoint = endPoint(request, PostEndPoint::values);
+      EndPoint endPoint = endPoint(request);
       if (endPoint != null) {
         Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
         Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -439,7 +454,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       } else {
         String errorMessage = String.format("Unrecognized endpoint in POST request '%s'%nSupported POST endpoints: %s",
                                             request.getPathInfo(),
-                                            Arrays.toString(PostEndPoint.values()));
+                                            EndPoint.postEndpoint());
         setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
       }
     } catch (UserRequestException ure) {
@@ -905,10 +920,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                       .getBytes(StandardCharsets.UTF_8));
 
       // Gather the cluster state.
-      Comparator<PartitionInfo> comparator = (p1, p2) -> {
-        int result = p1.topic().compareTo(p2.topic());
-        return result == 0 ? Integer.compare(p1.partition(), p2.partition()) : result;
-      };
+      Comparator<PartitionInfo> comparator =
+          Comparator.comparing(PartitionInfo::topic).thenComparingInt(PartitionInfo::partition);
       SortedSet<PartitionInfo> underReplicatedPartitions = new TreeSet<>(comparator);
       SortedSet<PartitionInfo> offlinePartitions = new TreeSet<>(comparator);
       SortedSet<PartitionInfo> otherPartitions = new TreeSet<>(comparator);
@@ -1197,9 +1210,21 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
   }
 
-  private <T> T endPoint(HttpServletRequest request, Supplier<T[]> supplier) {
+  private EndPoint endPoint(HttpServletRequest request) {
+    List<EndPoint> supportedEndpoints;
+    switch (request.getMethod()) {
+      case "GET":
+        supportedEndpoints = EndPoint.getEndpoint();
+        break;
+      case "POST":
+        supportedEndpoints = EndPoint.postEndpoint();
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported request method: " + request.getMethod() + ".");
+    }
+
     String path = request.getRequestURI().toUpperCase().replace("/KAFKACRUISECONTROL/", "");
-    for (T endPoint : supplier.get()) {
+    for (EndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
       }
