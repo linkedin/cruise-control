@@ -61,14 +61,6 @@ public class ExecutionTaskTracker {
   }
 
   /**
-   * Check if there is any task in progress.
-   */
-  public boolean hasTaskInProgress() {
-    return !_replicaActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty()
-        || !_leaderActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty();
-  }
-
-  /**
    * Get all the in progress execution tasks.
    */
   public Set<ExecutionTask> tasksInState(ExecutionTask.State state) {

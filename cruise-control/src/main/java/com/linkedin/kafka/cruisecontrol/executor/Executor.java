@@ -517,7 +517,6 @@ public class Executor {
      * There should be no other task state seen here.
      */
     private boolean isReplicaActionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
-      LOG.trace("Current replica task: {}.", task);
       Node[] currentOrderedReplicas = cluster.partition(tp).replicas();
       switch (task.state()) {
         case IN_PROGRESS:
@@ -543,7 +542,6 @@ public class Executor {
      * There should be no other task state seen here.
      */
     private boolean isLeadershipMovementDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
-      LOG.trace("Current leadership task: {}.", task);
       Node leader = cluster.leaderFor(tp);
       switch (task.state()) {
         case IN_PROGRESS:
