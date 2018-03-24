@@ -67,7 +67,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-import static javax.servlet.http.HttpServletResponse.SC_NOT_IMPLEMENTED;
 import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 
 
@@ -201,7 +200,29 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     STOP_PROPOSAL_EXECUTION,
     PAUSE_SAMPLING,
     RESUME_SAMPLING,
-    KAFKA_CLUSTER_STATE
+    KAFKA_CLUSTER_STATE;
+
+    private static final List<EndPoint> GET_ENDPOINT = Arrays.asList(BOOTSTRAP,
+                                                                     TRAIN,
+                                                                     LOAD,
+                                                                     PARTITION_LOAD,
+                                                                     PROPOSALS,
+                                                                     STATE,
+                                                                     KAFKA_CLUSTER_STATE);
+    private static final List<EndPoint> POST_ENDPOINT = Arrays.asList(ADD_BROKER,
+                                                                      REMOVE_BROKER,
+                                                                      REBALANCE,
+                                                                      STOP_PROPOSAL_EXECUTION,
+                                                                      PAUSE_SAMPLING,
+                                                                      RESUME_SAMPLING);
+
+    public static List<EndPoint> getEndpoint() {
+      return GET_ENDPOINT;
+    }
+
+    public static List<EndPoint> postEndpoint() {
+      return POST_ENDPOINT;
+    }
   }
 
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
@@ -293,7 +314,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           // User request specifies parameters that are not a subset of the valid parameters.
           String errorResp = String.format("Unrecognized endpoint parameters in %s get request: %s.",
                                            endPoint, userParams.toString());
-          setErrorResponse(response, "", errorResp, SC_NOT_IMPLEMENTED, wantJSON(request));
+          setErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request));
         } else {
           switch (endPoint) {
             case BOOTSTRAP:
@@ -330,7 +351,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           }
         }
       } else {
-        String errorMessage = String.format("Bad GET request '%s'", request.getPathInfo());
+        String errorMessage = String.format("Unrecognized endpoint in GET request '%s'%nSupported GET endpoints: %s",
+                                            request.getPathInfo(),
+                                            EndPoint.getEndpoint());
         setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
       }
     } catch (UserRequestException ure) {
@@ -401,7 +424,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           // User request specifies parameters that are not a subset of the valid parameters.
           String errorResp = String.format("Unrecognized endpoint parameters in %s post request: %s.",
                                            endPoint, userParams.toString());
-          setErrorResponse(response, "", errorResp, SC_NOT_IMPLEMENTED, wantJSON(request));
+          setErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request));
         } else {
           switch (endPoint) {
             case ADD_BROKER:
@@ -429,7 +452,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           }
         }
       } else {
-        String errorMessage = String.format("Bad POST request '%s'", request.getPathInfo());
+        String errorMessage = String.format("Unrecognized endpoint in POST request '%s'%nSupported POST endpoints: %s",
+                                            request.getPathInfo(),
+                                            EndPoint.postEndpoint());
         setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
       }
     } catch (UserRequestException ure) {
@@ -895,10 +920,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                       .getBytes(StandardCharsets.UTF_8));
 
       // Gather the cluster state.
-      Comparator<PartitionInfo> comparator = (p1, p2) -> {
-        int result = p1.topic().compareTo(p2.topic());
-        return result == 0 ? Integer.compare(p1.partition(), p2.partition()) : result;
-      };
+      Comparator<PartitionInfo> comparator =
+          Comparator.comparing(PartitionInfo::topic).thenComparingInt(PartitionInfo::partition);
       SortedSet<PartitionInfo> underReplicatedPartitions = new TreeSet<>(comparator);
       SortedSet<PartitionInfo> offlinePartitions = new TreeSet<>(comparator);
       SortedSet<PartitionInfo> otherPartitions = new TreeSet<>(comparator);
@@ -1026,8 +1049,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       goals = getGoals(request);
       dataFrom = getDataFrom(request);
 
-      String throttleBrokerString = endPoint == EndPoint.ADD_BROKER ?
-          request.getParameter(THROTTLE_ADDED_BROKER_PARAM) : request.getParameter(THROTTLE_REMOVED_BROKER_PARAM);
+      String throttleBrokerString = endPoint == ADD_BROKER ? request.getParameter(THROTTLE_ADDED_BROKER_PARAM)
+                                                           : request.getParameter(THROTTLE_REMOVED_BROKER_PARAM);
       throttleAddedOrRemovedBrokers = throttleBrokerString == null || Boolean.parseBoolean(throttleBrokerString);
 
     } catch (Exception e) {
@@ -1043,7 +1066,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     // Get proposals asynchronously.
     GoalOptimizer.OptimizerResult optimizerResult;
-    if (endPoint == EndPoint.ADD_BROKER) {
+    if (endPoint == ADD_BROKER) {
       optimizerResult =
           getAndMaybeReturnProgress(request, response,
                                     () -> _asyncKafkaCruiseControl.addBrokers(brokerIds,
@@ -1075,7 +1098,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
     }
     out.write(String.format("%nCluster load after %s broker %s:%n",
-                            endPoint == EndPoint.ADD_BROKER ? "adding" : "removing", brokerIds)
+                            endPoint == ADD_BROKER ? "adding" : "removing", brokerIds)
                     .getBytes(StandardCharsets.UTF_8));
     out.write(optimizerResult.brokerStatsAfterOptimization().toString()
                              .getBytes(StandardCharsets.UTF_8));
@@ -1188,8 +1211,20 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private EndPoint endPoint(HttpServletRequest request) {
+    List<EndPoint> supportedEndpoints;
+    switch (request.getMethod()) {
+      case "GET":
+        supportedEndpoints = EndPoint.getEndpoint();
+        break;
+      case "POST":
+        supportedEndpoints = EndPoint.postEndpoint();
+        break;
+      default:
+        throw new IllegalArgumentException("Unsupported request method: " + request.getMethod() + ".");
+    }
+
     String path = request.getRequestURI().toUpperCase().replace("/KAFKACRUISECONTROL/", "");
-    for (EndPoint endPoint : EndPoint.values()) {
+    for (EndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
       }
