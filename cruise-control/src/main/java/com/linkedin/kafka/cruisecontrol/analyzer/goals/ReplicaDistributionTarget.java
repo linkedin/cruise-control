@@ -19,6 +19,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.stream.Collectors;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 
@@ -216,7 +217,9 @@ class ReplicaDistributionTarget {
   private boolean moveReplicaToEligibleBroker(ClusterModel clusterModel, Replica replicaToMove, Set<Goal> optimizedGoals) {
     boolean isMoveSuccessful = false;
     // Get eligible brokers to receive this replica.
-    for (int brokerId : sortedCandidateBrokerIds()) {
+    for (int brokerId : replicaToMove.broker().isAlive()
+                        ? sortedCandidateBrokerIds()
+                        : clusterModel.healthyBrokers().stream().map(Broker::id).collect(Collectors.toList())) {
       // filter out the broker that is not eligible.
       if (!isEligibleForReplica(clusterModel, replicaToMove, brokerId)) {
         continue;
