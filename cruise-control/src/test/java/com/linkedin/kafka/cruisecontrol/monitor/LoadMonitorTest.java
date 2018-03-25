@@ -126,7 +126,7 @@ public class LoadMonitorTest {
     KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
 
     // populate the metrics aggregator.
-    // four samples for each partition except T1P1. T1P1 has 2 samples in the first window, and 2 samples in the 
+    // four samples for each partition except T1P1. T1P1 has 2 samples in the first window, and 2 samples in the
     // active window.
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T0P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
@@ -145,7 +145,7 @@ public class LoadMonitorTest {
     assertEquals(1.0, state.monitoredWindows().get(WINDOW_MS), 0.0);
     // Only topic 2 is valid in the second window.
     assertEquals(0.5, state.monitoredWindows().get(WINDOW_MS * 2), 0.0);
-    
+
     // Back fill 3 samples for T1P1 in the second window.
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 3, aggregator, PE_T1P1, 1, WINDOW_MS, METRIC_DEF);
     state = loadMonitor.state(new OperationProgress());
@@ -426,7 +426,7 @@ public class LoadMonitorTest {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
     LoadMonitor loadMonitor = new LoadMonitor(config, mockMetadataClient, _time, new MetricRegistry(), METRIC_DEF);
 
-    KafkaPartitionMetricSampleAggregator aggregator = loadMonitor.aggregator();
+    KafkaPartitionMetricSampleAggregator aggregator = loadMonitor.partitionSampleAggregator();
 
     ModelParameters.init(config);
     loadMonitor.startUp();

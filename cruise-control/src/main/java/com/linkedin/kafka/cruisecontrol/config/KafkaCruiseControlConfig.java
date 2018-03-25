@@ -90,6 +90,44 @@ public class KafkaCruiseControlConfig extends CruiseControlConfig {
   private static final String REQUEST_TIMEOUT_MS_DOC = CommonClientConfigs.REQUEST_TIMEOUT_MS_DOC;
 
   /**
+   * <code>broker.metrics.windows.ms</code>
+   */
+  public static final String BROKER_METRICS_WINDOW_MS_CONFIG = "broker.metrics.windows.ms";
+  private static final String BROKER_METRICS_WINDOW_MS_DOC = "The size of the window in milliseconds to aggregate the"
+      + " Kafka broker metrics.";
+
+  /**
+   * <code>num.broker.metrics.windows</code>
+   */
+  public static final String NUM_BROKER_METRICS_WINDOWS_CONFIG = "num.broker.metrics.windows";
+  private static final String NUM_BROKER_METRICS_WINDOWS_DOC = "The total number of windows to keep for broker metric"
+      + " samples";
+
+  /**
+   * <code>min.samples.per.broker.metrics.window</code>
+   */
+  public static final String MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG = "min.samples.per.broker.metrics.window";
+  private static final String MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_DOC = "The minimum number of BrokerMetricSamples "
+      + "needed to make a broker metrics window valid without extrapolation.";
+
+  /**
+   * <code>max.allowed.extrapolations.per.broker</code>
+   */
+  public static final String MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_CONFIG = "max.allowed.extrapolations.per.broker";
+  private static final String MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_DOC = "The maximum allowed number of extrapolations "
+      + "for each broker. A broker will be considered as invalid if the total number extrapolations in all the windows"
+      + " goes above this number.";
+
+  /**
+   * <code>broker.metric.sample.aggregator.completeness.cache.size</code>
+   */
+  public static final String BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG =
+      "broker.metric.sample.aggregator.completeness.cache.size";
+  private static final String BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC = "The metric sample aggregator "
+      + "cache the completeness metadata for fast query. This configuration configures The number of completeness "
+      + "cache slot to maintain.";
+
+  /**
    * <code>num.metric.fetchers</code>
    */
   public static final String NUM_METRIC_FETCHERS_CONFIG = "num.metric.fetchers";
@@ -444,6 +482,36 @@ public class KafkaCruiseControlConfig extends CruiseControlConfig {
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 REQUEST_TIMEOUT_MS_DOC)
+        .define(BROKER_METRICS_WINDOW_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                60 * 60 * 1000,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                BROKER_METRICS_WINDOW_MS_DOC)
+        .define(NUM_BROKER_METRICS_WINDOWS_CONFIG,
+                ConfigDef.Type.INT,
+                5,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                NUM_BROKER_METRICS_WINDOWS_DOC)
+        .define(MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG,
+                ConfigDef.Type.INT,
+                3,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_DOC)
+        .define(MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_CONFIG,
+                ConfigDef.Type.INT,
+                5,
+                atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_DOC)
+        .define(BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG,
+                ConfigDef.Type.INT,
+                5,
+                atLeast(0),
+                ConfigDef.Importance.LOW,
+                BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC)
         .define(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG,
                 ConfigDef.Type.STRING,
                 CommonClientConfigs.DEFAULT_SECURITY_PROTOCOL,

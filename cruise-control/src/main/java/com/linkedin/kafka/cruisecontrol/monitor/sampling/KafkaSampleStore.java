@@ -104,7 +104,7 @@ public class KafkaSampleStore implements SampleStore {
 
     _loadingProgress = -1.0;
 
-    ensureTopicCreated(config);
+    ensureTopicsCreated(config);
   }
 
   protected KafkaConsumer<byte[], byte[]> createConsumers(Map<String, ?> config) {
@@ -123,33 +123,42 @@ public class KafkaSampleStore implements SampleStore {
       return new KafkaConsumer<>(consumerProps);
   }
 
-  private void ensureTopicCreated(Map<String, ?> config) {
+  private void ensureTopicsCreated(Map<String, ?> config) {
     ZkUtils zkUtils = createZkUtils(config);
-    Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
-    long windowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.METRICS_WINDOW_MS_CONFIG));
-    int numWindows = Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG));
-    long retentionMs = (numWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
+    try {
+      Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
+      long windowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.METRICS_WINDOW_MS_CONFIG));
+
+      int numPartitionSampleWindows = Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG));
+      long partitionSampleRetentionMs = (numPartitionSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
+
+      int numBrokerSampleWindows = Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG));
+      long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
+
+      int numberOfBrokersInCluster = zkUtils.getAllBrokersInCluster().size();
+      if (numberOfBrokersInCluster == 0) {
+        throw new IllegalStateException("Kafka cluster has no alive brokers.");
+      }
+      int replicationFactor = Math.min(2, numberOfBrokersInCluster);
+
+      ensureTopicCreated(zkUtils, topics.keySet(), _partitionMetricSampleStoreTopic, partitionSampleRetentionMs,
+                         replicationFactor);
+      ensureTopicCreated(zkUtils, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
+                         replicationFactor);
+    } finally {
+      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, 10000);
+    }
+  }
+
+  private void ensureTopicCreated(ZkUtils zkUtils, Set<String> allTopics, String topic, long retentionMs, int replicationFactor) {
     Properties props = new Properties();
     props.setProperty(LogConfig.RetentionMsProp(), Long.toString(retentionMs));
     props.setProperty(LogConfig.CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
-    int numberOfBrokersInCluster = zkUtils.getAllBrokersInCluster().size();
-    if (numberOfBrokersInCluster == 0) {
-      throw new IllegalStateException("Kafka cluster has no alive brokers.");
-    }
-    int replicationFactor = Math.min(2, numberOfBrokersInCluster);
-    if (!topics.containsKey(_partitionMetricSampleStoreTopic)) {
-      AdminUtils.createTopic(zkUtils, _partitionMetricSampleStoreTopic, 32, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
+    if (!allTopics.contains(topic)) {
+      AdminUtils.createTopic(zkUtils, topic, 32, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
     } else {
-      AdminUtils.changeTopicConfig(zkUtils, _partitionMetricSampleStoreTopic, props);
+      AdminUtils.changeTopicConfig(zkUtils, topic, props);
     }
-
-    if (!topics.containsKey(_brokerMetricSampleStoreTopic)) {
-      AdminUtils.createTopic(zkUtils, _brokerMetricSampleStoreTopic, 32, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
-    } else {
-      AdminUtils.changeTopicConfig(zkUtils, _brokerMetricSampleStoreTopic, props);
-    }
-
-    KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, 10000);
   }
 
   private ZkUtils createZkUtils(Map<String, ?> config) {

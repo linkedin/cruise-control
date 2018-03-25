@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -32,6 +33,7 @@ public class LoadMonitorTaskRunner {
   private final Time _time;
   private final MetricFetcherManager _metricFetcherManager;
   private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
+  private final KafkaBrokerMetricSampleAggregator _brokerMetricSampleAggregator;
   private final MetadataClient _metadataClient;
   private final SampleStore _sampleStore;
   private final ScheduledExecutorService _samplingScheduler;
@@ -53,6 +55,7 @@ public class LoadMonitorTaskRunner {
    *
    * @param config The load monitor configurations.
    * @param partitionMetricSampleAggregator The {@link KafkaPartitionMetricSampleAggregator} to aggregate partition metrics.
+   * @param brokerMetricSampleAggregator The {@link KafkaBrokerMetricSampleAggregator} to aggregate broker metrics.
    * @param metadataClient The metadata of the cluster.
    * @param metricDef The metric definitions.
    * @param time The time object.
@@ -60,14 +63,16 @@ public class LoadMonitorTaskRunner {
    */
   public LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
                                KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
+                               KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator,
                                MetadataClient metadataClient,
                                MetricDef metricDef,
                                Time time,
                                MetricRegistry dropwizardMetricRegistry) {
     this(config,
-        new MetricFetcherManager(config, partitionMetricSampleAggregator, metadataClient, metricDef, time,
-                                 dropwizardMetricRegistry),
+        new MetricFetcherManager(config, partitionMetricSampleAggregator, brokerMetricSampleAggregator, metadataClient,
+                                 metricDef, time, dropwizardMetricRegistry),
         partitionMetricSampleAggregator,
+        brokerMetricSampleAggregator,
         metadataClient,
         time);
   }
@@ -78,17 +83,20 @@ public class LoadMonitorTaskRunner {
    * @param config The load monitor configurations.
    * @param metricFetcherManager the metric fetcher manager.
    * @param partitionMetricSampleAggregator The {@link KafkaPartitionMetricSampleAggregator} to aggregate partition metrics.
+   * @param brokerMetricSampleAggregator The {@link KafkaBrokerMetricSampleAggregator} to aggregate broker metrics.
    * @param metadataClient      The metadata of the cluster.
    * @param time          The time object.
    */
   LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
                         MetricFetcherManager metricFetcherManager,
                         KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
+                        KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator,
                         MetadataClient metadataClient,
                         Time time) {
     _time = time;
     _metricFetcherManager = metricFetcherManager;
     _partitionMetricSampleAggregator = partitionMetricSampleAggregator;
+    _brokerMetricSampleAggregator = brokerMetricSampleAggregator;
     _metadataClient = metadataClient;
     _sampleStore = config.getConfiguredInstance(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, SampleStore.class);
     long samplingIntervalMs = config.getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
