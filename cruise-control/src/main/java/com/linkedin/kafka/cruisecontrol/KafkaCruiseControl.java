@@ -8,6 +8,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
@@ -195,6 +196,38 @@ public class KafkaCruiseControl {
       executeProposals(result.goalProposals(), Collections.emptySet());
     }
     return result;
+  }
+
+  /**
+   * Demote brokers by removing the leader off the broker.
+   * @param brokerIds the broker ids to move off.
+   * @param dryRun whether it is a dry run or not
+   * @param operationProgress the progress of the job to report.
+   * @return the optimization result.
+   */
+  public GoalOptimizer.OptimizerResult demoteBrokers(Collection<Integer> brokerIds,
+                                                     boolean dryRun,
+                                                     OperationProgress operationProgress)
+      throws KafkaCruiseControlException {
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
+    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
+                                                            goal.clusterModelCompletenessRequirements(),
+                                                            operationProgress);
+      brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
+      GoalOptimizer.OptimizerResult result =
+          getOptimizationProposals(clusterModel,
+                                   goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName())),
+                                   operationProgress);
+      if (!dryRun) {
+        executeProposals(result.goalProposals(), brokerIds);
+      }
+      return result;
+    } catch (KafkaCruiseControlException kcce) {
+      throw kcce;
+    } catch (Exception e) {
+      throw new KafkaCruiseControlException(e);
+    }
   }
 
   /**

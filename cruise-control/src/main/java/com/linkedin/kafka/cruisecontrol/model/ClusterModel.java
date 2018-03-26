@@ -239,6 +239,8 @@ public class ClusterModel implements Serializable {
       case NEW:
         _newBrokers.add(broker);
         // fall through to remove the replicas from selfHealingEligibleReplicas
+      case DEMOTED:
+        // As of now we still treat demoted brokers as alive brokers.
       case ALIVE:
         _selfHealingEligibleReplicas.removeAll(broker.replicas());
         _healthyBrokers.add(broker);
@@ -334,6 +336,21 @@ public class ClusterModel implements Serializable {
     SortedSet<Broker> brokers = brokers();
     brokers.removeAll(healthyBrokers());
     return brokers;
+  }
+
+  /**
+   * Get the demoted brokers in the cluster.
+   */
+  public SortedSet<Broker> demotedBrokers() {
+    SortedSet<Broker> demotedBrokers = new TreeSet<>();
+    for (Rack rack : _racksById.values()) {
+      rack.brokers().forEach(b -> {
+        if (b.isDemoted()) {
+          demotedBrokers.add(b);
+        }
+      });
+    }
+    return demotedBrokers;
   }
 
   /**

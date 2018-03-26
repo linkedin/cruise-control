@@ -149,6 +149,17 @@ public class Partition implements Serializable {
   }
 
   /**
+   * Move a replica to the end of the replica list.
+   * @param replica the replica to move to the end.
+   */
+  public void moveReplicaToEnd(Replica replica) {
+    if (!_replicas.remove(replica)) {
+      throw new IllegalStateException(String.format("Did not find replica %s for partition %s.", replica, _tp));
+    }
+    _replicas.add(replica);
+  }
+
+  /**
    * Get the set of brokers that contain replicas of the partition.
    */
   public Set<Broker> partitionBrokers() {

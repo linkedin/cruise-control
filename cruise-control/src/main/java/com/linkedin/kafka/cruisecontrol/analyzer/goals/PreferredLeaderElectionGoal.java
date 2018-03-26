@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
@@ -27,11 +28,20 @@ public class PreferredLeaderElectionGoal implements Goal {
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
       throws KafkaCruiseControlException {
+    // First move the replica on the demoted brokers to the end of the replica list.
+    // If all the replicas are demoted, no change is made to the leader.
+    for (Broker b : clusterModel.demotedBrokers()) {
+      for (Replica r : b.replicas()) {
+        Partition p = clusterModel.partition(r.topicPartition());
+        p.moveReplicaToEnd(r);
+      }
+    }
     // Ignore the excluded topics because this goal does not move partitions.
     for (List<Partition> partitions : clusterModel.getPartitionsByTopic().values()) {
       for (Partition p : partitions) {
         for (Replica r : p.replicas()) {
-          // Iterate over the replicas and ensure the leader is set to the first alive replica.
+          // Iterate over the replicas and ensure the leader is set to the first alive replica and not
+          // demoted partition.
           if (r.broker().isAlive()) {
             if (!r.isLeader()) {
               clusterModel.relocateLeadership(r.topicPartition(), p.leader().broker().id(), r.broker().id());

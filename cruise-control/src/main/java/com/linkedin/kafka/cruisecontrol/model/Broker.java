@@ -30,7 +30,7 @@ import org.apache.kafka.common.TopicPartition;
 public class Broker implements Serializable, Comparable<Broker> {
 
   public enum State {
-    ALIVE, DEAD, NEW
+    ALIVE, DEAD, NEW, DEMOTED
   }
 
   private final int _id;
@@ -165,6 +165,13 @@ public class Broker implements Serializable, Comparable<Broker> {
    */
   public boolean isNew() {
     return _state == State.NEW;
+  }
+
+  /**
+   * Check if the broker is demoted from being a partition leader.
+   */
+  public boolean isDemoted() {
+    return _state == State.DEMOTED;
   }
 
   /**
