@@ -49,10 +49,14 @@ public class Executor {
   private final long _statusCheckingIntervalMs;
   private final ExecutorService _proposalExecutor;
   private final String _zkConnect;
+  private final static int ZK_SESSION_TIMEOUT = 30000;
+  private final static int ZK_CONNECTION_TIMEOUT = 30000;
+  private final static boolean IS_ZK_SECURITY_ENABLED = false;
+  private final static long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
 
   // Some state for external service to query
-  private ExecutorState.State _state;
   private final AtomicBoolean _stopRequested;
+  private volatile boolean _isOngoingExecution;
   private volatile int _numFinishedPartitionMovements;
   private volatile long _finishedDataMovementInMB;
   private volatile ExecutorState _executorState;
@@ -72,9 +76,9 @@ public class Executor {
     _statusCheckingIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     _proposalExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));
-    _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
     _executorState = ExecutorState.noTaskInProgress();
     _stopRequested = new AtomicBoolean(false);
+    _isOngoingExecution = false;
   }
 
   /**
@@ -95,7 +99,7 @@ public class Executor {
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Collection<Integer> unthrottledBrokers,
                                             LoadMonitor loadMonitor) {
-    if (_state != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+    if (_isOngoingExecution) {
       throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
     }
 
@@ -114,33 +118,23 @@ public class Executor {
   private void startExecution(LoadMonitor loadMonitor) {
     // Pause the metric sampling to avoid the loss of accuracy during execution.
     loadMonitor.pauseMetricSampling();
-    ZkUtils zkUtils = ZkUtils.apply(_zkConnect, 30000, 30000, false);
+    ZkUtils zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
     try {
       if (!ExecutorUtils.partitionsBeingReassigned(zkUtils).isEmpty()) {
         _executionTaskManager.clear();
         // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
         throw new IllegalStateException("There are ongoing partition reassignments.");
       }
-      if (_state == ExecutorState.State.NO_TASK_IN_PROGRESS) {
-        _state = ExecutorState.State.EXECUTION_STARTED;
-        _executorState = ExecutorState.executionStarted();
-        _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor));
-      } else {
-        throw new IllegalStateException("Cannot execute proposals because the executor is in " + _state + " state.");
-      }
+      _isOngoingExecution = true;
+      _stopRequested.set(false);
+      _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor));
     } finally {
-      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, 10000);
+      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
     }
   }
 
   public synchronized void stopExecution() {
-    if (_state != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      _state = ExecutorState.State.STOPPING_EXECUTION;
-      _executorState = ExecutorState.stopping(_numFinishedPartitionMovements,
-                                              _executionTaskManager.getExecutionTasksSummary(),
-                                              _finishedDataMovementInMB);
-      _stopRequested.set(true);
-    }
+    _stopRequested.set(true);
   }
 
   /**
@@ -148,7 +142,7 @@ public class Executor {
    */
   public synchronized void shutdown() {
     LOG.info("Shutting down executor.");
-    if (_state != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+    if (_isOngoingExecution) {
       LOG.warn("Shutdown executor may take long because execution is still in progress.");
     }
     _proposalExecutor.shutdown();
@@ -170,13 +164,11 @@ public class Executor {
   private class ProposalExecutionRunnable implements Runnable {
     private final LoadMonitor _loadMonitor;
     private ZkUtils _zkUtils;
-    private final static int ZK_SESSION_TIMEOUT = 30000;
-    private final static int ZK_CONNECTION_TIMEOUT = 30000;
-    private final static boolean IS_ZK_SECURITY_ENABLED = false;
-    private final static long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
+    private ExecutorState.State _state;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor) {
       _loadMonitor = loadMonitor;
+      _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
     }
 
     public void run() {
@@ -189,6 +181,8 @@ public class Executor {
      * Start the actual execution of the proposals in order: First move replicas, then transfer leadership.
      */
     private void execute() {
+      _state = ExecutorState.State.EXECUTION_STARTED;
+      _executorState = ExecutorState.executionStarted();
       _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
       try {
         // 1. Move replicas if possible.
@@ -212,12 +206,35 @@ public class Executor {
         LOG.error("Executor got exception during execution", t);
       } finally {
         _loadMonitor.resumeMetricSampling();
-        _stopRequested.set(false);
         _executionTaskManager.clear();
         KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
         _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
-        // It is possible that the _executorState might be outdated if the user checks it between the two assignments.
+        // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
         _executorState = ExecutorState.noTaskInProgress();
+        _isOngoingExecution = false;
+        _stopRequested.set(false);
+      }
+    }
+
+    private void updateOngoingExecutionState() {
+      if (!_stopRequested.get()) {
+        switch (_state) {
+          case LEADER_MOVEMENT_TASK_IN_PROGRESS:
+            _executorState = ExecutorState.leaderMovementInProgress();
+            break;
+          case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
+            _executorState = ExecutorState.replicaMovementInProgress(_numFinishedPartitionMovements,
+                                                                     _executionTaskManager.getExecutionTasksSummary(),
+                                                                     _finishedDataMovementInMB);
+            break;
+          default:
+            throw new IllegalStateException("Unexpected ongoing execution state " + _state);
+        }
+      } else {
+        _state = ExecutorState.State.STOPPING_EXECUTION;
+        _executorState = ExecutorState.stopping(_numFinishedPartitionMovements,
+                                                _executionTaskManager.getExecutionTasksSummary(),
+                                                _finishedDataMovementInMB);
       }
     }
 
@@ -265,6 +282,7 @@ public class Executor {
       if (_executionTaskManager.inProgressTasks().isEmpty()) {
         LOG.info("Partition movements finished.");
       } else if (_stopRequested.get()) {
+        updateOngoingExecutionState();
         ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary();
         LOG.info("Partition movements stopped. {} in-progress, {} pending, {} aborting, {} aborted, {} dead, "
                  + "{} remaining data to move.",
@@ -282,10 +300,12 @@ public class Executor {
       LOG.info("Starting {} leader movements.", numTotalLeaderMovements);
       int leaderMoved = 0;
       while (!_executionTaskManager.remainingLeaderMovements().isEmpty() && !_stopRequested.get()) {
+        updateOngoingExecutionState();
         leaderMoved += moveLeadersInBatch();
         LOG.info("{}/{} ({}%) leader movements completed.", leaderMoved, numTotalLeaderMovements,
                  leaderMoved * 100 / numTotalLeaderMovements);
       }
+      updateOngoingExecutionState();
       LOG.info("Leader movements finished.");
     }
 
@@ -349,6 +369,7 @@ public class Executor {
             stopExecution();
           }
         }
+        updateOngoingExecutionState();
 
         // If there is no finished tasks, we need to check if anything is blocked.
         if (finishedTasks.isEmpty()) {
