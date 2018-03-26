@@ -36,6 +36,7 @@ public class ExecutionTaskManager {
   private final int _partitionMovementConcurrency;
   private final int _leaderMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
+  private volatile long _inExecutionDataToMove;
 
   private static final String REPLICA_ACTION = "replica-action";
   private static final String LEADERSHIP_ACTION = "leadership-action";
@@ -71,6 +72,7 @@ public class ExecutionTaskManager {
     _partitionMovementConcurrency = partitionMovementConcurrency;
     _leaderMovementConcurrency = leaderMovementConcurrency;
     _brokersToSkipConcurrencyCheck = new HashSet<>();
+    _inExecutionDataToMove = 0L;
 
     // Register gauge sensors.
     registerGaugeSensors(dropwizardMetricRegistry);
@@ -147,6 +149,13 @@ public class ExecutionTaskManager {
    */
   public synchronized long remainingDataToMoveInMB() {
     return _executionTaskPlanner.remainingDataToMoveInMB();
+  }
+
+  /**
+   * Returns the in execution data to move in MB -- i.e. data to move for in progress or aborting tasks.
+   */
+  public synchronized long inExecutionDataToMoveInMB() {
+    return _inExecutionDataToMove;
   }
 
   /**
@@ -282,12 +291,19 @@ public class ExecutionTaskManager {
         _executionTaskTracker.taskForLeaderAction(currentState).remove(task);
         _executionTaskTracker.taskForLeaderAction(targetState).add(task);
       }
+
+      if (currentState == ExecutionTask.State.IN_PROGRESS || currentState == ExecutionTask.State.ABORTING) {
+        _inExecutionDataToMove -= task.proposal().dataToMoveInMB();
+      }
+
       switch (targetState) {
         case IN_PROGRESS:
           task.inProgress();
+          _inExecutionDataToMove += task.proposal().dataToMoveInMB();
           break;
         case ABORTING:
           task.abort();
+          _inExecutionDataToMove += task.proposal().dataToMoveInMB();
           break;
         case DEAD:
           task.kill();
@@ -331,8 +347,8 @@ public class ExecutionTaskManager {
     _executionTaskTracker.clear();
   }
 
-  public synchronized ExecutionState getExecutionTasksSummary() {
-    return new ExecutionState(_executionTaskPlanner.remainingReplicaMovements(),
+  public synchronized ExecutionTasksSummary getExecutionTasksSummary() {
+    return new ExecutionTasksSummary(_executionTaskPlanner.remainingReplicaMovements(),
                               _executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS),
                               _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING),
                               _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTED),
@@ -340,7 +356,7 @@ public class ExecutionTaskManager {
                               _executionTaskPlanner.remainingDataToMoveInMB());
   }
 
-  static class ExecutionState {
+  static class ExecutionTasksSummary {
     private final Set<ExecutionTask> _remainingPartitionMovements;
     private final Set<ExecutionTask> _inProgressTasks;
     private final Set<ExecutionTask> _abortingTasks;
@@ -348,7 +364,7 @@ public class ExecutionTaskManager {
     private final Set<ExecutionTask> _deadTasks;
     private final long _remainingDataToMoveInMB;
 
-    ExecutionState(Set<ExecutionTask> remainingPartitionMovements,
+    ExecutionTasksSummary(Set<ExecutionTask> remainingPartitionMovements,
                           Set<ExecutionTask> inProgressTasks,
                           Set<ExecutionTask> abortingTasks,
                           Set<ExecutionTask> abortedTasks,

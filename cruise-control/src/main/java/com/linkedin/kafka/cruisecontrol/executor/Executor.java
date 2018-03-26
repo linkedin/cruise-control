@@ -16,7 +16,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
@@ -99,6 +98,10 @@ public class Executor {
     if (_state != ExecutorState.State.NO_TASK_IN_PROGRESS) {
       throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
     }
+
+    if (loadMonitor == null) {
+      throw new IllegalArgumentException("Load monitor cannot be null.");
+    }
     _executionTaskManager.addExecutionProposals(proposals, unthrottledBrokers);
     startExecution(loadMonitor);
   }
@@ -109,9 +112,6 @@ public class Executor {
    * @param loadMonitor Load monitor.
    */
   private void startExecution(LoadMonitor loadMonitor) {
-    if (loadMonitor == null) {
-      throw new IllegalArgumentException("Load monitor cannot be null.");
-    }
     // Pause the metric sampling to avoid the loss of accuracy during execution.
     loadMonitor.pauseMetricSampling();
     ZkUtils zkUtils = ZkUtils.apply(_zkConnect, 30000, 30000, false);
@@ -170,6 +170,10 @@ public class Executor {
   private class ProposalExecutionRunnable implements Runnable {
     private final LoadMonitor _loadMonitor;
     private ZkUtils _zkUtils;
+    private final static int ZK_SESSION_TIMEOUT = 30000;
+    private final static int ZK_CONNECTION_TIMEOUT = 30000;
+    private final static boolean IS_ZK_SECURITY_ENABLED = false;
+    private final static long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor) {
       _loadMonitor = loadMonitor;
@@ -182,47 +186,27 @@ public class Executor {
     }
 
     /**
-     *
-     *
-     * @param expectedState Current expected state.
-     * @param nextState Next state to be in if the current state is the given expected state.
-     * @param moveRunnable If the current state is the given expected state, runnable to execute after state transition.
-     */
-    private void maybeMove(ExecutorState.State expectedState,
-                           ExecutorState.State nextState,
-                           Runnable moveRunnable,
-                           Supplier<ExecutorState> executorStateSupplier) {
-      boolean isExpectedState = false;
-      if (_state == expectedState) {
-        _state = nextState;
-        // It is possible that the _executorState might be outdated if the user checks it between the two assignments.
-        _executorState = executorStateSupplier.get();
-        isExpectedState = true;
-      }
-
-      if (isExpectedState) {
-        moveRunnable.run();
-      }
-    }
-
-    /**
      * Start the actual execution of the proposals in order: First move replicas, then transfer leadership.
      */
     private void execute() {
-      _zkUtils = ZkUtils.apply(_zkConnect, 30000, 30000, false);
+      _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
       try {
         // 1. Move replicas if possible.
-        maybeMove(ExecutorState.State.EXECUTION_STARTED,
-                  ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
-                  this::moveReplicas,
-                  () -> ExecutorState.replicaMovementInProgress(_numFinishedPartitionMovements,
-                                                                _executionTaskManager.getExecutionTasksSummary(),
-                                                                _finishedDataMovementInMB));
-
+        if (_state == ExecutorState.State.EXECUTION_STARTED) {
+          _state = ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS;
+          // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
+          _executorState = ExecutorState.replicaMovementInProgress(_numFinishedPartitionMovements,
+                                                                   _executionTaskManager.getExecutionTasksSummary(),
+                                                                   _finishedDataMovementInMB);
+          moveReplicas();
+        }
         // 2. Transfer leadership if possible.
-        maybeMove(ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
-                  ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS,
-                  this::moveLeaderships, ExecutorState::leaderMovementInProgress);
+        if (_state == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
+          _state = ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS;
+          // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
+          _executorState = ExecutorState.leaderMovementInProgress();
+          moveLeaderships();
+        }
 
       } catch (Throwable t) {
         LOG.error("Executor got exception during execution", t);
@@ -230,20 +214,11 @@ public class Executor {
         _loadMonitor.resumeMetricSampling();
         _stopRequested.set(false);
         _executionTaskManager.clear();
-        KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, 10000);
+        KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
         _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
         // It is possible that the _executorState might be outdated if the user checks it between the two assignments.
         _executorState = ExecutorState.noTaskInProgress();
       }
-    }
-
-    /**
-     * Get the in execution data to move in MB.
-     * @param inExecutionTasks Tasks that are either in progress or aborting.
-     * @return the in execution data to move in MB.
-     */
-    private long inExecutionDataToMoveInMB(Set<ExecutionTask> inExecutionTasks) {
-      return inExecutionTasks.stream().mapToLong(task -> task.proposal().dataToMoveInMB()).sum();
     }
 
     private void moveReplicas() {
@@ -269,7 +244,7 @@ public class Executor {
         long dataToMove = _executionTaskManager.remainingDataToMoveInMB();
         Set<ExecutionTask> inExecutionTasks = _executionTaskManager.inExecutionTasks();
         _numFinishedPartitionMovements = numTotalPartitionMovements - partitionsToMove - inExecutionTasks.size();
-        _finishedDataMovementInMB = totalDataToMoveInMB - dataToMove - inExecutionDataToMoveInMB(inExecutionTasks);
+        _finishedDataMovementInMB = totalDataToMoveInMB - dataToMove - _executionTaskManager.inExecutionDataToMoveInMB();
         LOG.info("{}/{} ({}%) partition movements completed. {}/{} ({}%) MB have been moved.",
                  _numFinishedPartitionMovements, numTotalPartitionMovements,
                  String.format(java.util.Locale.US, "%.2f",
@@ -283,22 +258,22 @@ public class Executor {
       Set<ExecutionTask> inExecutionTasks = _executionTaskManager.inExecutionTasks();
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish: {}",
-                 inExecutionTasks.size(), inExecutionDataToMoveInMB(inExecutionTasks), inExecutionTasks);
+                 inExecutionTasks.size(), _executionTaskManager.inExecutionDataToMoveInMB(), inExecutionTasks);
         waitForExecutionTaskToFinish();
         inExecutionTasks = _executionTaskManager.inExecutionTasks();
       }
       if (_executionTaskManager.inProgressTasks().isEmpty()) {
         LOG.info("Partition movements finished.");
       } else if (_stopRequested.get()) {
-        ExecutionTaskManager.ExecutionState executionState = _executionTaskManager.getExecutionTasksSummary();
+        ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary();
         LOG.info("Partition movements stopped. {} in-progress, {} pending, {} aborting, {} aborted, {} dead, "
                  + "{} remaining data to move.",
-                 executionState.inProgressTasks().size(),
-                 executionState.remainingPartitionMovements().size(),
-                 executionState.abortingTasks(),
-                 executionState.abortedTasks().size(),
-                 executionState.deadTasks().size(),
-                 executionState.remainingDataToMoveInMB());
+                 executionTasksSummary.inProgressTasks().size(),
+                 executionTasksSummary.remainingPartitionMovements().size(),
+                 executionTasksSummary.abortingTasks(),
+                 executionTasksSummary.abortedTasks().size(),
+                 executionTasksSummary.deadTasks().size(),
+                 executionTasksSummary.remainingDataToMoveInMB());
       }
     }
 
