@@ -193,6 +193,7 @@ public class Executor {
                                                                    _executionTaskManager.getExecutionTasksSummary(),
                                                                    _finishedDataMovementInMB);
           moveReplicas();
+          updateOngoingExecutionState();
         }
         // 2. Transfer leadership if possible.
         if (_state == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
@@ -200,6 +201,7 @@ public class Executor {
           // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
           _executorState = ExecutorState.leaderMovementInProgress();
           moveLeaderships();
+          updateOngoingExecutionState();
         }
 
       } catch (Throwable t) {
@@ -282,7 +284,6 @@ public class Executor {
       if (_executionTaskManager.inProgressTasks().isEmpty()) {
         LOG.info("Partition movements finished.");
       } else if (_stopRequested.get()) {
-        updateOngoingExecutionState();
         ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary();
         LOG.info("Partition movements stopped. {} in-progress, {} pending, {} aborting, {} aborted, {} dead, "
                  + "{} remaining data to move.",
@@ -305,7 +306,6 @@ public class Executor {
         LOG.info("{}/{} ({}%) leader movements completed.", leaderMoved, numTotalLeaderMovements,
                  leaderMoved * 100 / numTotalLeaderMovements);
       }
-      updateOngoingExecutionState();
       LOG.info("Leader movements finished.");
     }
 
