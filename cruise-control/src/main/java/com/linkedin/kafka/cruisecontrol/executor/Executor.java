@@ -56,7 +56,7 @@ public class Executor {
 
   // Some state for external service to query
   private final AtomicBoolean _stopRequested;
-  private volatile boolean _isOngoingExecution;
+  private volatile boolean _hasOngoingExecution;
   private volatile int _numFinishedPartitionMovements;
   private volatile long _finishedDataMovementInMB;
   private volatile ExecutorState _executorState;
@@ -78,7 +78,7 @@ public class Executor {
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));
     _executorState = ExecutorState.noTaskInProgress();
     _stopRequested = new AtomicBoolean(false);
-    _isOngoingExecution = false;
+    _hasOngoingExecution = false;
   }
 
   /**
@@ -99,7 +99,7 @@ public class Executor {
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Collection<Integer> unthrottledBrokers,
                                             LoadMonitor loadMonitor) {
-    if (_isOngoingExecution) {
+    if (_hasOngoingExecution) {
       throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
     }
 
@@ -125,7 +125,7 @@ public class Executor {
         // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
         throw new IllegalStateException("There are ongoing partition reassignments.");
       }
-      _isOngoingExecution = true;
+      _hasOngoingExecution = true;
       _stopRequested.set(false);
       _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor));
     } finally {
@@ -142,7 +142,7 @@ public class Executor {
    */
   public synchronized void shutdown() {
     LOG.info("Shutting down executor.");
-    if (_isOngoingExecution) {
+    if (_hasOngoingExecution) {
       LOG.warn("Shutdown executor may take long because execution is still in progress.");
     }
     _proposalExecutor.shutdown();
@@ -211,7 +211,7 @@ public class Executor {
         _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
         // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
         _executorState = ExecutorState.noTaskInProgress();
-        _isOngoingExecution = false;
+        _hasOngoingExecution = false;
         _stopRequested.set(false);
       }
     }
