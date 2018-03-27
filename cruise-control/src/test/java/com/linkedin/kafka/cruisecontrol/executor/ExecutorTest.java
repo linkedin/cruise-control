@@ -8,6 +8,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import java.util.Arrays;
@@ -21,6 +22,7 @@ import kafka.admin.RackAwareMode;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.SystemTime;
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -171,8 +173,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
                                          Collection<ExecutionProposal> proposalsToCheck) {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry());
-    executor.addExecutionProposals(proposalsToExecute, Collections.emptySet());
-    executor.startExecution(null);
+    executor.executeProposals(proposalsToExecute, Collections.emptySet(), EasyMock.mock(LoadMonitor.class));
 
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
     for (ExecutionProposal proposal : proposalsToCheck) {

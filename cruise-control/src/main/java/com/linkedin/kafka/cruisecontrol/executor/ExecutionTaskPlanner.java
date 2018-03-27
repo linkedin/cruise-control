@@ -71,7 +71,7 @@ public class ExecutionTaskPlanner {
    *
    * @param proposal the proposal to execute.
    */
-  public void addExecutionProposal(ExecutionProposal proposal) {
+  private void addExecutionProposal(ExecutionProposal proposal) {
     // Ideally we should avoid adjust replica order if not needed, but due to a bug in open source Kafka
     // metadata cache on the broker side, the returned replica list may not match the list in zookeeper.
     // Because reading the replica list from zookeeper would be too expensive, we simply write all the

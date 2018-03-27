@@ -6,25 +6,27 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 
 /**
  * A class for tracking the (1) dead tasks, (2) aborting/aborted tasks, (3) in progress tasks, and (4) pending proposals.
+ *
+ * This class is not thread-safe.
  */
 public class ExecutionTaskTracker {
   private final Map<ExecutionTask.State, Set<ExecutionTask>> _replicaActionTasks;
   private final Map<ExecutionTask.State, Set<ExecutionTask>> _leaderActionTasks;
 
   ExecutionTaskTracker() {
-    _replicaActionTasks = new HashMap<>();
-    for (ExecutionTask.State state : ExecutionTask.State.cachedValues()) {
+    List<ExecutionTask.State> states = ExecutionTask.State.cachedValues();
+    _replicaActionTasks = new HashMap<>(states.size());
+    _leaderActionTasks = new HashMap<>(states.size());
+
+    for (ExecutionTask.State state : states) {
       _replicaActionTasks.put(state, new HashSet<>());
-    }
-    
-    _leaderActionTasks = new HashMap<>();
-    for (ExecutionTask.State state : ExecutionTask.State.cachedValues()) {
       _leaderActionTasks.put(state, new HashSet<>());
     }
   }
@@ -45,14 +47,6 @@ public class ExecutionTaskTracker {
    */
   public Set<ExecutionTask> taskForLeaderAction(ExecutionTask.State taskState) {
     return _replicaActionTasks.get(taskState);
-  }
-
-  /**
-   * Check if there is any task in progress.
-   */
-  public boolean hasTaskInProgress() {
-    return !_replicaActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty()
-        || !_leaderActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty();
   }
 
   /**
@@ -80,7 +74,7 @@ public class ExecutionTaskTracker {
   public int numAbortingLeadershipAction() {
     return _leaderActionTasks.get(ExecutionTask.State.ABORTING).size();
   }
-  
+
   public int numAbortedReplicaAction() {
     return _replicaActionTasks.get(ExecutionTask.State.ABORTED).size();
   }
@@ -88,7 +82,7 @@ public class ExecutionTaskTracker {
   public int numAbortedLeadershipAction() {
     return _leaderActionTasks.get(ExecutionTask.State.ABORTED).size();
   }
-  
+
   public int numInProgressReplicaAction() {
     return _replicaActionTasks.get(ExecutionTask.State.IN_PROGRESS).size();
   }

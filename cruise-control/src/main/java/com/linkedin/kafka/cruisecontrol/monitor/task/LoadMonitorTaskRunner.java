@@ -188,7 +188,7 @@ public class LoadMonitorTaskRunner {
       _samplingScheduler.submit(new TrainingTask(_time, this, _metricFetcherManager, _sampleStore, _configuredWindowMs, _samplingIntervalMs, startMs, endMs));
     } else {
       throw new IllegalStateException("Cannot start model training because the load monitor is in "
-                                          + _state.get() + " state");
+                                          + _state.get() + " state.");
     }
   }
 
@@ -250,7 +250,7 @@ public class LoadMonitorTaskRunner {
    */
   public void pauseSampling() {
     if (_state.get() != PAUSED && !_state.compareAndSet(RUNNING, PAUSED)) {
-      throw new IllegalStateException("Cannot pause the load monitor because it is in " + _state.get() + " state");
+      throw new IllegalStateException("Cannot pause the load monitor because it is in " + _state.get() + " state.");
     }
   }
 

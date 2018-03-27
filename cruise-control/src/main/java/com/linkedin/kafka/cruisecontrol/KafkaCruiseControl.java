@@ -374,10 +374,8 @@ public class KafkaCruiseControl {
    */
   public void executeProposals(Collection<ExecutionProposal> proposals,
                                Collection<Integer> unthrottledBrokers) {
-    // Pause the load monitor before the proposal execution.
-    _loadMonitor.pauseMetricSampling();
-    _executor.addExecutionProposals(proposals, unthrottledBrokers);
-    _executor.startExecution(_loadMonitor);
+    // Add execution proposals and start execution.
+    _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor);
   }
 
   /**

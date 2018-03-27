@@ -30,7 +30,7 @@ import static org.junit.Assert.assertTrue;
 public class AnomalyDetectorTest {
 
   @Test
-  public void testDelayedCheck() throws InterruptedException, KafkaCruiseControlException {
+  public void testDelayedCheck() throws InterruptedException {
     LinkedBlockingDeque<Anomaly> anomalies = new LinkedBlockingDeque<>();
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
@@ -154,7 +154,7 @@ public class AnomalyDetectorTest {
   }
 
   @Test
-  public void testExecutionInProgress() throws InterruptedException, KafkaCruiseControlException {
+  public void testExecutionInProgress() throws InterruptedException {
     LinkedBlockingDeque<Anomaly> anomalies = new LinkedBlockingDeque<>();
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
@@ -188,7 +188,7 @@ public class AnomalyDetectorTest {
                                                         Collections.emptySet(),
                                                         Collections.emptySet(),
                                                         Collections.emptySet(),
-                                                        1,
+                                                        1L,
                                                         1),
                 null, null));
 

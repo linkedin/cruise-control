@@ -102,6 +102,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
   private static final int JSON_VERSION = 1;
 
+  private static final String PARTITION_MOVEMENTS = "partition movements";
+
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
     Map<EndPoint, Set<String>> validParamNames = new HashMap<>();
@@ -986,29 +988,28 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           out.write(String.format("%50s, %s, %s%n", goal.getClass().getSimpleName(), goal.clusterModelCompletenessRequirements(),
               entry.getValue() ? "Ready" : "NotReady").getBytes(StandardCharsets.UTF_8));
         }
-        ExecutorState.State executorState = state.executorState().state();
-        if (executorState == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS
-            || executorState == ExecutorState.State.STOPPING_EXECUTION) {
-          out.write(String.format("%n%nIn progress partition movements:%n").getBytes(StandardCharsets.UTF_8));
-          for (ExecutionTask task : state.executorState().inProgressPartitionMovements()) {
+        ExecutorState executorState = state.executorState();
+        if (executorState.state() == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS
+            || executorState.state() == ExecutorState.State.STOPPING_EXECUTION) {
+          out.write(String.format("%n%nIn progress %s:%n", PARTITION_MOVEMENTS).getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : executorState.inProgressPartitionMovements()) {
             out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
           }
-          out.write(String.format("%n%nAborting partition movements:%n").getBytes(StandardCharsets.UTF_8));
-          for (ExecutionTask task : state.executorState().abortingPartitionMovements()) {
+          out.write(String.format("%n%nAborting %s:%n", PARTITION_MOVEMENTS).getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : executorState.abortingPartitionMovements()) {
             out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
           }
-          out.write(String.format("%n%nAborted partition movements:%n").getBytes(StandardCharsets.UTF_8));
-          for (ExecutionTask task : state.executorState().abortedPartitionMovements()) {
+          out.write(String.format("%n%nAborted %s:%n", PARTITION_MOVEMENTS).getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : executorState.abortedPartitionMovements()) {
             out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
           }
-          out.write(String.format("%n%nDead partition movements:%n").getBytes(StandardCharsets.UTF_8));
-          for (ExecutionTask task : state.executorState().deadPartitionMovements()) {
+          out.write(String.format("%n%nDead %s:%n", PARTITION_MOVEMENTS).getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : executorState.deadPartitionMovements()) {
             out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
           }
-          out.write(String.format("%n%n%s partition movements:%n",
-                                  executorState == ExecutorState.State.STOPPING_EXECUTION ? "Cancelled" : "Pending")
-                        .getBytes(StandardCharsets.UTF_8));
-          for (ExecutionTask task : state.executorState().pendingPartitionMovements()) {
+          out.write(String.format("%n%n%s %s:%n", executorState.state() == ExecutorState.State.STOPPING_EXECUTION
+                                                  ? "Cancelled" : "Pending", PARTITION_MOVEMENTS).getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : executorState.pendingPartitionMovements()) {
             out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
           }
         }

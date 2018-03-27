@@ -27,7 +27,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGeneration
 
   MetricSampleAggregatorState(long generation, long windowMs, int completenessCacheSize) {
     super(generation);
-    // Only keep 5 completeness caches.
+    // Only keep as many as _windowStates.size() completeness caches.
     _completenessCache = new LinkedHashMap<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>> eldest) {
