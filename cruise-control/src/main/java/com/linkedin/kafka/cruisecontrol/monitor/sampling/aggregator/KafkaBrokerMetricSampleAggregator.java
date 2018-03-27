@@ -18,9 +18,15 @@ import org.slf4j.LoggerFactory;
 
 /**
  * The metrics sample aggregator for brokers.
+ *
+ * @see MetricSampleAggregator
  */
 public class KafkaBrokerMetricSampleAggregator extends MetricSampleAggregator<String, BrokerEntity> {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaBrokerMetricSampleAggregator.class);
+  private static final double MIN_VALID_BROKER_RATIO = 0.0;
+  private static final double MIN_VALID_GROUP_RATIO = 0.0;
+  private static final int MIN_VALID_WINDOWS = 1;
+  private static final boolean INCLUDE_INVALID_ENTITIES = false;
   /**
    * Construct the metric sample aggregator.
    *
@@ -35,10 +41,15 @@ public class KafkaBrokerMetricSampleAggregator extends MetricSampleAggregator<St
           KafkaMetricDef.brokerMetricDef());
   }
 
+  /**
+   * Aggregate the metrics for the given brokers.
+   * @param brokerEntities the set of brokers to aggregate.
+   * @return Metric sample aggregation result for brokers.
+   */
   public MetricSampleAggregationResult<String, BrokerEntity> aggregate(Set<BrokerEntity> brokerEntities) {
     AggregationOptions<String, BrokerEntity>  aggregationOptions =
-        new AggregationOptions<>(0.0, 0.0, 1, brokerEntities,
-                                 AggregationOptions.Granularity.ENTITY, false);
+        new AggregationOptions<>(MIN_VALID_BROKER_RATIO, MIN_VALID_GROUP_RATIO, MIN_VALID_WINDOWS, brokerEntities,
+                                 AggregationOptions.Granularity.ENTITY, INCLUDE_INVALID_ENTITIES);
     if (super.numAvailableWindows() < 1) {
       LOG.trace("No window is available for any broker.");
       return null;

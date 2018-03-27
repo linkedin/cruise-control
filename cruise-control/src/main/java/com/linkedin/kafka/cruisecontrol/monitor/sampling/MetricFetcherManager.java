@@ -49,8 +49,8 @@ public class MetricFetcherManager {
   private final MetricRegistry _dropwizardMetricRegistry;
   private final MetricDef _metricDef;
   // The below two members keep track last time the sampling threads were executed
-  private final Timer _partitionSamplesFetcherTimer;
-  private final Meter _partitionSamplesFetcherFailureRate;
+  private final Timer _samplingFetcherTimer;
+  private final Meter _samplingFetcherFailureRate;
   private final Timer _trainingSamplesFetcherTimer;
   private final Meter _trainingSamplesFetcherFailureRate;
 
@@ -136,10 +136,10 @@ public class MetricFetcherManager {
     _partitionAssignor.configure(config.originals());
     _useLinearRegressionModel = config.getBoolean(KafkaCruiseControlConfig.USE_LINEAR_REGRESSION_MODEL_CONFIG);
     _dropwizardMetricRegistry = dropwizardMetricRegistry;
-    _partitionSamplesFetcherTimer = _dropwizardMetricRegistry.timer(MetricRegistry.name("MetricFetcherManager",
-                                                                                       "partition-samples-fetcher-timer"));
-    _partitionSamplesFetcherFailureRate = _dropwizardMetricRegistry.meter(MetricRegistry.name("MetricFetcherManager",
-                                                                                             "partition-samples-fetcher-failure-rate"));
+    _samplingFetcherTimer = _dropwizardMetricRegistry.timer(MetricRegistry.name("MetricFetcherManager",
+                                                                                "partition-samples-fetcher-timer"));
+    _samplingFetcherFailureRate = _dropwizardMetricRegistry.meter(MetricRegistry.name("MetricFetcherManager",
+                                                                                      "partition-samples-fetcher-failure-rate"));
     _trainingSamplesFetcherTimer = _dropwizardMetricRegistry.timer(MetricRegistry.name("MetricFetcherManager",
                                                                                       "training-samples-fetcher-timer"));
     _trainingSamplesFetcherFailureRate = _dropwizardMetricRegistry.meter(MetricRegistry.name("MetricFetcherManager",
@@ -191,8 +191,10 @@ public class MetricFetcherManager {
                                                startMs,
                                                endMs,
                                                true,
-                                               _useLinearRegressionModel, _metricDef, _partitionSamplesFetcherTimer,
-                                               _partitionSamplesFetcherFailureRate));
+                                               _useLinearRegressionModel,
+                                               _metricDef,
+                                               _samplingFetcherTimer,
+                                               _samplingFetcherFailureRate));
     }
     return fetchSamples(samplingFetchers, timeoutMs);
   }
@@ -214,9 +216,15 @@ public class MetricFetcherManager {
         _partitionAssignor.assignPartitions(_metadataClient.cluster(), _numMetricFetchers);
     List<MetricFetcher> trainingFetchers = new ArrayList<>();
     for (int i = 0; i < _numMetricFetchers; i++) {
-      trainingFetchers.add(new TrainingFetcher(_metricSamplers.get(i), _metadataClient.cluster(), sampleStore,
-                                               partitionAssignment.get(i), startMs, endMs, _metricDef,
-                                               _trainingSamplesFetcherTimer, _trainingSamplesFetcherFailureRate));
+      trainingFetchers.add(new TrainingFetcher(_metricSamplers.get(i),
+                                               _metadataClient.cluster(),
+                                               sampleStore,
+                                               partitionAssignment.get(i),
+                                               startMs,
+                                               endMs,
+                                               _metricDef,
+                                               _trainingSamplesFetcherTimer,
+                                               _trainingSamplesFetcherFailureRate));
     }
     return fetchSamples(trainingFetchers, timeoutMs);
   }

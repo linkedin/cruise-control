@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
@@ -84,7 +85,7 @@ class SamplingFetcher extends MetricFetcher {
       _sampleStore.storeSamples(samples);
       // TODO: evolve sample store interface to allow independent eviction time for different type of metric samples.
       // We are not calling sampleStore.evictSamplesBefore() because the broker metric samples and partition metric
-      // samples may have different number of windows so they can not be evicted use the same timestamp.
+      // samples may have different number of windows so they can not be evicted using the same timestamp.
     } catch (Exception e) {
       _fetchFailureRate.mark();
       throw e;
@@ -94,8 +95,8 @@ class SamplingFetcher extends MetricFetcher {
   }
 
   /**
-   * Fetch the partition metric samples.
-   * @return the accepted partition metric samples.
+   * Fetch the partition and broker metric samples.
+   * @return the accepted partition and broker metric samples.
    * @throws MetricSamplingException
    */
   private MetricSampler.Samples fetchSamples() throws MetricSamplingException {
@@ -116,10 +117,11 @@ class SamplingFetcher extends MetricFetcher {
   private void addPartitionSamples(Set<PartitionMetricSample> partitionMetricSamples) {
     // Give an initial capacity to avoid resizing.
     Set<TopicPartition> returnedPartitions = new HashSet<>(_assignedPartitions.size());
-    int numCollectedPartitionSamples = 0;
     // Ignore the null value if the metric sampler did not return a sample
     if (partitionMetricSamples != null) {
-      for (PartitionMetricSample partitionMetricSample : partitionMetricSamples) {
+      Iterator<PartitionMetricSample> iter = partitionMetricSamples.iterator();
+      while (iter.hasNext()) {
+        PartitionMetricSample partitionMetricSample = iter.next();
         TopicPartition tp = partitionMetricSample.entity().tp();
         if (_assignedPartitions.contains(tp)) {
           // we fill in the cpu utilization based on the model in case user did not fill it in.
@@ -131,9 +133,9 @@ class SamplingFetcher extends MetricFetcher {
           partitionMetricSample.close(_endTimeMs);
           // We remove the sample from the returning set if it is not accepted.
           if (_partitionMetricSampleAggregator.addSample(partitionMetricSample, _leaderValidation)) {
-            numCollectedPartitionSamples++;
             LOG.trace("Enqueued partition metric sample {}", partitionMetricSample);
           } else {
+            iter.remove();
             LOG.trace("Failed to add partition metric sample {}", partitionMetricSample);
           }
           returnedPartitions.add(tp);
@@ -143,7 +145,7 @@ class SamplingFetcher extends MetricFetcher {
         }
       }
       LOG.debug("Collected {} partition metric samples for {} partitions. Total partition assigned: {}.",
-                numCollectedPartitionSamples, returnedPartitions.size(), _assignedPartitions.size());
+                partitionMetricSamples.size(), returnedPartitions.size(), _assignedPartitions.size());
     } else {
       LOG.warn("Failed to collect partition metric samples for {} assigned partitions", _assignedPartitions.size());
     }
@@ -151,19 +153,20 @@ class SamplingFetcher extends MetricFetcher {
 
   private void addBrokerMetricSamples(Set<BrokerMetricSample> brokerMetricSamples) {
     Set<Integer> returnedBrokerIds = new HashSet<>();
-    int numCollectedBrokerSamples = 0;
     if (brokerMetricSamples != null) {
-        for (BrokerMetricSample brokerMetricSample : brokerMetricSamples) {
-          if (_brokerMetricSampleAggregator.addSample(brokerMetricSample)) {
-            LOG.trace("Enqueued broker metric sample {}", brokerMetricSample);
-            numCollectedBrokerSamples++;
-          } else {
-            LOG.trace("Failed to add broker metric sample {}", brokerMetricSample);
-          }
-          returnedBrokerIds.add(brokerMetricSample.brokerId());
+      Iterator<BrokerMetricSample> iter = brokerMetricSamples.iterator();
+      while (iter.hasNext()) {
+        BrokerMetricSample brokerMetricSample = iter.next();
+        if (_brokerMetricSampleAggregator.addSample(brokerMetricSample)) {
+          LOG.trace("Enqueued broker metric sample {}", brokerMetricSample);
+        } else {
+          iter.remove();
+          LOG.trace("Failed to add broker metric sample {}", brokerMetricSample);
         }
+        returnedBrokerIds.add(brokerMetricSample.brokerId());
+      }
       LOG.debug("Collected {} broker metric samples for {} brokers.",
-                numCollectedBrokerSamples, returnedBrokerIds.size());
+                brokerMetricSamples.size(), returnedBrokerIds.size());
     } else {
       LOG.warn("Failed to collect broker metrics samples.");
     }

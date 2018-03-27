@@ -127,17 +127,20 @@ public class KafkaSampleStore implements SampleStore {
     ZkUtils zkUtils = createZkUtils(config);
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
-      long windowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.METRICS_WINDOW_MS_CONFIG));
+      long windowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
 
-      int numPartitionSampleWindows = Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG));
+      int numPartitionSampleWindows =
+          Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG));
       long partitionSampleRetentionMs = (numPartitionSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
 
-      int numBrokerSampleWindows = Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG));
+      int numBrokerSampleWindows =
+          Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG));
       long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
 
       int numberOfBrokersInCluster = zkUtils.getAllBrokersInCluster().size();
       if (numberOfBrokersInCluster == 0) {
-        throw new IllegalStateException("Kafka cluster has no alive brokers.");
+        throw new IllegalStateException(String.format("Kafka cluster has no alive brokers. (zookeeper.connect = %s",
+                                                      config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
       }
       int replicationFactor = Math.min(2, numberOfBrokersInCluster);
 

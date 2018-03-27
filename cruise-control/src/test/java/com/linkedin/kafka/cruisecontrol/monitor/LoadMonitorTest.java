@@ -417,10 +417,10 @@ public class LoadMonitorTest {
 
     // create load monitor.
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.put(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG, Integer.toString(NUM_WINDOWS));
-    props.put(KafkaCruiseControlConfig.MIN_SAMPLES_PER_METRICS_WINDOW_CONFIG,
+    props.put(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(NUM_WINDOWS));
+    props.put(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
               Integer.toString(MIN_SAMPLES_PER_WINDOW));
-    props.put(KafkaCruiseControlConfig.METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
+    props.put(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
     props.put("cleanup.policy", DEFAULT_CLEANUP_POLICY);
     props.put(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);

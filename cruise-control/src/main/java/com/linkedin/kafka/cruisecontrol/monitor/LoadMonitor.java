@@ -66,7 +66,7 @@ public class LoadMonitor {
   // Kafka Load Monitor server log.
   private static final Logger LOG = LoggerFactory.getLogger(LoadMonitor.class);
   private static final long METADATA_TTL = 5000L;
-  private final int _numWindows;
+  private final int _numPartitionMetricSampleWindows;
   private final LoadMonitorTaskRunner _loadMonitorTaskRunner;
   private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
   private final KafkaBrokerMetricSampleAggregator _brokerMetricSampleAggregator;
@@ -123,7 +123,7 @@ public class LoadMonitor {
 
     _brokerCapacityConfigResolver = config.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
                                                                  BrokerCapacityConfigResolver.class);
-    _numWindows = config.getInt(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG);
+    _numPartitionMetricSampleWindows = config.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
 
     _partitionMetricSampleAggregator = new KafkaPartitionMetricSampleAggregator(config, metadataClient.metadata());
 
@@ -202,7 +202,7 @@ public class LoadMonitor {
     // Get the number of valid partitions and sample extrapolations.
     int numValidPartitions = 0;
     Map<TopicPartition, List<SampleExtrapolation>> extrapolations = Collections.emptyMap();
-    if (_partitionMetricSampleAggregator.numAvailableWindows() >= _numWindows) {
+    if (_partitionMetricSampleAggregator.numAvailableWindows() >= _numPartitionMetricSampleWindows) {
       try {
         MetricSampleAggregationResult<String, PartitionEntity> metricSampleAggregationResult =
             _partitionMetricSampleAggregator.aggregate(clusterAndGeneration, Long.MAX_VALUE, operationProgress);

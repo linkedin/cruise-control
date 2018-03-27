@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
-import com.linkedin.cruisecontrol.config.CruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -28,6 +27,7 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.TreeSet;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
 
 import java.util.Map;
@@ -39,7 +39,7 @@ import static org.apache.kafka.common.config.ConfigDef.Range.between;
 /**
  * The configuration class of Kafka Cruise Control.
  */
-public class KafkaCruiseControlConfig extends CruiseControlConfig {
+public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String DEFAULT_FAILED_BROKERS_ZK_PATH = "/CruiseControlBrokerList";
   // We have to define this so we don't need to move every package to scala src folder.
   private static final String DEFAULT_ANOMALY_NOTIFIER_CLASS = NoopNotifier.class.getName();
@@ -90,6 +90,46 @@ public class KafkaCruiseControlConfig extends CruiseControlConfig {
   private static final String REQUEST_TIMEOUT_MS_DOC = CommonClientConfigs.REQUEST_TIMEOUT_MS_DOC;
 
   /**
+   * <code>partition.metrics.windows.ms</code>
+   */
+  public static final String PARTITION_METRICS_WINDOW_MS_CONFIG = "partition.metrics.windows.ms";
+  private static final String PARTITION_METRICS_WINDOW_MS_DOC = "The size of the window in milliseconds to aggregate "
+      + "the Kafka partition metrics.";
+
+  /**
+   * <code>num.partition.metrics.windows</code>
+   */
+  public static final String NUM_PARTITION_METRICS_WINDOWS_CONFIG = "num.partition.metrics.windows";
+  private static final String NUM_PARTITION_METRICS_WINDOWS_DOC = "The total number of windows to keep for partition "
+      + "metric samples";
+
+  /**
+   * <code>min.samples.per.partition.metrics.window</code>
+   */
+  public static final String MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG = "min.samples.per.partition.metrics.window";
+  private static final String MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_DOC = "The minimum number of "
+      + "PartitionMetricSamples needed to make a partition metrics window valid without extrapolation.";
+
+  /**
+   * <code>max.allowed.extrapolations.per.partition</code>
+   */
+  public static final String MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG = "max.allowed.extrapolations.per.partition";
+  private static final String MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_DOC = "The maximum allowed number of extrapolations "
+      + "for each partition. A partition will be considered as invalid if the total number extrapolations in all the "
+      + "windows goes above this number.";
+
+  /**
+   * <code>partition.metric.sample.aggregator.completeness.cache.size</code>
+   */
+  public static final String PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG =
+      "partition.metric.sample.aggregator.completeness.cache.size";
+  private static final String PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC = "The metric sample "
+      + "aggregator caches the completeness metadata for fast query. The completeness describes the confidence "
+      + "level of the data in the metric sample aggregator. It is primarily measured by the validity of the metrics"
+      + "samples in different windows. This configuration configures The number of completeness cache slots to "
+      + "maintain.";
+
+  /**
    * <code>broker.metrics.windows.ms</code>
    */
   public static final String BROKER_METRICS_WINDOW_MS_CONFIG = "broker.metrics.windows.ms";
@@ -123,9 +163,11 @@ public class KafkaCruiseControlConfig extends CruiseControlConfig {
    */
   public static final String BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG =
       "broker.metric.sample.aggregator.completeness.cache.size";
-  private static final String BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC = "The metric sample aggregator "
-      + "cache the completeness metadata for fast query. This configuration configures The number of completeness "
-      + "cache slot to maintain.";
+  private static final String BROKER_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC = "The metric sample "
+      + "aggregator caches the completeness metadata for fast query. The completeness describes the confidence "
+      + "level of the data in the metric sample aggregator. It is primarily measured by the validity of the metrics"
+      + "samples in different windows. This configuration configures The number of completeness cache slots to "
+      + "maintain.";
 
   /**
    * <code>num.metric.fetchers</code>
@@ -482,6 +524,36 @@ public class KafkaCruiseControlConfig extends CruiseControlConfig {
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 REQUEST_TIMEOUT_MS_DOC)
+        .define(PARTITION_METRICS_WINDOW_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                60 * 60 * 1000,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                PARTITION_METRICS_WINDOW_MS_DOC)
+        .define(NUM_PARTITION_METRICS_WINDOWS_CONFIG,
+                ConfigDef.Type.INT,
+                5,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                NUM_PARTITION_METRICS_WINDOWS_DOC)
+        .define(MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
+                ConfigDef.Type.INT,
+                3,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_DOC)
+        .define(MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG,
+                ConfigDef.Type.INT,
+                5,
+                atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_DOC)
+        .define(PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG,
+                ConfigDef.Type.INT,
+                5,
+                atLeast(0),
+                ConfigDef.Importance.LOW,
+                PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC)
         .define(BROKER_METRICS_WINDOW_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 60 * 60 * 1000,

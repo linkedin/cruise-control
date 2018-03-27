@@ -104,8 +104,8 @@ public class LoadMonitorTaskRunner {
     _samplingScheduler =
         Executors.newScheduledThreadPool(2, new KafkaCruiseControlThreadFactory("SamplingScheduler", true, LOG));
     _samplingIntervalMs = samplingIntervalMs;
-    _configuredNumWindows = config.getInt(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG);
-    _configuredWindowMs = config.getLong(KafkaCruiseControlConfig.METRICS_WINDOW_MS_CONFIG);
+    _configuredNumWindows = config.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
+    _configuredWindowMs = config.getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
 
     _state = new AtomicReference<>(NOT_STARTED);
     _bootstrapProgress = -1.0;
