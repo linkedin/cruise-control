@@ -37,6 +37,8 @@ import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaAssignerDiskUsageDistributionGoal.class);
   private static final double BALANCE_MARGIN = 0.9;
+  // If broker disk usage differ less than BROKER_EQUALITY_DELTA, consider them as equal -- i.e. no swap.
+  private static final double BROKER_EQUALITY_DELTA = 1.0;
   private BalancingConstraint _balancingConstraint;
   private double _minMonitoredPartitionPercentage = 0.995;
 
@@ -170,7 +172,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
       LOG.debug("Broker {} disk usage {} is above upper threshold of {}", broker.id(), brokerDiskUsage, upperThreshold);
       List<Broker> brokersAscend = clusterModel.sortedHealthyBrokersUnderThreshold(DISK, brokerDiskUsage);
       for (Broker toSwapWith : brokersAscend) {
-        if (toSwapWith == broker) {
+        if (toSwapWith == broker || Math.abs(brokerSize(toSwapWith) - brokerSize(broker)) < BROKER_EQUALITY_DELTA) {
           continue;
         }
         if (swapReplicas(broker, toSwapWith, meanDiskUsage, clusterModel, excludedTopics)) {
@@ -182,7 +184,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
       LOG.debug("Broker {} disk usage {} is below lower threshold of {}", broker.id(), brokerDiskUsage, lowerThreshold);
       List<Broker> brokersDescend = sortedBrokersAboveSizeDescend(clusterModel, brokerDiskUsage);
       for (Broker toSwapWith : brokersDescend) {
-        if (toSwapWith == broker) {
+        if (toSwapWith == broker || Math.abs(brokerSize(toSwapWith) - brokerSize(broker)) < BROKER_EQUALITY_DELTA) {
           continue;
         }
         if (swapReplicas(broker, toSwapWith, meanDiskUsage, clusterModel, excludedTopics)) {
