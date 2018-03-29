@@ -39,6 +39,8 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   private static final double BALANCE_MARGIN = 0.9;
   // If broker disk usage differ less than BROKER_EQUALITY_DELTA, consider them as equal -- i.e. no swap.
   private static final double BROKER_EQUALITY_DELTA = 1.0;
+  // Ensure that each convergence step due to replica swap is over REPLICA_CONVERGENCE_DELTA.
+  private static final double REPLICA_CONVERGENCE_DELTA = 0.4;
   private BalancingConstraint _balancingConstraint;
   private double _minMonitoredPartitionPercentage = 0.995;
 
@@ -305,8 +307,8 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
       // Find a replica that is eligible for swap.
       LOG.trace("replicaToSwap: {}(size={}), targetSize={}, minSize={}, maxSize={}",
                 replicaToSwap, replicaSize(replicaToSwap), targetSize, minSize, maxSize);
-      Replica replicaToSwapWith =
-          findReplicaToSwapWith(replicaToSwap, sortedReplicasToSwapWith, targetSize, minSize, maxSize, clusterModel);
+      Replica replicaToSwapWith = sortedReplicasToSwapWith.isEmpty() ? null :
+                                  findReplicaToSwapWith(replicaToSwap, sortedReplicasToSwapWith, targetSize, minSize, maxSize, clusterModel);
       if (replicaToSwapWith != null) {
         LOG.debug("Found replica to swap. Swapping {}({}) on broker {}({}) and {}({}) on broker {}({})",
                   replicaToSwap.topicPartition(), replicaSize(replicaToSwap), toSwap.id(), brokerSize(toSwap),
@@ -344,6 +346,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     int minPos = findReplicaPos(sortedReplicasToSearch, minSize, 1);
     int maxPos = findReplicaPos(sortedReplicasToSearch, maxSize, -1);
     if (minPos > maxPos) {
+      // This check also ensures that both minPos and maxPos are within the valid index range for the given list [0, n-1].
       return null;
     }
     // It is possible that the target size is out of the range of minSize and maxSize. In that case, we make it become
@@ -461,13 +464,50 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     }
     int index = Collections.binarySearch(sortedReplicas, new ReplicaWrapper(null, targetSize),
                                          Comparator.comparingDouble(ReplicaWrapper::size));
+    int checkIndex;
     switch (shiftOnExactMatch) {
       case -1:
-        return index >= 0 ? index - 1 : -(index + 1) - 1;
+        checkIndex = index >= 0 ? index : Math.min(-(index + 1), sortedReplicas.size() - 1);
+        // Check if the actual value is sufficiently smaller than the given target size. If not move left.
+        // The returned index is in [-1, (n-1)].
+        while (checkIndex >= 0) {
+          Replica r = sortedReplicas.get(checkIndex).replica();
+          if (replicaSize(r) < targetSize - REPLICA_CONVERGENCE_DELTA) {
+            break;
+          }
+          checkIndex--;
+        }
+        return checkIndex;
       case 1:
-        return index >= 0 ? index + 1 : -(index + 1);
+        checkIndex = index >= 0 ? index : Math.min(-(index + 1), sortedReplicas.size() - 1);
+        // Check if the actual value is sufficiently larger than the given target size. If not move right.
+        // The returned index is in [0, n].
+        while (checkIndex < sortedReplicas.size()) {
+          Replica r = sortedReplicas.get(checkIndex).replica();
+          if (replicaSize(r) > targetSize + REPLICA_CONVERGENCE_DELTA) {
+            break;
+          }
+          checkIndex++;
+        }
+        return checkIndex;
       case 0:
-        return index >= 0 ? index : -(index + 1);
+        if (index >= 0) {
+          // Found an exact match. No action needed. The returned index is in [0, (n-1)].
+          return index;
+        } else {
+          // If cannot find the exact match, use the neighbor closest to the target size.
+          // The returned index is in [0, (n-1)].
+          int rightIndex = -(index + 1);
+          if (rightIndex == sortedReplicas.size()) {
+            return sortedReplicas.size() - 1;
+          } else if (rightIndex == 0) {
+            return 0;
+          } else {
+            double leftSizeDiff = Math.abs(replicaSize(sortedReplicas.get(rightIndex - 1).replica()) - targetSize);
+            double rightSizeDiff = Math.abs(replicaSize(sortedReplicas.get(rightIndex).replica()) - targetSize);
+            return leftSizeDiff <= rightSizeDiff ? rightIndex - 1 : rightIndex;
+          }
+        }
       default:
         throw new IllegalStateException("Invalid shift on exact match value " + shiftOnExactMatch);
     }
