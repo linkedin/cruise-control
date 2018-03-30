@@ -191,14 +191,14 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
       }
     }
     if (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      fail("The execution did not finish in 5 seconds.");
+      fail("The execution did not finish in 30 seconds.");
     }
 
     for (ExecutionProposal proposal : proposalsToCheck) {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
-      int expectedReplicationFector = replicationFactors.get(tp);
-      assertEquals("Replication factor for partition " + tp + " should be " + expectedReplicationFector,
-                   expectedReplicationFector, zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).size());
+      int expectedReplicationFactor = replicationFactors.get(tp);
+      assertEquals("Replication factor for partition " + tp + " should be " + expectedReplicationFactor,
+                   expectedReplicationFactor, zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).size());
 
       if (proposal.hasReplicaAction()) {
         for (int brokerId : proposal.newReplicas()) {

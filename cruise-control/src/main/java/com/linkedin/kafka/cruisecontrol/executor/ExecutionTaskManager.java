@@ -13,6 +13,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 
 
@@ -204,10 +205,12 @@ public class ExecutionTaskManager {
    *
    * @param proposals the execution proposals to execute.
    * @param brokersToSkipConcurrencyCheck the brokers that does not need to be throttled when move the partitions.
+   * @param cluster Cluster state.
    */
   public synchronized void addExecutionProposals(Collection<ExecutionProposal> proposals,
-                                                 Collection<Integer> brokersToSkipConcurrencyCheck) {
-    _executionTaskPlanner.addExecutionProposals(proposals);
+                                                 Collection<Integer> brokersToSkipConcurrencyCheck,
+                                                 Cluster cluster) {
+    _executionTaskPlanner.addExecutionProposals(proposals, cluster);
     for (ExecutionProposal p : proposals) {
       _inProgressReplicaMovementsByBrokerId.putIfAbsent(p.oldLeader(), 0);
       for (int broker : p.replicasToAdd()) {

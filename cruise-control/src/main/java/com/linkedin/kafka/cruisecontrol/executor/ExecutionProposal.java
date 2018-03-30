@@ -10,13 +10,17 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * The execution proposal corresponding to a particular partition.
  */
 public class ExecutionProposal {
+  private final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
   private final TopicPartition _tp;
   private final long _partitionSize;
   private final int _oldLeader;
@@ -55,6 +59,46 @@ public class ExecutionProposal {
     _replicasToRemove = new HashSet<>();
     _replicasToRemove.addAll(_oldReplicas);
     _replicasToRemove.removeAll(newReplicas);
+  }
+
+  private boolean isOrdered(Node[] currentOrderedReplicas, List<Integer> replicas) {
+    if (replicas.size() != currentOrderedReplicas.length) {
+      return false;
+    }
+
+    for (int i = 0; i < replicas.size(); i++) {
+      if (currentOrderedReplicas[i].id() != replicas.get(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Check whether the successful proposal completion is reflected in the current ordered replicas in the given cluster.
+   *
+   * @param currentOrderedReplicas Current ordered replica list from the cluster.
+   * @return True if successfully completed, false otherwise.
+   */
+  public boolean isCompletedSuccessfully(Node[] currentOrderedReplicas) {
+    LOG.trace("Replicas for {} -> Current: {}, Proposed: {}.", _tp, currentOrderedReplicas, _newReplicas);
+    return isOrdered(currentOrderedReplicas, _newReplicas);
+  }
+
+  /**
+   * Check whether the proposal abortion is reflected in the current ordered replicas in the given cluster.
+   * There could be a race condition that when we abort a task, it is already completed.
+   * In that case, we treat it as aborted as well.
+   *
+   * @param currentOrderedReplicas Current ordered replica list from the cluster.
+   * @return True if aborted, false otherwise.
+   */
+  public boolean isAborted(Node[] currentOrderedReplicas) {
+    if (isCompletedSuccessfully(currentOrderedReplicas)) {
+      return true;
+    }
+    LOG.trace("Replicas for {} -> Current: {}, Old: {}.", _tp, currentOrderedReplicas, _oldReplicas);
+    return isOrdered(currentOrderedReplicas, _oldReplicas);
   }
 
   /**
@@ -100,7 +144,7 @@ public class ExecutionProposal {
   }
 
   /**
-   * @return the new replica list fo the partition before executing the proposal.
+   * @return the new replica list fo the partition after executing the proposal.
    */
   public List<Integer> newReplicas() {
     return _newReplicas;

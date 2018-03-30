@@ -8,7 +8,12 @@ import com.codahale.metrics.MetricRegistry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
@@ -17,6 +22,20 @@ import static org.junit.Assert.*;
 
 
 public class ExecutionTaskManagerTest {
+
+  private Cluster generateExpectedCluster(ExecutionProposal proposal, TopicPartition tp) {
+    List<Node> expectedReplicas = new ArrayList<>(proposal.oldReplicas().size());
+    expectedReplicas.add(new Node(0, "null", -1));
+    expectedReplicas.add(new Node(2, "null", -1));
+
+    Node[] isrArray = new Node[expectedReplicas.size()];
+    isrArray = expectedReplicas.toArray(isrArray);
+
+    Set<PartitionInfo> partitions = new HashSet<>();
+    partitions.add(new PartitionInfo(tp.topic(), tp.partition(), expectedReplicas.get(1), isrArray, isrArray));
+
+    return new Cluster(null, expectedReplicas, partitions, Collections.<String>emptySet(), Collections.<String>emptySet());
+  }
 
   @Test
   public void testStateChangeSequences() {
@@ -38,7 +57,10 @@ public class ExecutionTaskManagerTest {
       // Make sure the proposal does not involve leader movement.
       ExecutionProposal proposal =
           new ExecutionProposal(tp, 0, 2, Arrays.asList(0, 2), Arrays.asList(2, 1));
-      taskManager.addExecutionProposals(Collections.singletonList(proposal), Collections.emptySet());
+
+      taskManager.addExecutionProposals(Collections.singletonList(proposal),
+                                        Collections.emptySet(),
+                                        generateExpectedCluster(proposal, tp));
       List<ExecutionTask> tasks = taskManager.getReplicaMovementTasks();
       assertEquals(1, tasks.size());
       ExecutionTask task  = tasks.get(0);

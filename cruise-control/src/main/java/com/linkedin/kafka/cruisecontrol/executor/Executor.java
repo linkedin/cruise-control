@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -112,7 +113,7 @@ public class Executor {
     if (loadMonitor == null) {
       throw new IllegalArgumentException("Load monitor cannot be null.");
     }
-    _executionTaskManager.addExecutionProposals(proposals, unthrottledBrokers);
+    _executionTaskManager.addExecutionProposals(proposals, unthrottledBrokers, _metadataClient.refreshMetadata().cluster());
     startExecution(loadMonitor);
   }
 
@@ -396,7 +397,7 @@ public class Executor {
      */
     private boolean isTaskDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
       if (task.type() == ExecutionTask.TaskType.REPLICA_ACTION) {
-        return isReplicaActionDone(tp, task);
+        return isReplicaActionDone(cluster, tp, task);
       } else {
         return isLeadershipMovementDone(cluster, tp, task);
       }
@@ -411,23 +412,23 @@ public class Executor {
      *
      * There should be no other task state seen here.
      */
-    private boolean isReplicaActionDone(TopicPartition tp, ExecutionTask task) {
-      // TODO: switch to use cluster instead of zkUtils once the broker is upgraded to 0.11.0 and above.
-      List<Integer> currentReplicas = ExecutorUtils.currentReplicasForPartition(_zkUtils, tp);
+    private boolean isReplicaActionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
+      LOG.trace("Current replica task: {}.", task);
+      Node[] currentOrderedReplicas = cluster.partition(tp).replicas();
       switch (task.state()) {
         case IN_PROGRESS:
-          return currentReplicas.equals(task.proposal().newReplicas());
+          return task.proposal().isCompletedSuccessfully(currentOrderedReplicas);
         case ABORTING:
-          LOG.trace("Checking replica action {}, current replicas: {}", task, currentReplicas);
-          // There could be a race condition that when we abort a task, it is already completed.
-          // in that case, we treat it as aborted as well.
-          return currentReplicas.equals(task.proposal().oldReplicas())
-              || currentReplicas.equals(task.proposal().newReplicas());
+          return task.proposal().isAborted(currentOrderedReplicas);
         case DEAD:
           return true;
         default:
           throw new IllegalStateException("Should never be here. State " + task.state());
       }
+    }
+
+    private boolean isInIsr(Integer leader, Cluster cluster, TopicPartition tp) {
+      return Arrays.stream(cluster.partition(tp).inSyncReplicas()).anyMatch(node -> node.id() == leader);
     }
 
     /**
@@ -438,10 +439,13 @@ public class Executor {
      * There should be no other task state seen here.
      */
     private boolean isLeadershipMovementDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
+      LOG.trace("Current leadership task: {}.", task);
       Node leader = cluster.leaderFor(tp);
       switch (task.state()) {
         case IN_PROGRESS:
-          return leader != null && leader.id() == task.proposal().newReplicas().get(0);
+          return (leader != null && leader.id() == task.proposal().newReplicas().get(0))
+                 || leader == null
+                 || !isInIsr(task.proposal().newReplicas().get(0), cluster, tp);
         case ABORTING:
         case DEAD:
           return true;
