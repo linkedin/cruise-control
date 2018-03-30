@@ -54,7 +54,7 @@ public class DefaultMetricSamplerPartitionAssignorTest {
       }
     }
     Cluster cluster = new Cluster("cluster", allNodes, partitions, Collections.emptySet(), Collections.emptySet());
-    Metadata metadata = new Metadata();
+    Metadata metadata = new Metadata(10, 10, false);
     metadata.update(cluster, Collections.emptySet(), 0);
 
     MetricSamplerPartitionAssignor assignor = new DefaultMetricSamplerPartitionAssignor();

@@ -54,6 +54,9 @@ public class Executor {
   private final static boolean IS_ZK_SECURITY_ENABLED = false;
   private final static long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
 
+  private final static long METADATA_REFRESH_BACKOFF = 0L;
+  private final static long METADATA_EXPIRY_MS = 0L;
+
   // Some state for external service to query
   private final AtomicBoolean _stopRequested;
   private volatile boolean _hasOngoingExecution;
@@ -72,7 +75,10 @@ public class Executor {
                                  config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
                                  dropwizardMetricRegistry);
     _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    _metadataClient = new MetadataClient(config, new Metadata(), -1L, time);
+    _metadataClient = new MetadataClient(config,
+                                         new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),
+                                         -1L,
+                                         time);
     _statusCheckingIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     _proposalExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));

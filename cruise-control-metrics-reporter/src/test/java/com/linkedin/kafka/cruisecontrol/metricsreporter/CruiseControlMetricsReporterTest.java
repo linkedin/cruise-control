@@ -76,6 +76,7 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
                       "100");
     props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
     props.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), "1");
+    props.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
     return props;
   }
 
@@ -94,7 +95,7 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     consumer.subscribe(Collections.singletonList(TOPIC));
     long startMs = System.currentTimeMillis();
     Set<Integer> metricTypes = new HashSet<>();
-    while (metricTypes.size() < 39 && System.currentTimeMillis() < startMs + 15000) {
+    while (metricTypes.size() < 41 && System.currentTimeMillis() < startMs + 15000) {
       records = consumer.poll(10);
       for (ConsumerRecord<String, CruiseControlMetric> record : records) {
         metricTypes.add((int) record.value().metricType().id());
@@ -106,6 +107,8 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
                                                                        (int) TOPIC_BYTES_OUT.id(),
                                                                        (int) PARTITION_SIZE.id(),
                                                                        (int) BROKER_CPU_UTIL.id(),
+                                                                       (int) ALL_TOPIC_REPLICATION_BYTES_IN.id(),
+                                                                       (int) ALL_TOPIC_REPLICATION_BYTES_OUT.id(),
                                                                        (int) ALL_TOPIC_PRODUCE_REQUEST_RATE.id(),
                                                                        (int) ALL_TOPIC_FETCH_REQUEST_RATE.id(),
                                                                        (int) ALL_TOPIC_MESSAGES_IN_PER_SEC.id(),

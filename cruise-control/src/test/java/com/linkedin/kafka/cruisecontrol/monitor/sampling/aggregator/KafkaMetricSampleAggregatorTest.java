@@ -582,7 +582,7 @@ public class KafkaMetricSampleAggregatorTest {
   }
 
   private Metadata getMetadata(Collection<TopicPartition> partitions) {
-    Metadata metadata = new Metadata();
+    Metadata metadata = new Metadata(10, 10, false);
     metadata.update(getCluster(partitions), Collections.emptySet(), 0);
     return metadata;
   }
