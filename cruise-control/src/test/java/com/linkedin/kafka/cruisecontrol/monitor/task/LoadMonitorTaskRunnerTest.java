@@ -81,7 +81,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   @Test
   public void testSimpleFetch() throws InterruptedException {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
-    Metadata metadata = new Metadata();
+    Metadata metadata = new Metadata(10, 10, false);
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
     MockMetricSampleAggregator mockMetricSampleAggregator = new MockMetricSampleAggregator(config, metadata);
     List<MetricSampler> samplers = new ArrayList<>();
@@ -125,7 +125,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   @Test
   public void testSamplingError() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
-    Metadata metadata = new Metadata();
+    Metadata metadata = new Metadata(10, 10, false);
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
     MockMetricSampleAggregator mockMetricSampleAggregator = new MockMetricSampleAggregator(config, metadata);
     List<MetricSampler> samplers = new ArrayList<>();

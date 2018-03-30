@@ -50,6 +50,7 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.internals.ClusterResourceListeners;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -100,7 +101,11 @@ public class LoadMonitor {
                      MetricDef metricDef) {
     this(config,
          new MetadataClient(config,
-                            new Metadata(5000L, config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG)),
+                            new Metadata(5000L,
+                                         config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG),
+                                         false,
+                                         false,
+                                         new ClusterResourceListeners()),
                             METADATA_TTL,
                             time),
          time,

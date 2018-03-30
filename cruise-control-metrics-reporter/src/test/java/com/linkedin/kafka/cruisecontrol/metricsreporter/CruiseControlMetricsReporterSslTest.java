@@ -50,6 +50,7 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
     props.setProperty(CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG, "100");
     props.setProperty(CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
     props.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), "1");
+    props.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
     return props;
   }
 

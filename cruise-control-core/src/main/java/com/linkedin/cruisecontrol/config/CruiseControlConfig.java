@@ -108,6 +108,6 @@ public class CruiseControlConfig extends AbstractConfig {
   }
 
   public CruiseControlConfig(Map<String, Object> parsedConfig) {
-    super(parsedConfig);
+    super(CONFIG, parsedConfig);
   }
 }

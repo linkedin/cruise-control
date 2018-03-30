@@ -10,11 +10,15 @@ import java.net.InetSocketAddress;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.kafka.clients.ApiVersions;
 import org.apache.kafka.clients.ClientUtils;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.NetworkClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.metrics.Metrics;
+import org.apache.kafka.common.metrics.Sensor;
+import org.apache.kafka.common.metrics.stats.Avg;
+import org.apache.kafka.common.metrics.stats.Max;
 import org.apache.kafka.common.network.ChannelBuilder;
 import org.apache.kafka.common.network.Selector;
 import org.apache.kafka.common.utils.Time;
@@ -41,18 +45,20 @@ public class MetadataClient {
     List<InetSocketAddress> addresses =
         ClientUtils.parseAndValidateAddresses(config.getList(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
     _metadata.update(Cluster.bootstrap(addresses), Collections.emptySet(), time.milliseconds());
-    ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config.values());
+    ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config);
     _networkClient = new NetworkClient(
         new Selector(config.getLong(KafkaCruiseControlConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG), new Metrics(), time, "load-monitor", channelBuilder),
         _metadata,
         config.getString(KafkaCruiseControlConfig.CLIENT_ID_CONFIG),
         DEFAULT_MAX_IN_FLIGHT_REQUEST,
         config.getLong(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG),
+        config.getLong(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG),
         config.getInt(KafkaCruiseControlConfig.SEND_BUFFER_CONFIG),
         config.getInt(KafkaCruiseControlConfig.RECEIVE_BUFFER_CONFIG),
         config.getInt(KafkaCruiseControlConfig.REQUEST_TIMEOUT_MS_CONFIG),
         _time,
-        true);
+        true,
+        new ApiVersions());
     _metadataTTL = metadataTTL;
     // This is a super confusing interface in the Metadata. If we don't set this to false, the metadata.update()
     // will remove all the topics that are not in the metadata interested topics list.
@@ -110,6 +116,16 @@ public class MetadataClient {
    */
   public Cluster cluster() {
     return _metadata.fetch();
+  }
+
+  public static Sensor throttleTimeSensor(Metrics metrics) {
+    String metricGrpName = "metadata-client-metrics";
+    Sensor produceThrottleTimeSensor = metrics.sensor("metadata-client-throttle-time");
+    produceThrottleTimeSensor.add(metrics.metricName("metadata-client-throttle-time-avg",
+                                                     metricGrpName, "The average throttle time in ms"), new Avg());
+    produceThrottleTimeSensor.add(metrics.metricName("metadata-client-throttle-time-max",
+                                                     metricGrpName, "The maximum throttle time in ms"), new Max());
+    return produceThrottleTimeSensor;
   }
 
   public static class ClusterAndGeneration {
