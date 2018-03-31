@@ -55,8 +55,8 @@ public class Executor {
   private final static boolean IS_ZK_SECURITY_ENABLED = false;
   private final static long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
 
-  private final static long METADATA_REFRESH_BACKOFF = 0L;
-  private final static long METADATA_EXPIRY_MS = 0L;
+  private final static long METADATA_REFRESH_BACKOFF = 100L;
+  private final static long METADATA_EXPIRY_MS = Long.MAX_VALUE;
 
   // Some state for external service to query
   private final AtomicBoolean _stopRequested;

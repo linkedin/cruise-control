@@ -16,9 +16,6 @@ import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.NetworkClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.metrics.Metrics;
-import org.apache.kafka.common.metrics.Sensor;
-import org.apache.kafka.common.metrics.stats.Avg;
-import org.apache.kafka.common.metrics.stats.Max;
 import org.apache.kafka.common.network.ChannelBuilder;
 import org.apache.kafka.common.network.Selector;
 import org.apache.kafka.common.utils.Time;
@@ -116,16 +113,6 @@ public class MetadataClient {
    */
   public Cluster cluster() {
     return _metadata.fetch();
-  }
-
-  public static Sensor throttleTimeSensor(Metrics metrics) {
-    String metricGrpName = "metadata-client-metrics";
-    Sensor produceThrottleTimeSensor = metrics.sensor("metadata-client-throttle-time");
-    produceThrottleTimeSensor.add(metrics.metricName("metadata-client-throttle-time-avg",
-                                                     metricGrpName, "The average throttle time in ms"), new Avg());
-    produceThrottleTimeSensor.add(metrics.metricName("metadata-client-throttle-time-max",
-                                                     metricGrpName, "The maximum throttle time in ms"), new Max());
-    return produceThrottleTimeSensor;
   }
 
   public static class ClusterAndGeneration {
