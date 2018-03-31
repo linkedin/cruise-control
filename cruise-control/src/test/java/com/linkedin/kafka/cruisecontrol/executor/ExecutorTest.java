@@ -178,8 +178,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
           e.printStackTrace();
         }
       } catch (ExecutionException ee) {
-        // let it go.
-        int g = 6;
+        // Let it go.
       }
     } while (topicDescriptions0 == null || topicDescriptions0.size() < 2
         || topicDescriptions1 == null || topicDescriptions1.size() < 2);
