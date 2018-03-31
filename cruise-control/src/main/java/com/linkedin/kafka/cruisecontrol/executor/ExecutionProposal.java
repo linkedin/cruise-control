@@ -12,15 +12,12 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
  * The execution proposal corresponding to a particular partition.
  */
 public class ExecutionProposal {
-  private final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
   private final TopicPartition _tp;
   private final long _partitionSize;
   private final int _oldLeader;
@@ -61,7 +58,7 @@ public class ExecutionProposal {
     _replicasToRemove.removeAll(newReplicas);
   }
 
-  private boolean matched(Node[] currentOrderedReplicas, List<Integer> replicas) {
+  private boolean orderMatched(Node[] currentOrderedReplicas, List<Integer> replicas) {
     if (replicas.size() != currentOrderedReplicas.length) {
       return false;
     }
@@ -81,8 +78,7 @@ public class ExecutionProposal {
    * @return True if successfully completed, false otherwise.
    */
   public boolean isCompletedSuccessfully(Node[] currentOrderedReplicas) {
-    LOG.trace("Replicas for {} -> Current: {}, Proposed: {}.", _tp, currentOrderedReplicas, _newReplicas);
-    return matched(currentOrderedReplicas, _newReplicas);
+    return orderMatched(currentOrderedReplicas, _newReplicas);
   }
 
   /**
@@ -94,11 +90,7 @@ public class ExecutionProposal {
    * @return True if aborted, false otherwise.
    */
   public boolean isAborted(Node[] currentOrderedReplicas) {
-    if (isCompletedSuccessfully(currentOrderedReplicas)) {
-      return true;
-    }
-    LOG.trace("Replicas for {} -> Current: {}, Old: {}.", _tp, currentOrderedReplicas, _oldReplicas);
-    return matched(currentOrderedReplicas, _oldReplicas);
+    return isCompletedSuccessfully(currentOrderedReplicas) || orderMatched(currentOrderedReplicas, _oldReplicas);
   }
 
   /**
