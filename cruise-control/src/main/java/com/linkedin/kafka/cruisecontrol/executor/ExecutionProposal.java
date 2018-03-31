@@ -61,7 +61,7 @@ public class ExecutionProposal {
     _replicasToRemove.removeAll(newReplicas);
   }
 
-  private boolean isOrdered(Node[] currentOrderedReplicas, List<Integer> replicas) {
+  private boolean matched(Node[] currentOrderedReplicas, List<Integer> replicas) {
     if (replicas.size() != currentOrderedReplicas.length) {
       return false;
     }
@@ -82,7 +82,7 @@ public class ExecutionProposal {
    */
   public boolean isCompletedSuccessfully(Node[] currentOrderedReplicas) {
     LOG.trace("Replicas for {} -> Current: {}, Proposed: {}.", _tp, currentOrderedReplicas, _newReplicas);
-    return isOrdered(currentOrderedReplicas, _newReplicas);
+    return matched(currentOrderedReplicas, _newReplicas);
   }
 
   /**
@@ -98,7 +98,7 @@ public class ExecutionProposal {
       return true;
     }
     LOG.trace("Replicas for {} -> Current: {}, Old: {}.", _tp, currentOrderedReplicas, _oldReplicas);
-    return isOrdered(currentOrderedReplicas, _oldReplicas);
+    return matched(currentOrderedReplicas, _oldReplicas);
   }
 
   /**
