@@ -10,6 +10,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 
 
@@ -57,6 +58,41 @@ public class ExecutionProposal {
     _replicasToRemove.removeAll(newReplicas);
   }
 
+  private boolean orderMatched(Node[] currentOrderedReplicas, List<Integer> replicas) {
+    if (replicas.size() != currentOrderedReplicas.length) {
+      return false;
+    }
+
+    for (int i = 0; i < replicas.size(); i++) {
+      if (currentOrderedReplicas[i].id() != replicas.get(i)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * Check whether the successful proposal completion is reflected in the current ordered replicas in the given cluster.
+   *
+   * @param currentOrderedReplicas Current ordered replica list from the cluster.
+   * @return True if successfully completed, false otherwise.
+   */
+  public boolean isCompletedSuccessfully(Node[] currentOrderedReplicas) {
+    return orderMatched(currentOrderedReplicas, _newReplicas);
+  }
+
+  /**
+   * Check whether the proposal abortion is reflected in the current ordered replicas in the given cluster.
+   * There could be a race condition that when we abort a task, it is already completed.
+   * In that case, we treat it as aborted as well.
+   *
+   * @param currentOrderedReplicas Current ordered replica list from the cluster.
+   * @return True if aborted, false otherwise.
+   */
+  public boolean isAborted(Node[] currentOrderedReplicas) {
+    return isCompletedSuccessfully(currentOrderedReplicas) || orderMatched(currentOrderedReplicas, _oldReplicas);
+  }
+
   /**
    * @return the topic for this proposal.
    */
@@ -93,6 +129,13 @@ public class ExecutionProposal {
   }
 
   /**
+   * @return the new leader of the partition after executing the proposal.
+   */
+  public int newLeader() {
+    return _newReplicas.get(0);
+  }
+
+  /**
    * @return the replica list of the partition before executing the proposal.
    */
   public List<Integer> oldReplicas() {
@@ -100,7 +143,7 @@ public class ExecutionProposal {
   }
 
   /**
-   * @return the new replica list fo the partition before executing the proposal.
+   * @return the new replica list fo the partition after executing the proposal.
    */
   public List<Integer> newReplicas() {
     return _newReplicas;

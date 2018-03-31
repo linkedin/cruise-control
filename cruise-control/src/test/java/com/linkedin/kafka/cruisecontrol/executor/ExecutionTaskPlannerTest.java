@@ -6,6 +6,11 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 import java.util.ArrayList;
@@ -42,6 +47,12 @@ public class ExecutionTaskPlannerTest {
   private final ExecutionProposal partitionMovement4 =
       new ExecutionProposal(new TopicPartition(TOPIC2, 2), 4, 3, Arrays.asList(3, 0), Arrays.asList(0, 2));
 
+  private final List<Node> _expectedNodes = new ArrayList<>(Arrays.asList(
+      new Node(0, "null", -1),
+      new Node(1, "null", -1),
+      new Node(2, "null", -1),
+      new Node(3, "null", -1)));
+
   @Test
   public void testGetLeaderMovementTasks() {
     List<ExecutionProposal> proposals = new ArrayList<>();
@@ -50,7 +61,36 @@ public class ExecutionTaskPlannerTest {
     proposals.add(leaderMovement3);
     proposals.add(leaderMovement4);
     ExecutionTaskPlanner planner = new ExecutionTaskPlanner();
-    planner.addExecutionProposals(proposals);
+
+    Set<PartitionInfo> partitions = new HashSet<>();
+
+    Node[] isrArray = generateExpectedReplicas(leaderMovement1);
+    partitions.add(new PartitionInfo(leaderMovement1.topicPartition().topic(),
+                                     leaderMovement1.topicPartition().partition(),
+                                     isrArray[0], isrArray, isrArray));
+
+    isrArray = generateExpectedReplicas(leaderMovement2);
+    partitions.add(new PartitionInfo(leaderMovement2.topicPartition().topic(),
+                                     leaderMovement2.topicPartition().partition(),
+                                     isrArray[0], isrArray, isrArray));
+
+    isrArray = generateExpectedReplicas(leaderMovement3);
+    partitions.add(new PartitionInfo(leaderMovement3.topicPartition().topic(),
+                                     leaderMovement3.topicPartition().partition(),
+                                     isrArray[0], isrArray, isrArray));
+
+    isrArray = generateExpectedReplicas(leaderMovement4);
+    partitions.add(new PartitionInfo(leaderMovement4.topicPartition().topic(),
+                                     leaderMovement4.topicPartition().partition(),
+                                     isrArray[0], isrArray, isrArray));
+
+    Cluster expectedCluster = new Cluster(null,
+                                          _expectedNodes,
+                                          partitions,
+                                          Collections.<String>emptySet(),
+                                          Collections.<String>emptySet());
+
+    planner.addExecutionProposals(proposals, expectedCluster);
     List<ExecutionTask> leaderMovementTasks = planner.getLeaderMovementTasks(2);
     assertEquals("2 of the leader movements should return in one batch", 2, leaderMovementTasks.size());
     assertEquals(1, leaderMovementTasks.get(0).executionId());
@@ -73,7 +113,36 @@ public class ExecutionTaskPlannerTest {
     proposals.add(partitionMovement3);
     proposals.add(partitionMovement4);
     ExecutionTaskPlanner planner = new ExecutionTaskPlanner();
-    planner.addExecutionProposals(proposals);
+
+    Set<PartitionInfo> partitions = new HashSet<>();
+
+    Node[] isrArray = generateExpectedReplicas(partitionMovement1);
+    partitions.add(new PartitionInfo(partitionMovement1.topicPartition().topic(),
+                                     partitionMovement1.topicPartition().partition(),
+                                     isrArray[0], isrArray, isrArray));
+
+    isrArray = generateExpectedReplicas(partitionMovement2);
+    partitions.add(new PartitionInfo(partitionMovement2.topicPartition().topic(),
+                                     partitionMovement2.topicPartition().partition(),
+                                     isrArray[1], isrArray, isrArray));
+
+    isrArray = generateExpectedReplicas(partitionMovement3);
+    partitions.add(new PartitionInfo(partitionMovement3.topicPartition().topic(),
+                                     partitionMovement3.topicPartition().partition(),
+                                     isrArray[0], isrArray, isrArray));
+
+    isrArray = generateExpectedReplicas(partitionMovement4);
+    partitions.add(new PartitionInfo(partitionMovement4.topicPartition().topic(),
+                                     partitionMovement4.topicPartition().partition(),
+                                     isrArray[0], isrArray, isrArray));
+
+    Cluster expectedCluster = new Cluster(null,
+                                          _expectedNodes,
+                                          partitions,
+                                          Collections.<String>emptySet(),
+                                          Collections.<String>emptySet());
+
+    planner.addExecutionProposals(proposals, expectedCluster);
     Map<Integer, Integer> readyBrokers = new HashMap<>();
     readyBrokers.put(0, 2);
     readyBrokers.put(1, 2);
@@ -85,13 +154,56 @@ public class ExecutionTaskPlannerTest {
     assertEquals("First task should be partitionMovement2", partitionMovement2, partitionMovementTasks.get(2).proposal());
   }
 
+  private Node[] generateExpectedReplicas(ExecutionProposal proposal) {
+    int i = 0;
+    Node[] expectedProposalReplicas = new Node[proposal.oldReplicas().size()];
+    for (Integer oldId: proposal.oldReplicas()) {
+      expectedProposalReplicas[i++] = new Node(oldId, "null", -1);
+    }
+    return expectedProposalReplicas;
+  }
+
+  private Cluster generateExpectedCluster(ExecutionProposal proposal, TopicPartition tp, boolean isLeaderMove) {
+    List<Node> mockProposalReplicas = new ArrayList<>(proposal.oldReplicas().size());
+    for (Integer oldId: proposal.oldReplicas()) {
+      mockProposalReplicas.add(new Node(oldId, "null", -1));
+    }
+
+    Node[] isrArray = new Node[mockProposalReplicas.size()];
+    isrArray = mockProposalReplicas.toArray(isrArray);
+
+    Set<PartitionInfo> partitions = new HashSet<>();
+    partitions.add(new PartitionInfo(tp.topic(), tp.partition(), mockProposalReplicas.get(isLeaderMove ? 1 : 0), isrArray, isrArray));
+
+    return new Cluster(null, mockProposalReplicas, partitions, Collections.<String>emptySet(), Collections.<String>emptySet());
+  }
+
   @Test
   public void testClear() {
     List<ExecutionProposal> proposals = new ArrayList<>();
     proposals.add(leaderMovement1);
     proposals.add(partitionMovement1);
     ExecutionTaskPlanner planner = new ExecutionTaskPlanner();
-    planner.addExecutionProposals(proposals);
+
+    Set<PartitionInfo> partitions = new HashSet<>();
+
+    Node[] isrArray = generateExpectedReplicas(leaderMovement1);
+    partitions.add(new PartitionInfo(leaderMovement1.topicPartition().topic(),
+                                     leaderMovement1.topicPartition().partition(),
+                                     isrArray[0], isrArray, isrArray));
+
+    isrArray = generateExpectedReplicas(partitionMovement1);
+    partitions.add(new PartitionInfo(partitionMovement1.topicPartition().topic(),
+                                     partitionMovement1.topicPartition().partition(),
+                                     isrArray[0], isrArray, isrArray));
+
+    Cluster expectedCluster = new Cluster(null,
+                                          _expectedNodes,
+                                          partitions,
+                                          Collections.<String>emptySet(),
+                                          Collections.<String>emptySet());
+
+    planner.addExecutionProposals(proposals, expectedCluster);
     assertEquals(1, planner.remainingDataToMoveInMB());
     assertEquals(2, planner.remainingLeaderMovements().size());
     assertEquals(2, planner.remainingReplicaMovements().size());

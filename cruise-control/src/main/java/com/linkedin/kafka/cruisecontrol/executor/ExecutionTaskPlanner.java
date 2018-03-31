@@ -15,6 +15,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.atomic.AtomicLong;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -56,9 +59,17 @@ public class ExecutionTaskPlanner {
     _leaderMovements = new HashMap<>();
   }
 
-  public void addExecutionProposals(Collection<ExecutionProposal> proposals) {
+  /**
+   * Add each given proposal to execute, unless the given cluster state indicates that the proposal would be a no-op.
+   * A proposal is a no-op if the expected state after the execution of the given proposal is the current cluster state.
+   *
+   * @param proposals Execution proposals.
+   * @param cluster Kafka cluster state.
+   */
+  public void addExecutionProposals(Collection<ExecutionProposal> proposals, Cluster cluster) {
+    LOG.trace("Cluster state before adding proposals: {}.", cluster);
     for (ExecutionProposal proposal : proposals) {
-      addExecutionProposal(proposal);
+      addExecutionProposal(proposal, cluster);
     }
   }
 
@@ -70,39 +81,49 @@ public class ExecutionTaskPlanner {
    * 2. Leader action (i.e. leader movement)
    *
    * @param proposal the proposal to execute.
+   * @param cluster Kafka cluster state.
    */
-  private void addExecutionProposal(ExecutionProposal proposal) {
-    // Ideally we should avoid adjust replica order if not needed, but due to a bug in open source Kafka
-    // metadata cache on the broker side, the returned replica list may not match the list in zookeeper.
-    // Because reading the replica list from zookeeper would be too expensive, we simply write all the
-    // orders to zookeeper and let the controller discard the ones that do not need an update. This means
-    // we will always have a replica action for each proposal.
-
+  private void addExecutionProposal(ExecutionProposal proposal, Cluster cluster) {
     // Get the execution Id for this proposal;
-    long proposalExecutionId = _executionId.getAndIncrement();
-    ExecutionTask executionTask = new ExecutionTask(proposalExecutionId, proposal, REPLICA_ACTION);
-    _remainingReplicaMovements.add(executionTask);
-    _remainingDataToMove += proposal.dataToMoveInMB();
-    // Add the proposal to source broker's execution plan
-    int sourceBroker = proposal.oldLeader();
-    Map<Long, ExecutionTask> sourceBrokerProposalMap =
-        _partMoveProposalByBrokerId.computeIfAbsent(sourceBroker, k -> new HashMap<>());
-    sourceBrokerProposalMap.put(proposalExecutionId, executionTask);
+    // 1) Create a replica action task if there is a need for moving replica(s) to reach expected final proposal state.
+    TopicPartition tp = proposal.topicPartition();
+    PartitionInfo partitionInfo = cluster.partition(tp);
+    if (partitionInfo == null) {
+      LOG.trace("Ignored the attempt to move non-existing partition for topic partition: {}", tp);
+      return;
+    }
+    if (!proposal.isCompletedSuccessfully(partitionInfo.replicas())) {
+      long replicaActionExecutionId = _executionId.getAndIncrement();
+      ExecutionTask executionTask = new ExecutionTask(replicaActionExecutionId, proposal, REPLICA_ACTION);
+      _remainingReplicaMovements.add(executionTask);
+      _remainingDataToMove += proposal.dataToMoveInMB();
 
-    // Add the proposal to destination brokers' execution plan
-    for (int destinationBroker : proposal.replicasToAdd()) {
-      Map<Long, ExecutionTask> destinationBrokerProposalMap =
-          _partMoveProposalByBrokerId.computeIfAbsent(destinationBroker, k -> new HashMap<>());
-      destinationBrokerProposalMap.put(proposalExecutionId, executionTask);
+      // Add the proposal to source broker's execution plan
+      int sourceBroker = proposal.oldLeader();
+      Map<Long, ExecutionTask> sourceBrokerProposalMap =
+          _partMoveProposalByBrokerId.computeIfAbsent(sourceBroker, k -> new HashMap<>());
+      sourceBrokerProposalMap.put(replicaActionExecutionId, executionTask);
+
+      // Add the proposal to destination brokers' execution plan
+      for (int destinationBroker : proposal.replicasToAdd()) {
+        Map<Long, ExecutionTask> destinationBrokerProposalMap =
+            _partMoveProposalByBrokerId.computeIfAbsent(destinationBroker, k -> new HashMap<>());
+        destinationBrokerProposalMap.put(replicaActionExecutionId, executionTask);
+      }
+      LOG.trace("Added action {} as replica proposal {}", replicaActionExecutionId, proposal);
     }
 
+    // 2) Create a leader action task if there is a need for moving the leader to reach expected final proposal state.
     if (proposal.hasLeaderAction()) {
-      // Get the execution Id for the leader action proposal execution;
-      long leaderActionExecutionId = _executionId.getAndIncrement();
-      ExecutionTask leaderActionTask = new ExecutionTask(leaderActionExecutionId, proposal, LEADER_ACTION);
-      _leaderMovements.put(proposalExecutionId, leaderActionTask);
+      Node currentLeader = cluster.leaderFor(tp);
+      if (currentLeader != null && currentLeader.id() != proposal.newLeader()) {
+        // Get the execution Id for the leader action proposal execution;
+        long leaderActionExecutionId = _executionId.getAndIncrement();
+        ExecutionTask leaderActionTask = new ExecutionTask(leaderActionExecutionId, proposal, LEADER_ACTION);
+        _leaderMovements.put(leaderActionExecutionId, leaderActionTask);
+        LOG.trace("Added action {} as leader proposal {}", leaderActionExecutionId, proposal);
+      }
     }
-    LOG.trace("Added balancing proposal {}", proposal);
   }
 
   /**
