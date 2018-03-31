@@ -165,6 +165,9 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC_0, 1, (short) 1),
                                            new NewTopic(TOPIC_1, 1, (short) 2)));
 
+    // We need to use the admin clients to query the metadata from two different brokers to make sure that
+    // both brokers have the latest metadata. Otherwise the Executor may get confused when it does not
+    // see expected topics in the metadata.
     Map<String, TopicDescription> topicDescriptions0 = null;
     Map<String, TopicDescription> topicDescriptions1 = null;
     do {
