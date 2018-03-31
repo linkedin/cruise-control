@@ -207,7 +207,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
         }
       }
       assertEquals("The leader should have moved for " + tp,
-                 proposal.newReplicas().get(0), zkUtils.getLeaderForPartition(tp.topic(), tp.partition()).get());
+                   proposal.newLeader(), zkUtils.getLeaderForPartition(tp.topic(), tp.partition()).get());
 
     }
   }

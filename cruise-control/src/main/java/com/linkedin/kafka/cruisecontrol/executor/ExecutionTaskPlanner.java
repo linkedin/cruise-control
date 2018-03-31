@@ -116,7 +116,7 @@ public class ExecutionTaskPlanner {
     // 2) Create a leader action task if there is a need for moving the leader to reach expected final proposal state.
     if (proposal.hasLeaderAction()) {
       Node currentLeader = cluster.leaderFor(tp);
-      if (currentLeader != null && currentLeader.id() != proposal.newReplicas().get(0)) {
+      if (currentLeader != null && currentLeader.id() != proposal.newLeader()) {
         // Get the execution Id for the leader action proposal execution;
         long leaderActionExecutionId = _executionId.getAndIncrement();
         ExecutionTask leaderActionTask = new ExecutionTask(leaderActionExecutionId, proposal, LEADER_ACTION);

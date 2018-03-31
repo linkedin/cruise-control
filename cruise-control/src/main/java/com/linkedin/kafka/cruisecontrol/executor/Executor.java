@@ -443,9 +443,9 @@ public class Executor {
       Node leader = cluster.leaderFor(tp);
       switch (task.state()) {
         case IN_PROGRESS:
-          return (leader != null && leader.id() == task.proposal().newReplicas().get(0))
+          return (leader != null && leader.id() == task.proposal().newLeader())
                  || leader == null
-                 || !isInIsr(task.proposal().newReplicas().get(0), cluster, tp);
+                 || !isInIsr(task.proposal().newLeader(), cluster, tp);
         case ABORTING:
         case DEAD:
           return true;
@@ -490,7 +490,7 @@ public class Executor {
       // Only check tasks with IN_PROGRESS or ABORTING state.
       if (task.state() == IN_PROGRESS || task.state() == ABORTING) {
         if (task.type() == ExecutionTask.TaskType.LEADER_ACTION
-            && cluster.nodeById(task.proposal().newReplicas().get(0)) == null) {
+            && cluster.nodeById(task.proposal().newLeader()) == null) {
           _executionTaskManager.markTaskDead(task);
           LOG.warn("Killing execution for task {} because the target leader is down", task);
           return true;

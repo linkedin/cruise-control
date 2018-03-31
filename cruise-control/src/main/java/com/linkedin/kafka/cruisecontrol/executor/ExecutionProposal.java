@@ -129,6 +129,13 @@ public class ExecutionProposal {
   }
 
   /**
+   * @return the new leader of the partition after executing the proposal.
+   */
+  public int newLeader() {
+    return _newReplicas.get(0);
+  }
+
+  /**
    * @return the replica list of the partition before executing the proposal.
    */
   public List<Integer> oldReplicas() {
