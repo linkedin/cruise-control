@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSortedReplicas;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -16,14 +17,20 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
-import java.util.Collection;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
+import java.util.Objects;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.StringJoiner;
+import java.util.TreeSet;
+import java.util.function.ToDoubleFunction;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,8 +44,8 @@ import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaAssignerDiskUsageDistributionGoal.class);
   private static final double BALANCE_MARGIN = 0.9;
-  // If broker disk usage differ less than BROKER_EQUALITY_DELTA, consider them as equal -- i.e. no swap.
-  private static final double BROKER_EQUALITY_DELTA = 1.0;
+  // If broker disk usage differ less than USAGE_EQUALITY_DELTA, consider them as equal -- i.e. no swap.
+  private static final double USAGE_EQUALITY_DELTA = 0.0001;
   // Ensure that each convergence step due to replica swap is over REPLICA_CONVERGENCE_DELTA.
   private static final double REPLICA_CONVERGENCE_DELTA = 0.4;
   private BalancingConstraint _balancingConstraint;
@@ -83,22 +90,26 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     double upperThreshold = meanDiskUsage * (1 + balancePercentageWithMargin());
     double lowerThreshold = meanDiskUsage * Math.max(0, (1 - balancePercentageWithMargin()));
 
-    Comparator<Broker> comparator = (b1, b2) -> {
-      int result = Double.compare(diskUsage(b2), diskUsage(b1));
-      return result == 0 ? Integer.compare(b1.id(), b2.id()) : result;
-    };
+    // Create broker comparator in descending order of broker disk usage.
+    Comparator<BrokerAndSortedReplicas> brokerComparator =
+        Comparator.comparingDouble((ToDoubleFunction<BrokerAndSortedReplicas>) this::diskUsage)
+                  .thenComparingInt(bs -> bs.broker().id());
+    // Create replica comparator in ascending order of replica disk usage.
+    Comparator<Replica> replicaComparator = Comparator.comparingDouble(this::replicaSize).thenComparing(r -> r);
+
+    // create a sorted set for all the brokers.
+    SortedSet<BrokerAndSortedReplicas> allBrokers = new TreeSet<>(brokerComparator);
+    clusterModel.healthyBrokers().forEach(b -> allBrokers.add(new BrokerAndSortedReplicas(b, replicaComparator)));
 
     boolean improved;
     int numIterations = 0;
     do {
-      List<Broker> brokers = new ArrayList<>();
-      brokers.addAll(clusterModel.healthyBrokers());
-      brokers.sort(comparator);
-
       improved = false;
       LOG.debug("Starting iteration {}", numIterations);
-      for (Broker broker : brokers) {
-        if (checkAndOptimize(broker, clusterModel, meanDiskUsage, lowerThreshold, upperThreshold, excludedTopics)) {
+      // Create another list to avoid ConcurrentModificationException.
+      List<BrokerAndSortedReplicas> allBrokerAndSortedReplicas = new ArrayList<>(allBrokers);
+      for (BrokerAndSortedReplicas bas : allBrokerAndSortedReplicas) {
+        if (checkAndOptimize(allBrokers, bas, clusterModel, meanDiskUsage, lowerThreshold, upperThreshold, excludedTopics)) {
           improved = true;
         }
       }
@@ -150,7 +161,8 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   /**
    * Optimize the broker if the disk usage of the broker is not within the required range.
    *
-   * @param broker the broker to optimize
+   * @param allBrokers a sorted set of all the healthy brokers in the cluster.
+   * @param toOptimize the broker to optimize
    * @param clusterModel the cluster model
    * @param meanDiskUsage the average disk usage of the cluster
    * @param lowerThreshold the lower limit of the disk usage for a broker
@@ -160,39 +172,52 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @return true if an action has been taken to improve the disk usage of the broker, false when a broker cannot or
    * does not need to be improved further.
    */
-  private boolean checkAndOptimize(Broker broker,
+  private boolean checkAndOptimize(SortedSet<BrokerAndSortedReplicas> allBrokers,
+                                   BrokerAndSortedReplicas toOptimize,
                                    ClusterModel clusterModel,
                                    double meanDiskUsage,
                                    double lowerThreshold,
                                    double upperThreshold,
                                    Set<String> excludedTopics) {
     LOG.trace("Optimizing broker {}. BrokerDiskUsage = {}, meanDiskUsage = {}",
-              broker, diskUsage(broker), meanDiskUsage);
-    double brokerDiskUsage = diskUsage(broker);
+              toOptimize.broker(), diskUsage(toOptimize.broker()), meanDiskUsage);
+    double brokerDiskUsage = diskUsage(toOptimize.broker());
     boolean improved = false;
+    List<BrokerAndSortedReplicas> candidateBrokersToSwapWith;
+
     if (brokerDiskUsage > upperThreshold) {
-      LOG.debug("Broker {} disk usage {} is above upper threshold of {}", broker.id(), brokerDiskUsage, upperThreshold);
-      List<Broker> brokersAscend = clusterModel.sortedHealthyBrokersUnderThreshold(DISK, brokerDiskUsage);
-      for (Broker toSwapWith : brokersAscend) {
-        if (toSwapWith == broker || Math.abs(brokerSize(toSwapWith) - brokerSize(broker)) < BROKER_EQUALITY_DELTA) {
-          continue;
-        }
-        if (swapReplicas(broker, toSwapWith, meanDiskUsage, clusterModel, excludedTopics)) {
-          improved = true;
-          break;
-        }
-      }
+      LOG.debug("Broker {} disk usage {} is above upper threshold of {}",
+                toOptimize.broker().id(), brokerDiskUsage, upperThreshold);
+      // Get the brokers whose disk usage is less than the broker to optimize. The list is in ascending order based on
+      // broker disk usage.
+      candidateBrokersToSwapWith = new ArrayList<>(allBrokers.headSet(toOptimize));
+
     } else if (brokerDiskUsage < lowerThreshold) {
-      LOG.debug("Broker {} disk usage {} is below lower threshold of {}", broker.id(), brokerDiskUsage, lowerThreshold);
-      List<Broker> brokersDescend = sortedBrokersAboveSizeDescend(clusterModel, brokerDiskUsage);
-      for (Broker toSwapWith : brokersDescend) {
-        if (toSwapWith == broker || Math.abs(brokerSize(toSwapWith) - brokerSize(broker)) < BROKER_EQUALITY_DELTA) {
-          continue;
-        }
-        if (swapReplicas(broker, toSwapWith, meanDiskUsage, clusterModel, excludedTopics)) {
+      LOG.debug("Broker {} disk usage {} is below lower threshold of {}",
+                toOptimize.broker().id(), brokerDiskUsage, lowerThreshold);
+      // Get the brokers whose disk usage is more than the broker to optimize. The list is in descending order based on
+      // broker disk usage.
+      candidateBrokersToSwapWith = new ArrayList<>(allBrokers.tailSet(toOptimize));
+      Collections.reverse(candidateBrokersToSwapWith);
+    } else {
+      // Nothing to optimize.
+      return false;
+    }
+
+    for (BrokerAndSortedReplicas toSwapWith : candidateBrokersToSwapWith) {
+      if (toSwapWith == toOptimize || Math.abs(diskUsage(toSwapWith) - diskUsage(toOptimize)) < USAGE_EQUALITY_DELTA) {
+        continue;
+      }
+      // Remove the brokers involved in swap from the tree set before swap.
+      allBrokers.removeAll(Arrays.asList(toOptimize, toSwapWith));
+      try {
+        if (swapReplicas(toOptimize, toSwapWith, meanDiskUsage, clusterModel, excludedTopics)) {
           improved = true;
           break;
         }
+      } finally {
+        // Add the brokers back to the tree set after the swap.
+        allBrokers.addAll(Arrays.asList(toOptimize, toSwapWith));
       }
     }
     return improved;
@@ -212,41 +237,33 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @param excludedTopics the topics to exclude from swapping.
    * @return true if a swap has been done, false otherwise.
    */
-  boolean swapReplicas(Broker toSwap,
-                       Broker toSwapWith,
+  boolean swapReplicas(BrokerAndSortedReplicas toSwap,
+                       BrokerAndSortedReplicas toSwapWith,
                        double meanDiskUsage,
                        ClusterModel clusterModel,
                        Set<String> excludedTopics) {
     LOG.trace("Swapping replicas between broker {}({}) and broker {}({})",
-             toSwap.id(), brokerSize(toSwap), toSwapWith.id(), brokerSize(toSwapWith));
-    double sizeToChange = toSwap.capacityFor(DISK) * meanDiskUsage - brokerSize(toSwap);
-    List<ReplicaWrapper> sortedReplicasToSwap = sortReplicasAscend(toSwap.replicas(), excludedTopics);
-    List<ReplicaWrapper> sortedLeadersToSwapWith = sortReplicasAscend(toSwapWith.leaderReplicas(), excludedTopics);
-    List<ReplicaWrapper> sortedFollowersToSwapWith = sortReplicasAscend(followerReplicas(toSwapWith), excludedTopics);
+             toSwap.broker().id(), brokerSize(toSwap), toSwapWith.broker().id(), brokerSize(toSwapWith));
+    double sizeToChange = toSwap.broker().capacityFor(DISK) * meanDiskUsage - brokerSize(toSwap);
+    NavigableSet<ReplicaWrapper> sortedReplicasToSwap = sortReplicasAscend(toSwap, excludedTopics);
+    NavigableSet<ReplicaWrapper> sortedLeadersToSwapWith = sortReplicasAscend(toSwapWith, excludedTopics);
+    NavigableSet<ReplicaWrapper> sortedFollowersToSwapWith = sortedFollowerReplicas(toSwapWith, excludedTopics);
 
-    int startPos;
-    int delta;
-    if (sizeToChange > 0) {
-      // iterate from small replicas to large replicas.
-      startPos = 0;
-      delta = 1;
-    } else {
-      // iterate from large replicas to small replicas.
-      startPos = sortedReplicasToSwap.size() - 1;
-      delta = -1;
-    }
+    // Depending on whether we need more or less disk usage, using ascending or descending iterator.
+    Iterator<ReplicaWrapper> toSwapIter =
+        sizeToChange > 0 ? sortedReplicasToSwap.iterator() : sortedReplicasToSwap.descendingIterator();
 
-    for (int i = startPos; i >= 0 && i < sortedReplicasToSwap.size(); i += delta) {
-      Replica replicaToSwap = sortedReplicasToSwap.get(i).replica();
+    while (toSwapIter.hasNext()) {
+      Replica replicaToSwap = toSwapIter.next().replica();
       if (excludedTopics.contains(replicaToSwap.topicPartition().topic())) {
         continue;
       }
       // First make sure the replica is possible to be moved to the broker toSwapWith. If this check fails,
       // don't bother to search for replica to swap with.
-      if (!possibleToMove(replicaToSwap, toSwapWith, clusterModel)) {
+      if (!possibleToMove(replicaToSwap, toSwapWith.broker(), clusterModel)) {
         continue;
       }
-      List<ReplicaWrapper> sortedReplicasToSwapWith =
+      NavigableSet<ReplicaWrapper> sortedReplicasToSwapWith =
           replicaToSwap.isLeader() ? sortedLeadersToSwapWith : sortedFollowersToSwapWith;
       double sizeToSwap = replicaSize(replicaToSwap);
       // No need to continue if we are trying to reduce the size and the replicas to swap out is of size 0.
@@ -277,12 +294,12 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
         // requirement 1
         minSize = sizeToSwap;
         // requirement 2
-        double maxSizeOfBrokerToSwap = diskUsage(toSwapWith) * toSwap.capacityFor(DISK);
+        double maxSizeOfBrokerToSwap = diskUsage(toSwapWith) * toSwap.broker().capacityFor(DISK);
         double currentSizeOfBrokerToSwap = brokerSize(toSwap);
         // after given out the sizeToSwap, the maximum size the broker toSwap can take in.
         maxSize = Math.min(maxSize, maxSizeOfBrokerToSwap - (currentSizeOfBrokerToSwap - sizeToSwap));
         // requirement 3
-        double minSizeOfBrokerToSwapWith = diskUsage(toSwap) * toSwapWith.capacityFor(DISK);
+        double minSizeOfBrokerToSwapWith = diskUsage(toSwap) * toSwapWith.broker().capacityFor(DISK);
         double currentSizeOfBrokerToSwapWith = brokerSize(toSwapWith);
         // after take in the sizeToSwap, the maximum size the broker toSwapWith can give out.
         maxSize = Math.min(maxSize, (currentSizeOfBrokerToSwapWith + sizeToSwap) - minSizeOfBrokerToSwapWith);
@@ -290,16 +307,20 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
         // requirement 4
         maxSize = sizeToSwap;
         // requirement 5
-        double minSizeOfBrokerToSwap = diskUsage(toSwapWith) * toSwap.capacityFor(DISK);
+        double minSizeOfBrokerToSwap = diskUsage(toSwapWith) * toSwap.broker().capacityFor(DISK);
         double currentSizeOfBrokerToSwap = brokerSize(toSwap);
         // After give out the sizeToSwap, the minimum size the broker toSwap should take in.
         minSize = Math.max(minSize, minSizeOfBrokerToSwap - (currentSizeOfBrokerToSwap - sizeToSwap));
         // requirement 6
-        double maxSizeOfBrokerToSwapWith = diskUsage(toSwap) * toSwapWith.capacityFor(DISK);
+        double maxSizeOfBrokerToSwapWith = diskUsage(toSwap) * toSwapWith.broker().capacityFor(DISK);
         double currentSizeOfBrokerToSwapWith = brokerSize(toSwapWith);
         // after take in the sizeToSwap, the minimum size the broker toSwapWith should give out.
         minSize = Math.max(minSize, (currentSizeOfBrokerToSwapWith + sizeToSwap) - maxSizeOfBrokerToSwapWith);
       }
+
+      // Add the delta to the min and max size.
+      minSize += REPLICA_CONVERGENCE_DELTA;
+      maxSize -= REPLICA_CONVERGENCE_DELTA;
 
       // The target size might be negative here. It would still work for our binary search purpose.
       double targetSize = sizeToSwap + sizeToChange;
@@ -311,15 +332,19 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
                                   findReplicaToSwapWith(replicaToSwap, sortedReplicasToSwapWith, targetSize, minSize, maxSize, clusterModel);
       if (replicaToSwapWith != null) {
         LOG.debug("Found replica to swap. Swapping {}({}) on broker {}({}) and {}({}) on broker {}({})",
-                  replicaToSwap.topicPartition(), replicaSize(replicaToSwap), toSwap.id(), brokerSize(toSwap),
-                  replicaToSwapWith.topicPartition(), replicaSize(replicaToSwapWith), toSwapWith.id(),
-                  brokerSize(toSwapWith));
-        clusterModel.relocateReplica(replicaToSwapWith.topicPartition(), toSwapWith.id(), toSwap.id());
-        clusterModel.relocateReplica(replicaToSwap.topicPartition(), toSwap.id(), toSwapWith.id());
+                  replicaToSwap.topicPartition(), replicaSize(replicaToSwap), toSwap.broker().id(),
+                  brokerSize(toSwap), replicaToSwapWith.topicPartition(), replicaSize(replicaToSwapWith),
+                  toSwapWith.broker().id(), brokerSize(toSwapWith));
+        clusterModel.relocateReplica(replicaToSwapWith.topicPartition(), toSwapWith.broker().id(), toSwap.broker().id());
+        clusterModel.relocateReplica(replicaToSwap.topicPartition(), toSwap.broker().id(), toSwapWith.broker().id());
+        toSwap.sortedReplicas().remove(replicaToSwap);
+        toSwap.sortedReplicas().add(replicaToSwapWith);
+        toSwapWith.sortedReplicas().remove(replicaToSwapWith);
+        toSwapWith.sortedReplicas().add(replicaToSwap);
         return true;
       }
     }
-    LOG.trace("Nothing to swap between broker {} and broker {}", toSwap.id(), toSwapWith.id());
+    LOG.trace("Nothing to swap between broker {} and broker {}", toSwap.broker().id(), toSwapWith.broker().id());
     return false;
   }
 
@@ -337,66 +362,72 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * @return the replica that can be swapped with the given replica, null otherwise.
    */
   Replica findReplicaToSwapWith(Replica replica,
-                                List<ReplicaWrapper> sortedReplicasToSearch,
+                                NavigableSet<ReplicaWrapper> sortedReplicasToSearch,
                                 double targetSize,
                                 double minSize,
                                 double maxSize,
                                 ClusterModel clusterModel) {
-    int pos = findReplicaPos(sortedReplicasToSearch, targetSize, 0);
-    int minPos = findReplicaPos(sortedReplicasToSearch, minSize, 1);
-    int maxPos = findReplicaPos(sortedReplicasToSearch, maxSize, -1);
-    if (minPos > maxPos) {
-      // This check also ensures that both minPos and maxPos are within the valid index range for the given list [0, n-1].
+    if (minSize > maxSize) {
       return null;
     }
-    // It is possible that the target size is out of the range of minSize and maxSize. In that case, we make it become
-    // the closest one in range.
-    pos = Math.max(pos, minPos);
-    pos = Math.min(pos, maxPos);
 
-    // The following logic starts from pos and searches higher and lower position until it finds a replica that
-    // is eligible to swap with.
-    int low = pos;
-    int high = pos;
-    while (pos >= minPos && pos <= maxPos) {
-      Replica toSwapWith = sortedReplicasToSearch.get(pos).replica();
-      if (canSwap(replica, sortedReplicasToSearch.get(pos).replica(), clusterModel)) {
-        // found the candidate.
-        return toSwapWith;
-      } else {
-        // get the next position.
-        pos = findNextPos(sortedReplicasToSearch, targetSize, low - 1, high + 1, minPos, maxPos);
-        if (pos == low - 1) {
-          low--;
-        } else {
-          high++;
-        }
-      }
+    // Within the candidate replicas, find the replicas whose size falls into [minSize, maxSize], not inclusive.
+    NavigableSet<ReplicaWrapper> candidates = sortedReplicasToSearch.subSet(ReplicaWrapper.greaterThan(minSize),
+                                                                            false,
+                                                                            ReplicaWrapper.lessThan(maxSize),
+                                                                            false);
+    // No candidate available, just return null.
+    if (candidates.isEmpty()) {
+      return null;
     }
-    return null;
-  }
-
-  /**
-   * Find the next position between the provided low and high position, whichever is closer to the target size.
-   *
-   * @param sortedReplicas the replica list sorted in ascending order based on size.
-   * @param targetSize the target size of replica to search
-   * @param low the low pointer candidate
-   * @param high the high pointer candidate
-   * @param minPos the minimum allowed position
-   * @param maxPos the maximum allowed position
-   *
-   * @return the position chosen between high and low.
-   */
-  private int findNextPos(List<ReplicaWrapper> sortedReplicas, double targetSize, int low, int high, int minPos, int maxPos) {
-    if (low < minPos) {
-      return high;
-    } else if (high > maxPos) {
-      return low;
+    // The iterator for replicas from [targetSize (inclusive), maxSize (exclusive)]
+    Iterator<ReplicaWrapper> ascendingLargerIter = null;
+    // The iterator for replicas from [minSize (exclusive), targetSize (inclusive)]
+    Iterator<ReplicaWrapper> descendingLessIter = null;
+    // Check if the target size falls in the range or not. This is needed to avoid passing invalid targetSize to
+    // the tailSet() or headSet().
+    if (targetSize <= minSize) {
+      ascendingLargerIter = candidates.iterator();
+    } else if (targetSize >= maxSize) {
+      descendingLessIter = candidates.descendingIterator();
     } else {
-      double leftSizeDiff = Math.abs(replicaSize(sortedReplicas.get(low).replica()) - targetSize);
-      double rightSizeDiff = Math.abs(replicaSize(sortedReplicas.get(high).replica()) - targetSize);
-      return leftSizeDiff <= rightSizeDiff ? low : high;
+      ascendingLargerIter = candidates.tailSet(ReplicaWrapper.greaterThanOrEqualsTo(targetSize), true).iterator();
+      descendingLessIter = candidates.headSet(ReplicaWrapper.lessThanOrEqualsTo(targetSize), true).descendingIterator();
+    }
+
+    // Advance the ascending and descending iterator in the ascending order of their distance from target size,
+    // return the first replica that can swap. Otherwise return null.
+    ReplicaWrapper low = null;
+    ReplicaWrapper high = null;
+    ReplicaWrapper candidateReplica = null;
+    while (true) {
+      // The last checked replica is from the high end, advance the ascending iterator.
+      if (candidateReplica == high) {
+        high = ascendingLargerIter != null && ascendingLargerIter.hasNext() ? ascendingLargerIter.next() : null;
+      }
+      // The last checked replica is from the low end, advance the descending iterator.
+      if (candidateReplica == low) {
+        low = descendingLessIter != null && descendingLessIter.hasNext() ? descendingLessIter.next() : null;
+      }
+
+      // No more replicas to check, give up.
+      if (high == null && low == null) {
+        return null;
+      } else if (high == null) {
+        // Use the lower end
+        candidateReplica = low;
+      } else if (low == null) {
+        // Use the higher end
+        candidateReplica = high;
+      } else {
+        // pick a replica closer to the target.
+        double lowDiff = targetSize - low.size();
+        double highDiff = high.size() - targetSize;
+        candidateReplica = lowDiff <= highDiff ? low : high;
+      }
+      if (canSwap(replica, candidateReplica.replica(), clusterModel)) {
+        return candidateReplica.replica();
+      }
     }
   }
 
@@ -442,112 +473,26 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   }
 
   /**
-   * Find the position of the target size in the sorted replica list. The position is the index of the replica whose
-   * size is closest to but greater than (or less than) the target size.
-   *
-   * @param sortedReplicas the replica list sorted in ascending order based on the size.
-   * @param targetSize the replica size to find.
-   * @param shiftOnExactMatch the position to shift if there is an exact match. The value should be 1 or 0 or -1.
-   *                          When the value is 1, the method returns the position of the first replica whose size is
-   *                          greater than the target size.
-   *                          When the value is 0, the method returns the position of the first replica whose size is
-   *                          greater than or equals to the target size.
-   *                          When the value is -1, the method returns the position of the replica whose size is
-   *                          just less than the target size.
-   *
-   * @return the index of the replica whose size is closest but greater than or equals to (shiftOnExactMatch = 0)
-   * or greater than (shiftOnExactMatch = 1) or less than (shiftOnExactMatch = -1) the target size.
-   */
-  private int findReplicaPos(List<ReplicaWrapper> sortedReplicas, double targetSize, int shiftOnExactMatch) {
-    if (shiftOnExactMatch != 1 && shiftOnExactMatch != -1 && shiftOnExactMatch != 0) {
-      throw new IllegalArgumentException("The shiftOnExactMatch value must be in {-1, 0, 1}");
-    }
-    int index = Collections.binarySearch(sortedReplicas, new ReplicaWrapper(null, targetSize),
-                                         Comparator.comparingDouble(ReplicaWrapper::size));
-    int checkIndex;
-    switch (shiftOnExactMatch) {
-      case -1:
-        checkIndex = index >= 0 ? index : Math.min(-(index + 1), sortedReplicas.size() - 1);
-        // Check if the actual value is sufficiently smaller than the given target size. If not move left.
-        // The returned index is in [-1, (n-1)].
-        while (checkIndex >= 0) {
-          Replica r = sortedReplicas.get(checkIndex).replica();
-          if (replicaSize(r) < targetSize - REPLICA_CONVERGENCE_DELTA) {
-            break;
-          }
-          checkIndex--;
-        }
-        return checkIndex;
-      case 1:
-        checkIndex = index >= 0 ? index : Math.min(-(index + 1), sortedReplicas.size() - 1);
-        // Check if the actual value is sufficiently larger than the given target size. If not move right.
-        // The returned index is in [0, n].
-        while (checkIndex < sortedReplicas.size()) {
-          Replica r = sortedReplicas.get(checkIndex).replica();
-          if (replicaSize(r) > targetSize + REPLICA_CONVERGENCE_DELTA) {
-            break;
-          }
-          checkIndex++;
-        }
-        return checkIndex;
-      case 0:
-        if (index >= 0) {
-          // Found an exact match. No action needed. The returned index is in [0, (n-1)].
-          return index;
-        } else {
-          // If cannot find the exact match, use the neighbor closest to the target size.
-          // The returned index is in [0, (n-1)].
-          int rightIndex = -(index + 1);
-          if (rightIndex == sortedReplicas.size()) {
-            return sortedReplicas.size() - 1;
-          } else if (rightIndex == 0) {
-            return 0;
-          } else {
-            double leftSizeDiff = Math.abs(replicaSize(sortedReplicas.get(rightIndex - 1).replica()) - targetSize);
-            double rightSizeDiff = Math.abs(replicaSize(sortedReplicas.get(rightIndex).replica()) - targetSize);
-            return leftSizeDiff <= rightSizeDiff ? rightIndex - 1 : rightIndex;
-          }
-        }
-      default:
-        throw new IllegalStateException("Invalid shift on exact match value " + shiftOnExactMatch);
-    }
-  }
-
-  private List<Broker> sortedBrokersAboveSizeDescend(ClusterModel clusterModel, double aboveUsage) {
-    List<Broker> sortedBrokersDescend = new ArrayList<>();
-    List<Broker> sortedBrokersAscend = clusterModel.sortedHealthyBrokersUnderThreshold(DISK, Double.MAX_VALUE);
-    for (int i = sortedBrokersAscend.size() - 1; i >= 0; i--) {
-      Broker broker = sortedBrokersAscend.get(i);
-      if (diskUsage(broker) <= aboveUsage) {
-        break;
-      }
-      sortedBrokersDescend.add(sortedBrokersAscend.get(i));
-    }
-    return sortedBrokersDescend;
-  }
-
-  /**
    * We cannot use {@link Broker#sortedReplicas(Resource)} because the that prioritize the immigrant replicas.
    */
-  private List<ReplicaWrapper> sortReplicasAscend(Collection<Replica> replicas, Set<String> excludedTopics) {
-    List<ReplicaWrapper> sortedReplicas = new ArrayList<>();
-    replicas.forEach(r -> {
+  private NavigableSet<ReplicaWrapper> sortReplicasAscend(BrokerAndSortedReplicas bas, Set<String> excludedTopics) {
+    NavigableSet<ReplicaWrapper> sortedReplicas = new TreeSet<>();
+    bas.sortedReplicas().forEach(r -> {
       if (!excludedTopics.contains(r.topicPartition().topic())) {
         sortedReplicas.add(new ReplicaWrapper(r, replicaSize(r)));
       }
     });
-    sortedReplicas.sort(Comparator.comparingDouble(ReplicaWrapper::size));
     return sortedReplicas;
   }
 
-  private List<Replica> followerReplicas(Broker broker) {
-    List<Replica> followers = new ArrayList<>();
-    broker.replicas().forEach(r -> {
-      if (!r.isLeader()) {
-        followers.add(r);
+  private NavigableSet<ReplicaWrapper> sortedFollowerReplicas(BrokerAndSortedReplicas bas, Set<String> excludedTopics) {
+    NavigableSet<ReplicaWrapper> sortedFollowers = new TreeSet<>();
+    bas.sortedReplicas().forEach(r -> {
+      if (!r.isLeader() || excludedTopics.contains(r.topicPartition().topic())) {
+        sortedFollowers.add(new ReplicaWrapper(r, replicaSize(r)));
       }
     });
-    return followers;
+    return sortedFollowers;
   }
 
   @Override
@@ -565,6 +510,10 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     return KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName();
   }
 
+  private double diskUsage(BrokerAndSortedReplicas bas) {
+    return bas.broker().load().expectedUtilizationFor(DISK) / bas.broker().capacityFor(DISK);
+  }
+
   private double diskUsage(Broker broker) {
     return broker.load().expectedUtilizationFor(DISK) / broker.capacityFor(DISK);
   }
@@ -573,8 +522,8 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     return replica.load().expectedUtilizationFor(DISK);
   }
 
-  private double brokerSize(Broker broker) {
-    return diskUsage(broker) * broker.capacityFor(DISK);
+  private double brokerSize(BrokerAndSortedReplicas bas) {
+    return diskUsage(bas) * bas.broker().capacityFor(DISK);
   }
 
   /**
@@ -620,7 +569,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
    * A class that helps host partition and its
    * package private for unit tests.
    */
-  static class ReplicaWrapper {
+  static class ReplicaWrapper implements Comparable<ReplicaWrapper> {
     private final Replica _replica;
     private final double _size;
 
@@ -635,6 +584,52 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
 
     private Replica replica() {
       return _replica;
+    }
+
+    @Override
+    public int compareTo(ReplicaWrapper o) {
+      if (o == null) {
+        throw new IllegalArgumentException("Cannot compare to a null object.");
+      }
+      int result = Double.compare(this.size(), o.size());
+      if (result != 0) {
+        return result;
+      } else {
+        if (this.replica() == Replica.MAX_REPLICA || o.replica() == Replica.MIN_REPLICA) {
+          return 1;
+        } else if (this.replica() == Replica.MIN_REPLICA || o.replica() == Replica.MAX_REPLICA) {
+          return -1;
+        } else {
+          return this.replica().compareTo(o.replica());
+        }
+      }
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+      return obj != null && obj instanceof ReplicaWrapper && ((ReplicaWrapper) obj).size() == _size
+          && ((ReplicaWrapper) obj).replica().equals(_replica);
+    }
+
+    @Override
+    public int hashCode() {
+      return Objects.hash(_replica, _size);
+    }
+
+    private static ReplicaWrapper greaterThanOrEqualsTo(double size) {
+      return new ReplicaWrapper(Replica.MIN_REPLICA, size);
+    }
+
+    private static ReplicaWrapper greaterThan(double size) {
+      return new ReplicaWrapper(Replica.MAX_REPLICA, size);
+    }
+
+    private static ReplicaWrapper lessThanOrEqualsTo(double size) {
+      return new ReplicaWrapper(Replica.MAX_REPLICA, size);
+    }
+
+    private static ReplicaWrapper lessThan(double size) {
+      return new ReplicaWrapper(Replica.MIN_REPLICA, size);
     }
   }
 }

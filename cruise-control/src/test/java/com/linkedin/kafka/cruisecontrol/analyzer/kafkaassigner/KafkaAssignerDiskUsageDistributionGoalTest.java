@@ -7,19 +7,22 @@ package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSortedReplicas;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableSet;
 import java.util.Properties;
+import java.util.TreeSet;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
@@ -125,39 +128,28 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal(balancingConstraint);
     ClusterModel clusterModel = createClusterModel();
 
+    Comparator<Replica> replicaComparator =
+        Comparator.comparingDouble((Replica r) -> r.load().expectedUtilizationFor(DISK))
+                  .thenComparing(r -> r);
+
     double meanDiskUsage = clusterModel.load().expectedUtilizationFor(DISK) / clusterModel.capacityFor(DISK);
-    assertTrue(goal.swapReplicas(clusterModel.broker(0),
-                                 clusterModel.broker(1),
+    assertTrue(goal.swapReplicas(new BrokerAndSortedReplicas(clusterModel.broker(0), replicaComparator),
+                                 new BrokerAndSortedReplicas(clusterModel.broker(1), replicaComparator),
                                  meanDiskUsage,
                                  clusterModel,
                                  Collections.emptySet()));
 
-    assertFalse(goal.swapReplicas(clusterModel.broker(0),
-                                  clusterModel.broker(2),
+    assertFalse(goal.swapReplicas(new BrokerAndSortedReplicas(clusterModel.broker(0), replicaComparator),
+                                  new BrokerAndSortedReplicas(clusterModel.broker(2), replicaComparator),
                                   meanDiskUsage,
                                   clusterModel,
                                   Collections.emptySet()));
 
-    assertTrue(goal.swapReplicas(clusterModel.broker(2),
-                                 clusterModel.broker(3),
+    assertTrue(goal.swapReplicas(new BrokerAndSortedReplicas(clusterModel.broker(2), replicaComparator),
+                                 new BrokerAndSortedReplicas(clusterModel.broker(3), replicaComparator),
                                  meanDiskUsage,
                                  clusterModel,
                                  Collections.emptySet()));
-  }
-
-  @Test
-  public void test() {
-    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(10L));
-    props.setProperty(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG, "1.05");
-    BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
-    KafkaAssignerDiskUsageDistributionGoal goal = new KafkaAssignerDiskUsageDistributionGoal(balancingConstraint);
-    ClusterModel clusterModel = createClusterModel();
-
-    goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
-    for (Broker b : clusterModel.brokers()) {
-      System.out.println("Broker " + b.id() + " = " + b.load().expectedUtilizationFor(DISK));
-    }
   }
 
   private void findReplicaToSwapWithAndVerify(List<Double> targetSizes,
@@ -179,11 +171,9 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
     }
   }
 
-  private List<KafkaAssignerDiskUsageDistributionGoal.ReplicaWrapper> sortedReplicaAscend(Broker broker) {
-    List<KafkaAssignerDiskUsageDistributionGoal.ReplicaWrapper> sortedReplicas = new ArrayList<>();
-    List<Replica> replicasInDesc = broker.sortedReplicas(DISK);
-    for (int i = replicasInDesc.size() - 1; i >= 0; i--) {
-      Replica r = replicasInDesc.get(i);
+  private NavigableSet<KafkaAssignerDiskUsageDistributionGoal.ReplicaWrapper> sortedReplicaAscend(Broker broker) {
+    NavigableSet<KafkaAssignerDiskUsageDistributionGoal.ReplicaWrapper> sortedReplicas = new TreeSet<>();
+    for (Replica r : broker.replicas()) {
       sortedReplicas.add(new KafkaAssignerDiskUsageDistributionGoal.ReplicaWrapper(r, r.load().expectedUtilizationFor(DISK)));
     }
     return sortedReplicas;

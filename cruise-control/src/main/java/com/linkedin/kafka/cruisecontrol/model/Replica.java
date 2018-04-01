@@ -24,6 +24,9 @@ import org.apache.kafka.common.TopicPartition;
  * object is created as part of a broker structure.
  */
 public class Replica implements Serializable, Comparable<Replica> {
+  // Two static final variables for comparison purpose.
+  public static final Replica MIN_REPLICA = new Replica(null, null, false);
+  public static final Replica MAX_REPLICA = new Replica(null, null, false);
   private final TopicPartition _tp;
   private final Load _load;
   private final Broker _originalBroker;
