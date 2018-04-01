@@ -54,7 +54,7 @@ class TrainingFetcher extends MetricFetcher {
 
     try {
       MetricSampler.Samples samples =
-          _metricSampler.getSamples(_cluster, _assignedPartitions, _startTimeMs, _endTimeMs, 
+          _metricSampler.getSamples(_cluster, _assignedPartitions, _startTimeMs, _endTimeMs,
                                     MetricSampler.SamplingMode.BROKER_METRICS_ONLY, _metricDef);
       ModelParameters.addMetricObservation(samples.brokerMetricSamples());
 

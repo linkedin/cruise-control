@@ -24,7 +24,9 @@ import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
@@ -65,9 +67,10 @@ public class LoadMonitor {
   // Kafka Load Monitor server log.
   private static final Logger LOG = LoggerFactory.getLogger(LoadMonitor.class);
   private static final long METADATA_TTL = 5000L;
-  private final int _numWindows;
+  private final int _numPartitionMetricSampleWindows;
   private final LoadMonitorTaskRunner _loadMonitorTaskRunner;
   private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
+  private final KafkaBrokerMetricSampleAggregator _brokerMetricSampleAggregator;
   // A semaphore to help throttle the simultaneous cluster model creation
   private final Semaphore _clusterModelSemaphore;
   private final MetadataClient _metadataClient;
@@ -125,9 +128,11 @@ public class LoadMonitor {
 
     _brokerCapacityConfigResolver = config.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
                                                                  BrokerCapacityConfigResolver.class);
-    _numWindows = config.getInt(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG);
+    _numPartitionMetricSampleWindows = config.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
 
     _partitionMetricSampleAggregator = new KafkaPartitionMetricSampleAggregator(config, metadataClient.metadata());
+
+    _brokerMetricSampleAggregator = new KafkaBrokerMetricSampleAggregator(config);
 
     _acquiredClusterModelSemaphore = ThreadLocal.withInitial(() -> false);
 
@@ -140,8 +145,8 @@ public class LoadMonitor {
         MonitorUtils.combineLoadRequirementOptions(AnalyzerUtils.getGoalMapByPriority(config).values());
 
     _loadMonitorTaskRunner =
-        new LoadMonitorTaskRunner(config, _partitionMetricSampleAggregator, _metadataClient, metricDef, time,
-                                  dropwizardMetricRegistry);
+        new LoadMonitorTaskRunner(config, _partitionMetricSampleAggregator, _brokerMetricSampleAggregator,
+                                  _metadataClient, metricDef, time, dropwizardMetricRegistry);
     _clusterModelCreationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("LoadMonitor",
                                                                                      "cluster-model-creation-timer"));
     SensorUpdater sensorUpdater = new SensorUpdater();
@@ -195,15 +200,14 @@ public class LoadMonitor {
         _partitionMetricSampleAggregator.partitionCoverageByWindows(clusterAndGeneration);
 
     // Get valid snapshot window number and populate the monitored partition map.
-    // We do this primarily because the checker and aggregator are not always synchronized.
     SortedSet<Long> validWindows = _partitionMetricSampleAggregator.validWindows(clusterAndGeneration,
-                                                                        minMonitoredPartitionsPercentage);
+                                                                                 minMonitoredPartitionsPercentage);
     int numValidSnapshotWindows = validWindows.size();
 
     // Get the number of valid partitions and sample extrapolations.
     int numValidPartitions = 0;
     Map<TopicPartition, List<SampleExtrapolation>> extrapolations = Collections.emptyMap();
-    if (_partitionMetricSampleAggregator.numAvailableWindows() >= _numWindows) {
+    if (_partitionMetricSampleAggregator.numAvailableWindows() >= _numPartitionMetricSampleWindows) {
       try {
         MetricSampleAggregationResult<String, PartitionEntity> metricSampleAggregationResult =
             _partitionMetricSampleAggregator.aggregate(clusterAndGeneration, Long.MAX_VALUE, operationProgress);
@@ -491,9 +495,20 @@ public class LoadMonitor {
   }
 
   /**
+   * @return all the available broker level metrics. Null is returned if nothing is available.
+   */
+  public MetricSampleAggregationResult<String, BrokerEntity> brokerMetrics() {
+    Set<BrokerEntity> brokerEntities = new HashSet<>();
+    for (Node node : _metadataClient.cluster().nodes()) {
+      brokerEntities.add(new BrokerEntity(node.host(), node.id()));
+    }
+    return _brokerMetricSampleAggregator.aggregate(brokerEntities);
+  }
+
+  /**
    * Package private for unit test.
    */
-  KafkaPartitionMetricSampleAggregator aggregator() {
+  KafkaPartitionMetricSampleAggregator partitionSampleAggregator() {
     return _partitionMetricSampleAggregator;
   }
 
