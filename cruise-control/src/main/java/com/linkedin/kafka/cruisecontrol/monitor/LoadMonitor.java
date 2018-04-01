@@ -353,6 +353,24 @@ public class LoadMonitor {
   }
 
   /**
+   * Get the latest metric values of the brokers. The metric values are from the current active metric window.
+   *
+   * @return the latest metric values of brokers.
+   */
+  public Map<BrokerEntity, ValuesAndExtrapolations> currentBrokerMetricValues() {
+    return _brokerMetricSampleAggregator.peekCurrentWindow();
+  }
+
+  /**
+   * Get the latest metric values of the partitions. The metric values are from the current active metric window.
+   *
+   * @return the latest metric values of partitions.
+   */
+  public Map<PartitionEntity, ValuesAndExtrapolations> currentPartitionMetricValues() {
+    return _partitionMetricSampleAggregator.peekCurrentWindow();
+  }
+
+  /**
    * Get the most recent cluster load model before the given timestamp.
    *
    * @param now The current time in millisecond.
@@ -488,8 +506,8 @@ public class LoadMonitor {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
     int availableNumSnapshots =
         _partitionMetricSampleAggregator.validWindows(clusterAndGeneration,
-                                             requirements.minMonitoredPartitionsPercentage())
-                               .size();
+                                                      requirements.minMonitoredPartitionsPercentage())
+                                        .size();
     int requiredSnapshot = requirements.minRequiredNumWindows();
     return availableNumSnapshots >= requiredSnapshot;
   }
