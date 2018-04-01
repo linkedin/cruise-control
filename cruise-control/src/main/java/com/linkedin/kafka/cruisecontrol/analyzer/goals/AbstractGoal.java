@@ -56,7 +56,7 @@ public abstract class AbstractGoal implements Goal {
   @Override
   public void configure(Map<String, ?> configs) {
     _balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(configs, false));
-    String numWindowsString = (String) configs.get(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG);
+    String numWindowsString = (String) configs.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
     if (numWindowsString != null && !numWindowsString.isEmpty()) {
       _numWindows = Integer.parseInt(numWindowsString);
     }

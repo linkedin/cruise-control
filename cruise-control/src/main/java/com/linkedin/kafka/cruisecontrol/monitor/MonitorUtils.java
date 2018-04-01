@@ -40,7 +40,7 @@ public class MonitorUtils {
    * </ul>
    *
    * If linear regression model is not used, CPU utilization of the follower will be fixed to be 0.2;
-   * 
+   *
    * @param aggregatedMetricValues the leader aggregated metric values to convert.
    */
   public static AggregatedMetricValues toFollowerMetricValues(AggregatedMetricValues aggregatedMetricValues) {
@@ -128,8 +128,8 @@ public class MonitorUtils {
 
   public static int totalNumPartitions(Cluster cluster) {
     int totalNumPartitions = 0;
-    for (Node node : cluster.nodes()) {
-      totalNumPartitions += cluster.partitionsForNode(node.id()).size();
+    for (String topic : cluster.topics()) {
+      totalNumPartitions += cluster.partitionCountForTopic(topic);
     }
     return totalNumPartitions;
   }

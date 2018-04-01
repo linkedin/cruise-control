@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,6 +37,7 @@ import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
+import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -85,16 +87,19 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
     MockPartitionMetricSampleAggregator mockPartitionMetricSampleAggregator =
         new MockPartitionMetricSampleAggregator(config, metadata);
+    KafkaBrokerMetricSampleAggregator mockBrokerMetricSampleAggregator =
+        EasyMock.mock(KafkaBrokerMetricSampleAggregator.class);
     List<MetricSampler> samplers = new ArrayList<>();
     MetricRegistry dropwizardMetricRegistry = new MetricRegistry();
     for (int i = 0; i < NUM_METRIC_FETCHERS; i++) {
       samplers.add(new MockSampler(0));
     }
     MetricFetcherManager fetcherManager =
-        new MetricFetcherManager(config, mockPartitionMetricSampleAggregator, metadataClient, METRIC_DEF, TIME,
-                                 dropwizardMetricRegistry, samplers);
+        new MetricFetcherManager(config, mockPartitionMetricSampleAggregator, mockBrokerMetricSampleAggregator,
+                                 metadataClient, METRIC_DEF, TIME, dropwizardMetricRegistry, samplers);
     LoadMonitorTaskRunner loadMonitorTaskRunner =
-        new LoadMonitorTaskRunner(config, fetcherManager, mockPartitionMetricSampleAggregator, metadataClient, TIME);
+        new LoadMonitorTaskRunner(config, fetcherManager, mockPartitionMetricSampleAggregator,
+                                  mockBrokerMetricSampleAggregator, metadataClient, TIME);
     while (metadata.fetch().topics().size() < NUM_TOPICS) {
       Thread.sleep(10);
       metadataClient.refreshMetadata();
@@ -131,16 +136,19 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     MetadataClient metadataClient = new MetadataClient(config, metadata, -1L, TIME);
     MockPartitionMetricSampleAggregator mockMetricSampleAggregator =
         new MockPartitionMetricSampleAggregator(config, metadata);
+    KafkaBrokerMetricSampleAggregator mockBrokerMetricSampleAggregator =
+        EasyMock.mock(KafkaBrokerMetricSampleAggregator.class);
     List<MetricSampler> samplers = new ArrayList<>();
     MetricRegistry dropwizardMetricRegistry = new MetricRegistry();
     for (int i = 0; i < NUM_METRIC_FETCHERS; i++) {
       samplers.add(new MockSampler(i));
     }
     MetricFetcherManager fetcherManager =
-        new MetricFetcherManager(config, mockMetricSampleAggregator, metadataClient, METRIC_DEF, TIME,
-                                 dropwizardMetricRegistry, samplers);
+        new MetricFetcherManager(config, mockMetricSampleAggregator, mockBrokerMetricSampleAggregator, metadataClient,
+                                 METRIC_DEF, TIME, dropwizardMetricRegistry, samplers);
     LoadMonitorTaskRunner loadMonitorTaskRunner =
-        new LoadMonitorTaskRunner(config, fetcherManager, mockMetricSampleAggregator, metadataClient, TIME);
+        new LoadMonitorTaskRunner(config, fetcherManager, mockMetricSampleAggregator, mockBrokerMetricSampleAggregator,
+                                  metadataClient, TIME);
     while (metadata.fetch().topics().size() < 100) {
       metadataClient.refreshMetadata();
     }
@@ -170,18 +178,18 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   private Properties getLoadMonitorProperties() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
-    props.setProperty(KafkaCruiseControlConfig.METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
-    props.setProperty(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG, Integer.toString(NUM_WINDOWS));
+    props.setProperty(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
+    props.setProperty(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(NUM_WINDOWS));
     // The configuration does not matter here, we pass in the fetcher explicitly.
     props.setProperty(KafkaCruiseControlConfig.METRIC_SAMPLER_CLASS_CONFIG, MockSampler.class.getName());
     props.setProperty(KafkaCruiseControlConfig.NUM_METRIC_FETCHERS_CONFIG, Integer.toString(NUM_METRIC_FETCHERS));
-    props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_METRICS_WINDOW_CONFIG, "2");
+    props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG, "2");
     props.setProperty(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG, Long.toString(SAMPLING_INTERVAL));
     props.setProperty(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
     return props;
   }
 
-  // A simple metric sampler that increment the mock time by 1 and
+  // A simple metric sampler that increment the mock time by 1
   private class MockSampler implements MetricSampler {
     private int _exceptionsLeft = 0;
 

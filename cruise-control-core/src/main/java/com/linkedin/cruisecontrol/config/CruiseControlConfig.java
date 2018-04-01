@@ -63,17 +63,20 @@ public class CruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.LONG,
                 60 * 60 * 1000,
                 atLeast(1),
-                ConfigDef.Importance.HIGH, METRICS_WINDOW_MS_DOC)
+                ConfigDef.Importance.HIGH,
+                METRICS_WINDOW_MS_DOC)
         .define(NUM_METRICS_WINDOWS_CONFIG,
                 ConfigDef.Type.INT,
                 5,
                 atLeast(1),
-                ConfigDef.Importance.HIGH, NUM_METRICS_WINDOWS_DOC)
+                ConfigDef.Importance.HIGH,
+                NUM_METRICS_WINDOWS_DOC)
         .define(MIN_SAMPLES_PER_METRICS_WINDOW_CONFIG,
                 ConfigDef.Type.INT,
                 3,
                 atLeast(1),
-                ConfigDef.Importance.LOW, MIN_SAMPLES_PER_METRICS_WINDOW_DOC)
+                ConfigDef.Importance.LOW,
+                MIN_SAMPLES_PER_METRICS_WINDOW_DOC)
         .define(MAX_ALLOWED_EXTRAPOLATIONS_PER_ENTITY_CONFIG,
                 ConfigDef.Type.INT,
                 5,

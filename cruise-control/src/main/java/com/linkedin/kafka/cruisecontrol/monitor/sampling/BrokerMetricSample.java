@@ -30,6 +30,10 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     }
   }
 
+  public int brokerId() {
+    return entity().brokerId();
+  }
+
   /**
    * Serialize the partition metric sample using the following protocol
    *

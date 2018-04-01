@@ -585,9 +585,10 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
   private Properties getLoadMonitorProperties() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
-    props.setProperty(KafkaCruiseControlConfig.NUM_METRICS_WINDOWS_CONFIG, Integer.toString(NUM_WINDOWS));
-    props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_METRICS_WINDOW_CONFIG, Integer.toString(MIN_SAMPLES_PER_WINDOW));
+    props.setProperty(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
+    props.setProperty(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(NUM_WINDOWS));
+    props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
+                      Integer.toString(MIN_SAMPLES_PER_WINDOW));
     return props;
   }
 
