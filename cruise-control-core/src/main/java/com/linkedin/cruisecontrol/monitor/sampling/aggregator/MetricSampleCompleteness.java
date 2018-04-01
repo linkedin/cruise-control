@@ -18,6 +18,14 @@ import java.util.TreeSet;
 /**
  * This class contains the completeness information of the {@link MetricSampleAggregatorState}.
  * The completeness information is based on a given {@link AggregationOptions}
+ * <p>
+ *   The completeness describes the confidence level of the metric samples that are aggregated by
+ *   the {@link MetricSampleAggregator}.
+ * </p>
+ * <p>
+ *   See method java doc for details.
+ * </p>
+ * @see MetricSampleAggregator
  */
 public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenerationed {
   private final SortedMap<Long, Float> _validEntityRatioByWindowIndex;
@@ -117,11 +125,11 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   }
 
   /**
-   * Get the valid window indexes. A window starts from <I><tt>(windowIndex - 1) * windowMs</tt></I> and ends at 
+   * Get the valid window indexes. A window starts from <I><tt>(windowIndex - 1) * windowMs</tt></I> and ends at
    * <I><tt>windowIndex * windowMs</tt></I>.
-   * The entity and valid entity group ratio requirements can still meet the requirement after all these windows 
+   * The entity and valid entity group ratio requirements can still meet the requirement after all these windows
    * are included.
-   * 
+   *
    * @return A sorted set of valid window indexes.
    */
   public SortedSet<Long> validWindowIndexes() {
@@ -141,7 +149,7 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   public Set<G> validEntityGroups() {
     return _validEntityGroups;
   }
-  
+
   /**
    * @return the actual valid entity ratio after including all the {@link #validWindowIndexes()}
    */

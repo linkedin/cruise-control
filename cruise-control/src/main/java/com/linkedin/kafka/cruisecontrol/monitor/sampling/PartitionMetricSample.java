@@ -48,13 +48,6 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
   }
 
   /**
-   * Give the number or metrics that has been recorded.
-   */
-  public int numMetrics() {
-    return _valuesByMetricId.size();
-  }
-
-  /**
    * This method serialize the metric sample using a simple protocol.
    * 1 byte  - version
    * 4 bytes - brokerId
