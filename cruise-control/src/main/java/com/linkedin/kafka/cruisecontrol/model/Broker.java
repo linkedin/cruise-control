@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -214,6 +215,30 @@ public class Broker implements Serializable, Comparable<Broker> {
     // If a broker is already dead, we do not distinguish leader replica vs. non-leader replica anymore.
     Set<Replica> candidateReplicas = (resource == Resource.NW_OUT && isAlive()) ? _leaderReplicas : _replicas;
     return sortedReplicas(resource, candidateReplicas, isAscending);
+  }
+
+  /**
+   * Get a comparator for the replicas in the broker. The comparisons performed are:
+   * 1. immigrant replicas has higher priority, i.e. comes before the native replicas.
+   * 2. the replicas with lower resource usage comes before those with higher resource usage.
+   *
+   * @param resource the resource for the comparator to use.
+   * @return a Comparator to compare the replicas for the given resource.
+   */
+  public Comparator<Replica> replicaComparator(Resource resource) {
+    return (r1, r2) -> {
+      boolean isR1Immigrant = _immigrantReplicas.contains(r1);
+      boolean isR2Immigrant = _immigrantReplicas.contains(r2);
+      if (isR1Immigrant && !isR2Immigrant) {
+        return -1;
+      } else if (!isR1Immigrant && isR2Immigrant) {
+        return 1;
+      } else {
+        int result = Double.compare(r1.load().expectedUtilizationFor(resource),
+                                    r2.load().expectedUtilizationFor(resource));
+        return result != 0 ? result : r1.compareTo(r2);
+      }
+    };
   }
 
   private List<Replica> sortedReplicas(Resource resource, Set<Replica> candidateReplicas, boolean isAscending) {
