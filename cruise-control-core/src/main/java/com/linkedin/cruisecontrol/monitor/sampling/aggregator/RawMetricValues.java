@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -202,6 +203,22 @@ public class RawMetricValues {
    * @return the aggregated values and extrapolations of the given sorted set of windows in that order.
    */
   public synchronized ValuesAndExtrapolations aggregate(SortedSet<Long> windowIndexes, MetricDef metricDef) {
+    return aggregate(windowIndexes, metricDef, true);
+  }
+
+  /**
+   * Peek the value for the current window.
+   *
+   * @param metricDef the metric definitions.
+   * @return the aggregated values and extrapolations of the given sorted set of windows in that order.
+   */
+  public synchronized ValuesAndExtrapolations peekCurrentWindow(long currentWindowIndex, MetricDef metricDef) {
+    SortedSet<Long> window = new TreeSet<>();
+    window.add(currentWindowIndex);
+    return aggregate(window, metricDef, false);
+  }
+
+  private ValuesAndExtrapolations aggregate(SortedSet<Long> windowIndexes, MetricDef metricDef, boolean checkWindow) {
     if (_valuesByMetricId.isEmpty()) {
       return ValuesAndExtrapolations.empty(windowIndexes.size(), metricDef);
     }
@@ -217,7 +234,11 @@ public class RawMetricValues {
 
       int resultIndex = 0;
       for (long windowIndex : windowIndexes) {
-        validateIndex(windowIndex);
+        // When we query the latest window, we need to skip the window validation because the valid windows do not
+        // include the current active window.
+        if (checkWindow) {
+          validateIndex(windowIndex);
+        }
         int idx = handleWrapping(windowIndex);
         // Sufficient samples
         if (_counts[idx] >= _minSamplesPerWindow) {
