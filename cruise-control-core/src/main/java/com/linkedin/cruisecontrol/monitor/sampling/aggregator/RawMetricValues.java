@@ -234,6 +234,8 @@ public class RawMetricValues {
 
       int resultIndex = 0;
       for (long windowIndex : windowIndexes) {
+        // When we query the latest window, we need to skip the window validation because the valid windows do not
+        // include the current active window.
         if (checkWindow) {
           validateIndex(windowIndex);
         }
