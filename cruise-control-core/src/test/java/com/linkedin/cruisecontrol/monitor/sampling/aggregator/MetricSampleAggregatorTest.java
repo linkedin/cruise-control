@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.Random;
 import org.junit.Test;
 
+import static com.linkedin.cruisecontrol.monitor.sampling.aggregator.Extrapolation.FORCED_INSUFFICIENT;
+import static com.linkedin.cruisecontrol.monitor.sampling.aggregator.Extrapolation.NO_VALID_EXTRAPOLATION;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -269,6 +271,26 @@ public class MetricSampleAggregatorTest {
     assertEquals(1, completeness.validEntityGroups().size());
     assertTrue(completeness.validEntityGroups().contains(ENTITY3.group()));
     assertCompletenessByWindowIndex(completeness);
+  }
+
+  @Test
+  public void testPeekCurrentWindow() {
+    MetricSampleAggregator<String, IntegerEntity> aggregator =
+        new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS, MIN_SAMPLES_PER_WINDOW,
+                                     0, 5, _metricDef);
+    // Add samples to three entities.
+    // Entity1 has 2 windows with insufficient data.
+    // Entity2 has 2 windows with sufficient data.
+    // Entity3 has 1 window with sufficient data, i.e. the active window does not have data.
+    populateSampleAggregator(2, 1, aggregator, ENTITY1);
+    populateSampleAggregator(2, MIN_SAMPLES_PER_WINDOW, aggregator, ENTITY2);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, MIN_SAMPLES_PER_WINDOW,
+                                                        aggregator, ENTITY3, 0, WINDOW_MS,
+                                                        _metricDef);
+    Map<IntegerEntity, ValuesAndExtrapolations> currentWindowMetrics = aggregator.peekCurrentWindow();
+    assertEquals(FORCED_INSUFFICIENT, currentWindowMetrics.get(ENTITY1).extrapolations().get(0));
+    assertTrue(currentWindowMetrics.get(ENTITY2).extrapolations().isEmpty());
+    assertEquals(NO_VALID_EXTRAPOLATION, currentWindowMetrics.get(ENTITY3).extrapolations().get(0));
   }
 
   @Test

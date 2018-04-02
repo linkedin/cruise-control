@@ -11,6 +11,7 @@ import com.linkedin.cruisecontrol.model.Entity;
 import com.linkedin.cruisecontrol.monitor.sampling.MetricSample;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -226,6 +227,23 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
           }
         }
       }
+      return result;
+    } finally {
+      _windowRollingLock.unlock();
+    }
+  }
+
+  /**
+   * Peek the information for all the available entities of the current window.
+   *
+   * @return A map from all the entities to their current metric values.
+   */
+  public Map<E, ValuesAndExtrapolations> peekCurrentWindow() {
+    // prevent window rolling.
+    _windowRollingLock.lock();
+    try {
+      Map<E, ValuesAndExtrapolations> result = new HashMap<>();
+      _rawMetrics.forEach((entity, rawMetric) -> result.put(entity, rawMetric.peekCurrentWindow(_currentWindowIndex, _metricDef)));
       return result;
     } finally {
       _windowRollingLock.unlock();
