@@ -17,8 +17,8 @@ import java.util.StringJoiner;
 public class MetricValues {
 
   private final float[] _values;
-  private volatile float _max;
-  private volatile double _sumForAvg;
+  private float _max;
+  private double _sumForAvg;
 
   /**
    * Construct a MetricValues.
