@@ -47,6 +47,8 @@ public class ClusterModel implements Serializable {
   private final Set<Replica> _selfHealingEligibleReplicas;
   private final SortedSet<Broker> _newBrokers;
   private final Set<Broker> _healthyBrokers;
+  private final SortedSet<Broker> _deadBrokes;
+  private final SortedSet<Broker> _brokers;
   private final double _monitoredPartitionsPercentage;
   private final double[] _clusterCapacity;
   private Load _load;
@@ -73,6 +75,10 @@ public class ClusterModel implements Serializable {
     _newBrokers = new TreeSet<>();
     // A set of healthy brokers
     _healthyBrokers = new HashSet<>();
+    // A set of all brokers
+    _brokers = new TreeSet<>();
+    // A set of dead brokers
+    _deadBrokes = new TreeSet<>();
     // Initially cluster does not contain any load.
     _load = new Load();
     _clusterCapacity = new double[Resource.cachedValues().size()];
@@ -235,6 +241,7 @@ public class ClusterModel implements Serializable {
       case DEAD:
         _selfHealingEligibleReplicas.addAll(broker.replicas());
         _healthyBrokers.remove(broker);
+        _deadBrokes.add(broker);
         break;
       case NEW:
         _newBrokers.add(broker);
@@ -242,6 +249,7 @@ public class ClusterModel implements Serializable {
       case ALIVE:
         _selfHealingEligibleReplicas.removeAll(broker.replicas());
         _healthyBrokers.add(broker);
+        _deadBrokes.remove(broker);
         break;
       default:
         throw new IllegalArgumentException("Illegal broker state " + newState + " is provided.");
@@ -331,9 +339,7 @@ public class ClusterModel implements Serializable {
    * Get the dead brokers in the cluster.
    */
   public SortedSet<Broker> deadBrokers() {
-    SortedSet<Broker> brokers = brokers();
-    brokers.removeAll(healthyBrokers());
-    return brokers;
+    return new TreeSet<>(_deadBrokes);
   }
 
   /**
@@ -392,11 +398,7 @@ public class ClusterModel implements Serializable {
    * Get the set of brokers in the cluster.
    */
   public SortedSet<Broker> brokers() {
-    SortedSet<Broker> brokers = new TreeSet<>();
-    for (Rack rack : _racksById.values()) {
-      brokers.addAll(rack.brokers());
-    }
-    return brokers;
+    return new TreeSet<>(_brokers);
   }
 
   /**
@@ -596,6 +598,7 @@ public class ClusterModel implements Serializable {
     _brokerIdToRack.put(brokerId, rack);
     Broker broker = rack.createBroker(brokerId, host, brokerCapacity);
     _healthyBrokers.add(broker);
+    _brokers.add(broker);
     refreshCapacity();
     return broker;
   }
