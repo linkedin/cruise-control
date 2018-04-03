@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.Comparator;
 import java.util.NavigableSet;
-import java.util.Set;
 import java.util.TreeSet;
 
 
@@ -27,19 +26,6 @@ public class BrokerAndSortedReplicas {
       return result == 0 ? r1.compareTo(r2) : result;
     });
     sortedReplicas.addAll(broker.replicas());
-  }
-
-  public BrokerAndSortedReplicas(Broker broker, Set<String> exclucedTopics, Comparator<Replica> comparator) {
-    _broker = broker;
-    sortedReplicas = new TreeSet<>((r1, r2) -> {
-      int result = comparator.compare(r1, r2);
-      return result == 0 ? r1.compareTo(r2) : result;
-    });
-    broker.replicas().forEach(r -> {
-      if (!exclucedTopics.contains(r.topicPartition().topic())) {
-        sortedReplicas.add(r);
-      }
-    });
   }
 
   public Broker broker() {

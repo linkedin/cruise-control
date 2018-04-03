@@ -147,13 +147,13 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
       StringJoiner joiner = new StringJoiner(", ");
       brokersUnderLowerThreshold.forEach(b -> joiner.add(String.format("%d:(%.3f)", b.id(), diskUsage(b))));
       LOG.warn("There are still {} brokers under the lower threshold of {}. The brokers are {}",
-               brokersUnderLowerThreshold.size(), lowerThreshold, joiner.toString());
+               brokersUnderLowerThreshold.size(), dWrap(lowerThreshold), joiner.toString());
     }
     if (!brokersAboveUpperThreshold.isEmpty()) {
       StringJoiner joiner = new StringJoiner(", ");
       brokersAboveUpperThreshold.forEach(b -> joiner.add(String.format("%d:(%.3f)", b.id(), diskUsage(b))));
       LOG.warn("There are still {} brokers above the upper threshold of {}. The brokers are {}",
-               brokersAboveUpperThreshold.size(), upperThreshold, joiner.toString());
+               brokersAboveUpperThreshold.size(), dWrap(upperThreshold), joiner.toString());
     }
     return brokersUnderLowerThreshold.isEmpty() && brokersAboveUpperThreshold.isEmpty();
   }
@@ -180,21 +180,21 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
                                    double upperThreshold,
                                    Set<String> excludedTopics) {
     LOG.trace("Optimizing broker {}. BrokerDiskUsage = {}, meanDiskUsage = {}",
-              toOptimize.broker(), diskUsage(toOptimize.broker()), meanDiskUsage);
+              toOptimize.broker(), dWrap(diskUsage(toOptimize.broker())), dWrap(meanDiskUsage));
     double brokerDiskUsage = diskUsage(toOptimize.broker());
     boolean improved = false;
     List<BrokerAndSortedReplicas> candidateBrokersToSwapWith;
 
     if (brokerDiskUsage > upperThreshold) {
       LOG.debug("Broker {} disk usage {} is above upper threshold of {}",
-                toOptimize.broker().id(), brokerDiskUsage, upperThreshold);
+                toOptimize.broker().id(), dWrap(brokerDiskUsage), dWrap(upperThreshold));
       // Get the brokers whose disk usage is less than the broker to optimize. The list is in ascending order based on
       // broker disk usage.
       candidateBrokersToSwapWith = new ArrayList<>(allBrokers.headSet(toOptimize));
 
     } else if (brokerDiskUsage < lowerThreshold) {
       LOG.debug("Broker {} disk usage {} is below lower threshold of {}",
-                toOptimize.broker().id(), brokerDiskUsage, lowerThreshold);
+                toOptimize.broker().id(), dWrap(brokerDiskUsage), dWrap(lowerThreshold));
       // Get the brokers whose disk usage is more than the broker to optimize. The list is in descending order based on
       // broker disk usage.
       candidateBrokersToSwapWith = new ArrayList<>(allBrokers.tailSet(toOptimize));
@@ -243,7 +243,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
                        ClusterModel clusterModel,
                        Set<String> excludedTopics) {
     LOG.trace("Swapping replicas between broker {}({}) and broker {}({})",
-             toSwap.broker().id(), brokerSize(toSwap), toSwapWith.broker().id(), brokerSize(toSwapWith));
+             toSwap.broker().id(), dWrap(brokerSize(toSwap)), toSwapWith.broker().id(), dWrap(brokerSize(toSwapWith)));
     double sizeToChange = toSwap.broker().capacityFor(DISK) * meanDiskUsage - brokerSize(toSwap);
     NavigableSet<ReplicaWrapper> sortedReplicasToSwap = sortReplicasAscend(toSwap, excludedTopics);
     NavigableSet<ReplicaWrapper> sortedLeadersToSwapWith = sortReplicasAscend(toSwapWith, excludedTopics);
@@ -327,14 +327,14 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
 
       // Find a replica that is eligible for swap.
       LOG.trace("replicaToSwap: {}(size={}), targetSize={}, minSize={}, maxSize={}",
-                replicaToSwap, replicaSize(replicaToSwap), targetSize, minSize, maxSize);
+                replicaToSwap, dWrap(replicaSize(replicaToSwap)), dWrap(targetSize), dWrap(minSize), dWrap(maxSize));
       Replica replicaToSwapWith = sortedReplicasToSwapWith.isEmpty() ? null :
                                   findReplicaToSwapWith(replicaToSwap, sortedReplicasToSwapWith, targetSize, minSize, maxSize, clusterModel);
       if (replicaToSwapWith != null) {
         LOG.debug("Found replica to swap. Swapping {}({}) on broker {}({}) and {}({}) on broker {}({})",
-                  replicaToSwap.topicPartition(), replicaSize(replicaToSwap), toSwap.broker().id(),
-                  brokerSize(toSwap), replicaToSwapWith.topicPartition(), replicaSize(replicaToSwapWith),
-                  toSwapWith.broker().id(), brokerSize(toSwapWith));
+                  replicaToSwap.topicPartition(), dWrap(replicaSize(replicaToSwap)), toSwap.broker().id(),
+                  dWrap(brokerSize(toSwap)), replicaToSwapWith.topicPartition(), dWrap(replicaSize(replicaToSwapWith)),
+                  toSwapWith.broker().id(), dWrap(brokerSize(toSwapWith)));
         clusterModel.relocateReplica(replicaToSwapWith.topicPartition(), toSwapWith.broker().id(), toSwap.broker().id());
         clusterModel.relocateReplica(replicaToSwap.topicPartition(), toSwap.broker().id(), toSwapWith.broker().id());
         toSwap.sortedReplicas().remove(replicaToSwap);
@@ -535,6 +535,10 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     return (_balancingConstraint.resourceBalancePercentage(DISK) - 1) * BALANCE_MARGIN;
   }
 
+  private DoubleWrapper dWrap(double value) {
+    return new DoubleWrapper(value);
+  }
+
   /**
    * This is the same comparator code as the one in
    * {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal}
@@ -630,6 +634,20 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
 
     private static ReplicaWrapper lessThan(double size) {
       return new ReplicaWrapper(Replica.MIN_REPLICA, size);
+    }
+  }
+
+  // Thin wrapper around double for printing purpose.
+  private static class DoubleWrapper {
+    double _value;
+
+    private DoubleWrapper(double value) {
+      _value = value;
+    }
+
+    @Override
+    public String toString() {
+      return Double.toString(_value);
     }
   }
 }
