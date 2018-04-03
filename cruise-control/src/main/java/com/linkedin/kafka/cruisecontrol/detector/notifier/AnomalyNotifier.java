@@ -8,6 +8,7 @@ import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import org.apache.kafka.common.Configurable;
+import com.linkedin.kafka.cruisecontrol.detector.MetricAnomaly;
 
 
 public interface AnomalyNotifier extends CruiseControlConfigurable, Configurable {
@@ -32,4 +33,13 @@ public interface AnomalyNotifier extends CruiseControlConfigurable, Configurable
    * perform a delayed check.
    */
   AnomalyNotificationResult onBrokerFailure(BrokerFailures brokerFailures);
+
+  /**
+   * This method is called when a metric anomaly is detected.
+   *
+   * @param metricAnomaly the detected metric anomaly.
+   * @return The notification result that asks Cruise Control to perform one of the following behaviors: ignore, fix or
+   * perform a delayed check.
+   */
+  AnomalyNotificationResult onMetricAnomaly(MetricAnomaly metricAnomaly);
 }

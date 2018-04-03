@@ -38,12 +38,14 @@ public class AnomalyDetector {
   // Detectors
   private final GoalViolationDetector _goalViolationDetector;
   private final BrokerFailureDetector _brokerFailureDetector;
+  private final MetricAnomalyDetector _metricAnomalyDetector;
   private final ScheduledExecutorService _detectorScheduler;
   private final long _anomalyDetectionIntervalMs;
   private final LinkedBlockingDeque<Anomaly> _anomalies;
   private volatile boolean _shutdown;
   private final Meter _brokerFailureRate;
   private final Meter _goalViolationRate;
+  private final Meter _metricAnomalyRate;
   private final LoadMonitor _loadMonitor;
 
   public AnomalyDetector(KafkaCruiseControlConfig config,
@@ -58,13 +60,14 @@ public class AnomalyDetector {
     _loadMonitor = loadMonitor;
     _goalViolationDetector = new GoalViolationDetector(config, _loadMonitor, _anomalies, time);
     _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time);
+    _metricAnomalyDetector = new MetricAnomalyDetector(_loadMonitor, _anomalies);
     _kafkaCruiseControl = kafkaCruiseControl;
     _detectorScheduler =
-        Executors.newScheduledThreadPool(3, new KafkaCruiseControlThreadFactory("AnomalyDetector", false, LOG));
+        Executors.newScheduledThreadPool(4, new KafkaCruiseControlThreadFactory("AnomalyDetector", false, LOG));
     _shutdown = false;
     _brokerFailureRate = dropwizardMetricRegistry.meter(MetricRegistry.name("AnomalyDetector", "broker-failure-rate"));
     _goalViolationRate = dropwizardMetricRegistry.meter(MetricRegistry.name("AnomalyDetector", "goal-violation-rate"));
-
+    _metricAnomalyRate = dropwizardMetricRegistry.meter(MetricRegistry.name("AnomalyDetector", "metric-anomaly-rate"));
   }
 
   /**
@@ -76,6 +79,7 @@ public class AnomalyDetector {
                   AnomalyNotifier anomalyNotifier,
                   GoalViolationDetector goalViolationDetector,
                   BrokerFailureDetector brokerFailureDetector,
+                  MetricAnomalyDetector metricAnomalyDetector,
                   ScheduledExecutorService detectorScheduler,
                   LoadMonitor loadMonitor) {
     _anomalies = anomalies;
@@ -83,11 +87,13 @@ public class AnomalyDetector {
     _anomalyNotifier = anomalyNotifier;
     _goalViolationDetector = goalViolationDetector;
     _brokerFailureDetector = brokerFailureDetector;
+    _metricAnomalyDetector = metricAnomalyDetector;
     _kafkaCruiseControl = kafkaCruiseControl;
     _detectorScheduler = detectorScheduler;
     _shutdown = false;
     _brokerFailureRate = new Meter();
     _goalViolationRate = new Meter();
+    _metricAnomalyRate = new Meter();
     _loadMonitor = loadMonitor;
   }
 
@@ -97,6 +103,12 @@ public class AnomalyDetector {
     int jitter = new Random().nextInt(10000);
     LOG.debug("Starting goal violation detector with delay of {} ms", jitter);
     _detectorScheduler.scheduleAtFixedRate(_goalViolationDetector,
+                                           _anomalyDetectionIntervalMs / 2 + jitter,
+                                           _anomalyDetectionIntervalMs,
+                                           TimeUnit.MILLISECONDS);
+    jitter = new Random().nextInt(10000);
+    LOG.debug("Starting metric anomaly detector with delay of {} ms", jitter);
+    _detectorScheduler.scheduleAtFixedRate(_metricAnomalyDetector,
                                            _anomalyDetectionIntervalMs / 2 + jitter,
                                            _anomalyDetectionIntervalMs,
                                            TimeUnit.MILLISECONDS);
@@ -157,6 +169,10 @@ public class AnomalyDetector {
               GoalViolations goalViolations = (GoalViolations) anomaly;
               notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
               _goalViolationRate.mark();
+            } else if (anomaly instanceof MetricAnomaly) {
+              MetricAnomaly metricAnomaly = (MetricAnomaly) anomaly;
+              notificationResult = _anomalyNotifier.onMetricAnomaly(metricAnomaly);
+              _metricAnomalyRate.mark();
             }
             // Take the requested action if provided.
             LOG.debug("Received notification result {}", notificationResult);
