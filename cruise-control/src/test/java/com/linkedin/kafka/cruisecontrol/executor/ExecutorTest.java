@@ -18,8 +18,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
-import kafka.admin.AdminUtils;
-import kafka.admin.RackAwareMode;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -65,31 +63,19 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
   }
 
   @Test
-  public void testBasicBalanceMovement() {
+  public void testBasicBalanceMovement() throws InterruptedException {
     ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
-    String topic0 = "testPartitionMovement0";
-    String topic1 = "testPartitionMovement1";
-    int partition = 0;
-    TopicPartition tp0 = new TopicPartition(topic0, partition);
-    TopicPartition tp1 = new TopicPartition(topic1, partition);
-    AdminUtils.createTopic(zkUtils, topic0, 1, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
-    AdminUtils.createTopic(zkUtils, topic1, 1, 2, new Properties(), RackAwareMode.Safe$.MODULE$);
-    while (zkUtils.getLeaderForPartition(topic0, partition).isEmpty()
-        || zkUtils.getLeaderForPartition(topic1, partition).isEmpty()) {
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    int initialLeader0 = (Integer) zkUtils.getLeaderForPartition(topic0, partition).get();
-    int initialLeader1 = (Integer) zkUtils.getLeaderForPartition(topic1, partition).get();
+
+    Map<String, TopicDescription> topicDescriptions = createTopics();
+    int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
+    int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
+
     ExecutionProposal proposal0 =
-        new ExecutionProposal(tp0, 0, initialLeader0,
+        new ExecutionProposal(TP0, 0, initialLeader0,
                               Collections.singletonList(initialLeader0),
                               Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
     ExecutionProposal proposal1 =
-        new ExecutionProposal(tp1, 0, initialLeader1,
+        new ExecutionProposal(TP1, 0, initialLeader1,
                               Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
                               Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
@@ -100,11 +86,6 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
   @Test
   public void testMoveNonExistingPartition() throws InterruptedException {
     ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
-
-    AdminClient adminClient = getAdminClient(broker(0).getPlaintextAddr());
-
-    adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC_0, 1, (short) 1),
-                                           new NewTopic(TOPIC_1, 1, (short) 2)));
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
     int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
