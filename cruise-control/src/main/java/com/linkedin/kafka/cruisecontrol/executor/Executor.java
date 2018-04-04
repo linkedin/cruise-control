@@ -74,7 +74,7 @@ public class Executor {
   private volatile ExecutorState _executorState;
 
   private AtomicInteger _numExecutionStopped;
-  private AtomicInteger _numExecutionStoppedOnPurpose;
+  private AtomicInteger _numExecutionStoppedByUser;
   private AtomicInteger _numExecutionStartedInKafkaAssignerMode;
   private AtomicInteger _numExecutionStartedInNonKafkaAssignerMode;
   private volatile boolean _isKafkaAssignerMode;
@@ -84,7 +84,7 @@ public class Executor {
   private static final String EXECUTION_STOPPED = "execution-stopped";
 
   private static final String GAUGE_EXECUTION_STOPPED = EXECUTION_STOPPED;
-  private static final String GAUGE_EXECUTION_STOPPED_ON_PURPOSE = EXECUTION_STOPPED + "-on-purpose";
+  private static final String GAUGE_EXECUTION_STOPPED_BY_USER = EXECUTION_STOPPED + "-by-user";
   private static final String GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-"  + KAFKA_ASSIGNER_MODE;
   private static final String GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-non-"  + KAFKA_ASSIGNER_MODE;
 
@@ -107,6 +107,14 @@ public class Executor {
            Time time,
            MetricRegistry dropwizardMetricRegistry,
            MetadataClient metadataClient) {
+    _numExecutionStopped = new AtomicInteger(0);
+    _numExecutionStoppedByUser = new AtomicInteger(0);
+    _numExecutionStartedInKafkaAssignerMode = new AtomicInteger(0);
+    _numExecutionStartedInNonKafkaAssignerMode = new AtomicInteger(0);
+    _isKafkaAssignerMode = false;
+    // Register gauge sensors.
+    registerGaugeSensors(dropwizardMetricRegistry);
+
     _time = time;
     _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
@@ -127,13 +135,6 @@ public class Executor {
     _executorState = ExecutorState.noTaskInProgress();
     _stopRequested = new AtomicBoolean(false);
     _hasOngoingExecution = false;
-    _numExecutionStopped = new AtomicInteger(0);
-    _numExecutionStoppedOnPurpose = new AtomicInteger(0);
-    _numExecutionStartedInKafkaAssignerMode = new AtomicInteger(0);
-    _numExecutionStartedInNonKafkaAssignerMode = new AtomicInteger(0);
-    _isKafkaAssignerMode = false;
-    // Register gauge sensors.
-    registerGaugeSensors(dropwizardMetricRegistry);
   }
 
   /**
@@ -143,8 +144,8 @@ public class Executor {
     String metricName = "Executor";
     dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_EXECUTION_STOPPED),
                                       (Gauge<Integer>) this::numExecutionStopped);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_EXECUTION_STOPPED_ON_PURPOSE),
-                                      (Gauge<Integer>) this::numExecutionStoppedOnPurpose);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_EXECUTION_STOPPED_BY_USER),
+                                      (Gauge<Integer>) this::numExecutionStoppedByUser);
     dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE),
                                       (Gauge<Integer>) this::numExecutionStartedInKafkaAssignerMode);
     dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE),
@@ -185,8 +186,8 @@ public class Executor {
     return _numExecutionStopped.get();
   }
 
-  private int numExecutionStoppedOnPurpose() {
-    return _numExecutionStoppedOnPurpose.get();
+  private int numExecutionStoppedByUser() {
+    return _numExecutionStoppedByUser.get();
   }
 
   private int numExecutionStartedInKafkaAssignerMode() {
@@ -222,7 +223,7 @@ public class Executor {
     if (_stopRequested.compareAndSet(false, true)) {
       _numExecutionStopped.incrementAndGet();
       if (isOnPurpose) {
-        _numExecutionStoppedOnPurpose.incrementAndGet();
+        _numExecutionStoppedByUser.incrementAndGet();
       }
     }
   }

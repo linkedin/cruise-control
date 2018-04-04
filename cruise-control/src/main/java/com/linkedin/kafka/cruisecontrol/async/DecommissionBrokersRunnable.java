@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List,
- * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean)}
+ * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)}
  */
 class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
   private final Collection<Integer> _brokerIds;
@@ -21,7 +21,6 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
   private final List<String> _goals;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
-  private final boolean _isKafkaAssignerMode;
 
   DecommissionBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                               OperationFuture<GoalOptimizer.OptimizerResult> future,
@@ -30,8 +29,7 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
                               boolean throttleRemovedBrokers,
                               List<String> goals,
                               ModelCompletenessRequirements modelCompletenessRequirements,
-                              boolean allowCapacityEstimation,
-                              boolean isKafkaAssignerMode) {
+                              boolean allowCapacityEstimation) {
     super(kafkaCruiseControl, future);
     _brokerIds = brokerIds;
     _dryRun = dryRun;
@@ -39,13 +37,12 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
     _goals = goals;
     _modelCompletenessRequirements = modelCompletenessRequirements;
     _allowCapacityEstimation = allowCapacityEstimation;
-    _isKafkaAssignerMode = isKafkaAssignerMode;
   }
 
   @Override
   protected GoalOptimizer.OptimizerResult getResult() throws Exception {
     return _kafkaCruiseControl.decommissionBrokers(_brokerIds, _dryRun, _throttleRemovedBrokers, _goals,
                                                    _modelCompletenessRequirements, _future.operationProgress(),
-                                                   _allowCapacityEstimation, _isKafkaAssignerMode);
+                                                   _allowCapacityEstimation);
   }
 }

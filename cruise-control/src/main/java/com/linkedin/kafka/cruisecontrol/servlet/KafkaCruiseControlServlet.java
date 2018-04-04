@@ -1092,8 +1092,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                               throttleAddedOrRemovedBrokers,
                                                                               goalsAndRequirements.goals(),
                                                                               goalsAndRequirements.requirements(),
-                                                                              allowCapacityEstimation,
-                                                                              isKafkaAssignerMode));
+                                                                              allowCapacityEstimation));
     } else {
       optimizerResult =
           getAndMaybeReturnProgress(request, response,
@@ -1102,8 +1101,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                                        throttleAddedOrRemovedBrokers,
                                                                                        goalsAndRequirements.goals(),
                                                                                        goalsAndRequirements.requirements(),
-                                                                                       allowCapacityEstimation,
-                                                                                       isKafkaAssignerMode));
+                                                                                       allowCapacityEstimation));
     }
     if (optimizerResult == null) {
       return false;
@@ -1156,8 +1154,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                   () -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
                                                                            dryrun,
                                                                            goalsAndRequirements.requirements(),
-                                                                           allowCapacityEstimation,
-                                                                           isKafkaAssignerMode));
+                                                                           allowCapacityEstimation));
     if (optimizerResult == null) {
       return false;
     }

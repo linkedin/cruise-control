@@ -27,14 +27,14 @@ import java.util.concurrent.Executors;
  *
  * <ul>
  * <li>{@link KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
- * OperationProgress, boolean, boolean)}</li>
+ * OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
- * OperationProgress, boolean, boolean)}</li>
+ * OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
- * <li>{@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress, boolean, boolean)}</li>
+ * <li>{@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * </ul>
  *
  * The other operations are non-blocking by default.
@@ -67,38 +67,36 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
 
   /**
    * @see KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
-   * OperationProgress, boolean, boolean)
+   * OperationProgress, boolean)
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> decommissionBrokers(Collection<Integer> brokerIds,
                                                                             boolean dryRun,
                                                                             boolean throttleDecommissionedBrokers,
                                                                             List<String> goals,
                                                                             ModelCompletenessRequirements requirements,
-                                                                            boolean allowCapacityEstimation,
-                                                                            boolean isKafkaAssignerMode) {
+                                                                            boolean allowCapacityEstimation) {
     OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Decommission brokers");
     pending(future.operationProgress());
     _sessionExecutor.submit(new DecommissionBrokersRunnable(this, future, brokerIds, dryRun,
                                                             throttleDecommissionedBrokers, goals, requirements,
-                                                            allowCapacityEstimation, isKafkaAssignerMode));
+                                                            allowCapacityEstimation));
     return future;
   }
 
   /**
    * @see KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
-   * OperationProgress, boolean, boolean)
+   * OperationProgress, boolean)
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> addBrokers(Collection<Integer> brokerIds,
                                                                    boolean dryRun,
                                                                    boolean throttleAddedBrokers,
                                                                    List<String> goals,
                                                                    ModelCompletenessRequirements requirements,
-                                                                   boolean allowCapacityEstimation,
-                                                                   boolean isKafkaAssignerMode) {
+                                                                   boolean allowCapacityEstimation) {
     OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Add brokers");
     pending(future.operationProgress());
     _sessionExecutor.submit(new AddBrokerRunnable(this, future, brokerIds, dryRun, throttleAddedBrokers,
-                                                  goals, requirements, allowCapacityEstimation, isKafkaAssignerMode));
+                                                  goals, requirements, allowCapacityEstimation));
     return future;
   }
 
@@ -156,17 +154,16 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress, boolean, boolean)
+   * @see KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress, boolean)
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> rebalance(List<String> goals,
                                                                   boolean dryRun,
                                                                   ModelCompletenessRequirements requirements,
-                                                                  boolean allowCapacityEstimation,
-                                                                  boolean isKafkaAssignerMode) {
+                                                                  boolean allowCapacityEstimation) {
     OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Rebalance");
     pending(future.operationProgress());
     _sessionExecutor.submit(new RebalanceRunnable(this, future, goals, dryRun, requirements,
-                                                  allowCapacityEstimation, isKafkaAssignerMode));
+                                                  allowCapacityEstimation));
     return future;
   }
 

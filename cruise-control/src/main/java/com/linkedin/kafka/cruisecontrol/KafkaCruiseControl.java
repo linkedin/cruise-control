@@ -9,6 +9,8 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -25,11 +27,14 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.kafka.common.utils.SystemTime;
@@ -43,6 +48,9 @@ import org.slf4j.LoggerFactory;
  */
 public class KafkaCruiseControl {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControl.class);
+  private static final Set<String> KAFKA_ASSIGNER_GOALS =
+      Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
+                                                              KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
   private final KafkaCruiseControlConfig _config;
   private final LoadMonitor _loadMonitor;
   private final GoalOptimizer _goalOptimizer;
@@ -105,6 +113,16 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Check whether any of the given goals contain a Kafka Assigner goal.
+   *
+   * @param goals The goals to check
+   * @return True if the given goals contain a Kafka Assigner goal, false otherwise.
+   */
+  private boolean isKafkaAssignerMode(List<String> goals) {
+    return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
+  }
+
+  /**
    * Decommission a broker.
    *
    * @param brokerIds The brokers to decommission.
@@ -114,7 +132,6 @@ public class KafkaCruiseControl {
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress the progress to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
-   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
    * @return the optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
@@ -125,8 +142,7 @@ public class KafkaCruiseControl {
                                                            List<String> goals,
                                                            ModelCompletenessRequirements requirements,
                                                            OperationProgress operationProgress,
-                                                           boolean allowCapacityEstimation,
-                                                           boolean isKafkaAssignerMode)
+                                                           boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -140,7 +156,7 @@ public class KafkaCruiseControl {
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          throttleDecommissionedBroker ? Collections.emptyList() : brokerIds,
-                         isKafkaAssignerMode);
+                         isKafkaAssignerMode(goals));
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -178,7 +194,6 @@ public class KafkaCruiseControl {
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to update.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
-   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
    * @return The optimization result.
    * @throws KafkaCruiseControlException when any exception occurred during the broker addition.
    */
@@ -188,8 +203,7 @@ public class KafkaCruiseControl {
                                                   List<String> goals,
                                                   ModelCompletenessRequirements requirements,
                                                   OperationProgress operationProgress,
-                                                  boolean allowCapacityEstimation,
-                                                  boolean isKafkaAssignerMode) throws KafkaCruiseControlException {
+                                                  boolean allowCapacityEstimation) throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
       ModelCompletenessRequirements modelCompletenessRequirements =
@@ -203,7 +217,7 @@ public class KafkaCruiseControl {
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          throttleAddedBrokers ? Collections.emptyList() : brokerIds,
-                         isKafkaAssignerMode);
+                         isKafkaAssignerMode(goals));
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -220,7 +234,6 @@ public class KafkaCruiseControl {
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
-   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
    * @return the optimization result.
    * @throws KafkaCruiseControlException when the rebalance encounter errors.
    */
@@ -228,12 +241,11 @@ public class KafkaCruiseControl {
                                                  boolean dryRun,
                                                  ModelCompletenessRequirements requirements,
                                                  OperationProgress operationProgress,
-                                                 boolean allowCapacityEstimation,
-                                                 boolean isKafkaAssignerMode) throws KafkaCruiseControlException {
+                                                 boolean allowCapacityEstimation) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation);
     sanityCheckCapacityEstimation(allowCapacityEstimation, result.capacityEstimationInfoByBrokerId());
     if (!dryRun) {
-      executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode);
+      executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals));
     }
     return result;
   }
@@ -474,7 +486,7 @@ public class KafkaCruiseControl {
    * @param unthrottledBrokers Brokers for which the rate of replica movements from/to will not be throttled.
    * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
    */
-  public void executeProposals(Collection<ExecutionProposal> proposals,
+  private void executeProposals(Collection<ExecutionProposal> proposals,
                                Collection<Integer> unthrottledBrokers,
                                boolean isKafkaAssignerMode) {
     // Add execution proposals and start execution.
