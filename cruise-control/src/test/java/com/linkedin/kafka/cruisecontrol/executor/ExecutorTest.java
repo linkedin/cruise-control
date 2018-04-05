@@ -20,7 +20,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import kafka.utils.ZkUtils;
-import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -149,9 +148,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   @Test
   public void testTimeoutLeaderActions() throws InterruptedException {
-    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
-
-    Map<String, TopicDescription> topicDescriptions = createTopics();
+    createTopics();
     // The proposal tries to move the leader. We fake the replica list to be unchanged so there is no replica
     // movement, but only leader movement.
     ExecutionProposal proposal =
@@ -161,6 +158,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
     Time time = new MockTime();
     MetadataClient mockMetadataClient = EasyMock.createMock(MetadataClient.class);
+    // Fake the metadata to never change so the leader movement will timeout.
     Node node0 = new Node(0, "host0", 100);
     Node node1 = new Node(1, "host1", 100);
     Node[] replicas = new Node[2];
@@ -170,7 +168,6 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     Cluster cluster = new Cluster("id", Arrays.asList(node0, node1), Collections.singleton(partitionInfo),
                                   Collections.emptySet(), Collections.emptySet());
     MetadataClient.ClusterAndGeneration clusterAndGeneration = new MetadataClient.ClusterAndGeneration(cluster, 0);
-
     EasyMock.expect(mockMetadataClient.refreshMetadata()).andReturn(clusterAndGeneration).anyTimes();
     EasyMock.expect(mockMetadataClient.cluster()).andReturn(clusterAndGeneration.cluster()).anyTimes();
     EasyMock.replay(mockMetadataClient);
@@ -180,10 +177,13 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
                               EasyMock.mock(LoadMonitor.class));
+    // Wait until the execution to start so the task timestamp is set to time.milliseconds.
     while (executor.state().state() != ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS) {
       Thread.sleep(10);
     }
+    // Sleep over 180000 (the hard coded timeout)
     time.sleep(180001);
+    // The execution should finish.
     waitUntilExecutionFinishes(executor);
   }
 
