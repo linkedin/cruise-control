@@ -101,7 +101,7 @@ public class GoalOptimizer implements Runnable {
     _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
     _maxProposalCandidates = config.getInt(KafkaCruiseControlConfig.MAX_PROPOSAL_CANDIDATES_CONFIG);
     _proposalExpirationMs = config.getLong(KafkaCruiseControlConfig.PROPOSAL_EXPIRATION_MS_CONFIG);
-        _proposalPrecomputingExecutor =
+    _proposalPrecomputingExecutor =
         Executors.newScheduledThreadPool(_numPrecomputingThreads,
                                          new KafkaCruiseControlThreadFactory("ProposalPrecomputingExecutor", false, LOG));
     _loadMonitor = loadMonitor;
@@ -119,7 +119,7 @@ public class GoalOptimizer implements Runnable {
     // We need to get this thread so it can be interrupted if the cached proposal has been invalidated.
     _proposalPrecomputingSchedulerThread = Thread.currentThread();
     LOG.info("Starting proposal candidate computation.");
-    while (!_shutdown) {
+    while (!_shutdown && _numPrecomputingThreads > 0) {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
       long sleepTime = _proposalExpirationMs;
       if (loadMonitorTaskRunnerState == LOADING || loadMonitorTaskRunnerState == BOOTSTRAPPING) {

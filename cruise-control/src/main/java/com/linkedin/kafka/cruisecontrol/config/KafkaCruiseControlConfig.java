@@ -614,7 +614,7 @@ public class KafkaCruiseControlConfig extends CruiseControlConfig {
         .define(NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG,
                 ConfigDef.Type.INT,
                 1,
-                atLeast(1),
+                atLeast(0),
                 ConfigDef.Importance.LOW,
                 NUM_PROPOSAL_PRECOMPUTE_THREADS_DOC)
         .define(ZOOKEEPER_CONNECT_CONFIG, ConfigDef.Type.STRING, ConfigDef.Importance.HIGH, ZOOKEEPER_CONNECT_DOC)
