@@ -49,10 +49,10 @@ public class ExecutionTaskPlanner {
   private long _remainingDataToMove;
   private final Set<ExecutionTask> _remainingReplicaMovements;
   private final Map<Long, ExecutionTask> _leaderMovements;
-  private final AtomicLong _executionId;
+  private long _executionId;
 
   public ExecutionTaskPlanner() {
-    _executionId = new AtomicLong(0L);
+    _executionId = 0L;
     _partMoveProposalByBrokerId = new HashMap<>();
     _remainingReplicaMovements = new TreeSet<>();
     _remainingDataToMove = 0L;
@@ -93,7 +93,7 @@ public class ExecutionTaskPlanner {
       return;
     }
     if (!proposal.isCompletedSuccessfully(partitionInfo.replicas())) {
-      long replicaActionExecutionId = _executionId.getAndIncrement();
+      long replicaActionExecutionId = _executionId++;
       ExecutionTask executionTask = new ExecutionTask(replicaActionExecutionId, proposal, REPLICA_ACTION);
       _remainingReplicaMovements.add(executionTask);
       _remainingDataToMove += proposal.dataToMoveInMB();
@@ -118,7 +118,7 @@ public class ExecutionTaskPlanner {
       Node currentLeader = cluster.leaderFor(tp);
       if (currentLeader != null && currentLeader.id() != proposal.newLeader()) {
         // Get the execution Id for the leader action proposal execution;
-        long leaderActionExecutionId = _executionId.getAndIncrement();
+        long leaderActionExecutionId = _executionId++;
         ExecutionTask leaderActionTask = new ExecutionTask(leaderActionExecutionId, proposal, LEADER_ACTION);
         _leaderMovements.put(leaderActionExecutionId, leaderActionTask);
         LOG.trace("Added action {} as leader proposal {}", leaderActionExecutionId, proposal);

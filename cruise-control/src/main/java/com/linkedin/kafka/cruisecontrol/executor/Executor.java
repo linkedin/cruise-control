@@ -514,7 +514,7 @@ public class Executor {
      * 1. ABORTING: when the execution is stopped by the users.
      * 2. ABORTING: When the destination broker is dead so the task cannot make progress, but the source broker is
      *              still alive.
-     * 3. DEAD: when any replica in the new replica list is dead.
+     * 3. DEAD: when any replica in the new replica list is dead. Or when a leader action times out.
      *
      * Currently KafkaController does not support updates on the partitions that is being reassigned. (KAFKA-6034)
      * Therefore once a proposals is written to ZK, we cannot revoke it. So the actual behavior we are using is to

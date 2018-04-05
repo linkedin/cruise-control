@@ -153,7 +153,6 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     // movement, but only leader movement.
     ExecutionProposal proposal =
         new ExecutionProposal(TP1, 0, 1, Arrays.asList(0, 1), Arrays.asList(0, 1));
-    System.out.println(proposal);
 
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
     Time time = new MockTime();
