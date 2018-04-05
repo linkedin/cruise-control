@@ -16,6 +16,8 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 
@@ -24,6 +26,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
  * This is a goal that simply move the leaders to the first replica of each partition.
  */
 public class PreferredLeaderElectionGoal implements Goal {
+  private static final Logger LOG = LoggerFactory.getLogger(PreferredLeaderElectionGoal.class);
 
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
@@ -40,11 +43,14 @@ public class PreferredLeaderElectionGoal implements Goal {
     for (List<Partition> partitions : clusterModel.getPartitionsByTopic().values()) {
       for (Partition p : partitions) {
         for (Replica r : p.replicas()) {
-          // Iterate over the replicas and ensure the leader is set to the first alive replica and not
-          // demoted partition.
+          // Iterate over the replicas and ensure the leader is set to the first alive replica.
           if (r.broker().isAlive()) {
             if (!r.isLeader()) {
               clusterModel.relocateLeadership(r.topicPartition(), p.leader().broker().id(), r.broker().id());
+            }
+            if (clusterModel.demotedBrokers().contains(r.broker())) {
+              LOG.warn("The leader of partition {} has to be on a demoted broker {} because all the alive "
+                           + "replicas are demoted.", p.topicPartition(), r.broker());
             }
             break;
           }

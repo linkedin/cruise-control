@@ -199,7 +199,16 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Demote brokers by removing the leader off the broker.
+   * Demote given brokers by migrating the leaders from them to other brokers.
+   *
+   * The result of the broker demotion is not guaranteed to be able to move all the leaders away from the
+   * given brokers. The operation is with best effort. There are various possibilities that some leaders
+   * cannot be migrated (e.g. no other broker is in the ISR).
+   *
+   * Also, this method is stateless, i.e. a demoted broker will not remain in a demoted state after this
+   * operation. If there is another broker failure, the leader may be moved to the demoted broker again
+   * by Kafka controller.
+   *
    * @param brokerIds the broker ids to move off.
    * @param dryRun whether it is a dry run or not
    * @param operationProgress the progress of the job to report.
@@ -214,7 +223,7 @@ public class KafkaCruiseControl {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
                                                             goal.clusterModelCompletenessRequirements(),
                                                             operationProgress);
-      brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
+      brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEMOTED));
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel,
                                    goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName())),
