@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
 /**
  * A class that holds all the goal violations.
  */
-public class GoalViolations extends Anomaly {
+public class GoalViolations extends KafkaAnomaly {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
   private final List<Violation> _goalViolations = new ArrayList<>();
 
@@ -36,7 +36,7 @@ public class GoalViolations extends Anomaly {
   }
 
   @Override
-  void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
+  public void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
     // Fix the violations using a rebalance.
     try {
       kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress());

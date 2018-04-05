@@ -4,7 +4,10 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -41,12 +44,12 @@ public class BrokerFailureDetector {
   private final ZkUtils _zkUtils;
   private final Map<Integer, Long> _failedBrokers;
   private final LoadMonitor _loadMonitor;
-  private final Queue<Anomaly> _anomalies;
+  private final Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> _anomalies;
   private final Time _time;
 
   public BrokerFailureDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
-                               Queue<Anomaly> anomalies,
+                               Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies,
                                Time time) {
     String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     ZkConnection zkConnection = new ZkConnection(zkUrl, 30000);
@@ -83,9 +86,7 @@ public class BrokerFailureDetector {
   }
 
   Map<Integer, Long> failedBrokers() {
-    Map<Integer, Long> failedBrokers = new HashMap<>();
-    failedBrokers.putAll(_failedBrokers);
-    return failedBrokers;
+    return new HashMap<>(_failedBrokers);
   }
 
   void shutdown() {
@@ -149,8 +150,7 @@ public class BrokerFailureDetector {
 
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
-      Map<Integer, Long> failedBrokers = new HashMap<>();
-      failedBrokers.putAll(_failedBrokers);
+      Map<Integer, Long> failedBrokers = new HashMap<>(_failedBrokers);
       _anomalies.add(new BrokerFailures(failedBrokers));
     }
   }
@@ -161,7 +161,7 @@ public class BrokerFailureDetector {
   private class BrokerFailureListener implements IZkChildListener {
 
     @Override
-    public void handleChildChange(String parentPath, List<String> currentChildren) throws Exception {
+    public void handleChildChange(String parentPath, List<String> currentChildren) {
       updateFailedBrokerList(currentChildren.stream().map(Integer::parseInt).collect(toSet()));
       persistFailedBrokerList();
       reportBrokerFailures();

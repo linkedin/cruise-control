@@ -4,7 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
@@ -40,13 +42,13 @@ public class GoalViolationDetector implements Runnable {
   private final LoadMonitor _loadMonitor;
   private final SortedMap<Integer, Goal> _goals;
   private final Time _time;
-  private final Queue<Anomaly> _anomalies;
+  private final Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> _anomalies;
   private ModelGeneration _lastCheckedModelGeneration;
   private final Pattern _excludedTopics;
 
   public GoalViolationDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
-                               Queue<Anomaly> anomalies,
+                               Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies,
                                Time time) {
     _loadMonitor = loadMonitor;
     // Notice that we use a separate set of Goal instances for anomaly detector to avoid interference.

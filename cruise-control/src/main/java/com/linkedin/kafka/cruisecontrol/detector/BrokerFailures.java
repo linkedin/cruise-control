@@ -17,7 +17,7 @@ import java.util.Map;
 /**
  * The broker failures that have been detected.
  */
-public class BrokerFailures extends Anomaly {
+public class BrokerFailures extends KafkaAnomaly {
   private final Map<Integer, Long> _failedBrokers;
 
   public BrokerFailures(Map<Integer, Long> failedBrokers) {
@@ -32,7 +32,7 @@ public class BrokerFailures extends Anomaly {
   }
 
   @Override
-  void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
+  public void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
     // Fix the cluster by removing the failed brokers.
     if (_failedBrokers != null && !_failedBrokers.isEmpty()) {
       kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(), false, false,

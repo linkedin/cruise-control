@@ -35,6 +35,14 @@ import org.apache.kafka.common.config.ConfigException;
 
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 import static org.apache.kafka.common.config.ConfigDef.Range.between;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_MAX;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_MEAN;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_MAX;
+import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.BROKER_LOG_FLUSH_TIME_MS_MEAN;
 
 /**
  * The configuration class of Kafka Cruise Control.
@@ -371,6 +379,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       "utilization state when all the brokers are below the low utilization threshold. The threshold is in percentage.";
 
   /**
+   * <code>metric.anomaly.percentile.threshold</code>
+   */
+  public static final String METRIC_ANOMALY_PERCENTILE_THRESHOLD_CONFIG = "metric.anomaly.percentile.threshold";
+  private static final String METRIC_ANOMALY_PERCENTILE_THRESHOLD_DOC = "The threshold for the metric anomaly detector "
+                                                                        + "to identify a change in the metric values of"
+                                                                        + " a broker as a metric anomaly.";
+
+  /**
    * <code>max.proposal.candidates</code>
    */
   public static final String MAX_PROPOSAL_CANDIDATES_CONFIG = "max.proposal.candidates";
@@ -471,6 +487,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String ANOMALY_DETECTION_GOALS_CONFIG = "anomaly.detection.goals";
   private static final String ANOMALY_DETECTION_GOALS_DOC = "The goals that anomaly detector should detect if they are"
       + "violated.";
+
+  /**
+   * <code>metric.anomaly.analyzer.metrics</code>
+   */
+  public static final String METRIC_ANOMALY_ANALYZER_METRICS_CONFIG = "metric.anomaly.analyzer.metrics";
+  private static final String METRIC_ANOMALY_ANALYZER_METRICS_DOC = "The metric ids that the metric anomaly detector "
+                                                                    + "should detect if they are violated.";
 
   /**
    * <code>failed.brokers.zk.path</code>
@@ -733,6 +756,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 between(0, 1),
                 ConfigDef.Importance.MEDIUM,
                 NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_DOC)
+        .define(METRIC_ANOMALY_PERCENTILE_THRESHOLD_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                95.0,
+                between(0.01, 99.99),
+                ConfigDef.Importance.MEDIUM,
+                METRIC_ANOMALY_PERCENTILE_THRESHOLD_DOC)
         .define(MAX_PROPOSAL_CANDIDATES_CONFIG,
                 ConfigDef.Type.INT,
                 10,
@@ -828,6 +857,19 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(TopicReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.MEDIUM,
                 ANOMALY_DETECTION_GOALS_DOC)
+        .define(METRIC_ANOMALY_ANALYZER_METRICS_CONFIG,
+                ConfigDef.Type.LIST,
+                new StringJoiner(",")
+                    .add(Byte.toString(BROKER_PRODUCE_LOCAL_TIME_MS_MAX.id()))
+                    .add(Byte.toString(BROKER_PRODUCE_LOCAL_TIME_MS_MEAN.id()))
+                    .add(Byte.toString(BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX.id()))
+                    .add(Byte.toString(BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN.id()))
+                    .add(Byte.toString(BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX.id()))
+                    .add(Byte.toString(BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN.id()))
+                    .add(Byte.toString(BROKER_LOG_FLUSH_TIME_MS_MAX.id()))
+                    .add(Byte.toString(BROKER_LOG_FLUSH_TIME_MS_MEAN.id())).toString(),
+                ConfigDef.Importance.MEDIUM,
+                METRIC_ANOMALY_ANALYZER_METRICS_DOC)
         .define(FAILED_BROKERS_ZK_PATH_CONFIG,
                 ConfigDef.Type.STRING,
                 DEFAULT_FAILED_BROKERS_ZK_PATH,

@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -32,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public class AnomalyDetector {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
-  private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(Collections.emptyMap());
+  private static final Anomaly<KafkaCruiseControl, KafkaCruiseControlException> SHUTDOWN_ANOMALY = new BrokerFailures(Collections.emptyMap());
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final AnomalyNotifier _anomalyNotifier;
   // Detectors
@@ -41,7 +42,7 @@ public class AnomalyDetector {
   private final MetricAnomalyDetector _metricAnomalyDetector;
   private final ScheduledExecutorService _detectorScheduler;
   private final long _anomalyDetectionIntervalMs;
-  private final LinkedBlockingDeque<Anomaly> _anomalies;
+  private final LinkedBlockingDeque<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> _anomalies;
   private volatile boolean _shutdown;
   private final Meter _brokerFailureRate;
   private final Meter _goalViolationRate;
@@ -60,7 +61,7 @@ public class AnomalyDetector {
     _loadMonitor = loadMonitor;
     _goalViolationDetector = new GoalViolationDetector(config, _loadMonitor, _anomalies, time);
     _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time);
-    _metricAnomalyDetector = new MetricAnomalyDetector(_loadMonitor, _anomalies);
+    _metricAnomalyDetector = new MetricAnomalyDetector(config, _loadMonitor, _anomalies);
     _kafkaCruiseControl = kafkaCruiseControl;
     _detectorScheduler =
         Executors.newScheduledThreadPool(4, new KafkaCruiseControlThreadFactory("AnomalyDetector", false, LOG));
@@ -73,7 +74,7 @@ public class AnomalyDetector {
   /**
    * Package private constructor for unit test.
    */
-  AnomalyDetector(LinkedBlockingDeque<Anomaly> anomalies,
+  AnomalyDetector(LinkedBlockingDeque<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies,
                   long anomalyDetectionIntervalMs,
                   KafkaCruiseControl kafkaCruiseControl,
                   AnomalyNotifier anomalyNotifier,
@@ -144,7 +145,7 @@ public class AnomalyDetector {
     public void run() {
       LOG.info("Starting anomaly handler");
       while (true) {
-        Anomaly anomaly = null;
+        Anomaly<KafkaCruiseControl, KafkaCruiseControlException> anomaly = null;
         boolean retryHandling = false;
         try {
           anomaly = _anomalies.take();
@@ -169,8 +170,8 @@ public class AnomalyDetector {
               GoalViolations goalViolations = (GoalViolations) anomaly;
               notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
               _goalViolationRate.mark();
-            } else if (anomaly instanceof MetricAnomaly) {
-              MetricAnomaly metricAnomaly = (MetricAnomaly) anomaly;
+            } else if (anomaly instanceof KafkaMetricAnomaly) {
+              KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomaly;
               notificationResult = _anomalyNotifier.onMetricAnomaly(metricAnomaly);
               _metricAnomalyRate.mark();
             }
@@ -207,7 +208,7 @@ public class AnomalyDetector {
       LOG.info("Anomaly handler exited.");
     }
 
-    private void checkWithDelay(Anomaly anomaly, long delay) {
+    private void checkWithDelay(Anomaly<KafkaCruiseControl, KafkaCruiseControlException> anomaly, long delay) {
       // We only do delayed check for broker failures.
       if (anomaly instanceof BrokerFailures) {
         LOG.debug("Scheduling broker failure detection with delay of {} ms", delay);
@@ -222,7 +223,7 @@ public class AnomalyDetector {
      * @param anomaly The anomaly to check whether fixable or not.
      * @return true if fixable, false otherwise.
      */
-    private boolean isFixable(Anomaly anomaly) {
+    private boolean isFixable(Anomaly<KafkaCruiseControl, KafkaCruiseControlException> anomaly) {
       String skipMsg = (anomaly instanceof GoalViolations) ? "goal violation fix" : "broker failure fix";
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
 
@@ -241,7 +242,7 @@ public class AnomalyDetector {
       return false;
     }
 
-    private void fixAnomaly(Anomaly anomaly) throws KafkaCruiseControlException {
+    private void fixAnomaly(Anomaly<KafkaCruiseControl, KafkaCruiseControlException> anomaly) throws KafkaCruiseControlException {
       if (isFixable(anomaly)) {
         LOG.info("Fixing anomaly {}", anomaly);
         anomaly.fix(_kafkaCruiseControl);

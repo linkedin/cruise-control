@@ -4,10 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import com.linkedin.kafka.clients.utils.tests.EmbeddedBroker;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.Arrays;
 import java.util.Collections;
@@ -51,7 +54,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   @Test
   public void testFailureDetection() throws Exception {
     Time mockTime = getMockTime();
-    Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
+    Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
     try {
       // Start detection.
@@ -64,7 +67,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
         // wait for the anomalies to be drained.
       }
       assertEquals("One broker failure should have been detected before timeout.", 1, anomalies.size());
-      Anomaly anomaly = anomalies.remove();
+      Anomaly<KafkaCruiseControl, KafkaCruiseControlException> anomaly = anomalies.remove();
       assertTrue("The anomaly should be BrokerFailure", anomaly instanceof BrokerFailures);
       BrokerFailures brokerFailures = (BrokerFailures) anomaly;
       assertEquals("The failed broker should be 0 and time should be 100L", Collections.singletonMap(brokerId, 100L),
@@ -83,7 +86,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   @Test
   public void testDetectorStartWithFailedBrokers() throws Exception {
     Time mockTime = getMockTime();
-    Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
+    Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
     try {
@@ -99,7 +102,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   @Test
   public void testLoadFailedBrokersFromZK() throws Exception {
     Time mockTime = getMockTime();
-    Queue<Anomaly> anomalies = new ConcurrentLinkedQueue<>();
+    Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies = new ConcurrentLinkedQueue<>();
     BrokerFailureDetector detector = createBrokerFailureDetector(anomalies, mockTime);
 
     try {
@@ -123,7 +126,8 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
     }
   }
 
-  private BrokerFailureDetector createBrokerFailureDetector(Queue<Anomaly> anomalies, Time time) {
+  private BrokerFailureDetector createBrokerFailureDetector(Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies,
+                                                            Time time) {
     LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
     EasyMock.expect(mockLoadMonitor.brokersWithPartitions(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
     EasyMock.replay(mockLoadMonitor);

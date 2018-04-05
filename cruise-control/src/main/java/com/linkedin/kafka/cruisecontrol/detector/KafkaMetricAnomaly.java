@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.MetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
@@ -13,9 +14,10 @@ import java.util.Date;
 
 
 /**
- * A class that holds metric anomalies. A metric anomaly indicates unexpected rapid changes in metric values of a broker.
+ * A class that holds Kafka metric anomalies.
+ * A Kafka metric anomaly indicates unexpected rapid changes in metric values of a broker.
  */
-public class MetricAnomaly extends Anomaly {
+public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity, KafkaCruiseControl, KafkaCruiseControlException> {
   private final long _startTime;
   private final long _endTime;
   private final String _description;
@@ -23,7 +25,7 @@ public class MetricAnomaly extends Anomaly {
   private final Integer _metricId;
 
   /**
-   * Metric anomaly
+   * Kafka Metric anomaly
    *
    * @param startTime The start time of the anomaly.
    * @param endTime The last time that the anomaly was observed.
@@ -31,7 +33,7 @@ public class MetricAnomaly extends Anomaly {
    * @param brokerEntity The broker for which the anomaly was identified.
    * @param metricId The metric id  for which the anomaly was identified.
    */
-  public MetricAnomaly(long startTime, long endTime, String description, BrokerEntity brokerEntity, Integer metricId) {
+  public KafkaMetricAnomaly(long startTime, long endTime, String description, BrokerEntity brokerEntity, Integer metricId) {
     _startTime = startTime;
     _endTime = endTime;
     _description = description;
@@ -42,6 +44,7 @@ public class MetricAnomaly extends Anomaly {
   /**
    * Get the start time of the metric anomaly observation.
    */
+  @Override
   public long startTime() {
     return _startTime;
   }
@@ -49,6 +52,7 @@ public class MetricAnomaly extends Anomaly {
   /**
    * Get the end time of the metric anomaly observation.
    */
+  @Override
   public long endTime() {
     return _endTime;
   }
@@ -56,6 +60,7 @@ public class MetricAnomaly extends Anomaly {
   /**
    * Get the anomaly description.
    */
+  @Override
   public String description() {
     return _description;
   }
@@ -63,19 +68,21 @@ public class MetricAnomaly extends Anomaly {
   /**
    * Get the broker entity with metric anomaly.
    */
-  public BrokerEntity brokerEntity() {
+  @Override
+  public BrokerEntity entity() {
     return _brokerEntity;
   }
 
   /**
    * Get the metric Id caused the metric anomaly.
    */
+  @Override
   public Integer metricId() {
     return _metricId;
   }
 
   @Override
-  void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
+  public void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
     // TODO: Fix the cluster by removing the leadership from the brokers with metric anomaly (See PR#175: demote_broker).
   }
 

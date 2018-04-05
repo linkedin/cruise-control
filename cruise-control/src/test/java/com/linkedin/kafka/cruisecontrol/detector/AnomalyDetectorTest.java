@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
@@ -31,7 +32,7 @@ public class AnomalyDetectorTest {
 
   @Test
   public void testDelayedCheck() throws InterruptedException {
-    LinkedBlockingDeque<Anomaly> anomalies = new LinkedBlockingDeque<>();
+    LinkedBlockingDeque<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies = new LinkedBlockingDeque<>();
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
@@ -102,7 +103,7 @@ public class AnomalyDetectorTest {
 
   @Test
   public void testFix() throws InterruptedException, KafkaCruiseControlException {
-    LinkedBlockingDeque<Anomaly> anomalies = new LinkedBlockingDeque<>();
+    LinkedBlockingDeque<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies = new LinkedBlockingDeque<>();
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
@@ -175,7 +176,7 @@ public class AnomalyDetectorTest {
 
   @Test
   public void testExecutionInProgress() throws InterruptedException {
-    LinkedBlockingDeque<Anomaly> anomalies = new LinkedBlockingDeque<>();
+    LinkedBlockingDeque<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies = new LinkedBlockingDeque<>();
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
