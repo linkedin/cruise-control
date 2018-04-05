@@ -95,6 +95,13 @@ public class MetadataClient {
   }
 
   /**
+   * Close the metadata client.
+   */
+  public void close() {
+    _networkClient.close();
+  }
+
+  /**
    * Get the metadata maintained by this metadata client.
    */
   public Metadata metadata() {

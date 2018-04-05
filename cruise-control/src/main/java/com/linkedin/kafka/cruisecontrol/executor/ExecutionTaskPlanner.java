@@ -46,7 +46,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.L
 public class ExecutionTaskPlanner {
   private final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
   private final Map<Integer, Map<Long, ExecutionTask>> _partMoveProposalByBrokerId;
-  private volatile long _remainingDataToMove;
+  private long _remainingDataToMove;
   private final Set<ExecutionTask> _remainingReplicaMovements;
   private final Map<Long, ExecutionTask> _leaderMovements;
   private final AtomicLong _executionId;

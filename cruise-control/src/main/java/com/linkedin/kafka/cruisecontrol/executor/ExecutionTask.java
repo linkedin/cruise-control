@@ -44,6 +44,8 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   private final long _executionId;
   private final ExecutionProposal _proposal;
   private State _state;
+  private long _startTime;
+  private long _endTime;
 
   static {
     VALID_TRANSFER.put(PENDING, new HashSet<>(Collections.singleton(IN_PROGRESS)));
@@ -56,7 +58,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
 
   /**
    * Construct an execution task.
-   * 
+   *
    * @param executionId The execution id of the proposal so we can keep track of the task when execute it.
    * @param proposal The corresponding balancing proposal of this task.
    * @param type the {@link TaskType} of this task.
@@ -66,6 +68,9 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     _proposal = proposal;
     _state = State.PENDING;
     _type = type;
+    _startTime = -1L;
+    _endTime = -1L;
+
   }
 
   /**
@@ -113,19 +118,35 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   }
 
   /**
+   * @return the timestamp that the task started.
+   */
+  public long startTime() {
+    return _startTime;
+  }
+
+  /**
+   * @return the timestamp that the task finishes.
+   */
+  public long endTime() {
+    return _endTime;
+  }
+
+  /**
    * Mark task in progress.
    */
-  public void inProgress() {
+  public void inProgress(long now) {
     ensureValidTransfer(IN_PROGRESS);
     this._state = IN_PROGRESS;
+    _startTime = now;
   }
 
   /**
    * Kill the task.
    */
-  public void kill() {
+  public void kill(long now) {
     ensureValidTransfer(DEAD);
     this._state = DEAD;
+    _endTime = now;
   }
 
   /**
@@ -139,17 +160,19 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   /**
    * Change the task state to aborted.
    */
-  public void aborted() {
+  public void aborted(long now) {
     ensureValidTransfer(ABORTED);
     this._state = ABORTED;
+    _endTime = now;
   }
 
   /**
    * Change the task state to completed.
    */
-  public void completed() {
+  public void completed(long now) {
     ensureValidTransfer(COMPLETED);
     this._state = COMPLETED;
+    _endTime = now;
   }
 
   @Override
@@ -181,17 +204,17 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
                                           + "valid target state are " + validTargetState());
     }
   }
-  
+
   public enum TaskType {
     REPLICA_ACTION, LEADER_ACTION
   }
 
   public enum State {
     PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED;
-    
-    private static final List<State> CACHED_VALUES = 
+
+    private static final List<State> CACHED_VALUES =
         Arrays.asList(PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED);
-    
+
     public static List<State> cachedValues() {
       return CACHED_VALUES;
     }
