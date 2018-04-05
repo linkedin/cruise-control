@@ -101,7 +101,7 @@ public class GoalOptimizer implements Runnable {
     _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
     _maxProposalCandidates = config.getInt(KafkaCruiseControlConfig.MAX_PROPOSAL_CANDIDATES_CONFIG);
     _proposalExpirationMs = config.getLong(KafkaCruiseControlConfig.PROPOSAL_EXPIRATION_MS_CONFIG);
-        _proposalPrecomputingExecutor =
+    _proposalPrecomputingExecutor =
         Executors.newScheduledThreadPool(_numPrecomputingThreads,
                                          new KafkaCruiseControlThreadFactory("ProposalPrecomputingExecutor", false, LOG));
     _loadMonitor = loadMonitor;
