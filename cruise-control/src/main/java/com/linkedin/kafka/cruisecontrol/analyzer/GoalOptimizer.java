@@ -119,7 +119,7 @@ public class GoalOptimizer implements Runnable {
     // We need to get this thread so it can be interrupted if the cached proposal has been invalidated.
     _proposalPrecomputingSchedulerThread = Thread.currentThread();
     LOG.info("Starting proposal candidate computation.");
-    while (!_shutdown) {
+    while (!_shutdown && _numPrecomputingThreads > 0) {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
       long sleepTime = _proposalExpirationMs;
       if (loadMonitorTaskRunnerState == LOADING || loadMonitorTaskRunnerState == BOOTSTRAPPING) {
