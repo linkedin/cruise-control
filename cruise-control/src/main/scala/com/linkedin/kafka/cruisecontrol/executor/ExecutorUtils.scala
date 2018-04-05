@@ -108,6 +108,11 @@ object ExecutorUtils {
     setAsJavaSet(zkUtils.getPartitionsBeingReassigned().keys.map(tap => new TopicPartition(tap.topic, tap.partition)).toSet)
   }
 
+  def ongoingLeaderElection(zkUtils: ZkUtils): util.Set[TopicPartition] = {
+    setAsJavaSet(zkUtils.getPartitionsUndergoingPreferredReplicaElection()
+                        .map(tap => new TopicPartition(tap.topic, tap.partition)).toSet)
+  }
+
   def newAssignmentForPartition(zkUtils: ZkUtils, tp : TopicPartition): java.util.List[Integer] = {
     val inProgressReassignment =
       zkUtils.getPartitionsBeingReassigned().getOrElse(TopicAndPartition(tp.topic(), tp.partition()),
@@ -115,7 +120,7 @@ object ExecutorUtils {
 
     seqAsJavaList(inProgressReassignment.newReplicas.map(i => i : java.lang.Integer))
   }
-  
+
   def currentReplicasForPartition(zkUtils: ZkUtils, tp: TopicPartition): java.util.List[java.lang.Integer] = {
     seqAsJavaList(zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).map(i => i : java.lang.Integer))
   }

@@ -381,6 +381,16 @@ public class Executor {
     private void waitForExecutionTaskToFinish() {
       List<ExecutionTask> finishedTasks = new ArrayList<>();
       do {
+        // If there is no finished tasks, we need to check if anything is blocked.
+        if (finishedTasks.isEmpty()) {
+          maybeReexecuteTasks();
+          try {
+            Thread.sleep(_statusCheckingIntervalMs);
+          } catch (InterruptedException e) {
+            // let it go
+          }
+        }
+
         Cluster cluster = _metadataClient.refreshMetadata().cluster();
         LOG.debug("Tasks in execution: {}", _executionTaskManager.inExecutionTasks());
         List<ExecutionTask> deadOrAbortingTasks = new ArrayList<>();
@@ -417,16 +427,6 @@ public class Executor {
           }
         }
         updateOngoingExecutionState();
-
-        // If there is no finished tasks, we need to check if anything is blocked.
-        if (finishedTasks.isEmpty()) {
-          maybeReexecuteTasks();
-          try {
-            Thread.sleep(_statusCheckingIntervalMs);
-          } catch (InterruptedException e) {
-            // let it go
-          }
-        }
       } while (!_executionTaskManager.inExecutionTasks().isEmpty() && finishedTasks.size() == 0);
       // Some tasks have finished, remove them from in progress task map.
       LOG.info("Completed tasks: {}", finishedTasks);
@@ -573,7 +573,7 @@ public class Executor {
       }
 
       // Only reexecute leader actions if there is no replica actions running.
-      if (replicaActionsToReexecute.isEmpty()) {
+      if (replicaActionsToReexecute.isEmpty() && ExecutorUtils.ongoingLeaderElection(_zkUtils).isEmpty()) {
         List<ExecutionTask> leaderActionsToReexecute =
             new ArrayList<>(_executionTaskManager.inExecutionTasks(ExecutionTask.TaskType.LEADER_ACTION));
         if (!leaderActionsToReexecute.isEmpty()) {
