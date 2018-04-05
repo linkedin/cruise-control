@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
@@ -23,8 +24,13 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.SystemTime;
+import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.After;
 import org.junit.Before;
@@ -140,6 +146,46 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     assertEquals(initialLeader0, zkUtils.getLeaderForPartition(TOPIC_1, PARTITION).get());
   }
 
+  @Test
+  public void testTimeoutLeaderActions() throws InterruptedException {
+    createTopics();
+    // The proposal tries to move the leader. We fake the replica list to be unchanged so there is no replica
+    // movement, but only leader movement.
+    ExecutionProposal proposal =
+        new ExecutionProposal(TP1, 0, 1, Arrays.asList(0, 1), Arrays.asList(0, 1));
+
+    KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
+    Time time = new MockTime();
+    MetadataClient mockMetadataClient = EasyMock.createMock(MetadataClient.class);
+    // Fake the metadata to never change so the leader movement will timeout.
+    Node node0 = new Node(0, "host0", 100);
+    Node node1 = new Node(1, "host1", 100);
+    Node[] replicas = new Node[2];
+    replicas[0] = node0;
+    replicas[1] = node1;
+    PartitionInfo partitionInfo = new PartitionInfo(TP1.topic(), TP1.partition(), node1, replicas, replicas);
+    Cluster cluster = new Cluster("id", Arrays.asList(node0, node1), Collections.singleton(partitionInfo),
+                                  Collections.emptySet(), Collections.emptySet());
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = new MetadataClient.ClusterAndGeneration(cluster, 0);
+    EasyMock.expect(mockMetadataClient.refreshMetadata()).andReturn(clusterAndGeneration).anyTimes();
+    EasyMock.expect(mockMetadataClient.cluster()).andReturn(clusterAndGeneration.cluster()).anyTimes();
+    EasyMock.replay(mockMetadataClient);
+
+    Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
+    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient);
+    executor.executeProposals(proposalsToExecute,
+                              Collections.emptySet(),
+                              EasyMock.mock(LoadMonitor.class));
+    // Wait until the execution to start so the task timestamp is set to time.milliseconds.
+    while (executor.state().state() != ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS) {
+      Thread.sleep(10);
+    }
+    // Sleep over 180000 (the hard coded timeout)
+    time.sleep(180001);
+    // The execution should finish.
+    waitUntilExecutionFinishes(executor);
+  }
+
   private Map<String, TopicDescription> createTopics() throws InterruptedException {
     AdminClient adminClient = getAdminClient(broker(0).getPlaintextAddr());
 
@@ -183,18 +229,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
       replicationFactors.put(new TopicPartition(proposal.topic(), proposal.partitionId()), replicationFactor);
     }
 
-    long now = System.currentTimeMillis();
-    while (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS
-        && System.currentTimeMillis() < now + 30000) {
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-    }
-    if (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      fail("The execution did not finish in 30 seconds.");
-    }
+    waitUntilExecutionFinishes(executor);
 
     for (ExecutionProposal proposal : proposalsToCheck) {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
@@ -211,6 +246,21 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
       assertEquals("The leader should have moved for " + tp,
                    proposal.newLeader(), zkUtils.getLeaderForPartition(tp.topic(), tp.partition()).get());
 
+    }
+  }
+
+  private void waitUntilExecutionFinishes(Executor executor) {
+    long now = System.currentTimeMillis();
+    while ((executor.hasOngoingExecution() || executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS)
+        && System.currentTimeMillis() < now + 30000) {
+      try {
+        Thread.sleep(100);
+      } catch (InterruptedException e) {
+        e.printStackTrace();
+      }
+    }
+    if (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+      fail("The execution did not finish in 30 seconds.");
     }
   }
 

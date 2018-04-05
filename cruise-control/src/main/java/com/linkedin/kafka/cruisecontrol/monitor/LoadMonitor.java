@@ -176,6 +176,7 @@ public class LoadMonitor {
       LOG.warn("Received exception when closing broker capacity resolver.", e);
     }
     _loadMonitorTaskRunner.shutdown();
+    _metadataClient.close();
     LOG.info("Load Monitor shutdown completed.");
   }
 

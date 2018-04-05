@@ -14,7 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicLong;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
@@ -46,13 +45,13 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.L
 public class ExecutionTaskPlanner {
   private final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
   private final Map<Integer, Map<Long, ExecutionTask>> _partMoveProposalByBrokerId;
-  private volatile long _remainingDataToMove;
+  private long _remainingDataToMove;
   private final Set<ExecutionTask> _remainingReplicaMovements;
   private final Map<Long, ExecutionTask> _leaderMovements;
-  private final AtomicLong _executionId;
+  private long _executionId;
 
   public ExecutionTaskPlanner() {
-    _executionId = new AtomicLong(0L);
+    _executionId = 0L;
     _partMoveProposalByBrokerId = new HashMap<>();
     _remainingReplicaMovements = new TreeSet<>();
     _remainingDataToMove = 0L;
@@ -93,7 +92,7 @@ public class ExecutionTaskPlanner {
       return;
     }
     if (!proposal.isCompletedSuccessfully(partitionInfo.replicas())) {
-      long replicaActionExecutionId = _executionId.getAndIncrement();
+      long replicaActionExecutionId = _executionId++;
       ExecutionTask executionTask = new ExecutionTask(replicaActionExecutionId, proposal, REPLICA_ACTION);
       _remainingReplicaMovements.add(executionTask);
       _remainingDataToMove += proposal.dataToMoveInMB();
@@ -118,7 +117,7 @@ public class ExecutionTaskPlanner {
       Node currentLeader = cluster.leaderFor(tp);
       if (currentLeader != null && currentLeader.id() != proposal.newLeader()) {
         // Get the execution Id for the leader action proposal execution;
-        long leaderActionExecutionId = _executionId.getAndIncrement();
+        long leaderActionExecutionId = _executionId++;
         ExecutionTask leaderActionTask = new ExecutionTask(leaderActionExecutionId, proposal, LEADER_ACTION);
         _leaderMovements.put(leaderActionExecutionId, leaderActionTask);
         LOG.trace("Added action {} as leader proposal {}", leaderActionExecutionId, proposal);

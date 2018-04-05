@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.utils.Time;
 
 
 /**
@@ -37,6 +38,7 @@ public class ExecutionTaskManager {
   private final int _partitionMovementConcurrency;
   private final int _leaderMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
+  private final Time _time;
   private volatile long _inExecutionDataToMove;
 
   private static final String REPLICA_ACTION = "replica-action";
@@ -62,10 +64,14 @@ public class ExecutionTaskManager {
    * The constructor of The Execution task manager.
    *
    * @param partitionMovementConcurrency The maximum number of concurrent partition movements per broker.
+   * @param leaderMovementConcurrency The maximum number of concurrent leader movements per batch.
+   * @param dropwizardMetricRegistry The metric registry.
+   * @param time The time object to get the time.
    */
   public ExecutionTaskManager(int partitionMovementConcurrency,
                               int leaderMovementConcurrency,
-                              MetricRegistry dropwizardMetricRegistry) {
+                              MetricRegistry dropwizardMetricRegistry,
+                              Time time) {
     _inProgressReplicaMovementsByBrokerId = new HashMap<>();
     _inProgressPartitions = new HashSet<>();
     _executionTaskTracker = new ExecutionTaskTracker();
@@ -74,6 +80,7 @@ public class ExecutionTaskManager {
     _leaderMovementConcurrency = leaderMovementConcurrency;
     _brokersToSkipConcurrencyCheck = new HashSet<>();
     _inExecutionDataToMove = 0L;
+    _time = time;
 
     // Register gauge sensors.
     registerGaugeSensors(dropwizardMetricRegistry);
@@ -167,6 +174,26 @@ public class ExecutionTaskManager {
     Set<ExecutionTask> inExecution = new HashSet<>();
     inExecution.addAll(_executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS));
     inExecution.addAll(_executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING));
+    return inExecution;
+  }
+
+  /**
+   * Get all the tasks that are not completed yet.
+   * The uncompleted tasks include tasks in IN_PROGRESS and ABORTING state.
+   * @param type the task type to get.
+   */
+  public synchronized Set<ExecutionTask> inExecutionTasks(ExecutionTask.TaskType type) {
+    Set<ExecutionTask> inExecution = new HashSet<>();
+    _executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS).forEach(t -> {
+      if (t.type() == type) {
+        inExecution.add(t);
+      }
+    });
+    _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING).forEach(t -> {
+      if (t.type() == type) {
+        inExecution.add(t);
+      }
+    });
     return inExecution;
   }
 
@@ -301,7 +328,7 @@ public class ExecutionTaskManager {
 
       switch (targetState) {
         case IN_PROGRESS:
-          task.inProgress();
+          task.inProgress(_time.milliseconds());
           _inExecutionDataToMove += task.proposal().dataToMoveInMB();
           break;
         case ABORTING:
@@ -309,13 +336,13 @@ public class ExecutionTaskManager {
           _inExecutionDataToMove += task.proposal().dataToMoveInMB();
           break;
         case DEAD:
-          task.kill();
+          task.kill(_time.milliseconds());
           break;
         case ABORTED:
-          task.aborted();
+          task.aborted(_time.milliseconds());
           break;
         case COMPLETED:
-          task.completed();
+          task.completed(_time.milliseconds());
           break;
         default:
           throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state");

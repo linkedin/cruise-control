@@ -15,6 +15,7 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.utils.SystemTime;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
@@ -40,7 +41,7 @@ public class ExecutionTaskManagerTest {
   @Test
   public void testStateChangeSequences() {
     TopicPartition tp = new TopicPartition("topic", 0);
-    ExecutionTaskManager taskManager = new ExecutionTaskManager(1, 1, new MetricRegistry());
+    ExecutionTaskManager taskManager = new ExecutionTaskManager(1, 1, new MetricRegistry(), new SystemTime());
 
     List<List<ExecutionTask.State>> testSequences = new ArrayList<>();
     // Completed successfully.
