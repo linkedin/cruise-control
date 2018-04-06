@@ -8,53 +8,50 @@ import com.linkedin.cruisecontrol.detector.MetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * A class that holds Kafka metric anomalies.
  * A Kafka metric anomaly indicates unexpected rapid changes in metric values of a broker.
  */
-public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity, KafkaCruiseControl, KafkaCruiseControlException> {
-  private final long _startTime;
-  private final long _endTime;
+public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaMetricAnomaly.class);
+  private final KafkaCruiseControl _kafkaCruiseControl;
   private final String _description;
   private final BrokerEntity _brokerEntity;
   private final Integer _metricId;
+  private final List<Long> _windows;
 
   /**
    * Kafka Metric anomaly
    *
-   * @param startTime The start time of the anomaly.
-   * @param endTime The last time that the anomaly was observed.
+   * @param kafkaCruiseControl The Kafka Cruise Control instance.
    * @param description The details on why this is identified as an anomaly.
    * @param brokerEntity The broker for which the anomaly was identified.
    * @param metricId The metric id  for which the anomaly was identified.
+   * @param windows Thw list of windows tha the anomaly was observed.
    */
-  public KafkaMetricAnomaly(long startTime, long endTime, String description, BrokerEntity brokerEntity, Integer metricId) {
-    _startTime = startTime;
-    _endTime = endTime;
+  public KafkaMetricAnomaly(KafkaCruiseControl kafkaCruiseControl,
+                            String description,
+                            BrokerEntity brokerEntity,
+                            Integer metricId,
+                            List<Long> windows) {
+    _kafkaCruiseControl = kafkaCruiseControl;
     _description = description;
     _brokerEntity = brokerEntity;
     _metricId = metricId;
+    _windows = windows;
   }
 
   /**
-   * Get the start time of the metric anomaly observation.
+   * Get a list of windows for which a metric anomaly was observed.
    */
   @Override
-  public long startTime() {
-    return _startTime;
-  }
-
-  /**
-   * Get the end time of the metric anomaly observation.
-   */
-  @Override
-  public long endTime() {
-    return _endTime;
+  public List<Long> windows() {
+    return _windows;
   }
 
   /**
@@ -81,17 +78,17 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity, KafkaCrui
     return _metricId;
   }
 
+  /**
+   * Fix the anomaly with the system.
+   */
   @Override
-  public void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
+  public void fix() throws KafkaCruiseControlException {
     // TODO: Fix the cluster by removing the leadership from the brokers with metric anomaly (See PR#175: demote_broker).
+    LOG.trace("Fix the cluster by removing the leadership from the broker: {}", _brokerEntity);
   }
 
   @Override
   public String toString() {
-    Date startDate = new Date(_startTime);
-    Date endDate = new Date(_endTime);
-    DateFormat format = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-    return String.format("{%nMetric Anomaly start: %s end: %s description: %s%n}",
-                         format.format(startDate), format.format(endDate), _description);
+    return String.format("{%nMetric Anomaly windows: %s description: %s%n}", _windows, _description);
   }
 }

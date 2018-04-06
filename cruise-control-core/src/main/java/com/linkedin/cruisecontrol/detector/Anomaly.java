@@ -7,12 +7,10 @@ package com.linkedin.cruisecontrol.detector;
 /**
  * The interface for an anomaly.
  */
-public interface Anomaly<T, AnomalyException extends Exception> {
+public interface Anomaly {
 
   /**
    * Fix the anomaly with the system.
-   *
-   * @param instance the system instance for which the anomaly is intended to be fixed.
    */
-  public void fix(T instance) throws AnomalyException;
+  public void fix() throws Exception;
 }

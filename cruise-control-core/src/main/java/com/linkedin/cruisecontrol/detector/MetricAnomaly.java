@@ -5,18 +5,14 @@
 package com.linkedin.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.model.Entity;
+import java.util.List;
 
 
-public interface MetricAnomaly<M extends Entity, T, AnomalyException extends Exception> extends Anomaly<T, AnomalyException> {
+public interface MetricAnomaly<E extends Entity> extends Anomaly {
   /**
-   * Get the start time of the metric anomaly observation.
+   * Get a list of windows for which a metric anomaly was observed.
    */
-  public long startTime();
-
-  /**
-   * Get the end time of the metric anomaly observation.
-   */
-  public long endTime();
+  public List<Long> windows();
 
   /**
    * Get the metric anomaly description.
@@ -26,7 +22,7 @@ public interface MetricAnomaly<M extends Entity, T, AnomalyException extends Exc
   /**
    * Get the entity with metric anomaly.
    */
-  public M entity();
+  public E entity();
 
   /**
    * Get the metric Id caused the metric anomaly.

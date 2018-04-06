@@ -7,9 +7,10 @@ package com.linkedin.cruisecontrol.config;
 import com.linkedin.cruisecontrol.common.config.AbstractConfig;
 import com.linkedin.cruisecontrol.common.config.ConfigDef;
 import java.util.Map;
+import java.util.StringJoiner;
 
 import static com.linkedin.cruisecontrol.common.config.ConfigDef.Range.atLeast;
-
+import static com.linkedin.cruisecontrol.common.config.ConfigDef.Range.between;
 
 /**
  * The configuration for Cruise Control.
@@ -57,6 +58,29 @@ public class CruiseControlConfig extends AbstractConfig {
       + "cache the completeness metadata for fast query. This configuration configures The number of completeness "
       + "cache slot to maintain.";
 
+  /**
+   * <code>metric.anomaly.percentile.upper.threshold</code>
+   */
+  public static final String METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG = "metric.anomaly.percentile.upper.threshold";
+  private static final String METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_DOC = "The upper threshold for the metric anomaly "
+                                                                              + "detector to identify an increase in the metric "
+                                                                              + "values of a broker as a metric anomaly.";
+
+  /**
+   * <code>metric.anomaly.percentile.lower.threshold</code>
+   */
+  public static final String METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG = "metric.anomaly.percentile.lower.threshold";
+  private static final String METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_DOC = "The lower threshold for the metric anomaly "
+                                                                              + "detector to identify a decrease in the metric "
+                                                                              + "values of a broker as a metric anomaly.";
+
+  /**
+   * <code>metric.anomaly.analyzer.metrics</code>
+   */
+  public static final String METRIC_ANOMALY_ANALYZER_METRICS_CONFIG = "metric.anomaly.analyzer.metrics";
+  private static final String METRIC_ANOMALY_ANALYZER_METRICS_DOC = "The metric ids that the metric anomaly detector "
+                                                                    + "should detect if they are violated.";
+
   static {
     CONFIG = new ConfigDef()
         .define(METRICS_WINDOW_MS_CONFIG,
@@ -88,7 +112,30 @@ public class CruiseControlConfig extends AbstractConfig {
                 5,
                 atLeast(0),
                 ConfigDef.Importance.LOW,
-                METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC);
+                METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC)
+        .define(METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                95.0,
+                between(0.01, 99.99),
+                ConfigDef.Importance.MEDIUM, METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_DOC)
+        .define(METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                2.0,
+                between(0.01, 99.99),
+                ConfigDef.Importance.MEDIUM, METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_DOC)
+        .define(METRIC_ANOMALY_ANALYZER_METRICS_CONFIG,
+                ConfigDef.Type.LIST,
+                new StringJoiner(",")
+                    .add("BROKER_PRODUCE_LOCAL_TIME_MS_MAX")
+                    .add("BROKER_PRODUCE_LOCAL_TIME_MS_MEAN")
+                    .add("BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX")
+                    .add("BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN")
+                    .add("BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX")
+                    .add("BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN")
+                    .add("BROKER_LOG_FLUSH_TIME_MS_MAX")
+                    .add("BROKER_LOG_FLUSH_TIME_MS_MEAN").toString(),
+                ConfigDef.Importance.MEDIUM,
+                METRIC_ANOMALY_ANALYZER_METRICS_DOC);
   }
 
   private static ConfigDef mergeConfigDef(ConfigDef definition) {

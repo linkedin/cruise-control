@@ -39,23 +39,26 @@ import org.slf4j.LoggerFactory;
  */
 public class GoalViolationDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolationDetector.class);
+  private final KafkaCruiseControl _kafkaCruiseControl;
   private final LoadMonitor _loadMonitor;
   private final SortedMap<Integer, Goal> _goals;
   private final Time _time;
-  private final Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> _anomalies;
+  private final Queue<Anomaly> _anomalies;
   private ModelGeneration _lastCheckedModelGeneration;
   private final Pattern _excludedTopics;
 
   public GoalViolationDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
-                               Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies,
-                               Time time) {
+                               Queue<Anomaly> anomalies,
+                               Time time,
+                               KafkaCruiseControl kafkaCruiseControl) {
     _loadMonitor = loadMonitor;
     // Notice that we use a separate set of Goal instances for anomaly detector to avoid interference.
     _goals = getDetectorGoalsMap(config);
     _anomalies = anomalies;
     _time = time;
     _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
+    _kafkaCruiseControl = kafkaCruiseControl;
   }
 
   private SortedMap<Integer, Goal> getDetectorGoalsMap(KafkaCruiseControlConfig config) {
@@ -95,7 +98,7 @@ public class GoalViolationDetector implements Runnable {
         return;
       }
 
-      GoalViolations goalViolations = new GoalViolations();
+      GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl);
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {

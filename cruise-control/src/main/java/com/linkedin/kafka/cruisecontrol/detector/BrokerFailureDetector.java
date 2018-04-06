@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
@@ -39,18 +38,20 @@ import static java.util.stream.Collectors.toSet;
 public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
   private static final long MAX_METADATA_WAIT_MS = 60000L;
+  private final KafkaCruiseControl _kafkaCruiseControl;
   private final String _failedBrokersZkPath;
   private final ZkClient _zkClient;
   private final ZkUtils _zkUtils;
   private final Map<Integer, Long> _failedBrokers;
   private final LoadMonitor _loadMonitor;
-  private final Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> _anomalies;
+  private final Queue<Anomaly> _anomalies;
   private final Time _time;
 
   public BrokerFailureDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
-                               Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies,
-                               Time time) {
+                               Queue<Anomaly> anomalies,
+                               Time time,
+                               KafkaCruiseControl kafkaCruiseControl) {
     String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     ZkConnection zkConnection = new ZkConnection(zkUrl, 30000);
     _zkClient = new ZkClient(zkConnection, 30000, new ZkStringSerializer());
@@ -61,6 +62,7 @@ public class BrokerFailureDetector {
     _loadMonitor = loadMonitor;
     _anomalies = anomalies;
     _time = time;
+    _kafkaCruiseControl = kafkaCruiseControl;
   }
 
   void startDetection() {
@@ -151,7 +153,7 @@ public class BrokerFailureDetector {
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
       Map<Integer, Long> failedBrokers = new HashMap<>(_failedBrokers);
-      _anomalies.add(new BrokerFailures(failedBrokers));
+      _anomalies.add(new BrokerFailures(_kafkaCruiseControl, failedBrokers));
     }
   }
 

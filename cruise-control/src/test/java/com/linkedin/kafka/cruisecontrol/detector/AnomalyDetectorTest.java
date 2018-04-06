@@ -32,7 +32,7 @@ public class AnomalyDetectorTest {
 
   @Test
   public void testDelayedCheck() throws InterruptedException {
-    LinkedBlockingDeque<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies = new LinkedBlockingDeque<>();
+    LinkedBlockingDeque<Anomaly> anomalies = new LinkedBlockingDeque<>();
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
@@ -89,7 +89,7 @@ public class AnomalyDetectorTest {
 
     try {
       anomalyDetector.startDetection();
-      anomalies.add(new BrokerFailures(Collections.singletonMap(0, 100L)));
+      anomalies.add(new BrokerFailures(mockKafkaCruiseControl, Collections.singletonMap(0, 100L)));
       while (!anomalies.isEmpty()) {
         // just wait for the anomalies to be drained.
       }
@@ -103,7 +103,7 @@ public class AnomalyDetectorTest {
 
   @Test
   public void testFix() throws InterruptedException, KafkaCruiseControlException {
-    LinkedBlockingDeque<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies = new LinkedBlockingDeque<>();
+    LinkedBlockingDeque<Anomaly> anomalies = new LinkedBlockingDeque<>();
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
@@ -162,7 +162,7 @@ public class AnomalyDetectorTest {
 
     try {
       anomalyDetector.startDetection();
-      anomalies.add(new GoalViolations());
+      anomalies.add(new GoalViolations(mockKafkaCruiseControl));
       while (!anomalies.isEmpty()) {
         // Just wait for the anomalies to be drained.
       }
@@ -176,7 +176,7 @@ public class AnomalyDetectorTest {
 
   @Test
   public void testExecutionInProgress() throws InterruptedException {
-    LinkedBlockingDeque<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies = new LinkedBlockingDeque<>();
+    LinkedBlockingDeque<Anomaly> anomalies = new LinkedBlockingDeque<>();
     AnomalyNotifier mockAnomalyNotifier = EasyMock.mock(AnomalyNotifier.class);
     BrokerFailureDetector mockBrokerFailureDetector = EasyMock.createNiceMock(BrokerFailureDetector.class);
     GoalViolationDetector mockGoalViolationDetector = EasyMock.createNiceMock(GoalViolationDetector.class);
@@ -235,7 +235,7 @@ public class AnomalyDetectorTest {
 
     try {
       anomalyDetector.startDetection();
-      anomalies.add(new GoalViolations());
+      anomalies.add(new GoalViolations(mockKafkaCruiseControl));
       while (!anomalies.isEmpty()) {
         // Just wait for the anomalies to be drained.
       }
@@ -247,7 +247,6 @@ public class AnomalyDetectorTest {
       executorService.shutdown();
     }
   }
-
 
   @Test
   public void testShutdown() throws InterruptedException {

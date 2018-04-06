@@ -24,7 +24,7 @@ public class ValuesAndExtrapolations {
    * @param metricValues the metric values.
    * @param extrapolations the extrapolations by corresponding metric value indexes.
    */
-  ValuesAndExtrapolations(AggregatedMetricValues metricValues, Map<Integer, Extrapolation> extrapolations) {
+  public ValuesAndExtrapolations(AggregatedMetricValues metricValues, Map<Integer, Extrapolation> extrapolations) {
     _metricValues = metricValues;
     _extrapolations = extrapolations;
   }
@@ -74,10 +74,10 @@ public class ValuesAndExtrapolations {
   }
 
   /**
-   * Package private method to set the windows array.
+   * Method to set the windows array.
    * @param windows the windows for the values.
    */
-  void setWindows(List<Long> windows) {
+  public void setWindows(List<Long> windows) {
     _windows = windows;
   }
 

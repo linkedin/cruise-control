@@ -5,18 +5,21 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
+import com.linkedin.cruisecontrol.detector.MetricAnomalyAnalyzer;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomalyAnalyzer.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
 
 /**
@@ -26,21 +29,30 @@ import org.slf4j.LoggerFactory;
 public class MetricAnomalyDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(MetricAnomalyDetector.class);
   private final LoadMonitor _loadMonitor;
-  private final Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> _anomalies;
-  private final double _metricAnomalyPercentileThreshold;
-  private final KafkaMetricAnomalyAnalyzer _kafkaMetricAnomalyAnalyzer;
+  private final Queue<Anomaly> _anomalies;
+  private final List<MetricAnomalyAnalyzer> _kafkaMetricAnomalyAnalyzers;
 
+  @SuppressWarnings("unchecked")
   public MetricAnomalyDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
-                               Queue<Anomaly<KafkaCruiseControl, KafkaCruiseControlException>> anomalies) {
+                               Queue<Anomaly> anomalies,
+                               KafkaCruiseControl kafkaCruiseControl) {
     _loadMonitor = loadMonitor;
     _anomalies = anomalies;
-    _metricAnomalyPercentileThreshold = config.getDouble(KafkaCruiseControlConfig.METRIC_ANOMALY_PERCENTILE_THRESHOLD_CONFIG);
-    _kafkaMetricAnomalyAnalyzer =
-        new KafkaMetricAnomalyAnalyzer(config.getList(KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_METRICS_CONFIG));
+
+    _kafkaMetricAnomalyAnalyzers = config.getConfiguredInstances(
+        KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG, MetricAnomalyAnalyzer.class);
+
+    Map<String, Object> originalConfigs = new HashMap<>(config.originals());
+    originalConfigs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, kafkaCruiseControl);
+
+    for (MetricAnomalyAnalyzer<BrokerEntity, KafkaMetricAnomaly> kafkaMetricAnomalyAnalyzer : _kafkaMetricAnomalyAnalyzers) {
+      kafkaMetricAnomalyAnalyzer.configure(originalConfigs);
+    }
   }
 
   @Override
+  @SuppressWarnings("unchecked")
   public void run() {
     // Check if the load monitor is ready.
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
@@ -53,9 +65,10 @@ public class MetricAnomalyDetector implements Runnable {
     Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker = _loadMonitor.brokerMetrics().valuesAndExtrapolations();
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker = _loadMonitor.currentBrokerMetricValues();
 
-    Collection<KafkaMetricAnomaly> anomalies =
-        _kafkaMetricAnomalyAnalyzer.metricAnomalies(_metricAnomalyPercentileThreshold, metricsHistoryByBroker, currentMetricsByBroker);
-    _anomalies.addAll(anomalies);
+    for (MetricAnomalyAnalyzer<BrokerEntity, KafkaMetricAnomaly> kafkaMetricAnomalyAnalyzer : _kafkaMetricAnomalyAnalyzers) {
+      _anomalies.addAll(kafkaMetricAnomalyAnalyzer.metricAnomalies(metricsHistoryByBroker, currentMetricsByBroker));
+    }
+
     LOG.debug("Metric anomaly detection finished.");
   }
 }

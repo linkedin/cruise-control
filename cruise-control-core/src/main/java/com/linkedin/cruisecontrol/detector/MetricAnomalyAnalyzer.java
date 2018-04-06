@@ -4,25 +4,24 @@
 
 package com.linkedin.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.cruisecontrol.model.Entity;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import java.util.Collection;
 import java.util.Map;
 
 
-public interface MetricAnomalyAnalyzer<M extends Entity, N extends MetricAnomaly> {
+public interface MetricAnomalyAnalyzer<E extends Entity, M extends MetricAnomaly> extends CruiseControlConfigurable {
 
   /**
    * Get a collection of metric anomalies for entities if an anomaly in their current aggregated metrics values is
    * detected for their metric ids, based on their history.
    *
-   * @param metricAnomalyPercentileThreshold Metric anomaly percentile threshold.
-   * @param metricsHistoryByBroker Metrics history by entity.
-   * @param currentMetricsByBroker Current metrics by entity.
+   * @param metricsHistoryByEntity Metrics history by entity.
+   * @param currentMetricsByEntity Current metrics by entity.
    * @return A collection of metric anomalies for entities if an anomaly in their current aggregated metrics values is
    * detected for their metric ids, based on their history.
    */
-  public Collection<N> metricAnomalies(double metricAnomalyPercentileThreshold,
-                                       Map<M, ValuesAndExtrapolations> metricsHistoryByBroker,
-                                       Map<M, ValuesAndExtrapolations> currentMetricsByBroker);
+  public Collection<M> metricAnomalies(Map<E, ValuesAndExtrapolations> metricsHistoryByEntity,
+                                       Map<E, ValuesAndExtrapolations> currentMetricsByEntity);
 }
