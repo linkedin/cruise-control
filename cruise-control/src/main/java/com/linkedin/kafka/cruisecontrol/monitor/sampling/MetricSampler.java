@@ -4,23 +4,23 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
+import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import java.util.Collections;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
-import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
 
 /**
  * The interface to get metric samples of given topic partitions.
  * <p>
  * Kafka Cruise Control periodically collects the metrics of all the partitions in the cluster, including the leader and follower
- * replicas. The {@link #getSamples(Cluster, Set, long, long, SamplingMode)}
+ * replicas. The {@link #getSamples(Cluster, Set, long, long, SamplingMode, MetricDef)}
  * will be called for all the replicas of partitions in the cluster in one sampling period.
  * The MetricSampler may be used by multiple threads at the same time, so the implementation need to be thread safe.
  */
-public interface MetricSampler extends Configurable, AutoCloseable {
+public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable {
   Samples EMPTY_SAMPLES = new Samples(Collections.emptySet(), Collections.emptySet());
 
   /**

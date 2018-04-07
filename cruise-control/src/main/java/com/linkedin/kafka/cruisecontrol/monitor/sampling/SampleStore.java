@@ -4,16 +4,16 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
+import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
-import org.apache.kafka.common.Configurable;
 
 
 /**
  * This interface is for users to implement a sample store which persists the samples stored in Kafka Cruise Control.
  * The sample store will be used by Kafka Cruise Control when it bootstraps.
  */
-public interface SampleStore extends Configurable {
+public interface SampleStore extends CruiseControlConfigurable {
   /**
    * Store all the samples to the sample store.
    * @param samples the samples to store.

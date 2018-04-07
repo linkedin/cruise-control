@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.cruisecontrol.monitor.sampling.aggregator;
@@ -35,7 +35,7 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
     Set<G> validGroupsForWindow = fillInValidRatios(windowIndex, completeness, options);
     Set<E> validEntitiesForWindow =
         options.granularity() == ENTITY ? _validEntities : validEntitiesWithGroupGranularity(validGroupsForWindow);
-    
+
     if (meetValidEntityRatioAfterMerge(completeness, validEntitiesForWindow, options)
         && meetValidEntityGroupRatioAfterMerge(completeness, validGroupsForWindow, options)) {
       completeness.retainAllValidEntities(validEntitiesForWindow);
