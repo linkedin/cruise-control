@@ -1,14 +1,14 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.cruisecontrol.config;
 
+import com.linkedin.cruisecontrol.common.config.AbstractConfig;
+import com.linkedin.cruisecontrol.common.config.ConfigDef;
 import java.util.Map;
-import org.apache.kafka.common.config.AbstractConfig;
-import org.apache.kafka.common.config.ConfigDef;
 
-import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
+import static com.linkedin.cruisecontrol.common.config.ConfigDef.Range.atLeast;
 
 
 /**

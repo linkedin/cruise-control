@@ -68,7 +68,6 @@ project(':cruise-control-core') {
   }
 
   dependencies {
-    compile project(':cruise-control-metrics-reporter')
     compile "org.slf4j:slf4j-api:1.7.25"
     compile 'junit:junit:4.12'
 

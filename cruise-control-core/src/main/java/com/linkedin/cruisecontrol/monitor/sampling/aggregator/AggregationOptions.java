@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.cruisecontrol.monitor.sampling.aggregator;
@@ -28,18 +28,18 @@ public class AggregationOptions<G, E extends Entity<G>> {
    * to aggregate the metrics.
    *
    * @param minValidEntityRatio The minimum required percentage of valid entities out of all the interestedEntities.
-   * @param minValidEntityGroupRatio The minimum required percentage of the valid entity groups out of all the interested 
+   * @param minValidEntityGroupRatio The minimum required percentage of the valid entity groups out of all the interested
    *                               entities groups (the groups of interested entities).
-   * @param minValidWindows The minimum required number of valid windows required in the result. A valid window 
+   * @param minValidWindows The minimum required number of valid windows required in the result. A valid window
    *                        is a window within which both <tt>Min Valid Entity Ratio</tt> and
    *                        <tt>Min Valid Entity Group Ratio</tt> are met.
-   * @param interestedEntities All the entities to include in this aggregation. Sometimes not all the entities are 
+   * @param interestedEntities All the entities to include in this aggregation. Sometimes not all the entities are
    *                           interested. This option allows users to aggregate only part of the entities.
    * @param granularity The granularity of the aggregation.
    * @param includeInvalidEntities Whether to include invalid entities in the aggregation result as well. The
    *                               metric values of the invalid entities are provided at the best effort. When no
    *                               metric value is available, 0 will be used.
-   *                               
+   *
    * @see MetricSampleAggregator
    * @see MetricSampleAggregationResult
    * @see MetricSampleCompleteness
@@ -113,9 +113,9 @@ public class AggregationOptions<G, E extends Entity<G>> {
   }
 
   /**
-   * The granularity of the aggregation. When set to {@link Granularity#ENTITY}, if an entity group contains both 
-   * valid and invalid entities, the aggregation will still consider the valid entities as valid. 
-   * When set to {@link Granularity#ENTITY_GROUP}, when there are invalid entities in an entity group, all the 
+   * The granularity of the aggregation. When set to {@link Granularity#ENTITY}, if an entity group contains both
+   * valid and invalid entities, the aggregation will still consider the valid entities as valid.
+   * When set to {@link Granularity#ENTITY_GROUP}, when there are invalid entities in an entity group, all the
    * entities in the same entity group are considered invalid.
    */
   public enum Granularity {
