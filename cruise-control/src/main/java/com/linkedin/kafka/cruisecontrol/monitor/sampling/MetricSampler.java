@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import java.util.Collections;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
 
 /**
@@ -19,8 +20,11 @@ import org.apache.kafka.common.TopicPartition;
  * replicas. The {@link #getSamples(Cluster, Set, long, long, SamplingMode, MetricDef)}
  * will be called for all the replicas of partitions in the cluster in one sampling period.
  * The MetricSampler may be used by multiple threads at the same time, so the implementation need to be thread safe.
+ *
+ * The class has to extend both {@link CruiseControlConfigurable} and {@link Configurable} to ensure it is configured
+ * properly.
  */
-public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable {
+public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable, Configurable {
   Samples EMPTY_SAMPLES = new Samples(Collections.emptySet(), Collections.emptySet());
 
   /**

@@ -7,12 +7,16 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
+import org.apache.kafka.common.Configurable;
 
 
-public interface AnomalyNotifier extends CruiseControlConfigurable {
+public interface AnomalyNotifier extends CruiseControlConfigurable, Configurable {
 
   /**
    * When a particular goal is violated this method will be called..
+   *
+   * The class has to extend both {@link CruiseControlConfigurable} and {@link Configurable} to ensure it is configured
+   * properly.
    *
    * @param goalViolations The detected goal violations.
    * @return The notification result that asks Cruise Control to perform one of the following behaviors: ignore, fix or

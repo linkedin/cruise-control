@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Set;
+import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.annotation.InterfaceStability;
 
 
@@ -32,9 +33,11 @@ import org.apache.kafka.common.annotation.InterfaceStability;
  *   We have provided a helper {@link AbstractGoal} class with some defined optimization steps to make the implementation
  *   of the goals simpler.
  * </p>
+ * The class has to extend both {@link CruiseControlConfigurable} and {@link Configurable} to ensure it is configured
+ * properly.
  */
 @InterfaceStability.Evolving
-public interface Goal extends CruiseControlConfigurable {
+public interface Goal extends CruiseControlConfigurable, Configurable {
   /**
    * Optimize the given cluster model as needed for this goal.
    * <p>
