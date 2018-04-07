@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
@@ -16,7 +17,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.io.Serializable;
 import java.util.Comparator;
 import java.util.Set;
-import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.annotation.InterfaceStability;
 
 
@@ -34,7 +34,7 @@ import org.apache.kafka.common.annotation.InterfaceStability;
  * </p>
  */
 @InterfaceStability.Evolving
-public interface Goal extends Configurable {
+public interface Goal extends CruiseControlConfigurable {
   /**
    * Optimize the given cluster model as needed for this goal.
    * <p>
