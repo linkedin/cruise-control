@@ -369,7 +369,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
       e.printStackTrace(pw);
-      String errorMessage = String.format("Error processing GET request '%s'", request.getPathInfo());
+      String errorMessage = String.format("Error processing GET request '%s' due to '%s'.", request.getPathInfo(), e.getMessage());
       LOG.error(errorMessage, e);
       setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
       _sessionManager.closeSession(request);
@@ -470,7 +470,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
       e.printStackTrace(pw);
-      String errorMessage = String.format("Error processing POST request '%s'", request.getPathInfo());
+      String errorMessage = String.format("Error processing POST request '%s' due to: '%s'.", request.getPathInfo(), e.getMessage());
       LOG.error(errorMessage, e);
       setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
       _sessionManager.closeSession(request);
