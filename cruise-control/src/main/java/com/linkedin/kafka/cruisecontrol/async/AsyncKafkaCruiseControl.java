@@ -22,9 +22,9 @@ import java.util.concurrent.Executors;
 
 /**
  * A KafkaCruiseControl extension with asynchronous operations support.
- * 
+ *
  * The following async methods are supported:
- * 
+ *
  * <ul>
  * <li>{@link KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements, OperationProgress)}</li>
  * <li>{@link KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements, OperationProgress)}</li>
@@ -34,27 +34,27 @@ import java.util.concurrent.Executors;
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress)}</li>
  * <li>{@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress)}</li>
  * </ul>
- * 
+ *
  * The other operations are non-blocking by default.
  */
 public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
-  private final ExecutorService _sessionExecutor = 
-      Executors.newFixedThreadPool(3, new KafkaCruiseControlThreadFactory("ServletSessionExecutor", 
-                                                                          true, 
+  private final ExecutorService _sessionExecutor =
+      Executors.newFixedThreadPool(3, new KafkaCruiseControlThreadFactory("ServletSessionExecutor",
+                                                                          true,
                                                                           null));
 
   /**
    * Construct the Cruise Control
-   * 
+   *
    * @param config the configuration of Cruise Control.
-   * @param dropwizardMetricRegistry the metric registry for metrics.              
+   * @param dropwizardMetricRegistry the metric registry for metrics.
    */
   public AsyncKafkaCruiseControl(KafkaCruiseControlConfig config, MetricRegistry dropwizardMetricRegistry) {
     super(config, dropwizardMetricRegistry);
   }
 
   /**
-   * @see KafkaCruiseControl#state(OperationProgress) 
+   * @see KafkaCruiseControl#state(OperationProgress)
    */
   public OperationFuture<KafkaCruiseControlState> state() {
     OperationFuture<KafkaCruiseControlState> future = new OperationFuture<>("Get state");
@@ -64,8 +64,8 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements, 
-   * OperationProgress) 
+   * @see KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
+   * OperationProgress)
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> decommissionBrokers(Collection<Integer> brokerIds,
                                                                             boolean dryRun,
@@ -80,8 +80,8 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements, 
-   * OperationProgress) 
+   * @see KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
+   * OperationProgress)
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> addBrokers(Collection<Integer> brokerIds,
                                                                    boolean dryRun,
@@ -96,7 +96,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress) 
+   * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress)
    */
   public OperationFuture<ClusterModel> clusterModel(long time, ModelCompletenessRequirements requirements) {
     OperationFuture<ClusterModel> future = new OperationFuture<>("Get cluster model");
@@ -106,12 +106,12 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#clusterModel(long, long, ModelCompletenessRequirements, OperationProgress) 
+   * @see KafkaCruiseControl#clusterModel(long, long, ModelCompletenessRequirements, OperationProgress)
    */
   public OperationFuture<ClusterModel> clusterModel(long startMs,
                                                     long endMs,
                                                     ModelCompletenessRequirements requirements) {
-    OperationFuture<ClusterModel> future = 
+    OperationFuture<ClusterModel> future =
         new OperationFuture<>(String.format("Get cluster model from %d to %d", startMs, endMs));
     pending(future.operationProgress());
     _sessionExecutor.submit(new GetClusterModelInRangeRunnable(this, future, startMs, endMs, requirements));
@@ -120,10 +120,10 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
 
   /**
    * Get the {@link com.linkedin.kafka.cruisecontrol.model.ClusterModel.BrokerStats} for the cluster model.
-   * 
-   * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress) 
+   *
+   * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress)
    */
-  public OperationFuture<ClusterModel.BrokerStats> getBrokerStats(long time, 
+  public OperationFuture<ClusterModel.BrokerStats> getBrokerStats(long time,
                                                                   ModelCompletenessRequirements requirements) {
     OperationFuture<ClusterModel.BrokerStats> future = new OperationFuture<>("Get broker stats");
     pending(future.operationProgress());
@@ -132,10 +132,10 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#getOptimizationProposals(OperationProgress) 
+   * @see KafkaCruiseControl#getOptimizationProposals(OperationProgress)
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> getOptimizationProposals() {
-    OperationFuture<GoalOptimizer.OptimizerResult> future = 
+    OperationFuture<GoalOptimizer.OptimizerResult> future =
         new OperationFuture<>("Get default optimization proposals");
     pending(future.operationProgress());
     _sessionExecutor.submit(new GetOptimizationProposalsRunnable(this, future, null, null));
@@ -143,11 +143,11 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress)  
+   * @see KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress)
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> getOptimizationProposals(List<String> goals,
                                                                                  ModelCompletenessRequirements requirements) {
-    OperationFuture<GoalOptimizer.OptimizerResult> future = 
+    OperationFuture<GoalOptimizer.OptimizerResult> future =
         new OperationFuture<>("Get customized optimization proposals");
     pending(future.operationProgress());
     _sessionExecutor.submit(new GetOptimizationProposalsRunnable(this, future, goals, requirements));
@@ -155,7 +155,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress) 
+   * @see KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress)
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> rebalance(List<String> goals,
                                                                   boolean dryRun,
@@ -165,7 +165,17 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
     _sessionExecutor.submit(new RebalanceRunnable(this, future, goals, dryRun, requirements));
     return future;
   }
-  
+
+  /**
+   * @see KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress)
+   */
+  public OperationFuture<GoalOptimizer.OptimizerResult> demoteBrokers(Collection<Integer> brokerIds, boolean dryRun) {
+    OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Rebalance");
+    pending(future.operationProgress());
+    _sessionExecutor.submit(new DemoteBrokerRunnable(this, future, brokerIds, dryRun));
+    return future;
+  }
+
   private void pending(OperationProgress progress) {
     progress.addStep(new Pending());
   }

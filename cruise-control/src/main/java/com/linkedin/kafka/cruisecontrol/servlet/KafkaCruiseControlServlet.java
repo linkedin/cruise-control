@@ -161,6 +161,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     removeBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
     removeBroker.addAll(addOrRemoveBroker);
 
+    Set<String> demoteBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    demoteBroker.add(BROKER_ID_PARAM);
+    demoteBroker.add(DRY_RUN_PARAM);
+    addOrRemoveBroker.add(JSON_PARAM);
+
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
     rebalance.add(GOALS_PARAM);
@@ -180,6 +185,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     validParamNames.put(STATE, Collections.unmodifiableSet(state));
     validParamNames.put(ADD_BROKER, Collections.unmodifiableSet(addBroker));
     validParamNames.put(REMOVE_BROKER, Collections.unmodifiableSet(removeBroker));
+    validParamNames.put(DEMOTE_BROKER, Collections.unmodifiableSet(demoteBroker));
     validParamNames.put(REBALANCE, Collections.unmodifiableSet(rebalance));
     validParamNames.put(STOP_PROPOSAL_EXECUTION, Collections.emptySet());
     validParamNames.put(PAUSE_SAMPLING, Collections.emptySet());
@@ -202,7 +208,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     STOP_PROPOSAL_EXECUTION,
     PAUSE_SAMPLING,
     RESUME_SAMPLING,
-    KAFKA_CLUSTER_STATE;
+    KAFKA_CLUSTER_STATE,
+    DEMOTE_BROKER;
 
     private static final List<EndPoint> GET_ENDPOINT = Arrays.asList(BOOTSTRAP,
                                                                      TRAIN,
@@ -216,7 +223,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                       REBALANCE,
                                                                       STOP_PROPOSAL_EXECUTION,
                                                                       PAUSE_SAMPLING,
-                                                                      RESUME_SAMPLING);
+                                                                      RESUME_SAMPLING,
+                                                                      DEMOTE_BROKER);
 
     public static List<EndPoint> getEndpoint() {
       return GET_ENDPOINT;
@@ -448,6 +456,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               break;
             case RESUME_SAMPLING:
               resumeSampling();
+              break;
+            case DEMOTE_BROKER:
+              if (demoteBroker(request, response)) {
+                _sessionManager.closeSession(request);
+              }
               break;
             default:
               throw new UserRequestException("Invalid URL for POST");
@@ -1148,6 +1161,49 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     out.write(String.format("%nCluster load after rebalance:%n").getBytes(StandardCharsets.UTF_8));
     out.write(optimizerResult.brokerStatsAfterOptimization().toString().getBytes(StandardCharsets.UTF_8));
+    out.flush();
+    return true;
+  }
+
+  private boolean demoteBroker(HttpServletRequest request, HttpServletResponse response) throws Exception {
+    List<Integer> brokerIds = new ArrayList<>();
+    boolean dryrun;
+    boolean json = wantJSON(request);
+    try {
+      String[] brokerIdsString = request.getParameter(BROKER_ID_PARAM).split(",");
+      for (String brokerIdString : brokerIdsString) {
+        brokerIds.add(Integer.parseInt(brokerIdString));
+      }
+      dryrun = getDryRun(request);
+    } catch (Exception e) {
+      StringWriter sw = new StringWriter();
+      e.printStackTrace(new PrintWriter(sw));
+      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      // Close session
+      return true;
+    }
+
+    // Get proposals asynchronously.
+    GoalOptimizer.OptimizerResult optimizerResult =
+          getAndMaybeReturnProgress(request, response, () -> _asyncKafkaCruiseControl.demoteBrokers(brokerIds, dryrun));
+    if (optimizerResult == null) {
+      return false;
+    }
+
+    setResponseCode(response, SC_OK);
+    OutputStream out = response.getOutputStream();
+    out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult)
+                                            .getBytes(StandardCharsets.UTF_8));
+    for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
+      Goal goal = entry.getKey();
+      out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
+                      .getBytes(StandardCharsets.UTF_8));
+      out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
+    }
+    out.write(String.format("%nCluster load after demote broker %s:%n", brokerIds)
+                    .getBytes(StandardCharsets.UTF_8));
+    out.write(optimizerResult.brokerStatsAfterOptimization().toString()
+                             .getBytes(StandardCharsets.UTF_8));
     out.flush();
     return true;
   }

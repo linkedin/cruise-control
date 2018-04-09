@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -55,6 +56,30 @@ public class PreferredLeaderElectionGoalTest {
         for (int i = 0; i < 3; i++) {
           // only the first replica should be leader.
           assertEquals(i == 0, replicas.get(i).isLeader());
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testOptimizeWithDemotedBrokers() throws KafkaCruiseControlException {
+    ClusterModel clusterModel = createClusterModel();
+    clusterModel.setBrokerState(0, Broker.State.DEMOTED);
+
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
+    goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
+
+    for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
+      for (int p = 0; p < 3; p++) {
+        List<Replica> replicas = clusterModel.partition(new TopicPartition(t, p)).replicas();
+        for (int i = 0; i < 3; i++) {
+          Replica replica = replicas.get(i);
+          // only the first replica should be leader.
+          assertEquals(i == 0, replica.isLeader());
+          if (clusterModel.broker(0).replicas().contains(replica)) {
+            // The demoted replica should be in the last position.
+            assertEquals(replicas.size() - 1, i);
+          }
         }
       }
     }
