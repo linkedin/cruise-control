@@ -28,7 +28,7 @@ public class PercentileMetricAnomalyFinderConfig extends AbstractConfig {
       "metric.anomaly.percentile.lower.threshold";
   private static final String METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_DOC =
       "The lower threshold for the metric anomaly detector to identify a decrease in the metric "
-          f+ "values of a broker as a metric anomaly.";
+          + "values of a broker as a metric anomaly.";
 
   private static ConfigDef CONFIG =
       new ConfigDef().define(METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG, ConfigDef.Type.DOUBLE, 95.0,
