@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.nio.charset.StandardCharsets;
@@ -36,6 +38,7 @@ import static java.util.stream.Collectors.toSet;
 public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
   private static final long MAX_METADATA_WAIT_MS = 60000L;
+  private final KafkaCruiseControl _kafkaCruiseControl;
   private final String _failedBrokersZkPath;
   private final ZkClient _zkClient;
   private final ZkUtils _zkUtils;
@@ -47,7 +50,8 @@ public class BrokerFailureDetector {
   public BrokerFailureDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
                                Queue<Anomaly> anomalies,
-                               Time time) {
+                               Time time,
+                               KafkaCruiseControl kafkaCruiseControl) {
     String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     ZkConnection zkConnection = new ZkConnection(zkUrl, 30000);
     _zkClient = new ZkClient(zkConnection, 30000, new ZkStringSerializer());
@@ -58,6 +62,7 @@ public class BrokerFailureDetector {
     _loadMonitor = loadMonitor;
     _anomalies = anomalies;
     _time = time;
+    _kafkaCruiseControl = kafkaCruiseControl;
   }
 
   void startDetection() {
@@ -83,9 +88,7 @@ public class BrokerFailureDetector {
   }
 
   Map<Integer, Long> failedBrokers() {
-    Map<Integer, Long> failedBrokers = new HashMap<>();
-    failedBrokers.putAll(_failedBrokers);
-    return failedBrokers;
+    return new HashMap<>(_failedBrokers);
   }
 
   void shutdown() {
@@ -149,9 +152,8 @@ public class BrokerFailureDetector {
 
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
-      Map<Integer, Long> failedBrokers = new HashMap<>();
-      failedBrokers.putAll(_failedBrokers);
-      _anomalies.add(new BrokerFailures(failedBrokers));
+      Map<Integer, Long> failedBrokers = new HashMap<>(_failedBrokers);
+      _anomalies.add(new BrokerFailures(_kafkaCruiseControl, failedBrokers));
     }
   }
 
@@ -161,7 +163,7 @@ public class BrokerFailureDetector {
   private class BrokerFailureListener implements IZkChildListener {
 
     @Override
-    public void handleChildChange(String parentPath, List<String> currentChildren) throws Exception {
+    public void handleChildChange(String parentPath, List<String> currentChildren) {
       updateFailedBrokerList(currentChildren.stream().map(Integer::parseInt).collect(toSet()));
       persistFailedBrokerList();
       reportBrokerFailures();

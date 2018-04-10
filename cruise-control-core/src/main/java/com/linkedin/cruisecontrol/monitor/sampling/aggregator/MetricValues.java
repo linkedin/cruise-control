@@ -15,7 +15,7 @@ import java.util.StringJoiner;
  * A class hosting the values of a particular metric.
  */
 public class MetricValues {
-
+  // Values are sorted from the newest to the oldest -- i.e. the newest value is in index 0.
   private final float[] _values;
   private float _max;
   private double _sumForAvg;

@@ -20,9 +20,14 @@ import org.slf4j.LoggerFactory;
 /**
  * A class that holds all the goal violations.
  */
-public class GoalViolations extends Anomaly {
+public class GoalViolations extends KafkaAnomaly {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
+  private final KafkaCruiseControl _kafkaCruiseControl;
   private final List<Violation> _goalViolations = new ArrayList<>();
+
+  public GoalViolations(KafkaCruiseControl kafkaCruiseControl) {
+    _kafkaCruiseControl = kafkaCruiseControl;
+  }
 
   public void addViolation(int priority, String goalName, Set<ExecutionProposal> executionProposals) {
     _goalViolations.add(new Violation(priority, goalName, executionProposals));
@@ -36,10 +41,10 @@ public class GoalViolations extends Anomaly {
   }
 
   @Override
-  void fix(KafkaCruiseControl kafkaCruiseControl) throws KafkaCruiseControlException {
+  public void fix() throws KafkaCruiseControlException {
     // Fix the violations using a rebalance.
     try {
-      kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress());
+      _kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress());
     } catch (IllegalStateException e) {
       LOG.warn("Got exception when trying to fix the cluster. " + e.getMessage());
     }

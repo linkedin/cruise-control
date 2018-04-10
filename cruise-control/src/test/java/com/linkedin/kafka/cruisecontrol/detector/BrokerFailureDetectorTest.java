@@ -4,8 +4,10 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import com.linkedin.kafka.clients.utils.tests.EmbeddedBroker;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
@@ -125,6 +127,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
 
   private BrokerFailureDetector createBrokerFailureDetector(Queue<Anomaly> anomalies, Time time) {
     LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
+    KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
     EasyMock.expect(mockLoadMonitor.brokersWithPartitions(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
     EasyMock.replay(mockLoadMonitor);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
@@ -133,7 +136,8 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
     return new BrokerFailureDetector(kafkaCruiseControlConfig,
                                      mockLoadMonitor,
                                      anomalies,
-                                     time);
+                                     time,
+                                     mockKafkaCruiseControl);
   }
 
   private void killBroker(int index) throws Exception {

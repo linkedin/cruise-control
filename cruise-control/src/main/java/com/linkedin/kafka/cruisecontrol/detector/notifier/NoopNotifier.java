@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
+import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import java.util.Map;
 
 
@@ -26,6 +27,11 @@ public class NoopNotifier implements AnomalyNotifier {
 
   @Override
   public AnomalyNotificationResult onBrokerFailure(BrokerFailures brokerFailures) {
+    return AnomalyNotificationResult.ignore();
+  }
+
+  @Override
+  public AnomalyNotificationResult onMetricAnomaly(KafkaMetricAnomaly metricAnomaly) {
     return AnomalyNotificationResult.ignore();
   }
 }
