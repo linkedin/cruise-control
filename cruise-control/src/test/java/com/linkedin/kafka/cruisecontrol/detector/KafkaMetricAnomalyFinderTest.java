@@ -40,20 +40,20 @@ public class KafkaMetricAnomalyFinderTest {
 
   @Test
   public void testMetricAnomaliesWithNullArguments() {
-    MetricAnomalyFinder<BrokerEntity> anomalyAnalyzer = createKafkaMetricAnomalyAnalyzer();
+    MetricAnomalyFinder<BrokerEntity> anomalyFinder = createKafkaMetricAnomalyFinder();
 
     expected.expect(IllegalArgumentException.class);
     assertTrue("IllegalArgumentException is expected for null history or null current metrics.",
-               anomalyAnalyzer.metricAnomalies(null, null).isEmpty());
+               anomalyFinder.metricAnomalies(null, null).isEmpty());
   }
 
   @Test
   public void testMetricAnomalies() {
-    MetricAnomalyFinder<BrokerEntity> anomalyAnalyzer = createKafkaMetricAnomalyAnalyzer();
+    MetricAnomalyFinder<BrokerEntity> anomalyFinder = createKafkaMetricAnomalyFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> history = createHistory(20);
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(21, 21.0);
 
-    Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyAnalyzer.metricAnomalies(history, currentMetrics);
+    Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyFinder.metricAnomalies(history, currentMetrics);
 
     assertTrue("There should be exactly a single metric anomaly", anomalies.size() == 1);
 
@@ -68,7 +68,7 @@ public class KafkaMetricAnomalyFinderTest {
 
   @Test
   public void testInsufficientData() {
-    MetricAnomalyFinder<BrokerEntity> anomalyAnalyzer = createKafkaMetricAnomalyAnalyzer();
+    MetricAnomalyFinder<BrokerEntity> anomalyAnalyzer = createKafkaMetricAnomalyFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> history = createHistory(19);
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(20, 20.0);
 
@@ -145,7 +145,7 @@ public class KafkaMetricAnomalyFinderTest {
   }
 
   @SuppressWarnings("unchecked")
-  private MetricAnomalyFinder<BrokerEntity> createKafkaMetricAnomalyAnalyzer() {
+  private MetricAnomalyFinder<BrokerEntity> createKafkaMetricAnomalyFinder() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG, KafkaMetricAnomalyFinder.class.getName());
     props.setProperty(METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG, "95.0");
@@ -162,10 +162,9 @@ public class KafkaMetricAnomalyFinderTest {
     originalConfigs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
 
     List<MetricAnomalyFinder> kafkaMetricAnomalyFinders = config.getConfiguredInstances(
-        KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG, MetricAnomalyFinder.class);
-
-    kafkaMetricAnomalyFinders.get(0).configure(originalConfigs);
-
+        KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG,
+        MetricAnomalyFinder.class,
+        originalConfigs);
     return kafkaMetricAnomalyFinders.get(0);
   }
 }
