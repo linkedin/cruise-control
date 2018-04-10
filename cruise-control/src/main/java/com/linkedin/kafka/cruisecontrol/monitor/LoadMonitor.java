@@ -554,7 +554,7 @@ public class LoadMonitor {
     for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : valuesAndExtrapolations.entrySet()) {
       TopicPartition tp = entry.getKey().tp();
       Map<Integer, Extrapolation> extrapolations = entry.getValue().extrapolations();
-      if (extrapolations.isEmpty()) {
+      if (!extrapolations.isEmpty()) {
         List<SampleExtrapolation> extrapolationForPartition = sampleExtrapolations.computeIfAbsent(tp, p -> new ArrayList<>());
         extrapolations.forEach((t, imputation) -> extrapolationForPartition.add(new SampleExtrapolation(t, imputation)));
       }
