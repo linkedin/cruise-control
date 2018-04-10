@@ -376,8 +376,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   /**
    * <code>metric.anomaly.analyzer.class</code>
    */
-  public static final String METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG = "metric.anomaly.analyzer.class";
-  private static final String METRIC_ANOMALY_ANALYZER_CLASSES_DOC = "A list of metric anomaly analyzer classes to analyze "
+  public static final String METRIC_ANOMALY_FINDER_CLASSES_CONFIG = "metric.anomaly.analyzer.class";
+  private static final String METRIC_ANOMALY_FINDER_CLASSES_DOC = "A list of metric anomaly analyzer classes to analyze "
                                                                     + "the current state to identify metric anomalies.";
 
   /**
@@ -743,10 +743,10 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 between(0, 1),
                 ConfigDef.Importance.MEDIUM,
                 NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_DOC)
-        .define(METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG,
+        .define(METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
                 ConfigDef.Type.LIST,
                 DEFAULT_METRIC_ANOMALY_ANALYZER_CLASS,
-                ConfigDef.Importance.MEDIUM, METRIC_ANOMALY_ANALYZER_CLASSES_DOC)
+                ConfigDef.Importance.MEDIUM, METRIC_ANOMALY_FINDER_CLASSES_DOC)
         .define(MAX_PROPOSAL_CANDIDATES_CONFIG,
                 ConfigDef.Type.INT,
                 10,

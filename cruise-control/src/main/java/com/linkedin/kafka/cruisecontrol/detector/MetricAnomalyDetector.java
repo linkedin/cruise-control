@@ -41,7 +41,7 @@ public class MetricAnomalyDetector implements Runnable {
     Map<String, Object> configWithCruiseControlObject = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG,
                                                                                  kafkaCruiseControl);
     _kafkaMetricAnomalyFinders = config.getConfiguredInstances(
-        KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG,
+        KafkaCruiseControlConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
         MetricAnomalyFinder.class,
         configWithCruiseControlObject);
   }

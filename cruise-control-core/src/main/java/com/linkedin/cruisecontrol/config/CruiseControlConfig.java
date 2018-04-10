@@ -60,7 +60,7 @@ public class CruiseControlConfig extends AbstractConfig {
   /**
    * <code>metric.anomaly.analyzer.metrics</code>
    */
-  public static final String METRIC_ANOMALY_ANALYZER_METRICS_CONFIG = "metric.anomaly.analyzer.metrics";
+  public static final String METRIC_ANOMALY_FINDER_METRICS_CONFIG = "metric.anomaly.analyzer.metrics";
   private static final String METRIC_ANOMALY_ANALYZER_METRICS_DOC = "The metric ids that the metric anomaly detector "
       + "should detect if they are violated.";
 
@@ -97,7 +97,7 @@ public class CruiseControlConfig extends AbstractConfig {
                 atLeast(0),
                 ConfigDef.Importance.LOW,
                 METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC)
-        .define(METRIC_ANOMALY_ANALYZER_METRICS_CONFIG,
+        .define(METRIC_ANOMALY_FINDER_METRICS_CONFIG,
                 ConfigDef.Type.LIST,
                 "",
                 ConfigDef.Importance.MEDIUM,

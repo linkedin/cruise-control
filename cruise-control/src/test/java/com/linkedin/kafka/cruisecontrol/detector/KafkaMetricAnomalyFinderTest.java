@@ -68,11 +68,11 @@ public class KafkaMetricAnomalyFinderTest {
 
   @Test
   public void testInsufficientData() {
-    MetricAnomalyFinder<BrokerEntity> anomalyAnalyzer = createKafkaMetricAnomalyFinder();
+    MetricAnomalyFinder<BrokerEntity> anomalyFinder = createKafkaMetricAnomalyFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> history = createHistory(19);
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(20, 20.0);
 
-    Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyAnalyzer.metricAnomalies(history, currentMetrics);
+    Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyFinder.metricAnomalies(history, currentMetrics);
     assertTrue(anomalies.isEmpty());
   }
 
@@ -147,10 +147,10 @@ public class KafkaMetricAnomalyFinderTest {
   @SuppressWarnings("unchecked")
   private MetricAnomalyFinder<BrokerEntity> createKafkaMetricAnomalyFinder() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG, KafkaMetricAnomalyFinder.class.getName());
+    props.setProperty(KafkaCruiseControlConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG, KafkaMetricAnomalyFinder.class.getName());
     props.setProperty(METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG, "95.0");
     props.setProperty(METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG, "2.0");
-    props.setProperty(CruiseControlConfig.METRIC_ANOMALY_ANALYZER_METRICS_CONFIG,
+    props.setProperty(CruiseControlConfig.METRIC_ANOMALY_FINDER_METRICS_CONFIG,
                       "BROKER_PRODUCE_LOCAL_TIME_MS_MAX,BROKER_PRODUCE_LOCAL_TIME_MS_MEAN,BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX,"
                       + "BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN,BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX,"
                       + "BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN,BROKER_LOG_FLUSH_TIME_MS_MAX,BROKER_LOG_FLUSH_TIME_MS_MEAN");
@@ -162,7 +162,7 @@ public class KafkaMetricAnomalyFinderTest {
     originalConfigs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
 
     List<MetricAnomalyFinder> kafkaMetricAnomalyFinders = config.getConfiguredInstances(
-        KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG,
+        KafkaCruiseControlConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
         MetricAnomalyFinder.class,
         originalConfigs);
     return kafkaMetricAnomalyFinders.get(0);
