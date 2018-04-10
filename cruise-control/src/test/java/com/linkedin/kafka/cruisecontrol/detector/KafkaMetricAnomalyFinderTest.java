@@ -5,7 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.config.CruiseControlConfig;
-import com.linkedin.cruisecontrol.detector.MetricAnomalyAnalyzer;
+import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
+import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomalyFinder;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
@@ -24,12 +25,14 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import static com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomalyAnalyzer.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG;
+import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 
 
-public class KafkaMetricAnomalyAnalyzerTest {
+public class KafkaMetricAnomalyFinderTest {
   private final BrokerEntity _brokerEntity = new BrokerEntity("test-host", 0);
 
   @Rule
@@ -37,7 +40,7 @@ public class KafkaMetricAnomalyAnalyzerTest {
 
   @Test
   public void testMetricAnomaliesWithNullArguments() {
-    MetricAnomalyAnalyzer<BrokerEntity, KafkaMetricAnomaly> anomalyAnalyzer = createKafkaMetricAnomalyAnalyzer();
+    MetricAnomalyFinder<BrokerEntity> anomalyAnalyzer = createKafkaMetricAnomalyAnalyzer();
 
     expected.expect(IllegalArgumentException.class);
     assertTrue("IllegalArgumentException is expected for null history or null current metrics.",
@@ -46,32 +49,45 @@ public class KafkaMetricAnomalyAnalyzerTest {
 
   @Test
   public void testMetricAnomalies() {
-    MetricAnomalyAnalyzer<BrokerEntity, KafkaMetricAnomaly> anomalyAnalyzer = createKafkaMetricAnomalyAnalyzer();
-    Map<BrokerEntity, ValuesAndExtrapolations> history = createHistory();
-    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics();
+    MetricAnomalyFinder<BrokerEntity> anomalyAnalyzer = createKafkaMetricAnomalyAnalyzer();
+    Map<BrokerEntity, ValuesAndExtrapolations> history = createHistory(20);
+    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(21, 21.0);
 
-    Collection<KafkaMetricAnomaly> anomalies = anomalyAnalyzer.metricAnomalies(history, currentMetrics);
+    Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyAnalyzer.metricAnomalies(history, currentMetrics);
 
     assertTrue("There should be exactly a single metric anomaly", anomalies.size() == 1);
 
-    KafkaMetricAnomaly anomaly = anomalies.iterator().next();
+    MetricAnomaly<BrokerEntity> anomaly = anomalies.iterator().next();
     List<Long> expectedWindow = new ArrayList<>();
-    expectedWindow.add(4L);
+    expectedWindow.add(21L);
 
     assertEquals(34, anomaly.metricId().intValue());
     assertEquals(_brokerEntity, anomaly.entity());
     assertEquals(expectedWindow, anomaly.windows());
   }
 
+  @Test
+  public void testInsufficientData() {
+    MetricAnomalyFinder<BrokerEntity> anomalyAnalyzer = createKafkaMetricAnomalyAnalyzer();
+    Map<BrokerEntity, ValuesAndExtrapolations> history = createHistory(19);
+    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(20, 20.0);
+
+    Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyAnalyzer.metricAnomalies(history, currentMetrics);
+    assertTrue(anomalies.isEmpty());
+  }
+
   /**
-   * Windows: 3, 2, 1
+   * Windows: numValues, numValues - 1, ..., 2, 1
    * metric id : only 34
-   * metric values: [3.0, 2.0, 1.0]
+   * metric values: [numValues, numValues - 1, ..., 1.0]
    */
-  private ValuesAndExtrapolations createHistoryValuesAndExtrapolations() {
+  private ValuesAndExtrapolations createHistoryValuesAndExtrapolations(int numValues) {
     Map<Integer, MetricValues> valuesByMetricId = new HashMap<>();
-    MetricValues historicalMetricValues = new MetricValues(3);
-    double[] values = new double[] {3.0, 2.0, 1.0};
+    MetricValues historicalMetricValues = new MetricValues(numValues);
+    double[] values = new double[numValues];
+    for (int i = 0; i < values.length; i++) {
+      values[i] = numValues - i;
+    }
     historicalMetricValues.add(values);
     valuesByMetricId.put(34, historicalMetricValues);
 
@@ -79,7 +95,7 @@ public class KafkaMetricAnomalyAnalyzerTest {
     ValuesAndExtrapolations historyValuesAndExtrapolations = new ValuesAndExtrapolations(aggregatedMetricValues, null);
 
     List<Long> windows = new ArrayList<>();
-    for (long i = 3; i > 0; i--) {
+    for (long i = numValues; i > 0; i--) {
       windows.add(i);
     }
     historyValuesAndExtrapolations.setWindows(windows);
@@ -90,22 +106,22 @@ public class KafkaMetricAnomalyAnalyzerTest {
   /**
    * Create history with single broker.
    */
-  private Map<BrokerEntity, ValuesAndExtrapolations> createHistory() {
+  private Map<BrokerEntity, ValuesAndExtrapolations> createHistory(int numValues) {
     Map<BrokerEntity, ValuesAndExtrapolations> history = new HashMap<>();
-    ValuesAndExtrapolations valuesAndExtrapolations = createHistoryValuesAndExtrapolations();
+    ValuesAndExtrapolations valuesAndExtrapolations = createHistoryValuesAndExtrapolations(numValues);
     history.put(_brokerEntity, valuesAndExtrapolations);
     return history;
   }
 
   /**
-   * Windows: 4
+   * Windows: window
    * metric id : only 34
-   * metric values: [4.0]
+   * metric values: [value]
    */
-  private ValuesAndExtrapolations createCurrentValuesAndExtrapolations() {
+  private ValuesAndExtrapolations createCurrentValuesAndExtrapolations(long window, double value) {
     Map<Integer, MetricValues> valuesByMetricId = new HashMap<>();
     MetricValues currentMetricValues = new MetricValues(1);
-    double[] values = new double[] {4.0};
+    double[] values = new double[] {value};
     currentMetricValues.add(values);
     valuesByMetricId.put(34, currentMetricValues);
 
@@ -113,7 +129,7 @@ public class KafkaMetricAnomalyAnalyzerTest {
     ValuesAndExtrapolations currentValuesAndExtrapolations = new ValuesAndExtrapolations(aggregatedMetricValues, null);
 
     List<Long> windows = new ArrayList<>();
-    windows.add(4L);
+    windows.add(window);
     currentValuesAndExtrapolations.setWindows(windows);
 
     return currentValuesAndExtrapolations;
@@ -121,19 +137,19 @@ public class KafkaMetricAnomalyAnalyzerTest {
   /**
    * Create current metrics with single broker (with anomaly).
    */
-  private Map<BrokerEntity, ValuesAndExtrapolations> createCurrentMetrics() {
+  private Map<BrokerEntity, ValuesAndExtrapolations> createCurrentMetrics(long window, double value) {
     Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = new HashMap<>();
-    ValuesAndExtrapolations valuesAndExtrapolations = createCurrentValuesAndExtrapolations();
+    ValuesAndExtrapolations valuesAndExtrapolations = createCurrentValuesAndExtrapolations(window, value);
     currentMetrics.put(_brokerEntity, valuesAndExtrapolations);
     return currentMetrics;
   }
 
   @SuppressWarnings("unchecked")
-  private MetricAnomalyAnalyzer<BrokerEntity, KafkaMetricAnomaly> createKafkaMetricAnomalyAnalyzer() {
+  private MetricAnomalyFinder<BrokerEntity> createKafkaMetricAnomalyAnalyzer() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG, KafkaMetricAnomalyAnalyzer.class.getName());
-    props.setProperty(CruiseControlConfig.METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG, "95.0");
-    props.setProperty(CruiseControlConfig.METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG, "2.0");
+    props.setProperty(KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG, KafkaMetricAnomalyFinder.class.getName());
+    props.setProperty(METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG, "95.0");
+    props.setProperty(METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG, "2.0");
     props.setProperty(CruiseControlConfig.METRIC_ANOMALY_ANALYZER_METRICS_CONFIG,
                       "BROKER_PRODUCE_LOCAL_TIME_MS_MAX,BROKER_PRODUCE_LOCAL_TIME_MS_MEAN,BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX,"
                       + "BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN,BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX,"
@@ -145,11 +161,11 @@ public class KafkaMetricAnomalyAnalyzerTest {
     Map<String, Object> originalConfigs = new HashMap<>(config.originals());
     originalConfigs.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
 
-    List<MetricAnomalyAnalyzer> kafkaMetricAnomalyAnalyzers = config.getConfiguredInstances(
-        KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG, MetricAnomalyAnalyzer.class);
+    List<MetricAnomalyFinder> kafkaMetricAnomalyFinders = config.getConfiguredInstances(
+        KafkaCruiseControlConfig.METRIC_ANOMALY_ANALYZER_CLASSES_CONFIG, MetricAnomalyFinder.class);
 
-    kafkaMetricAnomalyAnalyzers.get(0).configure(originalConfigs);
+    kafkaMetricAnomalyFinders.get(0).configure(originalConfigs);
 
-    return kafkaMetricAnomalyAnalyzers.get(0);
+    return kafkaMetricAnomalyFinders.get(0);
   }
 }
