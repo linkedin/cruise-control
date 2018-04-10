@@ -58,9 +58,8 @@ public class KafkaMetricAnomalyFinder extends PercentileMetricAnomalyFinder<Brok
     }
     super.configure(configs);
     _kafkaCruiseControl = (KafkaCruiseControl) configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
-    // TODO: Enable the following check once we have getInstance without configuration.
-    /*if (_kafkaCruiseControl == null) {
+    if (_kafkaCruiseControl == null) {
       throw new IllegalArgumentException("Kafka metric anomaly analyzer configuration is missing Cruise Control object.");
-    }*/
+    }
   }
 }

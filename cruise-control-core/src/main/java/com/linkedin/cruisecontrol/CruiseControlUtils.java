@@ -17,7 +17,7 @@ public class CruiseControlUtils {
   }
 
   /**
-   * Ensure the string value of the string key is not null.
+   * Ensure the string value of the string key is not null or empty.
    */
   public static void ensureValidString(String fieldName, String toCheck) {
     if (toCheck == null || toCheck.isEmpty()) {

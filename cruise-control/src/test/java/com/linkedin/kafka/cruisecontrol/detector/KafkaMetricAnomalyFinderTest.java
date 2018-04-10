@@ -77,9 +77,9 @@ public class KafkaMetricAnomalyFinderTest {
   }
 
   /**
-   * Windows: 3, 2, 1
+   * Windows: numValues, numValues - 1, ..., 2, 1
    * metric id : only 34
-   * metric values: [3.0, 2.0, 1.0]
+   * metric values: [numValues, numValues - 1, ..., 1.0]
    */
   private ValuesAndExtrapolations createHistoryValuesAndExtrapolations(int numValues) {
     Map<Integer, MetricValues> valuesByMetricId = new HashMap<>();
@@ -114,9 +114,9 @@ public class KafkaMetricAnomalyFinderTest {
   }
 
   /**
-   * Windows: 4
+   * Windows: window
    * metric id : only 34
-   * metric values: [4.0]
+   * metric values: [value]
    */
   private ValuesAndExtrapolations createCurrentValuesAndExtrapolations(long window, double value) {
     Map<Integer, MetricValues> valuesByMetricId = new HashMap<>();

@@ -25,7 +25,9 @@ import static com.linkedin.cruisecontrol.CruiseControlUtils.toPrettyTime;
  * An abstract class that implements metric anomaly analyzer to identify metric anomalies based on comparing the current
  * metrics to the percentile of the historical metric values.
  *
- * The class takes an upper percentile threshold and a lower percentile threshold. If a value goes beyond
+ * The class takes an upper percentile threshold and a lower percentile threshold. If a value goes beyond the
+ * upper percentile threshold or falls below the lower percentile threshold, that value will be considered as
+ * an anomaly.
  *
  * @param <E> The entity-level at which the metric anomaly analysis will be performed -- e.g. broker-level.
  */
