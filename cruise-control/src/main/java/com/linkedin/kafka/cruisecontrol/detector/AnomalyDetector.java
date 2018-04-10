@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -32,18 +33,20 @@ import org.slf4j.LoggerFactory;
  */
 public class AnomalyDetector {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
-  private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(Collections.emptyMap());
+  private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null, Collections.emptyMap());
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final AnomalyNotifier _anomalyNotifier;
   // Detectors
   private final GoalViolationDetector _goalViolationDetector;
   private final BrokerFailureDetector _brokerFailureDetector;
+  private final MetricAnomalyDetector _metricAnomalyDetector;
   private final ScheduledExecutorService _detectorScheduler;
   private final long _anomalyDetectionIntervalMs;
   private final LinkedBlockingDeque<Anomaly> _anomalies;
   private volatile boolean _shutdown;
   private final Meter _brokerFailureRate;
   private final Meter _goalViolationRate;
+  private final Meter _metricAnomalyRate;
   private final LoadMonitor _loadMonitor;
 
   public AnomalyDetector(KafkaCruiseControlConfig config,
@@ -56,15 +59,16 @@ public class AnomalyDetector {
     _anomalyNotifier = config.getConfiguredInstance(KafkaCruiseControlConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
                                                     AnomalyNotifier.class);
     _loadMonitor = loadMonitor;
-    _goalViolationDetector = new GoalViolationDetector(config, _loadMonitor, _anomalies, time);
-    _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time);
     _kafkaCruiseControl = kafkaCruiseControl;
+    _goalViolationDetector = new GoalViolationDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl);
+    _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl);
+    _metricAnomalyDetector = new MetricAnomalyDetector(config, _loadMonitor, _anomalies, _kafkaCruiseControl);
     _detectorScheduler =
-        Executors.newScheduledThreadPool(3, new KafkaCruiseControlThreadFactory("AnomalyDetector", false, LOG));
+        Executors.newScheduledThreadPool(4, new KafkaCruiseControlThreadFactory("AnomalyDetector", false, LOG));
     _shutdown = false;
     _brokerFailureRate = dropwizardMetricRegistry.meter(MetricRegistry.name("AnomalyDetector", "broker-failure-rate"));
     _goalViolationRate = dropwizardMetricRegistry.meter(MetricRegistry.name("AnomalyDetector", "goal-violation-rate"));
-
+    _metricAnomalyRate = dropwizardMetricRegistry.meter(MetricRegistry.name("AnomalyDetector", "metric-anomaly-rate"));
   }
 
   /**
@@ -76,6 +80,7 @@ public class AnomalyDetector {
                   AnomalyNotifier anomalyNotifier,
                   GoalViolationDetector goalViolationDetector,
                   BrokerFailureDetector brokerFailureDetector,
+                  MetricAnomalyDetector metricAnomalyDetector,
                   ScheduledExecutorService detectorScheduler,
                   LoadMonitor loadMonitor) {
     _anomalies = anomalies;
@@ -83,11 +88,13 @@ public class AnomalyDetector {
     _anomalyNotifier = anomalyNotifier;
     _goalViolationDetector = goalViolationDetector;
     _brokerFailureDetector = brokerFailureDetector;
+    _metricAnomalyDetector = metricAnomalyDetector;
     _kafkaCruiseControl = kafkaCruiseControl;
     _detectorScheduler = detectorScheduler;
     _shutdown = false;
     _brokerFailureRate = new Meter();
     _goalViolationRate = new Meter();
+    _metricAnomalyRate = new Meter();
     _loadMonitor = loadMonitor;
   }
 
@@ -97,6 +104,12 @@ public class AnomalyDetector {
     int jitter = new Random().nextInt(10000);
     LOG.debug("Starting goal violation detector with delay of {} ms", jitter);
     _detectorScheduler.scheduleAtFixedRate(_goalViolationDetector,
+                                           _anomalyDetectionIntervalMs / 2 + jitter,
+                                           _anomalyDetectionIntervalMs,
+                                           TimeUnit.MILLISECONDS);
+    jitter = new Random().nextInt(10000);
+    LOG.debug("Starting metric anomaly detector with delay of {} ms", jitter);
+    _detectorScheduler.scheduleAtFixedRate(_metricAnomalyDetector,
                                            _anomalyDetectionIntervalMs / 2 + jitter,
                                            _anomalyDetectionIntervalMs,
                                            TimeUnit.MILLISECONDS);
@@ -157,6 +170,10 @@ public class AnomalyDetector {
               GoalViolations goalViolations = (GoalViolations) anomaly;
               notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
               _goalViolationRate.mark();
+            } else if (anomaly instanceof KafkaMetricAnomaly) {
+              KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomaly;
+              notificationResult = _anomalyNotifier.onMetricAnomaly(metricAnomaly);
+              _metricAnomalyRate.mark();
             }
             // Take the requested action if provided.
             LOG.debug("Received notification result {}", notificationResult);
@@ -225,10 +242,10 @@ public class AnomalyDetector {
       return false;
     }
 
-    private void fixAnomaly(Anomaly anomaly) throws KafkaCruiseControlException {
+    private void fixAnomaly(Anomaly anomaly) throws Exception {
       if (isFixable(anomaly)) {
         LOG.info("Fixing anomaly {}", anomaly);
-        anomaly.fix(_kafkaCruiseControl);
+        anomaly.fix();
       }
 
       _anomalies.clear();

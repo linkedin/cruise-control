@@ -29,7 +29,7 @@ public class AnomalyNotificationResult {
 
   private AnomalyNotificationResult(Action action, long delay) {
     if (action == Action.IGNORE && delay > 0) {
-      throw new IllegalArgumentException("The ingore action should not have a delay.");
+      throw new IllegalArgumentException("The ignore action should not have a delay.");
     }
     _action = action;
     _delay = delay;

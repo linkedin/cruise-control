@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
+import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import java.util.Map;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
@@ -55,6 +56,12 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   @Override
   public AnomalyNotificationResult onGoalViolation(GoalViolations goalViolations) {
     alert(goalViolations, _selfHealingEnabled, System.currentTimeMillis());
+    return _selfHealingEnabled ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
+  }
+
+  @Override
+  public AnomalyNotificationResult onMetricAnomaly(KafkaMetricAnomaly metricAnomaly) {
+    alert(metricAnomaly, _selfHealingEnabled, System.currentTimeMillis());
     return _selfHealingEnabled ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
   }
 

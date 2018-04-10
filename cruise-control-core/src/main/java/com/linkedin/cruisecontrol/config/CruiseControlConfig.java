@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.cruisecontrol.config;
@@ -57,6 +57,14 @@ public class CruiseControlConfig extends AbstractConfig {
       + "cache the completeness metadata for fast query. This configuration configures The number of completeness "
       + "cache slot to maintain.";
 
+  /**
+   * <code>metric.anomaly.analyzer.metrics</code>
+   */
+  public static final String METRIC_ANOMALY_ANALYZER_METRICS_CONFIG = "metric.anomaly.analyzer.metrics";
+  private static final String METRIC_ANOMALY_ANALYZER_METRICS_DOC = "The metric ids that the metric anomaly detector "
+      + "should detect if they are violated.";
+
+
   static {
     CONFIG = new ConfigDef()
         .define(METRICS_WINDOW_MS_CONFIG,
@@ -88,7 +96,12 @@ public class CruiseControlConfig extends AbstractConfig {
                 5,
                 atLeast(0),
                 ConfigDef.Importance.LOW,
-                METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC);
+                METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_DOC)
+        .define(METRIC_ANOMALY_ANALYZER_METRICS_CONFIG,
+                ConfigDef.Type.LIST,
+                "",
+                ConfigDef.Importance.MEDIUM,
+                METRIC_ANOMALY_ANALYZER_METRICS_DOC);
   }
 
   private static ConfigDef mergeConfigDef(ConfigDef definition) {
