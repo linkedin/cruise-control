@@ -25,8 +25,8 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
-import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyAnalyzerConfig.METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG;
-import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyAnalyzerConfig.METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG;
+import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG;
+import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;

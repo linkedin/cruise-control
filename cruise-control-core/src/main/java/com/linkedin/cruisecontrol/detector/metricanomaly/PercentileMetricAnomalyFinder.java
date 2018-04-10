@@ -152,11 +152,11 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
   @Override
   @SuppressWarnings("unchecked")
   public void configure(Map<String, ?> configs) {
-    PercentileMetricAnomalyAnalyzerConfig internalConfig = new PercentileMetricAnomalyAnalyzerConfig(configs);
+    PercentileMetricAnomalyFinderConfig internalConfig = new PercentileMetricAnomalyFinderConfig(configs);
     _anomalyUpperPercentile =
-        internalConfig.getDouble(PercentileMetricAnomalyAnalyzerConfig.METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG);
+        internalConfig.getDouble(PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG);
     _anomalyLowerPercentile =
-        internalConfig.getDouble(PercentileMetricAnomalyAnalyzerConfig.METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG);
+        internalConfig.getDouble(PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG);
 
     String trimmedMetrics = ((String) configs.get(CruiseControlConfig.METRIC_ANOMALY_ANALYZER_METRICS_CONFIG)).trim();
     _interestedMetrics = new HashSet<>(Arrays.asList(trimmedMetrics.split(",")));

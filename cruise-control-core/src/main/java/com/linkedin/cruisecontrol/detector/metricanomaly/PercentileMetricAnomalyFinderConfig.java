@@ -11,7 +11,7 @@ import java.util.Map;
 import static com.linkedin.cruisecontrol.common.config.ConfigDef.Range.between;
 
 
-public class PercentileMetricAnomalyAnalyzerConfig extends AbstractConfig {
+public class PercentileMetricAnomalyFinderConfig extends AbstractConfig {
   /**
    * <code>metric.anomaly.percentile.upper.threshold</code>
    */
@@ -36,7 +36,7 @@ public class PercentileMetricAnomalyAnalyzerConfig extends AbstractConfig {
                              between(0.01, 99.99), ConfigDef.Importance.MEDIUM,
                              METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_DOC);
 
-  PercentileMetricAnomalyAnalyzerConfig(Map<?, ?> originals) {
+  PercentileMetricAnomalyFinderConfig(Map<?, ?> originals) {
     super(CONFIG, originals);
   }
 }
