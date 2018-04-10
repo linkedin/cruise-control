@@ -7,17 +7,14 @@ package com.linkedin.kafka.cruisecontrol.config;
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import java.util.Map;
-import org.apache.kafka.common.Configurable;
 
 
 /**
  * The interface for getting the broker capacity. Users should implement this interface so Cruise Control can
  * optimize the cluster according to the capacity of each broker.
  *
- * The class has to extend both {@link CruiseControlConfigurable} and {@link Configurable} to ensure it is configured
- * properly.
  */
-public interface BrokerCapacityConfigResolver extends CruiseControlConfigurable, Configurable, AutoCloseable {
+public interface BrokerCapacityConfigResolver extends CruiseControlConfigurable, AutoCloseable {
   /**
    * Get the capacity of a broker based on rack, host and broker id.
    * The map returned must contain all the resources defined in {@link Resource}. The units for each resource are:

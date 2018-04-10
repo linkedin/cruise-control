@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import org.apache.kafka.common.Cluster;
-import org.apache.kafka.common.Configurable;
 import org.apache.kafka.common.TopicPartition;
 
 import java.util.List;
@@ -14,11 +13,8 @@ import java.util.Set;
 
 /**
  * The interface to assign the partitions to the metric samplers.
- *
- * The class has to extend both {@link CruiseControlConfigurable} and {@link Configurable} to ensure it is configured
- * properly.
  */
-public interface MetricSamplerPartitionAssignor extends CruiseControlConfigurable, Configurable {
+public interface MetricSamplerPartitionAssignor extends CruiseControlConfigurable {
 
   /**
    * Assign the partitions in the cluster to the metric fetchers.

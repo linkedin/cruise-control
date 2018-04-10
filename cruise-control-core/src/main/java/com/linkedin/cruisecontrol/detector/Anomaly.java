@@ -12,5 +12,5 @@ public interface Anomaly {
   /**
    * Fix the anomaly with the system.
    */
-  public void fix() throws Exception;
+  void fix() throws Exception;
 }

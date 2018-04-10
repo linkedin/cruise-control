@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.config;
 
+import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -18,7 +19,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
-import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyAnalyzer;
+import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
@@ -44,7 +45,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String DEFAULT_FAILED_BROKERS_ZK_PATH = "/CruiseControlBrokerList";
   // We have to define this so we don't need to move every package to scala src folder.
   private static final String DEFAULT_ANOMALY_NOTIFIER_CLASS = NoopNotifier.class.getName();
-  private static final String DEFAULT_METRIC_ANOMALY_ANALYZER_CLASS = NoopMetricAnomalyAnalyzer.class.getName();
+  private static final String DEFAULT_METRIC_ANOMALY_ANALYZER_CLASS = NoopMetricAnomalyFinder.class.getName();
 
   private static final ConfigDef CONFIG;
 
@@ -862,6 +863,39 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 SAMPLE_STORE_CLASS_DOC)
         .withClientSslSupport()
         .withClientSaslSupport();
+  }
+
+  @Override
+  public <T> T getConfiguredInstance(String key, Class<T> t) {
+    T o = super.getConfiguredInstance(key, t);
+    if (o instanceof CruiseControlConfigurable) {
+      ((CruiseControlConfigurable) o).configure(originals());
+    }
+    return o;
+  }
+
+  @Override
+  public <T> List<T> getConfiguredInstances(String key, Class<T> t) {
+    List<T> objects = super.getConfiguredInstances(key, t);
+    for (T o : objects) {
+      if (o instanceof CruiseControlConfigurable) {
+        ((CruiseControlConfigurable) o).configure(originals());
+      }
+    }
+    return objects;
+  }
+
+  @Override
+  public <T> List<T> getConfiguredInstances(String key, Class<T> t, Map<String, Object> configOverrides) {
+    List<T> objects = super.getConfiguredInstances(key, t, configOverrides);
+    Map<String, Object> configPairs = originals();
+    configPairs.putAll(configOverrides);
+    for (T o : objects) {
+      if (o instanceof CruiseControlConfigurable) {
+        ((CruiseControlConfigurable) o).configure(configPairs);
+      }
+    }
+    return objects;
   }
 
   /**
