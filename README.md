@@ -33,7 +33,7 @@ Cruise Control for Apache Kafka
     * Rebalance the cluster
 
 ### Environment Requirements
-* The current master branch of Cruise Control is compatible with Apache Kafka 0.10.1 and above
+* The current master branch of Cruise Control is compatible with Apache Kafka 0.11.0.0 and above
 * message.format.version 0.10.0 and above is needed
 * The master branch compiles with Scala 2.11
 
