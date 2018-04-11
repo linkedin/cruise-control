@@ -30,7 +30,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.L
  * <p>
  * Each proposal is assigned an execution id and managed in two ways.
  * <ul>
- * <li>All proposals of leader movements are put into the same list and will be executed together.
+ * <li>All proposals of leadership movements are put into the same list and will be executed together.
  * <li>Proposals of partition movements are tracked by broker and execution Id.
  * </ul>
  * <p>
@@ -47,7 +47,7 @@ public class ExecutionTaskPlanner {
   private final Map<Integer, Map<Long, ExecutionTask>> _partMoveProposalByBrokerId;
   private long _remainingDataToMove;
   private final Set<ExecutionTask> _remainingReplicaMovements;
-  private final Map<Long, ExecutionTask> _leaderMovements;
+  private final Map<Long, ExecutionTask> _remainingLeadershipMovements;
   private long _executionId;
 
   public ExecutionTaskPlanner() {
@@ -55,7 +55,7 @@ public class ExecutionTaskPlanner {
     _partMoveProposalByBrokerId = new HashMap<>();
     _remainingReplicaMovements = new TreeSet<>();
     _remainingDataToMove = 0L;
-    _leaderMovements = new HashMap<>();
+    _remainingLeadershipMovements = new HashMap<>();
   }
 
   /**
@@ -77,7 +77,7 @@ public class ExecutionTaskPlanner {
    *
    * A proposal will have at least one of the two following actions:
    * 1. Replica action (i.e. movement, addition, deletion or order change).
-   * 2. Leader action (i.e. leader movement)
+   * 2. Leader action (i.e. leadership movement)
    *
    * @param proposal the proposal to execute.
    * @param cluster Kafka cluster state.
@@ -112,14 +112,14 @@ public class ExecutionTaskPlanner {
       LOG.trace("Added action {} as replica proposal {}", replicaActionExecutionId, proposal);
     }
 
-    // 2) Create a leader action task if there is a need for moving the leader to reach expected final proposal state.
+    // 2) Create a leader action task if there is a need for moving the leadership to reach expected final proposal state.
     if (proposal.hasLeaderAction()) {
       Node currentLeader = cluster.leaderFor(tp);
       if (currentLeader != null && currentLeader.id() != proposal.newLeader()) {
         // Get the execution Id for the leader action proposal execution;
         long leaderActionExecutionId = _executionId++;
         ExecutionTask leaderActionTask = new ExecutionTask(leaderActionExecutionId, proposal, LEADER_ACTION);
-        _leaderMovements.put(leaderActionExecutionId, leaderActionTask);
+        _remainingLeadershipMovements.put(leaderActionExecutionId, leaderActionTask);
         LOG.trace("Added action {} as leader proposal {}", leaderActionExecutionId, proposal);
       }
     }
@@ -140,20 +140,26 @@ public class ExecutionTaskPlanner {
   }
 
   /**
-   * Get the remaining leader movements.
+   * Get the remaining leadership movements.
    */
-  public Collection<ExecutionTask> remainingLeaderMovements() {
-    return _leaderMovements.values();
+  public Collection<ExecutionTask> remainingLeadershipMovements() {
+    return _remainingLeadershipMovements.values();
   }
 
-  public List<ExecutionTask> getLeaderMovementTasks(int numTasks) {
-    List<ExecutionTask> leaderMovementsList = new ArrayList<>();
-    Iterator<ExecutionTask> leaderMovementIter = _leaderMovements.values().iterator();
-    for (int i = 0; i < numTasks && leaderMovementIter.hasNext(); i++) {
-      leaderMovementsList.add(leaderMovementIter.next());
-      leaderMovementIter.remove();
+  /**
+   * Get the leadership movement tasks, and remove them from _remainingLeadershipMovements.
+   *
+   * @param numTasks Number of tasks to remove from the _remainingLeadershipMovements. If _remainingLeadershipMovements
+   *                 has less than numTasks, all tasks are removed.
+   */
+  public List<ExecutionTask> getLeadershipMovementTasks(int numTasks) {
+    List<ExecutionTask> leadershipMovementsList = new ArrayList<>();
+    Iterator<ExecutionTask> leadershipMovementIter = _remainingLeadershipMovements.values().iterator();
+    for (int i = 0; i < numTasks && leadershipMovementIter.hasNext(); i++) {
+      leadershipMovementsList.add(leadershipMovementIter.next());
+      leadershipMovementIter.remove();
     }
-    return leaderMovementsList;
+    return leadershipMovementsList;
   }
 
   /**
@@ -236,7 +242,7 @@ public class ExecutionTaskPlanner {
    * Clear all the states.
    */
   public void clear() {
-    _leaderMovements.clear();
+    _remainingLeadershipMovements.clear();
     _partMoveProposalByBrokerId.clear();
     _remainingReplicaMovements.clear();
     _remainingDataToMove = 0L;

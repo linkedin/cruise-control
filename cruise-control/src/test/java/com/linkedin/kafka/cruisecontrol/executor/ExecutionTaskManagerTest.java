@@ -80,7 +80,7 @@ public class ExecutionTaskManagerTest {
       case IN_PROGRESS:
         taskManager.markTasksInProgress(Collections.singletonList(task));
         assertEquals(0, taskManager.remainingPartitionMovements().size());
-        assertEquals(0, taskManager.remainingLeaderMovements().size());
+        assertEquals(0, taskManager.remainingLeadershipMovements().size());
         assertEquals(1, taskManager.inProgressTasks().size());
         assertEquals(0, taskManager.abortingTasks().size());
         assertEquals(0, taskManager.abortedTasks().size());
@@ -89,7 +89,7 @@ public class ExecutionTaskManagerTest {
       case ABORTING:
         taskManager.markTaskAborting(task);
         assertEquals(0, taskManager.remainingPartitionMovements().size());
-        assertEquals(0, taskManager.remainingLeaderMovements().size());
+        assertEquals(0, taskManager.remainingLeadershipMovements().size());
         assertEquals(0, taskManager.inProgressTasks().size());
         assertEquals(1, taskManager.abortingTasks().size());
         assertEquals(0, taskManager.abortedTasks().size());
@@ -98,7 +98,7 @@ public class ExecutionTaskManagerTest {
       case DEAD:
         taskManager.markTaskDead(task);
         assertEquals(0, taskManager.remainingPartitionMovements().size());
-        assertEquals(0, taskManager.remainingLeaderMovements().size());
+        assertEquals(0, taskManager.remainingLeadershipMovements().size());
         assertEquals(0, taskManager.inProgressTasks().size());
         assertEquals(0, taskManager.abortingTasks().size());
         assertEquals(0, taskManager.abortedTasks().size());
@@ -109,7 +109,7 @@ public class ExecutionTaskManagerTest {
         ExecutionTask.State origState = task.state();
         taskManager.markTaskDone(task);
         assertEquals(0, taskManager.remainingPartitionMovements().size());
-        assertEquals(0, taskManager.remainingLeaderMovements().size());
+        assertEquals(0, taskManager.remainingLeadershipMovements().size());
         assertEquals(0, taskManager.inProgressTasks().size());
         assertEquals(0, taskManager.abortingTasks().size());
         assertEquals(origState == ExecutionTask.State.ABORTING ? 1 : 0, taskManager.abortedTasks().size());

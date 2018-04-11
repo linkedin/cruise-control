@@ -91,13 +91,13 @@ public class ExecutionTaskPlannerTest {
                                           Collections.<String>emptySet());
 
     planner.addExecutionProposals(proposals, expectedCluster);
-    List<ExecutionTask> leaderMovementTasks = planner.getLeaderMovementTasks(2);
+    List<ExecutionTask> leaderMovementTasks = planner.getLeadershipMovementTasks(2);
     assertEquals("2 of the leader movements should return in one batch", 2, leaderMovementTasks.size());
     assertEquals(1, leaderMovementTasks.get(0).executionId());
     assertEquals(leaderMovementTasks.get(0).proposal(), leaderMovement1);
     assertEquals(3, leaderMovementTasks.get(1).executionId());
     assertEquals(leaderMovementTasks.get(1).proposal(), leaderMovement2);
-    leaderMovementTasks = planner.getLeaderMovementTasks(2);
+    leaderMovementTasks = planner.getLeadershipMovementTasks(2);
     assertEquals("2 of the leader movements should return in one batch", 2, leaderMovementTasks.size());
     assertEquals(5, leaderMovementTasks.get(0).executionId());
     assertEquals(leaderMovementTasks.get(0).proposal(), leaderMovement3);
@@ -205,11 +205,11 @@ public class ExecutionTaskPlannerTest {
 
     planner.addExecutionProposals(proposals, expectedCluster);
     assertEquals(1, planner.remainingDataToMoveInMB());
-    assertEquals(2, planner.remainingLeaderMovements().size());
+    assertEquals(2, planner.remainingLeadershipMovements().size());
     assertEquals(2, planner.remainingReplicaMovements().size());
     planner.clear();
     assertEquals(0, planner.remainingDataToMoveInMB());
-    assertEquals(0, planner.remainingLeaderMovements().size());
+    assertEquals(0, planner.remainingLeadershipMovements().size());
     assertEquals(0, planner.remainingReplicaMovements().size());
   }
 }

@@ -66,6 +66,7 @@ public class Executor {
   private final Time _time;
   private volatile boolean _hasOngoingExecution;
   private volatile int _numFinishedPartitionMovements;
+  private volatile int _numFinishedLeadershipMovements;
   private volatile long _finishedDataMovementInMB;
   private volatile ExecutorState _executorState;
 
@@ -246,7 +247,8 @@ public class Executor {
         if (_state == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
           _state = ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS;
           // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
-          _executorState = ExecutorState.leaderMovementInProgress();
+          _executorState = ExecutorState.leaderMovementInProgress(_numFinishedLeadershipMovements,
+                                                                  _executionTaskManager.getExecutionTasksSummary());
           moveLeaderships();
           updateOngoingExecutionState();
         }
@@ -269,7 +271,8 @@ public class Executor {
       if (!_stopRequested.get()) {
         switch (_state) {
           case LEADER_MOVEMENT_TASK_IN_PROGRESS:
-            _executorState = ExecutorState.leaderMovementInProgress();
+            _executorState = ExecutorState.leaderMovementInProgress(_numFinishedLeadershipMovements,
+                                                                    _executionTaskManager.getExecutionTasksSummary());
             break;
           case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
             _executorState = ExecutorState.replicaMovementInProgress(_numFinishedPartitionMovements,
@@ -282,6 +285,7 @@ public class Executor {
       } else {
         _state = ExecutorState.State.STOPPING_EXECUTION;
         _executorState = ExecutorState.stopping(_numFinishedPartitionMovements,
+                                                _numFinishedLeadershipMovements,
                                                 _executionTaskManager.getExecutionTasksSummary(),
                                                 _finishedDataMovementInMB);
       }
@@ -344,35 +348,37 @@ public class Executor {
     }
 
     private void moveLeaderships() {
-      int numTotalLeaderMovements = _executionTaskManager.remainingLeaderMovements().size();
-      LOG.info("Starting {} leader movements.", numTotalLeaderMovements);
+      int numTotalLeadershipMovements = _executionTaskManager.remainingLeadershipMovements().size();
+      LOG.info("Starting {} leadership movements.", numTotalLeadershipMovements);
       int leaderMoved = 0;
-      while (!_executionTaskManager.remainingLeaderMovements().isEmpty() && !_stopRequested.get()) {
+      while (!_executionTaskManager.remainingLeadershipMovements().isEmpty() && !_stopRequested.get()) {
         updateOngoingExecutionState();
-        leaderMoved += moveLeadersInBatch();
-        LOG.info("{}/{} ({}%) leader movements completed.", leaderMoved, numTotalLeaderMovements,
-                 leaderMoved * 100 / numTotalLeaderMovements);
+        moveLeadershipInBatch(numTotalLeadershipMovements);
+        LOG.info("{}/{} ({}%) leadership movements completed.", _numFinishedLeadershipMovements,
+                 numTotalLeadershipMovements, _numFinishedLeadershipMovements * 100 / numTotalLeadershipMovements);
       }
-      LOG.info("Leader movements finished.");
+      LOG.info("Leadership movements finished.");
     }
 
-    private int moveLeadersInBatch() {
-      List<ExecutionTask> leaderMovementTasks = _executionTaskManager.getLeaderMovementTasks();
-      int numLeadersToMove = leaderMovementTasks.size();
-      LOG.debug("Executing {} leader movements in a batch.", numLeadersToMove);
-      // Execute the leader movements.
-      if (!leaderMovementTasks.isEmpty() && !_stopRequested.get()) {
-        // Mark leader movements in progress.
-        _executionTaskManager.markTasksInProgress(leaderMovementTasks);
+    private void moveLeadershipInBatch(int numTotalLeadershipMovements) {
+      List<ExecutionTask> leadershipMovementTasks = _executionTaskManager.getLeadershipMovementTasks();
+      int numLeadershipToMove = leadershipMovementTasks.size();
+      LOG.debug("Executing {} leadership movements in a batch.", numLeadershipToMove);
+      int alreadyFinishedLeadershipMovements = _numFinishedLeadershipMovements;
+      // Execute the leadership movements.
+      if (!leadershipMovementTasks.isEmpty() && !_stopRequested.get()) {
+        // Mark leadership movements in progress.
+        _executionTaskManager.markTasksInProgress(leadershipMovementTasks);
+        _numFinishedLeadershipMovements = alreadyFinishedLeadershipMovements + numLeadershipToMove - leadershipMovementTasks.size();
 
         // Run preferred leader election.
-        ExecutorUtils.executePreferredLeaderElection(_zkUtils, leaderMovementTasks);
-        LOG.trace("Waiting for leader movement batch to finish.");
+        ExecutorUtils.executePreferredLeaderElection(_zkUtils, leadershipMovementTasks);
+        LOG.trace("Waiting for leadership movement batch to finish.");
         while (!_executionTaskManager.inProgressTasks().isEmpty() && !_stopRequested.get()) {
           waitForExecutionTaskToFinish();
         }
       }
-      return numLeadersToMove;
+      _numFinishedLeadershipMovements = alreadyFinishedLeadershipMovements + numLeadershipToMove;
     }
 
     /**

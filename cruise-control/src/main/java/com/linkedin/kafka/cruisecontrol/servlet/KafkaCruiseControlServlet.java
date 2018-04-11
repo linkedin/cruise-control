@@ -103,6 +103,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final int JSON_VERSION = 1;
 
   private static final String PARTITION_MOVEMENTS = "partition movements";
+  private static final String LEADERSHIP_MOVEMENTS = "leadership movements";
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
@@ -758,13 +759,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean json = wantJSON(request);
     try {
       String verboseString = request.getParameter(VERBOSE_PARAM);
-      verbose = verboseString != null && Boolean.parseBoolean(verboseString);
+      verbose = Boolean.parseBoolean(verboseString);
 
       goals = getGoals(request);
       dataFrom = getDataFrom(request);
 
       String ignoreProposalCacheString = request.getParameter(IGNORE_PROPOSAL_CACHE_PARAM);
-      ignoreProposalCache = (ignoreProposalCacheString != null && Boolean.parseBoolean(ignoreProposalCacheString))
+      ignoreProposalCache = (Boolean.parseBoolean(ignoreProposalCacheString))
           || !goals.isEmpty();
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
@@ -859,7 +860,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private boolean wantJSON(HttpServletRequest request) {
     String jsonString = request.getParameter(JSON_PARAM);
-    return jsonString != null && Boolean.parseBoolean(jsonString);
+    return Boolean.parseBoolean(jsonString);
   }
 
   private void writeKafkaClusterState(OutputStream out, SortedSet<PartitionInfo> partitions, int topicNameLength)
@@ -888,7 +889,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean json = wantJSON(request);
     try {
       String verboseString = request.getParameter(VERBOSE_PARAM);
-      verbose = verboseString != null && Boolean.parseBoolean(verboseString);
+      verbose = Boolean.parseBoolean(verboseString);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       e.printStackTrace(new PrintWriter(sw));
@@ -964,9 +965,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean json = wantJSON(request);
     try {
       String verboseString = request.getParameter(VERBOSE_PARAM);
-      verbose = verboseString != null && Boolean.parseBoolean(verboseString);
+      verbose = Boolean.parseBoolean(verboseString);
       String superVerboseString = request.getParameter(SUPER_VERBOSE_PARM);
-      superVerbose = superVerboseString != null && Boolean.parseBoolean(superVerboseString);
+      superVerbose = Boolean.parseBoolean(superVerboseString);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       e.printStackTrace(new PrintWriter(sw));
@@ -1023,6 +1024,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           out.write(String.format("%n%n%s %s:%n", executorState.state() == ExecutorState.State.STOPPING_EXECUTION
                                                   ? "Cancelled" : "Pending", PARTITION_MOVEMENTS).getBytes(StandardCharsets.UTF_8));
           for (ExecutionTask task : executorState.pendingPartitionMovements()) {
+            out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
+          }
+        } else if (executorState.state() == ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS) {
+          out.write(String.format("%n%nPending %s:%n", LEADERSHIP_MOVEMENTS).getBytes(StandardCharsets.UTF_8));
+          for (ExecutionTask task : executorState.pendingLeadershipMovements()) {
             out.write(String.format("%s%n", task).getBytes(StandardCharsets.UTF_8));
           }
         }
