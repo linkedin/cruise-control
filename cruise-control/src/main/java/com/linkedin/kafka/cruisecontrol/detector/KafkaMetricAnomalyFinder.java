@@ -52,9 +52,9 @@ public class KafkaMetricAnomalyFinder extends PercentileMetricAnomalyFinder<Brok
   @Override
   @SuppressWarnings("unchecked")
   public void configure(Map<String, ?> configs) {
-    String interestedMetrics = (String) configs.get(CruiseControlConfig.METRIC_ANOMALY_ANALYZER_METRICS_CONFIG);
+    String interestedMetrics = (String) configs.get(CruiseControlConfig.METRIC_ANOMALY_FINDER_METRICS_CONFIG);
     if (interestedMetrics == null || interestedMetrics.isEmpty()) {
-      ((Map<String, Object>) configs).put(CruiseControlConfig.METRIC_ANOMALY_ANALYZER_METRICS_CONFIG, DEFAULT_METRICS);
+      ((Map<String, Object>) configs).put(CruiseControlConfig.METRIC_ANOMALY_FINDER_METRICS_CONFIG, DEFAULT_METRICS);
     }
     super.configure(configs);
     _kafkaCruiseControl = (KafkaCruiseControl) configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
