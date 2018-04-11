@@ -160,7 +160,7 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
     _anomalyLowerPercentile =
         internalConfig.getDouble(PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG);
 
-    String trimmedMetrics = ((String) configs.get(CruiseControlConfig.METRIC_ANOMALY_ANALYZER_METRICS_CONFIG)).trim();
+    String trimmedMetrics = ((String) configs.get(CruiseControlConfig.METRIC_ANOMALY_FINDER_METRICS_CONFIG)).trim();
     _interestedMetrics = new HashSet<>(Arrays.asList(trimmedMetrics.split(",")));
     // In case there is an empty string metric.
     _interestedMetrics.removeIf(String::isEmpty);
