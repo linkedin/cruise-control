@@ -36,7 +36,7 @@ public class ExecutionTaskManager {
   private final Set<TopicPartition> _inProgressPartitions;
   private final ExecutionTaskPlanner _executionTaskPlanner;
   private final int _partitionMovementConcurrency;
-  private final int _leaderMovementConcurrency;
+  private final int _leadershipMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
   private final Time _time;
   private volatile long _inExecutionDataToMove;
@@ -64,12 +64,12 @@ public class ExecutionTaskManager {
    * The constructor of The Execution task manager.
    *
    * @param partitionMovementConcurrency The maximum number of concurrent partition movements per broker.
-   * @param leaderMovementConcurrency The maximum number of concurrent leader movements per batch.
+   * @param leadershipMovementConcurrency The maximum number of concurrent leadership movements per batch.
    * @param dropwizardMetricRegistry The metric registry.
    * @param time The time object to get the time.
    */
   public ExecutionTaskManager(int partitionMovementConcurrency,
-                              int leaderMovementConcurrency,
+                              int leadershipMovementConcurrency,
                               MetricRegistry dropwizardMetricRegistry,
                               Time time) {
     _inProgressReplicaMovementsByBrokerId = new HashMap<>();
@@ -77,7 +77,7 @@ public class ExecutionTaskManager {
     _executionTaskTracker = new ExecutionTaskTracker();
     _executionTaskPlanner = new ExecutionTaskPlanner();
     _partitionMovementConcurrency = partitionMovementConcurrency;
-    _leaderMovementConcurrency = leaderMovementConcurrency;
+    _leadershipMovementConcurrency = leadershipMovementConcurrency;
     _brokersToSkipConcurrencyCheck = new HashSet<>();
     _inExecutionDataToMove = 0L;
     _time = time;
@@ -132,10 +132,10 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Returns a list of proposals that moves the leadership.
+   * Returns a list of proposals that move the leadership.
    */
-  public synchronized List<ExecutionTask> getLeaderMovementTasks() {
-    return _executionTaskPlanner.getLeaderMovementTasks(_leaderMovementConcurrency);
+  public synchronized List<ExecutionTask> getLeadershipMovementTasks() {
+    return _executionTaskPlanner.getLeadershipMovementTasks(_leadershipMovementConcurrency);
   }
 
   /**
@@ -146,10 +146,10 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Returns the remaining leader movement tasks;
+   * Returns the remaining leadership movement tasks;
    */
-  public synchronized Collection<ExecutionTask> remainingLeaderMovements() {
-    return _executionTaskPlanner.remainingLeaderMovements();
+  public synchronized Collection<ExecutionTask> remainingLeadershipMovements() {
+    return _executionTaskPlanner.remainingLeadershipMovements();
   }
 
   /**
@@ -248,7 +248,7 @@ public class ExecutionTaskManager {
     _executionTaskTracker.taskForReplicaAction(ExecutionTask.State.PENDING)
                          .addAll(_executionTaskPlanner.remainingReplicaMovements());
     _executionTaskTracker.taskForLeaderAction(ExecutionTask.State.PENDING)
-                         .addAll(_executionTaskPlanner.remainingLeaderMovements());
+                         .addAll(_executionTaskPlanner.remainingLeadershipMovements());
     _brokersToSkipConcurrencyCheck.clear();
     if (brokersToSkipConcurrencyCheck != null) {
       _brokersToSkipConcurrencyCheck.addAll(brokersToSkipConcurrencyCheck);
@@ -379,6 +379,7 @@ public class ExecutionTaskManager {
 
   public synchronized ExecutionTasksSummary getExecutionTasksSummary() {
     return new ExecutionTasksSummary(_executionTaskPlanner.remainingReplicaMovements(),
+                              _executionTaskPlanner.remainingLeadershipMovements(),
                               _executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS),
                               _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING),
                               _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTED),
@@ -388,6 +389,7 @@ public class ExecutionTaskManager {
 
   static class ExecutionTasksSummary {
     private final Set<ExecutionTask> _remainingPartitionMovements;
+    private final Collection<ExecutionTask> _remainingLeadershipMovements;
     private final Set<ExecutionTask> _inProgressTasks;
     private final Set<ExecutionTask> _abortingTasks;
     private final Set<ExecutionTask> _abortedTasks;
@@ -395,12 +397,14 @@ public class ExecutionTaskManager {
     private final long _remainingDataToMoveInMB;
 
     ExecutionTasksSummary(Set<ExecutionTask> remainingPartitionMovements,
+                          Collection<ExecutionTask> remainingLeadershipMovements,
                           Set<ExecutionTask> inProgressTasks,
                           Set<ExecutionTask> abortingTasks,
                           Set<ExecutionTask> abortedTasks,
                           Set<ExecutionTask> deadTasks,
                           long remainingDataToMoveInMB) {
       _remainingPartitionMovements = remainingPartitionMovements;
+      _remainingLeadershipMovements = remainingLeadershipMovements;
       _inProgressTasks = inProgressTasks;
       _abortingTasks = abortingTasks;
       _abortedTasks = abortedTasks;
@@ -413,6 +417,13 @@ public class ExecutionTaskManager {
      */
     public Set<ExecutionTask> remainingPartitionMovements() {
       return _remainingPartitionMovements;
+    }
+
+    /**
+     * Returns the remaining leadership movement tasks.
+     */
+    public Collection<ExecutionTask> remainingLeadershipMovements() {
+      return _remainingLeadershipMovements;
     }
 
     /**

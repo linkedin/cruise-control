@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Set;
 import java.util.HashMap;
@@ -22,7 +23,9 @@ public class ExecutorState {
 
   private final State _state;
   private final Set<ExecutionTask> _pendingPartitionMovements;
+  private final Collection<ExecutionTask> _pendingLeadershipMovements;
   private final int _numFinishedPartitionMovements;
+  private final int _numFinishedLeadershipMovements;
   private final Set<ExecutionTask> _inProgressPartitionMovements;
   private final Set<ExecutionTask> _abortingPartitionMovements;
   private final Set<ExecutionTask> _abortedPartitionMovements;
@@ -32,11 +35,14 @@ public class ExecutorState {
 
   private ExecutorState(State state,
                         int numFinishedPartitionMovements,
+                        int numFinishedLeadershipMovements,
                         ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary,
                         long finishedDataMovementInMB) {
     _state = state;
     _numFinishedPartitionMovements = numFinishedPartitionMovements;
+    _numFinishedLeadershipMovements = numFinishedLeadershipMovements;
     _pendingPartitionMovements = executionTasksSummary.remainingPartitionMovements();
+    _pendingLeadershipMovements = executionTasksSummary.remainingLeadershipMovements();
     _inProgressPartitionMovements = executionTasksSummary.inProgressTasks();
     _abortingPartitionMovements = executionTasksSummary.abortingTasks();
     _abortedPartitionMovements = executionTasksSummary.abortedTasks();
@@ -48,7 +54,9 @@ public class ExecutorState {
   public static ExecutorState noTaskInProgress() {
     return new ExecutorState(State.NO_TASK_IN_PROGRESS,
                              0,
+                             0,
                              new ExecutionTaskManager.ExecutionTasksSummary(Collections.emptySet(),
+                                                                            Collections.emptySet(),
                                                                             Collections.emptySet(),
                                                                             Collections.emptySet(),
                                                                             Collections.emptySet(),
@@ -60,7 +68,9 @@ public class ExecutorState {
   public static ExecutorState executionStarted() {
     return new ExecutorState(State.EXECUTION_STARTED,
                              0,
+                             0,
                              new ExecutionTaskManager.ExecutionTasksSummary(Collections.emptySet(),
+                                                                            Collections.emptySet(),
                                                                             Collections.emptySet(),
                                                                             Collections.emptySet(),
                                                                             Collections.emptySet(),
@@ -73,7 +83,7 @@ public class ExecutorState {
                                                         ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary,
                                                         long finishedDataMovementInMB) {
     return new ExecutorState(State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
-                             finishedPartitionMovements, executionTasksSummary,
+                             finishedPartitionMovements, 0, executionTasksSummary,
                              finishedDataMovementInMB);
   }
 
@@ -86,8 +96,9 @@ public class ExecutorState {
                                                         long remainingDataToMoveInMB,
                                                         long finishedDataMovementInMB) {
     return new ExecutorState(State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
-                             finishedPartitionMovements,
+                             finishedPartitionMovements, 0,
                              new ExecutionTaskManager.ExecutionTasksSummary(remainingPartitionMovements,
+                                                                            Collections.emptySet(),
                                                                             inProgressTasks,
                                                                             abortingTasks,
                                                                             abortedTasks,
@@ -96,10 +107,13 @@ public class ExecutorState {
                              finishedDataMovementInMB);
   }
 
-  public static ExecutorState leaderMovementInProgress() {
+  public static ExecutorState leaderMovementInProgress(int finishedLeadershipMovements,
+                                                       ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary) {
     return new ExecutorState(State.LEADER_MOVEMENT_TASK_IN_PROGRESS,
                              0,
+                             finishedLeadershipMovements,
                              new ExecutionTaskManager.ExecutionTasksSummary(Collections.emptySet(),
+                                                                            executionTasksSummary.remainingLeadershipMovements(),
                                                                             Collections.emptySet(),
                                                                             Collections.emptySet(),
                                                                             Collections.emptySet(),
@@ -109,10 +123,13 @@ public class ExecutorState {
   }
 
   public static ExecutorState stopping(int finishedPartitionMovements,
+                                       int finishedLeadershipMovements,
                                        ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary,
                                        long finishedDataMovementInMB) {
     return new ExecutorState(State.STOPPING_EXECUTION,
-                             finishedPartitionMovements, executionTasksSummary,
+                             finishedPartitionMovements,
+                             finishedLeadershipMovements,
+                             executionTasksSummary,
                              finishedDataMovementInMB);
   }
 
@@ -128,6 +145,10 @@ public class ExecutorState {
         + _abortedPartitionMovements.size();
   }
 
+  public int numTotalLeadershipMovements() {
+    return _numFinishedLeadershipMovements + _pendingLeadershipMovements.size();
+  }
+
   public long totalDataToMoveInMB() {
     return _remainingDataToMoveInMB + _finishedDataMovementInMB;
   }
@@ -136,8 +157,16 @@ public class ExecutorState {
     return _numFinishedPartitionMovements;
   }
 
+  public int numFinishedLeadershipMovements() {
+    return _numFinishedLeadershipMovements;
+  }
+
   public Set<ExecutionTask> pendingPartitionMovements() {
     return _pendingPartitionMovements;
+  }
+
+  public Collection<ExecutionTask> pendingLeadershipMovements() {
+    return _pendingLeadershipMovements;
   }
 
   public Set<ExecutionTask> inProgressPartitionMovements() {
@@ -171,9 +200,11 @@ public class ExecutorState {
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
       case STOPPING_EXECUTION:
         execState.put("state", _state);
-        execState.put("numTotalPartitions", numTotalPartitionMovements());
+        execState.put("numTotalPartitionMovements", numTotalPartitionMovements());
+        execState.put("numTotalLeadershipMovements", numTotalLeadershipMovements());
         execState.put("totalDataToMove", totalDataToMoveInMB());
-        execState.put("numFinishedPartitions", _numFinishedPartitionMovements);
+        execState.put("numFinishedPartitionMovements", _numFinishedPartitionMovements);
+        execState.put("numFinishedLeadershipMovements", _numFinishedLeadershipMovements);
         execState.put("finishedDataMovement", _finishedDataMovementInMB);
         execState.put("abortingPartitions", _abortingPartitionMovements);
         execState.put("abortedPartitions", _abortedPartitionMovements);
@@ -193,16 +224,17 @@ public class ExecutorState {
       case NO_TASK_IN_PROGRESS:
       case EXECUTION_STARTED:
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
-        return String.format("{state: %s}", _state);
+        return String.format("{state: %s, finished/total leadership movements: %d/%d}", _state,
+                             _numFinishedLeadershipMovements, numTotalLeadershipMovements());
 
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
       case STOPPING_EXECUTION:
         return String.format("{state: %s, in-progress/aborting partitions: %d/%d, completed/total bytes(MB): %d/%d, "
-                                 + "finished/aborted/dead/total partitions: %d/%d/%d/%d}",
+                                 + "finished/aborted/dead/total partitions: %d/%d/%d/%d, finished leadership movements: %d/%d}",
                              _state, _inProgressPartitionMovements.size(), _abortingPartitionMovements.size(),
                              _finishedDataMovementInMB, totalDataToMoveInMB(), _numFinishedPartitionMovements,
                              _abortedPartitionMovements.size(), _deadPartitionMovements.size(),
-                             numTotalPartitionMovements());
+                             numTotalPartitionMovements(), _numFinishedLeadershipMovements, numTotalLeadershipMovements());
       default:
         throw new IllegalStateException("This should never happen");
     }
