@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerM
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
@@ -173,9 +174,20 @@ class SamplingFetcher extends MetricFetcher {
   }
 
   private double estimateCpuUtil(PartitionMetricSample partitionMetricSample) {
-    int cpuId = KafkaMetricDef.resourceToMetricId(Resource.CPU);
-    int networkOutId = KafkaMetricDef.resourceToMetricId(Resource.NW_OUT);
-    return ModelUtils.estimateLeaderCpuUtilUsingLinearRegressionModel(partitionMetricSample.metricValue(cpuId),
-                                                                      partitionMetricSample.metricValue(networkOutId));
+    List<Integer> cpuId = KafkaMetricDef.resourceToMetricIds(Resource.CPU);
+    List<Integer> networkOutId = KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT);
+    Double cpuUsage = sumOfMetrics(partitionMetricSample, cpuId);
+    Double networkOutUsage = sumOfMetrics(partitionMetricSample, networkOutId);
+    return ModelUtils.estimateLeaderCpuUtilUsingLinearRegressionModel(cpuUsage, networkOutUsage);
+  }
+
+  // Add all the values of the given metric ids up.
+  // TODO: remove this once we completely move to metric def.
+  private Double sumOfMetrics(PartitionMetricSample partitionMetricSample, List<Integer> metricIds) {
+    double result = 0;
+    for (int id : metricIds) {
+      result += partitionMetricSample.metricValue(id);
+    }
+    return result;
   }
 }

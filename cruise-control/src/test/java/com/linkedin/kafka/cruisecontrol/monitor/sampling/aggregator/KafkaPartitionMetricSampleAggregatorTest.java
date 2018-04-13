@@ -78,11 +78,14 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     for (int i = 0; i < NUM_WINDOWS; i++) {
       assertEquals((NUM_WINDOWS - i) * WINDOW_MS, result.valuesAndExtrapolations().get(PE).window(i));
       for (Resource resource : Resource.values()) {
-        double expectedValue = resource == Resource.DISK ?
+        Collection<Integer> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
+        double expectedValue = (resource == Resource.DISK ?
             (NUM_WINDOWS - 1 - i) * 10 + MIN_SAMPLES_PER_WINDOW - 1 :
-            (NUM_WINDOWS - 1 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0;
+            (NUM_WINDOWS - 1 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0) * metricIds.size();
         assertEquals("The utilization for " + resource + " should be " + expectedValue,
-                     expectedValue, snapshots.metricValues().valuesFor(KafkaMetricDef.resourceToMetricId(resource)).get(i), 0);
+                     expectedValue, snapshots.metricValues().valuesForGroup(resource.name(),
+                                                                            KafkaMetricDef.commonMetricDef(),
+                                                                            false).get(i), 0);
       }
     }
 
@@ -313,11 +316,13 @@ public class KafkaPartitionMetricSampleAggregatorTest {
                               .valuesAndExtrapolations();
     ValuesAndExtrapolations snapshots = snapshotsForPartition.get(PE);
     for (Resource resource : Resource.values()) {
-      int metricId = KafkaMetricDef.resourceToMetricId(resource);
-      double expectedValue = resource == Resource.DISK ?
-          MIN_SAMPLES_PER_WINDOW - 1 : (MIN_SAMPLES_PER_WINDOW - 1) / 2.0;
+      Collection<Integer> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
+      double expectedValue = (resource == Resource.DISK ?
+          MIN_SAMPLES_PER_WINDOW - 1 : (MIN_SAMPLES_PER_WINDOW - 1) / 2.0) * metricIds.size();
       assertEquals("The utilization for " + resource + " should be " + expectedValue,
-                   expectedValue, snapshots.metricValues().valuesFor(metricId).get(NUM_WINDOWS - 1), 0);
+                   expectedValue, snapshots.metricValues().valuesForGroup(resource.name(),
+                                                                          KafkaMetricDef.commonMetricDef(),
+                                                                          false).get(NUM_WINDOWS - 1), 0);
     }
   }
 

@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.BrokerMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
@@ -255,10 +254,10 @@ public class CruiseControlMetricsProcessorTest {
   private void validatePartitionMetricSample(PartitionMetricSample sample, long time, double cpu, double bytesIn, double bytesOut,
                                              double disk) {
     assertEquals(time, sample.sampleTime());
-    assertEquals(cpu, sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.CPU)), DELTA);
-    assertEquals(bytesIn, sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.NW_IN)), DELTA);
-    assertEquals(bytesOut, sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.NW_OUT)), DELTA);
-    assertEquals(disk, sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.DISK)), DELTA);
+    assertEquals(cpu, sample.metricValue(KafkaMetricDef.commonMetricDefId(CPU_USAGE)), DELTA);
+    assertEquals(bytesIn, sample.metricValue(KafkaMetricDef.commonMetricDefId(LEADER_BYTES_IN)), DELTA);
+    assertEquals(bytesOut, sample.metricValue(KafkaMetricDef.commonMetricDefId(LEADER_BYTES_OUT)), DELTA);
+    assertEquals(disk, sample.metricValue(KafkaMetricDef.commonMetricDefId(DISK_USAGE)), DELTA);
   }
 
   private Cluster getCluster() {

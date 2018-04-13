@@ -119,8 +119,11 @@ public class PreferredLeaderElectionGoalTest {
     clusterModel.createReplica(rack, brokerId, tp, index, isLeader);
     MetricValues metricValues = new MetricValues(1);
     Map<Integer, MetricValues> metricValuesByResource = new HashMap<>();
-    Resource.cachedValues().forEach(r -> metricValuesByResource.put(KafkaMetricDef.resourceToMetricId(r),
-                                                                    metricValues));
+    Resource.cachedValues().forEach(r -> {
+      for (int id : KafkaMetricDef.resourceToMetricIds(r)) {
+        metricValuesByResource.put(id, metricValues);
+      }
+    });
     clusterModel.setReplicaLoad(rack, brokerId, tp, new AggregatedMetricValues(metricValuesByResource),
                                 Collections.singletonList(1L));
   }

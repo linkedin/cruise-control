@@ -18,6 +18,8 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
+
 
 /**
  * A util class for Monitor.
@@ -44,25 +46,30 @@ public class MonitorUtils {
    * @param aggregatedMetricValues the leader aggregated metric values to convert.
    */
   public static AggregatedMetricValues toFollowerMetricValues(AggregatedMetricValues aggregatedMetricValues) {
-    int cpuId = KafkaMetricDef.resourceToMetricId(Resource.CPU);
-    int networkInId = KafkaMetricDef.resourceToMetricId(Resource.NW_IN);
-    int networkOutId = KafkaMetricDef.resourceToMetricId(Resource.NW_OUT);
 
     AggregatedMetricValues followerLoad = new AggregatedMetricValues();
     for (int metricId : aggregatedMetricValues.metricIds()) {
-      if (metricId != cpuId && metricId != networkOutId) {
+      String metricGroup = KafkaMetricDef.commonMetricDef().metricInfo(metricId).group();
+      if (!Resource.CPU.name().equals(metricGroup) && !Resource.NW_OUT.name().equals(metricGroup)) {
         followerLoad.add(metricId, aggregatedMetricValues.valuesFor(metricId));
       }
     }
     MetricValues followerCpu = new MetricValues(aggregatedMetricValues.length());
+    MetricValues totalNetworkIn =
+        aggregatedMetricValues.valuesForGroup(Resource.NW_IN.name(), KafkaMetricDef.commonMetricDef(), false);
+    MetricValues totalNetworkOut =
+        aggregatedMetricValues.valuesForGroup(Resource.NW_OUT.name(), KafkaMetricDef.commonMetricDef(), false);
+    MetricValues totalCpuUsage = aggregatedMetricValues.valuesFor(KafkaMetricDef.commonMetricDefId(CPU_USAGE));
     for (int i = 0; i < aggregatedMetricValues.length(); i++) {
-      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(aggregatedMetricValues.valuesFor(networkInId).get(i),
-                                                                           aggregatedMetricValues.valuesFor(networkOutId).get(i),
-                                                                           aggregatedMetricValues.valuesFor(cpuId).get(i));
+      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(totalNetworkIn.get(i),
+                                                                           totalNetworkOut.get(i),
+                                                                           totalCpuUsage.get(i));
       followerCpu.set(i, followerCpuUtil);
     }
-    followerLoad.add(networkOutId, new MetricValues(aggregatedMetricValues.length()));
-    followerLoad.add(cpuId, followerCpu);
+    for (int nwOutMetricId : KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT)) {
+      followerLoad.add(nwOutMetricId, new MetricValues(aggregatedMetricValues.length()));
+    }
+    followerLoad.add(KafkaMetricDef.commonMetricDefId(CPU_USAGE), followerCpu);
     return followerLoad;
   }
 

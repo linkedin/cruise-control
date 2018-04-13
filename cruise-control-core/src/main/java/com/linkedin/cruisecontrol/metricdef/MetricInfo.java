@@ -11,11 +11,13 @@ public class MetricInfo {
   private final String _name;
   private final int _id;
   private final AggregationFunction _strategy;
+  private final String _group;
 
-  public MetricInfo(String name, int id, AggregationFunction strategy) {
+  public MetricInfo(String name, int id, AggregationFunction strategy, String group) {
     _name = name;
     _id = id;
     _strategy = strategy;
+    _group = group;
   }
 
   public String name() {
@@ -28,6 +30,10 @@ public class MetricInfo {
 
   public AggregationFunction strategy() {
     return _strategy;
+  }
+
+  public String group() {
+    return _group;
   }
 
   @Override

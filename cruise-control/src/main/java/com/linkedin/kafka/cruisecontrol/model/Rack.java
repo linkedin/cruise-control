@@ -191,13 +191,12 @@ public class Rack implements Serializable {
    * @param tp TopicPartition of the replica for which the outbound network load will be removed.
    * @return Leadership load by snapshot time.
    */
-  Map<Resource, double[]> makeFollower(int brokerId, TopicPartition tp) {
+  AggregatedMetricValues makeFollower(int brokerId, TopicPartition tp) {
     Host host = _brokers.get(brokerId).host();
-    Map<Resource, double[]> leadershipLoad = host.makeFollower(brokerId, tp);
+    AggregatedMetricValues leadershipLoadDelta = host.makeFollower(brokerId, tp);
     // Remove leadership load from recent load.
-    _load.subtractLoadFor(Resource.NW_OUT, leadershipLoad.get(Resource.NW_OUT));
-    _load.subtractLoadFor(Resource.CPU, leadershipLoad.get(Resource.CPU));
-    return leadershipLoad;
+    _load.subtractLoad(leadershipLoadDelta);
+    return leadershipLoadDelta;
   }
 
   /**
@@ -207,16 +206,15 @@ public class Rack implements Serializable {
    *
    * @param brokerId Id of the broker containing the replica.
    * @param tp TopicPartition of the replica for which the outbound network load will be added.
-   * @param leadershipLoadBySnapshotTime Resource to leadership load to be added by snapshot time.
+   * @param leadershipLoadDelta Resource to leadership load to be added by windows.
    */
   void makeLeader(int brokerId,
                   TopicPartition tp,
-                  Map<Resource, double[]> leadershipLoadBySnapshotTime) {
+                  AggregatedMetricValues leadershipLoadDelta) {
     Host host = _brokers.get(brokerId).host();
-    host.makeLeader(brokerId, tp, leadershipLoadBySnapshotTime);
+    host.makeLeader(brokerId, tp, leadershipLoadDelta);
     // Add leadership load to recent load.
-    _load.addLoadFor(Resource.NW_OUT, leadershipLoadBySnapshotTime.get(Resource.NW_OUT));
-    _load.addLoadFor(Resource.CPU, leadershipLoadBySnapshotTime.get(Resource.CPU));
+    _load.addLoad(leadershipLoadDelta);
   }
 
   /**

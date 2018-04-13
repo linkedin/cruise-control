@@ -165,28 +165,26 @@ public class Host implements Serializable {
     return replica;
   }
 
-  Map<Resource, double[]> makeFollower(int brokerId, TopicPartition tp) {
+  AggregatedMetricValues makeFollower(int brokerId, TopicPartition tp) {
     Broker broker = broker(brokerId);
     if (broker == null) {
       throw new IllegalStateException(String.format("Cannot make replica %s on broker %d as follower because the broker"
                                                         + " does not exist in host %s", tp, brokerId, _name));
     }
-    Map<Resource, double[]> leadershipLoad = broker.makeFollower(tp);
+    AggregatedMetricValues leadershipLoadDelta = broker.makeFollower(tp);
 
     // Remove leadership load from recent load.
-    _load.subtractLoadFor(Resource.NW_OUT, leadershipLoad.get(Resource.NW_OUT));
-    _load.subtractLoadFor(Resource.CPU, leadershipLoad.get(Resource.CPU));
-    return leadershipLoad;
+    _load.subtractLoad(leadershipLoadDelta);
+    return leadershipLoadDelta;
   }
 
   void makeLeader(int brokerId,
                   TopicPartition tp,
-                  Map<Resource, double[]> leadershipLoadBySnapshotTime) {
+                  AggregatedMetricValues leadershipLoadDelta) {
     Broker broker = _brokers.get(brokerId);
-    broker.makeLeader(tp, leadershipLoadBySnapshotTime);
+    broker.makeLeader(tp, leadershipLoadDelta);
     // Add leadership load to recent load.
-    _load.addLoadFor(Resource.NW_OUT, leadershipLoadBySnapshotTime.get(Resource.NW_OUT));
-    _load.addLoadFor(Resource.CPU, leadershipLoadBySnapshotTime.get(Resource.CPU));
+    _load.addLoad(leadershipLoadDelta);
   }
 
   void setReplicaLoad(int brokerId,

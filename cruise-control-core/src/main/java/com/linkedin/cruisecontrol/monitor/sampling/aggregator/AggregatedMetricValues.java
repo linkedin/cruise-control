@@ -4,10 +4,13 @@
 
 package com.linkedin.cruisecontrol.monitor.sampling.aggregator;
 
+import com.linkedin.cruisecontrol.metricdef.MetricDef;
+import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.nio.charset.StandardCharsets;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -54,6 +57,62 @@ public class AggregatedMetricValues {
    */
   public MetricValues valuesFor(int metricId) {
     return _metricValues.get(metricId);
+  }
+
+  /**
+   * Get all the metric values for the given metric ids. If duplicate is set to true, the returned result shares
+   * the same values with this AggregatedMetricValues. If the value changes, it will be seen by the returned
+   * result as well as this AggregatedMetricValues. Otherwise the returned result is a copy of the values at the
+   * cost of data copy.
+   *
+   * @param metricIds the interested metric ids.
+   * @param duplicate whether the returned result should share the same value array with this class or not.
+   *
+   * @return an AggregatedMetricValues containing the given metric ids if they exist.
+   */
+  public AggregatedMetricValues valuesFor(Collection<Integer> metricIds, boolean duplicate) {
+    AggregatedMetricValues values = new AggregatedMetricValues();
+    metricIds.forEach(id -> {
+      MetricValues valuesForId = _metricValues.get(id);
+      if (valuesForId == null) {
+        throw new IllegalArgumentException("Metric id " + id + " does not exist.");
+      }
+      if (duplicate) {
+        values.add(id, valuesForId);
+      } else {
+        values.metricValues().put(id, valuesForId);
+      }
+    });
+    return values;
+  }
+
+  /**
+   * Get a MetricValues which contains the sum of the values for all the metrics of a group in each corresponding
+   * window. This is typically used to add up the metrics of the same kind, e.g. network IO might have multiple
+   * more granular metrics, one may want to know what is the total network IO.
+   *
+   * @param group the group to get the metrics for.
+   * @param metricDef the metric definitions
+   * @param duplicate whether the returned result should share the same value array with this class or not when
+   *                  possible.
+   *
+   * @return the sum of the metric values of the given metric ids.
+   */
+  public MetricValues valuesForGroup(String group, MetricDef metricDef, boolean duplicate) {
+    Collection<MetricInfo> metricInfos = metricDef.metricInfoForGroup(group);
+    if (metricInfos.size() == 1 && !duplicate) {
+      return _metricValues.get(metricInfos.iterator().next().id());
+    } else {
+      MetricValues metricValues = new MetricValues(length());
+      metricInfos.forEach(info -> {
+        MetricValues valuesForId = _metricValues.get(info.id());
+        if (valuesForId == null) {
+          throw new IllegalArgumentException("Metric " + info + " does not exist.");
+        }
+        metricValues.add(valuesForId);
+      });
+      return metricValues;
+    }
   }
 
   /**

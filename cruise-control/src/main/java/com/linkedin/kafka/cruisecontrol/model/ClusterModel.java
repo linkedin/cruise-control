@@ -316,10 +316,10 @@ public class ClusterModel implements Serializable {
     //
     // Remove the load from the source rack.
     Rack rack = broker(sourceBrokerId).rack();
-    Map<Resource, double[]> resourceToLeadershipLoadByWindowTime = rack.makeFollower(sourceBrokerId, tp);
+    AggregatedMetricValues leadershipLoadDelta = rack.makeFollower(sourceBrokerId, tp);
     // Add the load to the destination rack.
     rack = broker(destinationBrokerId).rack();
-    rack.makeLeader(destinationBrokerId, tp, resourceToLeadershipLoadByWindowTime);
+    rack.makeLeader(destinationBrokerId, tp, leadershipLoadDelta);
 
     // Update the leader and list of followers of the partition.
     Partition partition = _partitionsByTopicPartition.get(tp);

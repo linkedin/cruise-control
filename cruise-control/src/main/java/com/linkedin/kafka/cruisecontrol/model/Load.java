@@ -73,8 +73,12 @@ public class Load implements Serializable {
     if (_metricValues.isEmpty()) {
       return 0.0;
     }
-    MetricValues metricValues = _metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource));
-    return resource.equals(Resource.DISK) ? metricValues.latest() : metricValues.avg();
+    double result = 0;
+    for (MetricInfo info : KafkaMetricDef.resourceToMetricInfo(resource)) {
+      MetricValues valuesForId = _metricValues.valuesFor(info.id());
+      result += resource == Resource.DISK ? valuesForId.latest() : valuesForId.avg();
+    }
+    return result;
   }
 
   /**
@@ -85,20 +89,38 @@ public class Load implements Serializable {
   }
 
   /**
-   * Overwrite the load for given resource with the given load.
+   * Overwrite the load for using the given AggregatedMetricValues
    *
-   * @param resource           Resource for which the load will be overwritten.
-   * @param loadForResource Load for the given resource to overwrite the original load by snapshot time.
+   * @param loadToSet Load to set.
    */
-  void setLoadFor(Resource resource, double[] loadForResource) {
-    if (loadForResource.length != _metricValues.length()) {
+  void setLoad(AggregatedMetricValues loadToSet) {
+    if (loadToSet.length() != _metricValues.length()) {
       throw new IllegalArgumentException("Load to set and load for the resources must have exactly " +
                                          _metricValues.length() + " entries.");
     }
+    loadToSet.metricIds().forEach(id -> {
+      MetricValues valuesToSet = loadToSet.valuesFor(id);
+      MetricValues values = _metricValues.valuesFor(id);
+      for (int i = 0; i < values.length(); i++) {
+        values.set(i, (float) valuesToSet.get(i));
+      }
+    });
+  }
 
-    MetricValues currentLoadForResource = _metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource));
-    for (int i = 0; i < loadForResource.length; i++) {
-      currentLoadForResource.set(i, (float) loadForResource[i]);
+  /**
+   * Overwrite the load for given resource with the given load.
+   *
+   * @param metricId the metric id to set.
+   * @param loadToSet Load for the given metric id to overwrite the original load by snapshot time.
+   */
+  void setLoad(int metricId, MetricValues loadToSet) {
+    if (loadToSet.length() != _metricValues.length()) {
+      throw new IllegalArgumentException("Load to set and load for the resources must have exactly " +
+                                             _metricValues.length() + " entries.");
+    }
+    MetricValues values = _metricValues.valuesFor(metricId);
+    for (int i = 0; i < loadToSet.length(); i++) {
+      values.set(i, (float) loadToSet.get(i));
     }
   }
 
@@ -108,10 +130,9 @@ public class Load implements Serializable {
    * @param resource Resource for which the utilization will be cleared.
    */
   void clearLoadFor(Resource resource) {
-    MetricValues metricValues = _metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource));
-    if (metricValues != null) {
-      metricValues.clear();
-    }
+    KafkaMetricDef.resourceToMetricIds(resource).forEach(id -> {
+      _metricValues.valuesFor(id).clear();
+    });
   }
 
   /**
@@ -162,24 +183,22 @@ public class Load implements Serializable {
   /**
    * Add the given load for the given resource to this load.
    *
-   * @param resource           Resource for which the given load will be added.
-   * @param loadToAddByWindows Load to add to this load for the given resource.
+   * @param loadToAdd Load to add to this load for the given resource.
    */
-  void addLoadFor(Resource resource, double[] loadToAddByWindows) {
+  void addLoad(AggregatedMetricValues loadToAdd) {
     if (!_metricValues.isEmpty()) {
-      _metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource)).add(loadToAddByWindows);
+      _metricValues.add(loadToAdd);
     }
   }
 
   /**
    * Subtract the given load for the given resource from this load.
    *
-   * @param resource                Resource for which the given load will be subtracted.
-   * @param loadToSubtractByWindows Load to subtract from this load for the given resource.
+   * @param loadToSubtract Load to subtract from this load for the given resource.
    */
-  void subtractLoadFor(Resource resource, double[] loadToSubtractByWindows) {
+  void subtractLoad(AggregatedMetricValues loadToSubtract) {
     if (!_metricValues.isEmpty()) {
-      _metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource)).subtract(loadToSubtractByWindows);
+      _metricValues.subtract(loadToSubtract);
     }
   }
 
@@ -191,15 +210,18 @@ public class Load implements Serializable {
   }
 
   /**
-   * Get the load for the requested resource cross all the windows.
+   * Get the load for the requested resource cross all the windows. The returned value may include multiple
+   * metrics that are associated with the requested resource.
    *
    * @param resource Resource for which the load will be provided.
+   * @param duplicate Whether the returned result should share the value array with this class or not. When this
+   *                  value is set to true, the returned result share the same value array with this object.
+   *                  Otherwise, data copy will be made and a dedicated result will be returned.
+   *
    * @return Load of the requested resource as a mapping from snapshot time to utilization for the given resource.
    */
-  MetricValues loadFor(Resource resource) {
-    MetricValues loadForResource = new MetricValues(_metricValues.length());
-    loadForResource.add(_metricValues.valuesFor(KafkaMetricDef.resourceToMetricId(resource)));
-    return loadForResource;
+  AggregatedMetricValues loadFor(Resource resource, boolean duplicate) {
+    return _metricValues.valuesFor(KafkaMetricDef.resourceToMetricIds(resource), duplicate);
   }
 
   /**

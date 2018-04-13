@@ -214,7 +214,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
         PartitionMetricSample sample = new PartitionMetricSample(cluster.partition(tp).leader().id(), tp);
         long now = TIME.milliseconds();
         for (Resource resource : Resource.values()) {
-          sample.record(KafkaMetricDef.resourceToMetricInfo(resource), now);
+          sample.record(KafkaMetricDef.resourceToMetricInfo(resource).get(0), now);
         }
         sample.close(now);
         partitionMetricSamples.add(sample);

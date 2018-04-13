@@ -32,9 +32,9 @@ public class RawMetricValuesTest {
 
   @Before
   public void setup() {
-    _metricDef = new MetricDef().define("metric1", AggregationFunction.AVG.name())
-                                .define("metric2", AggregationFunction.MAX.name())
-                                .define("metric3", AggregationFunction.LATEST.name());
+    _metricDef = new MetricDef().define("metric1", null, AggregationFunction.AVG.name())
+                                .define("metric2", null, AggregationFunction.MAX.name())
+                                .define("metric3", null, AggregationFunction.LATEST.name());
   }
 
   @Test
