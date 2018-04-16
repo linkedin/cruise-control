@@ -45,7 +45,7 @@ public class Rack implements Serializable {
     _brokers = new HashMap<>();
     // Initially rack does not contain any load -- cannot create a load with a specific window size.
     _load = new Load();
-    _rackCapacity = new double[Resource.values().length];
+    _rackCapacity = new double[Resource.cachedValues().size()];
   }
 
   /**

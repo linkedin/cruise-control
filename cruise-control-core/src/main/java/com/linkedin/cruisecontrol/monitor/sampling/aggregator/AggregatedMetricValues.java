@@ -60,27 +60,27 @@ public class AggregatedMetricValues {
   }
 
   /**
-   * Get all the metric values for the given metric ids. If duplicate is set to true, the returned result shares
+   * Get all the metric values for the given metric ids. If shareValueArray is set to true, the returned result shares
    * the same values with this AggregatedMetricValues. If the value changes, it will be seen by the returned
    * result as well as this AggregatedMetricValues. Otherwise the returned result is a copy of the values at the
    * cost of data copy.
    *
    * @param metricIds the interested metric ids.
-   * @param duplicate whether the returned result should share the same value array with this class or not.
+   * @param shareValueArray whether the returned result should share the same value array with this class or not.
    *
    * @return an AggregatedMetricValues containing the given metric ids if they exist.
    */
-  public AggregatedMetricValues valuesFor(Collection<Integer> metricIds, boolean duplicate) {
+  public AggregatedMetricValues valuesFor(Collection<Integer> metricIds, boolean shareValueArray) {
     AggregatedMetricValues values = new AggregatedMetricValues();
     metricIds.forEach(id -> {
       MetricValues valuesForId = _metricValues.get(id);
       if (valuesForId == null) {
         throw new IllegalArgumentException("Metric id " + id + " does not exist.");
       }
-      if (duplicate) {
-        values.add(id, valuesForId);
-      } else {
+      if (shareValueArray) {
         values.metricValues().put(id, valuesForId);
+      } else {
+        values.add(id, valuesForId);
       }
     });
     return values;
@@ -93,14 +93,14 @@ public class AggregatedMetricValues {
    *
    * @param group the group to get the metrics for.
    * @param metricDef the metric definitions
-   * @param duplicate whether the returned result should share the same value array with this class or not when
+   * @param shareValueArray whether the returned result should share the same value array with this class or not when
    *                  possible.
    *
    * @return the sum of the metric values of the given metric ids.
    */
-  public MetricValues valuesForGroup(String group, MetricDef metricDef, boolean duplicate) {
+  public MetricValues valuesForGroup(String group, MetricDef metricDef, boolean shareValueArray) {
     Collection<MetricInfo> metricInfos = metricDef.metricInfoForGroup(group);
-    if (metricInfos.size() == 1 && !duplicate) {
+    if (metricInfos.size() == 1 && shareValueArray) {
       return _metricValues.get(metricInfos.iterator().next().id());
     } else {
       MetricValues metricValues = new MetricValues(length());

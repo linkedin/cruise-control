@@ -57,7 +57,7 @@ public class Broker implements Serializable, Comparable<Broker> {
   Broker(Host host, int id, Map<Resource, Double> brokerCapacity) {
     _host = host;
     _id = id;
-    _brokerCapacity = new double[Resource.values().length];
+    _brokerCapacity = new double[Resource.cachedValues().size()];
     for (Map.Entry<Resource, Double> entry : brokerCapacity.entrySet()) {
       _brokerCapacity[entry.getKey().id()] = entry.getValue();
     }

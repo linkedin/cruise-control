@@ -327,7 +327,7 @@ public class RawMetricValuesTest {
         rawValues.addSample(m, windowIdx, _metricDef);
 
         for (MetricInfo info : _metricDef.all()) {
-          switch (info.strategy()) {
+          switch (info.aggregationFunction()) {
             case AVG:
               expected[info.id()][(int) (windowIdx % NUM_WINDOWS_TO_KEEP)] += v / MIN_SAMPLES_PER_WINDOW;
               break;

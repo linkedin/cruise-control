@@ -161,6 +161,10 @@ public enum KafkaMetricDef {
     return _defScope;
   }
 
+  /**
+   * The metric group of the Kafka metric def.
+   * @see MetricDef
+   */
   public String group() {
     return _group;
   }

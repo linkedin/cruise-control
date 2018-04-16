@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
@@ -213,8 +214,10 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
       for (TopicPartition tp: assignedPartitions) {
         PartitionMetricSample sample = new PartitionMetricSample(cluster.partition(tp).leader().id(), tp);
         long now = TIME.milliseconds();
-        for (Resource resource : Resource.values()) {
-          sample.record(KafkaMetricDef.resourceToMetricInfo(resource).get(0), now);
+        for (Resource resource : Resource.cachedValues()) {
+          for (MetricInfo metricInfo : KafkaMetricDef.resourceToMetricInfo(resource)) {
+            sample.record(metricInfo, now);
+          }
         }
         sample.close(now);
         partitionMetricSamples.add(sample);

@@ -35,7 +35,7 @@ public class Host implements Serializable {
     _replicas = new HashSet<>();
     _rack = rack;
     _load = new Load();
-    _hostCapacity = new double[Resource.values().length];
+    _hostCapacity = new double[Resource.cachedValues().size()];
     _aliveBrokers = 0;
   }
 
@@ -134,12 +134,12 @@ public class Host implements Serializable {
   void setBrokerState(int brokerId, Broker.State newState) {
     Broker broker = broker(brokerId);
     if (broker.isAlive() && newState == Broker.State.DEAD) {
-      for (Resource r : Resource.values()) {
+      for (Resource r : Resource.cachedValues()) {
         _hostCapacity[r.id()] -= broker.capacityFor(r);
       }
       _aliveBrokers--;
     } else if (!broker.isAlive() && newState != Broker.State.DEAD) {
-      for (Resource r : Resource.values()) {
+      for (Resource r : Resource.cachedValues()) {
         _hostCapacity[r.id()] += broker.capacityFor(r);
       }
       _aliveBrokers++;

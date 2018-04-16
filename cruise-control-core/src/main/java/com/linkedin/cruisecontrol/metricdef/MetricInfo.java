@@ -5,39 +5,52 @@
 package com.linkedin.cruisecontrol.metricdef;
 
 /**
- * The metric information including the name, id and the way of interpretation.
+ * The metric information including the name, id, the way of interpretation and the metric group name.
  */
 public class MetricInfo {
   private final String _name;
   private final int _id;
-  private final AggregationFunction _strategy;
+  private final AggregationFunction _aggregationFunction;
   private final String _group;
 
-  public MetricInfo(String name, int id, AggregationFunction strategy, String group) {
+  public MetricInfo(String name, int id, AggregationFunction aggregationFunction, String group) {
     _name = name;
     _id = id;
-    _strategy = strategy;
+    _aggregationFunction = aggregationFunction;
     _group = group;
   }
 
+  /**
+   * @return The name of the metric.
+   */
   public String name() {
     return _name;
   }
 
+  /**
+   * @return the id of the metric.
+   */
   public int id() {
     return _id;
   }
 
-  public AggregationFunction strategy() {
-    return _strategy;
+  /**
+   * @return the {@link AggregationFunction} of the metric.
+   */
+  public AggregationFunction aggregationFunction() {
+    return _aggregationFunction;
   }
 
+  /**
+   * @return the metric group of this metric. The metric group is used to aggregate the metrics of the same kind.
+   * @see MetricDef
+   */
   public String group() {
     return _group;
   }
 
   @Override
   public String toString() {
-    return String.format("(name=%s, id=%d, strategy=%s)", _name, _id, _strategy);
+    return String.format("(name=%s, id=%d, aggregationFunction=%s)", _name, _id, _aggregationFunction);
   }
 }

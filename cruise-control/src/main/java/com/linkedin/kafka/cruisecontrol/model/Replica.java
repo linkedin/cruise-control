@@ -132,19 +132,43 @@ public class Replica implements Serializable, Comparable<Replica> {
 
     // Get the inbound/outbound network and cpu load associated with leadership from the given replica.
     // All the following metric values are in a shared mode to avoid data copy.
+    // Just get the first metric id because CPU only has one metric id in the group. Eventually the per replica
+    // CPU utilization will be removed to use resource estimation at broker level.
     int cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
-    AggregatedMetricValues leadershipNwOutLoad = _load.loadFor(Resource.NW_OUT, false);
-    AggregatedMetricValues leadershipNwInLoad = _load.loadFor(Resource.NW_IN, false);
-    MetricValues cpuLoad = _load.loadFor(Resource.CPU, false).valuesFor(cpuMetricId);
+    AggregatedMetricValues leadershipNwOutLoad = _load.loadFor(Resource.NW_OUT, true);
 
     // Create a leadership load delta to store the load change.
     AggregatedMetricValues leadershipLoadDelta = new AggregatedMetricValues();
+
+    // Compute the cpu delta, the order matters here, we need to compute cpu load change before the network outbound
+    // load is cleared.
+    MetricValues cpuLoadChange = updateCpuLoadAsFollower(leadershipNwOutLoad);
+    leadershipLoadDelta.add(cpuMetricId, cpuLoadChange);
+
     // We need to add the NW_OUT values to the delta before clearing the metric.
     leadershipLoadDelta.add(leadershipNwOutLoad);
+
     // Remove the outbound network leadership load from replica.
     _load.clearLoadFor(Resource.NW_OUT);
 
-    // compute the cpu delta.
+    // Return removed leadership load.
+    return leadershipLoadDelta;
+  }
+
+  /**
+   * Update the CPU load as the replica becomes follower. Return the CPU load change.
+   *
+   * @param leadershipNwOutLoad the leadership network outbound bytes rate.
+   * @return the cpu load change.
+   */
+  private MetricValues updateCpuLoadAsFollower(AggregatedMetricValues leadershipNwOutLoad) {
+    // Just get the first metric id because CPU only has one metric id in the group. Eventually the per replica
+    // CPU utilization will be removed to use resource estimation at broker level.
+    int cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
+    // Use the shared data structure so we can set the load directly.
+    MetricValues cpuLoad = _load.loadFor(Resource.CPU, true).valuesFor(cpuMetricId);
+    AggregatedMetricValues leadershipNwInLoad = _load.loadFor(Resource.NW_IN, true);
+
     MetricValues cpuLoadChange = new MetricValues(_load.numWindows());
     MetricValues totalNetworkOutLoad =
         leadershipNwOutLoad.valuesForGroup(Resource.NW_OUT.name(), KafkaMetricDef.commonMetricDef(), false);
@@ -158,11 +182,7 @@ public class Replica implements Serializable, Comparable<Replica> {
       cpuLoadChange.set(i, cpuLoad.get(i) - newCpuLoad);
       cpuLoad.set(i, newCpuLoad);
     }
-
-    leadershipLoadDelta.add(cpuMetricId, cpuLoadChange);
-
-    // Return removed leadership load.
-    return leadershipLoadDelta;
+    return cpuLoadChange;
   }
 
   /**

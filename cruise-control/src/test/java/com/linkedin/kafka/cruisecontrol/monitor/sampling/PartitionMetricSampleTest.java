@@ -49,7 +49,7 @@ public class PartitionMetricSampleTest {
     MetricDef metricDef = KafkaMetricDef.commonMetricDef();
     PartitionMetricSample sample = new PartitionMetricSample(0, new TopicPartition("topic", 0));
     int i = 0;
-    for (Resource r : Resource.values()) {
+    for (Resource r : Resource.cachedValues()) {
       sample.record(KafkaMetricDef.resourceToMetricInfo(r).get(0), i);
       i++;
     }

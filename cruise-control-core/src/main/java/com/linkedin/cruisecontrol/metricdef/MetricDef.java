@@ -20,6 +20,11 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggreg
  * The definition of metrics. Each metric will be assigned a metric id and used by the {@link MetricSampleAggregator}
  * to look up the metrics.
  *
+ * Also, each metric can belong to a metric group. The metrics in the same metric group are expected to be of
+ * the same type and unit. For example, the bytes in rate of the entire system may be divided into the bytes in
+ * rate of a few subsystems. In this case, the metric bytes in rate of the subsystems can be defined within
+ * the same metric group, so that they can be accumulated to the bytes in rate of the entire system.
+ *
  * This class is supposed to be initialized only once and passed around after the creation for read only.
  */
 public class MetricDef {
@@ -42,6 +47,7 @@ public class MetricDef {
    * Define the metric.
    *
    * @param metricName the name of the metric
+   * @param group the metric group this metric belongs to.
    * @param valueComputingStrategy the {@link AggregationFunction} for this metric.
    * @return this MetricDef
    */
@@ -53,7 +59,7 @@ public class MetricDef {
    * Define the metric.
    *
    * @param metricName the name of the metric
-   * @param group the group name of the metric.
+   * @param group the group the metric belongs to.
    * @param valueComputingStrategy the {@link AggregationFunction} for this metric.
    * @param toPredict whether the metric is a metric to be predicted.
    * @return this MetricDef

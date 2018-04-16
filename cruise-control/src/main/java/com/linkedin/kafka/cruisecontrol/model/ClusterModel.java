@@ -780,7 +780,7 @@ public class ClusterModel implements Serializable {
 
     // Check equality of sum of the replica load to their broker load for each resource.
     for (Broker broker : brokers()) {
-      for (Resource resource : Resource.values()) {
+      for (Resource resource : Resource.cachedValues()) {
         double sumOfReplicaUtilization = 0.0;
         for (Replica replica : broker.replicas()) {
           sumOfReplicaUtilization += replica.load().expectedUtilizationFor(resource);
@@ -799,7 +799,7 @@ public class ClusterModel implements Serializable {
     for (Rack rack : _racksById.values()) {
       Map<Resource, Double> sumOfHostUtilizationByResource = new HashMap<>();
       for (Host host : rack.hosts()) {
-        for (Resource resource : Resource.values()) {
+        for (Resource resource : Resource.cachedValues()) {
           sumOfHostUtilizationByResource.putIfAbsent(resource, 0.0);
           double sumOfBrokerUtilization = 0.0;
           for (Broker broker : host.brokers()) {
@@ -860,7 +860,7 @@ public class ClusterModel implements Serializable {
                                                .get(broker.id()).expectedUtilizationFor(Resource.NW_OUT) + ".");
       }
 
-      for (Resource resource : Resource.values()) {
+      for (Resource resource : Resource.cachedValues()) {
         if (resource == Resource.CPU) {
           continue;
         }
