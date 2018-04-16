@@ -219,7 +219,7 @@ public class Replica implements Serializable, Comparable<Replica> {
   }
 
   /**
-   * Compare (1) by partition id then (2) by broker id then (3) by topic name.
+   * Compare (1) by partition id then (2) by original broker id then (3) by topic name.
    */
   @Override
   public int compareTo(Replica o) {
