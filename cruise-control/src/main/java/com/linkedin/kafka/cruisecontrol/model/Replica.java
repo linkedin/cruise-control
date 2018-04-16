@@ -230,10 +230,10 @@ public class Replica implements Serializable, Comparable<Replica> {
       return -1;
     }
 
-    // Secondary sort: by broker id.
-    if (_broker.id() > o.broker().id()) {
+    // Secondary sort: by original broker id.
+    if (_originalBroker.id() > o.originalBroker().id()) {
       return 1;
-    } else if (_broker.id() < o.broker().id()) {
+    } else if (_originalBroker.id() < o.originalBroker().id()) {
       return -1;
     }
 
@@ -250,11 +250,11 @@ public class Replica implements Serializable, Comparable<Replica> {
       return false;
     }
     Replica replica = (Replica) o;
-    return Objects.equals(_tp, replica._tp) && _broker.id() == replica._broker.id();
+    return Objects.equals(_tp, replica._tp) && _originalBroker.id() == replica.originalBroker().id();
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(_tp, _broker.id());
+    return Objects.hash(_tp, _originalBroker.id());
   }
 }
