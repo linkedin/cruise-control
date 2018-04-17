@@ -151,7 +151,7 @@ public class AnalyzerUtils {
     for (Statistic stat : Statistic.values()) {
       Map<String, Double> resourceMap = new HashMap<>();
 
-      for (Resource resource : Resource.values()) {
+      for (Resource resource : Resource.cachedValues()) {
         resourceMap.put(resource.resource(), resourceUtilizationStats.get(stat).get(resource));
       }
 

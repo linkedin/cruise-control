@@ -25,7 +25,7 @@ public class PartitionMetricSampleTest {
     PartitionMetricSample sample = new PartitionMetricSample(0, new TopicPartition("topic", 0));
     sample.close(0);
     try {
-      sample.record(KafkaMetricDef.resourceToMetricInfo(Resource.DISK), 0.0);
+      sample.record(KafkaMetricDef.commonMetricDefInfo(DISK_USAGE), 0.0);
       fail("Should throw IllegalStateException");
     } catch (IllegalStateException ise) {
       // let it go.
@@ -35,9 +35,9 @@ public class PartitionMetricSampleTest {
   @Test
   public void testRecordSameResourceMetricAgain() {
     PartitionMetricSample sample = new PartitionMetricSample(0, new TopicPartition("topic", 0));
-    sample.record(KafkaMetricDef.resourceToMetricInfo(Resource.DISK), 0);
+    sample.record(KafkaMetricDef.commonMetricDefInfo(DISK_USAGE), 0);
     try {
-      sample.record(KafkaMetricDef.resourceToMetricInfo(Resource.DISK), 0.0);
+      sample.record(KafkaMetricDef.commonMetricDefInfo(DISK_USAGE), 0.0);
       fail("Should throw IllegalStateException");
     } catch (IllegalStateException ise) {
       // let it go.
@@ -49,8 +49,8 @@ public class PartitionMetricSampleTest {
     MetricDef metricDef = KafkaMetricDef.commonMetricDef();
     PartitionMetricSample sample = new PartitionMetricSample(0, new TopicPartition("topic", 0));
     int i = 0;
-    for (Resource r : Resource.values()) {
-      sample.record(KafkaMetricDef.resourceToMetricInfo(r), i);
+    for (Resource r : Resource.cachedValues()) {
+      sample.record(KafkaMetricDef.resourceToMetricInfo(r).get(0), i);
       i++;
     }
     sample.record(metricDef.metricInfo(PRODUCE_RATE.name()), (double) i++);
@@ -63,14 +63,14 @@ public class PartitionMetricSampleTest {
     PartitionMetricSample deserializedSample = PartitionMetricSample.fromBytes(bytes);
     assertEquals(sample.brokerId(), deserializedSample.brokerId());
     assertEquals(sample.entity().tp(), deserializedSample.entity().tp());
-    assertEquals(sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.CPU)),
-                 deserializedSample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.CPU)));
-    assertEquals(sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.DISK)),
-                 deserializedSample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.DISK)));
-    assertEquals(sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.NW_IN)),
-                 deserializedSample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.NW_IN)));
-    assertEquals(sample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.NW_OUT)),
-                 deserializedSample.metricValue(KafkaMetricDef.resourceToMetricId(Resource.NW_OUT)));
+    assertEquals(sample.metricValue(KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0)),
+                 deserializedSample.metricValue(KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0)));
+    assertEquals(sample.metricValue(KafkaMetricDef.resourceToMetricIds(Resource.DISK).get(0)),
+                 deserializedSample.metricValue(KafkaMetricDef.resourceToMetricIds(Resource.DISK).get(0)));
+    assertEquals(sample.metricValue(KafkaMetricDef.resourceToMetricIds(Resource.NW_IN).get(0)),
+                 deserializedSample.metricValue(KafkaMetricDef.resourceToMetricIds(Resource.NW_IN).get(0)));
+    assertEquals(sample.metricValue(KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT).get(0)),
+                 deserializedSample.metricValue(KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT).get(0)));
     assertEquals(sample.metricValue(metricDef.metricInfo(PRODUCE_RATE.name()).id()),
                  deserializedSample.metricValue(metricDef.metricInfo(PRODUCE_RATE.name()).id()), EPSILON);
     assertEquals(sample.metricValue(metricDef.metricInfo(FETCH_RATE.name()).id()),

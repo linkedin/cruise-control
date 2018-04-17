@@ -171,7 +171,7 @@ public class ClusterModelStats {
     Map<String, Object> allStatMap = new HashMap();
     for (Statistic stat : Statistic.values()) {
       Map<String, Object> resourceMap = new HashMap<>();
-      for (Resource resource : Resource.values()) {
+      for (Resource resource : Resource.cachedValues()) {
         resourceMap.put(resource.resource(), resourceUtilizationStats().get(stat).get(resource));
       }
       resourceMap.put("potentialNwOut", potentialNwOutUtilizationStats().get(stat));
@@ -194,7 +194,7 @@ public class ClusterModelStats {
                             numTopics()));
     for (Statistic stat : Statistic.values()) {
       sb.append(String.format("%s:{", stat));
-      for (Resource resource : Resource.values()) {
+      for (Resource resource : Resource.cachedValues()) {
         sb.append(String.format("%s:%12.3f ", resource, resourceUtilizationStats().get(stat).get(resource)));
       }
       sb.append(String.format("potentialNwOut:%12.3f replicas:%s topicReplicas:%s}%n",
@@ -215,7 +215,7 @@ public class ClusterModelStats {
     Map<Resource, Double> maxUtilizationByResource = new HashMap<>();
     Map<Resource, Double> minUtilizationByResource = new HashMap<>();
     Map<Resource, Double> stDevUtilizationByResource = new HashMap<>();
-    for (Resource resource : Resource.values()) {
+    for (Resource resource : Resource.cachedValues()) {
       double balanceUpperThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))
           * _balancingConstraint.resourceBalancePercentage(resource);
       double balanceLowerThreshold = (clusterModel.load().expectedUtilizationFor(resource) / clusterModel.capacityFor(resource))

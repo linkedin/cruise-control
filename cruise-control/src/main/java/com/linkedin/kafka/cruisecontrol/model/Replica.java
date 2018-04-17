@@ -8,6 +8,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricVa
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -123,37 +124,65 @@ public class Replica implements Serializable, Comparable<Replica> {
    * (2) Clear and get the outbound network load associated with leadership from the given replica.
    * (3) Clear and get the CPU leadership load associated with leadership from the given replica.
    *
-   * @return Removed leadership load by snapshot time -- i.e. outbound network and fraction of CPU load by snapshot time.
+   * @return Removed leadership load by windows -- i.e. outbound network and fraction of CPU load by windows.
    */
-  Map<Resource, double[]> makeFollower() {
+  AggregatedMetricValues makeFollower() {
     // Remove leadership from the replica.
     setLeadership(false);
-    // Clear and get the outbound network load associated with leadership from the given replica.
-    double[] leadershipNwOutLoad = _load.loadFor(Resource.NW_OUT).doubleArray();
-    MetricValues leadershipCpuLoad = _load.loadFor(Resource.CPU);
+
+    // Get the inbound/outbound network and cpu load associated with leadership from the given replica.
+    // All the following metric values are in a shared mode to avoid data copy.
+    // Just get the first metric id because CPU only has one metric id in the group. Eventually the per replica
+    // CPU utilization will be removed to use resource estimation at broker level.
+    int cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
+    AggregatedMetricValues leadershipNwOutLoad = _load.loadFor(Resource.NW_OUT, true);
+
+    // Create a leadership load delta to store the load change.
+    AggregatedMetricValues leadershipLoadDelta = new AggregatedMetricValues();
+
+    // Compute the cpu delta, the order matters here, we need to compute cpu load change before the network outbound
+    // load is cleared.
+    MetricValues cpuLoadChange = updateCpuLoadAsFollower(leadershipNwOutLoad);
+    leadershipLoadDelta.add(cpuMetricId, cpuLoadChange);
+
+    // We need to add the NW_OUT values to the delta before clearing the metric.
+    leadershipLoadDelta.add(leadershipNwOutLoad);
 
     // Remove the outbound network leadership load from replica.
     _load.clearLoadFor(Resource.NW_OUT);
-    double[] followerCpuLoad = new double[_load.numWindows()];
-    double[] cpuLoadChange = new double[_load.numWindows()];
-
-    for (int i = 0; i < leadershipCpuLoad.length(); i++) {
-      double newCpuLoad = ModelUtils.getFollowerCpuUtilFromLeaderLoad(_load.loadFor(Resource.NW_IN).get(i),
-                                                                      _load.loadFor(Resource.NW_OUT).get(i),
-                                                                      leadershipCpuLoad.get(i));
-      followerCpuLoad[i] = newCpuLoad;
-      cpuLoadChange[i] = leadershipCpuLoad.get(i) - newCpuLoad;
-    }
-
-    _load.setLoadFor(Resource.CPU, followerCpuLoad);
-
-    // Get the change of the load for upper layer.
-    Map<Resource, double[]> leadershipLoad = new HashMap<>();
-    leadershipLoad.put(Resource.NW_OUT, leadershipNwOutLoad);
-    leadershipLoad.put(Resource.CPU, cpuLoadChange);
 
     // Return removed leadership load.
-    return leadershipLoad;
+    return leadershipLoadDelta;
+  }
+
+  /**
+   * Update the CPU load as the replica becomes follower. Return the CPU load change.
+   *
+   * @param leadershipNwOutLoad the leadership network outbound bytes rate.
+   * @return the cpu load change.
+   */
+  private MetricValues updateCpuLoadAsFollower(AggregatedMetricValues leadershipNwOutLoad) {
+    // Just get the first metric id because CPU only has one metric id in the group. Eventually the per replica
+    // CPU utilization will be removed to use resource estimation at broker level.
+    int cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
+    // Use the shared data structure so we can set the load directly.
+    MetricValues cpuLoad = _load.loadFor(Resource.CPU, true).valuesFor(cpuMetricId);
+    AggregatedMetricValues leadershipNwInLoad = _load.loadFor(Resource.NW_IN, true);
+
+    MetricValues cpuLoadChange = new MetricValues(_load.numWindows());
+    MetricValues totalNetworkOutLoad =
+        leadershipNwOutLoad.valuesForGroup(Resource.NW_OUT.name(), KafkaMetricDef.commonMetricDef(), false);
+    MetricValues totalNetworkInLoad =
+        leadershipNwInLoad.valuesForGroup(Resource.NW_IN.name(), KafkaMetricDef.commonMetricDef(), false);
+    for (int i = 0; i < cpuLoad.length(); i++) {
+      double newCpuLoad = ModelUtils.getFollowerCpuUtilFromLeaderLoad(totalNetworkInLoad.get(i),
+                                                                      totalNetworkOutLoad.get(i),
+                                                                      cpuLoad.get(i));
+      // The order matters here. We have to first set the cpu load change, then update the cpu load for this replica.
+      cpuLoadChange.set(i, cpuLoad.get(i) - newCpuLoad);
+      cpuLoad.set(i, newCpuLoad);
+    }
+    return cpuLoadChange;
   }
 
   /**
@@ -161,13 +190,12 @@ public class Replica implements Serializable, Comparable<Replica> {
    * (2) Set the outbound network load associated with leadership.
    * (3) Add the CPU load associated with leadership.
    *
-   * @param resourceToLeadershipLoadBySnapshotTime Resource to leadership load to be added by snapshot time.
+   * @param leadershipLoadDelta Resource to leadership load to be added by windows.
    */
-  void makeLeader(Map<Resource, double[]> resourceToLeadershipLoadBySnapshotTime) {
+  void makeLeader(AggregatedMetricValues leadershipLoadDelta) {
     // Add leadership to the replica.
     setLeadership(true);
-    _load.setLoadFor(Resource.NW_OUT, resourceToLeadershipLoadBySnapshotTime.get(Resource.NW_OUT));
-    _load.addLoadFor(Resource.CPU, resourceToLeadershipLoadBySnapshotTime.get(Resource.CPU));
+    _load.addLoad(leadershipLoadDelta);
   }
 
   /*

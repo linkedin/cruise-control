@@ -59,7 +59,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
   private static final PartitionEntity PE = new PartitionEntity(TP);
 
   @Test
-  public void testRecentSnapshot() throws NotEnoughValidWindowsException {
+  public void testAggregate() throws NotEnoughValidWindowsException {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
     Metadata metadata = getMetadata(Collections.singleton(TP));
     KafkaPartitionMetricSampleAggregator
@@ -69,20 +69,23 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
     MetricSampleAggregationResult<String, PartitionEntity> result =
         metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()), Long.MAX_VALUE, new OperationProgress());
-    Map<PartitionEntity, ValuesAndExtrapolations> snapshotsForPartition = result.valuesAndExtrapolations();
+    Map<PartitionEntity, ValuesAndExtrapolations> valuesAndExtrapolations = result.valuesAndExtrapolations();
 
-    assertEquals("The snapshots should only have one partition", 1, snapshotsForPartition.size());
-    ValuesAndExtrapolations snapshots = snapshotsForPartition.get(PE);
-    assertNotNull(snapshots);
-    assertEquals(NUM_WINDOWS, snapshots.metricValues().length());
+    assertEquals("The windows should only have one partition", 1, valuesAndExtrapolations.size());
+    ValuesAndExtrapolations partitionValuesAndExtrapolations = valuesAndExtrapolations.get(PE);
+    assertNotNull(partitionValuesAndExtrapolations);
+    assertEquals(NUM_WINDOWS, partitionValuesAndExtrapolations.metricValues().length());
     for (int i = 0; i < NUM_WINDOWS; i++) {
       assertEquals((NUM_WINDOWS - i) * WINDOW_MS, result.valuesAndExtrapolations().get(PE).window(i));
-      for (Resource resource : Resource.values()) {
-        double expectedValue = resource == Resource.DISK ?
+      for (Resource resource : Resource.cachedValues()) {
+        Collection<Integer> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
+        double expectedValue = (resource == Resource.DISK ?
             (NUM_WINDOWS - 1 - i) * 10 + MIN_SAMPLES_PER_WINDOW - 1 :
-            (NUM_WINDOWS - 1 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0;
+            (NUM_WINDOWS - 1 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0) * metricIds.size();
         assertEquals("The utilization for " + resource + " should be " + expectedValue,
-                     expectedValue, snapshots.metricValues().valuesFor(KafkaMetricDef.resourceToMetricId(resource)).get(i), 0);
+                     expectedValue, partitionValuesAndExtrapolations.metricValues().valuesForGroup(resource.name(),
+                                                                            KafkaMetricDef.commonMetricDef(),
+                                                                            true).get(i), 0);
       }
     }
 
@@ -98,7 +101,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
   }
 
   @Test
-  public void testSnapshotWithUpdatedCluster() throws NotEnoughValidWindowsException {
+  public void testAggregateWithUpdatedCluster() throws NotEnoughValidWindowsException {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
     Metadata metadata = getMetadata(Collections.singleton(TP));
     KafkaPartitionMetricSampleAggregator
@@ -110,30 +113,30 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     Cluster cluster = getCluster(Arrays.asList(TP, tp1));
     metadata.update(cluster, Collections.emptySet(), 1);
 
-    Map<PartitionEntity, ValuesAndExtrapolations> snapshotsForPartition =
+    Map<PartitionEntity, ValuesAndExtrapolations> aggregateResult =
         metricSampleAggregator.aggregate(clusterAndGeneration(cluster), Long.MAX_VALUE, new OperationProgress())
                               .valuesAndExtrapolations();
-    assertTrue("tp1 should not be included because recent snapshot does not include all topics",
-               snapshotsForPartition.isEmpty());
+    assertTrue("tp1 should not be included because recent metric window does not include all topics",
+               aggregateResult.isEmpty());
 
     ModelCompletenessRequirements requirements =
         new ModelCompletenessRequirements(1, 0.0, true);
     MetricSampleAggregationResult<String, PartitionEntity> result =
         metricSampleAggregator.aggregate(clusterAndGeneration(cluster), -1, Long.MAX_VALUE, requirements,
                                          new OperationProgress());
-    snapshotsForPartition = result.valuesAndExtrapolations();
+    aggregateResult = result.valuesAndExtrapolations();
     assertNotNull("tp1 should be included because includeAllTopics is set to true",
-                  snapshotsForPartition.get(new PartitionEntity(tp1)));
-    Map<Integer, Extrapolation> extrapolationss = snapshotsForPartition.get(new PartitionEntity(tp1)).extrapolations();
-    assertEquals(NUM_WINDOWS, extrapolationss.size());
+                  aggregateResult.get(new PartitionEntity(tp1)));
+    Map<Integer, Extrapolation> extrapolations = aggregateResult.get(new PartitionEntity(tp1)).extrapolations();
+    assertEquals(NUM_WINDOWS, extrapolations.size());
 
     for (int i = 0; i < NUM_WINDOWS; i++) {
-      assertEquals(Extrapolation.NO_VALID_EXTRAPOLATION, extrapolationss.get(i));
+      assertEquals(Extrapolation.NO_VALID_EXTRAPOLATION, extrapolations.get(i));
     }
   }
 
   @Test
-  public void testSnapshotWithPartitionExtrapolations() throws NotEnoughValidWindowsException {
+  public void testAggregateWithPartitionExtrapolations() throws NotEnoughValidWindowsException {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
     Metadata metadata = getMetadata(Collections.singleton(TP));
     KafkaPartitionMetricSampleAggregator
@@ -144,7 +147,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     PartitionEntity pe1 = new PartitionEntity(tp1);
     metadata.update(cluster, Collections.emptySet(), 1);
     populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW, metricSampleAggregator);
-    //Populate partition 1 but leave 1 hole at NUM_SNAPSHOT'th window.
+    //Populate partition 1 but leave 1 hole at NUM_WINDOWS'th window.
     CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS - 2, MIN_SAMPLES_PER_WINDOW,
                                                         metricSampleAggregator,
                                                         pe1,
@@ -186,8 +189,8 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     result = metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
                                               NUM_WINDOWS * WINDOW_MS,
                                               new OperationProgress());
-    int numSnapshots = result.valuesAndExtrapolations().get(PE).metricValues().length();
-    assertEquals(NUM_WINDOWS, numSnapshots);
+    int numWindows = result.valuesAndExtrapolations().get(PE).metricValues().length();
+    assertEquals(NUM_WINDOWS, numWindows);
     int numExtrapolationss = 0;
     for (Map.Entry<Integer, Extrapolation> entry : result.valuesAndExtrapolations().get(PE).extrapolations().entrySet()) {
       assertEquals(Extrapolation.AVG_AVAILABLE, entry.getValue());
@@ -207,15 +210,15 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
     // Only give one sample to the aggregator for previous period.
     populateSampleAggregator(NUM_WINDOWS, MIN_SAMPLES_PER_WINDOW, metricSampleAggregator);
-    // Create let (NUM_SNAPSHOT + 1) have enough samples.
+    // Create let (NUM_WINDOWS + 1) have enough samples.
     CruiseControlUnitTestUtils.populateSampleAggregator(1, MIN_SAMPLES_PER_WINDOW, metricSampleAggregator,
                                                         PE, NUM_WINDOWS, WINDOW_MS,
                                                         KafkaMetricDef.commonMetricDef());
-    // Let a snapshot window exist but not containing samples for partition 0
+    // Let a window exist but not containing samples for partition 0
     CruiseControlUnitTestUtils.populateSampleAggregator(1, MIN_SAMPLES_PER_WINDOW, metricSampleAggregator,
                                                         anotherPartitionEntity, NUM_WINDOWS + 1, WINDOW_MS, KafkaMetricDef
                                                             .commonMetricDef());
-    // Let the rest of the snapshot has enough samples.
+    // Let the rest of the window has enough samples.
     CruiseControlUnitTestUtils.populateSampleAggregator(2, MIN_SAMPLES_PER_WINDOW,
                                                         metricSampleAggregator, PE,
                                                         NUM_WINDOWS + 2, WINDOW_MS,
@@ -225,14 +228,14 @@ public class KafkaPartitionMetricSampleAggregatorTest {
           metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
                                            NUM_WINDOWS * WINDOW_MS * 2,
                                            new OperationProgress());
-      int numSnapshots = result.valuesAndExtrapolations().get(PE).metricValues().length();
-      assertEquals(NUM_WINDOWS, numSnapshots);
-      int numExtrapolationss = 0;
+      int numWindows = result.valuesAndExtrapolations().get(PE).metricValues().length();
+      assertEquals(NUM_WINDOWS, numWindows);
+      int numExtrapolations = 0;
       for (Map.Entry<Integer, Extrapolation> entry : result.valuesAndExtrapolations().get(PE).extrapolations().entrySet()) {
         assertEquals(Extrapolation.AVG_ADJACENT, entry.getValue());
-        numExtrapolationss++;
+        numExtrapolations++;
       }
-      assertEquals(1, numExtrapolationss);
+      assertEquals(1, numExtrapolations);
 
 
   }
@@ -258,7 +261,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
   }
 
   @Test
-  public void testNotEnoughSnapshots() {
+  public void testNotEnoughWindows() {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
     Metadata metadata = getMetadata(Collections.singleton(TP));
     KafkaPartitionMetricSampleAggregator
@@ -267,7 +270,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW, metricSampleAggregator);
 
     try {
-      // Only 4 snapshots has smaller timestamp than the timestamp we passed in.
+      // Only 4 windows have smaller timestamp than the timestamp we passed in.
       ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(NUM_WINDOWS, 0.0, false);
       metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
                                        -1L,
@@ -305,64 +308,66 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     metricSampleAggregator.addSample(sampleWithDifferentLeader);
     metricSampleAggregator.addSample(incompletePartitionMetricSample);
 
-    // Check the snapshot value and make sure the metric samples above are excluded.
-    Map<PartitionEntity, ValuesAndExtrapolations> snapshotsForPartition =
+    // Check the window value and make sure the metric samples above are excluded.
+    Map<PartitionEntity, ValuesAndExtrapolations> valuesAndExtrapolations =
         metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
                                          NUM_WINDOWS * WINDOW_MS,
                                          new OperationProgress())
                               .valuesAndExtrapolations();
-    ValuesAndExtrapolations snapshots = snapshotsForPartition.get(PE);
-    for (Resource resource : Resource.values()) {
-      int metricId = KafkaMetricDef.resourceToMetricId(resource);
-      double expectedValue = resource == Resource.DISK ?
-          MIN_SAMPLES_PER_WINDOW - 1 : (MIN_SAMPLES_PER_WINDOW - 1) / 2.0;
+    ValuesAndExtrapolations partitionValuesAndExtrapolations = valuesAndExtrapolations.get(PE);
+    for (Resource resource : Resource.cachedValues()) {
+      Collection<Integer> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
+      double expectedValue = (resource == Resource.DISK ?
+          MIN_SAMPLES_PER_WINDOW - 1 : (MIN_SAMPLES_PER_WINDOW - 1) / 2.0) * metricIds.size();
       assertEquals("The utilization for " + resource + " should be " + expectedValue,
-                   expectedValue, snapshots.metricValues().valuesFor(metricId).get(NUM_WINDOWS - 1), 0);
+                   expectedValue, partitionValuesAndExtrapolations.metricValues().valuesForGroup(resource.name(),
+                                                                          KafkaMetricDef.commonMetricDef(),
+                                                                          true).get(NUM_WINDOWS - 1), 0);
     }
   }
 
   @Test
-  public void testValidSnapshotWindows() {
+  public void testValidWindows() {
     TestContext ctx = setupScenario1();
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
-    SortedSet<Long> validSnapshotWindows = aggregator.validWindows(clusterAndGeneration, 1.0);
-    assertEquals(NUM_WINDOWS, validSnapshotWindows.size());
-    assertValidWindows(validSnapshotWindows, NUM_WINDOWS, Collections.emptySet());
+    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 1.0);
+    assertEquals(NUM_WINDOWS, validWindows.size());
+    assertValidWindows(validWindows, NUM_WINDOWS, Collections.emptySet());
   }
 
   @Test
-  public void testValidSnapshotWindowsWithInvalidPartitions() {
+  public void testValidWindowsWithInvalidPartitions() {
     TestContext ctx = setupScenario2();
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
 
-    SortedSet<Long> validSnapshotWindows = aggregator.validWindows(clusterAndGeneration, 1.0);
-    assertEquals("Should have three invalid windows.", NUM_WINDOWS - 3, validSnapshotWindows.size());
-    assertValidWindows(validSnapshotWindows, NUM_WINDOWS - 1, Arrays.asList(6, 7));
+    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 1.0);
+    assertEquals("Should have three invalid windows.", NUM_WINDOWS - 3, validWindows.size());
+    assertValidWindows(validWindows, NUM_WINDOWS - 1, Arrays.asList(6, 7));
     // reduced monitored percentage should include every window.
     assertEquals(NUM_WINDOWS, aggregator.validWindows(clusterAndGeneration, 0.5).size());
   }
 
   @Test
-  public void testValidSnapshotWindowWithDifferentInvalidPartitions() {
+  public void testValidWindowWithDifferentInvalidPartitions() {
     TestContext ctx = setupScenario3();
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
-    SortedSet<Long> validSnapshotWindows = aggregator.validWindows(clusterAndGeneration, 0.5);
-    assertEquals("Should have two invalid windows.", NUM_WINDOWS - 2, validSnapshotWindows.size());
-    assertValidWindows(validSnapshotWindows, NUM_WINDOWS, Arrays.asList(6, 7));
+    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 0.5);
+    assertEquals("Should have two invalid windows.", NUM_WINDOWS - 2, validWindows.size());
+    assertValidWindows(validWindows, NUM_WINDOWS, Arrays.asList(6, 7));
   }
 
   @Test
-  public void testValidSnapshotWindowsWithTooManyExtrapolationss() {
+  public void testValidWindowsWithTooManyExtrapolationss() {
     TestContext ctx = setupScenario4();
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
 
-    SortedSet<Long> validSnapshotWindows = aggregator.validWindows(clusterAndGeneration, 0.5);
-    assertEquals("Should have two invalid windows.", NUM_WINDOWS - 2, validSnapshotWindows.size());
-    assertValidWindows(validSnapshotWindows, NUM_WINDOWS, Arrays.asList(6, 7));
+    SortedSet<Long> validWindows = aggregator.validWindows(clusterAndGeneration, 0.5);
+    assertEquals("Should have two invalid windows.", NUM_WINDOWS - 2, validWindows.size());
+    assertValidWindows(validWindows, NUM_WINDOWS, Arrays.asList(6, 7));
   }
 
   @Test
@@ -568,17 +573,17 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     return new MetadataClient.ClusterAndGeneration(cluster, 0);
   }
 
-  private void populateSampleAggregator(int numSnapshots,
-                                        int numSamplesPerSnapshot,
+  private void populateSampleAggregator(int numWindows,
+                                        int numSamplesPerWindow,
                                         KafkaPartitionMetricSampleAggregator metricSampleAggregator) {
-    populateSampleAggregator(numSnapshots, numSamplesPerSnapshot, metricSampleAggregator, TP);
+    populateSampleAggregator(numWindows, numSamplesPerWindow, metricSampleAggregator, TP);
   }
 
-  private void populateSampleAggregator(int numSnapshots,
-                                        int numSamplesPerSnapshot,
+  private void populateSampleAggregator(int numWindows,
+                                        int numSamplesPerWindow,
                                         KafkaPartitionMetricSampleAggregator metricSampleAggregator,
                                         TopicPartition tp) {
-    CruiseControlUnitTestUtils.populateSampleAggregator(numSnapshots, numSamplesPerSnapshot, metricSampleAggregator,
+    CruiseControlUnitTestUtils.populateSampleAggregator(numWindows, numSamplesPerWindow, metricSampleAggregator,
                                                         new PartitionEntity(tp), 0, WINDOW_MS,
                                                         KafkaMetricDef.commonMetricDef());
   }

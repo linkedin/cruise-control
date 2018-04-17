@@ -257,7 +257,7 @@ public class RawMetricValues {
           int nextIdx = nextIdx(idx);
           double total = _valuesByMetricId.get(metricId)[prevIdx] + (_counts[idx] == 0 ? 0 : _valuesByMetricId.get(metricId)[idx])
               + _valuesByMetricId.get(metricId)[nextIdx];
-          switch (info.strategy()) {
+          switch (info.aggregationFunction()) {
             case AVG:
               double counts = _counts[prevIdx] + _counts[idx] + _counts[nextIdx];
               aggValuesForMetric.set(resultIndex, total / counts);
@@ -300,7 +300,7 @@ public class RawMetricValues {
     if (_counts[index] == 0) {
       return 0;
     }
-    switch (info.strategy()) {
+    switch (info.aggregationFunction()) {
       case AVG:
         return values[index] / _counts[index];
       case MAX:
@@ -312,7 +312,7 @@ public class RawMetricValues {
   }
 
   private void updateValue(double newValue, MetricInfo info, int index) {
-    switch (info.strategy()) {
+    switch (info.aggregationFunction()) {
       case AVG:
         add(newValue, info.id(), index);
         break;

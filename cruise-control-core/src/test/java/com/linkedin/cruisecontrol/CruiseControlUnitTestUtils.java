@@ -41,8 +41,8 @@ public class CruiseControlUnitTestUtils {
   }
 
   public static MetricDef getMetricDef() {
-    return new MetricDef().define(METRIC1, AggregationFunction.AVG.name())
-                          .define(METRIC2, AggregationFunction.MAX.name())
-                          .define(METRIC3, AggregationFunction.LATEST.name());
+    return new MetricDef().define(METRIC1, null, AggregationFunction.AVG.name())
+                          .define(METRIC2, null, AggregationFunction.MAX.name())
+                          .define(METRIC3, null, AggregationFunction.LATEST.name());
   }
 }

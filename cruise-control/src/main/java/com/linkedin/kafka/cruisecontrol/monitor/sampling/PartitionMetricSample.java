@@ -27,8 +27,7 @@ import static java.nio.charset.StandardCharsets.*;
 
 
 /**
- * The class that hosts one the metrics samples of the following resources:
- * CPU, DISK, Network Bytes In, Network Bytes Out.
+ * The class that hosts all the metric samples for a partition.
  */
 public class PartitionMetricSample extends MetricSample<String, PartitionEntity> {
   private static final byte CURRENT_VERSION = 1;

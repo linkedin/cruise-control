@@ -5,14 +5,13 @@
 package com.linkedin.kafka.cruisecontrol.common;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
-import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -247,31 +246,25 @@ public class RandomCluster {
 
           // Set leadership properties and replica load.
           AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues();
-          MetricValues metricValues = new MetricValues(1);
-          metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_CPU).doubleValue() * topicPopularity,
-                                                randomByResource.get(Resource.CPU)));
-          aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.CPU), metricValues);
+          double cpu = exponentialRandom(properties.get(ClusterProperty.MEAN_CPU).doubleValue() * topicPopularity,
+                                         randomByResource.get(Resource.CPU));
+          KafkaCruiseControlUnitTestUtils.setValueForResource(aggregatedMetricValues, Resource.CPU, cpu);
 
-          metricValues = new MetricValues(1);
-          metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() * topicPopularity,
-                                                randomByResource.get(Resource.NW_IN)));
-          aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.NW_IN), metricValues);
+          double networkInbound = exponentialRandom(properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() * topicPopularity,
+                                                    randomByResource.get(Resource.NW_IN));
+          KafkaCruiseControlUnitTestUtils.setValueForResource(aggregatedMetricValues, Resource.NW_IN, networkInbound);
 
-          metricValues = new MetricValues(1);
-          metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_DISK).doubleValue() * topicPopularity,
-                                                randomByResource.get(Resource.DISK)));
-          aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.DISK), metricValues);
+          double disk = exponentialRandom(properties.get(ClusterProperty.MEAN_DISK).doubleValue() * topicPopularity,
+                                          randomByResource.get(Resource.DISK));
+          KafkaCruiseControlUnitTestUtils.setValueForResource(aggregatedMetricValues, Resource.DISK, disk);
 
           if (j == 1) {
-            metricValues = new MetricValues(1);
-            metricValues.set(0, exponentialRandom(properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() * topicPopularity,
-                                                  randomByResource.get(Resource.NW_OUT)));
-            aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
+            double networkOutbound = exponentialRandom(properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() * topicPopularity,
+                                                       randomByResource.get(Resource.NW_OUT));
+            KafkaCruiseControlUnitTestUtils.setValueForResource(aggregatedMetricValues, Resource.NW_OUT, networkOutbound);
             cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, j - 1, true);
           } else {
-            metricValues = new MetricValues(1);
-            metricValues.set(0, 0.0);
-            aggregatedMetricValues.add(KafkaMetricDef.resourceToMetricId(Resource.NW_OUT), metricValues);
+            KafkaCruiseControlUnitTestUtils.setValueForResource(aggregatedMetricValues, Resource.NW_OUT, 0.0);
             cluster.createReplica(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo, j - 1, false);
           }
           cluster.setReplicaLoad(cluster.broker(randomBrokerId).rack().id(), randomBrokerId, pInfo,

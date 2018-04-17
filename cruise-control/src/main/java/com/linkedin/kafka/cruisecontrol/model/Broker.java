@@ -57,7 +57,7 @@ public class Broker implements Serializable, Comparable<Broker> {
   Broker(Host host, int id, Map<Resource, Double> brokerCapacity) {
     _host = host;
     _id = id;
-    _brokerCapacity = new double[Resource.values().length];
+    _brokerCapacity = new double[Resource.cachedValues().size()];
     for (Map.Entry<Resource, Double> entry : brokerCapacity.entrySet()) {
       _brokerCapacity[entry.getKey().id()] = entry.getValue();
     }
@@ -346,16 +346,15 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param tp TopicPartition of the replica for which the outbound network load will be removed.
    * @return Leadership load by snapshot time.
    */
-  Map<Resource, double[]> makeFollower(TopicPartition tp) {
+  AggregatedMetricValues makeFollower(TopicPartition tp) {
     Replica replica = replica(tp);
     _leadershipLoadForNwResources.subtractLoad(replica.load());
 
-    Map<Resource, double[]> leadershipLoad = replica(tp).makeFollower();
+    AggregatedMetricValues leadershipLoadDelta = replica(tp).makeFollower();
     // Remove leadership load from load.
-    _load.subtractLoadFor(Resource.NW_OUT, leadershipLoad.get(Resource.NW_OUT));
-    _load.subtractLoadFor(Resource.CPU, leadershipLoad.get(Resource.CPU));
+    _load.subtractLoad(leadershipLoadDelta);
     _leaderReplicas.remove(replica);
-    return leadershipLoad;
+    return leadershipLoadDelta;
   }
 
   /**
@@ -364,16 +363,14 @@ public class Broker implements Serializable, Comparable<Broker> {
    * (3) Add the CPU load associated with leadership.
    *
    * @param tp TopicPartition of the replica for which the outbound network load will be added.
-   * @param leadershipLoadBySnapshotTime Resource to leadership load to be added by snapshot time.
+   * @param leadershipLoadDelta Resource to leadership load to be added by snapshot time.
    */
-  void makeLeader(TopicPartition tp,
-                  Map<Resource, double[]> leadershipLoadBySnapshotTime) {
+  void makeLeader(TopicPartition tp, AggregatedMetricValues leadershipLoadDelta) {
     Replica replica = replica(tp);
-    replica.makeLeader(leadershipLoadBySnapshotTime);
+    replica.makeLeader(leadershipLoadDelta);
     _leadershipLoadForNwResources.addLoad(replica.load());
     // Add leadership load to load.
-    _load.addLoadFor(Resource.NW_OUT, leadershipLoadBySnapshotTime.get(Resource.NW_OUT));
-    _load.addLoadFor(Resource.CPU, leadershipLoadBySnapshotTime.get(Resource.CPU));
+    _load.addLoad(leadershipLoadDelta);
     _leaderReplicas.add(replica);
   }
 

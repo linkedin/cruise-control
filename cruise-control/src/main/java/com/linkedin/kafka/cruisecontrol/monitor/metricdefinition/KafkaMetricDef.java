@@ -18,6 +18,10 @@ import java.util.Map;
 
 import static com.linkedin.cruisecontrol.metricdef.ValueComputingStrategy.AVG;
 import static com.linkedin.cruisecontrol.metricdef.ValueComputingStrategy.LATEST;
+import static com.linkedin.kafka.cruisecontrol.common.Resource.CPU;
+import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
+import static com.linkedin.kafka.cruisecontrol.common.Resource.NW_IN;
+import static com.linkedin.kafka.cruisecontrol.common.Resource.NW_OUT;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.DefScope.COMMON;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.DefScope.BROKER_ONLY;
 
@@ -36,44 +40,45 @@ import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMet
  */
 public enum KafkaMetricDef {
   // Ideally CPU usage should be defined as broker only, for legacy reason we are defining it as common metric.
-  CPU_USAGE(AVG, COMMON, true),
-  DISK_USAGE(LATEST, COMMON, false),
-  LEADER_BYTES_IN(AVG, COMMON, false),
-  LEADER_BYTES_OUT(AVG, COMMON, false),
-  PRODUCE_RATE(AVG, COMMON, false),
-  FETCH_RATE(AVG, COMMON, false),
-  MESSAGE_IN_RATE(AVG, COMMON, false),
-  REPLICATION_BYTES_IN_RATE(AVG, COMMON, false),
-  REPLICATION_BYTES_OUT_RATE(AVG, COMMON, false),
-  BROKER_PRODUCE_REQUEST_RATE(AVG, BROKER_ONLY, false),
-  BROKER_CONSUMER_FETCH_REQUEST_RATE(AVG, BROKER_ONLY, false),
-  BROKER_FOLLOWER_FETCH_REQUEST_RATE(AVG, BROKER_ONLY, false),
-  BROKER_REQUEST_HANDLER_POOL_IDLE_PERCENT(AVG, BROKER_ONLY, false),
-  BROKER_REQUEST_QUEUE_SIZE(AVG, BROKER_ONLY, false),
-  BROKER_RESPONSE_QUEUE_SIZE(AVG, BROKER_ONLY, false),
-  BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MAX(AVG, BROKER_ONLY, false),
-  BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MEAN(AVG, BROKER_ONLY, false),
-  BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MAX(AVG, BROKER_ONLY, false),
-  BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN(AVG, BROKER_ONLY, false),
-  BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MAX(AVG, BROKER_ONLY, false),
-  BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN(AVG, BROKER_ONLY, false),
-  BROKER_PRODUCE_TOTAL_TIME_MS_MAX(AVG, BROKER_ONLY, false),
-  BROKER_PRODUCE_TOTAL_TIME_MS_MEAN(AVG, BROKER_ONLY, false),
-  BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MAX(AVG, BROKER_ONLY, false),
-  BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MEAN(AVG, BROKER_ONLY, false),
-  BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MAX(AVG, BROKER_ONLY, false),
-  BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN(AVG, BROKER_ONLY, false),
-  BROKER_PRODUCE_LOCAL_TIME_MS_MAX(AVG, BROKER_ONLY, false),
-  BROKER_PRODUCE_LOCAL_TIME_MS_MEAN(AVG, BROKER_ONLY, false),
-  BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX(AVG, BROKER_ONLY, false),
-  BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN(AVG, BROKER_ONLY, false),
-  BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX(AVG, BROKER_ONLY, false),
-  BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN(AVG, BROKER_ONLY, false),
-  BROKER_LOG_FLUSH_RATE(AVG, BROKER_ONLY, false),
-  BROKER_LOG_FLUSH_TIME_MS_MAX(AVG, BROKER_ONLY, false),
-  BROKER_LOG_FLUSH_TIME_MS_MEAN(AVG, BROKER_ONLY, false);
+  CPU_USAGE(AVG, COMMON, CPU, true),
+  DISK_USAGE(LATEST, COMMON, DISK, false),
+  LEADER_BYTES_IN(AVG, COMMON, NW_IN, false),
+  LEADER_BYTES_OUT(AVG, COMMON, NW_OUT, false),
+  PRODUCE_RATE(AVG, COMMON, null, false),
+  FETCH_RATE(AVG, COMMON, null, false),
+  MESSAGE_IN_RATE(AVG, COMMON, null, false),
+  REPLICATION_BYTES_IN_RATE(AVG, COMMON, NW_IN, false),
+  REPLICATION_BYTES_OUT_RATE(AVG, COMMON, NW_OUT, false),
+  BROKER_PRODUCE_REQUEST_RATE(AVG, BROKER_ONLY, null, false),
+  BROKER_CONSUMER_FETCH_REQUEST_RATE(AVG, BROKER_ONLY, null, false),
+  BROKER_FOLLOWER_FETCH_REQUEST_RATE(AVG, BROKER_ONLY, null, false),
+  BROKER_REQUEST_HANDLER_POOL_IDLE_PERCENT(AVG, BROKER_ONLY, null, false),
+  BROKER_REQUEST_QUEUE_SIZE(AVG, BROKER_ONLY, null, false),
+  BROKER_RESPONSE_QUEUE_SIZE(AVG, BROKER_ONLY, null, false),
+  BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MAX(AVG, BROKER_ONLY, null, false),
+  BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MEAN(AVG, BROKER_ONLY, null, false),
+  BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MAX(AVG, BROKER_ONLY, null, false),
+  BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN(AVG, BROKER_ONLY, null, false),
+  BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MAX(AVG, BROKER_ONLY, null, false),
+  BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN(AVG, BROKER_ONLY, null, false),
+  BROKER_PRODUCE_TOTAL_TIME_MS_MAX(AVG, BROKER_ONLY, null, false),
+  BROKER_PRODUCE_TOTAL_TIME_MS_MEAN(AVG, BROKER_ONLY, null, false),
+  BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MAX(AVG, BROKER_ONLY, null, false),
+  BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MEAN(AVG, BROKER_ONLY, null, false),
+  BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MAX(AVG, BROKER_ONLY, null, false),
+  BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN(AVG, BROKER_ONLY, null, false),
+  BROKER_PRODUCE_LOCAL_TIME_MS_MAX(AVG, BROKER_ONLY, null, false),
+  BROKER_PRODUCE_LOCAL_TIME_MS_MEAN(AVG, BROKER_ONLY, null, false),
+  BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX(AVG, BROKER_ONLY, null, false),
+  BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN(AVG, BROKER_ONLY, null, false),
+  BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX(AVG, BROKER_ONLY, null, false),
+  BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN(AVG, BROKER_ONLY, null, false),
+  BROKER_LOG_FLUSH_RATE(AVG, BROKER_ONLY, null, false),
+  BROKER_LOG_FLUSH_TIME_MS_MAX(AVG, BROKER_ONLY, null, false),
+  BROKER_LOG_FLUSH_TIME_MS_MEAN(AVG, BROKER_ONLY, null, false);
 
   private final ValueComputingStrategy _valueComputingStrategy;
+  private final String _group;
   private final DefScope _defScope;
   private final boolean _toPredict;
   private static final Map<RawMetricType, KafkaMetricDef> TYPE_TO_DEF = new HashMap<>();
@@ -141,9 +146,10 @@ public enum KafkaMetricDef {
    * @param toPredict Whether the metric is a metrics that should be predicted by the linear regression model (in
    *                  development).
    */
-  KafkaMetricDef(ValueComputingStrategy strategy, DefScope defScope, boolean toPredict) {
+  KafkaMetricDef(ValueComputingStrategy strategy, DefScope defScope, Resource group, boolean toPredict) {
     _valueComputingStrategy = strategy;
     _defScope = defScope;
+    _group = group == null ? "" : group.name();
     _toPredict = toPredict;
   }
 
@@ -153,6 +159,14 @@ public enum KafkaMetricDef {
 
   public DefScope defScope() {
     return _defScope;
+  }
+
+  /**
+   * The metric group of the Kafka metric def.
+   * @see MetricDef
+   */
+  public String group() {
+    return _group;
   }
 
   public static List<KafkaMetricDef> cachedCommonDefValues() {
@@ -167,6 +181,14 @@ public enum KafkaMetricDef {
     return TYPE_TO_DEF.get(type);
   }
 
+  public static int commonMetricDefId(KafkaMetricDef def) {
+    return COMMON_METRIC_DEF.metricInfo(def.name()).id();
+  }
+
+  public static MetricInfo commonMetricDefInfo(KafkaMetricDef def) {
+    return BROKER_METRIC_DEF.metricInfo(def.name());
+  }
+
   public static MetricDef commonMetricDef() {
     return COMMON_METRIC_DEF;
   }
@@ -175,23 +197,14 @@ public enum KafkaMetricDef {
     return BROKER_METRIC_DEF;
   }
 
-  public static MetricInfo resourceToMetricInfo(Resource resource) {
-    switch (resource) {
-      case CPU:
-        return COMMON_METRIC_DEF.metricInfo(KafkaMetricDef.CPU_USAGE.name());
-      case DISK:
-        return COMMON_METRIC_DEF.metricInfo(KafkaMetricDef.DISK_USAGE.name());
-      case NW_IN:
-        return COMMON_METRIC_DEF.metricInfo(KafkaMetricDef.LEADER_BYTES_IN.name());
-      case NW_OUT:
-        return COMMON_METRIC_DEF.metricInfo(KafkaMetricDef.LEADER_BYTES_OUT.name());
-      default:
-        throw new IllegalStateException("Should never be here");
-    }
+  public static List<MetricInfo> resourceToMetricInfo(Resource resource) {
+    return commonMetricDef().metricInfoForGroup(resource.name());
   }
 
-  public static int resourceToMetricId(Resource resource) {
-    return resourceToMetricInfo(resource).id();
+  public static List<Integer> resourceToMetricIds(Resource resource) {
+    List<Integer> metricIds = new ArrayList<>();
+    resourceToMetricInfo(resource).forEach(info -> metricIds.add(info.id()));
+    return metricIds;
   }
 
   public enum DefScope {
@@ -215,7 +228,7 @@ public enum KafkaMetricDef {
     for (KafkaMetricDef def : KafkaMetricDef.values()) {
       if (def._defScope == COMMON) {
         // Add the common metrics definitions to the common metric def.
-        metricDef.define(def.name(), def.valueComputingStrategy().name(), def._toPredict);
+        metricDef.define(def.name(), def.group(), def.valueComputingStrategy().name(), def._toPredict);
       }
     }
     return metricDef;
@@ -225,7 +238,7 @@ public enum KafkaMetricDef {
     MetricDef metricDef = new MetricDef();
     for (KafkaMetricDef def : KafkaMetricDef.values()) {
       // Add the all metrics definitions to the broker metric def.
-      metricDef.define(def.name(), def.valueComputingStrategy().name(), def._toPredict);
+      metricDef.define(def.name(), def.group(), def.valueComputingStrategy().name(), def._toPredict);
     }
     return metricDef;
   }

@@ -32,9 +32,9 @@ public class RawMetricValuesTest {
 
   @Before
   public void setup() {
-    _metricDef = new MetricDef().define("metric1", AggregationFunction.AVG.name())
-                                .define("metric2", AggregationFunction.MAX.name())
-                                .define("metric3", AggregationFunction.LATEST.name());
+    _metricDef = new MetricDef().define("metric1", null, AggregationFunction.AVG.name())
+                                .define("metric2", null, AggregationFunction.MAX.name())
+                                .define("metric3", null, AggregationFunction.LATEST.name());
   }
 
   @Test
@@ -327,7 +327,7 @@ public class RawMetricValuesTest {
         rawValues.addSample(m, windowIdx, _metricDef);
 
         for (MetricInfo info : _metricDef.all()) {
-          switch (info.strategy()) {
+          switch (info.aggregationFunction()) {
             case AVG:
               expected[info.id()][(int) (windowIdx % NUM_WINDOWS_TO_KEEP)] += v / MIN_SAMPLES_PER_WINDOW;
               break;

@@ -20,11 +20,6 @@ import org.I0Itec.zkclient.ZkConnection;
 import org.I0Itec.zkclient.exception.ZkMarshallingError;
 import org.I0Itec.zkclient.serialize.ZkSerializer;
 
-import static com.linkedin.kafka.cruisecontrol.common.Resource.CPU;
-import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
-import static com.linkedin.kafka.cruisecontrol.common.Resource.NW_IN;
-import static com.linkedin.kafka.cruisecontrol.common.Resource.NW_OUT;
-
 
 /**
  * A test util class.
@@ -74,18 +69,29 @@ public class KafkaCruiseControlUnitTestUtils {
                                                                  double networkInBoundUsage,
                                                                  double networkOutBoundUsage,
                                                                  double diskUsage) {
-    double[] values = new double[Resource.cachedValues().size()];
-    values[KafkaMetricDef.resourceToMetricId(CPU)] = cpuUsage;
-    values[KafkaMetricDef.resourceToMetricId(NW_IN)] = networkInBoundUsage;
-    values[KafkaMetricDef.resourceToMetricId(NW_OUT)] = networkOutBoundUsage;
-    values[KafkaMetricDef.resourceToMetricId(DISK)] = diskUsage;
     AggregatedMetricValues aggregateMetricValues = new AggregatedMetricValues();
-    for (Resource r : Resource.cachedValues()) {
-      int metricId = KafkaMetricDef.resourceToMetricId(r);
-      MetricValues metricValues = new MetricValues(1);
-      metricValues.set(0, values[metricId]);
-      aggregateMetricValues.add(metricId, metricValues);
-    }
+    setValueForResource(aggregateMetricValues, Resource.CPU, cpuUsage);
+    setValueForResource(aggregateMetricValues, Resource.NW_IN, networkInBoundUsage);
+    setValueForResource(aggregateMetricValues, Resource.NW_OUT, networkOutBoundUsage);
+    setValueForResource(aggregateMetricValues, Resource.DISK, diskUsage);
     return aggregateMetricValues;
+  }
+
+  /**
+   * Set the utilization values of all metrics for a resource in the given AggregatedMetricValues.
+   * The first metric has the full resource utilization value, all the rest of the metrics has 0.
+   */
+  public static void setValueForResource(AggregatedMetricValues aggregatedMetricValues,
+                                         Resource resource,
+                                         double value) {
+    boolean set = false;
+    for (int id : KafkaMetricDef.resourceToMetricIds(resource)) {
+      MetricValues metricValues = new MetricValues(1);
+      if (!set) {
+        metricValues.set(0, value);
+        set = true;
+      }
+      aggregatedMetricValues.add(id, metricValues);
+    }
   }
 }

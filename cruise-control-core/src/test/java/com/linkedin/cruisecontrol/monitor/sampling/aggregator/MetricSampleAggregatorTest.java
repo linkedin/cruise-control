@@ -69,7 +69,7 @@ public class MetricSampleAggregatorTest {
         MetricValues valuesForMetric = valuesAndExtrapolations.metricValues().valuesFor(info.id());
         for (int i = 0; i < NUM_WINDOWS; i++) {
           double expectedValue;
-          if (info.strategy() == AggregationFunction.LATEST || info.strategy() == AggregationFunction.MAX) {
+          if (info.aggregationFunction() == AggregationFunction.LATEST || info.aggregationFunction() == AggregationFunction.MAX) {
             expectedValue = (2 * NUM_WINDOWS - 3 - i) * 10 + MIN_SAMPLES_PER_WINDOW - 1;
           } else {
             expectedValue = (2 * NUM_WINDOWS - 3 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0;

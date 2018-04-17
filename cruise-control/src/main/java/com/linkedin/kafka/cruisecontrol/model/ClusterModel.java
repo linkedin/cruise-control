@@ -318,10 +318,10 @@ public class ClusterModel implements Serializable {
     //
     // Remove the load from the source rack.
     Rack rack = broker(sourceBrokerId).rack();
-    Map<Resource, double[]> resourceToLeadershipLoadByWindowTime = rack.makeFollower(sourceBrokerId, tp);
+    AggregatedMetricValues leadershipLoadDelta = rack.makeFollower(sourceBrokerId, tp);
     // Add the load to the destination rack.
     rack = broker(destinationBrokerId).rack();
-    rack.makeLeader(destinationBrokerId, tp, resourceToLeadershipLoadByWindowTime);
+    rack.makeLeader(destinationBrokerId, tp, leadershipLoadDelta);
 
     // Update the leader and list of followers of the partition.
     Partition partition = _partitionsByTopicPartition.get(tp);
@@ -797,7 +797,7 @@ public class ClusterModel implements Serializable {
 
     // Check equality of sum of the replica load to their broker load for each resource.
     for (Broker broker : brokers()) {
-      for (Resource resource : Resource.values()) {
+      for (Resource resource : Resource.cachedValues()) {
         double sumOfReplicaUtilization = 0.0;
         for (Replica replica : broker.replicas()) {
           sumOfReplicaUtilization += replica.load().expectedUtilizationFor(resource);
@@ -816,7 +816,7 @@ public class ClusterModel implements Serializable {
     for (Rack rack : _racksById.values()) {
       Map<Resource, Double> sumOfHostUtilizationByResource = new HashMap<>();
       for (Host host : rack.hosts()) {
-        for (Resource resource : Resource.values()) {
+        for (Resource resource : Resource.cachedValues()) {
           sumOfHostUtilizationByResource.putIfAbsent(resource, 0.0);
           double sumOfBrokerUtilization = 0.0;
           for (Broker broker : host.brokers()) {
@@ -877,7 +877,7 @@ public class ClusterModel implements Serializable {
                                                .get(broker.id()).expectedUtilizationFor(Resource.NW_OUT) + ".");
       }
 
-      for (Resource resource : Resource.values()) {
+      for (Resource resource : Resource.cachedValues()) {
         if (resource == Resource.CPU) {
           continue;
         }
