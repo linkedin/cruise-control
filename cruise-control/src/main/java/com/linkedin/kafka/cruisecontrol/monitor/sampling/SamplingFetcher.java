@@ -158,6 +158,8 @@ class SamplingFetcher extends MetricFetcher {
       Iterator<BrokerMetricSample> iter = brokerMetricSamples.iterator();
       while (iter.hasNext()) {
         BrokerMetricSample brokerMetricSample = iter.next();
+        // Close the broker metric sample in case user forgot to close it.
+        brokerMetricSample.close(_endTimeMs);
         if (_brokerMetricSampleAggregator.addSample(brokerMetricSample)) {
           LOG.trace("Enqueued broker metric sample {}", brokerMetricSample);
         } else {

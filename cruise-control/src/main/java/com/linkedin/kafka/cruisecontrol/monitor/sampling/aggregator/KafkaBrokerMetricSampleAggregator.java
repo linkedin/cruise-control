@@ -52,12 +52,14 @@ public class KafkaBrokerMetricSampleAggregator extends MetricSampleAggregator<St
                                  AggregationOptions.Granularity.ENTITY, INCLUDE_INVALID_ENTITIES);
     if (super.numAvailableWindows() < 1) {
       LOG.trace("No window is available for any broker.");
-      return null;
+      return new MetricSampleAggregationResult<>(generation(),
+                                                 completeness(-1, System.currentTimeMillis(), aggregationOptions));
     }
     try {
       return aggregate(-1, System.currentTimeMillis(), aggregationOptions);
     } catch (NotEnoughValidWindowsException e) {
-      return null;
+      return new MetricSampleAggregationResult<>(generation(),
+                                                 completeness(-1, System.currentTimeMillis(), aggregationOptions));
     }
   }
 }

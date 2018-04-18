@@ -90,11 +90,11 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     }
     LOG.debug("Starting consuming from metrics reporter topic.");
     _metricConsumer.resume(_metricConsumer.paused());
-    int numMetricsAdded;
     int totalMetricsAdded = 0;
     long maxTimeStamp = -1L;
+    // TODO: Ideally we should have a timeout passed in to the metric sampler. Will do that in a separate patch.
+    long deadline = System.currentTimeMillis() + (endTimeMs - startTimeMs) / 2;
     do {
-      numMetricsAdded = 0;
       ConsumerRecords<String, CruiseControlMetric> records = _metricConsumer.poll(5000L);
       for (ConsumerRecord<String, CruiseControlMetric> record : records) {
         if (record == null) {
@@ -105,15 +105,14 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
         if (startTimeMs <= record.value().time() && record.value().time() < endTimeMs) {
           METRICS_PROCESSOR.addMetric(record.value());
           maxTimeStamp = Math.max(maxTimeStamp, record.value().time());
-          numMetricsAdded++;
           totalMetricsAdded++;
         } else if (record.value().time() >= endTimeMs) {
           TopicPartition tp = new TopicPartition(record.topic(), record.partition());
           _metricConsumer.pause(Collections.singleton(tp));
         }
       }
-    } while (numMetricsAdded != 0 || System.currentTimeMillis() < endTimeMs);
-    LOG.debug("Finished sampling for time range [{},{}]. Collected {} metrics.", startTimeMs, endTimeMs, totalMetricsAdded);
+    } while (!consumptionDone(endOffsets) && System.currentTimeMillis() < deadline);
+    LOG.info("Finished sampling for time range [{},{}]. Collected {} metrics.", startTimeMs, endTimeMs, totalMetricsAdded);
 
     try {
       if (totalMetricsAdded > 0) {
@@ -124,6 +123,23 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     } finally {
       METRICS_PROCESSOR.clear();
     }
+  }
+
+  /**
+   * The check if the consumption is done or not. The consumption is done if the consumer has caught up with the
+   * log end or all the partitions are paused.
+   * @param endOffsets the log end for each partition.
+   * @return true if the consumption is done, false otherwise.
+   */
+  private boolean consumptionDone(Map<TopicPartition, Long> endOffsets) {
+    Set<TopicPartition> partitionsNotPaused = new HashSet<>(_metricConsumer.assignment());
+    partitionsNotPaused.removeAll(_metricConsumer.paused());
+    for (TopicPartition tp : partitionsNotPaused) {
+      if (_metricConsumer.position(tp) < endOffsets.get(tp)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override

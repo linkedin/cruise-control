@@ -12,6 +12,7 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.Extrapolation;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleCompleteness;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
@@ -24,6 +25,7 @@ import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
@@ -452,7 +454,7 @@ public class LoadMonitor {
       for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : loadSnapshots.entrySet()) {
         TopicPartition tp = entry.getKey().tp();
         ValuesAndExtrapolations leaderLoad = entry.getValue();
-        populateSnapshots(kafkaCluster, clusterModel, tp, leaderLoad);
+        populateLoad(kafkaCluster, clusterModel, tp, leaderLoad);
       }
 
       // Get the dead brokers and mark them as dead.
@@ -531,10 +533,10 @@ public class LoadMonitor {
     return _partitionMetricSampleAggregator;
   }
 
-  private void populateSnapshots(Cluster kafkaCluster,
-                                 ClusterModel clusterModel,
-                                 TopicPartition tp,
-                                 ValuesAndExtrapolations valuesAndExtrapolations) {
+  private void populateLoad(Cluster kafkaCluster,
+                            ClusterModel clusterModel,
+                            TopicPartition tp,
+                            ValuesAndExtrapolations valuesAndExtrapolations) {
     PartitionInfo partitionInfo = kafkaCluster.partition(tp);
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
@@ -553,12 +555,67 @@ public class LoadMonitor {
         Map<Resource, Double> brokerCapacity =
             _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
         clusterModel.createReplicaHandleDeadBroker(rack, replica.id(), tp, index, isLeader, brokerCapacity);
-        AggregatedMetricValues aggregatedMetricValues = valuesAndExtrapolations.metricValues();
-        clusterModel.setReplicaLoad(rack, replica.id(), tp,
-                                    isLeader ? aggregatedMetricValues : MonitorUtils.toFollowerMetricValues(aggregatedMetricValues),
+        clusterModel.setReplicaLoad(rack,
+                                    replica.id(),
+                                    tp,
+                                    getAggregatedMetricValues(valuesAndExtrapolations,
+                                                              kafkaCluster.partition(tp),
+                                                              isLeader),
                                     valuesAndExtrapolations.windows());
       }
     }
+  }
+
+  /**
+   * Get the {@link AggregatedMetricValues} based on the replica role (leader/follower) and the replication factor.
+   *
+   * @param valuesAndExtrapolations the values and extrapolations of the leader replica.
+   * @param partitionInfo the partition info.
+   * @param isLeader whether the value is created for leader replica or follower replica.
+   * @return the {@link AggregatedMetricValues} to use for the given replica.
+   */
+  private AggregatedMetricValues getAggregatedMetricValues(ValuesAndExtrapolations valuesAndExtrapolations,
+                                                           PartitionInfo partitionInfo,
+                                                           boolean isLeader) {
+    AggregatedMetricValues aggregatedMetricValues = valuesAndExtrapolations.metricValues();
+    if (isLeader) {
+      return fillInReplicationBytesOut(aggregatedMetricValues, partitionInfo);
+    } else {
+      return MonitorUtils.toFollowerMetricValues(aggregatedMetricValues);
+    }
+  }
+
+  /**
+   * When the replica is a leader replica, we need to fill in the replication bytes out if it has not been filled in
+   * yet. This is because currently Kafka does not report this metric. We simply use the leader bytes in rate multiplied
+   * by the number of followers as the replication bytes out rate. The assumption is that all the followers will
+   * eventually keep up with the leader.
+   *
+   * We only fill in the replication bytes out rate when creating the cluster model because the replication factor
+   * may have changed since the time the PartitionMetricSample was created.
+   *
+   * @param aggregatedMetricValues the {@link AggregatedMetricValues} for the leader replica.
+   * @param info the partition info for the partition.
+   * @return the {@link AggregatedMetricValues} with the replication bytes out rate filled in.
+   */
+  private AggregatedMetricValues fillInReplicationBytesOut(AggregatedMetricValues aggregatedMetricValues,
+                                                           PartitionInfo info) {
+    int numFollowers = info.replicas().length - 1;
+    int leaderBytesInRateId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.LEADER_BYTES_IN);
+    int replicationBytesOutRateId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.REPLICATION_BYTES_OUT_RATE);
+
+    MetricValues leaderBytesInRate = aggregatedMetricValues.valuesFor(leaderBytesInRateId);
+    MetricValues replicationBytesOutRate = aggregatedMetricValues.valuesFor(replicationBytesOutRateId);
+    // If the replication bytes out rate is already reported, update it. Otherwise add a new MetricValues.
+    if (replicationBytesOutRate == null) {
+      replicationBytesOutRate = new MetricValues(leaderBytesInRate.length());
+      aggregatedMetricValues.add(replicationBytesOutRateId, replicationBytesOutRate);
+    }
+    for (int i = 0; i < leaderBytesInRate.length(); i++) {
+      replicationBytesOutRate.set(i, leaderBytesInRate.get(i) * numFollowers);
+    }
+
+    return aggregatedMetricValues;
   }
 
   private String getRackHandleNull(Node node) {

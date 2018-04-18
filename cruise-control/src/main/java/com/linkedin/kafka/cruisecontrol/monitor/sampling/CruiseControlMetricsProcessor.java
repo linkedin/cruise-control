@@ -123,7 +123,7 @@ public class CruiseControlMetricsProcessor {
         try {
           PartitionMetricSample sample = buildPartitionMetricSample(cluster, tp, leaderDistributionStats);
           if (sample != null) {
-            LOG.debug("Added partition metrics sample for {}", tp);
+            LOG.trace("Added partition metrics sample for {}", tp);
             partitionMetricSamples.add(sample);
           } else {
             skippedPartition++;
@@ -158,7 +158,7 @@ public class CruiseControlMetricsProcessor {
       }
 
       boolean validSample = true;
-      BrokerMetricSample brokerMetricSample = new BrokerMetricSample(node.rack(), node.id());
+      BrokerMetricSample brokerMetricSample = new BrokerMetricSample(node.host(), node.id());
       for (RawMetricType rawBrokerMetricType : RawMetricType.brokerMetricTypes()) {
         // We require the broker to report all the metric types. Otherwise we skip the broker.
         if (!brokerLoad.brokerMetricAvailable(rawBrokerMetricType)) {
@@ -180,7 +180,7 @@ public class CruiseControlMetricsProcessor {
                                   brokerLoad.diskUsage());
         brokerMetricSample.close(_maxMetricTimestamp);
 
-        LOG.debug("Added broker metric sample for broker {}", node.id());
+        LOG.trace("Added broker metric sample for broker {}", node.id());
         brokerMetricSamples.add(brokerMetricSample);
       }
     }
@@ -218,12 +218,12 @@ public class CruiseControlMetricsProcessor {
       return null;
     }
     // Ensure the topic load is available.
-    if (!brokerLoad.allTopicMetricsAvailable(tp.topic())) {
+    if (!brokerLoad.allTopicMetricsAvailable(tpWithDotHandled.topic())) {
       LOG.debug("Skip generating metric samples for partition {} because broker {} has no metric or topic metrics "
                     + "are not available", tp, leaderId);
       return null;
     }
-    if (!brokerLoad.partitionMetricAvailable(tp, PARTITION_SIZE)) {
+    if (!brokerLoad.partitionMetricAvailable(tpWithDotHandled, PARTITION_SIZE)) {
       // This broker is no longer the leader.
       LOG.debug("Skip generating metric sample for partition {} because broker {} no long host the partition.", tp, leaderId);
       return null;
@@ -448,12 +448,57 @@ public class CruiseControlMetricsProcessor {
       // Check if all the broker raw metrics are available.
       for (RawMetricType rawBrokerMetricType : RawMetricType.brokerMetricTypes()) {
         if (_brokerMetrics.metricValue(rawBrokerMetricType) == null) {
-          _missingBrokerMetrics.add(rawBrokerMetricType);
+          if (allowMissingBrokerMetric(cluster, brokerId, rawBrokerMetricType)) {
+            // If the metric is allowed to be missing, we simply use 0 as the value.
+            _brokerMetrics.setRawMetricValue(rawBrokerMetricType, 0.0, time);
+          } else {
+            _missingBrokerMetrics.add(rawBrokerMetricType);
+          }
         }
       }
       // A broker metric is only available if it has enough valid topic metrics and it has reported
       // replication bytes in/out metrics.
       _brokerMetricsAvailable = enoughTopicPartitionMetrics && _missingBrokerMetrics.isEmpty();
+    }
+
+    /**
+     * Check if a broker raw metric is reasonable to be missing. As of now, it looks that only the following metrics
+     * might be missing:
+     * <ul>
+     *   <li>BROKER_FOLLOWER_FETCH_REQUEST_RATE</li>
+     *   <li>BROKER_LOG_FLUSH_RATE</li>
+     *   <li>BROKER_LOG_FLUSH_TIME_MS_MEAN</li>
+     *   <li>BROKER_LOG_FLUSH_TIME_MS_MAX</li>
+     * </ul>
+     * When these raw metrics are missing, we are going to use 0 as the value.
+     *
+     * @param cluster the Kafka cluster.
+     * @param brokerId the id of the broker whose raw metric is missing
+     * @param rawMetricType the raw metric type that is missing.
+     * @return true if the missing is allowed, false otherwise.
+     */
+    private boolean allowMissingBrokerMetric(Cluster cluster, int brokerId, RawMetricType rawMetricType) {
+      switch (rawMetricType) {
+        case BROKER_FOLLOWER_FETCH_REQUEST_RATE:
+          for (PartitionInfo partitionInfo : cluster.partitionsForNode(brokerId)) {
+            // If there is at least one leader partition on the broker that meets the following condition:
+            // 1. replication factor is greater than 1,
+            // 2. there are more than one alive replicas.
+            // Then the broker must report BrokerFollowerFetchRequestRate.
+            if (partitionInfo.replicas().length > 1
+                && partitionInfo.leader() != null
+                && partitionInfo.leader().id() == brokerId) {
+              return false;
+            }
+          }
+          return true;
+        case BROKER_LOG_FLUSH_RATE:
+        case BROKER_LOG_FLUSH_TIME_MS_MEAN:
+        case BROKER_LOG_FLUSH_TIME_MS_MAX:
+          return true;
+        default:
+          return false;
+      }
     }
 
     /**

@@ -178,7 +178,10 @@ public class LoadMonitorTaskRunner {
    */
   private void loadSamples() {
     if (_state.compareAndSet(RUNNING, LOADING)) {
-      _samplingScheduler.submit(new SampleLoadingTask(_sampleStore, _partitionMetricSampleAggregator, this));
+      _samplingScheduler.submit(new SampleLoadingTask(_sampleStore,
+                                                      _partitionMetricSampleAggregator,
+                                                      _brokerMetricSampleAggregator,
+                                                      this));
     } else {
       throw new IllegalStateException("Cannot load samples because the load monitor is in "
                                           + _state.get() + " state.");

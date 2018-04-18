@@ -45,7 +45,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String DEFAULT_FAILED_BROKERS_ZK_PATH = "/CruiseControlBrokerList";
   // We have to define this so we don't need to move every package to scala src folder.
   private static final String DEFAULT_ANOMALY_NOTIFIER_CLASS = NoopNotifier.class.getName();
-  private static final String DEFAULT_METRIC_ANOMALY_ANALYZER_CLASS = NoopMetricAnomalyFinder.class.getName();
+  private static final String DEFAULT_METRIC_ANOMALY_FINDER_CLASS = NoopMetricAnomalyFinder.class.getName();
 
   private static final ConfigDef CONFIG;
 
@@ -95,7 +95,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   /**
    * <code>partition.metrics.windows.ms</code>
    */
-  public static final String PARTITION_METRICS_WINDOW_MS_CONFIG = "partition.metrics.windows.ms";
+  public static final String PARTITION_METRICS_WINDOW_MS_CONFIG = "partition.metrics.window.ms";
   private static final String PARTITION_METRICS_WINDOW_MS_DOC = "The size of the window in milliseconds to aggregate "
       + "the Kafka partition metrics.";
 
@@ -374,10 +374,10 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       "utilization state when all the brokers are below the low utilization threshold. The threshold is in percentage.";
 
   /**
-   * <code>metric.anomaly.analyzer.class</code>
+   * <code>metric.anomaly.finder.class</code>
    */
-  public static final String METRIC_ANOMALY_FINDER_CLASSES_CONFIG = "metric.anomaly.analyzer.class";
-  private static final String METRIC_ANOMALY_FINDER_CLASSES_DOC = "A list of metric anomaly analyzer classes to analyze "
+  public static final String METRIC_ANOMALY_FINDER_CLASSES_CONFIG = "metric.anomaly.finder.class";
+  private static final String METRIC_ANOMALY_FINDER_CLASSES_DOC = "A list of metric anomaly finder classes to find "
                                                                     + "the current state to identify metric anomalies.";
 
   /**
@@ -745,7 +745,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_DOC)
         .define(METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
                 ConfigDef.Type.LIST,
-                DEFAULT_METRIC_ANOMALY_ANALYZER_CLASS,
+                DEFAULT_METRIC_ANOMALY_FINDER_CLASS,
                 ConfigDef.Importance.MEDIUM, METRIC_ANOMALY_FINDER_CLASSES_DOC)
         .define(MAX_PROPOSAL_CANDIDATES_CONFIG,
                 ConfigDef.Type.INT,
