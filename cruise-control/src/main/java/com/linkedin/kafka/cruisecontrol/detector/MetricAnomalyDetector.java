@@ -49,21 +49,26 @@ public class MetricAnomalyDetector implements Runnable {
   @Override
   @SuppressWarnings("unchecked")
   public void run() {
-    // Check if the load monitor is ready.
-    LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
-    if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
-      LOG.info("Skipping metric anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
-      return;
+    try {
+      // Check if the load monitor is ready.
+      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
+      if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
+        LOG.info("Skipping metric anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
+        return;
+      }
+
+      // Get the historical and current values of broker metrics.
+      Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker = _loadMonitor.brokerMetrics().valuesAndExtrapolations();
+      Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker = _loadMonitor.currentBrokerMetricValues();
+
+      for (MetricAnomalyFinder<BrokerEntity> kafkaMetricAnomalyFinder : _kafkaMetricAnomalyFinders) {
+        _anomalies.addAll(kafkaMetricAnomalyFinder.metricAnomalies(metricsHistoryByBroker, currentMetricsByBroker));
+      }
+
+    } catch (Exception e) {
+      LOG.warn("Metric Anomaly Detector encountered exception: ", e);
+    } finally {
+      LOG.debug("Metric anomaly detection finished.");
     }
-
-    // Get the historical and current values of broker metrics.
-    Map<BrokerEntity, ValuesAndExtrapolations> metricsHistoryByBroker = _loadMonitor.brokerMetrics().valuesAndExtrapolations();
-    Map<BrokerEntity, ValuesAndExtrapolations> currentMetricsByBroker = _loadMonitor.currentBrokerMetricValues();
-
-    for (MetricAnomalyFinder<BrokerEntity> kafkaMetricAnomalyFinder : _kafkaMetricAnomalyFinders) {
-      _anomalies.addAll(kafkaMetricAnomalyFinder.metricAnomalies(metricsHistoryByBroker, currentMetricsByBroker));
-    }
-
-    LOG.debug("Metric anomaly detection finished.");
   }
 }

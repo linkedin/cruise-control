@@ -95,8 +95,8 @@ public class GoalOptimizer implements Runnable {
     for (int i = 0; i < _numPrecomputingThreads; i++) {
       _goalByPriorityForPrecomputing.add(AnalyzerUtils.getGoalMapByPriority(config));
     }
-    LOG.info("{}", _goalsByPriority);
-    LOG.info("{}", _goalByPriorityForPrecomputing);
+    LOG.info("Goals by priority: {}", _goalsByPriority);
+    LOG.info("Goals by priority for proposal precomputing: {}", _goalByPriorityForPrecomputing);
     _balancingConstraint = new BalancingConstraint(config);
     _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
     _maxProposalCandidates = config.getInt(KafkaCruiseControlConfig.MAX_PROPOSAL_CANDIDATES_CONFIG);

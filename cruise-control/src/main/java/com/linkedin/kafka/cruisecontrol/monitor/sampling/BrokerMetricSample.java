@@ -23,7 +23,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
 
   public BrokerMetricSample(String host, Integer brokerId) {
     super(new BrokerEntity(host, brokerId));
-    if (host.length() >= Short.MAX_VALUE) {
+    if (host != null && host.length() >= Short.MAX_VALUE) {
       throw new IllegalArgumentException(String.format("The length of host name %s is %d, which is longer than "
                                                            + "the max allowed length of %d", host, host.length(),
                                                        Short.MAX_VALUE));
@@ -81,7 +81,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
    * @return the serialized bytes.
    */
   public byte[] toBytes() {
-    byte[] hostBytes = entity().group().getBytes(StandardCharsets.UTF_8);
+    byte[] hostBytes = (entity().group() != null ? entity().group() : "UNKNOWN").getBytes(StandardCharsets.UTF_8);
     ByteBuffer buffer = ByteBuffer.allocate(297 + hostBytes.length);
     buffer.put(CURRENT_VERSION);
     buffer.putInt(entity().brokerId());
@@ -208,7 +208,9 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     brokerMetricSample.record(metricDef.metricInfo(PRODUCE_RATE.name()), buffer.getDouble());
     brokerMetricSample.record(metricDef.metricInfo(FETCH_RATE.name()), buffer.getDouble());
     long sampleTime = buffer.getLong();
-    brokerMetricSample.close(sampleTime);
+    if (sampleTime >= 0) {
+      brokerMetricSample.close(sampleTime);
+    }
     return brokerMetricSample;
   }
 
@@ -230,7 +232,9 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     brokerMetricSample.record(metricDef.metricInfo(PRODUCE_RATE.name()), buffer.getDouble());
     brokerMetricSample.record(metricDef.metricInfo(FETCH_RATE.name()), buffer.getDouble());
     long sampleTime = buffer.getLong();
-    brokerMetricSample.close(sampleTime);
+    if (sampleTime >= 0) {
+      brokerMetricSample.close(sampleTime);
+    }
     return brokerMetricSample;
   }
 
@@ -276,7 +280,9 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     brokerMetricSample.record(metricDef.metricInfo(BROKER_LOG_FLUSH_RATE.name()), buffer.getDouble());
     brokerMetricSample.record(metricDef.metricInfo(BROKER_LOG_FLUSH_TIME_MS_MAX.name()), buffer.getDouble());
     brokerMetricSample.record(metricDef.metricInfo(BROKER_LOG_FLUSH_TIME_MS_MEAN.name()), buffer.getDouble());
-    brokerMetricSample.close(sampleTime);
+    if (sampleTime >= 0) {
+      brokerMetricSample.close(sampleTime);
+    }
     return brokerMetricSample;
   }
 
@@ -327,7 +333,9 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     brokerMetricSample.record(metricDef.metricInfo(BROKER_LOG_FLUSH_RATE.name()), buffer.getDouble());
     brokerMetricSample.record(metricDef.metricInfo(BROKER_LOG_FLUSH_TIME_MS_MAX.name()), buffer.getDouble());
     brokerMetricSample.record(metricDef.metricInfo(BROKER_LOG_FLUSH_TIME_MS_MEAN.name()), buffer.getDouble());
-    brokerMetricSample.close(sampleTime);
+    if (sampleTime >= 0) {
+      brokerMetricSample.close(sampleTime);
+    }
     return brokerMetricSample;
   }
 }

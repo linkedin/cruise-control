@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 
 
@@ -50,15 +51,21 @@ public interface SampleStore extends CruiseControlConfigurable {
    * This class is to simplify user interface.
    */
   class SampleLoader {
-    private final KafkaPartitionMetricSampleAggregator _metricSampleAggregator;
+    private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
+    private final KafkaBrokerMetricSampleAggregator _brokerMetricSampleAggregator;
 
-    public SampleLoader(KafkaPartitionMetricSampleAggregator metricSampleAggregator) {
-      _metricSampleAggregator = metricSampleAggregator;
+    public SampleLoader(KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
+                        KafkaBrokerMetricSampleAggregator brokerMetricSampleAggregator) {
+      _partitionMetricSampleAggregator = partitionMetricSampleAggregator;
+      _brokerMetricSampleAggregator = brokerMetricSampleAggregator;
     }
 
     public void loadSamples(MetricSampler.Samples samples) {
       for (PartitionMetricSample sample : samples.partitionMetricSamples()) {
-        _metricSampleAggregator.addSample(sample, false);
+        _partitionMetricSampleAggregator.addSample(sample, false);
+      }
+      for (BrokerMetricSample sample : samples.brokerMetricSamples()) {
+        _brokerMetricSampleAggregator.addSample(sample);
       }
       ModelParameters.addMetricObservation(samples.brokerMetricSamples());
     }

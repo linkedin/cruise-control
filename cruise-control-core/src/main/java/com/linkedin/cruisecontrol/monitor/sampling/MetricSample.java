@@ -83,7 +83,8 @@ public class MetricSample<G, E extends Entity<G>> {
    */
   public void close(long closingTime) {
     if (closingTime < 0) {
-      throw new IllegalArgumentException("The closing time cannot be negative.");
+      throw new IllegalArgumentException("Invalid closing time " + closingTime
+                                             + ". The closing time cannot be negative.");
     }
 
     if (_sampleTime < 0) {

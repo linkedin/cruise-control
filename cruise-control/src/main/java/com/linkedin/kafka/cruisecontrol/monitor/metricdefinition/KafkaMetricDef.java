@@ -47,8 +47,9 @@ public enum KafkaMetricDef {
   PRODUCE_RATE(AVG, COMMON, null, false),
   FETCH_RATE(AVG, COMMON, null, false),
   MESSAGE_IN_RATE(AVG, COMMON, null, false),
-  REPLICATION_BYTES_IN_RATE(AVG, COMMON, NW_IN, false),
-  REPLICATION_BYTES_OUT_RATE(AVG, COMMON, NW_OUT, false),
+  REPLICATION_BYTES_IN_RATE(AVG, COMMON, NW_IN, false), // Not available at topic level yet.
+  REPLICATION_BYTES_OUT_RATE(AVG, COMMON, NW_OUT, false), // Not available at topic level yet.
+
   BROKER_PRODUCE_REQUEST_RATE(AVG, BROKER_ONLY, null, false),
   BROKER_CONSUMER_FETCH_REQUEST_RATE(AVG, BROKER_ONLY, null, false),
   BROKER_FOLLOWER_FETCH_REQUEST_RATE(AVG, BROKER_ONLY, null, false),
@@ -93,6 +94,7 @@ public enum KafkaMetricDef {
     // Topic raw metrics
     TYPE_TO_DEF.put(RawMetricType.TOPIC_BYTES_IN, LEADER_BYTES_IN);
     TYPE_TO_DEF.put(RawMetricType.TOPIC_BYTES_OUT, LEADER_BYTES_OUT);
+    // TODO: We do not have replication information at topic level yet.
     TYPE_TO_DEF.put(RawMetricType.TOPIC_REPLICATION_BYTES_IN, REPLICATION_BYTES_IN_RATE);
     TYPE_TO_DEF.put(RawMetricType.TOPIC_REPLICATION_BYTES_OUT, REPLICATION_BYTES_OUT_RATE);
     TYPE_TO_DEF.put(RawMetricType.TOPIC_PRODUCE_REQUEST_RATE, PRODUCE_RATE);
@@ -143,10 +145,14 @@ public enum KafkaMetricDef {
    * @param strategy the way to pick values among samples in a window.
    * @param defScope the scope the metric applies to. It is either BROKER_ONLY or COMMON. See {@link KafkaMetricDef}
    *                 class doc for more details.
+   * @param group the metric group of the metric. We are using resource as the groups.
    * @param toPredict Whether the metric is a metrics that should be predicted by the linear regression model (in
    *                  development).
    */
-  KafkaMetricDef(ValueComputingStrategy strategy, DefScope defScope, Resource group, boolean toPredict) {
+  KafkaMetricDef(ValueComputingStrategy strategy,
+                 DefScope defScope,
+                 Resource group,
+                 boolean toPredict) {
     _valueComputingStrategy = strategy;
     _defScope = defScope;
     _group = group == null ? "" : group.name();

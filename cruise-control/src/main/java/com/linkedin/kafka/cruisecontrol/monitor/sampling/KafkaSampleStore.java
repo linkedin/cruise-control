@@ -57,6 +57,7 @@ public class KafkaSampleStore implements SampleStore {
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
   protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   private static final String DEFAULT_CLEANUP_POLICY = "delete";
+  private static final long MIN_SAMPLE_TOPIC_RETENTION_TIME_MS = 3600000L;
   public static final Integer DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   // Keep additional windows in case some of the windows do not have enough samples.
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
@@ -132,10 +133,12 @@ public class KafkaSampleStore implements SampleStore {
       int numPartitionSampleWindows =
           Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG));
       long partitionSampleRetentionMs = (numPartitionSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
+      partitionSampleRetentionMs = Math.max(MIN_SAMPLE_TOPIC_RETENTION_TIME_MS, partitionSampleRetentionMs);
 
       int numBrokerSampleWindows =
           Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG));
       long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
+      brokerSampleRetentionMs = Math.max(MIN_SAMPLE_TOPIC_RETENTION_TIME_MS, brokerSampleRetentionMs);
 
       int numberOfBrokersInCluster = zkUtils.getAllBrokersInCluster().size();
       if (numberOfBrokersInCluster == 0) {
@@ -321,6 +324,9 @@ public class KafkaSampleStore implements SampleStore {
                   LOG.trace("Loaded partition metric sample {}", sample);
                 } else if (record.topic().equals(_brokerMetricSampleStoreTopic)) {
                   BrokerMetricSample sample = BrokerMetricSample.fromBytes(record.value());
+                  // For some legacy BrokerMetricSample, there is no timestamp in the broker samples. In this case
+                  // we use the record timestamp as the broker metric timestamp.
+                  sample.close(record.timestamp());
                   brokerMetricSamples.add(sample);
                   _numBrokerMetricSamples.incrementAndGet();
                   LOG.trace("Loaded broker metric sample {}", sample);
