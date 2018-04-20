@@ -876,7 +876,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       out.write(String.format("%" + topicNameLength + "s%10s%10s%40s%40s%30s%n",
                               partitionInfo.topic(),
                               partitionInfo.partition(),
-                              partitionInfo.leader().id(),
+                              partitionInfo.leader() == null ? -1 : partitionInfo.leader().id(),
                               replicas,
                               inSyncReplicas,
                               outOfSyncReplicas)

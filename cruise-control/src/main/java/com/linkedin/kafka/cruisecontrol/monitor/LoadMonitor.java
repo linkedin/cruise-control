@@ -542,6 +542,12 @@ public class LoadMonitor {
     if (partitionInfo != null) {
       for (int index = 0; index < partitionInfo.replicas().length; index++) {
         Node replica = partitionInfo.replicas()[index];
+        String rack = getRackHandleNull(replica);
+        // Note that we assume the capacity resolver can still return the broker capacity even if the broker
+        // is dead. We need this to get the host resource capacity.
+        Map<Resource, Double> brokerCapacity =
+            _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
+        clusterModel.handleDeadBroker(rack, replica.id(), brokerCapacity);
         boolean isLeader;
         if (partitionInfo.leader() == null) {
           LOG.warn("Detected offline partition {}-{}, skipping", partitionInfo.topic(), partitionInfo.partition());
@@ -549,12 +555,7 @@ public class LoadMonitor {
         } else {
           isLeader = replica.id() == partitionInfo.leader().id();
         }
-        String rack = getRackHandleNull(replica);
-        // Note that we assume the capacity resolver can still return the broker capacity even if the broker
-        // is dead. We need this to get the host resource capacity.
-        Map<Resource, Double> brokerCapacity =
-            _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
-        clusterModel.createReplicaHandleDeadBroker(rack, replica.id(), tp, index, isLeader, brokerCapacity);
+        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader);
         clusterModel.setReplicaLoad(rack,
                                     replica.id(),
                                     tp,

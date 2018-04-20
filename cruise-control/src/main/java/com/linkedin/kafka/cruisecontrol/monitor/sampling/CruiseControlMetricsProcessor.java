@@ -208,7 +208,11 @@ public class CruiseControlMetricsProcessor {
                                                            TopicPartition tp,
                                                            Map<Integer, Map<String, Integer>> leaderDistributionStats) {
     TopicPartition tpWithDotHandled = partitionHandleDotInTopicName(tp);
-    int leaderId = cluster.leaderFor(tp).id();
+    Node leaderNode = cluster.leaderFor(tp);
+    if (leaderNode == null) {
+      return null;
+    }
+    int leaderId = leaderNode.id();
     //TODO: switch to linear regression model without computing partition level CPU usage.
     BrokerLoad brokerLoad = _brokerLoad.get(leaderId);
     // Ensure broker load is available.
