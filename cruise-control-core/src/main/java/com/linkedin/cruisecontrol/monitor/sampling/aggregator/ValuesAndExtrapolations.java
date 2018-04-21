@@ -27,6 +27,7 @@ public class ValuesAndExtrapolations {
   public ValuesAndExtrapolations(AggregatedMetricValues metricValues, Map<Integer, Extrapolation> extrapolations) {
     _metricValues = metricValues;
     _extrapolations = extrapolations;
+    _windows = null;
   }
 
   /**
@@ -74,11 +75,16 @@ public class ValuesAndExtrapolations {
   }
 
   /**
-   * Method to set the windows array.
+   * Method to set the windows array. The windows can only be set once. After that it is immutable.
+   * 
    * @param windows the windows for the values.
    */
   public void setWindows(List<Long> windows) {
-    _windows = windows;
+    if (_windows == null) {
+      _windows = windows;
+    } else {
+      throw new IllegalStateException("The windows have been set and they are immutable.");
+    }
   }
 
   /**

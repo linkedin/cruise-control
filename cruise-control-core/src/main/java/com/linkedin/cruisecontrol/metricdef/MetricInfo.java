@@ -4,10 +4,13 @@
 
 package com.linkedin.cruisecontrol.metricdef;
 
+import java.util.Objects;
+
+
 /**
  * The metric information including the name, id, the way of interpretation and the metric group name.
  */
-public class MetricInfo {
+public class MetricInfo implements Comparable<MetricInfo> {
   private final String _name;
   private final int _id;
   private final AggregationFunction _aggregationFunction;
@@ -52,5 +55,24 @@ public class MetricInfo {
   @Override
   public String toString() {
     return String.format("(name=%s, id=%d, aggregationFunction=%s)", _name, _id, _aggregationFunction);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(_name, _id, _aggregationFunction);
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (obj == null || !(obj instanceof MetricInfo)) {
+      return false;
+    }
+    MetricInfo o = (MetricInfo) obj;
+    return _name.equals(o.name()) && _id == o.id() && _aggregationFunction == o.aggregationFunction();
+  }
+
+  @Override
+  public int compareTo(MetricInfo o) {
+    return Integer.compare(_id, o.id());
   }
 }

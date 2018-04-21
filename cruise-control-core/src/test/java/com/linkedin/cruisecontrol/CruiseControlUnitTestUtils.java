@@ -13,9 +13,9 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggreg
 
 
 public class CruiseControlUnitTestUtils {
-  public static final String METRIC1 = "m1";
-  public static final String METRIC2 = "m2";
-  public static final String METRIC3 = "m3";
+  public static final String METRIC1 = "METRIC1";
+  public static final String METRIC2 = "METRIC2";
+  public static final String METRIC3 = "METRIC3";
 
   private CruiseControlUnitTestUtils() {
 

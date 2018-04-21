@@ -18,6 +18,11 @@ public class IntegerEntity extends Entity<String> {
   }
 
   @Override
+  public String toString() {
+    return String.format("(group:%s, id:%d)", _group, _id);
+  }
+
+  @Override
   public String group() {
     return _group;
   }

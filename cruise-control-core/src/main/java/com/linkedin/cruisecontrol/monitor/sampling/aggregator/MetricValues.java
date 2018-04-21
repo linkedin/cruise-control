@@ -13,6 +13,8 @@ import java.util.StringJoiner;
 
 /**
  * A class hosting the values of a particular metric.
+ * 
+ * The metric values are ordered from newer to older. i.e. the newer values are at lower indexes.
  */
 public class MetricValues {
   // Values are sorted from the newest to the oldest -- i.e. the newest value is in index 0.
@@ -38,10 +40,28 @@ public class MetricValues {
    */
   public void set(int index, double value) {
     if (_max == _values[index] && value < _max) {
-      _max = Float.MIN_VALUE;
+      _max = Float.NEGATIVE_INFINITY;
+    } else if (_max != Float.NEGATIVE_INFINITY && value > _max) {
+      _max = (float) value;
     }
     _sumForAvg += value - _values[index];
     _values[index] = (float) value;
+  }
+
+  /**
+   * Add a value at the given index. 
+   * @param index the index to add the value.
+   * @param value the value to add.
+   */
+  public void add(int index, double value) {
+    if (_max == _values[index] && value < 0) {
+      _max = Float.NEGATIVE_INFINITY;
+    }
+    _sumForAvg += value;
+    _values[index] += (float) value;
+    if (_max != Float.NEGATIVE_INFINITY && _values[index] > _max) {
+      _max = _values[index];
+    }
   }
 
   /**
@@ -61,7 +81,7 @@ public class MetricValues {
   public void clear() {
     Arrays.fill(_values, 0);
     _sumForAvg = 0;
-    _max = Float.MIN_VALUE;
+    _max = Float.NEGATIVE_INFINITY;
   }
 
   /**
@@ -83,7 +103,7 @@ public class MetricValues {
                                                            + "MetricValue with length %d",
                                                        values.length, _values.length));
     }
-    _max = Float.MIN_VALUE;
+    _max = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < _values.length; i++) {
       double toAdd = values[i];
       _values[i] += toAdd;
@@ -103,7 +123,7 @@ public class MetricValues {
                                                            + "MetricValue with length %d",
                                                        metricValues.length(), _values.length));
     }
-    _max = Float.MIN_VALUE;
+    _max = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < _values.length; i++) {
       double toAdd = metricValues.get(i);
       _values[i] += toAdd;
@@ -123,7 +143,7 @@ public class MetricValues {
                                                            + "MetricValue with length %d",
                                                        values.length, _values.length));
     }
-    _max = Float.MIN_VALUE;
+    _max = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < _values.length; i++) {
       double toDeduct = values[i];
       _values[i] -= toDeduct;
@@ -143,7 +163,7 @@ public class MetricValues {
                                                            + "MetricValue with length %d",
                                                        metricValues.length(), _values.length));
     }
-    _max = Float.MIN_VALUE;
+    _max = Float.NEGATIVE_INFINITY;
     for (int i = 0; i < _values.length; i++) {
       double toDeduct = metricValues.get(i);
       _values[i] -= toDeduct;
@@ -171,6 +191,9 @@ public class MetricValues {
   }
 
   /**
+   * Get the last values of all the values. Notice that the values are ordered from
+   * newer to older. i.e. newer values are at lower indexes.
+   * 
    * @return the last value of all the values in this MetricValues.
    */
   public float latest() {

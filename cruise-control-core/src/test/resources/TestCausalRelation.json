@@ -1,0 +1,34 @@
+{
+  "linearRegressions": [
+    {
+      "name": "regression_1",
+      "causalMetrics": [
+        "METRIC1",
+        "METRIC2"
+      ],
+      "resultantMetrics": [
+        "METRIC3"
+      ],
+      "numValueBuckets": 20,
+      "numBucketsToCapForFairness": 10,
+      "maxSamplesPerBucket": 50,
+      "maxExponent": 1,
+      "errorStatsWindowSize": 1000
+    },
+    {
+      "name": "regression_2",
+      "causalMetrics": [
+        "METRIC1"
+      ],
+      "resultantMetrics": [
+        "METRIC2",
+        "METRIC3"
+      ],
+      "numValueBuckets": 10,
+      "numBucketsToCapForFairness": 5,
+      "maxSamplesPerBucket": 20,
+      "maxExponent": 2,
+      "errorStatsWindowSize": 2000
+    }
+  ]
+}
