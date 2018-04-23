@@ -13,6 +13,9 @@ Cruise Control for Apache Kafka
   
   * Resource utilization tracking for brokers, topics, and partitions.
   
+  * Query the current Kafka cluster state to see the online and offline partitions, in-sync and out-of-sync replicas, and
+  distribution of replicas in the cluster.
+  
   * Multi-goal rebalance proposal generation for:
     * Rack-awareness
     * Resource capacity violation checks (CPU, DISK, Network I/O)
@@ -26,11 +29,13 @@ Cruise Control for Apache Kafka
   * Anomaly detection and alerting for the Kafka cluster, including:
     * Goal violation
     * Broker failure detection
+    * Metric anomaly detection
   
   * Admin operations, including:
     * Add brokers
     * Decommission brokers
     * Rebalance the cluster
+    * Perform preferred leader election (PLE)
 
 ### Environment Requirements
 * The current master branch of Cruise Control is compatible with Apache Kafka 0.11.0.0 and above
@@ -50,7 +55,7 @@ to a Kafka topic.
     * If the default broker cleanup policy is `compact`, make sure that the topic to which Cruise Control metrics 
     reporter should send messages is created with the `delete` cleanup policy -- the default metrics reporter topic is
     `__CruiseControlMetrics`.
-1. Start ZooKeeper and Kafka server.
+1. Start ZooKeeper and Kafka server ([See tutorial](https://kafka.apache.org/quickstart)).
 2. Modify config/cruisecontrol.properties to 
     * fill in `bootstrap.servers` and `zookeeper.connect` to the Kafka cluster to be monitored.
     * set `metric.sampler.class` to your implementation (the default sampler class is CruiseControlMetricsReporterSampler) 
@@ -61,13 +66,13 @@ to a Kafka topic.
     ./kafka-cruise-control-start.sh [-jars PATH_TO_YOUR_JAR_1,PATH_TO_YOUR_JAR_2] config/cruisecontrol.properties [port]
     ```
     JAR files correspond to your applications and `port` enables customizing the Cruise Control port number (default: 9090).
-4. visit http://localhost:9090/kafkacruisecontrol/state or http://localhost:\[port\]/kafkacruisecontrol/state if 
+4. Visit http://localhost:9090/kafkacruisecontrol/state or http://localhost:\[port\]/kafkacruisecontrol/state if 
 you specified the port when starting Cruise Control. 
 
 **Note**: 
 * Cruise Control will need some time to read the raw Kafka metrics from the cluster.
 * The metrics of a newly up broker may take a few minutes to get stable. Cruise Control will drop the inconsistent 
-metrics (e.g when topic bytes-in is higher than broker bytes-in), so first few snapshot windows may not have enough valid partitions. 
+metrics (e.g when topic bytes-in is higher than broker bytes-in), so first few snapshot windows may not have enough valid partitions.
 
 ### REST API ###
 Cruise Control provides a [REST API](https://github.com/linkedin/cruise-control/wiki/REST-APIs) for users 
@@ -77,12 +82,12 @@ to interact with. See the wiki page for more details.
 Cruise Control relies on the recent load information of replicas to optimize the cluster.
 
 Cruise Control periodically collects resource utilization samples at both broker- and partition-level to 
-infer the traffic pattern of each partition. Based on the traffic characteristics of all the partitions, 
+infer the traffic pattern of each partition. Based on the traffic characteristics and distribution of all the partitions, 
 it derives the load impact of each partition over the brokers. Cruise Control then builds a workload
 model to simulate the workload of the Kafka cluster. The goal optimizer explores different ways to generate 
 cluster workload optimization proposals based on the user-specified list of goals.
 
-Cruise Control also monitors the liveness of all the brokers in the cluster. 
+Cruise Control also monitors the liveness of all the brokers in the cluster.
 To avoid the loss of redundancy, Cruise Control automatically moves replicas from failed brokers to healthy ones.
 
 For more details about how Cruise Control achieves that, see 
@@ -122,15 +127,22 @@ The goals in Cruise Control are pluggable with different priorities. The default
  * **NetworkOutboundCapacityGoal** - Ensures that outbound network utilization of each broker is below a given threshold.
  * **PotentialNwOutGoal** - Ensures that the potential network output (when all the replicas in the broker become leaders) on each of the broker do 
  not exceed the broker’s network outbound bandwidth capacity.
- * **ResourceDistributionGoal** - Attempts to keep the workload variance among brokers within a certain range relative to the average utilization of each resource.
+ * **CpuUsageDistributionGoal** - Attempts to keep the CPU usage variance among brokers within a certain range relative to the average CPU utilization.
+ * **DiskUsageDistributionGoal** - Attempts to keep the Disk space usage variance among brokers within a certain range relative to the average Disk utilization.
+ * **NetworkInboundUsageDistributionGoal** - Attempts to keep the inbound network utilization variance among brokers within a certain range relative to the average inbound network utilization.
+ * **NetworkOutboundUsageDistributionGoal** - Attempts to keep the outbound network utilization variance among brokers within a certain range relative to the average outbound network utilization.
  * **LeaderBytesInDistributionGoal** - Attempts to equalize the leader bytes in rate on each host.
  * **TopicReplicaDistributionGoal** - Attempts to maintain an even distribution of any topic's replicas across the entire cluster.
  * **ReplicaDistributionGoal** - Attempts to make all the brokers in a cluster have a similar number of replicas.
+ * **PreferredLeaderElectionGoal** - Simply move the leaders to the first replica of each partition.
+ * **KafkaAssignerDiskUsageDistributionGoal** - (Kafka-assigner mode) Attempts to distribute disk usage evenly among brokers based on swap.
+ * **KafkaAssignerEvenRackAwareGoal** - (Kafka-assigner mode) Attempts to achieve rack aware even replica distribution.
 
 #### Anomaly Notifier ####
 The anomaly notifier allows users to be notified when an anomaly is detected. Anomalies include:
  * Broker failure
  * Goal violation
+ * Metric anomaly
  
 In addition to anomaly notifications users can specify actions to be taken in response to an anomaly. The following actions are supported:
  * **fix** - fix the problem right away
