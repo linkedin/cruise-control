@@ -120,6 +120,7 @@ class SamplingFetcher extends MetricFetcher {
     Set<TopicPartition> returnedPartitions = new HashSet<>(_assignedPartitions.size());
     // Ignore the null value if the metric sampler did not return a sample
     if (partitionMetricSamples != null) {
+      int discarded = 0;
       Iterator<PartitionMetricSample> iter = partitionMetricSamples.iterator();
       while (iter.hasNext()) {
         PartitionMetricSample partitionMetricSample = iter.next();
@@ -137,6 +138,7 @@ class SamplingFetcher extends MetricFetcher {
             LOG.trace("Enqueued partition metric sample {}", partitionMetricSample);
           } else {
             iter.remove();
+            discarded++;
             LOG.trace("Failed to add partition metric sample {}", partitionMetricSample);
           }
           returnedPartitions.add(tp);
@@ -145,8 +147,9 @@ class SamplingFetcher extends MetricFetcher {
                        + "The metric sample will be ignored.", tp);
         }
       }
-      LOG.debug("Collected {} partition metric samples for {} partitions. Total partition assigned: {}.",
-                partitionMetricSamples.size(), returnedPartitions.size(), _assignedPartitions.size());
+      LOG.debug("Collected {}{} partition metric samples for {} partitions. Total partition assigned: {}.",
+                partitionMetricSamples.size(), discarded > 0 ? String.format("(%d discarded)", discarded) : "",
+                returnedPartitions.size(), _assignedPartitions.size());
     } else {
       LOG.warn("Failed to collect partition metric samples for {} assigned partitions", _assignedPartitions.size());
     }
@@ -155,6 +158,7 @@ class SamplingFetcher extends MetricFetcher {
   private void addBrokerMetricSamples(Set<BrokerMetricSample> brokerMetricSamples) {
     Set<Integer> returnedBrokerIds = new HashSet<>();
     if (brokerMetricSamples != null) {
+      int discarded = 0;
       Iterator<BrokerMetricSample> iter = brokerMetricSamples.iterator();
       while (iter.hasNext()) {
         BrokerMetricSample brokerMetricSample = iter.next();
@@ -164,12 +168,14 @@ class SamplingFetcher extends MetricFetcher {
           LOG.trace("Enqueued broker metric sample {}", brokerMetricSample);
         } else {
           iter.remove();
+          discarded++;
           LOG.trace("Failed to add broker metric sample {}", brokerMetricSample);
         }
         returnedBrokerIds.add(brokerMetricSample.brokerId());
       }
-      LOG.debug("Collected {} broker metric samples for {} brokers.",
-                brokerMetricSamples.size(), returnedBrokerIds.size());
+      LOG.debug("Collected {}{} broker metric samples for {} brokers.",
+                brokerMetricSamples.size(), discarded > 0 ? String.format("(%d discarded)", discarded) : "",
+                returnedBrokerIds.size());
     } else {
       LOG.warn("Failed to collect broker metrics samples.");
     }

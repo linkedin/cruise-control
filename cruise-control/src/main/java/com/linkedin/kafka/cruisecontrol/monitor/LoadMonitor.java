@@ -200,7 +200,7 @@ public class LoadMonitor {
 
     // Get the window to monitored partitions percentage mapping.
     SortedMap<Long, Float> validPartitionRatio =
-        _partitionMetricSampleAggregator.partitionCoverageByWindows(clusterAndGeneration);
+        _partitionMetricSampleAggregator.validPartitionRatioByWindows(clusterAndGeneration);
 
     // Get valid snapshot window number and populate the monitored partition map.
     SortedSet<Long> validWindows = _partitionMetricSampleAggregator.validWindows(clusterAndGeneration,

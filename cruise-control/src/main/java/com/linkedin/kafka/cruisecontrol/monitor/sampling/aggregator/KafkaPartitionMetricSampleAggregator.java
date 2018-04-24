@@ -211,7 +211,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
    * @param clusterAndGeneration the current cluster and generation.
    * @return A mapping from window to the monitored partitions percentage.
    */
-  public SortedMap<Long, Float> partitionCoverageByWindows(MetadataClient.ClusterAndGeneration clusterAndGeneration) {
+  public SortedMap<Long, Float> validPartitionRatioByWindows(MetadataClient.ClusterAndGeneration clusterAndGeneration) {
     AggregationOptions<String, PartitionEntity> options =
         new AggregationOptions<>(0.0,
                                  0.0,

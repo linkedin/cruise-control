@@ -31,7 +31,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends LongGeneration
     _completenessCache = new LinkedHashMap<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>> eldest) {
-        return _windowStates.size() > completenessCacheSize;
+        return this.size() > completenessCacheSize;
       }
     };
     _windowStates = new TreeMap<>(Collections.reverseOrder());

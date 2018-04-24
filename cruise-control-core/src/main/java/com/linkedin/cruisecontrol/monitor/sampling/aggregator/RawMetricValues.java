@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
  */
 public class RawMetricValues {
   private static final Logger LOG = LoggerFactory.getLogger(RawMetricValues.class);
+  private static final int INVALID_INDEX = -1;
   // The minimum required samples for a window to not involve any extrapolation.
   private final int _minSamplesPerWindow;
   // The metric id to value array mapping. The array is a cyclic buffer. Each array slot represents a window.
@@ -80,10 +81,14 @@ public class RawMetricValues {
       updateValue(entry.getValue(), metricDef.metricInfo(entry.getKey()), idx);
     }
     _counts[idx]++;
+    // Update the validity and extrapolation for this index.
     updateValidityAndExtrapolation(idx);
     if (_counts[idx] >= _minSamplesPerWindow) {
       _extrapolations.clear(idx);
-      if (idx != firstIdx()) {
+      // If this index has two left neighbour indexes, we may need to update the extrapolation of the previous index
+      // with AvgAdjacent. We need to exclude the current window index. It will be included when new windows get
+      // rolled out.
+      if (idx != currentWindowIndex() && hasTwoLeftNeibours(idx)) {
         int prevIdx = prevIdx(idx);
         if (_counts[prevIdx] < halfMinRequiredSamples()) {
           updateAvgAdjacent(prevIdx);
@@ -91,7 +96,7 @@ public class RawMetricValues {
       }
       // Adding sample to the last window index should not update extrapolation of the current window index.
       // Adding sample to the current window index has no next index to update.
-      if (idx != currentWindowIndex() && idx != lastIdx()) {
+      if (hasTwoRightNeibours(idx)) {
         int nextIdx = nextIdx(idx);
         if (_counts[nextIdx] < halfMinRequiredSamples()) {
           updateAvgAdjacent(nextIdx);
@@ -396,11 +401,21 @@ public class RawMetricValues {
   }
 
   private int prevIdx(int idx) {
-    return idx == firstIdx() ? -1 : (idx + _counts.length - 1) % _counts.length;
+    return idx == firstIdx() ? INVALID_INDEX : (idx + _counts.length - 1) % _counts.length;
   }
 
   private int nextIdx(int idx) {
-    return idx == lastIdx() ? -1 : (idx + 1) % _counts.length;
+    return idx == lastIdx() ? INVALID_INDEX : (idx + 1) % _counts.length;
+  }
+
+  private boolean hasTwoLeftNeibours(int idx) {
+    int prevIdx = prevIdx(idx);
+    return prevIdx != INVALID_INDEX && prevIdx(prevIdx) != INVALID_INDEX;
+  }
+
+  private boolean hasTwoRightNeibours(int idx) {
+    int nextIdx = nextIdx(idx);
+    return nextIdx != INVALID_INDEX && nextIdx(nextIdx) != INVALID_INDEX;
   }
 
   private int firstIdx() {
