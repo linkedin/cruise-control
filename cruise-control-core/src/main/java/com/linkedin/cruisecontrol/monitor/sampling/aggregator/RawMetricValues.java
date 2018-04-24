@@ -88,7 +88,7 @@ public class RawMetricValues {
       // If this index has two left neighbour indexes, we may need to update the extrapolation of the previous index
       // with AvgAdjacent. We need to exclude the current window index. It will be included when new windows get
       // rolled out.
-      if (idx != currentWindowIndex() && hasTwoLeftNeibours(idx)) {
+      if (idx != currentWindowIndex() && hasTwoLeftNeighbours(idx)) {
         int prevIdx = prevIdx(idx);
         if (_counts[prevIdx] < halfMinRequiredSamples()) {
           updateAvgAdjacent(prevIdx);
@@ -96,7 +96,7 @@ public class RawMetricValues {
       }
       // Adding sample to the last window index should not update extrapolation of the current window index.
       // Adding sample to the current window index has no next index to update.
-      if (hasTwoRightNeibours(idx)) {
+      if (hasTwoRightNeighbours(idx)) {
         int nextIdx = nextIdx(idx);
         if (_counts[nextIdx] < halfMinRequiredSamples()) {
           updateAvgAdjacent(nextIdx);
@@ -408,12 +408,12 @@ public class RawMetricValues {
     return idx == lastIdx() ? INVALID_INDEX : (idx + 1) % _counts.length;
   }
 
-  private boolean hasTwoLeftNeibours(int idx) {
+  private boolean hasTwoLeftNeighbours(int idx) {
     int prevIdx = prevIdx(idx);
     return prevIdx != INVALID_INDEX && prevIdx(prevIdx) != INVALID_INDEX;
   }
 
-  private boolean hasTwoRightNeibours(int idx) {
+  private boolean hasTwoRightNeighbours(int idx) {
     int nextIdx = nextIdx(idx);
     return nextIdx != INVALID_INDEX && nextIdx(nextIdx) != INVALID_INDEX;
   }
