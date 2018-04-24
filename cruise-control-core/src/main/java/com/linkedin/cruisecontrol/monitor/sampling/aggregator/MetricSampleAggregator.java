@@ -140,7 +140,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    */
   public boolean addSample(MetricSample<G, E> sample) {
     if (!sample.isValid(_metricDef)) {
-      LOG.warn("The metric sample is discarded due to missing metrics. Sample: {}", sample);
+      LOG.debug("The metric sample is discarded due to missing metrics. Sample: {}", sample);
       return false;
     }
     long windowIndex = windowIndex(sample.sampleTime());

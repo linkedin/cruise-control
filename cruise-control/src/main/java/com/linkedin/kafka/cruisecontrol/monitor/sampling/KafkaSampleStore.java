@@ -51,17 +51,15 @@ import org.slf4j.LoggerFactory;
  */
 public class KafkaSampleStore implements SampleStore {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaSampleStore.class);
-  public static final String PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "partition.metric.sample.store.topic";
-  public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
-  public static final String NUM_SAMPLE_LOADING_THREADS = "num.sample.loading.threads";
-  protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
-  protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   private static final String DEFAULT_CLEANUP_POLICY = "delete";
   private static final long MIN_SAMPLE_TOPIC_RETENTION_TIME_MS = 3600000L;
-  public static final Integer DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   // Keep additional windows in case some of the windows do not have enough samples.
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
+
+  protected static final Integer DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
+  protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
+  protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   protected static final Random RANDOM = new Random();
   protected List<KafkaConsumer<byte[], byte[]>> _consumers;
   protected ExecutorService _metricProcessorExecutor;
@@ -70,6 +68,10 @@ public class KafkaSampleStore implements SampleStore {
   protected volatile double _loadingProgress;
   protected Producer<byte[], byte[]> _producer;
   protected volatile boolean _shutdown = false;
+
+  public static final String PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "partition.metric.sample.store.topic";
+  public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
+  public static final String NUM_SAMPLE_LOADING_THREADS = "num.sample.loading.threads";
 
   @Override
   public void configure(Map<String, ?> config) {
@@ -89,6 +91,14 @@ public class KafkaSampleStore implements SampleStore {
     for (int i = 0; i < numProcessingThreads; i++) {
       _consumers.add(createConsumers(config));
     }
+
+    _producer = createProducer(config);
+    _loadingProgress = -1.0;
+
+    ensureTopicsCreated(config);
+  }
+
+  protected KafkaProducer<byte[], byte[]> createProducer(Map<String, ?> config) {
     Properties producerProps = new Properties();
     producerProps.putAll(config);
     producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
@@ -96,16 +106,13 @@ public class KafkaSampleStore implements SampleStore {
     producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_CLIENT_ID);
     // Set batch.size and linger.ms to a big number to have better batching.
     producerProps.setProperty(ProducerConfig.LINGER_MS_CONFIG, "30000");
-    producerProps.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, "800000");
+    producerProps.setProperty(ProducerConfig.BATCH_SIZE_CONFIG, "500000");
+    producerProps.setProperty(ProducerConfig.BUFFER_MEMORY_CONFIG, "67108864");
     producerProps.setProperty(ProducerConfig.RETRIES_CONFIG, "5");
     producerProps.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
     producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-    _producer = new KafkaProducer<>(producerProps);
-
-    _loadingProgress = -1.0;
-
-    ensureTopicsCreated(config);
+    return new KafkaProducer<>(producerProps);
   }
 
   protected KafkaConsumer<byte[], byte[]> createConsumers(Map<String, ?> config) {
@@ -237,8 +244,17 @@ public class KafkaSampleStore implements SampleStore {
         LOG.warn("Interrupted during waiting for metrics processor to shutdown.");
       }
     }
-    LOG.info("Sample loading finished. Loaded {} partition metrics samples and {} broker metric samples in {} ms",
-             numPartitionMetricSamples, numBrokerMetricSamples, System.currentTimeMillis() - startMs);
+    long endMs = System.currentTimeMillis();
+    long addedPartitionSampleCount = sampleLoader.partitionSampleCount();
+    long addedBrokerSampleCount = sampleLoader.brokerSampleCount();
+    long discardedPartitionMetricSamples = numPartitionMetricSamples.get() - addedPartitionSampleCount;
+    long discardedBrokerMetricSamples = numBrokerMetricSamples.get() - addedBrokerSampleCount;
+    LOG.info("Sample loading finished. Loaded {}{} partition metrics samples and {}{} broker metric samples in {} ms.",
+             addedPartitionSampleCount,
+             discardedPartitionMetricSamples > 0 ? String.format("(%d discarded)", discardedPartitionMetricSamples) : "",
+             sampleLoader.brokerSampleCount(),
+             discardedBrokerMetricSamples > 0 ? String.format("(%d discarded)", discardedBrokerMetricSamples) : "",
+             endMs - startMs);
   }
 
   @Override

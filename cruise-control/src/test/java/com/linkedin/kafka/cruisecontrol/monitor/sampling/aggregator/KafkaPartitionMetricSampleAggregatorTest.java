@@ -93,7 +93,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     MetadataClient.ClusterAndGeneration clusterAndGeneration =
         new MetadataClient.ClusterAndGeneration(metadata.fetch(), 1);
     assertEquals(NUM_WINDOWS, metricSampleAggregator.validWindows(clusterAndGeneration, 1.0).size());
-    Map<Long, Float> monitoredPercentages = metricSampleAggregator.partitionCoverageByWindows(clusterAndGeneration);
+    Map<Long, Float> monitoredPercentages = metricSampleAggregator.validPartitionRatioByWindows(clusterAndGeneration);
     for (double percentage : monitoredPercentages.values()) {
       assertEquals(1.0, percentage, 0.0);
     }
@@ -399,7 +399,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
 
-    Map<Long, Float> percentages = aggregator.partitionCoverageByWindows(clusterAndGeneration);
+    Map<Long, Float> percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       assertEquals(1.0, entry.getValue(), 0.01);
@@ -408,7 +408,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ctx = setupScenario2();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    percentages = aggregator.partitionCoverageByWindows(clusterAndGeneration);
+    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       long window = entry.getKey();
@@ -422,7 +422,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ctx = setupScenario3();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    percentages = aggregator.partitionCoverageByWindows(clusterAndGeneration);
+    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       long window = entry.getKey();
@@ -436,7 +436,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ctx = setupScenario4();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    percentages = aggregator.partitionCoverageByWindows(clusterAndGeneration);
+    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       long window = entry.getKey();

@@ -151,7 +151,7 @@ public class CruiseControlMetricsProcessor {
       BrokerLoad brokerLoad = _brokerLoad.get(node.id());
       if (brokerLoad == null || !brokerLoad.allBrokerMetricsAvailable()) {
         // A new broker or broker metrics are not consistent.
-        LOG.debug("Skip generating broker metric sample for broker {} because the following metrics are missing {}",
+        LOG.warn("Skip generating broker metric sample for broker {} because the following metrics are missing {}",
                   node.id(), brokerLoad == null ? "All Broker Metrics" : brokerLoad.missingBrokerMetrics());
         skippedBroker++;
         continue;
@@ -164,7 +164,7 @@ public class CruiseControlMetricsProcessor {
         if (!brokerLoad.brokerMetricAvailable(rawBrokerMetricType)) {
           skippedBroker++;
           validSample = false;
-          LOG.debug("Skip generating broker metric sample for broker {} because it does not have %s metrics or "
+          LOG.warn("Skip generating broker metric sample for broker {} because it does not have %s metrics or "
                         + "the metrics are inconsistent.", node.id(), rawBrokerMetricType);
           break;
         } else {

@@ -683,7 +683,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return true;
     }
 
-    ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, false);
+    ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.98, false);
     // Get cluster model asynchronously.
     ClusterModel clusterModel =
         getAndMaybeReturnProgress(request, response,
