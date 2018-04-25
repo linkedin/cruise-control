@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.lang.Math.max;
+
 
 /**
  * A class for representing load information for each resource. Each Load in a cluster must have the same number of
@@ -78,7 +80,7 @@ public class Load implements Serializable {
       MetricValues valuesForId = _metricValues.valuesFor(info.id());
       result += resource == Resource.DISK ? valuesForId.latest() : valuesForId.avg();
     }
-    return result;
+    return max(result, 0.0);
   }
 
   /**
