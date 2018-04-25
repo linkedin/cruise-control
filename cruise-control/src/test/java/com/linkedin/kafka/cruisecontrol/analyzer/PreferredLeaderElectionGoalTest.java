@@ -18,8 +18,10 @@ import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
@@ -66,12 +68,19 @@ public class PreferredLeaderElectionGoalTest {
     ClusterModel clusterModel = createClusterModel();
     clusterModel.setBrokerState(0, Broker.State.DEMOTED);
 
+    Set<TopicPartition> leaderPartitionsOnDemotedBroker = new HashSet<>();
+    clusterModel.broker(0).leaderReplicas().forEach(r -> leaderPartitionsOnDemotedBroker.add(r.topicPartition()));
+
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
       for (int p = 0; p < 3; p++) {
-        List<Replica> replicas = clusterModel.partition(new TopicPartition(t, p)).replicas();
+        TopicPartition tp = new TopicPartition(t, p);
+        if (!leaderPartitionsOnDemotedBroker.contains(tp)) {
+          continue;
+        }
+        List<Replica> replicas = clusterModel.partition(tp).replicas();
         for (int i = 0; i < 3; i++) {
           Replica replica = replicas.get(i);
           // only the first replica should be leader.

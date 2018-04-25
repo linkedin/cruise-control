@@ -13,9 +13,11 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,15 +35,20 @@ public class PreferredLeaderElectionGoal implements Goal {
       throws KafkaCruiseControlException {
     // First move the replica on the demoted brokers to the end of the replica list.
     // If all the replicas are demoted, no change is made to the leader.
+    Set<TopicPartition> partitionsToMove = new HashSet<>();
     for (Broker b : clusterModel.demotedBrokers()) {
       for (Replica r : b.replicas()) {
         Partition p = clusterModel.partition(r.topicPartition());
         p.moveReplicaToEnd(r);
+        partitionsToMove.add(r.topicPartition());
       }
     }
     // Ignore the excluded topics because this goal does not move partitions.
     for (List<Partition> partitions : clusterModel.getPartitionsByTopic().values()) {
       for (Partition p : partitions) {
+        if (!clusterModel.demotedBrokers().isEmpty() && !partitionsToMove.contains(p.topicPartition())) {
+          continue;
+        }
         for (Replica r : p.replicas()) {
           // Iterate over the replicas and ensure the leader is set to the first alive replica.
           if (r.broker().isAlive()) {
