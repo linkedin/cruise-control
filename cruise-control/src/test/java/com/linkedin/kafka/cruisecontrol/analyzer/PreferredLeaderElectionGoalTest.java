@@ -70,6 +70,10 @@ public class PreferredLeaderElectionGoalTest {
 
     Set<TopicPartition> leaderPartitionsOnDemotedBroker = new HashSet<>();
     clusterModel.broker(0).leaderReplicas().forEach(r -> leaderPartitionsOnDemotedBroker.add(r.topicPartition()));
+    Map<TopicPartition, Integer> leaderDistributionBeforeBrokerDemotion = new HashMap<>();
+    clusterModel.brokers().forEach(b -> {
+      b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
+    });
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
@@ -78,16 +82,18 @@ public class PreferredLeaderElectionGoalTest {
       for (int p = 0; p < 3; p++) {
         TopicPartition tp = new TopicPartition(t, p);
         if (!leaderPartitionsOnDemotedBroker.contains(tp)) {
-          continue;
-        }
-        List<Replica> replicas = clusterModel.partition(tp).replicas();
-        for (int i = 0; i < 3; i++) {
-          Replica replica = replicas.get(i);
-          // only the first replica should be leader.
-          assertEquals(i == 0, replica.isLeader());
-          if (clusterModel.broker(0).replicas().contains(replica)) {
-            // The demoted replica should be in the last position.
-            assertEquals(replicas.size() - 1, i);
+          int oldLeaderBroker = leaderDistributionBeforeBrokerDemotion.get(tp);
+          assertEquals("Tp " + tp, oldLeaderBroker, clusterModel.partition(tp).leader().broker().id());
+        } else {
+          List<Replica> replicas = clusterModel.partition(tp).replicas();
+          for (int i = 0; i < 3; i++) {
+            Replica replica = replicas.get(i);
+            // only the first replica should be leader.
+            assertEquals(i == 0, replica.isLeader());
+            if (clusterModel.broker(0).replicas().contains(replica)) {
+              // The demoted replica should be in the last position.
+              assertEquals(replicas.size() - 1, i);
+            }
           }
         }
       }

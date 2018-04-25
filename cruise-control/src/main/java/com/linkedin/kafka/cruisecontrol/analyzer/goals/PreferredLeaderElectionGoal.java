@@ -40,8 +40,8 @@ public class PreferredLeaderElectionGoal implements Goal {
       for (Replica r : b.replicas()) {
         Partition p = clusterModel.partition(r.topicPartition());
         p.moveReplicaToEnd(r);
-        partitionsToMove.add(r.topicPartition());
       }
+      b.leaderReplicas().forEach(r -> partitionsToMove.add(r.topicPartition()));
     }
     // Ignore the excluded topics because this goal does not move partitions.
     for (List<Partition> partitions : clusterModel.getPartitionsByTopic().values()) {
