@@ -121,7 +121,7 @@ public class KafkaSampleStore implements SampleStore {
       long randomToken = RANDOM.nextLong();
       consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                                 (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
-      consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "LiKafkaCruiseControlSampleStore" + randomToken);
+      consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KafkaCruiseControlSampleStore" + randomToken);
       consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, CONSUMER_CLIENT_ID + randomToken);
       consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
       consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
