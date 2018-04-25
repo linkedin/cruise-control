@@ -126,7 +126,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     _windowRollingLock = new ReentrantLock();
     _maxAllowedExtrapolationsPerEntity = maxAllowedExtrapolationsPerEntity;
     _metricDef = metricDef;
-    _aggregatorState = new MetricSampleAggregatorState<>(_generation.get(), _windowMs, completenessCacheSize);
+    _aggregatorState = new MetricSampleAggregatorState<>(numWindows, _windowMs, completenessCacheSize);
     _oldestWindowIndex = 0L;
     _currentWindowIndex = 0L;
   }
@@ -157,13 +157,12 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
         });
     LOG.trace("Adding sample {} to window index {}", sample, windowIndex);
     rawMetricValues.addSample(sample, windowIndex, _metricDef);
+    long generation = _generation.get();
     if (newWindowRolledOut || windowIndex != _currentWindowIndex) {
-      long generation = _generation.incrementAndGet();
-      // Data has been inserted to an old window.
-      if (windowIndex != _currentWindowIndex) {
-        _aggregatorState.updateWindowGeneration(windowIndex, generation);
-      }
+      generation = _generation.incrementAndGet();
     }
+    // Data has been inserted to an old window.
+    _aggregatorState.updateWindowGeneration(windowIndex, generation);
     return true;
   }
 
@@ -200,7 +199,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
       maybeUpdateAggregatorState();
       AggregationOptions<G, E> interpretedOptions = interpretAggregationOptions(options);
       MetricSampleCompleteness<G, E> completeness =
-          _aggregatorState.completeness(fromWindowIndex, toWindowIndex, interpretedOptions);
+          _aggregatorState.completeness(fromWindowIndex, toWindowIndex, interpretedOptions, generation());
       // We use the original time from and to here because they are only for logging purpose.
       validateCompleteness(from, to, completeness, interpretedOptions);
 
@@ -268,7 +267,10 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
         return new MetricSampleCompleteness<>(generation(), _windowMs);
       }
       maybeUpdateAggregatorState();
-      return _aggregatorState.completeness(fromWindowIndex, toWindowIndex, interpretAggregationOptions(options));
+      return _aggregatorState.completeness(fromWindowIndex,
+                                           toWindowIndex,
+                                           interpretAggregationOptions(options),
+                                           generation());
     } finally {
       _windowRollingLock.unlock();
     }
@@ -427,11 +429,8 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
 
   private void maybeUpdateAggregatorState() {
     long currentGeneration = generation();
-    if (_aggregatorState.generation() < currentGeneration) {
-      for (long windowIdx : _aggregatorState.windowIndexesToUpdate(currentGeneration, _oldestWindowIndex, _currentWindowIndex)) {
-        _aggregatorState.updateWindowState(windowIdx, getWindowState(windowIdx, currentGeneration));
-      }
-      _aggregatorState.setGeneration(currentGeneration);
+    for (long windowIdx : _aggregatorState.windowIndexesToUpdate(_oldestWindowIndex, _currentWindowIndex)) {
+      _aggregatorState.updateWindowState(windowIdx, getWindowState(windowIdx, currentGeneration));
     }
   }
 
@@ -484,6 +483,8 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
       rawValues.updateOldestWindowIndex(startingWindowIndex + numIndexesToReset);
       rawValues.resetWindowIndexes(startingWindowIndex, numIndexesToReset);
     }
+    _aggregatorState.updateOldestWindowIndex(startingWindowIndex + numIndexesToReset);
+    _aggregatorState.resetWindowIndexes(startingWindowIndex, numIndexesToReset);
   }
 
   private void validateCompleteness(long from,

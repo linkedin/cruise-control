@@ -344,6 +344,10 @@ public class MetricSampleAggregatorTest {
       assertEquals(NUM_WINDOWS, valuesAndExtrapolations.windows().size());
       assertTrue(valuesAndExtrapolations.extrapolations().isEmpty());
     }
+    MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
+    for (double validPartitionRatio : completeness.validEntityRatioByWindowIndex().values()) {
+      assertEquals(1.0, validPartitionRatio, EPSILON);
+    }
   }
 
   private MetricSampleAggregator<String, IntegerEntity> prepareCompletenessTestEnv() {
