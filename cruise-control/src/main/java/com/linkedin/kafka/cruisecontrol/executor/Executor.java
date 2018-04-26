@@ -230,6 +230,7 @@ public class Executor {
      */
     private void execute() {
       _state = ExecutorState.State.EXECUTION_STARTED;
+      _numFinishedLeadershipMovements = 0;
       _executorState = ExecutorState.executionStarted();
       _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
       try {
