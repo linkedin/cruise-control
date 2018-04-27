@@ -31,9 +31,7 @@ import java.util.Set;
  * may change according to the values of other configurations. You can override {@link Recommender} to get valid
  * values and set visibility of a configuration given the current configuration values.
  *
- * <p/>
  * To use the class:
- * <p/>
  * <pre>
  * ConfigDef defs = new ConfigDef();
  *
@@ -42,7 +40,7 @@ import java.util.Set;
  * defs.define(&quot;config_with_dependents&quot;, Type.INT, &quot;Configuration with dependents.&quot;, &quot;group&quot;,
  * 1, &quot;Config With Dependents&quot;, Arrays.asList(&quot;config_with_default&quot;,&quot;config_with_validator&quot;));
  *
- * Map&lt;String, String&gt; props = new HashMap&lt;&gt();
+ * Map&lt;String, String&gt; props = new HashMap&lt;&gt;();
  * props.put(&quot;config_with_default&quot;, &quot;some value&quot;);
  * props.put(&quot;config_with_dependents&quot;, &quot;some other value&quot;);
  *
@@ -56,7 +54,6 @@ import java.util.Set;
  * List&lt;Config&gt; configs = defs.validate(props);
  * The {@link Config} contains updated configuration information given the current configuration values.
  * </pre>
- * <p/>
  * This class can be used standalone or in combination with {@link AbstractConfig} which provides some additional
  * functionality for accessing configs.
  */

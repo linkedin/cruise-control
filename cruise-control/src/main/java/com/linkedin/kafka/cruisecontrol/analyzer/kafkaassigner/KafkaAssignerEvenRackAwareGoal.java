@@ -351,7 +351,8 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   }
 
   /**
-   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   * @deprecated
+   * Please use {@link #actionAcceptance(BalancingAction, ClusterModel)} instead.
    */
   @Override
   public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {

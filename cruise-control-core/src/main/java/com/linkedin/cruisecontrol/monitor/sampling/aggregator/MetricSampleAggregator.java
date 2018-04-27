@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
  *   </ul>
  *   The validity of an entity is determined by its validity in all the windows. An entity is considered as invalid
  *   if there is an invalid window or there are too many windows with extrapolations.
- * </p>
+ *
  * <p>
  *   Furthermore, each entity belongs to an aggregation entity group. The aggregation entity group is only used
  *   for metric aggregation purpose. Users can specify the {@link AggregationOptions.Granularity} of the metric aggregation. The
@@ -64,7 +64,7 @@ import org.slf4j.LoggerFactory;
  *       the entities in the same aggregation entity group.
  *     </li>
  *   </ul>
- * </p>
+ *
  * <p>
  *   From per window's perspective, for each window, there is a given set of <tt>valid</tt> entities and entity
  *   groups as described above. The validity of a window depends on the requirements specified in the

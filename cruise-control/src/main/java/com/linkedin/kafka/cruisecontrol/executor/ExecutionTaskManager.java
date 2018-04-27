@@ -21,8 +21,8 @@ import org.apache.kafka.common.utils.Time;
 /**
  * The class that helps track the execution status for the balancing.
  * It does the following things:
- * <li>1. Keep track of the in progress partition movements between each pair of source-destination broker.
- * <li>2. When one partition movement finishes, it check the involved source and destination broker to see
+ * 1. Keep track of the in progress partition movements between each pair of source-destination broker.
+ * 2. When one partition movement finishes, it check the involved source and destination broker to see
  * if we can run more partition movements.
  * We only keep track of the number of concurrent partition movements but not the sizes of the partitions.
  * Because the concurrent level determines how much impact the balancing process would have on the involved

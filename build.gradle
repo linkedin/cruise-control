@@ -2,6 +2,43 @@
  * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
+plugins {
+  id "com.jfrog.artifactory"
+  id "idea"
+}
+
+group = 'com.linkedin.cruisecontrol'
+
+project.ext {
+  pomConfig = {
+    url "https://github.com/linkedin/cruise-control"
+    licenses {
+      license {
+        name "BSD 2-CLAUSE LICENSE"
+        url "https://opensource.org/licenses/BSD-2-Clause"
+      }
+    }
+    developers {
+      developer {
+        name "Adem Efe Gencer"
+        email "efegencer@gmail.com"
+      }
+      developer {
+        name "Jiangjie (Becket) Qin"
+        email "becket.qin@gmail.com"
+      }
+      developer {
+        name "Sir Joel Koshy"
+        email "jjkoshy@yahoo.com"
+      }
+    }
+    scm {
+      url "https://github.com/linkedin/cruise-control"
+    }
+  }
+}
+
+
 allprojects {
   apply plugin: 'idea'
   apply plugin: 'eclipse'
@@ -9,11 +46,6 @@ allprojects {
   repositories {
     mavenCentral()
     jcenter()
-  }
-
-  //wrapper generation task
-  task wrapper(type: Wrapper) {
-    gradleVersion = '4.6'
   }
 }
 
@@ -62,6 +94,20 @@ subprojects {
 }
 
 project(':cruise-control-core') {
+  apply plugin: 'maven-publish'
+  apply plugin: 'com.jfrog.artifactory'
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+  }
+
+  task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+  }
 
   configurations {
     testOutput
@@ -74,6 +120,25 @@ project(':cruise-control-core') {
 
     testOutput sourceSets.test.output
   }
+
+  publishing {
+    publications {
+      java(MavenPublication) {
+        from components.java
+        artifact sourcesJar
+        artifact javadocJar
+        pom.withXml {
+          def root = asNode()
+          root.appendNode('name', 'cruise-control-core')
+          root.appendNode('description', 'cruise control core related')
+          root.children().last() + rootProject.ext.pomConfig
+        }
+      }
+    }
+  }
+
+  artifactoryPublish.dependsOn assemble
+  artifactoryPublish.dependsOn publishToMavenLocal
 
   sourceSets {
     main {
@@ -93,6 +158,20 @@ project(':cruise-control-core') {
 
 project(':cruise-control') {
   apply plugin: 'scala'
+  apply plugin: 'maven-publish'
+  apply plugin: 'com.jfrog.artifactory'
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+  }
+
+  task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+  }
 
   //needed because our java classes depend on scala classes, so must be compiled by scala
   sourceSets {
@@ -143,6 +222,25 @@ project(':cruise-control') {
     testCompile 'commons-io:commons-io:2.5'
   }
 
+  publishing {
+    publications {
+      java(MavenPublication) {
+        from components.java
+        artifact sourcesJar
+        artifact javadocJar
+        pom.withXml {
+          def root = asNode()
+          root.appendNode('name', 'cruise-control')
+          root.appendNode('description', 'cruise control related')
+          root.children().last() + rootProject.ext.pomConfig
+        }
+      }
+    }
+  }
+
+  artifactoryPublish.dependsOn assemble
+  artifactoryPublish.dependsOn publishToMavenLocal
+
   tasks.create(name: "copyDependantLibs", type: Copy) {
     from (configurations.testRuntime) {
       include('slf4j-log4j12*')
@@ -160,9 +258,23 @@ project(':cruise-control') {
 }
 
 project(':cruise-control-metrics-reporter') {
+  apply plugin: 'maven-publish'
+  apply plugin: 'com.jfrog.artifactory'
 
   configurations {
     testOutput
+  }
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+  }
+
+  task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
   }
 
   dependencies {
@@ -181,5 +293,53 @@ project(':cruise-control-metrics-reporter') {
     testOutput sourceSets.test.output
   }
 
+  publishing {
+    publications {
+      java(MavenPublication) {
+        from components.java
+        artifact sourcesJar
+        artifact javadocJar
+        pom.withXml {
+          def root = asNode()
+          root.appendNode('name', 'cruise-control-metrics-reporter')
+          root.appendNode('description', 'cruise control metrics reporter related')
+          root.children().last() + rootProject.ext.pomConfig
+        }
+      }
+    }
+  }
+
+  artifactoryPublish.dependsOn assemble
+  artifactoryPublish.dependsOn publishToMavenLocal
+
 }
 
+artifactoryPublish.skip = true
+artifactory {
+  contextUrl = 'https://linkedin.jfrog.io/linkedin'
+  publish {
+    repoKey = 'cruise-control'
+    username = System.getenv('ARTIFACTORY_USER')
+    password = System.getenv('ARTIFACTORY_KEY')
+
+    defaults {
+      publications ('java')
+      publishBuildInfo = true
+      publishArtifacts = true
+      publishPom = true
+      publishIvy = true
+    }
+  }
+  clientConfig.setIncludeEnvVars(false)
+}
+
+task distributeBuild(type: com.linkedin.gradle.build.DistributeTask) {
+//task distributeBuild(type: java.lang.Integer) {
+  dependsOn ':artifactoryPublish', ':cruise-control:artifactoryPublish', ':cruise-control-core:artifactoryPublish', ':cruise-control-metrics-reporter:artifactoryPublish'
+}
+
+//wrapper generation task
+task wrapper(type: Wrapper) {
+  gradleVersion = '4.6'
+  distributionType = Wrapper.DistributionType.ALL
+}

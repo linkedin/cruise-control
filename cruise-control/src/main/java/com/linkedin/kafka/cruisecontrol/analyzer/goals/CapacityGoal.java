@@ -55,7 +55,8 @@ public abstract class CapacityGoal extends AbstractGoal {
   protected abstract Resource resource();
 
   /**
-   * @deprecated Please use {@link this#actionAcceptance(BalancingAction, ClusterModel)} instead.
+   * @deprecated
+   * Please use {@link #actionAcceptance(BalancingAction, ClusterModel)} instead.
    */
   @Override
   public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
@@ -73,7 +74,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    *   (2) Check if leadership CPU movement is acceptable: In reality, CPU movement carries only a fraction of
    * leader's CPU load.
    * To optimize CC performance, we avoid calculation of the expected leadership CPU utilization, and assume that
-   * if (action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT && resource() == Resource.CPU),
+   * if (action.balancingAction() == ActionType.LEADERSHIP_MOVEMENT &amp;&amp; resource() == Resource.CPU),
    * then the expected leadership CPU utilization would be the full CPU utilization of the leader.
    * <p>
    * ## Replica Movement: impacts any resource.
