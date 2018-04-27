@@ -30,7 +30,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMet
  * A metric fetcher that is responsible for fetching the metric samples to monitor the cluster load.
  */
 class SamplingFetcher extends MetricFetcher {
-  private final Logger LOG = LoggerFactory.getLogger(MetricFetcher.class);
+  private final Logger LOG = LoggerFactory.getLogger(SamplingFetcher.class);
   // The metadata of the cluster this metric fetcher is fetching from.
   private final MetricSampler _metricSampler;
   private final Cluster _cluster;
@@ -147,7 +147,7 @@ class SamplingFetcher extends MetricFetcher {
                        + "The metric sample will be ignored.", tp);
         }
       }
-      LOG.debug("Collected {}{} partition metric samples for {} partitions. Total partition assigned: {}.",
+      LOG.info("Collected {}{} partition metric samples for {} partitions. Total partition assigned: {}.",
                 partitionMetricSamples.size(), discarded > 0 ? String.format("(%d discarded)", discarded) : "",
                 returnedPartitions.size(), _assignedPartitions.size());
     } else {
@@ -173,7 +173,7 @@ class SamplingFetcher extends MetricFetcher {
         }
         returnedBrokerIds.add(brokerMetricSample.brokerId());
       }
-      LOG.debug("Collected {}{} broker metric samples for {} brokers.",
+      LOG.info("Collected {}{} broker metric samples for {} brokers.",
                 brokerMetricSamples.size(), discarded > 0 ? String.format("(%d discarded)", discarded) : "",
                 returnedBrokerIds.size());
     } else {

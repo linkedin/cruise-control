@@ -9,6 +9,7 @@ import com.linkedin.cruisecontrol.model.Entity;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -209,6 +210,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
                                                              AggregationOptions<G, E> options,
                                                              long currentGeneration) {
     MetricSampleCompleteness<G, E> completeness = new MetricSampleCompleteness<>(currentGeneration, _windowMs);
+    Map<E, Integer> entityExtrapolations = new HashMap<>();
     completeness.addValidEntities(new HashSet<>(options.interestedEntities()));
     completeness.addValidEntityGroups(new HashSet<>(options.interestedEntityGroups()));
 
@@ -220,7 +222,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
         break;
       }
       WindowState<G, E> windowState = entry.getValue();
-      windowState.maybeInclude(windowIdx, completeness, options);
+      windowState.maybeInclude(windowIdx, completeness, entityExtrapolations, options);
     }
     // No window is included. We need to clear the valid entity and entity group. Otherwise we keep them.
     if (completeness.validWindowIndexes().isEmpty()) {

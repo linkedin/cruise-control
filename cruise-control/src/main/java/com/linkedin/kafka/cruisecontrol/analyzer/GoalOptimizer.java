@@ -223,11 +223,11 @@ public class GoalOptimizer implements Runnable {
    * Get the analyzer state from the goal optimizer.
    */
   public AnalyzerState state() {
-    Map<Goal, Boolean> goalRediness = new LinkedHashMap<>(_goalsByPriority.size());
+    Map<Goal, Boolean> goalReadiness = new LinkedHashMap<>(_goalsByPriority.size());
     for (Goal goal : _goalsByPriority.values()) {
-      goalRediness.put(goal, _loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements()));
+      goalReadiness.put(goal, _loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements()));
     }
-    return new AnalyzerState(_bestProposal != null, goalRediness);
+    return new AnalyzerState(_bestProposal != null, goalReadiness);
   }
 
   /**

@@ -350,26 +350,24 @@ public class Executor {
     private void moveLeaderships() {
       int numTotalLeadershipMovements = _executionTaskManager.remainingLeadershipMovements().size();
       LOG.info("Starting {} leadership movements.", numTotalLeadershipMovements);
-      int leaderMoved = 0;
+      _numFinishedLeadershipMovements = 0;
       while (!_executionTaskManager.remainingLeadershipMovements().isEmpty() && !_stopRequested.get()) {
         updateOngoingExecutionState();
-        moveLeadershipInBatch(numTotalLeadershipMovements);
+        _numFinishedLeadershipMovements += moveLeadershipInBatch();
         LOG.info("{}/{} ({}%) leadership movements completed.", _numFinishedLeadershipMovements,
                  numTotalLeadershipMovements, _numFinishedLeadershipMovements * 100 / numTotalLeadershipMovements);
       }
       LOG.info("Leadership movements finished.");
     }
 
-    private void moveLeadershipInBatch(int numTotalLeadershipMovements) {
+    private int moveLeadershipInBatch() {
       List<ExecutionTask> leadershipMovementTasks = _executionTaskManager.getLeadershipMovementTasks();
       int numLeadershipToMove = leadershipMovementTasks.size();
       LOG.debug("Executing {} leadership movements in a batch.", numLeadershipToMove);
-      int alreadyFinishedLeadershipMovements = _numFinishedLeadershipMovements;
       // Execute the leadership movements.
       if (!leadershipMovementTasks.isEmpty() && !_stopRequested.get()) {
         // Mark leadership movements in progress.
         _executionTaskManager.markTasksInProgress(leadershipMovementTasks);
-        _numFinishedLeadershipMovements = alreadyFinishedLeadershipMovements + numLeadershipToMove - leadershipMovementTasks.size();
 
         // Run preferred leader election.
         ExecutorUtils.executePreferredLeaderElection(_zkUtils, leadershipMovementTasks);
@@ -378,7 +376,7 @@ public class Executor {
           waitForExecutionTaskToFinish();
         }
       }
-      _numFinishedLeadershipMovements = alreadyFinishedLeadershipMovements + numLeadershipToMove;
+      return numLeadershipToMove;
     }
 
     /**
