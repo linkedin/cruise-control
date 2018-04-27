@@ -11,7 +11,7 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import static com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregationOptions.Granularity.ENTITY;
+import static com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregationOptions.Granularity.ENTITY_GROUP;
 
 
 /**
@@ -19,28 +19,45 @@ import static com.linkedin.cruisecontrol.monitor.sampling.aggregator.Aggregation
  */
 public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
   private final Set<E> _validEntities;
+  private final Set<E> _extrapolatedEntities;
 
   public WindowState(long generation) {
     super(generation);
     _validEntities = new HashSet<>();
+    _extrapolatedEntities = new HashSet<>();
   }
 
   void addValidEntities(E entity) {
     _validEntities.add(entity);
   }
 
+  void addExtrapolatedEntities(E entity) {
+    _extrapolatedEntities.add(entity);
+  }
+
   void maybeInclude(long windowIndex,
                     MetricSampleCompleteness<G, E> completeness,
+                    Map<E, Integer> includedEntityExtrapolations,
                     AggregationOptions<G, E> options) {
-    Set<G> validGroupsForWindow = fillInValidRatios(windowIndex, completeness, options);
-    Set<E> validEntitiesForWindow =
-        options.granularity() == ENTITY ? _validEntities : validEntitiesWithGroupGranularity(validGroupsForWindow);
-
+    Set<E> validEntitiesForWindow = new HashSet<>();
+    Set<G> validGroupsForWindow = new HashSet<>();
+    // Get all the valid groups based all the valid entities in this window.
+    fillInValidRatios(windowIndex, completeness, includedEntityExtrapolations, options,
+                      validEntitiesForWindow, validGroupsForWindow);
+    // Depending on the aggregation granularity, get the valid entities.
+    if (options.granularity() == ENTITY_GROUP) {
+      validEntitiesForWindow.removeIf(e -> !validGroupsForWindow.contains(e.group()));
+    }
     if (meetValidEntityRatioAfterMerge(completeness, validEntitiesForWindow, options)
         && meetValidEntityGroupRatioAfterMerge(completeness, validGroupsForWindow, options)) {
       completeness.retainAllValidEntities(validEntitiesForWindow);
       completeness.retainAllValidEntityGroups(validGroupsForWindow);
       completeness.addValidWindowIndex(windowIndex);
+      validEntitiesForWindow.forEach(entity -> {
+        if (_extrapolatedEntities.contains(entity)) {
+          includedEntityExtrapolations.compute(entity, (e, c) -> c == null ? 1 : c + 1);
+        }
+      });
     }
   }
 
@@ -48,7 +65,8 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
                                                  Set<E> validEntitiesForWindow,
                                                  AggregationOptions<G, E> options) {
     int totalNumEntities = options.interestedEntities().size();
-    int numValidEntitiesAfterMerge = numValidElementsAfterMerge(completeness.validEntities(), validEntitiesForWindow);
+    int numValidEntitiesAfterMerge =
+        numValidElementsAfterMerge(completeness.validEntities(), validEntitiesForWindow);
     return (float) numValidEntitiesAfterMerge / totalNumEntities >= options.minValidEntityRatio();
   }
 
@@ -63,37 +81,54 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
 
   /**
    * Fill in the valid entity ratio and valid entity group ratio for the given window index and aggregation option.
+   *
+   * Also get valid entities and groups.
    */
-  private Set<G> fillInValidRatios(long windowIndex,
-                                   MetricSampleCompleteness<G, E> completeness,
-                                   AggregationOptions<G, E> options) {
-    int numValidEntities = 0;
-    Map<G, Integer> numValidEntitiesByGroup = new HashMap<>();
-    Set<G> invalidGroups = new HashSet<>();
+  private void fillInValidRatios(long windowIndex,
+                                 MetricSampleCompleteness<G, E> completeness,
+                                 Map<E, Integer> includedExtrapolationsByEntity,
+                                 AggregationOptions<G, E> options,
+                                 Set<E> validEntitiesForOption,
+                                 Set<G> validGroupsForOption) {
+    int numExtrapolatedEntitiesForWindow = 0;
+    Map<G, Integer> numValidEntitiesByGroupForOption = new HashMap<>();
+    Set<G> invalidGroupsForOption = new HashSet<>();
     // Get the total number of valid entities and the number of entities in each group. Also find the invalid groups.
     for (E entity : options.interestedEntities()) {
       if (_validEntities.contains(entity)) {
-        numValidEntities++;
-        numValidEntitiesByGroup.compute(entity.group(), (g, v) -> v == null ? 1 : v + 1);
+        int extrapolationAddition = 0;
+        if (_extrapolatedEntities.contains(entity)) {
+          numExtrapolatedEntitiesForWindow++;
+          extrapolationAddition = 1;
+        }
+        // Ensure this window can add more extrapolations.
+        int includedExtrapolations = includedExtrapolationsByEntity.getOrDefault(entity, 0);
+        if (includedExtrapolations + extrapolationAddition <= options.maxAllowedExtrapolationsPerEntity()) {
+          validEntitiesForOption.add(entity);
+          numValidEntitiesByGroupForOption.compute(entity.group(), (g, v) -> v == null ? 1 : v + 1);
+        } else {
+          invalidGroupsForOption.add(entity.group());
+        }
       } else {
-        invalidGroups.add(entity.group());
+        invalidGroupsForOption.add(entity.group());
       }
     }
     // The valid entities at group granularity is the total number of valid entities excluding those belonging
     // to an invalid group (a group containing invalid entities).
-    int validEntitiesWithGroupGranularity = numValidEntities;
-    for (G group : invalidGroups) {
-      Integer count = numValidEntitiesByGroup.remove(group);
+    int validEntitiesWithGroupGranularity = validEntitiesForOption.size();
+    for (G group : invalidGroupsForOption) {
+      Integer count = numValidEntitiesByGroupForOption.remove(group);
       if (count != null) {
         validEntitiesWithGroupGranularity -= count;
       }
     }
-    Set<G> validGroups = numValidEntitiesByGroup.keySet();
+    validGroupsForOption.addAll(numValidEntitiesByGroupForOption.keySet());
     int totalNumEntities = options.interestedEntities().size();
-    completeness.addValidEntityRatio(windowIndex, (float) numValidEntities / totalNumEntities);
+    completeness.addValidEntityRatio(windowIndex, (float) validEntitiesForOption.size() / totalNumEntities);
     completeness.addValidEntityRatioWithGroupGranularity(windowIndex, (float) validEntitiesWithGroupGranularity / totalNumEntities);
-    completeness.addValidEntityGroupRatio(windowIndex, (float) validGroups.size() / options.interestedEntityGroups().size());
-    return validGroups;
+    completeness.addExtrapolationEntityRatio(windowIndex, (float) numExtrapolatedEntitiesForWindow / totalNumEntities);
+    completeness.addValidEntityGroupRatio(windowIndex,
+                                          (float) numValidEntitiesByGroupForOption.size() / options.interestedEntityGroups().size());
   }
 
   private int numValidElementsAfterMerge(Set<?> validElements, Set<?> validElementsToMerge) {
@@ -106,9 +141,11 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
     return numValidElements;
   }
 
-  private Set<E> validEntitiesWithGroupGranularity(Set<G> validGroups) {
-    Set<E> result = new HashSet<>(_validEntities);
-    result.removeIf(entity -> !validGroups.contains(entity.group()));
-    return result;
+  private boolean canExtrapolate(E entity,
+                                 Map<E, Integer> includedEntityExtrapolations,
+                                 AggregationOptions<G, E> options) {
+    int additionalExtrapolation = _extrapolatedEntities.contains(entity) ? 1 : 0;
+    int includedExtrapolations = includedEntityExtrapolations.getOrDefault(entity, 0);
+    return includedExtrapolations + additionalExtrapolation <= options.maxAllowedExtrapolationsPerEntity();
   }
 }

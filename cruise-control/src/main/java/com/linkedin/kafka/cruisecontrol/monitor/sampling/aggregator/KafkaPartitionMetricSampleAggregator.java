@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
  */
 public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator<String, PartitionEntity> {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaPartitionMetricSampleAggregator.class);
+  private final int _maxAllowedExtrapolationsPerPartition;
   private final Metadata _metadata;
 
   /**
@@ -57,10 +58,12 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
     super(config.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG),
           config.getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG),
           config.getInt(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG),
-          config.getInt(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG),
           config.getInt(KafkaCruiseControlConfig.PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG),
           KafkaMetricDef.commonMetricDef());
     _metadata = metadata;
+    _maxAllowedExtrapolationsPerPartition =
+        config.getInt(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG);
+
   }
 
   /**
@@ -181,6 +184,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
         new AggregationOptions<>(minMonitoredPartitionsPercentage,
                                  0.0,
                                  1,
+                                 _maxAllowedExtrapolationsPerPartition,
                                  allPartitions(clusterAndGeneration.cluster()),
                                  AggregationOptions.Granularity.ENTITY_GROUP,
                                  true);
@@ -199,6 +203,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
         new AggregationOptions<>(0.0,
                                  0.0,
                                  1,
+                                 _maxAllowedExtrapolationsPerPartition,
                                  allPartitions(clusterAndGeneration.cluster()),
                                  AggregationOptions.Granularity.ENTITY_GROUP,
                                  true);
@@ -216,6 +221,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
         new AggregationOptions<>(0.0,
                                  0.0,
                                  1,
+                                 _maxAllowedExtrapolationsPerPartition,
                                  allPartitions(clusterAndGeneration.cluster()),
                                  AggregationOptions.Granularity.ENTITY_GROUP,
                                  true);
@@ -287,6 +293,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
     return new AggregationOptions<>(requirements.minMonitoredPartitionsPercentage(),
                                     0.0,
                                     requirements.minRequiredNumWindows(),
+                                    _maxAllowedExtrapolationsPerPartition,
                                     allPartitions,
                                     AggregationOptions.Granularity.ENTITY_GROUP,
                                     requirements.includeAllTopics());

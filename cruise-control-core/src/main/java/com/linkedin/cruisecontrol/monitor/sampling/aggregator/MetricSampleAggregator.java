@@ -91,7 +91,6 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   protected final int _minSamplesPerWindow;
   protected final int _numWindowsToKeep;
   protected final long _windowMs;
-  protected final int _maxAllowedExtrapolationsPerEntity;
   protected final MetricDef _metricDef;
 
   private volatile long _currentWindowIndex;
@@ -103,8 +102,6 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * @param numWindows the number of windows needed.
    * @param windowMs the size of each window in milliseconds
    * @param minSamplesPerWindow minimum samples per window.
-   * @param maxAllowedExtrapolationsPerEntity the maximum allowed number of extrapolations for an entity if
-   *                                                 some windows miss data.
    * @param completenessCacheSize the completeness cache size, i.e. the number of recent completeness query result to
    *                              cache.
    * @param metricDef metric definitions.
@@ -112,7 +109,6 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   public MetricSampleAggregator(int numWindows,
                                 long windowMs,
                                 int minSamplesPerWindow,
-                                int maxAllowedExtrapolationsPerEntity,
                                 int completenessCacheSize,
                                 MetricDef metricDef) {
     super(0);
@@ -124,7 +120,6 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     _numWindowsToKeep = _numWindows + 1;
     _minSamplesPerWindow = minSamplesPerWindow;
     _windowRollingLock = new ReentrantLock();
-    _maxAllowedExtrapolationsPerEntity = maxAllowedExtrapolationsPerEntity;
     _metricDef = metricDef;
     _aggregatorState = new MetricSampleAggregatorState<>(numWindows, _windowMs, completenessCacheSize);
     _oldestWindowIndex = 0L;
@@ -221,7 +216,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
               valuesAndExtrapolations = rawValues.aggregate(completeness.validWindowIndexes(), _metricDef);
           valuesAndExtrapolations.setWindows(windows);
           result.addResult(entity, valuesAndExtrapolations);
-          if (!rawValues.isValid(_maxAllowedExtrapolationsPerEntity)) {
+          if (!rawValues.isValid(options.maxAllowedExtrapolationsPerEntity())) {
             result.recordInvalidEntity(entity);
           }
         }
@@ -439,7 +434,10 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     for (Map.Entry<E, RawMetricValues> entry : _rawMetrics.entrySet()) {
       E entity = entry.getKey();
       RawMetricValues rawValues = entry.getValue();
-      if (rawValues.isValidAtWindowIndex(windowIdx) && rawValues.numWindowsWithExtrapolation() <= _maxAllowedExtrapolationsPerEntity) {
+      if (rawValues.isExtrapolatedAtWindowIndex(windowIdx)) {
+        windowState.addExtrapolatedEntities(entity);
+      }
+      if (rawValues.isValidAtWindowIndex(windowIdx)) {
         windowState.addValidEntities(entity);
       }
     }
@@ -541,6 +539,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     return new AggregationOptions<>(options.minValidEntityRatio(),
                                     options.minValidEntityGroupRatio(),
                                     options.minValidWindows(),
+                                    options.maxAllowedExtrapolationsPerEntity(),
                                     entitiesToInclude,
                                     options.granularity(),
                                     options.includeInvalidEntities());
