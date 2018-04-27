@@ -156,8 +156,6 @@ public class Executor {
    * @param loadMonitor Load monitor.
    */
   private void startExecution(LoadMonitor loadMonitor) {
-    // Pause the metric sampling to avoid the loss of accuracy during execution.
-    loadMonitor.pauseMetricSampling();
     ZkUtils zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
     try {
       if (!ExecutorUtils.partitionsBeingReassigned(zkUtils).isEmpty()) {
@@ -232,6 +230,8 @@ public class Executor {
       _state = ExecutorState.State.EXECUTION_STARTED;
       _executorState = ExecutorState.executionStarted();
       _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
+      // Pause the metric sampling to avoid the loss of accuracy during execution.
+      _loadMonitor.pauseMetricSampling();
       try {
         // 1. Move replicas if possible.
         if (_state == ExecutorState.State.EXECUTION_STARTED) {
