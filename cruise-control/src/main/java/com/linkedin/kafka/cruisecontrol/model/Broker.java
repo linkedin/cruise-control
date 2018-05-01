@@ -55,6 +55,9 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param brokerCapacity The capacity of the broker.
    */
   Broker(Host host, int id, Map<Resource, Double> brokerCapacity) {
+    if (brokerCapacity == null) {
+      throw new IllegalArgumentException("Attempt to create broker " + id + " on host " + host.name() + " with null capacity.");
+    }
     _host = host;
     _id = id;
     _brokerCapacity = new double[Resource.cachedValues().size()];
