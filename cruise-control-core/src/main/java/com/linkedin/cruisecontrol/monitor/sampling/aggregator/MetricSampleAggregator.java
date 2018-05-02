@@ -146,9 +146,16 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     boolean newWindowRolledOut = maybeRollOutNewWindow(windowIndex);
     RawMetricValues rawMetricValues =
         _rawMetrics.computeIfAbsent(identity(sample.entity()), k -> {
-          RawMetricValues rawValues = new RawMetricValues(_numWindowsToKeep, _minSamplesPerWindow);
-          rawValues.updateOldestWindowIndex(_oldestWindowIndex);
-          return rawValues;
+          // Need to grab the lock to make sure the raw value for this partition is updated correctly when
+          // the raw values was created in an existing window while a new window is being rolled out.
+          _windowRollingLock.lock();
+          try {
+            RawMetricValues rawValues = new RawMetricValues(_numWindowsToKeep, _minSamplesPerWindow);
+            rawValues.updateOldestWindowIndex(_oldestWindowIndex);
+            return rawValues;
+          } finally {
+            _windowRollingLock.unlock();
+          }
         });
     LOG.trace("Adding sample {} to window index {}", sample, windowIndex);
     rawMetricValues.addSample(sample, windowIndex, _metricDef);
