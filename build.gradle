@@ -40,8 +40,6 @@ project.ext {
 
 
 allprojects {
-  apply plugin: 'idea'
-  apply plugin: 'eclipse'
 
   repositories {
     mavenCentral()
@@ -53,6 +51,18 @@ subprojects {
   apply plugin: 'java'
   apply plugin: 'checkstyle'
   apply plugin: 'findbugs'
+
+  test.dependsOn('checkstyleMain', 'checkstyleTest')
+
+  task sourcesJar(type: Jar, dependsOn: classes) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+  }
+
+  task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier = 'javadoc'
+    from javadoc.destinationDir
+  }
 
   //code quality and inspections
   checkstyle {
@@ -96,18 +106,6 @@ subprojects {
 project(':cruise-control-core') {
   apply plugin: 'maven-publish'
   apply plugin: 'com.jfrog.artifactory'
-
-  test.dependsOn('checkstyleMain', 'checkstyleTest')
-
-  task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-  }
-
-  task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-  }
 
   configurations {
     testOutput
@@ -160,18 +158,6 @@ project(':cruise-control') {
   apply plugin: 'scala'
   apply plugin: 'maven-publish'
   apply plugin: 'com.jfrog.artifactory'
-
-  test.dependsOn('checkstyleMain', 'checkstyleTest')
-
-  task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-  }
-
-  task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-  }
 
   //needed because our java classes depend on scala classes, so must be compiled by scala
   sourceSets {
@@ -265,18 +251,6 @@ project(':cruise-control-metrics-reporter') {
     testOutput
   }
 
-  test.dependsOn('checkstyleMain', 'checkstyleTest')
-
-  task sourcesJar(type: Jar, dependsOn: classes) {
-    classifier = 'sources'
-    from sourceSets.main.allSource
-  }
-
-  task javadocJar(type: Jar, dependsOn: javadoc) {
-    classifier = 'javadoc'
-    from javadoc.destinationDir
-  }
-
   dependencies {
     compile "org.slf4j:slf4j-api:1.7.25"
     compile "org.apache.kafka:kafka_2.11:0.11.0.2"
@@ -334,7 +308,6 @@ artifactory {
 }
 
 task distributeBuild(type: com.linkedin.gradle.build.DistributeTask) {
-//task distributeBuild(type: java.lang.Integer) {
   dependsOn ':artifactoryPublish', ':cruise-control:artifactoryPublish', ':cruise-control-core:artifactoryPublish', ':cruise-control-metrics-reporter:artifactoryPublish'
 }
 
