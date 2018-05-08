@@ -545,7 +545,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                            JSON_VERSION, stackTrace, errorMessage);
       setJSONResponseCode(response, responseCode);
     } else {
-      resp = errorMessage;
+      resp = errorMessage == null ? "" : errorMessage;
       setResponseCode(response, responseCode);
     }
     response.setContentLength(resp.length());

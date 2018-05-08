@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -244,7 +245,12 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     _windowRollingLock.lock();
     try {
       Map<E, ValuesAndExtrapolations> result = new HashMap<>();
-      _rawMetrics.forEach((entity, rawMetric) -> result.put(entity, rawMetric.peekCurrentWindow(_currentWindowIndex, _metricDef)));
+      _rawMetrics.forEach((entity, rawMetric) -> {
+        ValuesAndExtrapolations vae = rawMetric.peekCurrentWindow(_currentWindowIndex, _metricDef);
+        SortedSet<Long> currentWindows = new TreeSet<>(Collections.singleton(_currentWindowIndex));
+        vae.setWindows(toWindows(currentWindows));
+        result.put(entity, vae);
+      });
       return result;
     } finally {
       _windowRollingLock.unlock();
