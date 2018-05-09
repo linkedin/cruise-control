@@ -41,7 +41,7 @@ public class Broker implements Serializable, Comparable<Broker> {
   private final Set<Replica> _leaderReplicas;
   /** Set of immigrant replicas */
   private final Set<Replica> _immigrantReplicas;
-  /** A map for tracking topic -> (partitionId -> replica). */
+  /** A map for tracking topic -&gt; (partitionId -&gt; replica). */
   private final Map<String, Map<Integer, Replica>> _topicReplicas;
   private final Load _load;
   private final Load _leadershipLoadForNwResources;

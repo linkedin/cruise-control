@@ -1,4 +1,27 @@
 /*
  * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
+buildscript {
+  repositories {
+    maven {
+      url 'https://plugins.gradle.org/m2/'
+    }
+  }
+  dependencies {
+    classpath 'gradle.plugin.net.vivin:gradle-semantic-build-versioning:4.0.0'
+  }
+}
+
+apply plugin: 'net.vivin.gradle-semantic-build-versioning'
+
+//otherwise it defaults to the folder name
+rootProject.name = 'cruise-control'
+
 include 'cruise-control', 'cruise-control-metrics-reporter', 'cruise-control-core'
+
+def gradleVer = GradleVersion.current()
+def minimumVersion = GradleVersion.version("3.5")
+if (gradleVer < minimumVersion) {
+  throw new GradleScriptException("this build cannot be run with gradle < " + minimumVersion + ". current detection version is "
+      + gradleVer + ". use newer gradle or (better yet) use the wrapper", null)
+}

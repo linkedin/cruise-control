@@ -34,7 +34,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.L
  * <li>Proposals of partition movements are tracked by broker and execution Id.
  * </ul>
  * <p>
- * This class tracks the execution proposals for each broker using a Map(id -> List[proposals])
+ * This class tracks the execution proposals for each broker using a Map(id -&gt; List[proposals])
  * The proposal is tracked both under source broker and
  * destination broker's plan.
  * Once a proposal is fulfilled, the proposal will be removed based on its execution ID from both

@@ -122,7 +122,7 @@ public class ClusterModel implements Serializable {
 
   /**
    * Get the distribution of replicas in the cluster at the point of call. Replica distribution is represented by the
-   * map: topic-partition -> broker-id-of-replicas. broker-id-of-replicas[0] represents the leader's broker id.
+   * map: topic-partition -&gt; broker-id-of-replicas. broker-id-of-replicas[0] represents the leader's broker id.
    *
    * @return The replica distribution of leader and follower replicas in the cluster at the point of call.
    */
@@ -623,7 +623,7 @@ public class ClusterModel implements Serializable {
   /**
    * Get a list of sorted (in ascending order by resource) healthy brokers having utilization under:
    * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#_isHostResource} and
-   * {@link Resource#_isBrokerResource)). Utilization threshold might be any capacity constraint thresholds such as
+   * {@link Resource#_isBrokerResource}). Utilization threshold might be any capacity constraint thresholds such as
    * balance or capacity.
    *
    * @param resource             Resource for which brokers will be sorted.

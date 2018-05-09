@@ -277,7 +277,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * <pre>
    * 1. Bootstrap the load monitor
    *    RANGE MODE:
-   *      GET /kafkacruisecontrol/bootstrap?start=[START_TIMESTAMP]&end=[END_TIMESTAMP]
+   *      GET /kafkacruisecontrol/bootstrap?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
    *    SINCE MODE:
    *      GET /kafkacruisecontrol/bootstrap?start=[START_TIMESTAMP]
    *    RECENT MODE:
@@ -285,18 +285,18 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *
    * 2. Train the Kafka Cruise Control linear regression model. The trained model will only be used if
    *    use.linear.regression.model is set to true.
-   *    GET /kafkacruisecontrol/train?start=[START_TIMESTAMP]&end=[END_TIMESTAMP]
+   *    GET /kafkacruisecontrol/train?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
    *
    * 3. Get the cluster load
-   *    GET /kafkacruisecontrol/load?time=[TIMESTAMP]&granularity=[GRANULARITY]
+   *    GET /kafkacruisecontrol/load?time=[TIMESTAMP]&amp;granularity=[GRANULARITY]
    *    The valid granularity value are "replica" and "broker". The default is broker level.
    *
    * 4. Get the partition load sorted by the utilization of a given resource
-   *    GET /kafkacruisecontrol/partition_load?resource=[RESOURCE]&start=[START_TIMESTAMP]&end=[END_TIMESTAMP]
+   *    GET /kafkacruisecontrol/partition_load?resource=[RESOURCE]&amp;start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
    *
    * 5. Get an optimization proposal
-   *    GET /kafkacruisecontrol/proposals?verbose=[ENABLE_VERBOSE]&ignore_proposal_cache=[true/false]
-   *    &goals=[goal1,goal2...]&data_from=[valid_windows/valid_partitions]
+   *    GET /kafkacruisecontrol/proposals?verbose=[ENABLE_VERBOSE]&amp;ignore_proposal_cache=[true/false]
+   *    &amp;goals=[goal1,goal2...]&amp;data_from=[valid_windows/valid_partitions]
    *
    * 6. query the state of Kafka Cruise Control
    *    GET /kafkacruisecontrol/state
@@ -396,21 +396,21 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *
    * <pre>
    * 1. Decommission a broker.
-   *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&dryrun=[true/false]&throttle_removed_broker=[true/false]&goals=[goal1,goal2...]
+   *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;throttle_removed_broker=[true/false]&amp;goals=[goal1,goal2...]
    *
    * 2. Add a broker
-   *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&dryrun=[true/false]&throttle_added_broker=[true/false]&goals=[goal1,goal2...]
+   *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;throttle_added_broker=[true/false]&amp;goals=[goal1,goal2...]
    *
    * 3. Trigger a workload balance.
-   *    POST /kafkacruisecontrol/rebalance?dryrun=[true/false]&force=[true/false]&goals=[goal1,goal2...]
+   *    POST /kafkacruisecontrol/rebalance?dryrun=[true/false]&amp;force=[true/false]&amp;goals=[goal1,goal2...]
    *
    * 4. Stop the proposal execution.
    *    POST /kafkacruisecontrol/stop_proposal_execution
    *
-   * 5.Pause metrics sampling. (RUNNING -> PAUSED).
+   * 5.Pause metrics sampling. (RUNNING -&gt; PAUSED).
    *    POST /kafkacruisecontrol/pause_sampling
    *
-   * 6.Resume metrics sampling. (PAUSED -> RUNNING).
+   * 6.Resume metrics sampling. (PAUSED -&gt; RUNNING).
    *    POST /kafkacruisecontrol/resume_sampling
    *
    *
