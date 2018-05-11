@@ -541,8 +541,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throws IOException {
     String resp;
     if (json) {
-      resp = String.format("{\"version\":\"%d\",\"stackTrace\":\"%s\",\"error\": \"%s\"}",
-                           JSON_VERSION, stackTrace, errorMessage);
+      Map<String, Object> exceptionMap = new HashMap<>();
+      exceptionMap.put("version", JSON_VERSION);
+      exceptionMap.put("stackTrace", stackTrace);
+      exceptionMap.put("errorMessage", errorMessage);
+      Gson gson = new Gson();
+      resp = gson.toJson(exceptionMap);
       setJSONResponseCode(response, responseCode);
     } else {
       resp = errorMessage == null ? "" : errorMessage;
