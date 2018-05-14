@@ -77,7 +77,7 @@ public class LoadMonitor {
   private final Semaphore _clusterModelSemaphore;
   private final MetadataClient _metadataClient;
   private final BrokerCapacityConfigResolver _brokerCapacityConfigResolver;
-  private final ScheduledExecutorService _sensorUpdaterExecutor;
+  private final ScheduledExecutorService _loadMonitorExecutor;
   private final Timer _clusterModelCreationTimer;
   private final ThreadLocal<Boolean> _acquiredClusterModelSemaphore;
   private final ModelCompletenessRequirements _defaultModelCompletenessRequirements;
@@ -151,9 +151,11 @@ public class LoadMonitor {
                                   _metadataClient, metricDef, time, dropwizardMetricRegistry);
     _clusterModelCreationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("LoadMonitor",
                                                                                      "cluster-model-creation-timer"));
-    SensorUpdater sensorUpdater = new SensorUpdater();
-    _sensorUpdaterExecutor = Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("LoadMonitorSensorUpdater", true, LOG));
-    _sensorUpdaterExecutor.scheduleAtFixedRate(sensorUpdater, 0, SensorUpdater.UPDATE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    _loadMonitorExecutor = Executors.newScheduledThreadPool(2,
+        new KafkaCruiseControlThreadFactory("LoadMonitorExecutor", true, LOG));
+    _loadMonitorExecutor.scheduleAtFixedRate(new SensorUpdater(), 0, SensorUpdater.UPDATE_INTERVAL_MS, TimeUnit.MILLISECONDS);
+    _loadMonitorExecutor.scheduleAtFixedRate(new PartitionMetricSampleAggregatorCleaner(), 0,
+                                             PartitionMetricSampleAggregatorCleaner.CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS);
     dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "valid-windows"),
                                        (Gauge<Integer>) this::numValidSnapshotWindows);
     dropwizardMetricRegistry.register(MetricRegistry.name("LoadMonitor", "monitored-partitions-percentage"),
@@ -179,7 +181,7 @@ public class LoadMonitor {
     LOG.info("Shutting down load monitor.");
     try {
       _brokerCapacityConfigResolver.close();
-      _sensorUpdaterExecutor.shutdown();
+      _loadMonitorExecutor.shutdown();
     } catch (Exception e) {
       LOG.warn("Received exception when closing broker capacity resolver.", e);
     }
@@ -200,7 +202,7 @@ public class LoadMonitor {
 
     // Get the window to monitored partitions percentage mapping.
     SortedMap<Long, Float> validPartitionRatio =
-        _partitionMetricSampleAggregator.partitionCoverageByWindows(clusterAndGeneration);
+        _partitionMetricSampleAggregator.validPartitionRatioByWindows(clusterAndGeneration);
 
     // Get valid snapshot window number and populate the monitored partition map.
     SortedSet<Long> validWindows = _partitionMetricSampleAggregator.validWindows(clusterAndGeneration,
@@ -542,6 +544,12 @@ public class LoadMonitor {
     if (partitionInfo != null) {
       for (int index = 0; index < partitionInfo.replicas().length; index++) {
         Node replica = partitionInfo.replicas()[index];
+        String rack = getRackHandleNull(replica);
+        // Note that we assume the capacity resolver can still return the broker capacity even if the broker
+        // is dead. We need this to get the host resource capacity.
+        Map<Resource, Double> brokerCapacity =
+            _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
+        clusterModel.handleDeadBroker(rack, replica.id(), brokerCapacity);
         boolean isLeader;
         if (partitionInfo.leader() == null) {
           LOG.warn("Detected offline partition {}-{}, skipping", partitionInfo.topic(), partitionInfo.partition());
@@ -549,12 +557,7 @@ public class LoadMonitor {
         } else {
           isLeader = replica.id() == partitionInfo.leader().id();
         }
-        String rack = getRackHandleNull(replica);
-        // Note that we assume the capacity resolver can still return the broker capacity even if the broker
-        // is dead. We need this to get the host resource capacity.
-        Map<Resource, Double> brokerCapacity =
-            _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
-        clusterModel.createReplicaHandleDeadBroker(rack, replica.id(), tp, index, isLeader, brokerCapacity);
+        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader);
         clusterModel.setReplicaLoad(rack,
                                     replica.id(),
                                     tp,
@@ -717,6 +720,29 @@ public class LoadMonitor {
       } catch (Throwable t) {
         // We catch all the throwables because we don't want the sensor updater to die
         LOG.warn("Load monitor sensor updater received exception ", t);
+      }
+    }
+  }
+
+  /**
+   * Background task to clean up the partition metric samples in case of topic deletion.
+   *
+   * Due to Kafka bugs, the returned metadata may not contain all the topics during broker bounce.
+   * To handle that, we refresh metadata a few times and take a union of all the topics seen as the existing topics.
+   */
+  private class PartitionMetricSampleAggregatorCleaner implements Runnable {
+    static final long CHECK_INTERVAL_MS = 30000;
+    // A set remember all the topics seen from last metadata refresh.
+    private final Set<String> _allTopics = new HashSet<>();
+    // The metadata refresh count.
+    private int _refreshCount = 0;
+    @Override
+    public void run() {
+      _allTopics.addAll(_metadataClient.refreshMetadata().cluster().topics());
+      _refreshCount++;
+      if (_refreshCount % 10 == 0) {
+        _partitionMetricSampleAggregator.retainEntityGroup(_allTopics);
+        _allTopics.clear();
       }
     }
   }

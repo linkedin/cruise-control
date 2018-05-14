@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -48,6 +49,7 @@ public class CruiseControlMetricsProcessor {
 
   void addMetric(CruiseControlMetric metric) {
     int brokerId = metric.brokerId();
+    LOG.trace("Adding cruise control metric {}", metric);
     _maxMetricTimestamp = Math.max(metric.time(), _maxMetricTimestamp);
     _brokerLoad.compute(brokerId, (bid, load) -> {
       BrokerLoad brokerLoad = load == null ? new BrokerLoad() : load;
@@ -151,7 +153,7 @@ public class CruiseControlMetricsProcessor {
       BrokerLoad brokerLoad = _brokerLoad.get(node.id());
       if (brokerLoad == null || !brokerLoad.allBrokerMetricsAvailable()) {
         // A new broker or broker metrics are not consistent.
-        LOG.debug("Skip generating broker metric sample for broker {} because the following metrics are missing {}",
+        LOG.warn("Skip generating broker metric sample for broker {} because the following metrics are missing {}",
                   node.id(), brokerLoad == null ? "All Broker Metrics" : brokerLoad.missingBrokerMetrics());
         skippedBroker++;
         continue;
@@ -164,7 +166,7 @@ public class CruiseControlMetricsProcessor {
         if (!brokerLoad.brokerMetricAvailable(rawBrokerMetricType)) {
           skippedBroker++;
           validSample = false;
-          LOG.debug("Skip generating broker metric sample for broker {} because it does not have %s metrics or "
+          LOG.warn("Skip generating broker metric sample for broker {} because it does not have %s metrics or "
                         + "the metrics are inconsistent.", node.id(), rawBrokerMetricType);
           break;
         } else {
@@ -208,7 +210,11 @@ public class CruiseControlMetricsProcessor {
                                                            TopicPartition tp,
                                                            Map<Integer, Map<String, Integer>> leaderDistributionStats) {
     TopicPartition tpWithDotHandled = partitionHandleDotInTopicName(tp);
-    int leaderId = cluster.leaderFor(tp).id();
+    Node leaderNode = cluster.leaderFor(tp);
+    if (leaderNode == null) {
+      return null;
+    }
+    int leaderId = leaderNode.id();
     //TODO: switch to linear regression model without computing partition level CPU usage.
     BrokerLoad brokerLoad = _brokerLoad.get(leaderId);
     // Ensure broker load is available.
@@ -514,15 +520,26 @@ public class CruiseControlMetricsProcessor {
       Set<String> missingTopics = new HashSet<>();
       Set<String> topicsInBroker = new HashSet<>();
       AtomicInteger missingPartitions = new AtomicInteger(0);
-      cluster.partitionsForNode(brokerId).forEach(info -> {
+      List<PartitionInfo> leaderPartitionsInNode = cluster.partitionsForNode(brokerId);
+      if (leaderPartitionsInNode.isEmpty()) {
+        // If the broker does not have any leader partition, return true immediately.
+        return true;
+      }
+      leaderPartitionsInNode.forEach(info -> {
         topicsInBroker.add(info.topic());
         if (!_topicsWithPartitionSizeReported.contains(info.topic())) {
           missingPartitions.incrementAndGet();
           missingTopics.add(info.topic());
         }
       });
-      return ((double) missingTopics.size() / topicsInBroker.size()) <= MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT
+      boolean result = ((double) missingTopics.size() / topicsInBroker.size()) <= MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT
           && ((double) missingPartitions.get() / cluster.partitionsForNode(brokerId).size() <= MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT);
+      if (!result) {
+        LOG.warn("Broker {} has {} missing topics metrics and {} missing partition metrics.",
+                 brokerId, missingTopics, missingPartitions);
+        LOG.trace("Missing topics: {}", missingTopics);
+      }
+      return result;
     }
 
     private double diskUsage() {

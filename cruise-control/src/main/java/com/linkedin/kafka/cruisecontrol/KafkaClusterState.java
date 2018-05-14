@@ -99,6 +99,9 @@ public class KafkaClusterState {
     // Gather the broker states.
     for (String topic : _kafkaCluster.topics()) {
       for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
+        if (partitionInfo.leader() == null) {
+          continue;
+        }
         leaderCountByBrokerId.merge(partitionInfo.leader().id(), 1, Integer::sum);
 
         Set<Integer> replicas =
@@ -127,7 +130,7 @@ public class KafkaClusterState {
       Map<String, String> recordMap = new HashMap<>();
       recordMap.put(TOPIC, partitionInfo.topic());
       recordMap.put(PARTITION, Integer.toString(partitionInfo.partition()));
-      recordMap.put(LEADER, Integer.toString(partitionInfo.leader().id()));
+      recordMap.put(LEADER, Integer.toString(partitionInfo.leader() == null ? -1 : partitionInfo.leader().id()));
       recordMap.put(REPLICAS, replicas.toString());
       recordMap.put(IN_SYNC, inSyncReplicas.toString());
       recordMap.put(OUT_OF_SYNC, outOfSyncReplicas.toString());

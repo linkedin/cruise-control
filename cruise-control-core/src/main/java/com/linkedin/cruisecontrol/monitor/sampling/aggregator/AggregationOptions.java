@@ -18,6 +18,7 @@ public class AggregationOptions<G, E extends Entity<G>> {
   private final double _minValidEntityRatio;
   private final double _minValidEntityGroupRatio;
   private final int _minValidWindows;
+  private final int _maxAllowedExtrapolationsPerEntity;
   private final Set<E> _interestedEntities;
   private final Granularity _granularity;
   private final boolean _includeInvalidEntities;
@@ -33,6 +34,7 @@ public class AggregationOptions<G, E extends Entity<G>> {
    * @param minValidWindows The minimum required number of valid windows required in the result. A valid window
    *                        is a window within which both <tt>Min Valid Entity Ratio</tt> and
    *                        <tt>Min Valid Entity Group Ratio</tt> are met.
+   * @param maxAllowedExtrapolationsPerEntity the maximum allowed {@link Extrapolation}s per entity in the aggregation.
    * @param interestedEntities All the entities to include in this aggregation. Sometimes not all the entities are
    *                           interested. This option allows users to aggregate only part of the entities.
    * @param granularity The granularity of the aggregation.
@@ -47,6 +49,7 @@ public class AggregationOptions<G, E extends Entity<G>> {
   public AggregationOptions(double minValidEntityRatio,
                             double minValidEntityGroupRatio,
                             int minValidWindows,
+                            int maxAllowedExtrapolationsPerEntity,
                             Set<E> interestedEntities,
                             Granularity granularity,
                             boolean includeInvalidEntities) {
@@ -56,6 +59,7 @@ public class AggregationOptions<G, E extends Entity<G>> {
     _minValidEntityRatio = minValidEntityRatio;
     _minValidEntityGroupRatio = minValidEntityGroupRatio;
     _minValidWindows = minValidWindows;
+    _maxAllowedExtrapolationsPerEntity = maxAllowedExtrapolationsPerEntity;
     _interestedEntities = interestedEntities == null ? Collections.emptySet() : interestedEntities;
     _granularity = granularity == null ? Granularity.ENTITY : granularity;
     _includeInvalidEntities = includeInvalidEntities;
@@ -82,6 +86,13 @@ public class AggregationOptions<G, E extends Entity<G>> {
    */
   public int minValidWindows() {
     return _minValidWindows;
+  }
+
+  /**
+   * @return the maximum allowed extrapolations per entity.
+   */
+  public int maxAllowedExtrapolationsPerEntity() {
+    return _maxAllowedExtrapolationsPerEntity;
   }
 
   /**
@@ -145,6 +156,8 @@ public class AggregationOptions<G, E extends Entity<G>> {
     } else if (_minValidWindows != other.minValidWindows()) {
       return false;
     } else if (_granularity != other.granularity()) {
+      return false;
+    } else if (_maxAllowedExtrapolationsPerEntity != other.maxAllowedExtrapolationsPerEntity()) {
       return false;
     } else if (_interestedEntities.size() != other.interestedEntities().size()) {
       return false;

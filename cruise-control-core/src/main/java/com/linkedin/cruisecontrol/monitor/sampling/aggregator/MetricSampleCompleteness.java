@@ -31,6 +31,7 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   private final SortedMap<Long, Float> _validEntityRatioByWindowIndex;
   private final SortedMap<Long, Float> _validEntityRatioWithGroupGranularityByWindowIndex;
   private final SortedMap<Long, Float> _validEntityGroupRatioByWindowIndex;
+  private final SortedMap<Long, Float> _extrapolatedEntitiesByWindowIndex;
   private final SortedSet<Long> _validWindowIndexes;
   private final long _windowMs;
   private final Set<E> _validEntities;
@@ -43,6 +44,7 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
     _validEntityRatioByWindowIndex = new TreeMap<>(Collections.reverseOrder());
     _validEntityRatioWithGroupGranularityByWindowIndex = new TreeMap<>(Collections.reverseOrder());
     _validEntityGroupRatioByWindowIndex = new TreeMap<>(Collections.reverseOrder());
+    _extrapolatedEntitiesByWindowIndex = new TreeMap<>(Collections.reverseOrder());
     _validWindowIndexes = new TreeSet<>(Collections.reverseOrder());
     _validEntities = new HashSet<>();
     _validEntityGroups = new HashSet<>();
@@ -61,6 +63,10 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
 
   void addValidEntityGroupRatio(long windowIndex, float validEntityGroupRatio) {
     _validEntityGroupRatioByWindowIndex.put(windowIndex, validEntityGroupRatio);
+  }
+
+  void addExtrapolationEntityRatio(long windowIndex, float extrapolatedEntityRatio) {
+    _extrapolatedEntitiesByWindowIndex.put(windowIndex, extrapolatedEntityRatio);
   }
 
   void addValidWindowIndex(long windowIndex) {
@@ -122,6 +128,14 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
    */
   public SortedMap<Long, Float> validEntityGroupRatioByWindowIndex() {
     return _validEntityGroupRatioByWindowIndex;
+  }
+
+  /**
+   * Get the number of extrapolated entities.
+   * @return The number of extrapolated entities by window index.
+   */
+  public SortedMap<Long, Float> extrapolatedEntitiesByWindowIndex() {
+    return _extrapolatedEntitiesByWindowIndex;
   }
 
   /**

@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -47,7 +48,7 @@ import org.slf4j.LoggerFactory;
  *   </ul>
  *   The validity of an entity is determined by its validity in all the windows. An entity is considered as invalid
  *   if there is an invalid window or there are too many windows with extrapolations.
- * </p>
+ *
  * <p>
  *   Furthermore, each entity belongs to an aggregation entity group. The aggregation entity group is only used
  *   for metric aggregation purpose. Users can specify the {@link AggregationOptions.Granularity} of the metric aggregation. The
@@ -64,7 +65,7 @@ import org.slf4j.LoggerFactory;
  *       the entities in the same aggregation entity group.
  *     </li>
  *   </ul>
- * </p>
+ *
  * <p>
  *   From per window's perspective, for each window, there is a given set of <tt>valid</tt> entities and entity
  *   groups as described above. The validity of a window depends on the requirements specified in the
@@ -91,7 +92,6 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   protected final int _minSamplesPerWindow;
   protected final int _numWindowsToKeep;
   protected final long _windowMs;
-  protected final int _maxAllowedExtrapolationsPerEntity;
   protected final MetricDef _metricDef;
 
   private volatile long _currentWindowIndex;
@@ -103,8 +103,6 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * @param numWindows the number of windows needed.
    * @param windowMs the size of each window in milliseconds
    * @param minSamplesPerWindow minimum samples per window.
-   * @param maxAllowedExtrapolationsPerEntity the maximum allowed number of extrapolations for an entity if
-   *                                                 some windows miss data.
    * @param completenessCacheSize the completeness cache size, i.e. the number of recent completeness query result to
    *                              cache.
    * @param metricDef metric definitions.
@@ -112,7 +110,6 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   public MetricSampleAggregator(int numWindows,
                                 long windowMs,
                                 int minSamplesPerWindow,
-                                int maxAllowedExtrapolationsPerEntity,
                                 int completenessCacheSize,
                                 MetricDef metricDef) {
     super(0);
@@ -124,9 +121,8 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     _numWindowsToKeep = _numWindows + 1;
     _minSamplesPerWindow = minSamplesPerWindow;
     _windowRollingLock = new ReentrantLock();
-    _maxAllowedExtrapolationsPerEntity = maxAllowedExtrapolationsPerEntity;
     _metricDef = metricDef;
-    _aggregatorState = new MetricSampleAggregatorState<>(_generation.get(), _windowMs, completenessCacheSize);
+    _aggregatorState = new MetricSampleAggregatorState<>(numWindows, _windowMs, completenessCacheSize);
     _oldestWindowIndex = 0L;
     _currentWindowIndex = 0L;
   }
@@ -140,7 +136,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    */
   public boolean addSample(MetricSample<G, E> sample) {
     if (!sample.isValid(_metricDef)) {
-      LOG.warn("The metric sample is discarded due to missing metrics. Sample: {}", sample);
+      LOG.debug("The metric sample is discarded due to missing metrics. Sample: {}", sample);
       return false;
     }
     long windowIndex = windowIndex(sample.sampleTime());
@@ -151,19 +147,25 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     boolean newWindowRolledOut = maybeRollOutNewWindow(windowIndex);
     RawMetricValues rawMetricValues =
         _rawMetrics.computeIfAbsent(identity(sample.entity()), k -> {
-          RawMetricValues rawValues = new RawMetricValues(_numWindowsToKeep, _minSamplesPerWindow);
-          rawValues.updateOldestWindowIndex(_oldestWindowIndex);
-          return rawValues;
+          // Need to grab the lock to make sure the raw value for this partition is updated correctly when
+          // the raw values was created in an existing window while a new window is being rolled out.
+          _windowRollingLock.lock();
+          try {
+            RawMetricValues rawValues = new RawMetricValues(_numWindowsToKeep, _minSamplesPerWindow);
+            rawValues.updateOldestWindowIndex(_oldestWindowIndex);
+            return rawValues;
+          } finally {
+            _windowRollingLock.unlock();
+          }
         });
     LOG.trace("Adding sample {} to window index {}", sample, windowIndex);
     rawMetricValues.addSample(sample, windowIndex, _metricDef);
+    long generation = _generation.get();
     if (newWindowRolledOut || windowIndex != _currentWindowIndex) {
-      long generation = _generation.incrementAndGet();
-      // Data has been inserted to an old window.
-      if (windowIndex != _currentWindowIndex) {
-        _aggregatorState.updateWindowGeneration(windowIndex, generation);
-      }
+      generation = _generation.incrementAndGet();
     }
+    // Data has been inserted to an old window.
+    _aggregatorState.updateWindowGeneration(windowIndex, generation);
     return true;
   }
 
@@ -200,7 +202,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
       maybeUpdateAggregatorState();
       AggregationOptions<G, E> interpretedOptions = interpretAggregationOptions(options);
       MetricSampleCompleteness<G, E> completeness =
-          _aggregatorState.completeness(fromWindowIndex, toWindowIndex, interpretedOptions);
+          _aggregatorState.completeness(fromWindowIndex, toWindowIndex, interpretedOptions, generation());
       // We use the original time from and to here because they are only for logging purpose.
       validateCompleteness(from, to, completeness, interpretedOptions);
 
@@ -222,7 +224,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
               valuesAndExtrapolations = rawValues.aggregate(completeness.validWindowIndexes(), _metricDef);
           valuesAndExtrapolations.setWindows(windows);
           result.addResult(entity, valuesAndExtrapolations);
-          if (!rawValues.isValid(_maxAllowedExtrapolationsPerEntity)) {
+          if (!rawValues.isValid(options.maxAllowedExtrapolationsPerEntity())) {
             result.recordInvalidEntity(entity);
           }
         }
@@ -243,7 +245,12 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     _windowRollingLock.lock();
     try {
       Map<E, ValuesAndExtrapolations> result = new HashMap<>();
-      _rawMetrics.forEach((entity, rawMetric) -> result.put(entity, rawMetric.peekCurrentWindow(_currentWindowIndex, _metricDef)));
+      _rawMetrics.forEach((entity, rawMetric) -> {
+        ValuesAndExtrapolations vae = rawMetric.peekCurrentWindow(_currentWindowIndex, _metricDef);
+        SortedSet<Long> currentWindows = new TreeSet<>(Collections.singleton(_currentWindowIndex));
+        vae.setWindows(toWindows(currentWindows));
+        result.put(entity, vae);
+      });
       return result;
     } finally {
       _windowRollingLock.unlock();
@@ -268,7 +275,10 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
         return new MetricSampleCompleteness<>(generation(), _windowMs);
       }
       maybeUpdateAggregatorState();
-      return _aggregatorState.completeness(fromWindowIndex, toWindowIndex, interpretAggregationOptions(options));
+      return _aggregatorState.completeness(fromWindowIndex,
+                                           toWindowIndex,
+                                           interpretAggregationOptions(options),
+                                           generation());
     } finally {
       _windowRollingLock.unlock();
     }
@@ -427,11 +437,8 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
 
   private void maybeUpdateAggregatorState() {
     long currentGeneration = generation();
-    if (_aggregatorState.generation() < currentGeneration) {
-      for (long windowIdx : _aggregatorState.windowIndexesToUpdate(currentGeneration, _oldestWindowIndex, _currentWindowIndex)) {
-        _aggregatorState.updateWindowState(windowIdx, getWindowState(windowIdx, currentGeneration));
-      }
-      _aggregatorState.setGeneration(currentGeneration);
+    for (long windowIdx : _aggregatorState.windowIndexesToUpdate(_oldestWindowIndex, _currentWindowIndex)) {
+      _aggregatorState.updateWindowState(windowIdx, getWindowState(windowIdx, currentGeneration));
     }
   }
 
@@ -440,7 +447,10 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     for (Map.Entry<E, RawMetricValues> entry : _rawMetrics.entrySet()) {
       E entity = entry.getKey();
       RawMetricValues rawValues = entry.getValue();
-      if (rawValues.isValidAtWindowIndex(windowIdx) && rawValues.numWindowsWithExtrapolation() <= _maxAllowedExtrapolationsPerEntity) {
+      if (rawValues.isExtrapolatedAtWindowIndex(windowIdx)) {
+        windowState.addExtrapolatedEntities(entity);
+      }
+      if (rawValues.isValidAtWindowIndex(windowIdx)) {
         windowState.addValidEntities(entity);
       }
     }
@@ -484,6 +494,8 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
       rawValues.updateOldestWindowIndex(startingWindowIndex + numIndexesToReset);
       rawValues.resetWindowIndexes(startingWindowIndex, numIndexesToReset);
     }
+    _aggregatorState.updateOldestWindowIndex(startingWindowIndex + numIndexesToReset);
+    _aggregatorState.resetWindowIndexes(startingWindowIndex, numIndexesToReset);
   }
 
   private void validateCompleteness(long from,
@@ -540,6 +552,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     return new AggregationOptions<>(options.minValidEntityRatio(),
                                     options.minValidEntityGroupRatio(),
                                     options.minValidWindows(),
+                                    options.maxAllowedExtrapolationsPerEntity(),
                                     entitiesToInclude,
                                     options.granularity(),
                                     options.includeInvalidEntities());

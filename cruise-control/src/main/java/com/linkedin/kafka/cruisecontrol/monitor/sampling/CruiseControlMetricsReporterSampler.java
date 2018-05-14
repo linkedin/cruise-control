@@ -100,6 +100,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
         if (record == null) {
           // This means we cannot parse the metrics. It might happen when a newer type of metrics has been added and
           // the current code is still old. We simply ignore that metric in this case.
+          LOG.debug("Cannot parse record.");
           continue;
         }
         if (startTimeMs <= record.value().time() && record.value().time() < endTimeMs) {
@@ -108,7 +109,12 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
           totalMetricsAdded++;
         } else if (record.value().time() >= endTimeMs) {
           TopicPartition tp = new TopicPartition(record.topic(), record.partition());
+          LOG.debug("Saw metric {} whose timestamp is larger than start time {}. Pausing partition {} at offset",
+                    record.value(), record.value().time(), tp, record.offset());
           _metricConsumer.pause(Collections.singleton(tp));
+        } else {
+          LOG.debug("Discarding metric {} because the timestamp {} is smaller than the start time {}",
+                    record.value(), record.value().time(), startTimeMs);
         }
       }
     } while (!consumptionDone(endOffsets) && System.currentTimeMillis() < deadline);
@@ -168,8 +174,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     Random random = new Random();
     consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, groupId);
-    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG,
-                              DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID + "Consumer-" + random.nextInt());
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, groupId + "-consumer-" + random.nextInt());
     consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest");
     consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));

@@ -21,13 +21,13 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
  * The task state machine is the following:
  *
  * <pre>
- * PENDING ---> IN_PROGRESS ------------> COMPLETED
+ * PENDING ---&gt; IN_PROGRESS ------------&gt; COMPLETED
  *                  |
  *                  |
- *                  |----> ABORTING ----> ABORTED
+ *                  |----&gt; ABORTING ----&gt; ABORTED
  *                  |          |
  *                  |          v
- *                  |-------------------> DEAD
+ *                  |-------------------&gt; DEAD
  *
  * A newly created task is in <tt>PENDING</tt> state.
  * A <tt>PENDING</tt> task becomes <tt>IN_PROGRESS</tt> when it is drained from the {@link ExecutionTaskPlanner}

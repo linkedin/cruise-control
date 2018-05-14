@@ -67,6 +67,7 @@ public class GoalOptimizer implements Runnable {
   private final OperationProgress _proposalPrecomputingProgress;
   private final List<SortedMap<Integer, Goal>> _goalByPriorityForPrecomputing;
   private final Object _cacheLock;
+  private final AtomicInteger _threadsWaitingForCache;
   private volatile OptimizerResult _bestProposal;
   private volatile boolean _shutdown = false;
   private Thread _proposalPrecomputingSchedulerThread;
@@ -92,7 +93,8 @@ public class GoalOptimizer implements Runnable {
         _defaultModelCompletenessRequirements.includeAllTopics());
     _goalByPriorityForPrecomputing = new ArrayList<>();
     _numPrecomputingThreads = config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
-    for (int i = 0; i < _numPrecomputingThreads; i++) {
+    // Need at least one computing thread.
+    for (int i = 0; i < numProposalComputingThreads(); i++) {
       _goalByPriorityForPrecomputing.add(AnalyzerUtils.getGoalMapByPriority(config));
     }
     LOG.info("Goals by priority: {}", _goalsByPriority);
@@ -102,11 +104,12 @@ public class GoalOptimizer implements Runnable {
     _maxProposalCandidates = config.getInt(KafkaCruiseControlConfig.MAX_PROPOSAL_CANDIDATES_CONFIG);
     _proposalExpirationMs = config.getLong(KafkaCruiseControlConfig.PROPOSAL_EXPIRATION_MS_CONFIG);
     _proposalPrecomputingExecutor =
-        Executors.newScheduledThreadPool(_numPrecomputingThreads,
+        Executors.newScheduledThreadPool(numProposalComputingThreads(),
                                          new KafkaCruiseControlThreadFactory("ProposalPrecomputingExecutor", false, LOG));
     _loadMonitor = loadMonitor;
     _time = time;
     _cacheLock = new ReentrantLock();
+    _threadsWaitingForCache = new AtomicInteger(0);
     _bestProposal = null;
     _totalProposalCandidateComputed = new AtomicInteger(0);
     _progressUpdateLock = new AtomicBoolean(false);
@@ -154,10 +157,16 @@ public class GoalOptimizer implements Runnable {
     }
   }
 
+  // At least two computing thread is needed if precomputing is disabled. One thread for submitting and waiting for
+  // the proposal computing to finish, another one for compute the proposals.
+  private int numProposalComputingThreads() {
+    return _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 2;
+  }
+
   private void computeBestProposal() {
     long start = _time.milliseconds();
     List<Future> futures = new ArrayList<>();
-    for (int i = 0; i < _numPrecomputingThreads; i++) {
+    for (int i = 0; i < (_numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1); i++) {
       futures.add(_proposalPrecomputingExecutor.submit(new ProposalCandidateComputer(_goalByPriorityForPrecomputing.get(i))));
     }
     for (Future future : futures) {
@@ -175,8 +184,10 @@ public class GoalOptimizer implements Runnable {
         LOG.error("Goal optimizer received exception when precomputing the proposal candidates.", ee);
       }
     }
-    LOG.info("Finished precomputation {} proposal candidates in {} ms", _totalProposalCandidateComputed.get() - 1,
-             _time.milliseconds() - start);
+    if (!futures.isEmpty()) {
+      LOG.info("Finished precomputation {} proposal candidates in {} ms", _totalProposalCandidateComputed.get() - 1,
+               _time.milliseconds() - start);
+    }
   }
 
   private boolean validCachedProposal() {
@@ -212,11 +223,11 @@ public class GoalOptimizer implements Runnable {
    * Get the analyzer state from the goal optimizer.
    */
   public AnalyzerState state() {
-    Map<Goal, Boolean> goalRediness = new LinkedHashMap<>(_goalsByPriority.size());
+    Map<Goal, Boolean> goalReadiness = new LinkedHashMap<>(_goalsByPriority.size());
     for (Goal goal : _goalsByPriority.values()) {
-      goalRediness.put(goal, _loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements()));
+      goalReadiness.put(goal, _loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements()));
     }
-    return new AnalyzerState(_bestProposal != null, goalRediness);
+    return new AnalyzerState(_bestProposal != null, goalReadiness);
   }
 
   /**
@@ -238,10 +249,24 @@ public class GoalOptimizer implements Runnable {
                 _loadMonitor.clusterModelGeneration());
       synchronized (_cacheLock) {
         while (!validCachedProposal()) {
-          // Wake up the proposal precomputing scheduler and wait for the cache update.
-          _proposalPrecomputingSchedulerThread.interrupt();
-          operationProgress.refer(_proposalPrecomputingProgress);
-          _cacheLock.wait();
+          try {
+            // Prevent multiple thread submit from computing task together.
+            int numWaitingThread = _threadsWaitingForCache.getAndIncrement();
+            if (_numPrecomputingThreads > 0) {
+              // Wake up the proposal precomputing scheduler and wait for the cache update.
+              _proposalPrecomputingSchedulerThread.interrupt();
+              operationProgress.refer(_proposalPrecomputingProgress);
+            } else {
+              // Only submit task if nobody has submitted the computing task.
+              if (numWaitingThread == 0) {
+                // No precomputing thread is available, schedule a computing and wait for the cache update.
+                _proposalPrecomputingExecutor.submit(this::computeBestProposal);
+              }
+            }
+            _cacheLock.wait();
+          } finally {
+            _threadsWaitingForCache.decrementAndGet();
+          }
         }
       }
     }

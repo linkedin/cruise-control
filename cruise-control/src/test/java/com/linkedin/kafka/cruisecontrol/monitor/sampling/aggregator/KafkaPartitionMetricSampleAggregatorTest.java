@@ -93,7 +93,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     MetadataClient.ClusterAndGeneration clusterAndGeneration =
         new MetadataClient.ClusterAndGeneration(metadata.fetch(), 1);
     assertEquals(NUM_WINDOWS, metricSampleAggregator.validWindows(clusterAndGeneration, 1.0).size());
-    Map<Long, Float> monitoredPercentages = metricSampleAggregator.partitionCoverageByWindows(clusterAndGeneration);
+    Map<Long, Float> monitoredPercentages = metricSampleAggregator.validPartitionRatioByWindows(clusterAndGeneration);
     for (double percentage : monitoredPercentages.values()) {
       assertEquals(1.0, percentage, 0.0);
     }
@@ -360,7 +360,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
   }
 
   @Test
-  public void testValidWindowsWithTooManyExtrapolationss() {
+  public void testValidWindowsWithTooManyExtrapolations() {
     TestContext ctx = setupScenario4();
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
@@ -399,7 +399,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     KafkaPartitionMetricSampleAggregator aggregator = ctx.aggregator();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = ctx.clusterAndGeneration(0);
 
-    Map<Long, Float> percentages = aggregator.partitionCoverageByWindows(clusterAndGeneration);
+    Map<Long, Float> percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       assertEquals(1.0, entry.getValue(), 0.01);
@@ -408,7 +408,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ctx = setupScenario2();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    percentages = aggregator.partitionCoverageByWindows(clusterAndGeneration);
+    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       long window = entry.getKey();
@@ -422,7 +422,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ctx = setupScenario3();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    percentages = aggregator.partitionCoverageByWindows(clusterAndGeneration);
+    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       long window = entry.getKey();
@@ -436,7 +436,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ctx = setupScenario4();
     aggregator = ctx.aggregator();
     clusterAndGeneration = ctx.clusterAndGeneration(0);
-    percentages = aggregator.partitionCoverageByWindows(clusterAndGeneration);
+    percentages = aggregator.validPartitionRatioByWindows(clusterAndGeneration);
     assertEquals(NUM_WINDOWS, percentages.size());
     for (Map.Entry<Long, Float> entry : percentages.entrySet()) {
       long window = entry.getKey();
@@ -541,14 +541,16 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     TopicPartition t2p0 = new TopicPartition("TOPIC2", 0);
     TopicPartition t2p1 = new TopicPartition("TOPIC2", 1);
     List<TopicPartition> allPartitions = Arrays.asList(TP, t0p1, t1p0, t1p1, t2p0, t2p1);
-    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(getLoadMonitorProperties());
+    Properties props = getLoadMonitorProperties();
+    props.setProperty(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG, "0");
+    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
     Metadata metadata = getMetadata(allPartitions);
     KafkaPartitionMetricSampleAggregator aggregator = new KafkaPartitionMetricSampleAggregator(config, metadata);
 
     for (TopicPartition tp : Arrays.asList(TP, t1p0, t2p0, t2p1)) {
       populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW, aggregator, tp);
     }
-    // Let t0p1 have too many extrapolationss.
+    // Let t0p1 have too many extrapolations.
     populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW - 1, aggregator, t0p1);
     // let t1p1 miss another earlier window
     populateSampleAggregator(5, MIN_SAMPLES_PER_WINDOW, aggregator, t1p1);

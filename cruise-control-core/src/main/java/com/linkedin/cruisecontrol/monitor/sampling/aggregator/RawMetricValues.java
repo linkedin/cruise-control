@@ -4,6 +4,7 @@
 
 package com.linkedin.cruisecontrol.monitor.sampling.aggregator;
 
+import com.linkedin.cruisecontrol.common.WindowIndexedArrays;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import com.linkedin.cruisecontrol.monitor.sampling.MetricSample;
@@ -25,7 +26,7 @@ import org.slf4j.LoggerFactory;
  *   metrics samples.
  * </p>
  */
-public class RawMetricValues {
+public class RawMetricValues extends WindowIndexedArrays {
   private static final Logger LOG = LoggerFactory.getLogger(RawMetricValues.class);
   // The minimum required samples for a window to not involve any extrapolation.
   private final int _minSamplesPerWindow;
@@ -37,8 +38,11 @@ public class RawMetricValues {
   private final BitSet _extrapolations;
   // A bit set to indicate whether a given window is valid or not.
   private final BitSet _validity;
-  // The oldest window index.
-  private long _oldestWindowIndex;
+
+  @Override
+  protected int length() {
+    return _counts.length;
+  }
 
   /**
    * Construct a RawMetricValues.
@@ -80,10 +84,14 @@ public class RawMetricValues {
       updateValue(entry.getValue(), metricDef.metricInfo(entry.getKey()), idx);
     }
     _counts[idx]++;
+    // Update the validity and extrapolation for this index.
     updateValidityAndExtrapolation(idx);
     if (_counts[idx] >= _minSamplesPerWindow) {
       _extrapolations.clear(idx);
-      if (idx != firstIdx()) {
+      // If this index has two left neighbour indexes, we may need to update the extrapolation of the previous index
+      // with AvgAdjacent. We need to exclude the current window index. It will be included when new windows get
+      // rolled out.
+      if (idx != currentWindowIndex() && hasTwoLeftNeighbours(idx)) {
         int prevIdx = prevIdx(idx);
         if (_counts[prevIdx] < halfMinRequiredSamples()) {
           updateAvgAdjacent(prevIdx);
@@ -91,7 +99,7 @@ public class RawMetricValues {
       }
       // Adding sample to the last window index should not update extrapolation of the current window index.
       // Adding sample to the current window index has no next index to update.
-      if (idx != currentWindowIndex() && idx != lastIdx()) {
+      if (hasTwoRightNeighbours(idx)) {
         int nextIdx = nextIdx(idx);
         if (_counts[nextIdx] < halfMinRequiredSamples()) {
           updateAvgAdjacent(nextIdx);
@@ -115,7 +123,7 @@ public class RawMetricValues {
     // neighbour index (i.e. the previous last index) for AVG_ADJACENT extrapolation. We don't need to update the
     // current window index because it would be up to date during the addSample call.
     if (prevLastWindowIndex >= _oldestWindowIndex) {
-      updateValidityAndExtrapolation(handleWrapping(prevLastWindowIndex));
+      updateValidityAndExtrapolation(arrayIndex(prevLastWindowIndex));
     }
   }
 
@@ -128,9 +136,9 @@ public class RawMetricValues {
    * @return true if the raw metric value is valid, false otherwise.
    */
   public synchronized boolean isValid(int maxAllowedWindowsWithExtrapolation) {
-    int currentIdx = handleWrapping(currentWindowIndex());
+    int currentIdx = arrayIndex(currentWindowIndex());
     // The total number of valid window indexes should exclude the current window index.
-    int numValidIndexesAdjustment = _validity.get(handleWrapping(currentIdx)) ? 1 : 0;
+    int numValidIndexesAdjustment = _validity.get(arrayIndex(currentIdx)) ? 1 : 0;
     boolean allIndexesValid = _validity.cardinality() - numValidIndexesAdjustment == _counts.length - 1;
     // All indexes should be valid and should not have too many extrapolations.
     return allIndexesValid && numWindowsWithExtrapolation() <= maxAllowedWindowsWithExtrapolation;
@@ -140,7 +148,7 @@ public class RawMetricValues {
    * @return the number of windows with extrapolations.
    */
   public synchronized int numWindowsWithExtrapolation() {
-    int currentIdx = handleWrapping(currentWindowIndex());
+    int currentIdx = arrayIndex(currentWindowIndex());
     int numExtrapolationAdjustment = _extrapolations.get(currentIdx) ? 1 : 0;
     return _extrapolations.cardinality() - numExtrapolationAdjustment;
   }
@@ -154,7 +162,7 @@ public class RawMetricValues {
    */
   public synchronized boolean isValidAtWindowIndex(long windowIndex) {
     validateIndex(windowIndex);
-    return _validity.get(handleWrapping(windowIndex));
+    return _validity.get(arrayIndex(windowIndex));
   }
 
   /**
@@ -164,12 +172,12 @@ public class RawMetricValues {
    */
   public synchronized boolean isExtrapolatedAtWindowIndex(long windowIndex) {
     validateIndex(windowIndex);
-    return _extrapolations.get(handleWrapping(windowIndex));
+    return _extrapolations.get(arrayIndex(windowIndex));
   }
 
   public synchronized int sampleCountsAtWindowIndex(long windowIndex) {
     validateIndex(windowIndex);
-    return _counts[handleWrapping(windowIndex)];
+    return _counts[arrayIndex(windowIndex)];
   }
 
   /**
@@ -187,7 +195,7 @@ public class RawMetricValues {
               startingWindowIndex + numWindowIndexesToReset - 1);
     // We are not resetting all the data here. The data will be interpreted to 0 if count is 0.
     for (long i = startingWindowIndex; i < startingWindowIndex + numWindowIndexesToReset; i++) {
-      int index = handleWrapping(i);
+      int index = arrayIndex(i);
       _counts[index] = 0;
       _validity.clear(index);
       _extrapolations.clear(index);
@@ -239,7 +247,7 @@ public class RawMetricValues {
         if (checkWindow) {
           validateIndex(windowIndex);
         }
-        int idx = handleWrapping(windowIndex);
+        int idx = arrayIndex(windowIndex);
         // Sufficient samples
         if (_counts[idx] >= _minSamplesPerWindow) {
           aggValuesForMetric.set(resultIndex, getValue(info, idx, values));
@@ -395,42 +403,18 @@ public class RawMetricValues {
     return false;
   }
 
-  private int prevIdx(int idx) {
-    return idx == firstIdx() ? -1 : (idx + _counts.length - 1) % _counts.length;
+  private boolean hasTwoLeftNeighbours(int idx) {
+    int prevIdx = prevIdx(idx);
+    return prevIdx != INVALID_INDEX && prevIdx(prevIdx) != INVALID_INDEX;
   }
 
-  private int nextIdx(int idx) {
-    return idx == lastIdx() ? -1 : (idx + 1) % _counts.length;
-  }
-
-  private int firstIdx() {
-    return handleWrapping(_oldestWindowIndex);
-  }
-
-  private int lastIdx() {
-    return handleWrapping(currentWindowIndex() - 1);
+  private boolean hasTwoRightNeighbours(int idx) {
+    int nextIdx = nextIdx(idx);
+    return nextIdx != INVALID_INDEX && nextIdx(nextIdx) != INVALID_INDEX;
   }
 
   private int halfMinRequiredSamples() {
     return Math.max(1, _minSamplesPerWindow / 2);
   }
 
-  private void validateIndex(long windowIndex) {
-    if (!inValidRange(windowIndex)) {
-      throw new IllegalArgumentException(String.format("Index %d is out of range [%d, %d]", windowIndex,
-                                                       _oldestWindowIndex, currentWindowIndex() - 1));
-    }
-  }
-
-  private boolean inValidRange(long windowIndex) {
-    return windowIndex >= _oldestWindowIndex && windowIndex <= currentWindowIndex() - 1;
-  }
-
-  private long currentWindowIndex() {
-    return _oldestWindowIndex + _counts.length - 1;
-  }
-
-  private int handleWrapping(long index) {
-    return (int) (index % _counts.length);
-  }
 }

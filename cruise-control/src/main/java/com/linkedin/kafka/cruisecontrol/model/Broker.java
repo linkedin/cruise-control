@@ -41,7 +41,7 @@ public class Broker implements Serializable, Comparable<Broker> {
   private final Set<Replica> _leaderReplicas;
   /** Set of immigrant replicas */
   private final Set<Replica> _immigrantReplicas;
-  /** A map for tracking topic -> (partitionId -> replica). */
+  /** A map for tracking topic -&gt; (partitionId -&gt; replica). */
   private final Map<String, Map<Integer, Replica>> _topicReplicas;
   private final Load _load;
   private final Load _leadershipLoadForNwResources;
@@ -55,6 +55,9 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param brokerCapacity The capacity of the broker.
    */
   Broker(Host host, int id, Map<Resource, Double> brokerCapacity) {
+    if (brokerCapacity == null) {
+      throw new IllegalArgumentException("Attempt to create broker " + id + " on host " + host.name() + " with null capacity.");
+    }
     _host = host;
     _id = id;
     _brokerCapacity = new double[Resource.cachedValues().size()];

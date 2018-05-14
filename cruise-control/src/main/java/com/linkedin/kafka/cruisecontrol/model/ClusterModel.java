@@ -122,7 +122,7 @@ public class ClusterModel implements Serializable {
 
   /**
    * Get the distribution of replicas in the cluster at the point of call. Replica distribution is represented by the
-   * map: topic-partition -> broker-id-of-replicas. broker-id-of-replicas[0] represents the leader's broker id.
+   * map: topic-partition -&gt; broker-id-of-replicas. broker-id-of-replicas[0] represents the leader's broker id.
    *
    * @return The replica distribution of leader and follower replicas in the cluster at the point of call.
    */
@@ -527,31 +527,20 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Create a replica under given cluster/rack/broker. Add replica to rack and corresponding partition. Get the
-   * created replica. If the rack or broker does not exist, create them with UNKNOWN host name. This allows handling
+   * If the rack or broker does not exist, create them with UNKNOWN host name. This allows handling
    * of cases where the information of a dead broker is no longer available.
    *
    * @param rackId         Rack id under which the replica will be created.
    * @param brokerId       Broker id under which the replica will be created.
-   * @param tp             Topic partition information of the replica.
-   * @param index          The index of the replica in the replica list.
-   * @param isLeader       True if the replica is a leader, false otherwise.
    * @param brokerCapacity The broker capacity to use if the broker does not exist.
-   * @return Created replica.
    */
-  public Replica createReplicaHandleDeadBroker(String rackId,
-                                               int brokerId,
-                                               TopicPartition tp,
-                                               int index,
-                                               boolean isLeader,
-                                               Map<Resource, Double> brokerCapacity) {
+  public void handleDeadBroker(String rackId, int brokerId, Map<Resource, Double> brokerCapacity) {
     if (rack(rackId) == null) {
       createRack(rackId);
     }
     if (broker(brokerId) == null) {
       createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacity);
     }
-    return createReplica(rackId, brokerId, tp, index, isLeader);
   }
 
   /**
@@ -634,7 +623,7 @@ public class ClusterModel implements Serializable {
   /**
    * Get a list of sorted (in ascending order by resource) healthy brokers having utilization under:
    * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#_isHostResource} and
-   * {@link Resource#_isBrokerResource)). Utilization threshold might be any capacity constraint thresholds such as
+   * {@link Resource#_isBrokerResource}). Utilization threshold might be any capacity constraint thresholds such as
    * balance or capacity.
    *
    * @param resource             Resource for which brokers will be sorted.
