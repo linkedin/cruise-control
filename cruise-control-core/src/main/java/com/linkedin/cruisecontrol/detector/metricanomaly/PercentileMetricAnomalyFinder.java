@@ -33,8 +33,9 @@ import static com.linkedin.cruisecontrol.CruiseControlUtils.toPrettyTime;
  */
 public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements MetricAnomalyFinder<E> {
   private static final Logger LOG = LoggerFactory.getLogger(PercentileMetricAnomalyFinder.class);
-
   private final Percentile _percentile;
+  protected double _anomalyUpperMargin;
+  protected double _anomalyLowerMargin;
   protected Double _anomalyUpperPercentile;
   protected Double _anomalyLowerPercentile;
   protected Set<String> _interestedMetrics;
@@ -60,8 +61,8 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
                                                ValuesAndExtrapolations current) {
     _percentile.setData(history.metricValues().valuesFor(metricId).doubleArray());
     double currentMetricValue = current.metricValues().valuesFor(metricId).latest();
-    double upperThreshold = _percentile.evaluate(_anomalyUpperPercentile);
-    double lowerThreshold = _percentile.evaluate(_anomalyLowerPercentile);
+    double upperThreshold = _percentile.evaluate(_anomalyUpperPercentile) * (1 + _anomalyUpperMargin);
+    double lowerThreshold = _percentile.evaluate(_anomalyLowerPercentile) * _anomalyLowerMargin;
 
     long currentWindow = current.window(0);
 
@@ -92,11 +93,13 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
                                double currentMetricValue,
                                double upperThreshold,
                                double lowerThreshold) {
-    return String.format("Metric value %.3f of %s for entity %s in window %s is out of the normal percentile range [%.2f, %.2f] "
-                             + "(value range: [%.3f, %.3f]) in history windows from %s to %s",
+    int numHistoryWindows = historyWindows.size();
+    return String.format("Metric value %.3f of %s for %s in window %s is out of the normal range for percentile: [%.2f, %.2f] "
+                         + "(value: [%.3f, %.3f] with margins (lower: %.3f, upper: %.3f)) in %d history windows from %s to %s.",
                          currentMetricValue, toMetricName(metricId), entity, toPrettyTime(currentWindow),
                          _anomalyLowerPercentile, _anomalyUpperPercentile, lowerThreshold, upperThreshold,
-                         toPrettyTime(historyWindows.get(0)), toPrettyTime(historyWindows.get(historyWindows.size() - 1)));
+                         _anomalyLowerMargin, _anomalyUpperMargin, numHistoryWindows,
+                         toPrettyTime(historyWindows.get(0)), toPrettyTime(historyWindows.get(numHistoryWindows - 1)));
   }
 
   /**
@@ -159,6 +162,9 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
         internalConfig.getDouble(PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG);
     _anomalyLowerPercentile =
         internalConfig.getDouble(PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_LOWER_THRESHOLD_CONFIG);
+
+    _anomalyUpperMargin = internalConfig.getDouble(PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_UPPER_MARGIN_CONFIG);
+    _anomalyLowerMargin = internalConfig.getDouble(PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_LOWER_MARGIN_CONFIG);
 
     String trimmedMetrics = ((String) configs.get(CruiseControlConfig.METRIC_ANOMALY_FINDER_METRICS_CONFIG)).trim();
     _interestedMetrics = new HashSet<>(Arrays.asList(trimmedMetrics.split(",")));

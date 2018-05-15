@@ -51,7 +51,7 @@ public class KafkaMetricAnomalyFinderTest {
   public void testMetricAnomalies() {
     MetricAnomalyFinder<BrokerEntity> anomalyFinder = createKafkaMetricAnomalyFinder();
     Map<BrokerEntity, ValuesAndExtrapolations> history = createHistory(20);
-    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(21, 21.0);
+    Map<BrokerEntity, ValuesAndExtrapolations> currentMetrics = createCurrentMetrics(21, 30.0);
 
     Collection<MetricAnomaly<BrokerEntity>> anomalies = anomalyFinder.metricAnomalies(history, currentMetrics);
 
