@@ -31,7 +31,7 @@ public class CruiseControlUtils {
    * @return a pretty string for the time.
    */
   public static String toPrettyTime(long time) {
-    SimpleDateFormat sdf = new SimpleDateFormat("YYYY-MM-dd_hh:mm:ss");
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_hh:mm:ss");
     return sdf.format(new Date(time));
   }
 

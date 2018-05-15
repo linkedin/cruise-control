@@ -39,7 +39,9 @@ public class PercentileMetricAnomalyFinderConfig extends AbstractConfig {
   private static final String METRIC_ANOMALY_UPPER_MARGIN_DOC =
       "The upper margin of metric anomaly sets the minimum ratio that the current metric value should be greater than "
       + "the historical metric value determined via percentile upper threshold in order for the metric anomaly detector "
-      + "to identify a metric anomaly.";
+      + "to identify a metric anomaly. For example, if the historical metric value determined based on the percentile "
+      + "upper threshold is 10, the current metric value is 12, and the upper margin is 0.5, then metric anomaly "
+      + "detector will not consider the current metric value as an anomaly because 12 < (10 * (1 + 0.5)).";
 
 
   /**
@@ -49,7 +51,9 @@ public class PercentileMetricAnomalyFinderConfig extends AbstractConfig {
   private static final String METRIC_ANOMALY_LOWER_MARGIN_DOC =
       "The lower margin of metric anomaly sets the minimum ratio that the current metric value should be smaller than "
       + "the historical metric value determined via percentile lower threshold in order for the metric anomaly detector "
-      + "to identify a metric anomaly.";
+      + "to identify a metric anomaly. For example, if the historical metric value determined based on the percentile "
+      + "lower threshold is 5, the current metric value is 2, and the lower margin is 0.2, then metric anomaly "
+      + "detector will not consider the current metric value as an anomaly because 2 > (5 * 0.2).";
 
   private static ConfigDef CONFIG =
       new ConfigDef().define(METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG, ConfigDef.Type.DOUBLE, 95.0,
