@@ -43,7 +43,7 @@ public class BrokerAndSortedReplicas {
 
   @Override
   public boolean equals(Object obj) {
-    return obj != null && obj instanceof BrokerAndSortedReplicas
+    return obj instanceof BrokerAndSortedReplicas
         && _broker.equals(((BrokerAndSortedReplicas) obj).broker());
   }
 }

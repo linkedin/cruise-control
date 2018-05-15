@@ -511,11 +511,15 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   }
 
   private double diskUsage(BrokerAndSortedReplicas bas) {
-    return bas.broker().load().expectedUtilizationFor(DISK) / bas.broker().capacityFor(DISK);
+    // Ensure that if the disk capacity is non-positive, we do not report a positive disk usage.
+    double diskCapacity = bas.broker().capacityFor(DISK);
+    return Double.compare(diskCapacity, 0.0) < 1 ? 0.0 : bas.broker().load().expectedUtilizationFor(DISK) / diskCapacity;
   }
 
   private double diskUsage(Broker broker) {
-    return broker.load().expectedUtilizationFor(DISK) / broker.capacityFor(DISK);
+    // Ensure that if the disk capacity is non-positive, we do not report a positive disk usage.
+    double diskCapacity = broker.capacityFor(DISK);
+    return Double.compare(diskCapacity, 0.0) < 1 ? 0.0 : broker.load().expectedUtilizationFor(DISK) / diskCapacity;
   }
 
   private double replicaSize(Replica replica) {
@@ -597,11 +601,18 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
       }
       int result = Double.compare(this.size(), o.size());
       if (result != 0) {
+        // Objects to compare have different size.
         return result;
       } else {
-        if (this.replica() == Replica.MAX_REPLICA || o.replica() == Replica.MIN_REPLICA) {
+        if ((this.replica() == Replica.MAX_REPLICA || this.replica() == Replica.MIN_REPLICA)
+            && (o.replica() == Replica.MAX_REPLICA || o.replica() == Replica.MIN_REPLICA)) {
+          // Exclusive comparison between MIN_REPLICA and MAX_REPLICA, which has the same size, are equal.
+          return 0;
+        } else if (this.replica() == Replica.MAX_REPLICA || o.replica() == Replica.MIN_REPLICA) {
+          // Given the same size, MAX replica is greater than and MIN replica is smaller than other replicas.
           return 1;
         } else if (this.replica() == Replica.MIN_REPLICA || o.replica() == Replica.MAX_REPLICA) {
+          // Given the same size, MAX replica is greater than and MIN replica is smaller than other replicas.
           return -1;
         } else {
           return this.replica().compareTo(o.replica());
@@ -611,7 +622,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
 
     @Override
     public boolean equals(Object obj) {
-      return obj != null && obj instanceof ReplicaWrapper && ((ReplicaWrapper) obj).size() == _size
+      return obj instanceof ReplicaWrapper && ((ReplicaWrapper) obj).size() == _size
           && ((ReplicaWrapper) obj).replica().equals(_replica);
     }
 
