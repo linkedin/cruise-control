@@ -26,12 +26,12 @@ public class CruiseControlUtils {
   }
 
   /**
-   * Format the time to a pretty string..
+   * Format the time to a pretty string.
    * @param time the time to format.
    * @return a pretty string for the time.
    */
   public static String toPrettyTime(long time) {
-    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-mm-dd_hh:mm:ss");
+    SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd_hh:mm:ss");
     return sdf.format(new Date(time));
   }
 
