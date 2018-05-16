@@ -97,6 +97,7 @@ public class GoalOptimizer implements Runnable {
     SortedMap<Integer, Goal> defaultGoal = AnalyzerUtils.getGoalMapByPriority(config);
     _numPrecomputingThreads = Math.min(config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG),
                                       IntStream.range(1, defaultGoal.size()).reduce(1, (a, b) -> a * b));
+
     // Need at least one computing thread.
     //if precompute using multiple threads,randomize the goal order
     generateGoals(defaultGoal);
@@ -122,7 +123,7 @@ public class GoalOptimizer implements Runnable {
   }
 
   private void generateGoals(SortedMap<Integer, Goal> defaultGoal) {
-    List<Goal> goals = IntStream.range(1, defaultGoal.size()).mapToObj(defaultGoal::get).collect(Collectors.toList());
+    List<Goal> goals = IntStream.range(0, defaultGoal.size()).mapToObj(defaultGoal::get).collect(Collectors.toList());
     Set<List<Integer>> priorities = new HashSet<>();
     _goalByPriorityForPrecomputing.add(defaultGoal);
     while (priorities.size() < numProposalComputingThreads() - 1) {
@@ -130,14 +131,14 @@ public class GoalOptimizer implements Runnable {
       Collections.shuffle(shuffledOrder);
       priorities.add(shuffledOrder);
     }
-      for (List<Integer> priority: priorities) {
-        SortedMap<Integer, Goal> shuffledGoals = new TreeMap<>();
-        int i = 0;
-        for (Integer p:priority) {
-          shuffledGoals.put(p, goals.get(i++));
-        }
-        _goalByPriorityForPrecomputing.add(shuffledGoals);
+    for (List<Integer> priority: priorities) {
+      SortedMap<Integer, Goal> shuffledGoals = new TreeMap<>();
+      int i = 0;
+      for (Integer p:priority) {
+        shuffledGoals.put(p, goals.get(i++));
       }
+      _goalByPriorityForPrecomputing.add(shuffledGoals);
+    }
   }
 
 

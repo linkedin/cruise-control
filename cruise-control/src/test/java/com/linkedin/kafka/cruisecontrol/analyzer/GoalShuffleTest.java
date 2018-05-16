@@ -15,15 +15,14 @@ import java.util.Properties;
 import java.util.SortedMap;
 import org.apache.kafka.common.utils.SystemTime;
 import org.junit.Test;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+
 
 import static org.junit.Assert.*;
 
 
 public class GoalShuffleTest {
 
-  private static final Logger LOG = LoggerFactory.getLogger(GoalShuffleTest.class);
+//  private static final Logger LOG = LoggerFactory.getLogger(GoalShuffleTest.class);
 
   @Test
   public void testGoalGetShuffled() {
@@ -34,7 +33,8 @@ public class GoalShuffleTest {
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
-    LOG.trace("config applied is {}", props);
+
+    System.out.println("property applied is " + props);
     GoalOptimizer goalOptimizer = new GoalOptimizer(new KafkaCruiseControlConfig(balancingConstraint.setProps(props)),
         null,
         new SystemTime(),
@@ -43,11 +43,12 @@ public class GoalShuffleTest {
       Field field = goalOptimizer.getClass().getDeclaredField("_goalByPriorityForPrecomputing");
       field.setAccessible(true);
       List<SortedMap<Integer, Goal>> randomizedGoal = (List<SortedMap<Integer, Goal>>) field.get(goalOptimizer);
-      LOG.trace("generated goals are {}", randomizedGoal);
+      System.out.println("generated goals are" + randomizedGoal);
       for (int i = 0; i < randomizedGoal.size() - 1; i++) {
         for (int j = i + 1; j < randomizedGoal.size(); j++) {
           assertNotEquals(randomizedGoal.get(i), randomizedGoal.get(j));
         }
+      assertEquals(randomizedGoal.size(), 5);
       }
     } catch (Exception e) {
       e.printStackTrace();
