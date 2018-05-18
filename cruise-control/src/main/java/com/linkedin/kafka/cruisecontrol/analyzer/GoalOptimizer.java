@@ -39,7 +39,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -94,14 +93,11 @@ public class GoalOptimizer implements Runnable {
         _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage(),
         _defaultModelCompletenessRequirements.includeAllTopics());
     _goalByPriorityForPrecomputing = new ArrayList<>();
-    SortedMap<Integer, Goal> defaultGoal = AnalyzerUtils.getGoalMapByPriority(config);
+    //The number of proposal precomputing thread should not excel the number of unique goal priority combination
     _numPrecomputingThreads = Math.min(config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG),
-                                      IntStream.range(1, defaultGoal.size()).reduce(1, (a, b) -> a * b));
-
-    // Need at least one computing thread.
-    //if precompute using multiple threads,randomize the goal order
-    generateGoals(defaultGoal);
-
+                                      AnalyzerUtils.factorial(_goalsByPriority.size()));
+    //Generate different goal priorities for each of proposal precomputing thread
+    populateGoalByPriorityForPrecomputing();
     LOG.info("Goals by priority: {}", _goalsByPriority);
     LOG.info("Goals by priority for proposal precomputing: {}", _goalByPriorityForPrecomputing);
     _balancingConstraint = new BalancingConstraint(config);
@@ -122,25 +118,36 @@ public class GoalOptimizer implements Runnable {
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
   }
 
-  private void generateGoals(SortedMap<Integer, Goal> defaultGoal) {
-    List<Goal> goals = IntStream.range(0, defaultGoal.size()).mapToObj(defaultGoal::get).collect(Collectors.toList());
-    Set<List<Integer>> priorities = new HashSet<>();
-    _goalByPriorityForPrecomputing.add(defaultGoal);
-    while (priorities.size() < numProposalComputingThreads() - 1) {
-      List<Integer> shuffledOrder = IntStream.range(0, defaultGoal.size()).boxed().collect(Collectors.toList());
-      Collections.shuffle(shuffledOrder);
-      priorities.add(shuffledOrder);
-    }
-    for (List<Integer> priority: priorities) {
-      SortedMap<Integer, Goal> shuffledGoals = new TreeMap<>();
-      int i = 0;
-      for (Integer p:priority) {
-        shuffledGoals.put(p, goals.get(i++));
+  /**
+   * Generate unique goal priority for each of proposal precomupting thread
+   */
+  private void populateGoalByPriorityForPrecomputing() {
+    Set<List<Goal>> shuffledGoalSet = new HashSet<>();
+    //Need at least one computing thread
+    for (int i = 0; i < numProposalComputingThreads(); i++) {
+      if (i == 0) {
+        //Guarantee one thread is working on the original goal priority
+        _goalByPriorityForPrecomputing.add(_goalsByPriority);
+        shuffledGoalSet.add(new ArrayList(_goalsByPriority.values()));
+      } else {
+        List<Goal> shuffledGoal = new ArrayList(_goalsByPriority.values());
+        //Ensure the shuffled goal is unique
+        do {
+          Collections.shuffle(shuffledGoal);
+        } while (! shuffledGoalSet.add(shuffledGoal));
+        SortedMap<Integer, Goal> shuffledGoalByPriority = new TreeMap<>();
+        int j = 0;
+        for (Goal goal : shuffledGoal) {
+          shuffledGoalByPriority.put(j++, goal);
+        }
+        _goalByPriorityForPrecomputing.add(shuffledGoalByPriority);
       }
-      _goalByPriorityForPrecomputing.add(shuffledGoals);
     }
   }
 
+  List<SortedMap<Integer, Goal>> getgoalByPriorityForPrecomputing() {
+    return _goalByPriorityForPrecomputing;
+  }
 
   @Override
   public void run() {

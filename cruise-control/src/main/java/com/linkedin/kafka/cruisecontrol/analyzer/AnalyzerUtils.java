@@ -276,5 +276,20 @@ public class AnalyzerUtils {
       }
   }
 
+  /*
+   * Calculate the factorial of a positive int
+   * For zero or negative int return 0
+   */
+  public static int factorial(int v) {
+    if (v <= 0) {
+      return 0;
+    } else {
+      int res = 1;
+      for (int i = 2; i <= v; i++) {
+        res *= i;
+      }
+      return res;
+    }
+  }
 
 }
