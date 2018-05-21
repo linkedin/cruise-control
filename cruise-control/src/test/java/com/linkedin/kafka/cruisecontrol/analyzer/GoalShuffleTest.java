@@ -30,23 +30,23 @@ public class GoalShuffleTest {
 
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
-    return Arrays.asList(new Object[][]{{0, 2}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 6}});
+    return Arrays.asList(new Object[][]{{0, 1}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 6}});
   }
 
-  private int _numPrecomuptingThreadCfg;
-  private int _numPrecomuptingThreadExp;
+  private int _numPrecomputingThreadConfig;
+  private int _numPrecomputingThreadExpect;
 
 
-  public GoalShuffleTest(int threadNumCfg, int threadNumExp) {
-    this._numPrecomuptingThreadCfg = threadNumCfg;
-    this._numPrecomuptingThreadExp = threadNumExp;
+  public GoalShuffleTest(int numPrecomputingThreadConfig, int numPrecomputingThreadExpect) {
+    _numPrecomputingThreadConfig = numPrecomputingThreadConfig;
+    _numPrecomputingThreadExpect = numPrecomputingThreadExpect;
   }
 
   @Test
   public void testGoalGetShuffled() throws Exception {
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG, Long.toString(_numPrecomuptingThreadCfg));
+    props.setProperty(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG, Long.toString(_numPrecomputingThreadConfig));
     props.setProperty(KafkaCruiseControlConfig.GOALS_CONFIG, new StringJoiner(",")
         .add(RackAwareGoal.class.getName())
         .add(ReplicaCapacityGoal.class.getName())
@@ -58,27 +58,27 @@ public class GoalShuffleTest {
         null,
         new SystemTime(),
         new MetricRegistry());
-    List<SortedMap<Integer, Goal>> randomizedGoal = goalOptimizer.getgoalByPriorityForPrecomputing();
+    List<SortedMap<Integer, Goal>> goalByPriorityForPrecomputing = goalOptimizer.goalByPriorityForPrecomputing();
 
-    //Check correct number of goal priority is generated
-    assertEquals(_numPrecomuptingThreadExp, randomizedGoal.size());
+    // Check whether correct number of goal priority is generated
+    assertEquals(_numPrecomputingThreadExpect, goalByPriorityForPrecomputing.size());
 
-    //Check the first generated goal priority has the same order as set in config
-    assertTrue(randomizedGoal.get(0).get(0) instanceof RackAwareGoal);
-    assertTrue(randomizedGoal.get(0).get(1) instanceof ReplicaCapacityGoal);
-    assertTrue(randomizedGoal.get(0).get(2) instanceof DiskCapacityGoal);
+    // Check whether the first generated goal priority has the same order as set in config
+    assertTrue(goalByPriorityForPrecomputing.get(0).get(0) instanceof RackAwareGoal);
+    assertTrue(goalByPriorityForPrecomputing.get(0).get(1) instanceof ReplicaCapacityGoal);
+    assertTrue(goalByPriorityForPrecomputing.get(0).get(2) instanceof DiskCapacityGoal);
 
-    //Check all generated goals priorities are valid
-    for (int i = 0; i < randomizedGoal.size(); i++) {
+    // Check whether all generated goals priorities are valid.
+    for (int i = 0; i < goalByPriorityForPrecomputing.size(); i++) {
       for (int j = 0; j < 3; j++) {
-        assertTrue(randomizedGoal.get(i).keySet().contains(j));
+        assertTrue(goalByPriorityForPrecomputing.get(i).keySet().contains(j));
       }
     }
 
-    //Check all generated goal priorities are unique
-    for (int i = 0; i < randomizedGoal.size() - 1; i++) {
-      for (int j = i + 1; j < randomizedGoal.size(); j++) {
-        assertTrue(!randomizedGoal.get(i).toString().equals(randomizedGoal.get(j).toString()));
+    // Check all generated goal priorities are unique.
+    for (int i = 0; i < goalByPriorityForPrecomputing.size() - 1; i++) {
+      for (int j = i + 1; j < goalByPriorityForPrecomputing.size(); j++) {
+        assertTrue(!goalByPriorityForPrecomputing.get(i).toString().equals(goalByPriorityForPrecomputing.get(j).toString()));
       }
     }
   }

@@ -21,7 +21,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -93,10 +92,10 @@ public class GoalOptimizer implements Runnable {
         _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage(),
         _defaultModelCompletenessRequirements.includeAllTopics());
     _goalByPriorityForPrecomputing = new ArrayList<>();
-    //The number of proposal precomputing thread should not excel the number of unique goal priority combination
+    // The number of proposal precomputing thread should not excel the number of unique goal priority combinations.
     _numPrecomputingThreads = Math.min(config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG),
                                       AnalyzerUtils.factorial(_goalsByPriority.size()));
-    //Generate different goal priorities for each of proposal precomputing thread
+    // Generate different goal priorities for each of proposal precomputing thread.
     populateGoalByPriorityForPrecomputing();
     LOG.info("Goals by priority: {}", _goalsByPriority);
     LOG.info("Goals by priority for proposal precomputing: {}", _goalByPriorityForPrecomputing);
@@ -119,22 +118,35 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
-   * Generate unique goal priority for each of proposal precomupting thread
+   * Generate unique goal priority for each of proposal precomputing thread.
    */
   private void populateGoalByPriorityForPrecomputing() {
-    Set<List<Goal>> shuffledGoalSet = new HashSet<>();
-    //Need at least one computing thread
-    for (int i = 0; i < numProposalComputingThreads(); i++) {
-      if (i == 0) {
-        //Guarantee one thread is working on the original goal priority
-        _goalByPriorityForPrecomputing.add(_goalsByPriority);
-        shuffledGoalSet.add(new ArrayList(_goalsByPriority.values()));
-      } else {
-        List<Goal> shuffledGoal = new ArrayList(_goalsByPriority.values());
-        //Ensure the shuffled goal is unique
-        do {
-          Collections.shuffle(shuffledGoal);
-        } while (! shuffledGoalSet.add(shuffledGoal));
+    List<List<Goal>> shuffledGoalList = new ArrayList<>();
+    // Guarantee one thread is working on the original goal priority.
+    shuffledGoalList.add(new ArrayList<>(_goalsByPriority.values()));
+
+    Integer goalCount = _goalsByPriority.values().size();
+    Integer goalIndex = goalCount - 2;
+    Integer numShuffledGoalToGenerate = numProposalComputingThreads() - 1;
+    while (numShuffledGoalToGenerate > 0) {
+      List<List<Goal>> tmpShuffledGoalList = new ArrayList<>();
+      for (int i = 0; i < shuffledGoalList.size() && numShuffledGoalToGenerate > 0; i++) {
+        for (int j = goalIndex + 1; j < goalCount && numShuffledGoalToGenerate > 0; j++) {
+          List<Goal> shuffledGoal = new ArrayList<>(shuffledGoalList.get(i));
+          // Deterministically generate a new shuffled goal by swapping goal with index goalIndex and index j.
+          Goal goal = shuffledGoal.get(goalIndex);
+          shuffledGoal.set(goalIndex, shuffledGoal.get(j));
+          shuffledGoal.set(j, goal);
+
+          tmpShuffledGoalList.add(shuffledGoal);
+          numShuffledGoalToGenerate--;
+        }
+      }
+      shuffledGoalList.addAll(tmpShuffledGoalList);
+      goalIndex--;
+    }
+
+  for (List<Goal> shuffledGoal:shuffledGoalList) {
         SortedMap<Integer, Goal> shuffledGoalByPriority = new TreeMap<>();
         int j = 0;
         for (Goal goal : shuffledGoal) {
@@ -143,9 +155,11 @@ public class GoalOptimizer implements Runnable {
         _goalByPriorityForPrecomputing.add(shuffledGoalByPriority);
       }
     }
-  }
 
-  List<SortedMap<Integer, Goal>> getgoalByPriorityForPrecomputing() {
+  /**
+   * Package private for unit test.
+   */
+  List<SortedMap<Integer, Goal>> goalByPriorityForPrecomputing() {
     return _goalByPriorityForPrecomputing;
   }
 
@@ -189,10 +203,9 @@ public class GoalOptimizer implements Runnable {
     }
   }
 
-  // At least two computing thread is needed if precomputing is disabled. One thread for submitting and waiting for
-  // the proposal computing to finish, another one for compute the proposals.
+  // If precomputing is disabled, need one thread to compute the proposals.
   private int numProposalComputingThreads() {
-    return _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 2;
+    return _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1;
   }
 
   private void computeBestProposal() {
