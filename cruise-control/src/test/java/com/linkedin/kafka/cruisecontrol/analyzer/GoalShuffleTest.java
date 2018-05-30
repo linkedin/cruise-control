@@ -30,16 +30,19 @@ public class GoalShuffleTest {
 
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
-    return Arrays.asList(new Object[][]{{0, 1}, {1, 1}, {2, 2}, {3, 3}, {4, 4}, {5, 5}, {6, 6}, {7, 6}});
+    return Arrays.asList(new Object[][]{{0, 1, false}, {1, 1, false}, {3, 3, false},  {6, 6, false}, {7, 6, false},
+                                        {0, 1, true}, {1, 1, true},  {16, 16, true}, {32, 32, true}});
   }
 
   private int _numPrecomputingThreadConfig;
   private int _numPrecomputingThreadExpect;
+  private boolean _emptyGoalConfig;
 
 
-  public GoalShuffleTest(int numPrecomputingThreadConfig, int numPrecomputingThreadExpect) {
+  public GoalShuffleTest(int numPrecomputingThreadConfig, int numPrecomputingThreadExpect, boolean emptyGoalConfig) {
     _numPrecomputingThreadConfig = numPrecomputingThreadConfig;
     _numPrecomputingThreadExpect = numPrecomputingThreadExpect;
+    _emptyGoalConfig = emptyGoalConfig;
   }
 
   @Test
@@ -47,10 +50,14 @@ public class GoalShuffleTest {
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG, Long.toString(_numPrecomputingThreadConfig));
-    props.setProperty(KafkaCruiseControlConfig.GOALS_CONFIG, new StringJoiner(",")
-        .add(RackAwareGoal.class.getName())
-        .add(ReplicaCapacityGoal.class.getName())
-        .add(DiskCapacityGoal.class.getName()).toString());
+    if (_emptyGoalConfig) {
+      props.setProperty(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, new String());
+    } else {
+      props.setProperty(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, new StringJoiner(",").add(RackAwareGoal.class.getName())
+          .add(ReplicaCapacityGoal.class.getName())
+          .add(DiskCapacityGoal.class.getName())
+          .toString());
+    }
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);

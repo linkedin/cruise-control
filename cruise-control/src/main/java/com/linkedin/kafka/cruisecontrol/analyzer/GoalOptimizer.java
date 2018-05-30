@@ -92,7 +92,7 @@ public class GoalOptimizer implements Runnable {
         _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage(),
         _defaultModelCompletenessRequirements.includeAllTopics());
     _goalByPriorityForPrecomputing = new ArrayList<>();
-    // The number of proposal precomputing thread should not excel the number of unique goal priority combinations.
+    // The number of proposal precomputing thread should not exceed the number of unique goal priority combinations.
     _numPrecomputingThreads = Math.min(config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG),
                                       AnalyzerUtils.factorial(_goalsByPriority.size()));
     // Generate different goal priorities for each of proposal precomputing thread.
@@ -118,35 +118,40 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
-   * Generate unique goal priority for each of proposal precomputing thread.
+   * Generate a unique goal priority for each of proposal precomputing thread.
    */
   private void populateGoalByPriorityForPrecomputing() {
     List<List<Goal>> shuffledGoalList = new ArrayList<>();
     // Guarantee one thread is working on the original goal priority.
     shuffledGoalList.add(new ArrayList<>(_goalsByPriority.values()));
-
-    Integer goalCount = _goalsByPriority.values().size();
+    // Generate new goal priority by swapping two goals from generated goal priorities.
+    // For each of generated goal priority, picking an anchor goal, then swapping this goal with each of its following
+    // goals to generate new goal priority. goalIndex denotes the index of anchor goal in each generated goal priority,
+    // starting from the second last goal.
+    Integer goalCount = _goalsByPriority.size();
     Integer goalIndex = goalCount - 2;
-    Integer numShuffledGoalToGenerate = numProposalComputingThreads() - 1;
-    while (numShuffledGoalToGenerate > 0) {
+    Integer numShuffledGoalsToGenerate = (_numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1) - 1;
+    while (numShuffledGoalsToGenerate > 0) {
+
       List<List<Goal>> tmpShuffledGoalList = new ArrayList<>();
-      for (int i = 0; i < shuffledGoalList.size() && numShuffledGoalToGenerate > 0; i++) {
-        for (int j = goalIndex + 1; j < goalCount && numShuffledGoalToGenerate > 0; j++) {
+      for (int i = 0; i < shuffledGoalList.size() && numShuffledGoalsToGenerate > 0; i++) {
+        for (int j = goalIndex + 1; j < goalCount && numShuffledGoalsToGenerate > 0; j++) {
           List<Goal> shuffledGoal = new ArrayList<>(shuffledGoalList.get(i));
-          // Deterministically generate a new shuffled goal by swapping goal with index goalIndex and index j.
+          // Deterministically generate a new shuffled goal by swapping anchor goal and goal with index j.
           Goal goal = shuffledGoal.get(goalIndex);
           shuffledGoal.set(goalIndex, shuffledGoal.get(j));
           shuffledGoal.set(j, goal);
 
           tmpShuffledGoalList.add(shuffledGoal);
-          numShuffledGoalToGenerate--;
+          numShuffledGoalsToGenerate--;
         }
       }
       shuffledGoalList.addAll(tmpShuffledGoalList);
+      // No more new goal priority can be generated with current anchor goal selection, moving anchor one location left.
       goalIndex--;
     }
 
-  for (List<Goal> shuffledGoal:shuffledGoalList) {
+  for (List<Goal> shuffledGoal : shuffledGoalList) {
         SortedMap<Integer, Goal> shuffledGoalByPriority = new TreeMap<>();
         int j = 0;
         for (Goal goal : shuffledGoal) {
@@ -203,9 +208,10 @@ public class GoalOptimizer implements Runnable {
     }
   }
 
-  // If precomputing is disabled, need one thread to compute the proposals.
+  // At least two computing thread is needed if precomputing is disabled. One thread for submitting and waiting for
+  // the proposal computing to finish, another one for compute the proposals.
   private int numProposalComputingThreads() {
-    return _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1;
+    return _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 2;
   }
 
   private void computeBestProposal() {

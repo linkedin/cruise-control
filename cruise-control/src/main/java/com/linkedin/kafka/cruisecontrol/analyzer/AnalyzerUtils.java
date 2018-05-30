@@ -282,7 +282,6 @@ public class AnalyzerUtils {
    * @param v The value for which the factorial will be calculated.
    * @return the factorial of the given non-negative value.
    */
-
   public static int factorial(int v) {
     if (v < 0) {
       throw new IllegalArgumentException("Attempt to calculate factorial of a non-negative value.");
