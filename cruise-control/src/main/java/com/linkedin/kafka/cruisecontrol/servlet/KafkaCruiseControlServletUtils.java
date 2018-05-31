@@ -42,7 +42,7 @@ class KafkaCruiseControlServletUtils {
     return request.getRemoteAddr();
   }
 
-  static String getProposalSummary(GoalOptimizer.OptimizerResult result) {
+  static String getProposalSummary(GoalOptimizer.OptimizerResult result , boolean JSONFormat) {
     int numReplicaMovements = 0;
     int numLeaderMovements = 0;
     long dataToMove = 0;
@@ -54,11 +54,17 @@ class KafkaCruiseControlServletUtils {
         numLeaderMovements++;
       }
     }
-    return String.format("%n%nThe optimization proposal has %d replica(%d MB) movements and %d leadership movements "
-                             + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions "
-                             + "covered.", numReplicaMovements, dataToMove, numLeaderMovements,
-                         result.clusterModelStats().numSnapshotWindows(),
-                         result.clusterModelStats().monitoredPartitionsPercentage() * 100);
+    if (!JSONFormat) {
+      return String.format("%n%nThe optimization proposal has %d replica(%d MB) movements and %d leadership movements "
+              + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions " + "covered.",
+          numReplicaMovements, dataToMove, numLeaderMovements, result.clusterModelStats().numSnapshotWindows(),
+          result.clusterModelStats().monitoredPartitionsPercentage() * 100);
+    } else {
+      return String.format("The optimization proposal has %d replica(%d MB) movements and %d leadership movements "
+              + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions " + "covered.",
+          numReplicaMovements, dataToMove, numLeaderMovements, result.clusterModelStats().numSnapshotWindows(),
+          result.clusterModelStats().monitoredPartitionsPercentage() * 100);
+    }
   }
 
 }
