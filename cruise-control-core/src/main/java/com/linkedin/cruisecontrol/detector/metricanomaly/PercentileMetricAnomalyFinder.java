@@ -6,6 +6,7 @@ package com.linkedin.cruisecontrol.detector.metricanomaly;
 
 import com.linkedin.cruisecontrol.config.CruiseControlConfig;
 import com.linkedin.cruisecontrol.model.Entity;
+import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import java.util.Arrays;
 import java.util.Collection;
@@ -59,7 +60,12 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
                                                Integer metricId,
                                                ValuesAndExtrapolations history,
                                                ValuesAndExtrapolations current) {
-    _percentile.setData(history.metricValues().valuesFor(metricId).doubleArray());
+    MetricValues historyMetricValues = history.metricValues().valuesFor(metricId);
+    if (historyMetricValues == null) {
+      // No history metric values exist for the given metricId.
+      return null;
+    }
+    _percentile.setData(historyMetricValues.doubleArray());
     double currentMetricValue = current.metricValues().valuesFor(metricId).latest();
     double upperThreshold = _percentile.evaluate(_anomalyUpperPercentile) * (1 + _anomalyUpperMargin);
     double lowerThreshold = _percentile.evaluate(_anomalyLowerPercentile) * _anomalyLowerMargin;
