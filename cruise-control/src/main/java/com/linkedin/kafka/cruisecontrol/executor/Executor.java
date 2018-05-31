@@ -156,7 +156,15 @@ public class Executor {
    * @param loadMonitor Load monitor.
    */
   private void startExecution(LoadMonitor loadMonitor) {
-    ZkUtils zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
+    ZkUtils zkUtils = null;
+    try {
+      zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
+    } catch (Exception e) {
+      LOG.error("Execution failed to start due to failure to initialize zkUtils.", e);
+      _executionTaskManager.clear();
+      throw e;
+    }
+
     try {
       if (!ExecutorUtils.partitionsBeingReassigned(zkUtils).isEmpty()) {
         _executionTaskManager.clear();
@@ -219,7 +227,16 @@ public class Executor {
 
     public void run() {
       LOG.info("Starting executing balancing proposals.");
-      execute();
+      try {
+        _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
+        execute();
+      } catch (Exception e) {
+        LOG.error("Proposal execution failed due to failing to initialize zkUtils.", e);
+        _executionTaskManager.clear();
+        _hasOngoingExecution = false;
+        _stopRequested.set(false);
+      }
+
       LOG.info("Execution finished.");
     }
 
@@ -229,10 +246,9 @@ public class Executor {
     private void execute() {
       _state = ExecutorState.State.EXECUTION_STARTED;
       _executorState = ExecutorState.executionStarted();
-      _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
-      // Pause the metric sampling to avoid the loss of accuracy during execution.
-      _loadMonitor.pauseMetricSampling();
       try {
+        // Pause the metric sampling to avoid the loss of accuracy during execution.
+        _loadMonitor.pauseMetricSampling();
         // 1. Move replicas if possible.
         if (_state == ExecutorState.State.EXECUTION_STARTED) {
           _state = ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS;
