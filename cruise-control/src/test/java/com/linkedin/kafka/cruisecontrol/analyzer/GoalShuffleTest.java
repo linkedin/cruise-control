@@ -51,7 +51,7 @@ public class GoalShuffleTest {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG, Long.toString(_numPrecomputingThreadConfig));
     if (_emptyGoalConfig) {
-      props.setProperty(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, new String());
+      props.setProperty(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, new StringBuilder().toString());
     } else {
       props.setProperty(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, new StringJoiner(",").add(RackAwareGoal.class.getName())
           .add(ReplicaCapacityGoal.class.getName())
