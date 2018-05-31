@@ -57,6 +57,7 @@ public class Executor {
   private final static int ZK_CONNECTION_TIMEOUT = 30000;
   private final static boolean IS_ZK_SECURITY_ENABLED = false;
   private final static long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
+  private ZkUtils _zkUtils;
 
   private final static long METADATA_REFRESH_BACKOFF = 100L;
   private final static long METADATA_EXPIRY_MS = Long.MAX_VALUE;
@@ -77,12 +78,13 @@ public class Executor {
    */
   public Executor(KafkaCruiseControlConfig config, Time time, MetricRegistry dropwizardMetricRegistry) {
     _time = time;
+    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
                                  config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
                                  dropwizardMetricRegistry,
                                  time);
-    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     _metadataClient = new MetadataClient(config,
                                          new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),
                                          -1L,
@@ -106,12 +108,13 @@ public class Executor {
            MetricRegistry dropwizardMetricRegistry,
            MetadataClient metadataClient) {
     _time = time;
+    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
             config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
             dropwizardMetricRegistry,
             time);
-    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     _metadataClient = metadataClient;
     _statusCheckingIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     _proposalExecutor =
@@ -156,17 +159,8 @@ public class Executor {
    * @param loadMonitor Load monitor.
    */
   private void startExecution(LoadMonitor loadMonitor) {
-    ZkUtils zkUtils = null;
     try {
-      zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
-    } catch (Exception e) {
-      LOG.error("Execution failed to start due to failure to initialize zkUtils.", e);
-      _executionTaskManager.clear();
-      throw e;
-    }
-
-    try {
-      if (!ExecutorUtils.partitionsBeingReassigned(zkUtils).isEmpty()) {
+      if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
         _executionTaskManager.clear();
         // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
         throw new IllegalStateException("There are ongoing partition reassignments.");
@@ -175,7 +169,7 @@ public class Executor {
       _stopRequested.set(false);
       _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor));
     } finally {
-      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
+      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
     }
   }
 
@@ -217,7 +211,6 @@ public class Executor {
    */
   private class ProposalExecutionRunnable implements Runnable {
     private final LoadMonitor _loadMonitor;
-    private ZkUtils _zkUtils;
     private ExecutorState.State _state;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor) {
@@ -227,16 +220,7 @@ public class Executor {
 
     public void run() {
       LOG.info("Starting executing balancing proposals.");
-      try {
-        _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
-        execute();
-      } catch (Exception e) {
-        LOG.error("Proposal execution failed due to failing to initialize zkUtils.", e);
-        _executionTaskManager.clear();
-        _hasOngoingExecution = false;
-        _stopRequested.set(false);
-      }
-
+      execute();
       LOG.info("Execution finished.");
     }
 
