@@ -15,7 +15,7 @@ public class ExecutorState {
 
   public enum State {
     NO_TASK_IN_PROGRESS,
-    EXECUTION_STARTED,
+    STARTING_EXECUTION,
     REPLICA_MOVEMENT_TASK_IN_PROGRESS,
     LEADER_MOVEMENT_TASK_IN_PROGRESS,
     STOPPING_EXECUTION
@@ -66,7 +66,7 @@ public class ExecutorState {
   }
 
   public static ExecutorState executionStarted() {
-    return new ExecutorState(State.EXECUTION_STARTED,
+    return new ExecutorState(State.STARTING_EXECUTION,
                              0,
                              0,
                              new ExecutionTaskManager.ExecutionTasksSummary(Collections.emptySet(),
@@ -193,7 +193,7 @@ public class ExecutorState {
     Map<String, Object> execState = new HashMap<>();
     switch (_state) {
       case NO_TASK_IN_PROGRESS:
-      case EXECUTION_STARTED:
+      case STARTING_EXECUTION:
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         execState.put("state", _state);
         break;
@@ -222,7 +222,7 @@ public class ExecutorState {
   public String toString() {
     switch (_state) {
       case NO_TASK_IN_PROGRESS:
-      case EXECUTION_STARTED:
+      case STARTING_EXECUTION:
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         return String.format("{state: %s, finished/total leadership movements: %d/%d}", _state,
                              _numFinishedLeadershipMovements, numTotalLeadershipMovements());

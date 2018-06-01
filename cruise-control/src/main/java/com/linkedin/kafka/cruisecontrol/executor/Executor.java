@@ -77,24 +77,7 @@ public class Executor {
    * @param config The configurations for Cruise Control.
    */
   public Executor(KafkaCruiseControlConfig config, Time time, MetricRegistry dropwizardMetricRegistry) {
-    _time = time;
-    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
-    _executionTaskManager =
-        new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
-                                 config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
-                                 dropwizardMetricRegistry,
-                                 time);
-    _metadataClient = new MetadataClient(config,
-                                         new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),
-                                         -1L,
-                                         time);
-    _statusCheckingIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
-    _proposalExecutor =
-        Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));
-    _executorState = ExecutorState.noTaskInProgress();
-    _stopRequested = new AtomicBoolean(false);
-    _hasOngoingExecution = false;
+    this(config, time, dropwizardMetricRegistry, null);
   }
 
   /**
@@ -112,10 +95,15 @@ public class Executor {
     _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
-            config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
-            dropwizardMetricRegistry,
-            time);
-    _metadataClient = metadataClient;
+                                 config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
+                                 dropwizardMetricRegistry,
+                                 time);
+    _metadataClient = metadataClient != null
+                      ? metadataClient
+                      : new MetadataClient(config,
+                                           new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),
+                                           -1L,
+                                           time);
     _statusCheckingIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     _proposalExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));
@@ -225,13 +213,23 @@ public class Executor {
      * Start the actual execution of the proposals in order: First move replicas, then transfer leadership.
      */
     private void execute() {
-      _state = ExecutorState.State.EXECUTION_STARTED;
+      _state = ExecutorState.State.STARTING_EXECUTION;
       _executorState = ExecutorState.executionStarted();
       try {
         // Pause the metric sampling to avoid the loss of accuracy during execution.
-        _loadMonitor.pauseMetricSampling();
+        while (true) {
+          try {
+            // Ensure that the temporary states in the load monitor are explicitly handled -- e.g. SAMPLING.
+            _loadMonitor.pauseMetricSampling();
+            break;
+          } catch (IllegalStateException e) {
+            Thread.sleep(_statusCheckingIntervalMs);
+            LOG.debug("Waiting for the load monitor to be ready to initialize the execution.", e);
+          }
+        }
+
         // 1. Move replicas if possible.
-        if (_state == ExecutorState.State.EXECUTION_STARTED) {
+        if (_state == ExecutorState.State.STARTING_EXECUTION) {
           _state = ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS;
           // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
           _executorState = ExecutorState.replicaMovementInProgress(_numFinishedPartitionMovements,
