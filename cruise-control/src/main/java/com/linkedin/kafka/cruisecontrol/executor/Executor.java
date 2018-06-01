@@ -159,18 +159,14 @@ public class Executor {
    * @param loadMonitor Load monitor.
    */
   private void startExecution(LoadMonitor loadMonitor) {
-    try {
-      if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
-        _executionTaskManager.clear();
-        // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
-        throw new IllegalStateException("There are ongoing partition reassignments.");
-      }
-      _hasOngoingExecution = true;
-      _stopRequested.set(false);
-      _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor));
-    } finally {
-      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
+    if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
+      _executionTaskManager.clear();
+      // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
+      throw new IllegalStateException("There are ongoing partition reassignments.");
     }
+    _hasOngoingExecution = true;
+    _stopRequested.set(false);
+    _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor));
   }
 
   public synchronized void stopExecution() {
@@ -193,6 +189,7 @@ public class Executor {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
     }
     _metadataClient.close();
+    KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
     LOG.info("Executor shutdown completed.");
   }
 
@@ -258,7 +255,6 @@ public class Executor {
       } finally {
         _loadMonitor.resumeMetricSampling();
         _executionTaskManager.clear();
-        KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
         _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
         // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
         _executorState = ExecutorState.noTaskInProgress();
