@@ -57,6 +57,7 @@ public class Executor {
   private final static int ZK_CONNECTION_TIMEOUT = 30000;
   private final static boolean IS_ZK_SECURITY_ENABLED = false;
   private final static long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
+  private ZkUtils _zkUtils;
 
   private final static long METADATA_REFRESH_BACKOFF = 100L;
   private final static long METADATA_EXPIRY_MS = Long.MAX_VALUE;
@@ -77,12 +78,13 @@ public class Executor {
    */
   public Executor(KafkaCruiseControlConfig config, Time time, MetricRegistry dropwizardMetricRegistry) {
     _time = time;
+    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
                                  config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
                                  dropwizardMetricRegistry,
                                  time);
-    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     _metadataClient = new MetadataClient(config,
                                          new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),
                                          -1L,
@@ -106,12 +108,13 @@ public class Executor {
            MetricRegistry dropwizardMetricRegistry,
            MetadataClient metadataClient) {
     _time = time;
+    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
             config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
             dropwizardMetricRegistry,
             time);
-    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     _metadataClient = metadataClient;
     _statusCheckingIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     _proposalExecutor =
@@ -156,19 +159,14 @@ public class Executor {
    * @param loadMonitor Load monitor.
    */
   private void startExecution(LoadMonitor loadMonitor) {
-    ZkUtils zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
-    try {
-      if (!ExecutorUtils.partitionsBeingReassigned(zkUtils).isEmpty()) {
-        _executionTaskManager.clear();
-        // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
-        throw new IllegalStateException("There are ongoing partition reassignments.");
-      }
-      _hasOngoingExecution = true;
-      _stopRequested.set(false);
-      _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor));
-    } finally {
-      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
+    if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
+      _executionTaskManager.clear();
+      // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
+      throw new IllegalStateException("There are ongoing partition reassignments.");
     }
+    _hasOngoingExecution = true;
+    _stopRequested.set(false);
+    _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor));
   }
 
   public synchronized void stopExecution() {
@@ -191,6 +189,7 @@ public class Executor {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
     }
     _metadataClient.close();
+    KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
     LOG.info("Executor shutdown completed.");
   }
 
@@ -209,7 +208,6 @@ public class Executor {
    */
   private class ProposalExecutionRunnable implements Runnable {
     private final LoadMonitor _loadMonitor;
-    private ZkUtils _zkUtils;
     private ExecutorState.State _state;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor) {
@@ -229,10 +227,9 @@ public class Executor {
     private void execute() {
       _state = ExecutorState.State.EXECUTION_STARTED;
       _executorState = ExecutorState.executionStarted();
-      _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
-      // Pause the metric sampling to avoid the loss of accuracy during execution.
-      _loadMonitor.pauseMetricSampling();
       try {
+        // Pause the metric sampling to avoid the loss of accuracy during execution.
+        _loadMonitor.pauseMetricSampling();
         // 1. Move replicas if possible.
         if (_state == ExecutorState.State.EXECUTION_STARTED) {
           _state = ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS;
@@ -258,7 +255,6 @@ public class Executor {
       } finally {
         _loadMonitor.resumeMetricSampling();
         _executionTaskManager.clear();
-        KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
         _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
         // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
         _executorState = ExecutorState.noTaskInProgress();
