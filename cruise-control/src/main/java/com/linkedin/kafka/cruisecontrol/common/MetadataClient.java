@@ -82,15 +82,15 @@ public class MetadataClient {
       int version = _metadata.requestUpdate();
       long remaining = timeout;
       Cluster beforeUpdate = _metadata.fetch();
-      boolean hasUpdatedMetadata = _metadata.version() > version;
-      while (!hasUpdatedMetadata && remaining > 0) {
+      boolean isMetadataUpdated = _metadata.version() > version;
+      while (!isMetadataUpdated && remaining > 0) {
         _metadata.requestUpdate();
         long start = _time.milliseconds();
         _networkClient.poll(remaining, start);
         remaining -= (_time.milliseconds() - start);
-        hasUpdatedMetadata = _metadata.version() > version;
+        isMetadataUpdated = _metadata.version() > version;
       }
-      if (hasUpdatedMetadata) {
+      if (isMetadataUpdated) {
         LOG.debug("Updated metadata {}", _metadata.fetch());
         if (MonitorUtils.metadataChanged(beforeUpdate, _metadata.fetch())) {
           _metadataGeneration.incrementAndGet();
