@@ -92,11 +92,11 @@ public class GoalOptimizer implements Runnable {
         _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage(),
         _defaultModelCompletenessRequirements.includeAllTopics());
     _goalByPriorityForPrecomputing = new ArrayList<>();
-    _numPrecomputingThreads = config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
-    // Need at least one computing thread.
-    for (int i = 0; i < numProposalComputingThreads(); i++) {
-      _goalByPriorityForPrecomputing.add(AnalyzerUtils.getGoalMapByPriority(config));
-    }
+    // The number of proposal precomputing thread should not exceed the number of unique goal priority combinations.
+    _numPrecomputingThreads = Math.min(config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG),
+                                       AnalyzerUtils.factorial(_goalsByPriority.size()));
+    // Generate different goal priorities for each of proposal precomputing thread.
+    populateGoalByPriorityForPrecomputing();
     LOG.info("Goals by priority: {}", _goalsByPriority);
     LOG.info("Goals by priority for proposal precomputing: {}", _goalByPriorityForPrecomputing);
     _balancingConstraint = new BalancingConstraint(config);
@@ -115,6 +115,98 @@ public class GoalOptimizer implements Runnable {
     _progressUpdateLock = new AtomicBoolean(false);
     _proposalPrecomputingProgress = new OperationProgress();
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
+  }
+
+  private Set<List<Goal>> getPermutations(List<Goal> toPermute) {
+    Set<List<Goal>> allPermutations = new HashSet<>();
+    // Handle the case with single goal to permute.
+    if (toPermute.size() == 1) {
+      allPermutations.add(toPermute);
+      return allPermutations;
+    }
+
+    for (int i = 0; i < toPermute.size(); i++) {
+      // Copy the original list and remove the goal that we will prepend to the permutations of the remaining goals.
+      List<Goal> remainingToPermute = new ArrayList<>(toPermute);
+      Goal goal = toPermute.get(i);
+      remainingToPermute.remove(i);
+
+      // Prepend the goal to permutations of the remaining goals.
+      for (List<Goal> permutedRemaining: getPermutations(remainingToPermute)) {
+        permutedRemaining.add(0, goal);
+        allPermutations.add(permutedRemaining);
+      }
+    }
+
+    return allPermutations;
+  }
+
+  private void populateGoalByPriorityForPrecomputing() {
+    Set<List<Goal>> shuffledGoals = new HashSet<>();
+
+    // Calculate the number of goals to compute the permutations.
+    int numberOfGoalsToComputePermutations = 0;
+    int numShuffledGoalsToGenerate = _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1;
+    while (true) {
+      if (AnalyzerUtils.factorial(++numberOfGoalsToComputePermutations) >= numShuffledGoalsToGenerate) {
+        break;
+      }
+    }
+
+    // Get all permutations of the last numberOfGoalsToComputePermutations goals.
+    int toIndex = _goalsByPriority.size() - numberOfGoalsToComputePermutations;
+    List<Goal> commonPrefix = new ArrayList<>(_goalsByPriority.values()).subList(0, toIndex);
+    List<Goal> suffixToPermute = new ArrayList<>(_goalsByPriority.values()).subList(toIndex, _goalsByPriority.size());
+
+    for (List<Goal> shuffledSuffix: getPermutations(suffixToPermute)) {
+      List<Goal> shuffledGoalList = new ArrayList<>(commonPrefix);
+      shuffledGoalList.addAll(shuffledSuffix);
+      shuffledGoals.add(shuffledGoalList);
+    }
+
+    // Guarantee that one thread is working on the original goal priority.
+    addGoalsForPrecomputing(new ArrayList<>(_goalsByPriority.values()));
+    // Add the remaining goal priorities.
+    addShuffledGoalsForPrecomputing(shuffledGoals);
+  }
+
+  private void addShuffledGoalsForPrecomputing(Set<List<Goal>> shuffledGoals) {
+    List<Goal> originalGoals = new ArrayList<>(_goalsByPriority.values());
+
+    // Add the others
+    int numShuffledGoalsToGenerate = _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1;
+    for (List<Goal> shuffledGoalList : shuffledGoals) {
+      if (_goalByPriorityForPrecomputing.size() == numShuffledGoalsToGenerate) {
+        break;
+      }
+      boolean isOriginalOrder = true;
+      for (int i = 0; i < shuffledGoalList.size(); i++) {
+        String shuffledGoal = shuffledGoalList.get(i).name();
+        if (!shuffledGoal.equals(originalGoals.get(i).name())) {
+          isOriginalOrder = false;
+          break;
+        }
+      }
+      if (!isOriginalOrder) {
+        addGoalsForPrecomputing(shuffledGoalList);
+      }
+    }
+  }
+
+  private void addGoalsForPrecomputing(List<Goal> goals) {
+    SortedMap<Integer, Goal> shuffledGoalByPriority = new TreeMap<>();
+    int j = 0;
+    for (Goal goal : goals) {
+      shuffledGoalByPriority.put(j++, goal);
+    }
+    _goalByPriorityForPrecomputing.add(shuffledGoalByPriority);
+  }
+
+  /**
+   * Package private for unit test.
+   */
+  List<SortedMap<Integer, Goal>> goalByPriorityForPrecomputing() {
+    return _goalByPriorityForPrecomputing;
   }
 
   @Override
