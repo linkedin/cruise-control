@@ -132,7 +132,7 @@ public class GoalOptimizer implements Runnable {
       remainingToPermute.remove(i);
 
       // Prepend the goal to permutations of the remaining goals.
-      for(List<Goal> permutedRemaining: getPermutations(remainingToPermute)) {
+      for (List<Goal> permutedRemaining: getPermutations(remainingToPermute)) {
         permutedRemaining.add(0, goal);
         allPermutations.add(permutedRemaining);
       }
