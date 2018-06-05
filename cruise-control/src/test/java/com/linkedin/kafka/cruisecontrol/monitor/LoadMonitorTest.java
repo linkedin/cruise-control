@@ -83,7 +83,8 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
 
-    LoadMonitorState state = loadMonitor.state(new OperationProgress());
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
+    LoadMonitorState state = loadMonitor.state(new OperationProgress(), clusterAndGeneration);
     // The load monitor only has an active window. There is no stable window.
     assertEquals(0, state.numValidPartitions());
     assertEquals(0, state.numValidWindows());
@@ -102,7 +103,8 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
 
-    LoadMonitorState state = loadMonitor.state(new OperationProgress());
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
+    LoadMonitorState state = loadMonitor.state(new OperationProgress(), clusterAndGeneration);
     // The load monitor has 1 stable window with 0.5 of valid partitions ratio.
     assertEquals(0, state.numValidPartitions());
     assertEquals(0, state.numValidWindows());
@@ -111,7 +113,8 @@ public class LoadMonitorTest {
 
     // Back fill for T1P1
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
-    state = loadMonitor.state(new OperationProgress());
+    clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
+    state = loadMonitor.state(new OperationProgress(), clusterAndGeneration);
     // The load monitor now has one stable window with 1.0 of valid partitions ratio.
     assertEquals(0, state.numValidPartitions());
     assertEquals(1, state.numValidWindows());
@@ -134,7 +137,8 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 2, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 2, aggregator, PE_T1P1, 2, WINDOW_MS, METRIC_DEF);
 
-    LoadMonitorState state = loadMonitor.state(new OperationProgress());
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
+    LoadMonitorState state = loadMonitor.state(new OperationProgress(), clusterAndGeneration);
     // Both partitions for topic 0 should be valid.
     assertEquals(2, state.numValidPartitions());
     // Both topic should be valid in the first window.
@@ -148,7 +152,8 @@ public class LoadMonitorTest {
 
     // Back fill 3 samples for T1P1 in the second window.
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 3, aggregator, PE_T1P1, 1, WINDOW_MS, METRIC_DEF);
-    state = loadMonitor.state(new OperationProgress());
+    clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
+    state = loadMonitor.state(new OperationProgress(), clusterAndGeneration);
     // All the partitions should be valid now.
     assertEquals(4, state.numValidPartitions());
     // All the windows should be valid now.
@@ -181,10 +186,11 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(2, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
     // The load monitor has one window with 0.5 valid partitions ratio.
-    assertFalse(loadMonitor.meetCompletenessRequirements(requirements1));
-    assertTrue(loadMonitor.meetCompletenessRequirements(requirements2));
-    assertFalse(loadMonitor.meetCompletenessRequirements(requirements3));
-    assertFalse(loadMonitor.meetCompletenessRequirements(requirements4));
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
+    assertFalse(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements1));
+    assertTrue(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements2));
+    assertFalse(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements3));
+    assertFalse(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements4));
 
     // Add more samples, two stable windows + one active window. enough samples for each partition except T1P1
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T0P0, 2, WINDOW_MS, METRIC_DEF);
@@ -192,26 +198,29 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P0, 2, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, PE_T1P1, 2, WINDOW_MS, METRIC_DEF);
     // The load monitor has two windows, both with 0.5 valid partitions ratio
-    assertFalse(loadMonitor.meetCompletenessRequirements(requirements1));
-    assertTrue(loadMonitor.meetCompletenessRequirements(requirements2));
-    assertFalse(loadMonitor.meetCompletenessRequirements(requirements3));
-    assertTrue(loadMonitor.meetCompletenessRequirements(requirements4));
+    clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
+    assertFalse(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements1));
+    assertTrue(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements2));
+    assertFalse(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements3));
+    assertTrue(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements4));
 
     // Back fill the first stable window for T1P1
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 1, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
     // The load monitor has two windows with 1.0 and 0.5 of completeness respectively.
-    assertTrue(loadMonitor.meetCompletenessRequirements(requirements1));
-    assertTrue(loadMonitor.meetCompletenessRequirements(requirements2));
-    assertFalse(loadMonitor.meetCompletenessRequirements(requirements3));
-    assertTrue(loadMonitor.meetCompletenessRequirements(requirements4));
+    clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
+    assertTrue(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements1));
+    assertTrue(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements2));
+    assertFalse(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements3));
+    assertTrue(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements4));
 
     // Back fill all stable windows for T1P1
     CruiseControlUnitTestUtils.populateSampleAggregator(1, 3, aggregator, PE_T1P1, 1, WINDOW_MS, METRIC_DEF);
     // The load monitor has two windows both with 1.0 of completeness.
-    assertTrue(loadMonitor.meetCompletenessRequirements(requirements1));
-    assertTrue(loadMonitor.meetCompletenessRequirements(requirements2));
-    assertTrue(loadMonitor.meetCompletenessRequirements(requirements3));
-    assertTrue(loadMonitor.meetCompletenessRequirements(requirements4));
+    clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
+    assertTrue(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements1));
+    assertTrue(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements2));
+    assertTrue(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements3));
+    assertTrue(loadMonitor.meetCompletenessRequirements(clusterAndGeneration, requirements4));
   }
 
   // Test the case with enough snapshot windows and valid partitions.
@@ -430,7 +439,8 @@ public class LoadMonitorTest {
 
     ModelParameters.init(config);
     loadMonitor.startUp();
-    while (loadMonitor.state(new OperationProgress()).state() != LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING) {
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = loadMonitor.refreshClusterAndGeneration();
+    while (loadMonitor.state(new OperationProgress(), clusterAndGeneration).state() != LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING) {
       try {
         Thread.sleep(1);
       } catch (InterruptedException e) {

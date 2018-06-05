@@ -68,7 +68,8 @@ public class LoadMonitor {
 
   // Kafka Load Monitor server log.
   private static final Logger LOG = LoggerFactory.getLogger(LoadMonitor.class);
-  private static final long METADATA_TTL = 5000L;
+  // Metadata TTL is set based on experience -- i.e. a short TTL with large metadata may cause excessive load on brokers.
+  private static final long METADATA_TTL = 10000L;
   private final int _numPartitionMetricSampleWindows;
   private final LoadMonitorTaskRunner _loadMonitorTaskRunner;
   private final KafkaPartitionMetricSampleAggregator _partitionMetricSampleAggregator;
@@ -193,9 +194,8 @@ public class LoadMonitor {
   /**
    * Get the state of the load monitor.
    */
-  public LoadMonitorState state(OperationProgress operationProgress) {
+  public LoadMonitorState state(OperationProgress operationProgress, MetadataClient.ClusterAndGeneration clusterAndGeneration) {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState state = _loadMonitorTaskRunner.state();
-    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
     Cluster kafkaCluster = clusterAndGeneration.cluster();
     int totalNumPartitions = MonitorUtils.totalNumPartitions(kafkaCluster);
     double minMonitoredPartitionsPercentage = _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage();
@@ -504,17 +504,29 @@ public class LoadMonitor {
     return brokersWithPartitions(kafkaCluster);
   }
 
+  public MetadataClient.ClusterAndGeneration refreshClusterAndGeneration() {
+    return _metadataClient.refreshMetadata();
+  }
+
   /**
    * Check whether the monitored load meets the load requirements.
    */
-  public boolean meetCompletenessRequirements(ModelCompletenessRequirements requirements) {
-    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
+  public boolean meetCompletenessRequirements(MetadataClient.ClusterAndGeneration clusterAndGeneration,
+                                              ModelCompletenessRequirements requirements) {
     int availableNumSnapshots =
         _partitionMetricSampleAggregator.validWindows(clusterAndGeneration,
                                                       requirements.minMonitoredPartitionsPercentage())
                                         .size();
     int requiredSnapshot = requirements.minRequiredNumWindows();
     return availableNumSnapshots >= requiredSnapshot;
+  }
+
+  /**
+   * Check whether the monitored load meets the load requirements.
+   */
+  public boolean meetCompletenessRequirements(ModelCompletenessRequirements requirements) {
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
+    return meetCompletenessRequirements(clusterAndGeneration, requirements);
   }
 
   /**

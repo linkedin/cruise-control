@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
@@ -222,10 +223,11 @@ public class GoalOptimizer implements Runnable {
   /**
    * Get the analyzer state from the goal optimizer.
    */
-  public AnalyzerState state() {
+  public AnalyzerState state(MetadataClient.ClusterAndGeneration clusterAndGeneration) {
     Map<Goal, Boolean> goalReadiness = new LinkedHashMap<>(_goalsByPriority.size());
     for (Goal goal : _goalsByPriority.values()) {
-      goalReadiness.put(goal, _loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements()));
+      goalReadiness.put(goal, _loadMonitor.meetCompletenessRequirements(clusterAndGeneration,
+                                                                        goal.clusterModelCompletenessRequirements()));
     }
     return new AnalyzerState(_bestProposal != null, goalReadiness);
   }
