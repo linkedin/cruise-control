@@ -31,6 +31,7 @@ public class MetadataClient {
   private final NetworkClient _networkClient;
   private final Time _time;
   private final long _metadataTTL;
+  private final long _refreshMetadataTimeout;
 
   public MetadataClient(KafkaCruiseControlConfig config,
                         Metadata metadata,
@@ -38,6 +39,7 @@ public class MetadataClient {
                         Time time) {
     _metadataGeneration = new AtomicInteger(0);
     _metadata = metadata;
+    _refreshMetadataTimeout = config.getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
     _time = time;
     List<InetSocketAddress> addresses =
         ClientUtils.parseAndValidateAddresses(config.getList(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
@@ -66,7 +68,7 @@ public class MetadataClient {
    * Refresh the metadata. The method is synchronized because the network client is not thread safe.
    */
   public synchronized ClusterAndGeneration refreshMetadata() {
-    return refreshMetadata(Long.MAX_VALUE);
+    return refreshMetadata(_refreshMetadataTimeout);
   }
 
   /**
@@ -80,24 +82,31 @@ public class MetadataClient {
       int version = _metadata.requestUpdate();
       long remaining = timeout;
       Cluster beforeUpdate = _metadata.fetch();
-      while (_metadata.version() <= version && remaining > 0) {
+      boolean isMetadataUpdated = _metadata.version() > version;
+      while (!isMetadataUpdated && remaining > 0) {
         _metadata.requestUpdate();
         long start = _time.milliseconds();
         _networkClient.poll(remaining, start);
         remaining -= (_time.milliseconds() - start);
+        isMetadataUpdated = _metadata.version() > version;
       }
-      LOG.debug("Updated metadata {}", _metadata.fetch());
-      if (MonitorUtils.metadataChanged(beforeUpdate, _metadata.fetch())) {
-        _metadataGeneration.incrementAndGet();
+      if (isMetadataUpdated) {
+        LOG.debug("Updated metadata {}", _metadata.fetch());
+        if (MonitorUtils.metadataChanged(beforeUpdate, _metadata.fetch())) {
+          _metadataGeneration.incrementAndGet();
+        }
+      } else {
+        LOG.warn("Failed to update metadata in {}ms. Using old metadata with version {} and last successful update {}.",
+                 timeout, _metadata.version(), _metadata.lastSuccessfulUpdate());
       }
     }
     return new ClusterAndGeneration(_metadata.fetch(), _metadataGeneration.get());
   }
 
   /**
-   * Close the metadata client.
+   * Close the metadata client. Synchronized to avoid interrupting the network client during a poll.
    */
-  public void close() {
+  public synchronized void close() {
     _networkClient.close();
   }
 
@@ -112,7 +121,7 @@ public class MetadataClient {
    * Get the current cluster and generation
    */
   public ClusterAndGeneration clusterAndGeneration() {
-    return new ClusterAndGeneration(_metadata.fetch(), _metadataGeneration.get());
+    return new ClusterAndGeneration(cluster(), _metadataGeneration.get());
   }
 
   /**

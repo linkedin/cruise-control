@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
+import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
@@ -431,7 +432,10 @@ public class KafkaCruiseControl {
    * Get the state for Kafka Cruise Control.
    */
   public KafkaCruiseControlState state(OperationProgress operationProgress) {
-    return new KafkaCruiseControlState(_executor.state(), _loadMonitor.state(operationProgress), _goalOptimizer.state());
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
+    return new KafkaCruiseControlState(_executor.state(),
+                                       _loadMonitor.state(operationProgress, clusterAndGeneration),
+                                       _goalOptimizer.state(clusterAndGeneration));
   }
 
   /**
@@ -461,7 +465,9 @@ public class KafkaCruiseControl {
    */
   public boolean meetCompletenessRequirements(List<String> goalNames) {
     Collection<Goal> goals = goalsByPriority(goalNames).values();
-    return goals.stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(g.clusterModelCompletenessRequirements()));
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
+    return goals.stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(
+        clusterAndGeneration, g.clusterModelCompletenessRequirements()));
   }
 
   /**
