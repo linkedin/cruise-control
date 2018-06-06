@@ -140,9 +140,12 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
     for (Map.Entry<E, ValuesAndExtrapolations> entry : currentMetricsByEntity.entrySet()) {
       E entity = entry.getKey();
       ValuesAndExtrapolations history = metricsHistoryByEntity.get(entity);
+      if (history == null) {
+        // No historical data exist for the given entity to identify metric anomalies.
+        continue;
+      }
       ValuesAndExtrapolations current = currentMetricsByEntity.get(entity);
-
-      List<Long> windows = entry.getValue().windows();
+      List<Long> windows = current.windows();
 
       for (Integer metricId : entry.getValue().metricValues().metricIds()) {
         // Skip the metrics that are not interested.
