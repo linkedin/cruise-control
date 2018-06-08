@@ -381,15 +381,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                                                     + "the current state to identify metric anomalies.";
 
   /**
-   * <code>max.proposal.candidates</code>
-   */
-  public static final String MAX_PROPOSAL_CANDIDATES_CONFIG = "max.proposal.candidates";
-  private static final String MAX_PROPOSAL_CANDIDATES_DOC = "Kafka Cruise Control precomputes the optimization proposal"
-      + "candidates continuously in the background. This config sets the maximum number of candidate proposals to "
-      + "precompute for each cluster workload model. The more proposal candidates are generated, the more likely a "
-      + "better optimization proposal will be found, but more CPU will be used as well.";
-
-  /**
    * <code>proposal.expiration.ms</code>
    */
   public static final String PROPOSAL_EXPIRATION_MS_CONFIG = "proposal.expiration.ms";
@@ -747,12 +738,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.LIST,
                 DEFAULT_METRIC_ANOMALY_FINDER_CLASS,
                 ConfigDef.Importance.MEDIUM, METRIC_ANOMALY_FINDER_CLASSES_DOC)
-        .define(MAX_PROPOSAL_CANDIDATES_CONFIG,
-                ConfigDef.Type.INT,
-                10,
-                atLeast(1),
-                ConfigDef.Importance.MEDIUM,
-                MAX_PROPOSAL_CANDIDATES_DOC)
         .define(PROPOSAL_EXPIRATION_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 900000,
