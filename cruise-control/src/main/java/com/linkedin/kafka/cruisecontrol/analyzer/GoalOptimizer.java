@@ -59,11 +59,9 @@ public class GoalOptimizer implements Runnable {
   private final LoadMonitor _loadMonitor;
 
   private final Time _time;
-  private final int _maxProposalCandidates;
   private final int _numPrecomputingThreads;
   private final long _proposalExpirationMs;
   private final ExecutorService _proposalPrecomputingExecutor;
-  private final AtomicInteger _totalProposalCandidateComputed;
   private final AtomicBoolean _progressUpdateLock;
   private final OperationProgress _proposalPrecomputingProgress;
   private final List<SortedMap<Integer, Goal>> _goalByPriorityForPrecomputing;
@@ -102,7 +100,6 @@ public class GoalOptimizer implements Runnable {
     LOG.info("Goals by priority for proposal precomputing: {}", _goalByPriorityForPrecomputing);
     _balancingConstraint = new BalancingConstraint(config);
     _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
-    _maxProposalCandidates = config.getInt(KafkaCruiseControlConfig.MAX_PROPOSAL_CANDIDATES_CONFIG);
     _proposalExpirationMs = config.getLong(KafkaCruiseControlConfig.PROPOSAL_EXPIRATION_MS_CONFIG);
     _proposalPrecomputingExecutor =
         Executors.newScheduledThreadPool(numProposalComputingThreads(),
@@ -112,7 +109,6 @@ public class GoalOptimizer implements Runnable {
     _cacheLock = new ReentrantLock();
     _threadsWaitingForCache = new AtomicInteger(0);
     _bestProposal = null;
-    _totalProposalCandidateComputed = new AtomicInteger(0);
     _progressUpdateLock = new AtomicBoolean(false);
     _proposalPrecomputingProgress = new OperationProgress();
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
@@ -278,8 +274,7 @@ public class GoalOptimizer implements Runnable {
       }
     }
     if (!futures.isEmpty()) {
-      LOG.info("Finished precomputation {} proposal candidates in {} ms", _totalProposalCandidateComputed.get() - 1,
-               _time.milliseconds() - start);
+      LOG.info("Finished the precomputation proposal candidates in {} ms", _time.milliseconds() - start);
     }
   }
 
@@ -521,7 +516,6 @@ public class GoalOptimizer implements Runnable {
   private void clearBestProposal() {
     synchronized (_cacheLock) {
       _bestProposal = null;
-      _totalProposalCandidateComputed.set(0);
       _progressUpdateLock.set(false);
       _proposalPrecomputingProgress.clear();
     }
@@ -612,23 +606,22 @@ public class GoalOptimizer implements Runnable {
       }
       OperationProgress operationProgress =
           _progressUpdateLock.compareAndSet(false, true) ? _proposalPrecomputingProgress : new OperationProgress();
-      while (_totalProposalCandidateComputed.incrementAndGet() <= _maxProposalCandidates) {
-        try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-          long startMs = _time.milliseconds();
-          // We compute the proposal even if there is not enough modeled partitions.
-          ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements) ?
-              _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
-          ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, operationProgress);
-          if (!clusterModel.topics().isEmpty()) {
-            OptimizerResult result = optimizations(clusterModel, _goalByPriority, operationProgress);
-            LOG.debug("Generated a proposal candidate in {} ms.", _time.milliseconds() - startMs);
-            updateBestProposal(result);
-          } else {
-            LOG.warn("The cluster model does not have valid topics, skipping proposal precomputation.");
-          }
-        } catch (Exception e) {
-          LOG.error("Proposal precomputation encountered error", e);
+
+      try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+        long startMs = _time.milliseconds();
+        // We compute the proposal even if there is not enough modeled partitions.
+        ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements) ?
+                                                     _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
+        ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, operationProgress);
+        if (!clusterModel.topics().isEmpty()) {
+          OptimizerResult result = optimizations(clusterModel, _goalByPriority, operationProgress);
+          LOG.debug("Generated a proposal candidate in {} ms.", _time.milliseconds() - startMs);
+          updateBestProposal(result);
+        } else {
+          LOG.warn("The cluster model does not have valid topics, skipping proposal precomputation.");
         }
+      } catch (Exception e) {
+        LOG.error("Proposal precomputation encountered error", e);
       }
     }
   }
