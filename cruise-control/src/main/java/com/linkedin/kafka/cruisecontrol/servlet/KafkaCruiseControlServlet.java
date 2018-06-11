@@ -165,7 +165,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Set<String> demoteBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     demoteBroker.add(BROKER_ID_PARAM);
     demoteBroker.add(DRY_RUN_PARAM);
-    addOrRemoveBroker.add(JSON_PARAM);
+    demoteBroker.add(JSON_PARAM);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
@@ -547,11 +547,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       exceptionMap.put("errorMessage", errorMessage);
       Gson gson = new Gson();
       resp = gson.toJson(exceptionMap);
-      setJSONResponseCode(response, responseCode);
     } else {
       resp = errorMessage == null ? "" : errorMessage;
-      setResponseCode(response, responseCode);
     }
+    setResponseCode(response, responseCode, json);
     response.setContentLength(resp.length());
     response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
     response.getOutputStream().flush();
@@ -597,31 +596,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, true);
     if (granularity == null || granularity.toLowerCase().equals(GRANULARITY_BROKER)) {
       ClusterModel.BrokerStats brokerStats = _asyncKafkaCruiseControl.cachedBrokerLoadStats();
-      String brokerLoad;
-      if (brokerStats != null) {
-        if (json) {
-          brokerLoad = brokerStats.getJSONString(JSON_VERSION);
-        } else {
-          brokerLoad = brokerStats.toString();
-        }
-      } else {
+      if (brokerStats == null) {
         // Get the broker stats asynchronously.
         brokerStats = getAndMaybeReturnProgress(request, response,
                                                 () -> _asyncKafkaCruiseControl.getBrokerStats(time, requirements));
         if (brokerStats == null) {
           return false;
         }
-        if (json) {
-          brokerLoad = brokerStats.getJSONString(JSON_VERSION);
-        } else {
-          brokerLoad = brokerStats.toString();
-        }
       }
-      if (json) {
-        setJSONResponseCode(response, SC_OK);
-      } else {
-        setResponseCode(response, SC_OK);
-      }
+      String brokerLoad = json ? brokerStats.getJSONString(JSON_VERSION) : brokerStats.toString();
+      setResponseCode(response, SC_OK, json);
       response.setContentLength(brokerLoad.length());
       response.getOutputStream().write(brokerLoad.getBytes(StandardCharsets.UTF_8));
     } else if (granularity.toLowerCase().equals(GRANULARITY_REPLICA)) {
@@ -631,16 +615,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       if (clusterModel == null) {
         return false;
       }
+      setResponseCode(response, SC_OK, json);
       if (json) {
         String data = clusterModel.getJSONString(JSON_VERSION);
-        setJSONResponseCode(response, SC_OK);
         response.setContentLength(data.length());
         ServletOutputStream os = response.getOutputStream();
         OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8);
         writer.write(data);
         writer.flush();
       } else {
-        setResponseCode(response, SC_OK);
         // Write to stream to avoid expensive toString() call.
         clusterModel.writeTo(response.getOutputStream());
       }
@@ -701,9 +684,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     String entriesString = request.getParameter(ENTRIES);
     Integer entries = entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
     int numEntries = 0;
+    setResponseCode(response, SC_OK, json);
     if (!json) {
       int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
-      setResponseCode(response, SC_OK);
       out.write(String.format("%" + topicNameLength + "s%10s%30s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
                               "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)")
                       .getBytes(StandardCharsets.UTF_8));
@@ -747,7 +730,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       partitionMap.put("records", partitionList);
       Gson gson = new Gson();
       String g = gson.toJson(partitionMap);
-      setJSONResponseCode(response, SC_OK);
       response.setContentLength(g.length());
       out.write(g.getBytes(StandardCharsets.UTF_8));
     }
@@ -792,7 +774,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return false;
     }
 
-    setResponseCode(response, SC_OK);
+    setResponseCode(response, SC_OK, json);
     OutputStream out = response.getOutputStream();
 
     if (!json) {
@@ -810,7 +792,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             .getBytes(StandardCharsets.UTF_8));
         out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
       }
-      setResponseCode(response, SC_OK);
       // Print summary before & after optimization
       out.write(String.format("%n%nCurrent load:").getBytes(StandardCharsets.UTF_8));
       out.write(loadBeforeOptimization.getBytes(StandardCharsets.UTF_8));
@@ -842,7 +823,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                       .serializeSpecialFloatingPointValues()
                       .create();
       String proposalsString = gson.toJson(proposalMap);
-      setJSONResponseCode(response, SC_OK);
       out.write(proposalsString.getBytes(StandardCharsets.UTF_8));
     }
     out.flush();
@@ -902,13 +882,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     KafkaClusterState state = _asyncKafkaCruiseControl.kafkaClusterState();
     OutputStream out = response.getOutputStream();
+    setResponseCode(response, SC_OK, json);
     if (json) {
       String stateString = state.getJSONString(JSON_VERSION, verbose);
-      setJSONResponseCode(response, SC_OK);
       response.setContentLength(stateString.length());
       out.write(stateString.getBytes(StandardCharsets.UTF_8));
     } else {
-      setResponseCode(response, SC_OK);
       Cluster clusterState = state.kafkaCluster();
       // Brokers summary.
       SortedMap<Integer, Integer> leaderCountByBrokerId = new TreeMap<>();
@@ -984,14 +963,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return false;
     }
     OutputStream out = response.getOutputStream();
+    setResponseCode(response, SC_OK, json);
     if (json) {
       String stateString = state.getJSONString(JSON_VERSION);
-      setJSONResponseCode(response, SC_OK);
       response.setContentLength(stateString.length());
       out.write(stateString.getBytes(StandardCharsets.UTF_8));
     } else {
       String stateString = state.toString();
-      setResponseCode(response, SC_OK);
       out.write(stateString.getBytes(StandardCharsets.UTF_8));
       if (verbose || superVerbose) {
         out.write(String.format("%n%nMonitored Windows [Window End_Time=Data_Completeness]:%n").getBytes(StandardCharsets.UTF_8));
@@ -1111,7 +1089,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return false;
     }
 
-    setResponseCode(response, SC_OK);
+    setResponseCode(response, SC_OK, false);
     OutputStream out = response.getOutputStream();
     out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult)
                                             .getBytes(StandardCharsets.UTF_8));
@@ -1159,7 +1137,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return false;
     }
 
-    setResponseCode(response, SC_OK);
+    setResponseCode(response, SC_OK, false);
     OutputStream out = response.getOutputStream();
     out.write(
         KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
@@ -1200,7 +1178,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return false;
     }
 
-    setResponseCode(response, SC_OK);
+    setResponseCode(response, SC_OK, false);
     OutputStream out = response.getOutputStream();
     out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult)
                                             .getBytes(StandardCharsets.UTF_8));
@@ -1272,7 +1250,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       return future.get(_maxBlockMs, TimeUnit.MILLISECONDS);
     } catch (TimeoutException te) {
-      returnProgress(response, future);
+      returnProgress(response, future, false);
       return null;
     }
   }
@@ -1299,25 +1277,21 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return null;
   }
 
-  private void setResponseCode(HttpServletResponse response, int code) {
+  private void setResponseCode(HttpServletResponse response, int code, boolean json) {
     response.setStatus(code);
-    response.setContentType("text/plain");
+    if (json) {
+      response.setContentType("application/json");
+    } else {
+      response.setContentType("text/plain");
+    }
     response.setCharacterEncoding("utf-8");
     response.setHeader("Access-Control-Allow-Origin", "*");
     response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
   }
 
-  private void setJSONResponseCode(HttpServletResponse response, int code) {
-    response.setStatus(code);
-    response.setContentType("application/json");
-    response.setCharacterEncoding("utf-8");
-    response.setHeader("Access-Control-Allow-Origin", "*");
-    response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
-  }
-
-  private void returnProgress(HttpServletResponse response, OperationFuture future) throws IOException {
+  private void returnProgress(HttpServletResponse response, OperationFuture future, boolean json) throws IOException {
     String progressString = future.progressString();
-    setResponseCode(response, SC_OK);
+    setResponseCode(response, SC_OK, json);
     response.setContentLength(progressString.length());
     response.getOutputStream().write(progressString.getBytes(StandardCharsets.UTF_8));
     response.getOutputStream().flush();
