@@ -48,6 +48,9 @@ allprojects {
 }
 
 subprojects {
+  group = rootProject.group
+  version = rootProject.version
+
   apply plugin: 'java'
   apply plugin: 'checkstyle'
   apply plugin: 'findbugs'
