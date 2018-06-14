@@ -810,11 +810,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       if (!verbose) {
         proposalMap.put("proposalSummary", KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult, true));
       } else {
-        List<Map<String, Object>> proposalSummaries = new ArrayList<>();
-        for (ExecutionProposal entry : optimizerResult.goalProposals()) {
-          proposalSummaries.add(entry.getJsonStructure());
-        }
-        proposalMap.put("proposalSummary", proposalSummaries);
+        proposalMap.put("proposals", optimizerResult.goalProposals().stream().map(ExecutionProposal::getJsonStructure).collect(Collectors.toList()));
       }
       // Build all the goal summary
       List<Map<String, Object>> allGoals = new ArrayList<>();
