@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -314,7 +315,7 @@ public class GoalOptimizer implements Runnable {
       throw new IllegalStateException("Cannot get proposal because model completeness is not met.");
     }
     synchronized (_cacheLock) {
-      if (validCachedProposal() && (allowCapacityEstimation || !_bestProposal.isCapacityEstimated())) {
+      if (!validCachedProposal() || (!allowCapacityEstimation && _bestProposal.isCapacityEstimated())) {
         LOG.debug("Cached best proposal is not usable, Cached generation: {}, current generation: {} capacity estimation"
                   + " (cached: {}, allowed: {}). Wait for cache update.",
                   _bestProposal == null ? null : _bestProposal.modelGeneration(),
@@ -346,6 +347,9 @@ public class GoalOptimizer implements Runnable {
         }
       }
       LOG.debug("Returning optimization result from cache. Cached generation: {}", _bestProposal.modelGeneration());
+      // If the cached proposals are estimated, and the user requested for no estimation, we invalidate the cache and
+      // calculate best proposals just once. If the returned result still involves an estimation, throw an exception.
+      KafkaCruiseControl.sanityCheckCapacityEstimation(allowCapacityEstimation, _bestProposal.capacityEstimationInfoByBrokerId());
       return _bestProposal;
     }
   }

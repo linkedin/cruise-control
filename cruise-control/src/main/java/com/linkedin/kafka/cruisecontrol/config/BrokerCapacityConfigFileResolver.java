@@ -106,7 +106,8 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
       for (BrokerCapacity bc : brokerCapacities) {
         boolean isDefault = bc.brokerId == DEFAULT_CAPACITY_BROKER_ID;
         BrokerCapacityInfo brokerCapacityInfo =
-            new BrokerCapacityInfo(bc.capacity, isDefault ? "The default broker capacity." : "");
+            isDefault ? new BrokerCapacityInfo(bc.capacity, "The default broker capacity.")
+                      : new BrokerCapacityInfo(bc.capacity);
         _capacitiesForBrokers.put(bc.brokerId, brokerCapacityInfo);
       }
     } finally {

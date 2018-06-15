@@ -395,9 +395,7 @@ public class KafkaCruiseControl {
                                                                 boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
     try {
-      GoalOptimizer.OptimizerResult result = _goalOptimizer.optimizations(operationProgress, allowCapacityEstimation);
-      sanityCheckCapacityEstimation(allowCapacityEstimation, result.capacityEstimationInfoByBrokerId());
-      return result;
+      return _goalOptimizer.optimizations(operationProgress, allowCapacityEstimation);
     } catch (InterruptedException ie) {
       throw new KafkaCruiseControlException("Interrupted when getting the optimization proposals", ie);
     }

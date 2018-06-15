@@ -17,6 +17,11 @@ public class BrokerCapacityInfo {
     _estimationInfo = estimationInfo == null ? "" : estimationInfo;
   }
 
+  public BrokerCapacityInfo(Map<Resource, Double> capacity) {
+    _capacity = capacity;
+    _estimationInfo = "";
+  }
+
   /**
    * @return The broker capacity for different resource types.
    */

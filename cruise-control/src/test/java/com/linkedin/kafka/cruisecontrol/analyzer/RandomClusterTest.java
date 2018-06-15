@@ -201,7 +201,7 @@ public class RandomClusterTest {
         brokerCapacity.put(r, b.capacityFor(r));
       }
 
-      BrokerCapacityInfo brokerCapacityInfo = new BrokerCapacityInfo(brokerCapacity, "");
+      BrokerCapacityInfo brokerCapacityInfo = new BrokerCapacityInfo(brokerCapacity);
       clusterWithNewBroker.createBroker(b.rack().id(), Integer.toString(b.id()), b.id(), brokerCapacityInfo);
     }
 
@@ -223,7 +223,7 @@ public class RandomClusterTest {
       }
     }
 
-    BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY, "");
+    BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY);
     for (int i = 1; i < 3; i++) {
       clusterWithNewBroker.createBroker(Integer.toString(i),
                                         Integer.toString(i + clusterModel.brokers().size() - 1),

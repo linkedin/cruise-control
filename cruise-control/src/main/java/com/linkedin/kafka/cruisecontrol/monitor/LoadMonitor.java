@@ -489,7 +489,7 @@ public class LoadMonitor {
       if (_cachedBrokerLoadGeneration != null
           && clusterGeneration == _cachedBrokerLoadGeneration.clusterGeneration()
           && _partitionMetricSampleAggregator.generation() == _cachedBrokerLoadGeneration.loadGeneration()) {
-        if (allowCapacityEstimation) {
+        if (!allowCapacityEstimation) {
           // Ensure that there is no capacity estimation in the cached model.
           for (ClusterModel.SingleBrokerStats singleBrokerStats : _cachedBrokerLoadStats.stats()) {
             if (singleBrokerStats.isEstimated()) {
