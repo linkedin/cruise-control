@@ -24,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionG
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
 import com.linkedin.kafka.cruisecontrol.common.RandomCluster;
@@ -199,7 +200,9 @@ public class RandomClusterTest {
       for (Resource r : Resource.cachedValues()) {
         brokerCapacity.put(r, b.capacityFor(r));
       }
-      clusterWithNewBroker.createBroker(b.rack().id(), Integer.toString(b.id()), b.id(), brokerCapacity);
+
+      BrokerCapacityInfo brokerCapacityInfo = new BrokerCapacityInfo(brokerCapacity, "");
+      clusterWithNewBroker.createBroker(b.rack().id(), Integer.toString(b.id()), b.id(), brokerCapacityInfo);
     }
 
     for (Map.Entry<String, List<Partition>> entry : clusterModel.getPartitionsByTopic().entrySet()) {
@@ -220,11 +223,12 @@ public class RandomClusterTest {
       }
     }
 
+    BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY, "");
     for (int i = 1; i < 3; i++) {
       clusterWithNewBroker.createBroker(Integer.toString(i),
                                         Integer.toString(i + clusterModel.brokers().size() - 1),
                                         i + clusterModel.brokers().size() - 1,
-                                        TestConstants.BROKER_CAPACITY);
+                                        commonBrokerCapacityInfo);
       clusterWithNewBroker.setBrokerState(i + clusterModel.brokers().size() - 1, Broker.State.NEW);
     }
 

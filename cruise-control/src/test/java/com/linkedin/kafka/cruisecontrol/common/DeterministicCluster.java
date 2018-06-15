@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.common;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 
@@ -280,10 +281,11 @@ public class DeterministicCluster {
       cluster.createRack(Integer.toString(i));
     }
 
+    BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(brokerCapacity, "");
     // Create brokers and assign a broker to each rack.
     int brokerId = 0;
     for (Integer rackId : orderedRackIdsOfBrokers) {
-      cluster.createBroker(rackId.toString(), Integer.toString(brokerId), brokerId, brokerCapacity);
+      cluster.createBroker(rackId.toString(), Integer.toString(brokerId), brokerId, commonBrokerCapacityInfo);
       brokerId++;
     }
     return cluster;

@@ -46,6 +46,7 @@ public class BrokerFailureDetector {
   private final LoadMonitor _loadMonitor;
   private final Queue<Anomaly> _anomalies;
   private final Time _time;
+  private final boolean _allowCapacityEstimation;
 
   public BrokerFailureDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
@@ -63,6 +64,7 @@ public class BrokerFailureDetector {
     _anomalies = anomalies;
     _time = time;
     _kafkaCruiseControl = kafkaCruiseControl;
+    _allowCapacityEstimation = config.getBoolean(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
   }
 
   void startDetection() {
@@ -153,7 +155,7 @@ public class BrokerFailureDetector {
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
       Map<Integer, Long> failedBrokers = new HashMap<>(_failedBrokers);
-      _anomalies.add(new BrokerFailures(_kafkaCruiseControl, failedBrokers));
+      _anomalies.add(new BrokerFailures(_kafkaCruiseControl, failedBrokers, _allowCapacityEstimation));
     }
   }
 

@@ -89,7 +89,7 @@ public class AnomalyDetectorTest {
 
     try {
       anomalyDetector.startDetection();
-      anomalies.add(new BrokerFailures(mockKafkaCruiseControl, Collections.singletonMap(0, 100L)));
+      anomalies.add(new BrokerFailures(mockKafkaCruiseControl, Collections.singletonMap(0, 100L), false));
       while (!anomalies.isEmpty()) {
         // just wait for the anomalies to be drained.
       }
@@ -144,7 +144,8 @@ public class AnomalyDetectorTest {
     EasyMock.expect(mockKafkaCruiseControl.rebalance(EasyMock.eq(Collections.emptyList()),
                                                      EasyMock.eq(false),
                                                      EasyMock.eq(null),
-                                                     EasyMock.anyObject(OperationProgress.class)))
+                                                     EasyMock.anyObject(OperationProgress.class),
+                                                     EasyMock.eq(true)))
             .andReturn(null);
     EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(EasyMock.anyObject())).andReturn(true);
 
@@ -162,7 +163,7 @@ public class AnomalyDetectorTest {
 
     try {
       anomalyDetector.startDetection();
-      anomalies.add(new GoalViolations(mockKafkaCruiseControl));
+      anomalies.add(new GoalViolations(mockKafkaCruiseControl, true));
       while (!anomalies.isEmpty()) {
         // Just wait for the anomalies to be drained.
       }
@@ -235,7 +236,7 @@ public class AnomalyDetectorTest {
 
     try {
       anomalyDetector.startDetection();
-      anomalies.add(new GoalViolations(mockKafkaCruiseControl));
+      anomalies.add(new GoalViolations(mockKafkaCruiseControl, true));
       while (!anomalies.isEmpty()) {
         // Just wait for the anomalies to be drained.
       }

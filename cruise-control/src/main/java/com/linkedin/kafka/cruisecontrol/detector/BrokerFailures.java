@@ -20,10 +20,14 @@ import java.util.Map;
 public class BrokerFailures extends KafkaAnomaly {
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final Map<Integer, Long> _failedBrokers;
+  private final boolean _allowCapacityEstimation;
 
-  public BrokerFailures(KafkaCruiseControl kafkaCruiseControl, Map<Integer, Long> failedBrokers) {
+  public BrokerFailures(KafkaCruiseControl kafkaCruiseControl,
+                        Map<Integer, Long> failedBrokers,
+                        boolean allowCapacityEstimation) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _failedBrokers = failedBrokers;
+    _allowCapacityEstimation = allowCapacityEstimation;
   }
 
   /**
@@ -38,7 +42,8 @@ public class BrokerFailures extends KafkaAnomaly {
     // Fix the cluster by removing the failed brokers.
     if (_failedBrokers != null && !_failedBrokers.isEmpty()) {
       _kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(), false, false,
-                                             Collections.emptyList(), null, new OperationProgress());
+                                             Collections.emptyList(), null, new OperationProgress(),
+                                              _allowCapacityEstimation);
     }
   }
 

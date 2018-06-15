@@ -10,27 +10,33 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 
 
 /**
- * The async runnable to get the {@link com.linkedin.kafka.cruisecontrol.model.ClusterModel.BrokerStats} for the cluster 
+ * The async runnable to get the {@link com.linkedin.kafka.cruisecontrol.model.ClusterModel.BrokerStats} for the cluster
  * model.
- * 
- * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, 
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress) 
+ *
+ * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements,
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)
  */
 class GetBrokerStatsRunnable extends OperationRunnable<ClusterModel.BrokerStats> {
   private final long _time;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
-  
+  private final boolean _allowCapacityEstimation;
+
   GetBrokerStatsRunnable(KafkaCruiseControl kafkaCruiseControl,
                          OperationFuture<ClusterModel.BrokerStats> future,
                          long time,
-                         ModelCompletenessRequirements modelCompletenessRequirements) {
+                         ModelCompletenessRequirements modelCompletenessRequirements,
+                         boolean allowCapacityEstimation) {
     super(kafkaCruiseControl, future);
     _time = time;
     _modelCompletenessRequirements = modelCompletenessRequirements;
+    _allowCapacityEstimation = allowCapacityEstimation;
   }
 
   @Override
   protected ClusterModel.BrokerStats getResult() throws Exception {
-    return _kafkaCruiseControl.clusterModel(_time, _modelCompletenessRequirements, _future.operationProgress()).brokerStats();
+    return _kafkaCruiseControl.clusterModel(_time,
+                                            _modelCompletenessRequirements,
+                                            _future.operationProgress(),
+                                            _allowCapacityEstimation).brokerStats();
   }
 }

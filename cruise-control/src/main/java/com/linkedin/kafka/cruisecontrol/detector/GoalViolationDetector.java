@@ -46,6 +46,7 @@ public class GoalViolationDetector implements Runnable {
   private final Queue<Anomaly> _anomalies;
   private ModelGeneration _lastCheckedModelGeneration;
   private final Pattern _excludedTopics;
+  private final boolean _allowCapacityEstimation;
 
   public GoalViolationDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
@@ -58,6 +59,7 @@ public class GoalViolationDetector implements Runnable {
     _anomalies = anomalies;
     _time = time;
     _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
+    _allowCapacityEstimation = config.getBoolean(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     _kafkaCruiseControl = kafkaCruiseControl;
   }
 
@@ -98,7 +100,7 @@ public class GoalViolationDetector implements Runnable {
         return;
       }
 
-      GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl);
+      GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation);
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
@@ -113,7 +115,11 @@ public class GoalViolationDetector implements Runnable {
             clusterModelSemaphore = _loadMonitor.acquireForModelGeneration(new OperationProgress());
             // Make cluster model null before generating a new cluster model so the current one can be GCed.
             clusterModel = null;
-            clusterModel = _loadMonitor.clusterModel(now, goal.clusterModelCompletenessRequirements(), new OperationProgress());
+            clusterModel = _loadMonitor.clusterModel(now,
+                                                     goal.clusterModelCompletenessRequirements(),
+                                                     new OperationProgress());
+            KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation,
+                                                             clusterModel.capacityEstimationInfoByBrokerId());
           }
           int priority = entry.getKey();
           newModelNeeded = optimizeForGoal(clusterModel, priority, goal, goalViolations);

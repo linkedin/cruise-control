@@ -10,27 +10,34 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 
 /**
- * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, 
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress)}
+ * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)}
  */
 class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
   private final List<String> _goals;
   private final boolean _dryRun;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
-  
+  private final boolean _allowCapacityEstimation;
+
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture<GoalOptimizer.OptimizerResult> future,
                     List<String> goals,
                     boolean dryRun,
-                    ModelCompletenessRequirements modelCompletenessRequirements) {
+                    ModelCompletenessRequirements modelCompletenessRequirements,
+                    boolean allowCapacityEstimation) {
     super(kafkaCruiseControl, future);
     _goals = goals;
     _dryRun = dryRun;
     _modelCompletenessRequirements = modelCompletenessRequirements;
+    _allowCapacityEstimation = allowCapacityEstimation;
   }
 
   @Override
   protected GoalOptimizer.OptimizerResult getResult() throws Exception {
-    return _kafkaCruiseControl.rebalance(_goals, _dryRun, _modelCompletenessRequirements, _future.operationProgress());
+    return _kafkaCruiseControl.rebalance(_goals,
+                                         _dryRun,
+                                         _modelCompletenessRequirements,
+                                         _future.operationProgress(),
+                                         _allowCapacityEstimation);
   }
 }

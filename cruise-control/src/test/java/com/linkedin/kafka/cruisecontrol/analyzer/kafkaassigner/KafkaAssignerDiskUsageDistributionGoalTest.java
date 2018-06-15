@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSortedReplicas;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -224,12 +225,13 @@ public class KafkaAssignerDiskUsageDistributionGoalTest {
       clusterModel.createRack("r" + i);
     }
 
+    BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY, "");
     int i = 0;
     for (; i < 2; i++) {
-      clusterModel.createBroker("r0", "h" + i, i, TestConstants.BROKER_CAPACITY);
+      clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo);
     }
     for (int j = 1; j < numRacks; j++, i++) {
-      clusterModel.createBroker("r" + j, "h" + i, i, TestConstants.BROKER_CAPACITY);
+      clusterModel.createBroker("r" + j, "h" + i, i, commonBrokerCapacityInfo);
     }
 
     clusterModel.createReplica("r0", 0, T0P0, 0, true);

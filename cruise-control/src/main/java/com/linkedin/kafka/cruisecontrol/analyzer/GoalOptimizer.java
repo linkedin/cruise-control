@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -114,30 +115,6 @@ public class GoalOptimizer implements Runnable {
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
   }
 
-  private Set<List<Goal>> getPermutations(List<Goal> toPermute) {
-    Set<List<Goal>> allPermutations = new HashSet<>();
-    // Handle the case with single goal to permute.
-    if (toPermute.size() == 1) {
-      allPermutations.add(toPermute);
-      return allPermutations;
-    }
-
-    for (int i = 0; i < toPermute.size(); i++) {
-      // Copy the original list and remove the goal that we will prepend to the permutations of the remaining goals.
-      List<Goal> remainingToPermute = new ArrayList<>(toPermute);
-      Goal goal = toPermute.get(i);
-      remainingToPermute.remove(i);
-
-      // Prepend the goal to permutations of the remaining goals.
-      for (List<Goal> permutedRemaining: getPermutations(remainingToPermute)) {
-        permutedRemaining.add(0, goal);
-        allPermutations.add(permutedRemaining);
-      }
-    }
-
-    return allPermutations;
-  }
-
   private void populateGoalByPriorityForPrecomputing() {
     Set<List<Goal>> shuffledGoals = new HashSet<>();
 
@@ -155,7 +132,7 @@ public class GoalOptimizer implements Runnable {
     List<Goal> commonPrefix = new ArrayList<>(_goalsByPriority.values()).subList(0, toIndex);
     List<Goal> suffixToPermute = new ArrayList<>(_goalsByPriority.values()).subList(toIndex, _goalsByPriority.size());
 
-    for (List<Goal> shuffledSuffix: getPermutations(suffixToPermute)) {
+    for (List<Goal> shuffledSuffix: AnalyzerUtils.getPermutations(suffixToPermute)) {
       List<Goal> shuffledGoalList = new ArrayList<>(commonPrefix);
       shuffledGoalList.addAll(shuffledSuffix);
       shuffledGoals.add(shuffledGoalList);
@@ -220,7 +197,7 @@ public class GoalOptimizer implements Runnable {
         sleepTime = 30000L;
       } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsWithAvailableValidWindows)) {
         LOG.info("Skipping best proposal precomputing because load monitor does not have enough snapshots.");
-        // Check in 30 seconds to see if the load monitor state has changed.
+        // Check in 30 seconds to see if the load monitor has sufficient number of snapshots.
         sleepTime = 30000L;
       } else if (!validCachedProposal()) {
         LOG.debug("Invalidated cache. Cached model generation: {}, current model generation: {}",
@@ -279,8 +256,10 @@ public class GoalOptimizer implements Runnable {
   }
 
   private boolean validCachedProposal() {
-    return _bestProposal != null
-        && _bestProposal.modelGeneration().equals(_loadMonitor.clusterModelGeneration());
+    synchronized (_cacheLock) {
+      return _bestProposal != null
+             && _bestProposal.modelGeneration().equals(_loadMonitor.clusterModelGeneration());
+    }
   }
 
   public void shutdown() {
@@ -324,19 +303,27 @@ public class GoalOptimizer implements Runnable {
    * We do this to avoid duplicate optimization cluster model construction and proposal computation.
    *
    * @param operationProgress to report the job progress.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    */
-  public OptimizerResult optimizations(OperationProgress operationProgress) throws InterruptedException {
+  public OptimizerResult optimizations(OperationProgress operationProgress,
+                                       boolean allowCapacityEstimation) throws InterruptedException {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
     if (loadMonitorTaskRunnerState == LOADING || loadMonitorTaskRunnerState == BOOTSTRAPPING) {
       throw new IllegalStateException("Cannot get proposal because load monitor is in " + loadMonitorTaskRunnerState + " state.");
     } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsWithAvailableValidWindows)) {
       throw new IllegalStateException("Cannot get proposal because model completeness is not met.");
     }
-    if (!validCachedProposal()) {
-      LOG.debug("Cached best proposal is not usable, Cached generation: {}, current generation: {}. Wait for cache update.",
-                _bestProposal == null ? null : _bestProposal.modelGeneration(),
-                _loadMonitor.clusterModelGeneration());
-      synchronized (_cacheLock) {
+    synchronized (_cacheLock) {
+      if (validCachedProposal() && (allowCapacityEstimation || !_bestProposal.isCapacityEstimated())) {
+        LOG.debug("Cached best proposal is not usable, Cached generation: {}, current generation: {} capacity estimation"
+                  + " (cached: {}, allowed: {}). Wait for cache update.",
+                  _bestProposal == null ? null : _bestProposal.modelGeneration(),
+                  _loadMonitor.clusterModelGeneration(),
+                  _bestProposal == null ? null : _bestProposal.isCapacityEstimated(),
+                  allowCapacityEstimation);
+        // Invalidate the cache and set the new caching rule regarding capacity estimation.
+        _bestProposal = null;
+        // Explicitly allow capacity estimation to exit the loop upon computing best proposals.
         while (!validCachedProposal()) {
           try {
             // Prevent multiple thread submit from computing task together.
@@ -358,10 +345,9 @@ public class GoalOptimizer implements Runnable {
           }
         }
       }
+      LOG.debug("Returning optimization result from cache. Cached generation: {}", _bestProposal.modelGeneration());
+      return _bestProposal;
     }
-    LOG.debug("Returning optimization result from cache. Cached generation: {}",
-              _bestProposal.modelGeneration());
-    return _bestProposal;
   }
 
   /**
@@ -462,7 +448,8 @@ public class GoalOptimizer implements Runnable {
                                brokerStatsBeforeOptimization,
                                clusterModel.brokerStats(),
                                clusterModel.generation(),
-                               clusterModel.getClusterStats(_balancingConstraint));
+                               clusterModel.getClusterStats(_balancingConstraint),
+                               clusterModel.capacityEstimationInfoByBrokerId());
   }
 
   private Set<String> excludedTopics(ClusterModel clusterModel) {
@@ -498,7 +485,7 @@ public class GoalOptimizer implements Runnable {
         boolean shouldUpdate = true;
         for (Goal goal: _goalsByPriority.values()) {
           shouldUpdate = shouldUpdate
-              && goal.clusterModelStatsComparator().compare(result.clusterModelStats(), _bestProposal
+                         && goal.clusterModelStatsComparator().compare(result.clusterModelStats(), _bestProposal
               .clusterModelStats()) >= 0;
         }
 
@@ -534,6 +521,7 @@ public class GoalOptimizer implements Runnable {
     private final ClusterModel.BrokerStats _brokerStatsAfterOptimization;
     private final ModelGeneration _modelGeneration;
     private final ClusterModelStats _clusterModelStats;
+    private final Map<Integer, String> _capacityEstimationInfoByBrokerId;
 
     OptimizerResult(Map<Goal, ClusterModelStats> statsByGoalPriority,
                     Set<Goal> violatedGoalsBeforeOptimization,
@@ -542,7 +530,8 @@ public class GoalOptimizer implements Runnable {
                     ClusterModel.BrokerStats brokerStatsBeforeOptimization,
                     ClusterModel.BrokerStats brokerStatsAfterOptimization,
                     ModelGeneration modelGeneration,
-                    ClusterModelStats clusterModelStats) {
+                    ClusterModelStats clusterModelStats,
+                    Map<Integer, String> capacityEstimationInfoByBrokerId) {
       _statsByGoalPriority = statsByGoalPriority;
       _violatedGoalsBeforeOptimization = violatedGoalsBeforeOptimization;
       _violatedGoalsAfterOptimization = violatedGoalsAfterOptimization;
@@ -551,7 +540,7 @@ public class GoalOptimizer implements Runnable {
       _brokerStatsAfterOptimization = brokerStatsAfterOptimization;
       _modelGeneration = modelGeneration;
       _clusterModelStats = clusterModelStats;
-
+      _capacityEstimationInfoByBrokerId = capacityEstimationInfoByBrokerId;
     }
 
     public Map<Goal, ClusterModelStats> statsByGoalPriority() {
@@ -584,6 +573,14 @@ public class GoalOptimizer implements Runnable {
 
     public ClusterModel.BrokerStats brokerStatsAfterOptimization() {
       return _brokerStatsAfterOptimization;
+    }
+
+    public boolean isCapacityEstimated() {
+      return !_capacityEstimationInfoByBrokerId.isEmpty();
+    }
+
+    public Map<Integer, String> capacityEstimationInfoByBrokerId() {
+      return Collections.unmodifiableMap(_capacityEstimationInfoByBrokerId);
     }
   }
 

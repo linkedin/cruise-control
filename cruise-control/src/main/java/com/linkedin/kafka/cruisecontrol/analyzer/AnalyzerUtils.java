@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 
 import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -294,4 +295,33 @@ public class AnalyzerUtils {
     }
   }
 
+  /**
+   * Get all permutations of the given list of goals to permute.
+   *
+   * @param toPermute List of goals to permute.
+   * @return A set containing all possible permutations of the given list of goals to permute.
+   */
+  public static Set<List<Goal>> getPermutations(List<Goal> toPermute) {
+    Set<List<Goal>> allPermutations = new HashSet<>();
+    // Handle the case with single goal to permute.
+    if (toPermute.size() == 1) {
+      allPermutations.add(toPermute);
+      return allPermutations;
+    }
+
+    for (int i = 0; i < toPermute.size(); i++) {
+      // Copy the original list and remove the goal that we will prepend to the permutations of the remaining goals.
+      List<Goal> remainingToPermute = new ArrayList<>(toPermute);
+      Goal goal = toPermute.get(i);
+      remainingToPermute.remove(i);
+
+      // Prepend the goal to permutations of the remaining goals.
+      for (List<Goal> permutedRemaining: getPermutations(remainingToPermute)) {
+        permutedRemaining.add(0, goal);
+        allPermutations.add(permutedRemaining);
+      }
+    }
+
+    return allPermutations;
+  }
 }
