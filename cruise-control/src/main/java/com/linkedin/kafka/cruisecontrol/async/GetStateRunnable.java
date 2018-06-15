@@ -13,7 +13,7 @@ import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
  * The async runnable for {@link KafkaCruiseControl#state(OperationProgress)}
  */
 class GetStateRunnable extends OperationRunnable<KafkaCruiseControlState> {
-  
+
   GetStateRunnable(KafkaCruiseControl kafkaCruiseControl, OperationFuture<KafkaCruiseControlState> future) {
     super(kafkaCruiseControl, future);
   }

@@ -80,7 +80,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final String JSON_PARAM = "json";
   private static final String START_MS_PARAM = "start";
   private static final String END_MS_PARAM = "end";
-  private static final String ENTRIES = "entries";
+  private static final String ENTRIES_PARAM = "entries";
+  private static final String ALLOW_CAPACITY_ESTIMATION_PARAM = "allow_capacity_estimation";
   private static final String CLEAR_METRICS_PARAM = "clearmetrics";
   private static final String TIME_PARAM = "time";
   private static final String VERBOSE_PARAM = "verbose";
@@ -124,13 +125,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     load.add(TIME_PARAM);
     load.add(GRANULARITY_PARAM);
     load.add(JSON_PARAM);
+    load.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
     Set<String> partitionLoad = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     partitionLoad.add(RESOURCE_PARAM);
     partitionLoad.add(START_MS_PARAM);
     partitionLoad.add(END_MS_PARAM);
-    partitionLoad.add(ENTRIES);
+    partitionLoad.add(ENTRIES_PARAM);
     partitionLoad.add(JSON_PARAM);
+    partitionLoad.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
     Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     proposals.add(VERBOSE_PARAM);
@@ -139,6 +142,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     proposals.add(GOALS_PARAM);
     proposals.add(KAFKA_ASSIGNER_MODE_PARAM);
     proposals.add(JSON_PARAM);
+    proposals.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
     Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     state.add(VERBOSE_PARAM);
@@ -153,6 +157,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     addOrRemoveBroker.add(GOALS_PARAM);
     addOrRemoveBroker.add(KAFKA_ASSIGNER_MODE_PARAM);
     addOrRemoveBroker.add(JSON_PARAM);
+    addOrRemoveBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
@@ -166,6 +171,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     demoteBroker.add(BROKER_ID_PARAM);
     demoteBroker.add(DRY_RUN_PARAM);
     demoteBroker.add(JSON_PARAM);
+    demoteBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
@@ -173,6 +179,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     rebalance.add(KAFKA_ASSIGNER_MODE_PARAM);
     rebalance.add(DATA_FROM_PARAM);
     rebalance.add(JSON_PARAM);
+    rebalance.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
@@ -582,8 +589,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean json = wantJSON(request);
     try {
       String timeString = request.getParameter(TIME_PARAM);
-      time = (timeString == null || timeString.toUpperCase().equals("NOW"))
-          ? System.currentTimeMillis() : Long.parseLong(timeString);
+      time = (timeString == null || timeString.toUpperCase().equals("NOW")) ? System.currentTimeMillis()
+                                                                            : Long.parseLong(timeString);
       granularity = request.getParameter(GRANULARITY_PARAM);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
@@ -594,12 +601,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
 
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, true);
+    boolean allowCapacityEstimation = allowCapacityEstimation(request);
     if (granularity == null || granularity.toLowerCase().equals(GRANULARITY_BROKER)) {
-      ClusterModel.BrokerStats brokerStats = _asyncKafkaCruiseControl.cachedBrokerLoadStats();
+      ClusterModel.BrokerStats brokerStats = _asyncKafkaCruiseControl.cachedBrokerLoadStats(allowCapacityEstimation);
       if (brokerStats == null) {
         // Get the broker stats asynchronously.
-        brokerStats = getAndMaybeReturnProgress(request, response,
-                                                () -> _asyncKafkaCruiseControl.getBrokerStats(time, requirements));
+        brokerStats = getAndMaybeReturnProgress(
+            request, response, () -> _asyncKafkaCruiseControl.getBrokerStats(time, requirements, allowCapacityEstimation));
         if (brokerStats == null) {
           return false;
         }
@@ -610,8 +618,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       response.getOutputStream().write(brokerLoad.getBytes(StandardCharsets.UTF_8));
     } else if (granularity.toLowerCase().equals(GRANULARITY_REPLICA)) {
       // Get the cluster model asynchronously
-      ClusterModel clusterModel = getAndMaybeReturnProgress(request, response,
-                                                            () -> _asyncKafkaCruiseControl.clusterModel(time, requirements));
+      ClusterModel clusterModel = getAndMaybeReturnProgress(
+          request, response, () -> _asyncKafkaCruiseControl.clusterModel(time, requirements, allowCapacityEstimation));
       if (clusterModel == null) {
         return false;
       }
@@ -670,18 +678,18 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return true;
     }
 
+    boolean allowCapacityEstimation = allowCapacityEstimation(request);
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.98, false);
     // Get cluster model asynchronously.
-    ClusterModel clusterModel =
-        getAndMaybeReturnProgress(request, response,
-                                  () -> _asyncKafkaCruiseControl.clusterModel(startMs, endMs, requirements));
+    ClusterModel clusterModel = getAndMaybeReturnProgress(
+            request, response, () -> _asyncKafkaCruiseControl.clusterModel(startMs, endMs, requirements, allowCapacityEstimation));
     if (clusterModel == null) {
       return false;
     }
     List<Partition> sortedPartitions = clusterModel.replicasSortedByUtilization(resource);
     OutputStream out = response.getOutputStream();
 
-    String entriesString = request.getParameter(ENTRIES);
+    String entriesString = request.getParameter(ENTRIES_PARAM);
     Integer entries = entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
     int numEntries = 0;
     setResponseCode(response, SC_OK, json);
@@ -746,13 +754,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       String verboseString = request.getParameter(VERBOSE_PARAM);
       verbose = Boolean.parseBoolean(verboseString);
-
       goals = getGoals(request);
       dataFrom = getDataFrom(request);
 
       String ignoreProposalCacheString = request.getParameter(IGNORE_PROPOSAL_CACHE_PARAM);
-      ignoreProposalCache = (Boolean.parseBoolean(ignoreProposalCacheString))
-          || !goals.isEmpty();
+      ignoreProposalCache = (Boolean.parseBoolean(ignoreProposalCacheString)) || !goals.isEmpty();
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       e.printStackTrace(new PrintWriter(sw));
@@ -765,11 +771,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     if (goalsAndRequirements == null) {
       return false;
     }
+    boolean allowCapacityEstimation = allowCapacityEstimation(request);
     // Get the optimization result asynchronously.
-    GoalOptimizer.OptimizerResult optimizerResult =
-        getAndMaybeReturnProgress(request, response,
-                                  () -> _asyncKafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(),
-                                                                                          goalsAndRequirements.requirements()));
+    GoalOptimizer.OptimizerResult optimizerResult = getAndMaybeReturnProgress(
+        request, response, () -> _asyncKafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(),
+                                                                                   goalsAndRequirements.requirements(),
+                                                                                   allowCapacityEstimation));
     if (optimizerResult == null) {
       return false;
     }
@@ -845,6 +852,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private boolean wantJSON(HttpServletRequest request) {
     String jsonString = request.getParameter(JSON_PARAM);
     return Boolean.parseBoolean(jsonString);
+  }
+
+  private boolean allowCapacityEstimation(HttpServletRequest request) {
+    // The default for allowCapacityEstimation: true.
+    String allowCapacityEstimation = request.getParameter(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    return allowCapacityEstimation == null || Boolean.parseBoolean(allowCapacityEstimation);
   }
 
   private void writeKafkaClusterState(OutputStream out, SortedSet<PartitionInfo> partitions, int topicNameLength)
@@ -1068,6 +1081,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     // Get proposals asynchronously.
     GoalOptimizer.OptimizerResult optimizerResult;
+    boolean allowCapacityEstimation = allowCapacityEstimation(request);
     if (endPoint == ADD_BROKER) {
       optimizerResult =
           getAndMaybeReturnProgress(request, response,
@@ -1075,7 +1089,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                               dryrun,
                                                                               throttleAddedOrRemovedBrokers,
                                                                               goalsAndRequirements.goals(),
-                                                                              goalsAndRequirements.requirements()));
+                                                                              goalsAndRequirements.requirements(),
+                                                                              allowCapacityEstimation));
     } else {
       optimizerResult =
           getAndMaybeReturnProgress(request, response,
@@ -1083,7 +1098,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                                        dryrun,
                                                                                        throttleAddedOrRemovedBrokers,
                                                                                        goalsAndRequirements.goals(),
-                                                                                       goalsAndRequirements.requirements()));
+                                                                                       goalsAndRequirements.requirements(),
+                                                                                       allowCapacityEstimation));
     }
     if (optimizerResult == null) {
       return false;
@@ -1128,11 +1144,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     if (goalsAndRequirements == null) {
       return false;
     }
+    boolean allowCapacityEstimation = allowCapacityEstimation(request);
     GoalOptimizer.OptimizerResult optimizerResult =
         getAndMaybeReturnProgress(request, response,
                                   () -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
                                                                            dryrun,
-                                                                           goalsAndRequirements.requirements()));
+                                                                           goalsAndRequirements.requirements(),
+                                                                           allowCapacityEstimation));
     if (optimizerResult == null) {
       return false;
     }
@@ -1172,8 +1190,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
 
     // Get proposals asynchronously.
+    boolean allowCapacityEstimation = allowCapacityEstimation(request);
     GoalOptimizer.OptimizerResult optimizerResult =
-          getAndMaybeReturnProgress(request, response, () -> _asyncKafkaCruiseControl.demoteBrokers(brokerIds, dryrun));
+          getAndMaybeReturnProgress(request, response,
+                                    () -> _asyncKafkaCruiseControl.demoteBrokers(brokerIds, dryrun, allowCapacityEstimation));
     if (optimizerResult == null) {
       return false;
     }
@@ -1203,7 +1223,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private List<String> getGoals(HttpServletRequest request) {
     List<String> goals;
-    boolean kafkaAssignerMode;
     String goalsString = request.getParameter(GOALS_PARAM);
     // TODO: Handle urlencoded value (%2C instead of ,)
     goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
@@ -1211,8 +1230,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     // If KafkaAssigner mode is enabled (default) and goals are not specified, it overrides the goal list.
     String kafkaAssignerModeString = request.getParameter(KAFKA_ASSIGNER_MODE_PARAM);
-    kafkaAssignerMode = kafkaAssignerModeString != null && Boolean.parseBoolean(kafkaAssignerModeString);
-    if (goals.isEmpty() && kafkaAssignerMode) {
+    if (goals.isEmpty() && Boolean.parseBoolean(kafkaAssignerModeString)) {
       goals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                             KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());
     }
@@ -1334,8 +1352,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), null);
     } else if (availableWindows > 0) {
       // If some valid windows are available, use it.
-      return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(),
-                                      getRequirements(VALID_WINDOWS));
+      return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), getRequirements(VALID_WINDOWS));
     } else if (readyGoals.size() > 0) {
       // If no window is valid but some goals are ready, use them.
       return new GoalsAndRequirements(readyGoals, null);

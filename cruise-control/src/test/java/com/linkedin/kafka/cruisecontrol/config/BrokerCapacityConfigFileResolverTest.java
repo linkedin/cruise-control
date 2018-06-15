@@ -9,7 +9,9 @@ import java.util.HashMap;
 import java.util.Map;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 
 /**
@@ -25,13 +27,18 @@ public class BrokerCapacityConfigFileResolverTest {
     configs.put(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, fileName);
     configResolver.configure(configs);
 
-    assertEquals(200000.0, configResolver.capacityForBroker("", "", 0).get(Resource.NW_IN), 0.01);
-    assertEquals(100000.0, configResolver.capacityForBroker("", "", 2).get(Resource.NW_IN), 0.01);
+    assertEquals(200000.0, configResolver.capacityForBroker("", "", 0)
+                                         .capacity().get(Resource.NW_IN), 0.01);
+    assertEquals(100000.0, configResolver.capacityForBroker("", "", 2)
+                                         .capacity().get(Resource.NW_IN), 0.01);
     try {
       configResolver.capacityForBroker("", "", -1);
       fail("Should have thrown exception for negative broker id");
     } catch (IllegalArgumentException e) {
       // let it go
     }
+
+    assertTrue(configResolver.capacityForBroker("", "", 2).isEstimated());
+    assertTrue(configResolver.capacityForBroker("", "", 2).estimationInfo().length() > 0);
   }
 }

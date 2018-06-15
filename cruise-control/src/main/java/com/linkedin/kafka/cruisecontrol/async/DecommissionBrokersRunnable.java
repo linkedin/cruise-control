@@ -11,8 +11,8 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * The async runnable for {@link KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List, 
- * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress)}
+ * The async runnable for {@link KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List,
+ * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)}
  */
 class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
   private final Collection<Integer> _brokerIds;
@@ -20,25 +20,28 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
   private final boolean _throttleRemovedBrokers;
   private final List<String> _goals;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
+  private final boolean _allowCapacityEstimation;
 
-  DecommissionBrokersRunnable(KafkaCruiseControl kafkaCruiseControl, 
-                              OperationFuture<GoalOptimizer.OptimizerResult> future, 
-                              Collection<Integer> brokerIds, 
-                              boolean dryRun, 
-                              boolean throttleRemovedBrokers, 
-                              List<String> goals, 
-                              ModelCompletenessRequirements modelCompletenessRequirements) {
+  DecommissionBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
+                              OperationFuture<GoalOptimizer.OptimizerResult> future,
+                              Collection<Integer> brokerIds,
+                              boolean dryRun,
+                              boolean throttleRemovedBrokers,
+                              List<String> goals,
+                              ModelCompletenessRequirements modelCompletenessRequirements,
+                              boolean allowCapacityEstimation) {
     super(kafkaCruiseControl, future);
     _brokerIds = brokerIds;
     _dryRun = dryRun;
     _throttleRemovedBrokers = throttleRemovedBrokers;
     _goals = goals;
     _modelCompletenessRequirements = modelCompletenessRequirements;
+    _allowCapacityEstimation = allowCapacityEstimation;
   }
 
   @Override
   protected GoalOptimizer.OptimizerResult getResult() throws Exception {
-    return _kafkaCruiseControl.decommissionBrokers(_brokerIds, _dryRun, _throttleRemovedBrokers, _goals, 
-                                                   _modelCompletenessRequirements, _future.operationProgress());
+    return _kafkaCruiseControl.decommissionBrokers(_brokerIds, _dryRun, _throttleRemovedBrokers, _goals,
+                                                   _modelCompletenessRequirements, _future.operationProgress(), _allowCapacityEstimation);
   }
 }

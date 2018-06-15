@@ -24,9 +24,11 @@ public class GoalViolations extends KafkaAnomaly {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final List<Violation> _goalViolations = new ArrayList<>();
+  private final boolean _allowCapacityEstimation;
 
-  public GoalViolations(KafkaCruiseControl kafkaCruiseControl) {
+  public GoalViolations(KafkaCruiseControl kafkaCruiseControl, boolean allowCapacityEstimation) {
     _kafkaCruiseControl = kafkaCruiseControl;
+    _allowCapacityEstimation = allowCapacityEstimation;
   }
 
   public void addViolation(int priority, String goalName, Set<ExecutionProposal> executionProposals) {
@@ -44,7 +46,8 @@ public class GoalViolations extends KafkaAnomaly {
   public void fix() throws KafkaCruiseControlException {
     // Fix the violations using a rebalance.
     try {
-      _kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress());
+      _kafkaCruiseControl.rebalance(
+          Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation);
     } catch (IllegalStateException e) {
       LOG.warn("Got exception when trying to fix the cluster. " + e.getMessage());
     }

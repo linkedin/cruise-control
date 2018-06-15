@@ -14,11 +14,11 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.Extrapolation;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleCompleteness;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.async.progress.GeneratingClusterModel;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
@@ -383,7 +383,9 @@ public class LoadMonitor {
    * @param operationProgress the progress to report.
    * @return A cluster model with the configured number of windows whose timestamp is before given timestamp.
    */
-  public ClusterModel clusterModel(long now, ModelCompletenessRequirements requirements, OperationProgress operationProgress)
+  public ClusterModel clusterModel(long now,
+                                   ModelCompletenessRequirements requirements,
+                                   OperationProgress operationProgress)
       throws NotEnoughValidWindowsException {
     ClusterModel clusterModel = clusterModel(-1L, now, requirements, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
@@ -447,7 +449,7 @@ public class LoadMonitor {
         // If the rack is not specified, we use the host info as rack info.
         String rack = getRackHandleNull(node);
         clusterModel.createRack(rack);
-        Map<Resource, Double> brokerCapacity =
+        BrokerCapacityInfo brokerCapacity =
             _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
         clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity);
       }
@@ -481,12 +483,20 @@ public class LoadMonitor {
    * Get the cached load.
    * @return the cached load, null if the load
    */
-  public ClusterModel.BrokerStats cachedBrokerLoadStats() {
+  public ClusterModel.BrokerStats cachedBrokerLoadStats(boolean allowCapacityEstimation) {
     int clusterGeneration = _metadataClient.refreshMetadata().generation();
     synchronized (this) {
       if (_cachedBrokerLoadGeneration != null
           && clusterGeneration == _cachedBrokerLoadGeneration.clusterGeneration()
           && _partitionMetricSampleAggregator.generation() == _cachedBrokerLoadGeneration.loadGeneration()) {
+        if (!allowCapacityEstimation) {
+          // Ensure that there is no capacity estimation in the cached model.
+          for (ClusterModel.SingleBrokerStats singleBrokerStats : _cachedBrokerLoadStats.stats()) {
+            if (singleBrokerStats.isEstimated()) {
+              return null;
+            }
+          }
+        }
         return _cachedBrokerLoadStats;
       }
     }
@@ -559,7 +569,7 @@ public class LoadMonitor {
         String rack = getRackHandleNull(replica);
         // Note that we assume the capacity resolver can still return the broker capacity even if the broker
         // is dead. We need this to get the host resource capacity.
-        Map<Resource, Double> brokerCapacity =
+        BrokerCapacityInfo brokerCapacity =
             _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
         clusterModel.handleDeadBroker(rack, replica.id(), brokerCapacity);
         boolean isLeader;

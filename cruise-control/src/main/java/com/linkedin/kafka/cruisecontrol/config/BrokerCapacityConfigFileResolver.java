@@ -54,8 +54,11 @@ import java.util.Set;
  *   }
  * </pre>
  *
- * The broker id -1 defines the default capacity. A broker capacity is overridden if there is a capacity defined for
- * a particular broker id. The units of the definition are:
+ * The broker id -1 defines the default broker capacity estimate. A broker capacity is overridden if there is a capacity
+ * defined for a particular broker id. In case a broker capacity is missing, the default estimate for a broker capacity
+ * will be used.
+ *
+ * The units of the definition are:
  * <ul>
  *  <li>DISK - MB</li>
  *  <li>CPU - Percent</li>
@@ -66,7 +69,7 @@ import java.util.Set;
 public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigResolver {
   public static final String CAPACITY_CONFIG_FILE = "capacity.config.file";
   private static final int DEFAULT_CAPACITY_BROKER_ID = -1;
-  private static Map<Integer, Map<Resource, Double>> _capacitiesForBrokers;
+  private static Map<Integer, BrokerCapacityInfo> _capacitiesForBrokers;
 
   @Override
   public void configure(Map<String, ?> configs) {
@@ -79,16 +82,17 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
   }
 
   @Override
-  public Map<Resource, Double> capacityForBroker(String rack, String host, int brokerId) {
+  public BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId) {
     if (brokerId >= 0) {
-      Map<Resource, Double> capacity = _capacitiesForBrokers.get(brokerId);
+      BrokerCapacityInfo capacity = _capacitiesForBrokers.get(brokerId);
       if (capacity != null) {
         return capacity;
       } else {
-        return _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID);
+        String info = String.format("Missing broker id(%d) in capacity config file.", brokerId);
+        return new BrokerCapacityInfo(_capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).capacity(), info);
       }
     } else {
-      throw new IllegalArgumentException("The broker id should be non-negative.");
+      throw new IllegalArgumentException("The broker id(" + brokerId + ") should be non-negative.");
     }
   }
 
@@ -100,7 +104,11 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
       Set<BrokerCapacity> brokerCapacities = ((BrokerCapacities) gson.fromJson(reader, BrokerCapacities.class)).brokerCapacities;
       _capacitiesForBrokers = new HashMap<>();
       for (BrokerCapacity bc : brokerCapacities) {
-        _capacitiesForBrokers.put(bc.brokerId, bc.capacity);
+        boolean isDefault = bc.brokerId == DEFAULT_CAPACITY_BROKER_ID;
+        BrokerCapacityInfo brokerCapacityInfo =
+            isDefault ? new BrokerCapacityInfo(bc.capacity, "The default broker capacity.")
+                      : new BrokerCapacityInfo(bc.capacity);
+        _capacitiesForBrokers.put(bc.brokerId, brokerCapacityInfo);
       }
     } finally {
       try {

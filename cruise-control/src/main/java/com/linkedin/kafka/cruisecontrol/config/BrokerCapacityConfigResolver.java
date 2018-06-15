@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.config;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import java.util.Map;
 
 
 /**
@@ -23,10 +22,12 @@ public interface BrokerCapacityConfigResolver extends CruiseControlConfigurable,
    * Network Inbound - KB/s
    * Network Outbounds - KB/s
    *
+   * May estimate the capacity of a broker, if it is not directly available.
+   *
    * @param rack The rack of the broker
    * @param host The host of the broker
    * @param brokerId the id of the broker
    * @return The capacity of each resource for the broker
    */
-  Map<Resource, Double> capacityForBroker(String rack, String host, int brokerId);
+  BrokerCapacityInfo capacityForBroker(String rack, String host, int brokerId);
 }

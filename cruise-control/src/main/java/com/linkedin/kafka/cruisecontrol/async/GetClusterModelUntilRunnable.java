@@ -9,24 +9,30 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 
 /**
- * The async runnable for {@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, 
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress)}
+ * The async runnable for {@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements,
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)}
  */
 class GetClusterModelUntilRunnable extends OperationRunnable<ClusterModel> {
   private final long _time;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
+  private final boolean _allowCapacityEstimation;
 
   GetClusterModelUntilRunnable(KafkaCruiseControl kafkaCruiseControl,
                                OperationFuture<ClusterModel> future,
                                long time,
-                               ModelCompletenessRequirements modelCompletenessRequirements) {
+                               ModelCompletenessRequirements modelCompletenessRequirements,
+                               boolean allowCapacityEstimation) {
     super(kafkaCruiseControl, future);
     _time = time;
     _modelCompletenessRequirements = modelCompletenessRequirements;
+    _allowCapacityEstimation = allowCapacityEstimation;
   }
 
   @Override
   protected ClusterModel getResult() throws Exception {
-    return _kafkaCruiseControl.clusterModel(_time, _modelCompletenessRequirements, _future.operationProgress());
+    return _kafkaCruiseControl.clusterModel(_time,
+                                            _modelCompletenessRequirements,
+                                            _future.operationProgress(),
+                                            _allowCapacityEstimation);
   }
 }

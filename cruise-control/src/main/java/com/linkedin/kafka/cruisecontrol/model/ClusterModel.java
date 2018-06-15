@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -58,6 +59,7 @@ public class ClusterModel implements Serializable {
   private Map<String, Integer> _replicationFactorByTopic;
   private Map<Integer, Load> _potentialLeadershipLoadByBrokerId;
   private int _unknownHostId;
+  private Map<Integer, String> _capacityEstimationInfoByBrokerId;
 
   /**
    * Constructor for the cluster class. It creates data structures to hold a list of racks, a map for partitions by
@@ -87,6 +89,7 @@ public class ClusterModel implements Serializable {
     _potentialLeadershipLoadByBrokerId = new HashMap<>();
     _monitoredPartitionsPercentage = monitoredPartitionsPercentage;
     _unknownHostId = 0;
+    _capacityEstimationInfoByBrokerId = new HashMap<>();
   }
 
   /**
@@ -345,6 +348,13 @@ public class ClusterModel implements Serializable {
   }
 
   /**
+   * @return Capacity estimation info by broker id for which there has been an estimation.
+   */
+  public Map<Integer, String> capacityEstimationInfoByBrokerId() {
+    return Collections.unmodifiableMap(_capacityEstimationInfoByBrokerId);
+  }
+
+  /**
    * Get the demoted brokers in the cluster.
    */
   public SortedSet<Broker> demotedBrokers() {
@@ -438,6 +448,7 @@ public class ClusterModel implements Serializable {
     _load.clearLoad();
     _maxReplicationFactor = 1;
     _replicationFactorByTopic.clear();
+    _capacityEstimationInfoByBrokerId.clear();
   }
 
   /**
@@ -532,14 +543,14 @@ public class ClusterModel implements Serializable {
    *
    * @param rackId         Rack id under which the replica will be created.
    * @param brokerId       Broker id under which the replica will be created.
-   * @param brokerCapacity The broker capacity to use if the broker does not exist.
+   * @param brokerCapacityInfo The capacity information to use if the broker does not exist.
    */
-  public void handleDeadBroker(String rackId, int brokerId, Map<Resource, Double> brokerCapacity) {
+  public void handleDeadBroker(String rackId, int brokerId, BrokerCapacityInfo brokerCapacityInfo) {
     if (rack(rackId) == null) {
       createRack(rackId);
     }
     if (broker(brokerId) == null) {
-      createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacity);
+      createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacityInfo);
     }
   }
 
@@ -591,18 +602,23 @@ public class ClusterModel implements Serializable {
 
   /**
    * Create a broker under this cluster/rack and get the created broker.
+   * Add the broker id and info to {@link #_capacityEstimationInfoByBrokerId} if the broker capacity has been estimated.
    *
-   * @param rackId         Id of the rack that the broker will be created in.
-   * @param host           The host of this broker
-   * @param brokerId       Id of the broker to be created.
-   * @param brokerCapacity Capacity of the created broker.
+   * @param rackId Id of the rack that the broker will be created in.
+   * @param host The host of this broker
+   * @param brokerId Id of the broker to be created.
+   * @param brokerCapacityInfo Capacity information of the created broker.
    * @return Created broker.
    */
-  public Broker createBroker(String rackId, String host, int brokerId, Map<Resource, Double> brokerCapacity) {
+  public Broker createBroker(String rackId, String host, int brokerId, BrokerCapacityInfo brokerCapacityInfo) {
     _potentialLeadershipLoadByBrokerId.putIfAbsent(brokerId, new Load());
     Rack rack = rack(rackId);
     _brokerIdToRack.put(brokerId, rack);
-    Broker broker = rack.createBroker(brokerId, host, brokerCapacity);
+
+    if (brokerCapacityInfo.isEstimated()) {
+      _capacityEstimationInfoByBrokerId.put(brokerId, brokerCapacityInfo.estimationInfo());
+    }
+    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo.capacity());
     _healthyBrokers.add(broker);
     _brokers.add(broker);
     refreshCapacity();
@@ -933,7 +949,8 @@ public class ClusterModel implements Serializable {
                                        broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
                                        broker.load().expectedUtilizationFor(Resource.NW_OUT),
                                        potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-                                       broker.replicas().size(), broker.leaderReplicas().size());
+                                       broker.replicas().size(), broker.leaderReplicas().size(),
+                                       _capacityEstimationInfoByBrokerId.get(broker.id()) != null);
     });
     return brokerStats;
   }
@@ -948,11 +965,11 @@ public class ClusterModel implements Serializable {
 
     private void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                                       double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                                      int numReplicas, int numLeaders) {
+                                      int numReplicas, int numLeaders, boolean isEstimated) {
 
       SingleBrokerStats singleBrokerStats =
           new SingleBrokerStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                                potentialBytesOutRate, numReplicas, numLeaders);
+                                potentialBytesOutRate, numReplicas, numLeaders, isEstimated);
       _brokerStats.add(singleBrokerStats);
       _hostFieldLength = Math.max(_hostFieldLength, host.length());
       _hostStats.computeIfAbsent(host, h -> new BasicStats(0.0, 0.0, 0.0, 0.0,
@@ -1056,15 +1073,17 @@ public class ClusterModel implements Serializable {
     private final int _id;
     private final Broker.State _state;
     final BasicStats _basicStats;
+    private final boolean _isEstimated;
 
     private SingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                               double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                              int numReplicas, int numLeaders) {
+                              int numReplicas, int numLeaders, boolean isEstimated) {
       _host = host;
       _id = id;
       _state = state;
       _basicStats = new BasicStats(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
                                    potentialBytesOutRate, numReplicas, numLeaders);
+      _isEstimated = isEstimated;
     }
 
     public String host() {
@@ -1081,6 +1100,10 @@ public class ClusterModel implements Serializable {
 
     private BasicStats basicStats() {
       return _basicStats;
+    }
+
+    public boolean isEstimated() {
+      return _isEstimated;
     }
 
     /*

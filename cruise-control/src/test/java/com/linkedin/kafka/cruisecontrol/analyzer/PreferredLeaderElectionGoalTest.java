@@ -9,6 +9,7 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -108,13 +109,13 @@ public class PreferredLeaderElectionGoalTest {
     for (int i = 0; i < numRacks; i++) {
       clusterModel.createRack("r" + i);
     }
-
+    BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY);
     int i = 0;
     for (; i < 2; i++) {
-      clusterModel.createBroker("r0", "h" + i, i, TestConstants.BROKER_CAPACITY);
+      clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo);
     }
     for (int j = 1; j < numRacks; j++, i++) {
-      clusterModel.createBroker("r" + j, "h" + i, i, TestConstants.BROKER_CAPACITY);
+      clusterModel.createBroker("r" + j, "h" + i, i, commonBrokerCapacityInfo);
     }
 
     createReplicaAndSetLoad(clusterModel, "r0", 0, T0P0, 0, true);

@@ -113,6 +113,7 @@ public class KafkaCruiseControl {
    * @param goals the goals to be met when decommissioning the brokers. When empty all goals will be used.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress the progress to report.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return the optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
@@ -122,7 +123,8 @@ public class KafkaCruiseControl {
                                                            boolean throttleDecommissionedBroker,
                                                            List<String> goals,
                                                            ModelCompletenessRequirements requirements,
-                                                           OperationProgress operationProgress)
+                                                           OperationProgress operationProgress,
+                                                           boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -131,7 +133,8 @@ public class KafkaCruiseControl {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
-      GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel, goalsByPriority, operationProgress);
+      GoalOptimizer.OptimizerResult result =
+          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation);
       if (!dryRun) {
         executeProposals(result.goalProposals(), throttleDecommissionedBroker ? Collections.emptyList() : brokerIds);
       }
@@ -144,6 +147,25 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Check whether the given capacity estimation info indicates estimations for any broker when capacity estimation is
+   * not permitted.
+   *
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param capacityEstimationInfoByBrokerId Capacity estimation info by broker id for which there has been an estimation.
+   */
+  public static void sanityCheckCapacityEstimation(boolean allowCapacityEstimation,
+                                                   Map<Integer, String> capacityEstimationInfoByBrokerId) {
+    if (!(allowCapacityEstimation || capacityEstimationInfoByBrokerId.isEmpty())) {
+      StringBuilder sb = new StringBuilder();
+      sb.append("Allow capacity estimation or fix dependencies to capture broker capacities.%n");
+      for (Map.Entry<Integer, String> entry : capacityEstimationInfoByBrokerId.entrySet()) {
+        sb.append(String.format("Broker: %d: info: %s%n", entry.getKey(), entry.getValue()));
+      }
+      throw new IllegalStateException(sb.toString());
+    }
+  }
+
+  /**
    * Add brokers
    * @param brokerIds the broker ids.
    * @param dryRun whether it is a dry run or not.
@@ -151,6 +173,7 @@ public class KafkaCruiseControl {
    * @param goals the goals to be met when adding the brokers. When empty all goals will be used.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to update.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return The optimization result.
    * @throws KafkaCruiseControlException when any exception occurred during the broker addition.
    */
@@ -159,15 +182,18 @@ public class KafkaCruiseControl {
                                                   boolean throttleAddedBrokers,
                                                   List<String> goals,
                                                   ModelCompletenessRequirements requirements,
-                                                  OperationProgress operationProgress) throws KafkaCruiseControlException {
+                                                  OperationProgress operationProgress,
+                                                  boolean allowCapacityEstimation) throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
       ModelCompletenessRequirements modelCompletenessRequirements =
           modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
-      ClusterModel clusterModel =
-          _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements, operationProgress);
+      ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
+                                                            modelCompletenessRequirements,
+                                                            operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.NEW));
-      GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel, goalsByPriority, operationProgress);
+      GoalOptimizer.OptimizerResult result =
+          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation);
       if (!dryRun) {
         executeProposals(result.goalProposals(), throttleAddedBrokers ? Collections.emptyList() : brokerIds);
       }
@@ -185,14 +211,17 @@ public class KafkaCruiseControl {
    * @param dryRun whether it is a dry run or not.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress the progress of the job to report.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return the optimization result.
-   * @throws KafkaCruiseControlException when the rebalacnce encounter errors.
+   * @throws KafkaCruiseControlException when the rebalance encounter errors.
    */
   public GoalOptimizer.OptimizerResult rebalance(List<String> goals,
                                                  boolean dryRun,
                                                  ModelCompletenessRequirements requirements,
-                                                 OperationProgress operationProgress) throws KafkaCruiseControlException {
-    GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress);
+                                                 OperationProgress operationProgress,
+                                                 boolean allowCapacityEstimation) throws KafkaCruiseControlException {
+    GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation);
+    sanityCheckCapacityEstimation(allowCapacityEstimation, result.capacityEstimationInfoByBrokerId());
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet());
     }
@@ -213,11 +242,13 @@ public class KafkaCruiseControl {
    * @param brokerIds the broker ids to move off.
    * @param dryRun whether it is a dry run or not
    * @param operationProgress the progress of the job to report.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return the optimization result.
    */
   public GoalOptimizer.OptimizerResult demoteBrokers(Collection<Integer> brokerIds,
                                                      boolean dryRun,
-                                                     OperationProgress operationProgress)
+                                                     OperationProgress operationProgress,
+                                                     boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
@@ -228,7 +259,7 @@ public class KafkaCruiseControl {
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel,
                                    goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName())),
-                                   operationProgress);
+                                   operationProgress, allowCapacityEstimation);
       if (!dryRun) {
         executeProposals(result.goalProposals(), brokerIds);
       }
@@ -243,8 +274,8 @@ public class KafkaCruiseControl {
   /**
    * Get the broker load stats from the cache. null will be returned if their is no cached broker load stats.
    */
-  public ClusterModel.BrokerStats cachedBrokerLoadStats() {
-    return _loadMonitor.cachedBrokerLoadStats();
+  public ClusterModel.BrokerStats cachedBrokerLoadStats(boolean allowCapacityEstimation) {
+    return _loadMonitor.cachedBrokerLoadStats(allowCapacityEstimation);
   }
 
   /**
@@ -252,15 +283,19 @@ public class KafkaCruiseControl {
    * @param now time.
    * @param requirements the model completeness requirements.
    * @param operationProgress the progress of the job to report.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return the cluster workload model.
    * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
    */
   public ClusterModel clusterModel(long now,
                                    ModelCompletenessRequirements requirements,
-                                   OperationProgress operationProgress)
+                                   OperationProgress operationProgress,
+                                   boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      return _loadMonitor.clusterModel(now, requirements, operationProgress);
+      ClusterModel clusterModel = _loadMonitor.clusterModel(now, requirements, operationProgress);
+      sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
+      return clusterModel;
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;
     } catch (Exception e) {
@@ -274,16 +309,20 @@ public class KafkaCruiseControl {
    * @param to the end time of the window
    * @param requirements the model completeness requirement to enforce.
    * @param operationProgress the progress of the job to report.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return the cluster workload model.
    * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
    */
   public ClusterModel clusterModel(long from,
                                    long to,
                                    ModelCompletenessRequirements requirements,
-                                   OperationProgress operationProgress)
+                                   OperationProgress operationProgress,
+                                   boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      return _loadMonitor.clusterModel(from, to, requirements, operationProgress);
+      ClusterModel clusterModel = _loadMonitor.clusterModel(from, to, requirements, operationProgress);
+      sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
+      return clusterModel;
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;
     } catch (Exception e) {
@@ -349,12 +388,14 @@ public class KafkaCruiseControl {
    * Get the optimization proposals from the current cluster. The result would be served from the cached result if
    * it is still valid.
    * @param operationProgress the job progress to report.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return The optimization result.
    */
-  public GoalOptimizer.OptimizerResult getOptimizationProposals(OperationProgress operationProgress)
+  public GoalOptimizer.OptimizerResult getOptimizationProposals(OperationProgress operationProgress,
+                                                                boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
     try {
-      return _goalOptimizer.optimizations(operationProgress);
+      return _goalOptimizer.optimizations(operationProgress, allowCapacityEstimation);
     } catch (InterruptedException ie) {
       throw new KafkaCruiseControlException("Interrupted when getting the optimization proposals", ie);
     }
@@ -363,14 +404,16 @@ public class KafkaCruiseControl {
   /**
    * Optimize a cluster workload model.
    * @param goals a list of goals to optimize. When empty all goals will be used.
-   * @param requirements the model completeness requirements to enforce when generating the propsoals.
+   * @param requirements the model completeness requirements to enforce when generating the proposals.
    * @param operationProgress the progress of the job to report.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    */
   public GoalOptimizer.OptimizerResult getOptimizationProposals(List<String> goals,
                                                                 ModelCompletenessRequirements requirements,
-                                                                OperationProgress operationProgress) throws KafkaCruiseControlException {
+                                                                OperationProgress operationProgress,
+                                                                boolean allowCapacityEstimation) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -387,24 +430,28 @@ public class KafkaCruiseControl {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         // The cached proposals are computed with ignoreMinMonitoredPartitions = true. So if user provided a different
         // setting, we need to generate a new model.
-        ClusterModel clusterModel =
-            _loadMonitor.clusterModel(-1, _time.milliseconds(), modelCompletenessRequirements, operationProgress);
-        result = getOptimizationProposals(clusterModel, goalsByPriority, operationProgress);
+        ClusterModel clusterModel = _loadMonitor.clusterModel(-1,
+                                                              _time.milliseconds(),
+                                                              modelCompletenessRequirements,
+                                                              operationProgress);
+        result = getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation);
       } catch (KafkaCruiseControlException kcce) {
         throw kcce;
       } catch (Exception e) {
         throw new KafkaCruiseControlException(e);
       }
     } else {
-      result = getOptimizationProposals(operationProgress);
+      result = getOptimizationProposals(operationProgress, allowCapacityEstimation);
     }
     return result;
   }
 
   private GoalOptimizer.OptimizerResult getOptimizationProposals(ClusterModel clusterModel,
                                                                  Map<Integer, Goal> goalsByPriority,
-                                                                 OperationProgress operationProgress)
+                                                                 OperationProgress operationProgress,
+                                                                 boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
+    sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
     synchronized (this) {
       return _goalOptimizer.optimizations(clusterModel, goalsByPriority, operationProgress);
     }

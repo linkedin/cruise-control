@@ -445,7 +445,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "priority goals will be executed first.";
 
   /**
-   * <code>default.gaols</code>
+   * <code>default.goals</code>
    */
   public static final String DEFAULT_GOALS_CONFIG = "default.goals";
   private static final String DEFAULT_GOALS_DOC = "The list of goals that will be used by default if no goal list "
@@ -465,6 +465,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String ANOMALY_DETECTION_INTERVAL_MS_CONFIG = "anomaly.detection.interval.ms";
   private static final String ANOMALY_DETECTION_INTERVAL_MS_DOC = "The interval in millisecond that the detectors will "
       + "run to detect the anomalies.";
+
+  /**
+   * <code>anomaly.detection.allow.capacity.estimation</code>
+   */
+  public static final String ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG = "anomaly.detection.allow.capacity.estimation";
+  private static final String ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_DOC = "The flag to indicate whether anomaly "
+      + "detection threads allow capacity estimation in the generated cluster model they use.";
 
   /**
    * <code>anomaly.detection.goals</code>
@@ -808,6 +815,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 300000L,
                 ConfigDef.Importance.LOW,
                 ANOMALY_DETECTION_INTERVAL_MS_DOC)
+        .define(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                true,
+                ConfigDef.Importance.LOW,
+                ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_DOC)
         .define(ANOMALY_DETECTION_GOALS_CONFIG,
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")

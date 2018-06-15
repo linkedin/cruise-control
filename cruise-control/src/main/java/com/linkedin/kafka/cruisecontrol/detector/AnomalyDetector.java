@@ -33,7 +33,7 @@ import org.slf4j.LoggerFactory;
  */
 public class AnomalyDetector {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
-  private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null, Collections.emptyMap());
+  private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null, Collections.emptyMap(), true);
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final AnomalyNotifier _anomalyNotifier;
   // Detectors
