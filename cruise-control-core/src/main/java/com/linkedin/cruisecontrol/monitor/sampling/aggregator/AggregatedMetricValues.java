@@ -22,6 +22,7 @@ import java.util.StringJoiner;
  * The aggregated metric values.
  */
 public class AggregatedMetricValues {
+  // Metric values by metric id.
   private final Map<Integer, MetricValues> _metricValues;
 
   /**
@@ -50,7 +51,7 @@ public class AggregatedMetricValues {
   }
 
   /**
-   * Get the {@link MetricValues} for hte given metric id
+   * Get the {@link MetricValues} for the given metric id
    *
    * @param metricId the metric id to get metric values.
    * @return the {@link MetricValues} for the given metric id.
