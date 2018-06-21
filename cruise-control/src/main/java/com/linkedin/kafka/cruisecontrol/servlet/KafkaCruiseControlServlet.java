@@ -1131,11 +1131,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       out.write(optimizerResult.brokerStatsAfterOptimization().toString().getBytes(StandardCharsets.UTF_8));
     } else {
       Map <String, Object> ret= new HashMap<>();
+
       ret.put("proposalSummary", optimizerResult.getProposalSummary()); //TODO: need to pick patch #240 and apply here
-      List<Object> goalResult= new ArrayList<>();
+      List<Object> goalResultList= new ArrayList<>();
       for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
-        //TODO
+        Goal goal = entry.getKey();
+        Map<String, Object> goalResult=new HashMap<>();
+        goalResult.put("goalName", goal.name());
+        goalResult.put("result", goalResultDescription(goal, optimizerResult));
+        goalResult.put("clusterStats", entry.getValue().getJsonStructure());
       }
+      ret.put("goalSummary", goalResultList);
     }
     out.flush();
     return true;
