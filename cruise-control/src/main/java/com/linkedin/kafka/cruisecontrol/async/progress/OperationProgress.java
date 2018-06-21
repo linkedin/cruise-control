@@ -6,7 +6,9 @@ package com.linkedin.kafka.cruisecontrol.async.progress;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import javax.servlet.http.HttpSession;
 
 
@@ -82,6 +84,21 @@ public class OperationProgress {
                               time,  step.completionPercentage() * 100, step.name(), step.description()));
     }
     return sb.toString();
+  }
+
+  public synchronized Map<String, Object> getJsonStructure() {
+    Map<String, Object> progressMap = new HashMap<>();
+    for (int i = 0; i < _steps.size(); i++) {
+      OperationStep step = _steps.get(i);
+      long time = (i == _steps.size() - 1 ? System.currentTimeMillis() : _startTimes.get(i + 1)) - _startTimes.get(i);
+      Map<String, Object> stepProgressMap = new HashMap<>();
+      stepProgressMap.put("step", i);
+      stepProgressMap.put("description", step.description());
+      stepProgressMap.put("time-in-ms", time);
+      stepProgressMap.put("completionPercentage", step.completionPercentage() * 100.0);
+      progressMap.put(step.name(), stepProgressMap);
+    }
+    return progressMap;
   }
 
   private void ensureMutable() {

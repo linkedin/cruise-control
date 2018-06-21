@@ -1268,7 +1268,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       return future.get(_maxBlockMs, TimeUnit.MILLISECONDS);
     } catch (TimeoutException te) {
-      returnProgress(response, future, false);
+      returnProgress(response, future, wantJSON(request));
       return null;
     }
   }
@@ -1308,10 +1308,18 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private void returnProgress(HttpServletResponse response, OperationFuture future, boolean json) throws IOException {
-    String progressString = future.progressString();
     setResponseCode(response, SC_OK, json);
-    response.setContentLength(progressString.length());
-    response.getOutputStream().write(progressString.getBytes(StandardCharsets.UTF_8));
+    String resp;
+    if (!json) {
+      resp = future.progressString();
+    } else {
+      Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
+      Map<String, Object> respMap = future.getJsonStructure();
+      respMap.put("version", JSON_VERSION);
+      resp = gson.toJson(respMap);
+    }
+    response.setContentLength(resp.length());
+    response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
     response.getOutputStream().flush();
   }
 

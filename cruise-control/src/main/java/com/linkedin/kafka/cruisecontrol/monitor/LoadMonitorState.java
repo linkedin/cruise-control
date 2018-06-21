@@ -145,7 +145,6 @@ public class LoadMonitorState {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> loadMonitorState = new HashMap<>();
-    String trained = ModelParameters.trainingCompleted() ? "true" : "false";
     double trainingPct = 0.0;
     if (ModelParameters.trainingCompleted()) {
       trainingPct = 100.0;
@@ -161,7 +160,7 @@ public class LoadMonitorState {
       case TRAINING:
       case LOADING:
         loadMonitorState.put("state", _loadMonitorTaskRunnerState);
-        loadMonitorState.put("trained", trained);
+        loadMonitorState.put("trained", ModelParameters.trainingCompleted());
         loadMonitorState.put("trainingPct", trainingPct);
         loadMonitorState.put("numMonitoredWindows", _monitoredWindows.size());
         loadMonitorState.put("monitoredWindows", _monitoredWindows);
@@ -235,8 +234,8 @@ public class LoadMonitorState {
 
       case TRAINING:
         return String.format("{state: %s%s, NumValidWindows: (%d/%d) (%.3f%%) , NumValidPartitions: %d/%d (%.3f%%), FlawedPartitions: %d}",
-                             _loadMonitorTaskRunnerState, trained, _monitoredWindows.size(), _numValidWindows, 
-                             validWindowPercent * 100, _numValidMonitoredPartitions, _totalNumPartitions, validPartitionPercent * 100, 
+                             _loadMonitorTaskRunnerState, trained, _monitoredWindows.size(), _numValidWindows,
+                             validWindowPercent * 100, _numValidMonitoredPartitions, _totalNumPartitions, validPartitionPercent * 100,
                              _sampleExtrapolations.size());
 
       case LOADING:

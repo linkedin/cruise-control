@@ -39,12 +39,10 @@ public class AnalyzerState {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> analyzerState = new HashMap<>();
-    Set<Map<String, String>> readyGoalNames = new HashSet<>();
+    Set<String> readyGoalNames = new HashSet<>();
     for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
       if (entry.getValue()) {
-        Map<String, String> goalMap = new HashMap<>();
-        goalMap.put("goal", entry.getKey().name());
-        readyGoalNames.add(goalMap);
+        readyGoalNames.add(entry.getKey().name());
       }
     }
     analyzerState.put("isProposalReady", _isProposalReady);
