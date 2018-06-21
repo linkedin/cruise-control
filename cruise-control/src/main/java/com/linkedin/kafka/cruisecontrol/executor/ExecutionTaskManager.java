@@ -40,6 +40,7 @@ public class ExecutionTaskManager {
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
   private final Time _time;
   private volatile long _inExecutionDataToMove;
+  private boolean _isKafkaAssignerMode;
 
   private static final String REPLICA_ACTION = "replica-action";
   private static final String LEADERSHIP_ACTION = "leadership-action";
@@ -85,6 +86,7 @@ public class ExecutionTaskManager {
     _brokersToSkipConcurrencyCheck = new HashSet<>();
     _inExecutionDataToMove = 0L;
     _time = time;
+    _isKafkaAssignerMode = false;
 
     // Register gauge sensors.
     registerGaugeSensors(dropwizardMetricRegistry);
@@ -241,12 +243,10 @@ public class ExecutionTaskManager {
    * @param proposals the execution proposals to execute.
    * @param brokersToSkipConcurrencyCheck the brokers that does not need to be throttled when move the partitions.
    * @param cluster Cluster state.
-   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
    */
   public synchronized void addExecutionProposals(Collection<ExecutionProposal> proposals,
                                                  Collection<Integer> brokersToSkipConcurrencyCheck,
-                                                 Cluster cluster,
-                                                 boolean isKafkaAssignerMode) {
+                                                 Cluster cluster) {
     _executionTaskPlanner.addExecutionProposals(proposals, cluster);
     for (ExecutionProposal p : proposals) {
       _inProgressReplicaMovementsByBrokerId.putIfAbsent(p.oldLeader(), 0);
@@ -255,7 +255,7 @@ public class ExecutionTaskManager {
       }
     }
     // Set the execution mode for tasks.
-    _executionTaskTracker.setExecutionMode(isKafkaAssignerMode);
+    _executionTaskTracker.setExecutionMode(_isKafkaAssignerMode);
 
     // Add pending proposals to indicate the phase before they become an executable task.
     _executionTaskTracker.taskForReplicaAction(ExecutionTask.State.PENDING)
@@ -266,6 +266,15 @@ public class ExecutionTaskManager {
     if (brokersToSkipConcurrencyCheck != null) {
       _brokersToSkipConcurrencyCheck.addAll(brokersToSkipConcurrencyCheck);
     }
+  }
+
+  /**
+   * Set the execution mode of the tasks to keep track of the ongoing execution mode via sensors.
+   *
+   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   */
+  public synchronized void setExecutionModeForTaskTracker(boolean isKafkaAssignerMode) {
+    _isKafkaAssignerMode = isKafkaAssignerMode;
   }
 
   /**

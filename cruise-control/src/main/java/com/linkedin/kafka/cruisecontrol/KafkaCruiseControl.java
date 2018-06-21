@@ -489,8 +489,9 @@ public class KafkaCruiseControl {
   private void executeProposals(Collection<ExecutionProposal> proposals,
                                Collection<Integer> unthrottledBrokers,
                                boolean isKafkaAssignerMode) {
-    // Add execution proposals and start execution.
-    _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor, isKafkaAssignerMode);
+    // Set the execution mode, add execution proposals, and start execution.
+    _executor.setExecutionMode(isKafkaAssignerMode);
+    _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor);
   }
 
   /**

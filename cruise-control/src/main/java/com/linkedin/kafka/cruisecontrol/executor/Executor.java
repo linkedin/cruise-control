@@ -168,8 +168,7 @@ public class Executor {
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Collection<Integer> unthrottledBrokers,
-                                            LoadMonitor loadMonitor,
-                                            boolean isKafkaAssignerMode) {
+                                            LoadMonitor loadMonitor) {
     if (_hasOngoingExecution) {
       throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
     }
@@ -177,8 +176,17 @@ public class Executor {
     if (loadMonitor == null) {
       throw new IllegalArgumentException("Load monitor cannot be null.");
     }
-    _executionTaskManager.addExecutionProposals(proposals, unthrottledBrokers, _metadataClient.refreshMetadata().cluster(), isKafkaAssignerMode);
+    _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
+    _executionTaskManager.addExecutionProposals(proposals, unthrottledBrokers, _metadataClient.refreshMetadata().cluster());
     startExecution(loadMonitor);
+  }
+
+  /**
+   * Set the execution mode of the tasks to keep track of the ongoing execution mode via sensors.
+   *
+   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   */
+  public synchronized void setExecutionMode(boolean isKafkaAssignerMode) {
     _isKafkaAssignerMode = isKafkaAssignerMode;
   }
 
