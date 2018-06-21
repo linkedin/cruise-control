@@ -720,23 +720,21 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } else {
       Map<String, Object> partitionMap = new HashMap<>();
       List<Object> partitionList = new ArrayList<>();
-      List<String> header = new ArrayList<>(Arrays.asList("topic", "partition", "leader", "followers", "CPU", "DISK", "NW_IN", "NW_OUT"));
       partitionMap.put("version", JSON_VERSION);
-      partitionMap.put("header", header);
       for (Partition p : sortedPartitions) {
         if (++numEntries > entries) {
           break;
         }
         List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
-        List<Object> record = new ArrayList<>();
-        record.add(p.leader().topicPartition().topic());
-        record.add(p.leader().topicPartition().partition());
-        record.add(p.leader().broker().id());
-        record.add(followers);
-        record.add(p.leader().load().expectedUtilizationFor(Resource.CPU, wantMaxLoad));
-        record.add(p.leader().load().expectedUtilizationFor(Resource.DISK, wantMaxLoad));
-        record.add(p.leader().load().expectedUtilizationFor(Resource.NW_IN, wantMaxLoad));
-        record.add(p.leader().load().expectedUtilizationFor(Resource.NW_OUT, wantMaxLoad));
+        Map<String, Object> record = new HashMap<>();
+        record.put("topic", p.leader().topicPartition().topic());
+        record.put("partition",p.leader().topicPartition().partition());
+        record.put("leader",p.leader().broker().id());
+        record.put("followers",followers);
+        record.put("CPU",p.leader().load().expectedUtilizationFor(Resource.CPU, wantMaxLoad));
+        record.put("DISK",p.leader().load().expectedUtilizationFor(Resource.DISK, wantMaxLoad));
+        record.put("NW_IN",p.leader().load().expectedUtilizationFor(Resource.NW_IN, wantMaxLoad));
+        record.put("NW_OUT",p.leader().load().expectedUtilizationFor(Resource.NW_OUT, wantMaxLoad));
         partitionList.add(record);
       }
       partitionMap.put("records", partitionList);
@@ -1118,20 +1116,27 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return false;
     }
 
-    setResponseCode(response, SC_OK, false);
+    setResponseCode(response, SC_OK, json);
     OutputStream out = response.getOutputStream();
-    out.write(optimizerResult.getProposalSummary().getBytes(StandardCharsets.UTF_8));
-    for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
-      Goal goal = entry.getKey();
-      out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
-                      .getBytes(StandardCharsets.UTF_8));
-      out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
+    if(!json) {
+      out.write(optimizerResult.getProposalSummary().getBytes(StandardCharsets.UTF_8));
+      for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
+        Goal goal = entry.getKey();
+        out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
+            .getBytes(StandardCharsets.UTF_8));
+        out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
+      }
+      out.write(String.format("%nCluster load after %s broker %s:%n", endPoint == ADD_BROKER ? "adding" : "removing",
+          brokerIds).getBytes(StandardCharsets.UTF_8));
+      out.write(optimizerResult.brokerStatsAfterOptimization().toString().getBytes(StandardCharsets.UTF_8));
+    } else {
+      Map <String, Object> ret= new HashMap<>();
+      ret.put("proposalSummary", optimizerResult.getProposalSummary()); //TODO: need to pick patch #240 and apply here
+      List<Object> goalResult= new ArrayList<>();
+      for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
+        //TODO
+      }
     }
-    out.write(String.format("%nCluster load after %s broker %s:%n",
-                            endPoint == ADD_BROKER ? "adding" : "removing", brokerIds)
-                    .getBytes(StandardCharsets.UTF_8));
-    out.write(optimizerResult.brokerStatsAfterOptimization().toString()
-                             .getBytes(StandardCharsets.UTF_8));
     out.flush();
     return true;
   }
