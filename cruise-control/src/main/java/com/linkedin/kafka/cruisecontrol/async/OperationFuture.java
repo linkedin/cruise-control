@@ -93,7 +93,7 @@ public class OperationFuture<T> extends CompletableFuture<T> {
   }
 
   /**
-   * @return the Map describing the progress of the operation.
+   * @return the map describing the progress of the operation.
    */
   public Map<String, Object> getJsonStructure() {
     return _operationProgress.getJsonStructure();

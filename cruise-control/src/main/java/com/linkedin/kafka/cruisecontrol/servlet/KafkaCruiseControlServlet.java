@@ -1314,8 +1314,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       resp = future.progressString();
     } else {
       Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
-      Map<String, Object> respMap = future.getJsonStructure();
+      Map<String, Object> respMap = new HashMap<>();
       respMap.put("version", JSON_VERSION);
+      respMap.put("progress", future.getJsonStructure());
       resp = gson.toJson(respMap);
     }
     response.setContentLength(resp.length());
