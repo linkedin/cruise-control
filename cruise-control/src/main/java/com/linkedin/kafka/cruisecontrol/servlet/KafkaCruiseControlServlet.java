@@ -188,6 +188,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     kafkaClusterState.add(VERBOSE_PARAM);
     kafkaClusterState.add(JSON_PARAM);
 
+    Set<String> pauseSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    pauseSampling.add(JSON_PARAM);
+
+    Set<String> resumeSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    resumeSampling.add(JSON_PARAM);
+
+    Set<String> stopProposalExecution = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    stopProposalExecution.add(JSON_PARAM);
+
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
     validParamNames.put(LOAD, Collections.unmodifiableSet(load));
@@ -198,9 +207,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     validParamNames.put(REMOVE_BROKER, Collections.unmodifiableSet(removeBroker));
     validParamNames.put(DEMOTE_BROKER, Collections.unmodifiableSet(demoteBroker));
     validParamNames.put(REBALANCE, Collections.unmodifiableSet(rebalance));
-    validParamNames.put(STOP_PROPOSAL_EXECUTION, Collections.emptySet());
-    validParamNames.put(PAUSE_SAMPLING, Collections.emptySet());
-    validParamNames.put(RESUME_SAMPLING, Collections.emptySet());
+    validParamNames.put(STOP_PROPOSAL_EXECUTION, Collections.unmodifiableSet(stopProposalExecution));
+    validParamNames.put(PAUSE_SAMPLING, Collections.unmodifiableSet(pauseSampling));
+    validParamNames.put(RESUME_SAMPLING, Collections.unmodifiableSet(resumeSampling));
     validParamNames.put(KAFKA_CLUSTER_STATE, Collections.unmodifiableSet(kafkaClusterState));
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
@@ -434,6 +443,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       _asyncOperationStep.set(0);
       EndPoint endPoint = endPoint(request);
+      boolean json = wantJSON(request);
       if (endPoint != null) {
         Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
         Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -455,21 +465,24 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               }
               break;
             case REBALANCE:
-              if (rebalance(request, response)) {
+              if (rebalance(request, response, endPoint)) {
                 _sessionManager.closeSession(request);
               }
               break;
             case STOP_PROPOSAL_EXECUTION:
               stopProposalExecution();
+              setSuccessResponse(response, "Proposal execution stopped.", SC_OK, json);
               break;
             case PAUSE_SAMPLING:
               pauseSampling();
+              setSuccessResponse(response, "Metric sampling paused.", SC_OK, json);
               break;
             case RESUME_SAMPLING:
               resumeSampling();
+              setSuccessResponse(response, "Metric sampling resumed.", SC_OK, json);
               break;
             case DEMOTE_BROKER:
-              if (demoteBroker(request, response)) {
+              if (demoteBroker(request, response, endPoint)) {
                 _sessionManager.closeSession(request);
               }
               break;
@@ -539,8 +552,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       _asyncKafkaCruiseControl.bootstrapLoadMonitor(clearMetrics);
     }
 
-    String errorMsg = String.format("Bootstrap started. Check status through %s", getStateCheckUrl(request));
-    setErrorResponse(response, "", errorMsg, SC_OK, json);
+    String retMsg = String.format("Bootstrap started. Check status through %s", getStateCheckUrl(request));
+    setSuccessResponse(response, retMsg, SC_OK, json);
   }
 
   private void setErrorResponse(HttpServletResponse response,
@@ -566,6 +579,27 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     response.getOutputStream().flush();
   }
 
+  private void setSuccessResponse(HttpServletResponse response,
+      String message,
+      int responseCode,
+      boolean json)
+      throws IOException {
+    String resp;
+    if (json) {
+      Map<String, Object> exceptionMap = new HashMap<>();
+      exceptionMap.put("version", JSON_VERSION);
+      exceptionMap.put("Message", message);
+      Gson gson = new Gson();
+      resp = gson.toJson(exceptionMap);
+    } else {
+      resp = message == null ? "" : message;
+    }
+    setResponseCode(response, responseCode, json);
+    response.setContentLength(resp.length());
+    response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
+    response.getOutputStream().flush();
+  }
+
   private void train(HttpServletRequest request, HttpServletResponse response) throws Exception {
     Long startMs;
     Long endMs;
@@ -582,8 +616,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return;
     }
     _asyncKafkaCruiseControl.trainLoadModel(startMs, endMs);
-    String errorMsg = String.format("Load model training started. Check status through %s", getStateCheckUrl(request));
-    setErrorResponse(response, "", errorMsg, SC_OK, json);
+    String retMessage = String.format("Load model training started. Check status through %s", getStateCheckUrl(request));
+    setSuccessResponse(response, retMessage, SC_OK, json);
   }
 
   private boolean getClusterLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -728,13 +762,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
         Map<String, Object> record = new HashMap<>();
         record.put("topic", p.leader().topicPartition().topic());
-        record.put("partition",p.leader().topicPartition().partition());
-        record.put("leader",p.leader().broker().id());
-        record.put("followers",followers);
-        record.put("CPU",p.leader().load().expectedUtilizationFor(Resource.CPU, wantMaxLoad));
-        record.put("DISK",p.leader().load().expectedUtilizationFor(Resource.DISK, wantMaxLoad));
-        record.put("NW_IN",p.leader().load().expectedUtilizationFor(Resource.NW_IN, wantMaxLoad));
-        record.put("NW_OUT",p.leader().load().expectedUtilizationFor(Resource.NW_OUT, wantMaxLoad));
+        record.put("partition", p.leader().topicPartition().partition());
+        record.put("leader", p.leader().broker().id());
+        record.put("followers", followers);
+        record.put("CPU", p.leader().load().expectedUtilizationFor(Resource.CPU, wantMaxLoad));
+        record.put("DISK", p.leader().load().expectedUtilizationFor(Resource.DISK, wantMaxLoad));
+        record.put("NW_IN", p.leader().load().expectedUtilizationFor(Resource.NW_IN, wantMaxLoad));
+        record.put("NW_OUT", p.leader().load().expectedUtilizationFor(Resource.NW_OUT, wantMaxLoad));
         partitionList.add(record);
       }
       partitionMap.put("records", partitionList);
@@ -1055,6 +1089,58 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return true;
   }
 
+  private String generateGoalAndClusterStatusAfterExecution(boolean json, GoalOptimizer.OptimizerResult optimizerResult,
+      EndPoint endPoint, List<Integer> brokerIds) {
+    StringBuilder sb = new StringBuilder();
+    if (!json) {
+      sb.append(optimizerResult.getProposalSummary());
+      for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
+        Goal goal = entry.getKey();
+        sb.append(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult)));
+        sb.append(entry.getValue().toString());
+      }
+      switch (endPoint) {
+        case REBALANCE:
+          sb.append("%n%nCluster load after rebalance%n");
+          break;
+        case ADD_BROKER:
+          sb.append(String.format("%n%nCluster load after adding broker %s:%n", brokerIds));
+          break;
+        case REMOVE_BROKER:
+          sb.append(String.format("%n%nnCluster load after removing broker %s:%n", brokerIds));
+          break;
+        case DEMOTE_BROKER:
+          sb.append(String.format("%n%nCluster load after demoting broker %s:%n", brokerIds));
+          break;
+        default:
+          break;
+      }
+      sb.append(optimizerResult.brokerStatsAfterOptimization().toString());
+    } else {
+      Map<String, Object> ret = new HashMap<>();
+
+      ret.put("proposalSummary", optimizerResult.getProposalSummaryForJson());
+      List<Object> goalResultList = new ArrayList<>();
+      for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
+        Goal goal = entry.getKey();
+        Map<String, Object> goalResult = new HashMap<>();
+        goalResult.put("goalName", goal.name());
+        goalResult.put("result", goalResultDescription(goal, optimizerResult));
+        goalResult.put("clusterStats", entry.getValue().getJsonStructure());
+        goalResultList.add(goalResult);
+      }
+      ret.put("goalSummary", goalResultList);
+      ret.put("resultingClusterLoad", optimizerResult.brokerStatsAfterOptimization().getJsonStructure());
+      ret.put("version", JSON_VERSION);
+      Gson gson = new GsonBuilder()
+          .serializeNulls()
+          .serializeSpecialFloatingPointValues()
+          .create();
+      sb.append(gson.toJson(ret));
+    }
+    return sb.toString();
+  }
+
   private boolean addOrRemoveBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
       throws Exception {
     List<Integer> brokerIds = new ArrayList<>();
@@ -1118,44 +1204,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     setResponseCode(response, SC_OK, json);
     OutputStream out = response.getOutputStream();
-    if(!json) {
-      out.write(optimizerResult.getProposalSummary().getBytes(StandardCharsets.UTF_8));
-      for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
-        Goal goal = entry.getKey();
-        out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
-            .getBytes(StandardCharsets.UTF_8));
-        out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
-      }
-      out.write(String.format("%nCluster load after %s broker %s:%n", endPoint == ADD_BROKER ? "adding" : "removing",
-          brokerIds).getBytes(StandardCharsets.UTF_8));
-      out.write(optimizerResult.brokerStatsAfterOptimization().toString().getBytes(StandardCharsets.UTF_8));
-    } else {
-      Map <String, Object> ret= new HashMap<>();
-
-      ret.put("proposalSummary", optimizerResult.getProposalSummary()); //TODO: need to pick patch #240 and apply here
-      List<Object> goalResultList= new ArrayList<>();
-      for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
-        Goal goal = entry.getKey();
-        Map<String, Object> goalResult=new HashMap<>();
-        goalResult.put("goalName", goal.name());
-        goalResult.put("result", goalResultDescription(goal, optimizerResult));
-        goalResult.put("clusterStats", entry.getValue().getJsonStructure());
-        goalResultList.add(goalResult);
-      }
-      ret.put("goalSummary", goalResultList);
-      ret.put("resultingClusterLoad", optimizerResult.brokerStatsAfterOptimization().getJsonStructure());
-      ret.put("version", JSON_VERSION);
-      Gson gson = new GsonBuilder()
-          .serializeNulls()
-          .serializeSpecialFloatingPointValues()
-          .create();
-      out.write(gson.toJson(ret).getBytes(StandardCharsets.UTF_8));
-    }
+    out.write(generateGoalAndClusterStatusAfterExecution(json, optimizerResult, endPoint, brokerIds).getBytes(StandardCharsets.UTF_8));
     out.flush();
     return true;
   }
 
-  private boolean rebalance(HttpServletRequest request, HttpServletResponse response) throws Exception {
+  private boolean rebalance(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint) throws Exception {
     boolean dryrun;
     boolean isKafkaAssignerMode;
     DataFrom dataFrom;
@@ -1178,32 +1232,21 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return false;
     }
     boolean allowCapacityEstimation = allowCapacityEstimation(request);
-    GoalOptimizer.OptimizerResult optimizerResult =
-        getAndMaybeReturnProgress(request, response,
-                                  () -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
-                                                                           dryrun,
-                                                                           goalsAndRequirements.requirements(),
-                                                                           allowCapacityEstimation));
+    GoalOptimizer.OptimizerResult optimizerResult = getAndMaybeReturnProgress(request, response,
+        () -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(), dryrun, goalsAndRequirements.requirements(),
+            allowCapacityEstimation));
     if (optimizerResult == null) {
       return false;
     }
 
     setResponseCode(response, SC_OK, false);
     OutputStream out = response.getOutputStream();
-    out.write(optimizerResult.getProposalSummary().getBytes(StandardCharsets.UTF_8));
-    for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
-      Goal goal = entry.getKey();
-      out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
-                      .getBytes(StandardCharsets.UTF_8));
-      out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
-    }
-    out.write(String.format("%nCluster load after rebalance:%n").getBytes(StandardCharsets.UTF_8));
-    out.write(optimizerResult.brokerStatsAfterOptimization().toString().getBytes(StandardCharsets.UTF_8));
+    out.write(generateGoalAndClusterStatusAfterExecution(json, optimizerResult, endPoint, null).getBytes(StandardCharsets.UTF_8));
     out.flush();
     return true;
   }
 
-  private boolean demoteBroker(HttpServletRequest request, HttpServletResponse response) throws Exception {
+  private boolean demoteBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint) throws Exception {
     List<Integer> brokerIds = new ArrayList<>();
     boolean dryrun;
     boolean json = wantJSON(request);
@@ -1232,17 +1275,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     setResponseCode(response, SC_OK, false);
     OutputStream out = response.getOutputStream();
+    out.write(generateGoalAndClusterStatusAfterExecution(json, optimizerResult, endPoint, brokerIds).getBytes(StandardCharsets.UTF_8));
     out.write(optimizerResult.getProposalSummary().getBytes(StandardCharsets.UTF_8));
-    for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
-      Goal goal = entry.getKey();
-      out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
-                      .getBytes(StandardCharsets.UTF_8));
-      out.write(entry.getValue().toString().getBytes(StandardCharsets.UTF_8));
-    }
-    out.write(String.format("%nCluster load after demote broker %s:%n", brokerIds)
-                    .getBytes(StandardCharsets.UTF_8));
-    out.write(optimizerResult.brokerStatsAfterOptimization().toString()
-                             .getBytes(StandardCharsets.UTF_8));
     out.flush();
     return true;
   }

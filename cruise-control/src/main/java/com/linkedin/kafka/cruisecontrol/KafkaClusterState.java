@@ -120,11 +120,11 @@ public class KafkaClusterState {
   private List<Object> getJsonPartitions(Set<PartitionInfo> partitions) {
     List<Object> partitionList = new ArrayList<>();
     for (PartitionInfo partitionInfo : partitions) {
-      Set<String> replicas =
-          Arrays.stream(partitionInfo.replicas()).map(Node::idString).collect(Collectors.toSet());
-      Set<String> inSyncReplicas =
-          Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::idString).collect(Collectors.toSet());
-      Set<String> outOfSyncReplicas = new HashSet<>(replicas);
+      Set<Integer> replicas =
+          Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toSet());
+      Set<Integer> inSyncReplicas =
+          Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::id).collect(Collectors.toSet());
+      Set<Integer> outOfSyncReplicas = new HashSet<>(replicas);
       outOfSyncReplicas.removeAll(inSyncReplicas);
 
       Map<String, Object> recordMap = new HashMap<>();
