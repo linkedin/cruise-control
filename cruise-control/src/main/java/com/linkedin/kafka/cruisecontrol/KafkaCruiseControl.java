@@ -498,7 +498,7 @@ public class KafkaCruiseControl {
    * Stop the executor if it is executing the proposals.
    */
   public void stopProposalExecution() {
-    _executor.stopExecution(true);
+    _executor.userTriggeredStopExecution();
   }
 
   /**

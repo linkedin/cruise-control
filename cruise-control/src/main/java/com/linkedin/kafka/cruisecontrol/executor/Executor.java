@@ -227,13 +227,26 @@ public class Executor {
     _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor));
   }
 
-  public synchronized void stopExecution(boolean isOnPurpose) {
+  /**
+   * Request the executor to stop any ongoing execution.
+   */
+  public synchronized void userTriggeredStopExecution() {
+    if (stopExecution()) {
+      _numExecutionStoppedByUser.incrementAndGet();
+    }
+  }
+
+  /**
+   * Request the executor to stop any ongoing execution.
+   *
+   * @return True if the flag to stop the execution is set after the call (i.e. was not set already), false otherwise.
+   */
+  private synchronized boolean stopExecution() {
     if (_stopRequested.compareAndSet(false, true)) {
       _numExecutionStopped.incrementAndGet();
-      if (isOnPurpose) {
-        _numExecutionStoppedByUser.incrementAndGet();
-      }
+      return true;
     }
+    return false;
   }
 
   /**
@@ -496,7 +509,7 @@ public class Executor {
           // ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, deadOrAbortingTasks);
           if (!_stopRequested.get()) {
             // If there is task aborted or dead, we stop the execution.
-            stopExecution(false);
+            stopExecution();
           }
         }
         updateOngoingExecutionState();
