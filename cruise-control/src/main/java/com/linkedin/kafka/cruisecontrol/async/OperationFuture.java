@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import java.lang.reflect.Field;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.slf4j.Logger;
@@ -89,6 +90,13 @@ public class OperationFuture<T> extends CompletableFuture<T> {
    */
   public String progressString() {
     return _operationProgress.toString();
+  }
+
+  /**
+   * @return the map describing the progress of the operation.
+   */
+  public Map<String, Object> getJsonStructure() {
+    return _operationProgress.getJsonStructure();
   }
 
   /**
