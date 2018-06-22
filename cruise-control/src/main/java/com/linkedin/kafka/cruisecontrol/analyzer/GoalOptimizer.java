@@ -23,7 +23,9 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -585,6 +587,40 @@ public class GoalOptimizer implements Runnable {
 
     public Map<Integer, String> capacityEstimationInfoByBrokerId() {
       return Collections.unmodifiableMap(_capacityEstimationInfoByBrokerId);
+    }
+
+    private List<Number> getMovementStats() {
+      Integer numReplicaMovements = 0;
+      Integer numLeaderMovements = 0;
+      Long dataToMove = 0L;
+      for (ExecutionProposal p : _optimizationProposals) {
+        if (!p.replicasToAdd().isEmpty() || !p.replicasToRemove().isEmpty()) {
+          numReplicaMovements++;
+          dataToMove += p.dataToMoveInMB();
+        } else {
+          numLeaderMovements++;
+        }
+      }
+      return Arrays.asList(numReplicaMovements, dataToMove, numLeaderMovements);
+    }
+
+    public String getProposalSummary() {
+      List<Number> moveStats = getMovementStats();
+      return String.format("%n%nThe optimization proposal has %d replica(%d MB) movements and %d leadership movements "
+              + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions covered.",
+          moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(), _clusterModelStats.numSnapshotWindows(),
+          _clusterModelStats.monitoredPartitionsPercentage() * 100);
+    }
+
+    public Map<String, Object> getProposalSummaryForJson() {
+      List<Number> moveStats = getMovementStats();
+      Map<String, Object> ret = new HashMap<>();
+      ret.put("numReplicaMovements", moveStats.get(0).intValue());
+      ret.put("dataToMoveMB", moveStats.get(1).longValue());
+      ret.put("numLeaderMovements", moveStats.get(2).intValue());
+      ret.put("recentWindows", _clusterModelStats.numSnapshotWindows());
+      ret.put("monitoredPartitionsPercentage", _clusterModelStats.monitoredPartitionsPercentage() * 100.0);
+      return ret;
     }
   }
 

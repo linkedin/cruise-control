@@ -4,8 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import javax.servlet.http.HttpServletRequest;
 
 
@@ -41,24 +39,4 @@ class KafkaCruiseControlServletUtils {
     }
     return request.getRemoteAddr();
   }
-
-  static String getProposalSummary(GoalOptimizer.OptimizerResult result) {
-    int numReplicaMovements = 0;
-    int numLeaderMovements = 0;
-    long dataToMove = 0;
-    for (ExecutionProposal p : result.goalProposals()) {
-      if (!p.replicasToAdd().isEmpty() || !p.replicasToRemove().isEmpty()) {
-        numReplicaMovements++;
-        dataToMove += p.dataToMoveInMB();
-      } else {
-        numLeaderMovements++;
-      }
-    }
-    return String.format("%n%nThe optimization proposal has %d replica(%d MB) movements and %d leadership movements "
-                             + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions "
-                             + "covered.", numReplicaMovements, dataToMove, numLeaderMovements,
-                         result.clusterModelStats().numSnapshotWindows(),
-                         result.clusterModelStats().monitoredPartitionsPercentage() * 100);
-  }
-
 }

@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
@@ -789,7 +790,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String loadAfterOptimization = optimizerResult.brokerStatsAfterOptimization().toString();
       if (!verbose) {
         out.write(
-            KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
+            optimizerResult.getProposalSummary().getBytes(StandardCharsets.UTF_8));
       } else {
         out.write(optimizerResult.goalProposals().toString().getBytes(StandardCharsets.UTF_8));
       }
@@ -805,9 +806,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       out.write(String.format("%n%nOptimized load:").getBytes(StandardCharsets.UTF_8));
       out.write(loadAfterOptimization.getBytes(StandardCharsets.UTF_8));
     } else {
+      Map<String, Object> proposalMap = new HashMap<>();
       if (!verbose) {
-        out.write(
-            KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
+        proposalMap.put("summary", optimizerResult.getProposalSummaryForJson());
+      } else {
+        proposalMap.put("proposals", optimizerResult.goalProposals().stream().map(ExecutionProposal::getJsonStructure).collect(Collectors.toList()));
       }
       // Build all the goal summary
       List<Map<String, Object>> allGoals = new ArrayList<>();
@@ -820,7 +823,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         goalMap.put("clusterModelStats", entry.getValue().getJsonStructure());
         allGoals.add(goalMap);
       }
-      Map<String, Object> proposalMap = new HashMap<>();
       proposalMap.put("version", JSON_VERSION);
       proposalMap.put("goals", allGoals);
       proposalMap.put("loadBeforeOptimization", optimizerResult.brokerStatsBeforeOptimization().getJsonStructure());
@@ -1107,8 +1109,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     setResponseCode(response, SC_OK, false);
     OutputStream out = response.getOutputStream();
-    out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult)
-                                            .getBytes(StandardCharsets.UTF_8));
+    out.write(optimizerResult.getProposalSummary().getBytes(StandardCharsets.UTF_8));
     for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
       Goal goal = entry.getKey();
       out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
@@ -1157,8 +1158,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     setResponseCode(response, SC_OK, false);
     OutputStream out = response.getOutputStream();
-    out.write(
-        KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult).getBytes(StandardCharsets.UTF_8));
+    out.write(optimizerResult.getProposalSummary().getBytes(StandardCharsets.UTF_8));
     for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
       Goal goal = entry.getKey();
       out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
@@ -1200,8 +1200,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     setResponseCode(response, SC_OK, false);
     OutputStream out = response.getOutputStream();
-    out.write(KafkaCruiseControlServletUtils.getProposalSummary(optimizerResult)
-                                            .getBytes(StandardCharsets.UTF_8));
+    out.write(optimizerResult.getProposalSummary().getBytes(StandardCharsets.UTF_8));
     for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
       Goal goal = entry.getKey();
       out.write(String.format("%n%nStats for goal %s%s:%n", goal.name(), goalResultDescription(goal, optimizerResult))
