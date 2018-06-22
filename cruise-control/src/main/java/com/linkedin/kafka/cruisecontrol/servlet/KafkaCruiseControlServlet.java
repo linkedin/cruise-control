@@ -586,11 +586,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throws IOException {
     String resp;
     if (json) {
-      Map<String, Object> exceptionMap = new HashMap<>();
-      exceptionMap.put("version", JSON_VERSION);
-      exceptionMap.put("Message", message);
+      Map<String, Object> respMap = new HashMap<>();
+      respMap.put("version", JSON_VERSION);
+      respMap.put("Message", message);
       Gson gson = new Gson();
-      resp = gson.toJson(exceptionMap);
+      resp = gson.toJson(respMap);
     } else {
       resp = message == null ? "" : message;
     }
@@ -1101,7 +1101,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       }
       switch (endPoint) {
         case REBALANCE:
-          sb.append("%n%nCluster load after rebalance%n");
+          sb.append("%n%nCluster load after rebalance:%n");
           break;
         case ADD_BROKER:
           sb.append(String.format("%n%nCluster load after adding broker %s:%n", brokerIds));
