@@ -608,16 +608,16 @@ public class GoalOptimizer implements Runnable {
       List<Number> moveStats = getMovementStats();
       return String.format("%n%nThe optimization proposal has %d replica(%d MB) movements and %d leadership movements "
               + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions covered.",
-          moveStats.get(0), moveStats.get(1), moveStats.get(2), _clusterModelStats.numSnapshotWindows(),
+          moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(), _clusterModelStats.numSnapshotWindows(),
           _clusterModelStats.monitoredPartitionsPercentage() * 100);
     }
 
     public Map<String, Object> getProposalSummaryForJson() {
       List<Number> moveStats = getMovementStats();
       Map<String, Object> ret = new HashMap<>();
-      ret.put("numReplicaMovements", moveStats.get(0));
-      ret.put("dataToMoveMB", moveStats.get(1));
-      ret.put("numLeaderMovements", moveStats.get(2));
+      ret.put("numReplicaMovements", moveStats.get(0).intValue());
+      ret.put("dataToMoveMB", moveStats.get(1).longValue());
+      ret.put("numLeaderMovements", moveStats.get(2).intValue());
       ret.put("recentWindows", _clusterModelStats.numSnapshotWindows());
       ret.put("monitoredPartitionsPercentage", _clusterModelStats.monitoredPartitionsPercentage() * 100.0);
       return ret;
