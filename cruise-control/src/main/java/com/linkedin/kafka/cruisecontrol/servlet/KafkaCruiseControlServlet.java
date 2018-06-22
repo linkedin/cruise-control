@@ -552,8 +552,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       _asyncKafkaCruiseControl.bootstrapLoadMonitor(clearMetrics);
     }
 
-    String retMsg = String.format("Bootstrap started. Check status through %s", getStateCheckUrl(request));
-    setSuccessResponse(response, retMsg, SC_OK, json);
+    String msg = String.format("Bootstrap started. Check status through %s", getStateCheckUrl(request));
+    setSuccessResponse(response, msg, SC_OK, json);
   }
 
   private void setErrorResponse(HttpServletResponse response,
@@ -616,8 +616,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return;
     }
     _asyncKafkaCruiseControl.trainLoadModel(startMs, endMs);
-    String retMessage = String.format("Load model training started. Check status through %s", getStateCheckUrl(request));
-    setSuccessResponse(response, retMessage, SC_OK, json);
+    String message = String.format("Load model training started. Check status through %s", getStateCheckUrl(request));
+    setSuccessResponse(response, message, SC_OK, json);
   }
 
   private boolean getClusterLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -1107,7 +1107,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           sb.append(String.format("%n%nCluster load after adding broker %s:%n", brokerIds));
           break;
         case REMOVE_BROKER:
-          sb.append(String.format("%n%nnCluster load after removing broker %s:%n", brokerIds));
+          sb.append(String.format("%n%nCluster load after removing broker %s:%n", brokerIds));
           break;
         case DEMOTE_BROKER:
           sb.append(String.format("%n%nCluster load after demoting broker %s:%n", brokerIds));
@@ -1117,26 +1117,26 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       }
       sb.append(optimizerResult.brokerStatsAfterOptimization().toString());
     } else {
-      Map<String, Object> ret = new HashMap<>();
+      Map<String, Object> retMap = new HashMap<>();
 
-      ret.put("proposalSummary", optimizerResult.getProposalSummaryForJson());
-      List<Object> goalResultList = new ArrayList<>();
+      retMap.put("proposalSummary", optimizerResult.getProposalSummaryForJson());
+      List<Object> goalStatusList = new ArrayList<>();
       for (Map.Entry<Goal, ClusterModelStats> entry : optimizerResult.statsByGoalPriority().entrySet()) {
         Goal goal = entry.getKey();
-        Map<String, Object> goalResult = new HashMap<>();
-        goalResult.put("goalName", goal.name());
-        goalResult.put("result", goalResultDescription(goal, optimizerResult));
-        goalResult.put("clusterStats", entry.getValue().getJsonStructure());
-        goalResultList.add(goalResult);
+        Map<String, Object> goalRecord = new HashMap<>();
+        goalRecord.put("goalName", goal.name());
+        goalRecord.put("status", goalResultDescription(goal, optimizerResult));
+        goalRecord.put("clusterModelStats", entry.getValue().getJsonStructure());
+        goalStatusList.add(goalRecord);
       }
-      ret.put("goalSummary", goalResultList);
-      ret.put("resultingClusterLoad", optimizerResult.brokerStatsAfterOptimization().getJsonStructure());
-      ret.put("version", JSON_VERSION);
+      retMap.put("goalSummary", goalStatusList);
+      retMap.put("resultingClusterLoad", optimizerResult.brokerStatsAfterOptimization().getJsonStructure());
+      retMap.put("version", JSON_VERSION);
       Gson gson = new GsonBuilder()
           .serializeNulls()
           .serializeSpecialFloatingPointValues()
           .create();
-      sb.append(gson.toJson(ret));
+      sb.append(gson.toJson(retMap));
     }
     return sb.toString();
   }
@@ -1276,7 +1276,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     setResponseCode(response, SC_OK, false);
     OutputStream out = response.getOutputStream();
     out.write(generateGoalAndClusterStatusAfterExecution(json, optimizerResult, endPoint, brokerIds).getBytes(StandardCharsets.UTF_8));
-    out.write(optimizerResult.getProposalSummary().getBytes(StandardCharsets.UTF_8));
     out.flush();
     return true;
   }
