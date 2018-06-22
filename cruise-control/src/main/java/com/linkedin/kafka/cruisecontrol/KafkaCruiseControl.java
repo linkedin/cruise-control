@@ -9,6 +9,8 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -25,11 +27,14 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.kafka.common.utils.SystemTime;
@@ -43,6 +48,9 @@ import org.slf4j.LoggerFactory;
  */
 public class KafkaCruiseControl {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControl.class);
+  private static final Set<String> KAFKA_ASSIGNER_GOALS =
+      Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
+                                                              KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
   private final KafkaCruiseControlConfig _config;
   private final LoadMonitor _loadMonitor;
   private final GoalOptimizer _goalOptimizer;
@@ -105,6 +113,16 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Check whether any of the given goals contain a Kafka Assigner goal.
+   *
+   * @param goals The goals to check
+   * @return True if the given goals contain a Kafka Assigner goal, false otherwise.
+   */
+  private boolean isKafkaAssignerMode(List<String> goals) {
+    return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
+  }
+
+  /**
    * Decommission a broker.
    *
    * @param brokerIds The brokers to decommission.
@@ -136,7 +154,9 @@ public class KafkaCruiseControl {
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation);
       if (!dryRun) {
-        executeProposals(result.goalProposals(), throttleDecommissionedBroker ? Collections.emptyList() : brokerIds);
+        executeProposals(result.goalProposals(),
+                         throttleDecommissionedBroker ? Collections.emptyList() : brokerIds,
+                         isKafkaAssignerMode(goals));
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -195,7 +215,9 @@ public class KafkaCruiseControl {
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation);
       if (!dryRun) {
-        executeProposals(result.goalProposals(), throttleAddedBrokers ? Collections.emptyList() : brokerIds);
+        executeProposals(result.goalProposals(),
+                         throttleAddedBrokers ? Collections.emptyList() : brokerIds,
+                         isKafkaAssignerMode(goals));
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -223,7 +245,7 @@ public class KafkaCruiseControl {
     GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation);
     sanityCheckCapacityEstimation(allowCapacityEstimation, result.capacityEstimationInfoByBrokerId());
     if (!dryRun) {
-      executeProposals(result.goalProposals(), Collections.emptySet());
+      executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals));
     }
     return result;
   }
@@ -261,7 +283,8 @@ public class KafkaCruiseControl {
                                    goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName())),
                                    operationProgress, allowCapacityEstimation);
       if (!dryRun) {
-        executeProposals(result.goalProposals(), brokerIds);
+        // Kafka Assigner mode is irrelevant for demoting a broker.
+        executeProposals(result.goalProposals(), brokerIds, false);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -461,10 +484,13 @@ public class KafkaCruiseControl {
    * Execute the given balancing proposals.
    * @param proposals the given balancing proposals
    * @param unthrottledBrokers Brokers for which the rate of replica movements from/to will not be throttled.
+   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
    */
-  public void executeProposals(Collection<ExecutionProposal> proposals,
-                               Collection<Integer> unthrottledBrokers) {
-    // Add execution proposals and start execution.
+  private void executeProposals(Collection<ExecutionProposal> proposals,
+                               Collection<Integer> unthrottledBrokers,
+                               boolean isKafkaAssignerMode) {
+    // Set the execution mode, add execution proposals, and start execution.
+    _executor.setExecutionMode(isKafkaAssignerMode);
     _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor);
   }
 
@@ -472,7 +498,7 @@ public class KafkaCruiseControl {
    * Stop the executor if it is executing the proposals.
    */
   public void stopProposalExecution() {
-    _executor.stopExecution();
+    _executor.userTriggeredStopExecution();
   }
 
   /**

@@ -42,6 +42,7 @@ class AddBrokerRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
   @Override
   protected GoalOptimizer.OptimizerResult getResult() throws Exception {
     return _kafkaCruiseControl.addBrokers(_brokerIds, _dryRun, _throttleAddedBrokers, _goals,
-                                          _modelCompletenessRequirements, _future.operationProgress(), _allowCapacityEstimation);
+                                          _modelCompletenessRequirements, _future.operationProgress(),
+                                          _allowCapacityEstimation);
   }
 }

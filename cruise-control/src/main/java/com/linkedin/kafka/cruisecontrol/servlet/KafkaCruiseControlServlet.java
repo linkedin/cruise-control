@@ -755,7 +755,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       String verboseString = request.getParameter(VERBOSE_PARAM);
       verbose = Boolean.parseBoolean(verboseString);
-      goals = getGoals(request);
+      goals = getGoals(request, getMode(request));
       dataFrom = getDataFrom(request);
 
       String ignoreProposalCacheString = request.getParameter(IGNORE_PROPOSAL_CACHE_PARAM);
@@ -1055,6 +1055,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     DataFrom dataFrom;
     boolean throttleAddedOrRemovedBrokers;
     List<String> goals;
+    boolean isKafkaAssignerMode;
     boolean json = wantJSON(request);
     try {
       String[] brokerIdsString = request.getParameter(BROKER_ID_PARAM).split(",");
@@ -1063,7 +1064,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       }
 
       dryrun = getDryRun(request);
-      goals = getGoals(request);
+      isKafkaAssignerMode = getMode(request);
+      goals = getGoals(request, isKafkaAssignerMode);
       dataFrom = getDataFrom(request);
 
       String throttleBrokerString = endPoint == ADD_BROKER ? request.getParameter(THROTTLE_ADDED_BROKER_PARAM)
@@ -1127,12 +1129,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private boolean rebalance(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean dryrun;
+    boolean isKafkaAssignerMode;
     DataFrom dataFrom;
     List<String> goals;
     boolean json = wantJSON(request);
     try {
       dryrun = getDryRun(request);
-      goals = getGoals(request);
+      isKafkaAssignerMode = getMode(request);
+      goals = getGoals(request, isKafkaAssignerMode);
       dataFrom = getDataFrom(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
@@ -1220,16 +1224,25 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return dryrunString == null || Boolean.parseBoolean(dryrunString);
   }
 
-  private List<String> getGoals(HttpServletRequest request) {
+  /**
+   * Get the mode of the execution (default: non-kafka_assigner).
+   *
+   * @param request The user request that may or may not specify the {@link #KAFKA_ASSIGNER_MODE_PARAM}
+   */
+  private boolean getMode(HttpServletRequest request) {
+    String kafkaAssignerModeString = request.getParameter(KAFKA_ASSIGNER_MODE_PARAM);
+    return Boolean.parseBoolean(kafkaAssignerModeString);
+  }
+
+  private List<String> getGoals(HttpServletRequest request, boolean isKafkaAssignerMode) {
     List<String> goals;
     String goalsString = request.getParameter(GOALS_PARAM);
     // TODO: Handle urlencoded value (%2C instead of ,)
     goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
     goals.removeIf(String::isEmpty);
 
-    // If KafkaAssigner mode is enabled (default) and goals are not specified, it overrides the goal list.
-    String kafkaAssignerModeString = request.getParameter(KAFKA_ASSIGNER_MODE_PARAM);
-    if (goals.isEmpty() && Boolean.parseBoolean(kafkaAssignerModeString)) {
+    // If KafkaAssigner mode is enabled and goals are not specified, it overrides the goal list.
+    if (goals.isEmpty() && isKafkaAssignerMode) {
       goals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                             KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());
     }

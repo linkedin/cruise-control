@@ -78,7 +78,8 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
     OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Decommission brokers");
     pending(future.operationProgress());
     _sessionExecutor.submit(new DecommissionBrokersRunnable(this, future, brokerIds, dryRun,
-                                                            throttleDecommissionedBrokers, goals, requirements, allowCapacityEstimation));
+                                                            throttleDecommissionedBrokers, goals, requirements,
+                                                            allowCapacityEstimation));
     return future;
   }
 
@@ -161,7 +162,8 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
                                                                   boolean allowCapacityEstimation) {
     OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Rebalance");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new RebalanceRunnable(this, future, goals, dryRun, requirements, allowCapacityEstimation));
+    _sessionExecutor.submit(new RebalanceRunnable(this, future, goals, dryRun, requirements,
+                                                  allowCapacityEstimation));
     return future;
   }
 

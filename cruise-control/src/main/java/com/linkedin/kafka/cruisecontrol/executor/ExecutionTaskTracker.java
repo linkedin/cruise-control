@@ -19,6 +19,7 @@ import java.util.Set;
 public class ExecutionTaskTracker {
   private final Map<ExecutionTask.State, Set<ExecutionTask>> _replicaActionTasks;
   private final Map<ExecutionTask.State, Set<ExecutionTask>> _leaderActionTasks;
+  private boolean _isKafkaAssignerMode;
 
   ExecutionTaskTracker() {
     List<ExecutionTask.State> states = ExecutionTask.State.cachedValues();
@@ -29,6 +30,7 @@ public class ExecutionTaskTracker {
       _replicaActionTasks.put(state, new HashSet<>());
       _leaderActionTasks.put(state, new HashSet<>());
     }
+    _isKafkaAssignerMode = false;
   }
 
   /**
@@ -47,6 +49,15 @@ public class ExecutionTaskTracker {
    */
   public Set<ExecutionTask> taskForLeaderAction(ExecutionTask.State taskState) {
     return _replicaActionTasks.get(taskState);
+  }
+
+  /**
+   * Set the execution mode of the tasks to keep track of the ongoing execution mode via sensors.
+   *
+   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   */
+  public void setExecutionMode(boolean isKafkaAssignerMode) {
+    _isKafkaAssignerMode = isKafkaAssignerMode;
   }
 
   /**
@@ -85,6 +96,16 @@ public class ExecutionTaskTracker {
 
   public int numInProgressReplicaAction() {
     return _replicaActionTasks.get(ExecutionTask.State.IN_PROGRESS).size();
+  }
+
+  public int isOngoingExecutionInKafkaAssignerMode() {
+    // 1: execution in progress, 0 otherwise
+    return _isKafkaAssignerMode && !_replicaActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty() ? 1 : 0;
+  }
+
+  public int isOngoingExecutionInNonKafkaAssignerMode() {
+    // 1: execution in progress, 0 otherwise
+    return !_isKafkaAssignerMode && !_replicaActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty() ? 1 : 0;
   }
 
   public int numInProgressLeadershipAction() {

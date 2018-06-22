@@ -173,6 +173,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
     Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient);
+    executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
                               EasyMock.mock(LoadMonitor.class));
@@ -221,6 +222,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
                                          Collection<ExecutionProposal> proposalsToCheck) {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry());
+    executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), EasyMock.mock(LoadMonitor.class));
 
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();

@@ -42,6 +42,7 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
   @Override
   protected GoalOptimizer.OptimizerResult getResult() throws Exception {
     return _kafkaCruiseControl.decommissionBrokers(_brokerIds, _dryRun, _throttleRemovedBrokers, _goals,
-                                                   _modelCompletenessRequirements, _future.operationProgress(), _allowCapacityEstimation);
+                                                   _modelCompletenessRequirements, _future.operationProgress(),
+                                                   _allowCapacityEstimation);
   }
 }

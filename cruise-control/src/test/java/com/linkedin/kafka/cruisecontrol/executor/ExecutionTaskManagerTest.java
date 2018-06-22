@@ -59,6 +59,7 @@ public class ExecutionTaskManagerTest {
       ExecutionProposal proposal =
           new ExecutionProposal(tp, 0, 2, Arrays.asList(0, 2), Arrays.asList(2, 1));
 
+      taskManager.setExecutionModeForTaskTracker(false);
       taskManager.addExecutionProposals(Collections.singletonList(proposal),
                                         Collections.emptySet(),
                                         generateExpectedCluster(proposal, tp));
