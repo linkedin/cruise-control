@@ -24,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -585,6 +586,53 @@ public class GoalOptimizer implements Runnable {
 
     public Map<Integer, String> capacityEstimationInfoByBrokerId() {
       return Collections.unmodifiableMap(_capacityEstimationInfoByBrokerId);
+    }
+
+    public int getReplicaMovements() {
+      int numReplicaMovements = 0;
+      for (ExecutionProposal p : _optimizationProposals) {
+        if (!p.replicasToAdd().isEmpty() || !p.replicasToRemove().isEmpty()) {
+          numReplicaMovements++;
+        }
+      }
+      return numReplicaMovements;
+    }
+
+    public long getDataToMove() {
+      long dataToMove = 0;
+      for (ExecutionProposal p : _optimizationProposals) {
+        if (!p.replicasToAdd().isEmpty() || !p.replicasToRemove().isEmpty()) {
+          dataToMove += p.dataToMoveInMB();
+        }
+      }
+      return dataToMove;
+    }
+
+    public int getLeaderMovements() {
+      int numLeaderMovements = 0;
+      for (ExecutionProposal p : _optimizationProposals) {
+        if (p.replicasToAdd().isEmpty() && p.replicasToRemove().isEmpty()) {
+          numLeaderMovements++;
+        }
+      }
+      return numLeaderMovements;
+    }
+
+    public String getProposalSummary() {
+      return String.format("%n%nThe optimization proposal has %d replica(%d MB) movements and %d leadership movements "
+              + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions covered.",
+          getReplicaMovements(), getDataToMove(), getLeaderMovements(), _clusterModelStats.numSnapshotWindows(),
+          _clusterModelStats.monitoredPartitionsPercentage() * 100);
+    }
+
+    public Map<String, Object> getProposalSummaryForJson() {
+      Map<String, Object> ret = new HashMap<>();
+      ret.put("numReplicaMovements", getReplicaMovements());
+      ret.put("dataToMoveMB", getDataToMove());
+      ret.put("numLeaderMovements", getLeaderMovements());
+      ret.put("recentWindows", _clusterModelStats.numSnapshotWindows());
+      ret.put("monitoredPartitionsPercentage", _clusterModelStats.monitoredPartitionsPercentage() * 100.0);
+      return ret;
     }
   }
 
