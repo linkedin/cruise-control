@@ -1140,8 +1140,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         goalResult.put("goalName", goal.name());
         goalResult.put("result", goalResultDescription(goal, optimizerResult));
         goalResult.put("clusterStats", entry.getValue().getJsonStructure());
+        goalResultList.add(goalResult);
       }
       ret.put("goalSummary", goalResultList);
+      ret.put("resultingClusterLoad", optimizerResult.brokerStatsAfterOptimization().getJsonStructure());
+      ret.put("version", JSON_VERSION);
+      Gson gson = new GsonBuilder()
+          .serializeNulls()
+          .serializeSpecialFloatingPointValues()
+          .create();
+      out.write(gson.toJson(ret).getBytes(StandardCharsets.UTF_8));
     }
     out.flush();
     return true;
