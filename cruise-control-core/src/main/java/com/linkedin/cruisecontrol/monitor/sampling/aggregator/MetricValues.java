@@ -155,14 +155,14 @@ public class MetricValues {
   /**
    * @return the average value of all the values in this MetricValues.
    */
-  public float avg() {
+  public double avg() {
     return (float) (_sumForAvg / _values.length);
   }
 
   /**
    * @return the max value of all the values in this MetricValues.
    */
-  public float max() {
+  public double max() {
     if (_max >= 0) {
       return _max;
     } else {
