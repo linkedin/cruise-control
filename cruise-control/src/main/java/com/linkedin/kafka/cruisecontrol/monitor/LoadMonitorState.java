@@ -143,7 +143,7 @@ public class LoadMonitorState {
    * Return an object that can be further used
    * to encode into JSON
    */
-  public Map<String, Object> getJsonStructure() {
+  public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> loadMonitorState = new HashMap<>();
     double trainingPct = 0.0;
     if (ModelParameters.trainingCompleted()) {
@@ -163,7 +163,9 @@ public class LoadMonitorState {
         loadMonitorState.put("trained", ModelParameters.trainingCompleted());
         loadMonitorState.put("trainingPct", trainingPct);
         loadMonitorState.put("numMonitoredWindows", _monitoredWindows.size());
-        loadMonitorState.put("monitoredWindows", _monitoredWindows);
+        if (verbose) {
+          loadMonitorState.put("monitoredWindows", _monitoredWindows);
+        }
         loadMonitorState.put("numValidPartitions", _numValidMonitoredPartitions);
         loadMonitorState.put("numTotalPartitions", _totalNumPartitions);
         loadMonitorState.put("monitoringCoveragePct", nanToZero(validPartitionsRatio() * 100));

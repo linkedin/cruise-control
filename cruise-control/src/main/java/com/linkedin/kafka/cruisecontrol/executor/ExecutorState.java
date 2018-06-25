@@ -4,8 +4,10 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.HashMap;
 import java.util.Map;
@@ -189,17 +191,24 @@ public class ExecutorState {
    * Return an object that can be further used
    * to encode into JSON
    */
-  public Map<String, Object> getJsonStructure() {
+  public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> execState = new HashMap<>();
+    execState.put("state", _state);
     switch (_state) {
       case NO_TASK_IN_PROGRESS:
       case STARTING_EXECUTION:
+        break;
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
-        execState.put("state", _state);
+        if (verbose) {
+          List<Object> pendingLeadershipMovementList = new ArrayList<>();
+          for (ExecutionTask task : _pendingLeadershipMovements) {
+            pendingLeadershipMovementList.add(task.getJsonStructure());
+          }
+          execState.put("pendingLeadershipMovement", pendingLeadershipMovementList);
+        }
         break;
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
       case STOPPING_EXECUTION:
-        execState.put("state", _state);
         execState.put("numTotalPartitionMovements", numTotalPartitionMovements());
         execState.put("numTotalLeadershipMovements", numTotalLeadershipMovements());
         execState.put("totalDataToMove", totalDataToMoveInMB());
@@ -209,12 +218,40 @@ public class ExecutorState {
         execState.put("abortingPartitions", _abortingPartitionMovements);
         execState.put("abortedPartitions", _abortedPartitionMovements);
         execState.put("deadPartitions", _deadPartitionMovements);
+        if (verbose) {
+          List<Object> inProgressPartitionMovementList = new ArrayList<>();
+          List<Object> abortingPartitionMovementList = new ArrayList<>();
+          List<Object> abortedPartitionMovementList = new ArrayList<>();
+          List<Object> deadPartitionMovementList = new ArrayList<>();
+          List<Object> pendingPartitionMovementList = new ArrayList<>();
+          for (ExecutionTask task : _inProgressPartitionMovements) {
+            inProgressPartitionMovementList.add(task.getJsonStructure());
+          }
+          for (ExecutionTask task : _abortingPartitionMovements) {
+            abortingPartitionMovementList.add(task.getJsonStructure());
+          }
+          for (ExecutionTask task : _abortedPartitionMovements) {
+            abortedPartitionMovementList.add(task.getJsonStructure());
+          }
+          for (ExecutionTask task : _deadPartitionMovements) {
+            deadPartitionMovementList.add(task.getJsonStructure());
+          }
+          for (ExecutionTask task : _pendingPartitionMovements) {
+            pendingPartitionMovementList.add(task.getJsonStructure());
+          }
+          execState.put("inProgressPartitionMovement", inProgressPartitionMovementList);
+          execState.put("abortingPartitionMovement", abortingPartitionMovementList);
+          execState.put("abortedPartitionMovement", abortedPartitionMovementList);
+          execState.put("deadPartitionMovement", deadPartitionMovementList);
+          execState.put(_state == State.STOPPING_EXECUTION ? "CancelledPartitionMovement" : "PendingPartitionMovement",
+              pendingPartitionMovementList);
+        }
         break;
       default:
-        execState.put("state", _state);
         execState.put("error", "ILLEGAL_STATE_EXCEPTION");
         break;
     }
+
     return execState;
   }
 

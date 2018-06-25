@@ -6,7 +6,9 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashMap;
@@ -37,16 +39,28 @@ public class AnalyzerState {
    * Return an object that can be further used
    * to encode into JSON
    */
-  public Map<String, Object> getJsonStructure() {
+  public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> analyzerState = new HashMap<>();
     Set<String> readyGoalNames = new HashSet<>();
+    List<Object> goalReadinessList = new ArrayList<>();
     for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
+      Goal goal = entry.getKey();
+      Map<String, Object> goalReadinessRecord = new HashMap<>();
+      goalReadinessRecord.put("name", goal.getClass().getSimpleName());
+      goalReadinessRecord.put("modelCompleteRequirement", goal.clusterModelCompletenessRequirements().getJsonStructure());
       if (entry.getValue()) {
         readyGoalNames.add(entry.getKey().name());
+        goalReadinessRecord.put("Status", "Ready");
+      } else {
+        goalReadinessRecord.put("Status", "NotReady");
       }
+      goalReadinessList.add(goalReadinessRecord);
     }
     analyzerState.put("isProposalReady", _isProposalReady);
     analyzerState.put("readyGoals", readyGoalNames);
+    if (verbose) {
+      analyzerState.put("goalReadiness", goalReadinessList);
+    }
     return analyzerState;
   }
 

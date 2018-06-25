@@ -989,7 +989,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     OutputStream out = response.getOutputStream();
     setResponseCode(response, SC_OK, json);
     if (json) {
-      String stateString = state.getJSONString(JSON_VERSION);
+      String stateString = state.getJSONString(JSON_VERSION, verbose);
       response.setContentLength(stateString.length());
       out.write(stateString.getBytes(StandardCharsets.UTF_8));
     } else {
@@ -1043,13 +1043,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           Map<TopicPartition, List<SampleExtrapolation>> sampleFlaws = state.monitorState().sampleExtrapolations();
           if (sampleFlaws != null && !sampleFlaws.isEmpty()) {
             for (Map.Entry<TopicPartition, List<SampleExtrapolation>> entry : sampleFlaws.entrySet()) {
-              out.write(String.format("%n%s: %s", entry.getKey(), entry.getValue()).getBytes(StandardCharsets.UTF_8));
+              out.write(String.format("%n%s: %d", entry.getKey(), entry.getValue()).getBytes(StandardCharsets.UTF_8));
             }
           } else {
             out.write("None".getBytes(StandardCharsets.UTF_8));
           }
-          out.write(String.format("%n%nLinear Regression Model State:%n%s", state.monitorState().detailTrainingProgress())
-                        .getBytes(StandardCharsets.UTF_8));
+          if (state.monitorState().detailTrainingProgress() != null) {
+            out.write(
+                String.format("%n%nLinear Regression Model State:%n%s", state.monitorState().detailTrainingProgress()).getBytes(StandardCharsets.UTF_8));
+          }
         }
       }
     }
