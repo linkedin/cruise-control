@@ -24,7 +24,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrap
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
@@ -49,7 +48,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import javax.servlet.ServletOutputStream;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -93,11 +91,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final String MAX_LOAD_PARAM = "max_load";
 
   private static final String GOALS_PARAM = "goals";
-  private static final String GRANULARITY_PARAM = "granularity";
-  private static final String GRANULARITY_BROKER = "broker";
-
-  private static final String GRANULARITY_REPLICA = "replica";
   private static final String BROKER_ID_PARAM = "brokerid";
+  private static final String TOPIC_PARAM = "topic";
+  private static final String PARTITION_PARAM = "partition";
   private static final String DRY_RUN_PARAM = "dryrun";
   private static final String THROTTLE_ADDED_BROKER_PARAM = "throttle_added_broker";
   private static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
@@ -125,7 +121,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     Set<String> load = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     load.add(TIME_PARAM);
-    load.add(GRANULARITY_PARAM);
     load.add(JSON_PARAM);
     load.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
@@ -137,6 +132,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     partitionLoad.add(JSON_PARAM);
     partitionLoad.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     partitionLoad.add(MAX_LOAD_PARAM);
+    partitionLoad.add(TOPIC_PARAM);
+    partitionLoad.add(PARTITION_PARAM);
 
     Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     proposals.add(VERBOSE_PARAM);
@@ -307,11 +304,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *    GET /kafkacruisecontrol/train?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
    *
    * 3. Get the cluster load
-   *    GET /kafkacruisecontrol/load?time=[TIMESTAMP]&amp;granularity=[GRANULARITY]
-   *    The valid granularity value are "replica" and "broker". The default is broker level.
+   *    GET /kafkacruisecontrol/load?time=[TIMESTAMP]
    *
    * 4. Get the partition load sorted by the utilization of a given resource
    *    GET /kafkacruisecontrol/partition_load?resource=[RESOURCE]&amp;start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
+   *    &amp;topic=[topic]&amp;partition=[partition]
    *
    * 5. Get an optimization proposal
    *    GET /kafkacruisecontrol/proposals?verbose=[ENABLE_VERBOSE]&amp;ignore_proposal_cache=[true/false]
@@ -622,13 +619,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private boolean getClusterLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
     long time;
-    String granularity;
     boolean json = wantJSON(request);
     try {
       String timeString = request.getParameter(TIME_PARAM);
       time = (timeString == null || timeString.toUpperCase().equals("NOW")) ? System.currentTimeMillis()
                                                                             : Long.parseLong(timeString);
-      granularity = request.getParameter(GRANULARITY_PARAM);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       e.printStackTrace(new PrintWriter(sw));
@@ -639,45 +634,19 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, true);
     boolean allowCapacityEstimation = allowCapacityEstimation(request);
-    if (granularity == null || granularity.toLowerCase().equals(GRANULARITY_BROKER)) {
-      ClusterModel.BrokerStats brokerStats = _asyncKafkaCruiseControl.cachedBrokerLoadStats(allowCapacityEstimation);
+    ClusterModel.BrokerStats brokerStats = _asyncKafkaCruiseControl.cachedBrokerLoadStats(allowCapacityEstimation);
+    if (brokerStats == null) {
+      // Get the broker stats asynchronously.
+      brokerStats = getAndMaybeReturnProgress(
+          request, response, () -> _asyncKafkaCruiseControl.getBrokerStats(time, requirements, allowCapacityEstimation));
       if (brokerStats == null) {
-        // Get the broker stats asynchronously.
-        brokerStats = getAndMaybeReturnProgress(
-            request, response, () -> _asyncKafkaCruiseControl.getBrokerStats(time, requirements, allowCapacityEstimation));
-        if (brokerStats == null) {
-          return false;
-        }
-      }
-      String brokerLoad = json ? brokerStats.getJSONString(JSON_VERSION) : brokerStats.toString();
-      setResponseCode(response, SC_OK, json);
-      response.setContentLength(brokerLoad.length());
-      response.getOutputStream().write(brokerLoad.getBytes(StandardCharsets.UTF_8));
-    } else if (granularity.toLowerCase().equals(GRANULARITY_REPLICA)) {
-      // Get the cluster model asynchronously
-      ClusterModel clusterModel = getAndMaybeReturnProgress(
-          request, response, () -> _asyncKafkaCruiseControl.clusterModel(time, requirements, allowCapacityEstimation));
-      if (clusterModel == null) {
         return false;
       }
-      setResponseCode(response, SC_OK, json);
-      if (json) {
-        String data = clusterModel.getJSONString(JSON_VERSION);
-        response.setContentLength(data.length());
-        ServletOutputStream os = response.getOutputStream();
-        OutputStreamWriter writer = new OutputStreamWriter(os, StandardCharsets.UTF_8);
-        writer.write(data);
-        writer.flush();
-      } else {
-        // Write to stream to avoid expensive toString() call.
-        clusterModel.writeTo(response.getOutputStream());
-      }
-    } else {
-      String errorMsg = String.format("Unknown granularity %s", granularity);
-      setErrorResponse(response, "", errorMsg, SC_BAD_REQUEST, json);
-      // Close session
-      return true;
     }
+    String brokerLoad = json ? brokerStats.getJSONString(JSON_VERSION) : brokerStats.toString();
+    setResponseCode(response, SC_OK, json);
+    response.setContentLength(brokerLoad.length());
+    response.getOutputStream().write(brokerLoad.getBytes(StandardCharsets.UTF_8));
     response.getOutputStream().flush();
     return true;
   }
@@ -728,6 +697,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     String entriesString = request.getParameter(ENTRIES_PARAM);
     Integer entries = entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
+    String topicToFilter = request.getParameter(TOPIC_PARAM);
+    String partitionToFilterString = request.getParameter(PARTITION_PARAM);
+    Integer partitionToFilter = partitionToFilterString == null ? null : Integer.parseInt(partitionToFilterString);
     int numEntries = 0;
     setResponseCode(response, SC_OK, json);
     boolean wantMaxLoad = wantMaxLoad(request);
@@ -737,6 +709,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                               "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)")
                       .getBytes(StandardCharsets.UTF_8));
       for (Partition p : sortedPartitions) {
+        if ((topicToFilter != null && !p.topicPartition().topic().equals(topicToFilter)) ||
+        (partitionToFilter != null && p.topicPartition().partition() != partitionToFilter)) {
+          continue;
+        }
         if (++numEntries > entries) {
           break;
         }
@@ -756,6 +732,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       List<Object> partitionList = new ArrayList<>();
       partitionMap.put("version", JSON_VERSION);
       for (Partition p : sortedPartitions) {
+        if ((topicToFilter != null && !p.topicPartition().topic().equals(topicToFilter)) ||
+            (partitionToFilter != null && p.topicPartition().partition() != partitionToFilter)) {
+          continue;
+        }
         if (++numEntries > entries) {
           break;
         }
