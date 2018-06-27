@@ -144,6 +144,7 @@ public class KafkaCruiseControl {
                                                            OperationProgress operationProgress,
                                                            boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
+    _executor.ready();
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
@@ -205,6 +206,7 @@ public class KafkaCruiseControl {
                                                   OperationProgress operationProgress,
                                                   boolean allowCapacityEstimation) throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      _executor.ready();
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
       ModelCompletenessRequirements modelCompletenessRequirements =
           modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
@@ -242,6 +244,7 @@ public class KafkaCruiseControl {
                                                  ModelCompletenessRequirements requirements,
                                                  OperationProgress operationProgress,
                                                  boolean allowCapacityEstimation) throws KafkaCruiseControlException {
+    _executor.ready();
     GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation);
     sanityCheckCapacityEstimation(allowCapacityEstimation, result.capacityEstimationInfoByBrokerId());
     if (!dryRun) {
@@ -272,6 +275,7 @@ public class KafkaCruiseControl {
                                                      OperationProgress operationProgress,
                                                      boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
+    _executor.ready();
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
