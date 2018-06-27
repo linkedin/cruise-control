@@ -176,9 +176,18 @@ public class Executor {
     if (loadMonitor == null) {
       throw new IllegalArgumentException("Load monitor cannot be null.");
     }
-    _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
-    _executionTaskManager.addExecutionProposals(proposals, unthrottledBrokers, _metadataClient.refreshMetadata().cluster());
-    startExecution(loadMonitor);
+    // If getting a stop_proposal_execution request when optimizer is calculating proposal, don't execute
+    if (!_stopRequested.get()) {
+      _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
+      _executionTaskManager.addExecutionProposals(proposals, unthrottledBrokers, _metadataClient.refreshMetadata().cluster());
+      // If getting a stop_proposal_execution when task manager is generating execution task, don't execute
+      if (!_stopRequested.get()) {
+        startExecution(loadMonitor);
+      } else {
+        // Clear generated execution tasks
+        _executionTaskManager.clear();
+      }
+    }
   }
 
   /**
@@ -218,12 +227,11 @@ public class Executor {
       throw new IllegalStateException("There are ongoing partition reassignments.");
     }
     _hasOngoingExecution = true;
-    _stopRequested.set(false);
-      if (_isKafkaAssignerMode) {
-        _numExecutionStartedInKafkaAssignerMode.incrementAndGet();
-      } else {
-        _numExecutionStartedInNonKafkaAssignerMode.incrementAndGet();
-      }
+    if (_isKafkaAssignerMode) {
+      _numExecutionStartedInKafkaAssignerMode.incrementAndGet();
+    } else {
+      _numExecutionStartedInNonKafkaAssignerMode.incrementAndGet();
+    }
     _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor));
   }
 
@@ -247,6 +255,10 @@ public class Executor {
       return true;
     }
     return false;
+  }
+
+  public synchronized void ready() {
+    _stopRequested.set(false);
   }
 
   /**
