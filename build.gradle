@@ -241,6 +241,12 @@ project(':cruise-control') {
     duplicatesStrategy 'exclude'
   }
 
+  tasks.create(name: "buildFatJar", type: Jar) {
+    baseName = project.name + '-all'
+    from { configurations.compile.collect { it.isDirectory() ? it : zipTree(it) } }
+    with jar
+  }
+
   compileScala.doLast {
     tasks.copyDependantLibs.execute()
   }
