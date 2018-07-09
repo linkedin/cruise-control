@@ -219,11 +219,11 @@ public class ExecutorState {
         execState.put("abortedPartitions", _abortedPartitionMovements);
         execState.put("deadPartitions", _deadPartitionMovements);
         if (verbose) {
-          List<Object> inProgressPartitionMovementList = new ArrayList<>();
-          List<Object> abortingPartitionMovementList = new ArrayList<>();
-          List<Object> abortedPartitionMovementList = new ArrayList<>();
-          List<Object> deadPartitionMovementList = new ArrayList<>();
-          List<Object> pendingPartitionMovementList = new ArrayList<>();
+          List<Object> inProgressPartitionMovementList = new ArrayList<>(_inProgressPartitionMovements.size());
+          List<Object> abortingPartitionMovementList = new ArrayList<>(_abortingPartitionMovements.size());
+          List<Object> abortedPartitionMovementList = new ArrayList<>(_abortedPartitionMovements.size());
+          List<Object> deadPartitionMovementList = new ArrayList<>(_deadPartitionMovements.size());
+          List<Object> pendingPartitionMovementList = new ArrayList<>(_pendingPartitionMovements.size());
           for (ExecutionTask task : _inProgressPartitionMovements) {
             inProgressPartitionMovementList.add(task.getJsonStructure());
           }

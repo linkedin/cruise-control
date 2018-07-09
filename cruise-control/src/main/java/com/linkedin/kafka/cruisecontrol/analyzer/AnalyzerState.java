@@ -42,23 +42,27 @@ public class AnalyzerState {
   public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> analyzerState = new HashMap<>();
     Set<String> readyGoalNames = new HashSet<>();
-    List<Object> goalReadinessList = new ArrayList<>();
     for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
-      Goal goal = entry.getKey();
-      Map<String, Object> goalReadinessRecord = new HashMap<>();
-      goalReadinessRecord.put("name", goal.getClass().getSimpleName());
-      goalReadinessRecord.put("modelCompleteRequirement", goal.clusterModelCompletenessRequirements().getJsonStructure());
       if (entry.getValue()) {
         readyGoalNames.add(entry.getKey().name());
-        goalReadinessRecord.put("Status", "Ready");
-      } else {
-        goalReadinessRecord.put("Status", "NotReady");
       }
-      goalReadinessList.add(goalReadinessRecord);
     }
     analyzerState.put("isProposalReady", _isProposalReady);
     analyzerState.put("readyGoals", readyGoalNames);
     if (verbose) {
+      List<Object> goalReadinessList = new ArrayList<>(_readyGoals.size());
+      for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
+        Goal goal = entry.getKey();
+        Map<String, Object> goalReadinessRecord = new HashMap<>(3);
+        goalReadinessRecord.put("name", goal.getClass().getSimpleName());
+        goalReadinessRecord.put("modelCompleteRequirement", goal.clusterModelCompletenessRequirements().getJsonStructure());
+        if (entry.getValue()) {
+          goalReadinessRecord.put("status", "Ready");
+        } else {
+          goalReadinessRecord.put("status", "NotReady");
+        }
+        goalReadinessList.add(goalReadinessRecord);
+      }
       analyzerState.put("goalReadiness", goalReadinessList);
     }
     return analyzerState;

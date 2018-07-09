@@ -1043,7 +1043,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           Map<TopicPartition, List<SampleExtrapolation>> sampleFlaws = state.monitorState().sampleExtrapolations();
           if (sampleFlaws != null && !sampleFlaws.isEmpty()) {
             for (Map.Entry<TopicPartition, List<SampleExtrapolation>> entry : sampleFlaws.entrySet()) {
-              out.write(String.format("%n%s: %d", entry.getKey(), entry.getValue()).getBytes(StandardCharsets.UTF_8));
+              out.write(String.format("%n%s: %s", entry.getKey(), entry.getValue()).getBytes(StandardCharsets.UTF_8));
             }
           } else {
             out.write("None".getBytes(StandardCharsets.UTF_8));
