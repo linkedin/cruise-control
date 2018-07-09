@@ -47,6 +47,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -306,9 +307,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 3. Get the cluster load
    *    GET /kafkacruisecontrol/load?time=[TIMESTAMP]
    *
-   * 4. Get the partition load sorted by the utilization of a given resource
+   * 4. Get the partition load sorted by the utilization of a given resource and filtered by given topic regular expression
+   *    and partition number/range
    *    GET /kafkacruisecontrol/partition_load?resource=[RESOURCE]&amp;start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
-   *    &amp;topic=[topic]&amp;partition=[partition]
+   *    &amp;topic=[topic]&amp;partition=[partition/start_partition-end_partition]
    *
    * 5. Get an optimization proposal
    *    GET /kafkacruisecontrol/proposals?verbose=[ENABLE_VERBOSE]&amp;ignore_proposal_cache=[true/false]
@@ -655,6 +657,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Resource resource;
     Long startMs;
     Long endMs;
+    Integer entries;
+    Pattern topic;
+    int partitionUpperBoundary;
+    int partitionLowerBoundary;
     boolean json = wantJSON(request);
     try {
       String resourceString = request.getParameter(RESOURCE_PARAM);
@@ -676,6 +682,26 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String endMsString = request.getParameter(END_MS_PARAM);
       startMs = startMsString == null ? -1L : Long.parseLong(startMsString);
       endMs = endMsString == null ? System.currentTimeMillis() : Long.parseLong(endMsString);
+      String entriesString = request.getParameter(ENTRIES_PARAM);
+      entries = entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
+      String topicString = request.getParameter(TOPIC_PARAM);
+      if (topicString != null) {
+        topic = Pattern.compile(topicString);
+      } else {
+        topic = null;
+      }
+      String partitionString = request.getParameter(PARTITION_PARAM);
+      if (partitionString == null) {
+        partitionLowerBoundary = Integer.MIN_VALUE;
+        partitionUpperBoundary = Integer.MAX_VALUE;
+      } else if (!partitionString.contains("-")) {
+        partitionLowerBoundary = Integer.parseInt(partitionString);
+        partitionUpperBoundary = partitionLowerBoundary;
+      } else {
+        String [] partitionBoundaries = partitionString.split("-");
+        partitionLowerBoundary = Integer.parseInt(partitionBoundaries[0]);
+        partitionUpperBoundary = Integer.parseInt(partitionBoundaries[1]);
+      }
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       e.printStackTrace(new PrintWriter(sw));
@@ -695,11 +721,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     List<Partition> sortedPartitions = clusterModel.replicasSortedByUtilization(resource);
     OutputStream out = response.getOutputStream();
 
-    String entriesString = request.getParameter(ENTRIES_PARAM);
-    Integer entries = entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
-    String topicToFilter = request.getParameter(TOPIC_PARAM);
-    String partitionToFilterString = request.getParameter(PARTITION_PARAM);
-    Integer partitionToFilter = partitionToFilterString == null ? null : Integer.parseInt(partitionToFilterString);
     int numEntries = 0;
     setResponseCode(response, SC_OK, json);
     boolean wantMaxLoad = wantMaxLoad(request);
@@ -709,8 +730,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                               "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)")
                       .getBytes(StandardCharsets.UTF_8));
       for (Partition p : sortedPartitions) {
-        if ((topicToFilter != null && !p.topicPartition().topic().equals(topicToFilter)) ||
-        (partitionToFilter != null && p.topicPartition().partition() != partitionToFilter)) {
+        if ((topic != null && !topic.matcher(p.topicPartition().topic()).matches()) ||
+            p.topicPartition().partition() < partitionLowerBoundary ||
+            p.topicPartition().partition() > partitionUpperBoundary) {
           continue;
         }
         if (++numEntries > entries) {
@@ -732,8 +754,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       List<Object> partitionList = new ArrayList<>();
       partitionMap.put("version", JSON_VERSION);
       for (Partition p : sortedPartitions) {
-        if ((topicToFilter != null && !p.topicPartition().topic().equals(topicToFilter)) ||
-            (partitionToFilter != null && p.topicPartition().partition() != partitionToFilter)) {
+        if ((topic != null && !topic.matcher(p.topicPartition().topic()).matches()) ||
+            p.topicPartition().partition() < partitionLowerBoundary ||
+            p.topicPartition().partition() > partitionUpperBoundary) {
           continue;
         }
         if (++numEntries > entries) {
