@@ -65,22 +65,37 @@ public class Load implements Serializable {
 
   /**
    * Get a single snapshot value that is representative for the given resource. The current algorithm uses
-   * (1) the mean of the recent resource load for inbound network load, outbound network load, and cpu load
-   * (2) the latest utilization for disk space usage.
+   * <ol>
+   *   <li>If the max load is not requested, then:
+   *   <ol>
+   *   <li>It is the mean of the recent resource load for inbound network load, outbound network load, and cpu load.</li>
+   *   <li>It is the latest utilization for disk space usage.</li>
+   *   </ol>
+   *   </li>
+   *   <li>If the max load is requested: the peak load.</li>
+   * </ol>
    *
    * @param resource Resource for which the expected utilization will be provided.
+   * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
    * @return A single representative utilization value on a resource.
    */
-  public double expectedUtilizationFor(Resource resource) {
+  public double expectedUtilizationFor(Resource resource, boolean wantMaxLoad) {
     if (_metricValues.isEmpty()) {
       return 0.0;
     }
     double result = 0;
     for (MetricInfo info : KafkaMetricDef.resourceToMetricInfo(resource)) {
       MetricValues valuesForId = _metricValues.valuesFor(info.id());
-      result += resource == Resource.DISK ? valuesForId.latest() : valuesForId.avg();
+      result += wantMaxLoad ? valuesForId.max() : (resource == Resource.DISK ? valuesForId.latest() : valuesForId.avg());
     }
     return max(result, 0.0);
+  }
+
+  /**
+   * See {@link #expectedUtilizationFor(Resource, boolean)}.
+   */
+  public double expectedUtilizationFor(Resource resource) {
+    return expectedUtilizationFor(resource, false);
   }
 
   /**

@@ -86,10 +86,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final String CLEAR_METRICS_PARAM = "clearmetrics";
   private static final String TIME_PARAM = "time";
   private static final String VERBOSE_PARAM = "verbose";
-  private static final String SUPER_VERBOSE_PARM = "super_verbose";
+  private static final String SUPER_VERBOSE_PARAM = "super_verbose";
   private static final String RESOURCE_PARAM = "resource";
   private static final String DATA_FROM_PARAM = "data_from";
   private static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
+  private static final String MAX_LOAD_PARAM = "max_load";
 
   private static final String GOALS_PARAM = "goals";
   private static final String GRANULARITY_PARAM = "granularity";
@@ -135,6 +136,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     partitionLoad.add(ENTRIES_PARAM);
     partitionLoad.add(JSON_PARAM);
     partitionLoad.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    partitionLoad.add(MAX_LOAD_PARAM);
 
     Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     proposals.add(VERBOSE_PARAM);
@@ -147,7 +149,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     state.add(VERBOSE_PARAM);
-    state.add(SUPER_VERBOSE_PARM);
+    state.add(SUPER_VERBOSE_PARAM);
     state.add(JSON_PARAM);
 
     Set<String> addOrRemoveBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -694,6 +696,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Integer entries = entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
     int numEntries = 0;
     setResponseCode(response, SC_OK, json);
+    boolean wantMaxLoad = wantMaxLoad(request);
     if (!json) {
       int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
       out.write(String.format("%" + topicNameLength + "s%10s%30s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
@@ -708,10 +711,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                 p.leader().topicPartition(),
                                 p.leader().broker().id(),
                                 followers,
-                                p.leader().load().expectedUtilizationFor(Resource.CPU),
-                                p.leader().load().expectedUtilizationFor(Resource.DISK),
-                                p.leader().load().expectedUtilizationFor(Resource.NW_IN),
-                                p.leader().load().expectedUtilizationFor(Resource.NW_OUT))
+                                p.leader().load().expectedUtilizationFor(Resource.CPU, wantMaxLoad),
+                                p.leader().load().expectedUtilizationFor(Resource.DISK, wantMaxLoad),
+                                p.leader().load().expectedUtilizationFor(Resource.NW_IN, wantMaxLoad),
+                                p.leader().load().expectedUtilizationFor(Resource.NW_OUT, wantMaxLoad))
                         .getBytes(StandardCharsets.UTF_8));
       }
     } else {
@@ -730,10 +733,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         record.add(p.leader().topicPartition().partition());
         record.add(p.leader().broker().id());
         record.add(followers);
-        record.add(p.leader().load().expectedUtilizationFor(Resource.CPU));
-        record.add(p.leader().load().expectedUtilizationFor(Resource.DISK));
-        record.add(p.leader().load().expectedUtilizationFor(Resource.NW_IN));
-        record.add(p.leader().load().expectedUtilizationFor(Resource.NW_OUT));
+        record.add(p.leader().load().expectedUtilizationFor(Resource.CPU, wantMaxLoad));
+        record.add(p.leader().load().expectedUtilizationFor(Resource.DISK, wantMaxLoad));
+        record.add(p.leader().load().expectedUtilizationFor(Resource.NW_IN, wantMaxLoad));
+        record.add(p.leader().load().expectedUtilizationFor(Resource.NW_OUT, wantMaxLoad));
         partitionList.add(record);
       }
       partitionMap.put("records", partitionList);
@@ -862,6 +865,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return allowCapacityEstimation == null || Boolean.parseBoolean(allowCapacityEstimation);
   }
 
+  private boolean wantMaxLoad(HttpServletRequest request) {
+    // The default for max load: false.
+    String maxLoadString = request.getParameter(MAX_LOAD_PARAM);
+    return Boolean.parseBoolean(maxLoadString);
+  }
+
   private void writeKafkaClusterState(OutputStream out, SortedSet<PartitionInfo> partitions, int topicNameLength)
       throws IOException {
     for (PartitionInfo partitionInfo : partitions) {
@@ -964,7 +973,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       String verboseString = request.getParameter(VERBOSE_PARAM);
       verbose = Boolean.parseBoolean(verboseString);
-      String superVerboseString = request.getParameter(SUPER_VERBOSE_PARM);
+      String superVerboseString = request.getParameter(SUPER_VERBOSE_PARAM);
       superVerbose = Boolean.parseBoolean(superVerboseString);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
