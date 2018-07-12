@@ -66,10 +66,10 @@ public class Load implements Serializable {
   /**
    * Get a single snapshot value that is representative for the given resource. The current algorithm uses
    * <ol>
-   *   <li>If the max load is not requested:
+   *   <li>If the max load is not requested, then:
    *   <ol>
-   *   <li>the mean of the recent resource load for inbound network load, outbound network load, and cpu load.</li>
-   *   <li>the latest utilization for disk space usage.</li>
+   *   <li>It is the mean of the recent resource load for inbound network load, outbound network load, and cpu load.</li>
+   *   <li>It is the latest utilization for disk space usage.</li>
    *   </ol>
    *   </li>
    *   <li>If the max load is requested: the peak load.</li>
