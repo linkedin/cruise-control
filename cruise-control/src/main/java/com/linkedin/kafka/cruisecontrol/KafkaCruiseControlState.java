@@ -41,9 +41,9 @@ public class KafkaCruiseControlState {
    *
    * @param version JSON version
    */
-  public String getJSONString(int version) {
+  public String getJSONString(int version, boolean verbose) {
     Gson gson = new Gson();
-    Map<String, Object> jsonStructure = getJsonStructure();
+    Map<String, Object> jsonStructure = getJsonStructure(verbose);
     jsonStructure.put("version", version);
     return gson.toJson(jsonStructure);
   }
@@ -52,11 +52,11 @@ public class KafkaCruiseControlState {
    * Return an object that can be further used
    * to encode into JSON
    */
-  public Map<String, Object> getJsonStructure() {
+  public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> cruiseControlState = new HashMap<>();
-    cruiseControlState.put("MonitorState", _monitorState.getJsonStructure());
-    cruiseControlState.put("ExecutorState", _executorState.getJsonStructure());
-    cruiseControlState.put("AnalyzerState", _analyzerState.getJsonStructure());
+    cruiseControlState.put("MonitorState", _monitorState.getJsonStructure(verbose));
+    cruiseControlState.put("ExecutorState", _executorState.getJsonStructure(verbose));
+    cruiseControlState.put("AnalyzerState", _analyzerState.getJsonStructure(verbose));
     return cruiseControlState;
   }
 
