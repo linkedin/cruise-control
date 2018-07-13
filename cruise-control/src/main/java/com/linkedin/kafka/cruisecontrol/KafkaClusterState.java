@@ -120,20 +120,20 @@ public class KafkaClusterState {
   private List<Object> getJsonPartitions(Set<PartitionInfo> partitions) {
     List<Object> partitionList = new ArrayList<>();
     for (PartitionInfo partitionInfo : partitions) {
-      Set<String> replicas =
-          Arrays.stream(partitionInfo.replicas()).map(Node::idString).collect(Collectors.toSet());
-      Set<String> inSyncReplicas =
-          Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::idString).collect(Collectors.toSet());
-      Set<String> outOfSyncReplicas = new HashSet<>(replicas);
+      Set<Integer> replicas =
+          Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toSet());
+      Set<Integer> inSyncReplicas =
+          Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::id).collect(Collectors.toSet());
+      Set<Integer> outOfSyncReplicas = new HashSet<>(replicas);
       outOfSyncReplicas.removeAll(inSyncReplicas);
 
-      Map<String, String> recordMap = new HashMap<>();
+      Map<String, Object> recordMap = new HashMap<>();
       recordMap.put(TOPIC, partitionInfo.topic());
-      recordMap.put(PARTITION, Integer.toString(partitionInfo.partition()));
-      recordMap.put(LEADER, Integer.toString(partitionInfo.leader() == null ? -1 : partitionInfo.leader().id()));
-      recordMap.put(REPLICAS, replicas.toString());
-      recordMap.put(IN_SYNC, inSyncReplicas.toString());
-      recordMap.put(OUT_OF_SYNC, outOfSyncReplicas.toString());
+      recordMap.put(PARTITION, partitionInfo.partition());
+      recordMap.put(LEADER, partitionInfo.leader() == null ? -1 : partitionInfo.leader().id());
+      recordMap.put(REPLICAS, replicas);
+      recordMap.put(IN_SYNC, inSyncReplicas);
+      recordMap.put(OUT_OF_SYNC, outOfSyncReplicas);
       partitionList.add(recordMap);
     }
 

@@ -917,6 +917,7 @@ public class ClusterModel implements Serializable {
       hostEntry.put("NnwOutRate", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.NW_OUT)));
       hostEntry.put("PnwOutRate", AnalyzerUtils.nanToZero(potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT)));
       hostEntry.put("Replicas", broker.replicas().size());
+      hostEntry.put("LeaderReplicas", broker.leaderReplicas().size());
 
       finalClusterStats.add(hostEntry);
     }
