@@ -22,9 +22,9 @@ import java.util.function.Function;
  *  <ul>
  *     <li>
  *      <tt>ScoreFunction</tt>: the score function generates a score for each replica to sort. The replicas are
- *      sorted based on their score in ascending order. Those who wants a descending order needs to use
+ *      sorted based on their score in ascending order. Those who want a descending order need to use
  *      the descending iterator of {@link #sortedReplicas()}. As alternatives, {@link #reverselySortedReplicas()}
- *      and {@link #reverselySortedReplicaWrappers()} are provide as convenience.
+ *      and {@link #reverselySortedReplicaWrappers()} are provided for convenience.
  *    </li>
  *    <li>
  *      <tt>SelectionFunction</tt>(optional): the selection function decides which replicas to include in the sorted

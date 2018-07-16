@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.model;
@@ -38,7 +38,7 @@ public class SortedReplicasTest {
     int numReplicas = sr.sortedReplicas().size();
     Replica replica1 = new Replica(new TopicPartition(TOPIC, 105), broker, false);
     sr.add(replica1);
-    assertEquals("The selection function should have filterd out the replica",
+    assertEquals("The selection function should have filtered out the replica",
                  numReplicas, sr.sortedReplicas().size());
 
     Replica replica2 = new Replica(new TopicPartition(TOPIC, 103), broker, true);
@@ -134,7 +134,7 @@ public class SortedReplicasTest {
       }
     }
 
-    if (PRIORITY_FUNC != null) {
+    if (sr.priorityFunction() != null) {
       assertEquals(5, totalNumPriorities);
     }
   }

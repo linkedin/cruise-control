@@ -447,9 +447,8 @@ public class ClusterModel implements Serializable {
    * in a single place.
    *
    * The sorted replica will only be updated in the following cases:
-   * 1. A replica is added to a broker
-   * 2. A replica is removed from a broker
-   * 3. A replica's role has changed from leader to follower, and vice versa.
+   * 1. A replica is added to or removed from a broker
+   * 2. A replica's role has changed from leader to follower, and vice versa.
    *
    * The sorted replicas are named using the given sortName, and can be accessed using
    * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
@@ -473,9 +472,8 @@ public class ClusterModel implements Serializable {
    * caller to prioritize a certain type of replicas, e.g immigrant replicas.
    *
    * The sorted replica will only be updated in the following cases:
-   * 1. A replica is added to a broker
-   * 2. A replica is removed from a broker
-   * 3. A replica's role has changed from leader to follower, and vice versa.
+   * 1. A replica is added to or removed from abroker
+   * 2. A replica's role has changed from leader to follower, and vice versa.
    *
    * The sorted replicas are named using the given sortName, and can be accessed using
    * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
@@ -503,9 +501,8 @@ public class ClusterModel implements Serializable {
    * in a single place.
    *
    * The sorted replica will only be updated in the following cases:
-   * 1. A replica is added to a broker
-   * 2. A replica is removed from a broker
-   * 3. A replica's role has changed from leader to follower, and vice versa.
+   * 1. A replica is added to or removed from a broker
+   * 2. A replica's role has changed from leader to follower, and vice versa.
    *
    * The sorted replicas are named using the given sortName, and can be accessed using
    * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
@@ -525,7 +522,7 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Untrack the sorted replcias with the given name to release memory.
+   * Untrack the sorted replicas with the given name to release memory.
    *
    * @param sortName the name of the sorted replicas.
    */

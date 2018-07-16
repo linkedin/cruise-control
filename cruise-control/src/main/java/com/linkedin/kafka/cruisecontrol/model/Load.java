@@ -278,6 +278,18 @@ public class Load implements Serializable {
     return "<Load>" + _metricValues.toString() + "</Load>%n";
   }
 
+  /**
+   * Get a single snapshot value that is representative for the given resource. The current algorithm uses
+   * (1) the mean of the recent resource load for inbound network load, outbound network load, and cpu load
+   * (2) the latest utilization for disk space usage.
+   *
+   * @param resource Resource for which the expected utilization will be provided.
+   * @param aggregatedMetricValues the aggregated metric values to calculate the expected utilization.
+   * @param ignoreMissingMetric whether it is allowed for the value of the given resource to be missing.
+   *                            If the value of the given resource is not found, when set to true, 0 will be returned.
+   *                            Otherwise, an exception will be thrown.
+   * @return A single representative utilization value on a resource.
+   */
   public static double expectedUtilizationFor(Resource resource,
                                               AggregatedMetricValues aggregatedMetricValues,
                                               boolean ignoreMissingMetric) {

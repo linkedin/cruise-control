@@ -5,13 +5,15 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
+import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 
 import java.util.function.Function;
 
 /**
- * A factory class of replica sort functions. It is always preferred to
+ * A factory class of replica sort functions. It is always preferred to use the functions in this factory instead
+ * of writing ad-hoc functions.
  */
 public class ReplicaSortFunctionFactory {
 
@@ -31,12 +33,24 @@ public class ReplicaSortFunctionFactory {
    * @return a score function to score by the metric value of the given metric name.
    */
   public static Function<Replica, Double> sortByMetricValue(String metricName) {
-    return r ->
-        r.load().loadByWindows().valuesFor(KafkaMetricDef.commonMetricDef().metricInfo(metricName).id()).avg();
+    return r -> {
+      MetricInfo metricInfo = KafkaMetricDef.commonMetricDef().metricInfo(metricName);
+      MetricValues values = r.load().loadByWindows().valuesFor(metricInfo.id());
+      switch (metricInfo.aggregationFunction()) {
+        case MAX:
+          return (double) values.max();
+        case AVG:
+          return (double) values.avg();
+        case LATEST:
+          return (double) values.latest();
+        default:
+          return (double) values.avg();
+      }
+    };
   }
 
   /**
-   * @param metricGroup the metric name to score
+   * @param metricGroup the metric group to score
    * @return a score function to score by the metric group value of the given metric group.
    */
   public static Function<Replica, Double> sortByMetricGroupValue(String metricGroup) {
@@ -44,7 +58,7 @@ public class ReplicaSortFunctionFactory {
       MetricValues metricValues = r.load()
                                    .loadByWindows()
                                    .valuesForGroup(metricGroup, KafkaMetricDef.commonMetricDef(), true);
-      return metricValues.avg();
+      return (double) metricValues.avg();
     };
   }
 
@@ -67,9 +81,8 @@ public class ReplicaSortFunctionFactory {
   }
 
   // Selection functions
-
   /**
-   * @return a selection function that only include leaders.
+   * @return a selection function that only includes leaders.
    */
   public static Function<Replica, Boolean> selectLeaders() {
     return SELECT_LEADERS;

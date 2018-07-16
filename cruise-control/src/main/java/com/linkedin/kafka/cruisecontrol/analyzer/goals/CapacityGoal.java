@@ -349,11 +349,11 @@ public abstract class CapacityGoal extends AbstractGoal {
   }
 
   private String sortName() {
-    return resource().name() + "-ALL";
+    return name() + "-" + resource().name() + "-ALL";
   }
 
   private String sortNameByLeader() {
-    return resource().name() + "-LEADER";
+    return name() + "-" + resource().name() + "-LEADER";
   }
 
   /**

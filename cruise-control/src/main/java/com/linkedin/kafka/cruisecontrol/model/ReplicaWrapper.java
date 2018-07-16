@@ -72,7 +72,6 @@ public class ReplicaWrapper implements Comparable<ReplicaWrapper> {
         || replica == Replica.MAX_REPLICA || replica == Replica.MIN_REPLICA) {
       return 0;
     }
-    int result = 0;
     if (_priorityFunction != null) {
       int p1 = _priorityFunction.apply(_replica);
       int p2 = _priorityFunction.apply(replica);
@@ -84,7 +83,7 @@ public class ReplicaWrapper implements Comparable<ReplicaWrapper> {
 
   @Override
   public boolean equals(Object obj) {
-    return obj != null && obj instanceof ReplicaWrapper && ((ReplicaWrapper) obj).score() == _score
+    return obj instanceof ReplicaWrapper && ((ReplicaWrapper) obj).score() == _score
         && ((ReplicaWrapper) obj).replica().equals(_replica);
   }
 
