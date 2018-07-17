@@ -91,11 +91,8 @@ public class Load implements Serializable {
     return max(result, 0.0);
   }
 
-  /**
-   * See {@link #expectedUtilizationFor(Resource, boolean)}.
-   */
   public double expectedUtilizationFor(Resource resource) {
-    return expectedUtilizationFor(resource, false);
+    return expectedUtilizationFor(resource, _metricValues, false);
   }
 
   /**
@@ -279,5 +276,38 @@ public class Load implements Serializable {
   @Override
   public String toString() {
     return "<Load>" + _metricValues.toString() + "</Load>%n";
+  }
+
+  /**
+   * Get a single snapshot value that is representative for the given resource. The current algorithm uses
+   * (1) the mean of the recent resource load for inbound network load, outbound network load, and cpu load
+   * (2) the latest utilization for disk space usage.
+   *
+   * @param resource Resource for which the expected utilization will be provided.
+   * @param aggregatedMetricValues the aggregated metric values to calculate the expected utilization.
+   * @param ignoreMissingMetric whether it is allowed for the value of the given resource to be missing.
+   *                            If the value of the given resource is not found, when set to true, 0 will be returned.
+   *                            Otherwise, an exception will be thrown.
+   * @return A single representative utilization value on a resource.
+   */
+  public static double expectedUtilizationFor(Resource resource,
+                                              AggregatedMetricValues aggregatedMetricValues,
+                                              boolean ignoreMissingMetric) {
+    if (aggregatedMetricValues.isEmpty()) {
+      return 0.0;
+    }
+    double result = 0;
+    for (MetricInfo info : KafkaMetricDef.resourceToMetricInfo(resource)) {
+      MetricValues valuesForId = aggregatedMetricValues.valuesFor(info.id());
+      if (!ignoreMissingMetric && valuesForId == null) {
+        throw new IllegalArgumentException(String.format("The aggregated metric values does not contain metric "
+                                                             + "%s for resource %s.",
+                                                         info, resource.name()));
+      }
+      if (valuesForId != null) {
+        result += resource == Resource.DISK ? valuesForId.latest() : valuesForId.avg();
+      }
+    }
+    return max(result, 0.0);
   }
 }

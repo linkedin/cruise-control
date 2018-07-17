@@ -20,6 +20,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
 import org.apache.kafka.common.TopicPartition;
 
@@ -39,6 +40,8 @@ public class Broker implements Serializable, Comparable<Broker> {
   private final double[] _brokerCapacity;
   private final Set<Replica> _replicas;
   private final Set<Replica> _leaderReplicas;
+  /** A map of cached sorted replicas using different user defined score functions. */
+  private final Map<String, SortedReplicas> _sortedReplicas;
   /** Set of immigrant replicas */
   private final Set<Replica> _immigrantReplicas;
   /** A map for tracking topic -&gt; (partitionId -&gt; replica). */
@@ -67,6 +70,7 @@ public class Broker implements Serializable, Comparable<Broker> {
     _replicas = new HashSet<>();
     _leaderReplicas = new HashSet<>();
     _topicReplicas = new HashMap<>();
+    _sortedReplicas = new HashMap<>();
     _immigrantReplicas = new HashSet<>();
     // Initially broker does not contain any load.
     _load = new Load();
@@ -113,7 +117,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * Get replicas residing in the broker.
    */
   public Set<Replica> replicas() {
-    return _replicas;
+    return Collections.unmodifiableSet(_replicas);
   }
 
   /**
@@ -201,30 +205,18 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Sort replicas that needs to be sorted to balance the given resource by descending order of resource cost.
-   * If resource is outbound network traffic, only leaders in the broker are sorted. Otherwise all replicas in
-   * the broker are sorted.
+   * Get the tracked sorted replicas using the given sort name.
    *
-   * @param resource Type of the resource.
-   * @return A list of sorted replicas chosen from the replicas residing in the given broker.
+   * @param sortName the sort name.
+   * @return the {@link SortedReplicas} for the given sort name.
    */
-  public List<Replica> sortedReplicas(Resource resource) {
-    return sortedReplicas(resource, false);
-  }
-
-  /**
-   * Sort replicas that needs to be sorted to balance the given resource by ascending or descending order of resource
-   * cost. If resource is outbound network traffic, only leaders in the broker are sorted. Otherwise all replicas in
-   * the broker are sorted.
-   *
-   * @param resource Type of the resource.
-   * @param isAscending True to sort by ascending order, false otherwise.
-   * @return A list of sorted replicas chosen from the replicas residing in the given broker.
-   */
-  public List<Replica> sortedReplicas(Resource resource, boolean isAscending) {
-    // If a broker is already dead, we do not distinguish leader replica vs. non-leader replica anymore.
-    Set<Replica> candidateReplicas = (resource == Resource.NW_OUT && isAlive()) ? _leaderReplicas : _replicas;
-    return sortedReplicas(resource, candidateReplicas, isAscending);
+  public SortedReplicas trackedSortedReplicas(String sortName) {
+    SortedReplicas sortedReplicas = _sortedReplicas.get(sortName);
+    if (sortedReplicas == null) {
+      throw new IllegalStateException("The sort name " + sortName + "  is not found. Make sure trackSortedReplicas() " +
+                                          "has been called for the sort name");
+    }
+    return sortedReplicas;
   }
 
   /**
@@ -249,33 +241,6 @@ public class Broker implements Serializable, Comparable<Broker> {
         return result != 0 ? result : r1.compareTo(r2);
       }
     };
-  }
-
-  private List<Replica> sortedReplicas(Resource resource, Set<Replica> candidateReplicas, boolean isAscending) {
-    List<Replica> replicasToBeBalanced = new ArrayList<>();
-    List<Replica> nativeReplicasToBeBalanced = new ArrayList<>();
-    for (Replica replica : candidateReplicas) {
-      if (_immigrantReplicas.contains(replica)) {
-        replicasToBeBalanced.add(replica);
-      } else {
-        nativeReplicasToBeBalanced.add(replica);
-      }
-    }
-
-    if (isAscending) {
-      replicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o1, resource), loadDensity(o2, resource)));
-      nativeReplicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o1, resource), loadDensity(o2, resource)));
-    } else {
-      replicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o2, resource), loadDensity(o1, resource)));
-      nativeReplicasToBeBalanced.sort((o1, o2) -> Double.compare(loadDensity(o2, resource), loadDensity(o1, resource)));
-    }
-
-    replicasToBeBalanced.addAll(nativeReplicasToBeBalanced);
-    return replicasToBeBalanced;
-  }
-
-  public List<Replica> sortedLeadersFor(Resource resource) {
-    return sortedReplicas(resource, _leaderReplicas, false);
   }
 
   /**
@@ -339,6 +304,40 @@ public class Broker implements Serializable, Comparable<Broker> {
 
     // Add replica load to the broker load.
     _load.addLoad(replica.load());
+    _sortedReplicas.values().forEach(sr -> sr.add(replica));
+  }
+
+  /**
+   * Track the sorted replicas using the given score function. The sort first uses the priority function to
+   * sort the replicas, then use the score function to sort the replicas. The priority function is useful
+   * to priorities a particular type of replicas, e.g leader replicas, immigrant replicas, etc.
+   *
+   * @param sortName the name of the tracked sorted replicas.
+   * @param selectionFunc the selection function to decide which replicas to include.
+   * @param priorityFunc the priority function to sort replicas.
+   * @param scoreFunc the score function to sort replicas.
+   */
+  void trackSortedReplicas(String sortName,
+                           Function<Replica, Boolean> selectionFunc,
+                           Function<Replica, Integer> priorityFunc,
+                           Function<Replica, Double> scoreFunc) {
+    _sortedReplicas.putIfAbsent(sortName, new SortedReplicas(this, selectionFunc, priorityFunc, scoreFunc));
+  }
+
+  /**
+   * Untrack the sorted replicas for the given sort name. This helps release memory.
+   *
+   * @param sortName the name of the tracked sorted replicas.
+   */
+  void untrackSortedReplicas(String sortName) {
+    _sortedReplicas.remove(sortName);
+  }
+
+  private void updateSortedReplicas(Replica replica) {
+    _sortedReplicas.values().forEach(sr -> {
+      sr.remove(replica);
+      sr.add(replica);
+    });
   }
 
   /**
@@ -353,10 +352,11 @@ public class Broker implements Serializable, Comparable<Broker> {
     Replica replica = replica(tp);
     _leadershipLoadForNwResources.subtractLoad(replica.load());
 
-    AggregatedMetricValues leadershipLoadDelta = replica(tp).makeFollower();
+    AggregatedMetricValues leadershipLoadDelta = replica.makeFollower();
     // Remove leadership load from load.
     _load.subtractLoad(leadershipLoadDelta);
     _leaderReplicas.remove(replica);
+    updateSortedReplicas(replica);
     return leadershipLoadDelta;
   }
 
@@ -375,6 +375,7 @@ public class Broker implements Serializable, Comparable<Broker> {
     // Add leadership load to load.
     _load.addLoad(leadershipLoadDelta);
     _leaderReplicas.add(replica);
+    updateSortedReplicas(replica);
   }
 
   /**
@@ -402,6 +403,7 @@ public class Broker implements Serializable, Comparable<Broker> {
         _leaderReplicas.remove(removedReplica);
       }
       _immigrantReplicas.remove(removedReplica);
+      _sortedReplicas.values().forEach(sr -> sr.remove(removedReplica));
     }
 
     return removedReplica;

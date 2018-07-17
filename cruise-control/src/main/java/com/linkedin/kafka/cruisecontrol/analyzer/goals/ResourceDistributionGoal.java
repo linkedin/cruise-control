@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -224,6 +225,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     _selfHealingDeadBrokersOnly = false;
     _balanceUpperThreshold = computeBalanceUpperThreshold(clusterModel);
     _balanceLowerThreshold = computeBalanceLowerThreshold(clusterModel);
+    clusterModel.trackSortedReplicas(sortName(),
+                                     ReplicaSortFunctionFactory.deprioritizeImmigrants(),
+                                     ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
   }
 
   protected double balanceUpperThreshold() {
@@ -290,6 +294,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       }
     }
     finish();
+    clusterModel.untrackSortedReplicas(sortName());
   }
 
   /**
@@ -627,7 +632,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                                      r1.load().expectedUtilizationFor(resource())));
     } else {
       // Take all replicas for replica movements.
-      replicasToMove = broker.sortedReplicas(resource());
+      replicasToMove = broker.trackedSortedReplicas(sortName()).reverselySortedReplicas();
     }
 
     // Now let's move things around.
@@ -865,6 +870,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    */
   private double balancePercentageWithMargin(Resource resource) {
     return (_balancingConstraint.resourceBalancePercentage(resource) - 1) * BALANCE_MARGIN;
+  }
+
+  private String sortName() {
+    return name() + "-" + resource().name() + "-ALL";
   }
 
   /**

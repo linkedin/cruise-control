@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.Set;
@@ -172,6 +173,13 @@ public abstract class CapacityGoal extends AbstractGoal {
       throw new OptimizationFailureException("Insufficient healthy cluster capacity for resource:" + resource() +
           " existing cluster utilization " + existingUtilization + " allowed capacity " + allowedCapacity);
     }
+    clusterModel.trackSortedReplicas(sortName(),
+                                     ReplicaSortFunctionFactory.deprioritizeImmigrants(),
+                                     ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
+    clusterModel.trackSortedReplicas(sortNameByLeader(),
+                                     ReplicaSortFunctionFactory.selectLeaders(),
+                                     ReplicaSortFunctionFactory.deprioritizeImmigrants(),
+                                     ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
   }
 
   /**
@@ -190,6 +198,8 @@ public abstract class CapacityGoal extends AbstractGoal {
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
     AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);
     finish();
+    clusterModel.untrackSortedReplicas(sortName());
+    clusterModel.untrackSortedReplicas(sortNameByLeader());
   }
 
   /**
@@ -269,7 +279,8 @@ public abstract class CapacityGoal extends AbstractGoal {
     if (currentResource == Resource.NW_OUT || currentResource == Resource.CPU) {
       // Sort replicas by descending order of preference to relocate. Preference is based on resource cost.
       // Only leaders in the source broker are sorted.
-      List<Replica> sortedLeadersInSourceBroker = broker.sortedLeadersFor(currentResource);
+      List<Replica> sortedLeadersInSourceBroker =
+          broker.trackedSortedReplicas(sortNameByLeader()).reverselySortedReplicas();
       for (Replica leader : sortedLeadersInSourceBroker) {
         if (shouldExclude(leader, excludedTopics)) {
           continue;
@@ -302,7 +313,7 @@ public abstract class CapacityGoal extends AbstractGoal {
       // Move replicas that are sorted in descending order of preference to relocate (preference is based on
       // utilization) until the source broker utilization gets under the capacity limit. If the capacity limit cannot
       // be satisfied, throw an exception.
-      for (Replica replica : broker.sortedReplicas(currentResource)) {
+      for (Replica replica : broker.trackedSortedReplicas(sortName()).reverselySortedReplicas()) {
         if (shouldExclude(replica, excludedTopics)) {
           continue;
         }
@@ -335,6 +346,14 @@ public abstract class CapacityGoal extends AbstractGoal {
             + broker.host().name() + " for resource " + currentResource);
       }
     }
+  }
+
+  private String sortName() {
+    return name() + "-" + resource().name() + "-ALL";
+  }
+
+  private String sortNameByLeader() {
+    return name() + "-" + resource().name() + "-LEADER";
   }
 
   /**

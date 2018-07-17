@@ -269,7 +269,9 @@ public class Rack implements Serializable {
     for (Resource r : Resource.cachedValues()) {
       double capacity = 0;
       for (Host h : _hosts.values()) {
-        capacity += h.capacityFor(r);
+        if (h.isAlive()) {
+          capacity += h.capacityFor(r);
+        }
       }
       _rackCapacity[r.id()] = capacity;
     }
