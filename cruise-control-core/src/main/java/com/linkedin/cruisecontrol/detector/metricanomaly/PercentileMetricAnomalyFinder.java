@@ -34,6 +34,8 @@ import static com.linkedin.cruisecontrol.CruiseControlUtils.toPrettyTime;
  */
 public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements MetricAnomalyFinder<E> {
   private static final Logger LOG = LoggerFactory.getLogger(PercentileMetricAnomalyFinder.class);
+  // Ensure that no metric anomaly is generated unless the upper percentile metric value is a significant metric value.
+  private static final double SIGNIFICANT_METRIC_VALUE_THRESHOLD = 1;
   private final Percentile _percentile;
   protected double _anomalyUpperMargin;
   protected double _anomalyLowerMargin;
@@ -66,9 +68,15 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
       return null;
     }
     _percentile.setData(historyMetricValues.doubleArray());
-    double currentMetricValue = current.metricValues().valuesFor(metricId).latest();
-    double upperThreshold = _percentile.evaluate(_anomalyUpperPercentile) * (1 + _anomalyUpperMargin);
+
+    double upperPercentileMetricValue = _percentile.evaluate(_anomalyUpperPercentile);
+    if (upperPercentileMetricValue <= SIGNIFICANT_METRIC_VALUE_THRESHOLD) {
+      return null;
+    }
+
+    double upperThreshold = upperPercentileMetricValue * (1 + _anomalyUpperMargin);
     double lowerThreshold = _percentile.evaluate(_anomalyLowerPercentile) * _anomalyLowerMargin;
+    double currentMetricValue = current.metricValues().valuesFor(metricId).latest();
 
     long currentWindow = current.window(0);
 
