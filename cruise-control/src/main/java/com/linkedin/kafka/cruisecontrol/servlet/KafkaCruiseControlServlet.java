@@ -24,8 +24,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -152,7 +150,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
+    ACCESS_LOG.info("Received {}, {} from {}", KafkaCruiseControlServletUtils.urlEncode(request.toString()),
+                    KafkaCruiseControlServletUtils.urlEncode(request.getRequestURL().toString()),
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       _asyncOperationStep.set(0);
@@ -262,7 +261,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
+    ACCESS_LOG.info("Received {}, {} from {}", KafkaCruiseControlServletUtils.urlEncode(request.toString()),
+                    KafkaCruiseControlServletUtils.urlEncode(request.getRequestURL().toString()),
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       _asyncOperationStep.set(0);
@@ -491,8 +491,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       startMs = startMsValue == null ? -1L : startMsValue;
       Long endMsValue = KafkaCruiseControlServletUtils.endMs(request);
       endMs = endMsValue == null ? System.currentTimeMillis() : endMsValue;
-      partitionLowerBoundary = KafkaCruiseControlServletUtils.partitionLowerBoundary(request);
-      partitionUpperBoundary = KafkaCruiseControlServletUtils.partitionUpperBoundary(request);
+      partitionLowerBoundary = KafkaCruiseControlServletUtils.partitionBoundary(request, false);
+      partitionUpperBoundary = KafkaCruiseControlServletUtils.partitionBoundary(request, true);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
@@ -1081,10 +1081,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     String url = request.getRequestURL().toString();
     int pos = url.indexOf("/kafkacruisecontrol/");
     return url.substring(0, pos + "/kafkacruisecontrol/".length()) + "state";
-  }
-
-  private String urlEncode(String s) throws UnsupportedEncodingException {
-    return s == null ? null : URLEncoder.encode(s, StandardCharsets.UTF_8.name());
   }
 
   // package private for testing.

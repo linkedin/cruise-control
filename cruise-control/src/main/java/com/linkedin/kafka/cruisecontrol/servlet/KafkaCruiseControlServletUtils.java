@@ -6,6 +6,10 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -15,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
@@ -283,11 +288,18 @@ class KafkaCruiseControlServletUtils {
     return resourceString;
   }
 
-  static List<String> getGoals(HttpServletRequest request) {
+  static String urlEncode(String s) throws UnsupportedEncodingException {
+    return s == null ? null : URLEncoder.encode(s, StandardCharsets.UTF_8.name());
+  }
+
+  static String urlDecode(String s) throws UnsupportedEncodingException {
+    return s == null ? null : URLDecoder.decode(s, StandardCharsets.UTF_8.name());
+  }
+
+  static List<String> getGoals(HttpServletRequest request) throws UnsupportedEncodingException {
     boolean isKafkaAssignerMode = getMode(request);
     List<String> goals;
-    String goalsString = request.getParameter(GOALS_PARAM);
-    // TODO: Handle urlencoded value (%2C instead of ,)
+    String goalsString = urlDecode(request.getParameter(GOALS_PARAM));
     goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
     goals.removeIf(String::isEmpty);
 
@@ -304,31 +316,29 @@ class KafkaCruiseControlServletUtils {
     return entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
   }
 
-  static int partitionLowerBoundary(HttpServletRequest request) {
+  /**
+   * @param isUpperBound True if upper bound, false if lower bound.
+   */
+  static int partitionBoundary(HttpServletRequest request, boolean isUpperBound) {
     String partitionString = request.getParameter(PARTITION_PARAM);
     if (partitionString == null) {
-      return Integer.MIN_VALUE;
+      return isUpperBound ? Integer.MAX_VALUE : Integer.MIN_VALUE;
+    } else if (!partitionString.contains("-")) {
+      return Integer.parseInt(partitionString);
     }
 
-    return !partitionString.contains("-") ? Integer.parseInt(partitionString)
-                                          : Integer.parseInt(partitionString.split("-")[0]);
-  }
-
-  static int partitionUpperBoundary(HttpServletRequest request) {
-    String partitionString = request.getParameter(PARTITION_PARAM);
-    if (partitionString == null) {
-      return Integer.MAX_VALUE;
+    String[] boundaries = partitionString.split("-");
+    if (boundaries.length > 2) {
+      throw new IllegalArgumentException("The " + PARTITION_PARAM + " parameter cannot contain multiple dashes.");
     }
-
-    return !partitionString.contains("-") ? Integer.parseInt(partitionString)
-                                          : Integer.parseInt(partitionString.split("-")[1]);
+    return Integer.parseInt(boundaries[isUpperBound ? 1 : 0]);
   }
 
-  static List<Integer> brokerIds(HttpServletRequest request) {
+  static List<Integer> brokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
     List<Integer> brokerIds = new ArrayList<>();
-    String[] brokerIdsString = request.getParameter(BROKER_ID_PARAM).split(",");
-    for (String brokerIdString : brokerIdsString) {
-      brokerIds.add(Integer.parseInt(brokerIdString));
+    String brokersString = urlDecode(request.getParameter(BROKER_ID_PARAM));
+    if (brokersString != null) {
+      brokerIds = Arrays.stream(brokersString.split(",")).map(Integer::parseInt).collect(Collectors.toList());
     }
     return brokerIds;
   }
