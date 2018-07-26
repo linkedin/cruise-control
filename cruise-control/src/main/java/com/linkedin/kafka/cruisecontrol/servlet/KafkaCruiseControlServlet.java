@@ -10,8 +10,6 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
-import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
@@ -26,8 +24,6 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -63,7 +59,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.EndPoint.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
@@ -77,182 +73,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlServlet.class);
   private static final Logger ACCESS_LOG = LoggerFactory.getLogger("CruiseControlPublicAccessLogger");
 
-  private static final String JSON_PARAM = "json";
-  private static final String START_MS_PARAM = "start";
-  private static final String END_MS_PARAM = "end";
-  private static final String ENTRIES_PARAM = "entries";
-  private static final String ALLOW_CAPACITY_ESTIMATION_PARAM = "allow_capacity_estimation";
-  private static final String CLEAR_METRICS_PARAM = "clearmetrics";
-  private static final String TIME_PARAM = "time";
-  private static final String VERBOSE_PARAM = "verbose";
-  private static final String SUPER_VERBOSE_PARAM = "super_verbose";
-  private static final String RESOURCE_PARAM = "resource";
-  private static final String DATA_FROM_PARAM = "data_from";
-  private static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
-  private static final String MAX_LOAD_PARAM = "max_load";
-
-  private static final String GOALS_PARAM = "goals";
-  private static final String BROKER_ID_PARAM = "brokerid";
-  private static final String TOPIC_PARAM = "topic";
-  private static final String PARTITION_PARAM = "partition";
-  private static final String DRY_RUN_PARAM = "dryrun";
-  private static final String THROTTLE_ADDED_BROKER_PARAM = "throttle_added_broker";
-  private static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
-  private static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
-  private static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
   private static final int JSON_VERSION = 1;
-
   private static final String PARTITION_MOVEMENTS = "partition movements";
   private static final String LEADERSHIP_MOVEMENTS = "leadership movements";
-
-  private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
-  static {
-    Map<EndPoint, Set<String>> validParamNames = new HashMap<>();
-
-    Set<String> bootstrap = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    bootstrap.add(START_MS_PARAM);
-    bootstrap.add(END_MS_PARAM);
-    bootstrap.add(CLEAR_METRICS_PARAM);
-    bootstrap.add(JSON_PARAM);
-
-    Set<String> train = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    train.add(START_MS_PARAM);
-    train.add(END_MS_PARAM);
-    train.add(JSON_PARAM);
-
-    Set<String> load = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    load.add(TIME_PARAM);
-    load.add(JSON_PARAM);
-    load.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-
-    Set<String> partitionLoad = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    partitionLoad.add(RESOURCE_PARAM);
-    partitionLoad.add(START_MS_PARAM);
-    partitionLoad.add(END_MS_PARAM);
-    partitionLoad.add(ENTRIES_PARAM);
-    partitionLoad.add(JSON_PARAM);
-    partitionLoad.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-    partitionLoad.add(MAX_LOAD_PARAM);
-    partitionLoad.add(TOPIC_PARAM);
-    partitionLoad.add(PARTITION_PARAM);
-
-    Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    proposals.add(VERBOSE_PARAM);
-    proposals.add(IGNORE_PROPOSAL_CACHE_PARAM);
-    proposals.add(DATA_FROM_PARAM);
-    proposals.add(GOALS_PARAM);
-    proposals.add(KAFKA_ASSIGNER_MODE_PARAM);
-    proposals.add(JSON_PARAM);
-    proposals.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-
-    Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    state.add(VERBOSE_PARAM);
-    state.add(SUPER_VERBOSE_PARAM);
-    state.add(JSON_PARAM);
-
-    Set<String> addOrRemoveBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    addOrRemoveBroker.add(BROKER_ID_PARAM);
-    addOrRemoveBroker.add(DRY_RUN_PARAM);
-    addOrRemoveBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
-    addOrRemoveBroker.add(DATA_FROM_PARAM);
-    addOrRemoveBroker.add(GOALS_PARAM);
-    addOrRemoveBroker.add(KAFKA_ASSIGNER_MODE_PARAM);
-    addOrRemoveBroker.add(JSON_PARAM);
-    addOrRemoveBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-
-    Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
-    addBroker.addAll(addOrRemoveBroker);
-
-    Set<String> removeBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    removeBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
-    removeBroker.addAll(addOrRemoveBroker);
-
-    Set<String> demoteBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    demoteBroker.add(BROKER_ID_PARAM);
-    demoteBroker.add(DRY_RUN_PARAM);
-    demoteBroker.add(JSON_PARAM);
-    demoteBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-
-    Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    rebalance.add(DRY_RUN_PARAM);
-    rebalance.add(GOALS_PARAM);
-    rebalance.add(KAFKA_ASSIGNER_MODE_PARAM);
-    rebalance.add(DATA_FROM_PARAM);
-    rebalance.add(JSON_PARAM);
-    rebalance.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-
-    Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    kafkaClusterState.add(VERBOSE_PARAM);
-    kafkaClusterState.add(JSON_PARAM);
-
-    Set<String> pauseSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    pauseSampling.add(JSON_PARAM);
-
-    Set<String> resumeSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    resumeSampling.add(JSON_PARAM);
-
-    Set<String> stopProposalExecution = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    stopProposalExecution.add(JSON_PARAM);
-
-    validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
-    validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
-    validParamNames.put(LOAD, Collections.unmodifiableSet(load));
-    validParamNames.put(PARTITION_LOAD, Collections.unmodifiableSet(partitionLoad));
-    validParamNames.put(PROPOSALS, Collections.unmodifiableSet(proposals));
-    validParamNames.put(STATE, Collections.unmodifiableSet(state));
-    validParamNames.put(ADD_BROKER, Collections.unmodifiableSet(addBroker));
-    validParamNames.put(REMOVE_BROKER, Collections.unmodifiableSet(removeBroker));
-    validParamNames.put(DEMOTE_BROKER, Collections.unmodifiableSet(demoteBroker));
-    validParamNames.put(REBALANCE, Collections.unmodifiableSet(rebalance));
-    validParamNames.put(STOP_PROPOSAL_EXECUTION, Collections.unmodifiableSet(stopProposalExecution));
-    validParamNames.put(PAUSE_SAMPLING, Collections.unmodifiableSet(pauseSampling));
-    validParamNames.put(RESUME_SAMPLING, Collections.unmodifiableSet(resumeSampling));
-    validParamNames.put(KAFKA_CLUSTER_STATE, Collections.unmodifiableSet(kafkaClusterState));
-
-    VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
-  }
-
-  protected enum EndPoint {
-    BOOTSTRAP,
-    TRAIN,
-    LOAD,
-    PARTITION_LOAD,
-    PROPOSALS,
-    STATE,
-    ADD_BROKER,
-    REMOVE_BROKER,
-    REBALANCE,
-    STOP_PROPOSAL_EXECUTION,
-    PAUSE_SAMPLING,
-    RESUME_SAMPLING,
-    KAFKA_CLUSTER_STATE,
-    DEMOTE_BROKER;
-
-    private static final List<EndPoint> GET_ENDPOINT = Arrays.asList(BOOTSTRAP,
-                                                                     TRAIN,
-                                                                     LOAD,
-                                                                     PARTITION_LOAD,
-                                                                     PROPOSALS,
-                                                                     STATE,
-                                                                     KAFKA_CLUSTER_STATE);
-    private static final List<EndPoint> POST_ENDPOINT = Arrays.asList(ADD_BROKER,
-                                                                      REMOVE_BROKER,
-                                                                      REBALANCE,
-                                                                      STOP_PROPOSAL_EXECUTION,
-                                                                      PAUSE_SAMPLING,
-                                                                      RESUME_SAMPLING,
-                                                                      DEMOTE_BROKER);
-
-    public static List<EndPoint> getEndpoint() {
-      return GET_ENDPOINT;
-    }
-
-    public static List<EndPoint> postEndpoint() {
-      return POST_ENDPOINT;
-    }
-  }
-
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
   private final SessionManager _sessionManager;
   private final long _maxBlockMs;
@@ -327,13 +150,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
+    ACCESS_LOG.info("Received {}, {} from {}", KafkaCruiseControlServletUtils.urlEncode(request.toString()),
+                    KafkaCruiseControlServletUtils.urlEncode(request.getRequestURL().toString()),
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       _asyncOperationStep.set(0);
-      EndPoint endPoint = endPoint(request);
+      EndPoint endPoint = KafkaCruiseControlServletUtils.endPoint(request);
       if (endPoint != null) {
-        Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
+        Set<String> validParamNames = KafkaCruiseControlServletUtils.VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
         Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         if (validParamNames != null) {
           userParams.addAll(request.getParameterMap().keySet());
@@ -343,7 +167,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           // User request specifies parameters that are not a subset of the valid parameters.
           String errorResp = String.format("Unrecognized endpoint parameters in %s get request: %s.",
                                            endPoint, userParams.toString());
-          setErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request));
+          setErrorResponse(response, "", errorResp, SC_BAD_REQUEST, KafkaCruiseControlServletUtils.wantJSON(request));
         } else {
           switch (endPoint) {
             case BOOTSTRAP:
@@ -383,14 +207,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         String errorMessage = String.format("Unrecognized endpoint in GET request '%s'%nSupported GET endpoints: %s",
                                             request.getPathInfo(),
                                             EndPoint.getEndpoint());
-        setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
+        setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, KafkaCruiseControlServletUtils.wantJSON(request));
       }
     } catch (UserRequestException ure) {
       LOG.error("Why are you failing?", ure);
       String errorMessage = String.format("Bad GET request '%s'", request.getPathInfo());
       StringWriter sw = new StringWriter();
       ure.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
+      setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, KafkaCruiseControlServletUtils.wantJSON(request));
       _sessionManager.closeSession(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
@@ -398,7 +222,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       e.printStackTrace(pw);
       String errorMessage = String.format("Error processing GET request '%s' due to '%s'.", request.getPathInfo(), e.getMessage());
       LOG.error(errorMessage, e);
-      setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
+      setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, KafkaCruiseControlServletUtils.wantJSON(request));
       _sessionManager.closeSession(request);
     } finally {
       try {
@@ -437,14 +261,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()), urlEncode(request.getRequestURL().toString()),
+    ACCESS_LOG.info("Received {}, {} from {}", KafkaCruiseControlServletUtils.urlEncode(request.toString()),
+                    KafkaCruiseControlServletUtils.urlEncode(request.getRequestURL().toString()),
                     KafkaCruiseControlServletUtils.getClientIpAddress(request));
     try {
       _asyncOperationStep.set(0);
-      EndPoint endPoint = endPoint(request);
-      boolean json = wantJSON(request);
+      EndPoint endPoint = KafkaCruiseControlServletUtils.endPoint(request);
       if (endPoint != null) {
-        Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
+        Set<String> validParamNames = KafkaCruiseControlServletUtils.VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
         Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
         if (validParamNames != null) {
           userParams.addAll(request.getParameterMap().keySet());
@@ -454,7 +278,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           // User request specifies parameters that are not a subset of the valid parameters.
           String errorResp = String.format("Unrecognized endpoint parameters in %s post request: %s.",
                                            endPoint, userParams.toString());
-          setErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request));
+          setErrorResponse(response, "", errorResp, SC_BAD_REQUEST, KafkaCruiseControlServletUtils.wantJSON(request));
         } else {
           switch (endPoint) {
             case ADD_BROKER:
@@ -470,15 +294,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               break;
             case STOP_PROPOSAL_EXECUTION:
               stopProposalExecution();
-              setSuccessResponse(response, "Proposal execution stopped.", SC_OK, json);
+              setSuccessResponse(response, "Proposal execution stopped.", KafkaCruiseControlServletUtils.wantJSON(request));
               break;
             case PAUSE_SAMPLING:
               pauseSampling();
-              setSuccessResponse(response, "Metric sampling paused.", SC_OK, json);
+              setSuccessResponse(response, "Metric sampling paused.", KafkaCruiseControlServletUtils.wantJSON(request));
               break;
             case RESUME_SAMPLING:
               resumeSampling();
-              setSuccessResponse(response, "Metric sampling resumed.", SC_OK, json);
+              setSuccessResponse(response, "Metric sampling resumed.", KafkaCruiseControlServletUtils.wantJSON(request));
               break;
             case DEMOTE_BROKER:
               if (demoteBroker(request, response, endPoint)) {
@@ -493,14 +317,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         String errorMessage = String.format("Unrecognized endpoint in POST request '%s'%nSupported POST endpoints: %s",
                                             request.getPathInfo(),
                                             EndPoint.postEndpoint());
-        setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
+        setErrorResponse(response, "", errorMessage, SC_NOT_FOUND, KafkaCruiseControlServletUtils.wantJSON(request));
       }
     } catch (UserRequestException ure) {
       LOG.error("Why are you failing?", ure);
       String errorMessage = String.format("Bad POST request '%s'", request.getPathInfo());
       StringWriter sw = new StringWriter();
       ure.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
+      setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, KafkaCruiseControlServletUtils.wantJSON(request));
       _sessionManager.closeSession(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
@@ -508,7 +332,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       e.printStackTrace(pw);
       String errorMessage = String.format("Error processing POST request '%s' due to: '%s'.", request.getPathInfo(), e.getMessage());
       LOG.error(errorMessage, e);
-      setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
+      setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, KafkaCruiseControlServletUtils.wantJSON(request));
       _sessionManager.closeSession(request);
     } finally {
       try {
@@ -523,23 +347,18 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Long startMs;
     Long endMs;
     boolean clearMetrics;
-    boolean json = wantJSON(request);
+    boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
     try {
-      String startMsString = request.getParameter(START_MS_PARAM);
-      String endMsString = request.getParameter(END_MS_PARAM);
-      String clearMetricsString = request.getParameter(CLEAR_METRICS_PARAM);
-      startMs = startMsString == null ? null : Long.parseLong(startMsString);
-      endMs = endMsString == null ? null : Long.parseLong(endMsString);
-      clearMetrics = clearMetricsString == null || Boolean.parseBoolean(clearMetricsString);
+      startMs = KafkaCruiseControlServletUtils.startMs(request);
+      endMs = KafkaCruiseControlServletUtils.endMs(request);
+      clearMetrics = KafkaCruiseControlServletUtils.clearMetrics(request);
       if (startMs == null && endMs != null) {
         String errorMsg = "The start time cannot be empty when end time is specified.";
         setErrorResponse(response, "", errorMsg, SC_BAD_REQUEST, json);
         return;
       }
     } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      handleParameterParseException(e, response, e.getMessage(), json);
       return;
     }
 
@@ -552,7 +371,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
 
     String msg = String.format("Bootstrap started. Check status through %s", getStateCheckUrl(request));
-    setSuccessResponse(response, msg, SC_OK, json);
+    setSuccessResponse(response, msg, json);
   }
 
   private void setErrorResponse(HttpServletResponse response,
@@ -579,9 +398,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private void setSuccessResponse(HttpServletResponse response,
-      String message,
-      int responseCode,
-      boolean json)
+                                  String message,
+                                  boolean json)
       throws IOException {
     String resp;
     if (json) {
@@ -593,7 +411,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } else {
       resp = message == null ? "" : message;
     }
-    setResponseCode(response, responseCode, json);
+    setResponseCode(response, SC_OK, json);
     response.setContentLength(resp.length());
     response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
     response.getOutputStream().flush();
@@ -602,40 +420,36 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void train(HttpServletRequest request, HttpServletResponse response) throws Exception {
     Long startMs;
     Long endMs;
-    boolean json = wantJSON(request);
+    boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
     try {
-      String startMsString = request.getParameter(START_MS_PARAM);
-      String endMsString = request.getParameter(END_MS_PARAM);
-      startMs = Long.parseLong(startMsString);
-      endMs = Long.parseLong(endMsString);
+      startMs = KafkaCruiseControlServletUtils.startMs(request);
+      endMs = KafkaCruiseControlServletUtils.endMs(request);
+      if (startMs == null || endMs == null) {
+        throw new UserRequestException("Missing start or end parameter.");
+      }
+
     } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      handleParameterParseException(e, response, e.getMessage(), json);
       return;
     }
     _asyncKafkaCruiseControl.trainLoadModel(startMs, endMs);
     String message = String.format("Load model training started. Check status through %s", getStateCheckUrl(request));
-    setSuccessResponse(response, message, SC_OK, json);
+    setSuccessResponse(response, message, json);
   }
 
   private boolean getClusterLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
     long time;
-    boolean json = wantJSON(request);
+    boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
     try {
-      String timeString = request.getParameter(TIME_PARAM);
-      time = (timeString == null || timeString.toUpperCase().equals("NOW")) ? System.currentTimeMillis()
-                                                                            : Long.parseLong(timeString);
+      time = KafkaCruiseControlServletUtils.time(request);
     } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
       return true;
     }
 
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.0, true);
-    boolean allowCapacityEstimation = allowCapacityEstimation(request);
+    boolean allowCapacityEstimation = KafkaCruiseControlServletUtils.allowCapacityEstimation(request);
     ClusterModel.BrokerStats brokerStats = _asyncKafkaCruiseControl.cachedBrokerLoadStats(allowCapacityEstimation);
     if (brokerStats == null) {
       // Get the broker stats asynchronously.
@@ -655,62 +469,37 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private boolean getPartitionLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
     Resource resource;
-    Long startMs;
-    Long endMs;
-    Integer entries;
-    Pattern topic;
+    long startMs;
+    long endMs;
+    Pattern topic = KafkaCruiseControlServletUtils.topic(request);
     int partitionUpperBoundary;
     int partitionLowerBoundary;
-    boolean json = wantJSON(request);
+    boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
+    String resourceString = KafkaCruiseControlServletUtils.resourceString(request);
     try {
-      String resourceString = request.getParameter(RESOURCE_PARAM);
-      try {
-        if (resourceString == null) {
-          resourceString = DEFAULT_PARTITION_LOAD_RESOURCE;
-        }
-        resource = Resource.valueOf(resourceString.toUpperCase());
-      } catch (IllegalArgumentException iae) {
-        String errorMsg = String.format("Invalid resource type %s. The resource type must be one of the following: "
-                                        + "CPU, DISK, NW_IN, NW_OUT", resourceString);
-        StringWriter sw = new StringWriter();
-        iae.printStackTrace(new PrintWriter(sw));
-        setErrorResponse(response, sw.toString(), errorMsg, SC_BAD_REQUEST, json);
-        // Close session
-        return true;
-      }
-      String startMsString = request.getParameter(START_MS_PARAM);
-      String endMsString = request.getParameter(END_MS_PARAM);
-      startMs = startMsString == null ? -1L : Long.parseLong(startMsString);
-      endMs = endMsString == null ? System.currentTimeMillis() : Long.parseLong(endMsString);
-      String entriesString = request.getParameter(ENTRIES_PARAM);
-      entries = entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
-      String topicString = request.getParameter(TOPIC_PARAM);
-      if (topicString != null) {
-        topic = Pattern.compile(topicString);
-      } else {
-        topic = null;
-      }
-      String partitionString = request.getParameter(PARTITION_PARAM);
-      if (partitionString == null) {
-        partitionLowerBoundary = Integer.MIN_VALUE;
-        partitionUpperBoundary = Integer.MAX_VALUE;
-      } else if (!partitionString.contains("-")) {
-        partitionLowerBoundary = Integer.parseInt(partitionString);
-        partitionUpperBoundary = partitionLowerBoundary;
-      } else {
-        String [] partitionBoundaries = partitionString.split("-");
-        partitionLowerBoundary = Integer.parseInt(partitionBoundaries[0]);
-        partitionUpperBoundary = Integer.parseInt(partitionBoundaries[1]);
-      }
-    } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      resource = Resource.valueOf(resourceString.toUpperCase());
+    } catch (IllegalArgumentException iae) {
+      String errorMsg = String.format("Invalid resource type %s. The resource type must be one of the following: "
+                                      + "CPU, DISK, NW_IN, NW_OUT", resourceString);
+      handleParameterParseException(iae, response, errorMsg, json);
       // Close session
       return true;
     }
 
-    boolean allowCapacityEstimation = allowCapacityEstimation(request);
+    try {
+      Long startMsValue = KafkaCruiseControlServletUtils.startMs(request);
+      startMs = startMsValue == null ? -1L : startMsValue;
+      Long endMsValue = KafkaCruiseControlServletUtils.endMs(request);
+      endMs = endMsValue == null ? System.currentTimeMillis() : endMsValue;
+      partitionLowerBoundary = KafkaCruiseControlServletUtils.partitionBoundary(request, false);
+      partitionUpperBoundary = KafkaCruiseControlServletUtils.partitionBoundary(request, true);
+    } catch (Exception e) {
+      handleParameterParseException(e, response, e.getMessage(), json);
+      // Close session
+      return true;
+    }
+
+    boolean allowCapacityEstimation = KafkaCruiseControlServletUtils.allowCapacityEstimation(request);
     ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.98, false);
     // Get cluster model asynchronously.
     ClusterModel clusterModel = getAndMaybeReturnProgress(
@@ -721,9 +510,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     List<Partition> sortedPartitions = clusterModel.replicasSortedByUtilization(resource);
     OutputStream out = response.getOutputStream();
 
+    int entries = KafkaCruiseControlServletUtils.entries(request);
     int numEntries = 0;
     setResponseCode(response, SC_OK, json);
-    boolean wantMaxLoad = wantMaxLoad(request);
+    boolean wantMaxLoad = KafkaCruiseControlServletUtils.wantMaxLoad(request);
     if (!json) {
       int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
       out.write(String.format("%" + topicNameLength + "s%10s%30s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
@@ -785,23 +575,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private boolean getProposals(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    boolean verbose;
+    boolean verbose = KafkaCruiseControlServletUtils.isVerbose(request);
     boolean ignoreProposalCache;
     DataFrom dataFrom;
     List<String> goals;
-    boolean json = wantJSON(request);
+    boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
     try {
-      String verboseString = request.getParameter(VERBOSE_PARAM);
-      verbose = Boolean.parseBoolean(verboseString);
-      goals = getGoals(request, getMode(request));
-      dataFrom = getDataFrom(request);
-
-      String ignoreProposalCacheString = request.getParameter(IGNORE_PROPOSAL_CACHE_PARAM);
-      ignoreProposalCache = (Boolean.parseBoolean(ignoreProposalCacheString)) || !goals.isEmpty();
+      goals = KafkaCruiseControlServletUtils.getGoals(request);
+      dataFrom = KafkaCruiseControlServletUtils.getDataFrom(request);
+      ignoreProposalCache = KafkaCruiseControlServletUtils.ignoreProposalCache(request) || !goals.isEmpty();
     } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
       return true;
     }
@@ -810,7 +594,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     if (goalsAndRequirements == null) {
       return false;
     }
-    boolean allowCapacityEstimation = allowCapacityEstimation(request);
+    boolean allowCapacityEstimation = KafkaCruiseControlServletUtils.allowCapacityEstimation(request);
     // Get the optimization result asynchronously.
     GoalOptimizer.OptimizerResult optimizerResult = getAndMaybeReturnProgress(
         request, response, () -> _asyncKafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(),
@@ -889,23 +673,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
   }
 
-  private boolean wantJSON(HttpServletRequest request) {
-    String jsonString = request.getParameter(JSON_PARAM);
-    return Boolean.parseBoolean(jsonString);
-  }
-
-  private boolean allowCapacityEstimation(HttpServletRequest request) {
-    // The default for allowCapacityEstimation: true.
-    String allowCapacityEstimation = request.getParameter(ALLOW_CAPACITY_ESTIMATION_PARAM);
-    return allowCapacityEstimation == null || Boolean.parseBoolean(allowCapacityEstimation);
-  }
-
-  private boolean wantMaxLoad(HttpServletRequest request) {
-    // The default for max load: false.
-    String maxLoadString = request.getParameter(MAX_LOAD_PARAM);
-    return Boolean.parseBoolean(maxLoadString);
-  }
-
   private void writeKafkaClusterState(OutputStream out, SortedSet<PartitionInfo> partitions, int topicNameLength)
       throws IOException {
     for (PartitionInfo partitionInfo : partitions) {
@@ -928,17 +695,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private void getKafkaClusterState(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    boolean verbose;
-    boolean json = wantJSON(request);
-    try {
-      String verboseString = request.getParameter(VERBOSE_PARAM);
-      verbose = Boolean.parseBoolean(verboseString);
-    } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
-      return;
-    }
+    boolean verbose = KafkaCruiseControlServletUtils.isVerbose(request);
+    boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
     KafkaClusterState state = _asyncKafkaCruiseControl.kafkaClusterState();
     OutputStream out = response.getOutputStream();
     setResponseCode(response, SC_OK, json);
@@ -1002,21 +760,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private boolean getState(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    boolean verbose;
-    boolean superVerbose;
-    boolean json = wantJSON(request);
-    try {
-      String verboseString = request.getParameter(VERBOSE_PARAM);
-      verbose = Boolean.parseBoolean(verboseString);
-      String superVerboseString = request.getParameter(SUPER_VERBOSE_PARAM);
-      superVerbose = Boolean.parseBoolean(superVerboseString);
-    } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
-      // Close session
-      return true;
-    }
+    boolean verbose = KafkaCruiseControlServletUtils.isVerbose(request);
+    boolean superVerbose = KafkaCruiseControlServletUtils.isSuperVerbose(request);
+    boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
+
     KafkaCruiseControlState state = getAndMaybeReturnProgress(request, response, _asyncKafkaCruiseControl::state);
     if (state == null) {
       return false;
@@ -1148,32 +895,20 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private boolean addOrRemoveBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
       throws Exception {
-    List<Integer> brokerIds = new ArrayList<>();
+    List<Integer> brokerIds;
     boolean dryrun;
     DataFrom dataFrom;
     boolean throttleAddedOrRemovedBrokers;
     List<String> goals;
-    boolean isKafkaAssignerMode;
-    boolean json = wantJSON(request);
+    boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
     try {
-      String[] brokerIdsString = request.getParameter(BROKER_ID_PARAM).split(",");
-      for (String brokerIdString : brokerIdsString) {
-        brokerIds.add(Integer.parseInt(brokerIdString));
-      }
-
-      dryrun = getDryRun(request);
-      isKafkaAssignerMode = getMode(request);
-      goals = getGoals(request, isKafkaAssignerMode);
-      dataFrom = getDataFrom(request);
-
-      String throttleBrokerString = endPoint == ADD_BROKER ? request.getParameter(THROTTLE_ADDED_BROKER_PARAM)
-                                                           : request.getParameter(THROTTLE_REMOVED_BROKER_PARAM);
-      throttleAddedOrRemovedBrokers = throttleBrokerString == null || Boolean.parseBoolean(throttleBrokerString);
-
+      brokerIds = KafkaCruiseControlServletUtils.brokerIds(request);
+      dryrun = KafkaCruiseControlServletUtils.getDryRun(request);
+      goals = KafkaCruiseControlServletUtils.getGoals(request);
+      dataFrom = KafkaCruiseControlServletUtils.getDataFrom(request);
+      throttleAddedOrRemovedBrokers = KafkaCruiseControlServletUtils.throttleAddedOrRemovedBrokers(request, endPoint);
     } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
       return true;
     }
@@ -1183,7 +918,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     // Get proposals asynchronously.
     GoalOptimizer.OptimizerResult optimizerResult;
-    boolean allowCapacityEstimation = allowCapacityEstimation(request);
+    boolean allowCapacityEstimation = KafkaCruiseControlServletUtils.allowCapacityEstimation(request);
     if (endPoint == ADD_BROKER) {
       optimizerResult =
           getAndMaybeReturnProgress(request, response,
@@ -1216,19 +951,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private boolean rebalance(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint) throws Exception {
     boolean dryrun;
-    boolean isKafkaAssignerMode;
     DataFrom dataFrom;
     List<String> goals;
-    boolean json = wantJSON(request);
+    boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
     try {
-      dryrun = getDryRun(request);
-      isKafkaAssignerMode = getMode(request);
-      goals = getGoals(request, isKafkaAssignerMode);
-      dataFrom = getDataFrom(request);
+      dryrun = KafkaCruiseControlServletUtils.getDryRun(request);
+      goals = KafkaCruiseControlServletUtils.getGoals(request);
+      dataFrom = KafkaCruiseControlServletUtils.getDataFrom(request);
     } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
       return true;
     }
@@ -1236,10 +967,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     if (goalsAndRequirements == null) {
       return false;
     }
-    boolean allowCapacityEstimation = allowCapacityEstimation(request);
-    GoalOptimizer.OptimizerResult optimizerResult = getAndMaybeReturnProgress(request, response,
-        () -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(), dryrun, goalsAndRequirements.requirements(),
-            allowCapacityEstimation));
+    boolean allowCapacityEstimation = KafkaCruiseControlServletUtils.allowCapacityEstimation(request);
+    GoalOptimizer.OptimizerResult optimizerResult =
+        getAndMaybeReturnProgress(request, response,
+                                  () -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
+                                                                           dryrun,
+                                                                           goalsAndRequirements.requirements(),
+                                                                           allowCapacityEstimation));
     if (optimizerResult == null) {
       return false;
     }
@@ -1251,26 +985,28 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return true;
   }
 
-  private boolean demoteBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint) throws Exception {
-    List<Integer> brokerIds = new ArrayList<>();
+  private void handleParameterParseException(Exception e, HttpServletResponse response, String errorMsg, boolean json)
+      throws IOException {
+    StringWriter sw = new StringWriter();
+    e.printStackTrace(new PrintWriter(sw));
+    setErrorResponse(response, sw.toString(), errorMsg, SC_BAD_REQUEST, json);
+  }
+
+    private boolean demoteBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint) throws Exception {
+    List<Integer> brokerIds;
     boolean dryrun;
-    boolean json = wantJSON(request);
+    boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
     try {
-      String[] brokerIdsString = request.getParameter(BROKER_ID_PARAM).split(",");
-      for (String brokerIdString : brokerIdsString) {
-        brokerIds.add(Integer.parseInt(brokerIdString));
-      }
-      dryrun = getDryRun(request);
+      brokerIds = KafkaCruiseControlServletUtils.brokerIds(request);
+      dryrun = KafkaCruiseControlServletUtils.getDryRun(request);
     } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      setErrorResponse(response, sw.toString(), e.getMessage(), SC_BAD_REQUEST, json);
+      handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
       return true;
     }
 
     // Get proposals asynchronously.
-    boolean allowCapacityEstimation = allowCapacityEstimation(request);
+    boolean allowCapacityEstimation = KafkaCruiseControlServletUtils.allowCapacityEstimation(request);
     GoalOptimizer.OptimizerResult optimizerResult =
           getAndMaybeReturnProgress(request, response,
                                     () -> _asyncKafkaCruiseControl.demoteBrokers(brokerIds, dryrun, allowCapacityEstimation));
@@ -1283,45 +1019,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     out.write(generateGoalAndClusterStatusAfterExecution(json, optimizerResult, endPoint, brokerIds).getBytes(StandardCharsets.UTF_8));
     out.flush();
     return true;
-  }
-
-  private boolean getDryRun(HttpServletRequest request) {
-    String dryrunString = request.getParameter(DRY_RUN_PARAM);
-    return dryrunString == null || Boolean.parseBoolean(dryrunString);
-  }
-
-  /**
-   * Get the mode of the execution (default: non-kafka_assigner).
-   *
-   * @param request The user request that may or may not specify the {@link #KAFKA_ASSIGNER_MODE_PARAM}
-   */
-  private boolean getMode(HttpServletRequest request) {
-    String kafkaAssignerModeString = request.getParameter(KAFKA_ASSIGNER_MODE_PARAM);
-    return Boolean.parseBoolean(kafkaAssignerModeString);
-  }
-
-  private List<String> getGoals(HttpServletRequest request, boolean isKafkaAssignerMode) {
-    List<String> goals;
-    String goalsString = request.getParameter(GOALS_PARAM);
-    // TODO: Handle urlencoded value (%2C instead of ,)
-    goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
-    goals.removeIf(String::isEmpty);
-
-    // If KafkaAssigner mode is enabled and goals are not specified, it overrides the goal list.
-    if (goals.isEmpty() && isKafkaAssignerMode) {
-      goals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
-                            KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());
-    }
-    return goals;
-  }
-
-  private DataFrom getDataFrom(HttpServletRequest request) {
-    DataFrom dataFrom = VALID_WINDOWS; // default to with available windows.
-    String dataFromString = request.getParameter(DATA_FROM_PARAM);
-    if (dataFromString != null) {
-      dataFrom = DataFrom.valueOf(dataFromString.toUpperCase());
-    }
-    return dataFrom;
   }
 
   private void stopProposalExecution() {
@@ -1346,31 +1043,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       return future.get(_maxBlockMs, TimeUnit.MILLISECONDS);
     } catch (TimeoutException te) {
-      returnProgress(response, future, wantJSON(request));
+      returnProgress(response, future, KafkaCruiseControlServletUtils.wantJSON(request));
       return null;
     }
-  }
-
-  private EndPoint endPoint(HttpServletRequest request) {
-    List<EndPoint> supportedEndpoints;
-    switch (request.getMethod()) {
-      case "GET":
-        supportedEndpoints = EndPoint.getEndpoint();
-        break;
-      case "POST":
-        supportedEndpoints = EndPoint.postEndpoint();
-        break;
-      default:
-        throw new IllegalArgumentException("Unsupported request method: " + request.getMethod() + ".");
-    }
-
-    String path = request.getRequestURI().toUpperCase().replace("/KAFKACRUISECONTROL/", "");
-    for (EndPoint endPoint : supportedEndpoints) {
-      if (endPoint.toString().equalsIgnoreCase(path)) {
-        return endPoint;
-      }
-    }
-    return null;
   }
 
   private void setResponseCode(HttpServletResponse response, int code, boolean json) {
@@ -1406,10 +1081,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     String url = request.getRequestURL().toString();
     int pos = url.indexOf("/kafkacruisecontrol/");
     return url.substring(0, pos + "/kafkacruisecontrol/".length()) + "state";
-  }
-
-  private String urlEncode(String s) throws UnsupportedEncodingException {
-    return s == null ? null : URLEncoder.encode(s, StandardCharsets.UTF_8.name());
   }
 
   // package private for testing.
