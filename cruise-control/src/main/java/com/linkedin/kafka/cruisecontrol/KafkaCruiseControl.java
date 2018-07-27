@@ -132,6 +132,10 @@ public class KafkaCruiseControl {
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress the progress to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
+   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   *                                  (if null, use num.concurrent.leader.movements).
    * @return the optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
@@ -142,7 +146,9 @@ public class KafkaCruiseControl {
                                                            List<String> goals,
                                                            ModelCompletenessRequirements requirements,
                                                            OperationProgress operationProgress,
-                                                           boolean allowCapacityEstimation)
+                                                           boolean allowCapacityEstimation,
+                                                           Integer concurrentPartitionMovements,
+                                                           Integer concurrentLeaderMovements)
       throws KafkaCruiseControlException {
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -156,7 +162,9 @@ public class KafkaCruiseControl {
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          throttleDecommissionedBroker ? Collections.emptyList() : brokerIds,
-                         isKafkaAssignerMode(goals));
+                         isKafkaAssignerMode(goals),
+                         concurrentPartitionMovements,
+                         concurrentLeaderMovements);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -194,6 +202,10 @@ public class KafkaCruiseControl {
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to update.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
+   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   *                                  (if null, use num.concurrent.leader.movements).
    * @return The optimization result.
    * @throws KafkaCruiseControlException when any exception occurred during the broker addition.
    */
@@ -203,7 +215,9 @@ public class KafkaCruiseControl {
                                                   List<String> goals,
                                                   ModelCompletenessRequirements requirements,
                                                   OperationProgress operationProgress,
-                                                  boolean allowCapacityEstimation) throws KafkaCruiseControlException {
+                                                  boolean allowCapacityEstimation,
+                                                  Integer concurrentPartitionMovements,
+                                                  Integer concurrentLeaderMovements) throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
       ModelCompletenessRequirements modelCompletenessRequirements =
@@ -217,7 +231,9 @@ public class KafkaCruiseControl {
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          throttleAddedBrokers ? Collections.emptyList() : brokerIds,
-                         isKafkaAssignerMode(goals));
+                         isKafkaAssignerMode(goals),
+                         concurrentPartitionMovements,
+                         concurrentLeaderMovements);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -234,6 +250,10 @@ public class KafkaCruiseControl {
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
+   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   *                                  (if null, use num.concurrent.leader.movements).
    * @return the optimization result.
    * @throws KafkaCruiseControlException when the rebalance encounter errors.
    */
@@ -241,11 +261,14 @@ public class KafkaCruiseControl {
                                                  boolean dryRun,
                                                  ModelCompletenessRequirements requirements,
                                                  OperationProgress operationProgress,
-                                                 boolean allowCapacityEstimation) throws KafkaCruiseControlException {
+                                                 boolean allowCapacityEstimation,
+                                                 Integer concurrentPartitionMovements,
+                                                 Integer concurrentLeaderMovements) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation);
     sanityCheckCapacityEstimation(allowCapacityEstimation, result.capacityEstimationInfoByBrokerId());
     if (!dryRun) {
-      executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals));
+      executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
+                       concurrentPartitionMovements, concurrentLeaderMovements);
     }
     return result;
   }
@@ -265,12 +288,15 @@ public class KafkaCruiseControl {
    * @param dryRun whether it is a dry run or not
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   *                                  (if null, use num.concurrent.leader.movements).
    * @return the optimization result.
    */
   public GoalOptimizer.OptimizerResult demoteBrokers(Collection<Integer> brokerIds,
                                                      boolean dryRun,
                                                      OperationProgress operationProgress,
-                                                     boolean allowCapacityEstimation)
+                                                     boolean allowCapacityEstimation,
+                                                     Integer concurrentLeaderMovements)
       throws KafkaCruiseControlException {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
@@ -284,7 +310,7 @@ public class KafkaCruiseControl {
                                    operationProgress, allowCapacityEstimation);
       if (!dryRun) {
         // Kafka Assigner mode is irrelevant for demoting a broker.
-        executeProposals(result.goalProposals(), brokerIds, false);
+        executeProposals(result.goalProposals(), brokerIds, false, null, concurrentLeaderMovements);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -485,13 +511,19 @@ public class KafkaCruiseControl {
    * @param proposals the given balancing proposals
    * @param unthrottledBrokers Brokers for which the rate of replica movements from/to will not be throttled.
    * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
+   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   *                                  (if null, use num.concurrent.leader.movements).
    */
   private void executeProposals(Collection<ExecutionProposal> proposals,
                                Collection<Integer> unthrottledBrokers,
-                               boolean isKafkaAssignerMode) {
+                               boolean isKafkaAssignerMode,
+                                Integer concurrentPartitionMovements,
+                                Integer concurrentLeaderMovements) {
     // Set the execution mode, add execution proposals, and start execution.
     _executor.setExecutionMode(isKafkaAssignerMode);
-    _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor);
+    _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor, concurrentPartitionMovements, concurrentLeaderMovements);
   }
 
   /**

@@ -471,6 +471,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Resource resource;
     long startMs;
     long endMs;
+    int entries;
     Pattern topic = KafkaCruiseControlServletUtils.topic(request);
     int partitionUpperBoundary;
     int partitionLowerBoundary;
@@ -493,6 +494,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       endMs = endMsValue == null ? System.currentTimeMillis() : endMsValue;
       partitionLowerBoundary = KafkaCruiseControlServletUtils.partitionBoundary(request, false);
       partitionUpperBoundary = KafkaCruiseControlServletUtils.partitionBoundary(request, true);
+      entries = KafkaCruiseControlServletUtils.entries(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
@@ -510,7 +512,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     List<Partition> sortedPartitions = clusterModel.replicasSortedByUtilization(resource);
     OutputStream out = response.getOutputStream();
 
-    int entries = KafkaCruiseControlServletUtils.entries(request);
     int numEntries = 0;
     setResponseCode(response, SC_OK, json);
     boolean wantMaxLoad = KafkaCruiseControlServletUtils.wantMaxLoad(request);
@@ -896,6 +897,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private boolean addOrRemoveBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
       throws Exception {
     List<Integer> brokerIds;
+    Integer concurrentPartitionMovements;
+    Integer concurrentLeaderMovements;
     boolean dryrun;
     DataFrom dataFrom;
     boolean throttleAddedOrRemovedBrokers;
@@ -907,6 +910,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       goals = KafkaCruiseControlServletUtils.getGoals(request);
       dataFrom = KafkaCruiseControlServletUtils.getDataFrom(request);
       throttleAddedOrRemovedBrokers = KafkaCruiseControlServletUtils.throttleAddedOrRemovedBrokers(request, endPoint);
+      concurrentPartitionMovements = KafkaCruiseControlServletUtils.concurrentMovementsPerBroker(request, true);
+      concurrentLeaderMovements = KafkaCruiseControlServletUtils.concurrentMovementsPerBroker(request, false);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
@@ -927,7 +932,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                               throttleAddedOrRemovedBrokers,
                                                                               goalsAndRequirements.goals(),
                                                                               goalsAndRequirements.requirements(),
-                                                                              allowCapacityEstimation));
+                                                                              allowCapacityEstimation,
+                                                                              concurrentPartitionMovements,
+                                                                              concurrentLeaderMovements));
     } else {
       optimizerResult =
           getAndMaybeReturnProgress(request, response,
@@ -936,7 +943,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                                        throttleAddedOrRemovedBrokers,
                                                                                        goalsAndRequirements.goals(),
                                                                                        goalsAndRequirements.requirements(),
-                                                                                       allowCapacityEstimation));
+                                                                                       allowCapacityEstimation,
+                                                                                       concurrentPartitionMovements,
+                                                                                       concurrentLeaderMovements));
     }
     if (optimizerResult == null) {
       return false;
@@ -953,11 +962,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean dryrun;
     DataFrom dataFrom;
     List<String> goals;
+    Integer concurrentPartitionMovements;
+    Integer concurrentLeaderMovements;
     boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
     try {
       dryrun = KafkaCruiseControlServletUtils.getDryRun(request);
       goals = KafkaCruiseControlServletUtils.getGoals(request);
       dataFrom = KafkaCruiseControlServletUtils.getDataFrom(request);
+      concurrentPartitionMovements = KafkaCruiseControlServletUtils.concurrentMovementsPerBroker(request, true);
+      concurrentLeaderMovements = KafkaCruiseControlServletUtils.concurrentMovementsPerBroker(request, false);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
@@ -973,7 +986,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                   () -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
                                                                            dryrun,
                                                                            goalsAndRequirements.requirements(),
-                                                                           allowCapacityEstimation));
+                                                                           allowCapacityEstimation,
+                                                                           concurrentPartitionMovements,
+                                                                           concurrentLeaderMovements));
     if (optimizerResult == null) {
       return false;
     }
@@ -995,10 +1010,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     private boolean demoteBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint) throws Exception {
     List<Integer> brokerIds;
     boolean dryrun;
+    Integer concurrentLeaderMovements;
     boolean json = KafkaCruiseControlServletUtils.wantJSON(request);
     try {
       brokerIds = KafkaCruiseControlServletUtils.brokerIds(request);
       dryrun = KafkaCruiseControlServletUtils.getDryRun(request);
+      concurrentLeaderMovements = KafkaCruiseControlServletUtils.concurrentMovementsPerBroker(request, false);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
@@ -1009,7 +1026,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean allowCapacityEstimation = KafkaCruiseControlServletUtils.allowCapacityEstimation(request);
     GoalOptimizer.OptimizerResult optimizerResult =
           getAndMaybeReturnProgress(request, response,
-                                    () -> _asyncKafkaCruiseControl.demoteBrokers(brokerIds, dryrun, allowCapacityEstimation));
+                                    () -> _asyncKafkaCruiseControl.demoteBrokers(brokerIds,
+                                                                                 dryrun,
+                                                                                 allowCapacityEstimation,
+                                                                                 concurrentLeaderMovements));
     if (optimizerResult == null) {
       return false;
     }
