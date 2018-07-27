@@ -86,19 +86,19 @@ public class OperationProgress {
     return sb.toString();
   }
 
-  public synchronized Map<String, Object> getJsonStructure() {
-    Map<String, Object> progressMap = new HashMap<>();
+  public synchronized Object[] getJsonArray() {
+    Object[] progressArray = new Object[_steps.size()];
     for (int i = 0; i < _steps.size(); i++) {
       OperationStep step = _steps.get(i);
       long time = (i == _steps.size() - 1 ? System.currentTimeMillis() : _startTimes.get(i + 1)) - _startTimes.get(i);
       Map<String, Object> stepProgressMap = new HashMap<>();
-      stepProgressMap.put("step", i);
+      stepProgressMap.put("step", step.name());
       stepProgressMap.put("description", step.description());
       stepProgressMap.put("time-in-ms", time);
       stepProgressMap.put("completionPercentage", step.completionPercentage() * 100.0);
-      progressMap.put(step.name(), stepProgressMap);
+      progressArray[i] = stepProgressMap;
     }
-    return progressMap;
+    return progressArray;
   }
 
   private void ensureMutable() {
