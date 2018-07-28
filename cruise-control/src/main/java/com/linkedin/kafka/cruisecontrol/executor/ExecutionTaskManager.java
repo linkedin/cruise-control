@@ -35,8 +35,10 @@ public class ExecutionTaskManager {
   private final ExecutionTaskTracker _executionTaskTracker;
   private final Set<TopicPartition> _inProgressPartitions;
   private final ExecutionTaskPlanner _executionTaskPlanner;
-  private final int _partitionMovementConcurrency;
-  private final int _leadershipMovementConcurrency;
+  private final int _defaultPartitionMovementConcurrency;
+  private final int _defaultLeadershipMovementConcurrency;
+  private Integer _requestedPartitionMovementConcurrency;
+  private Integer _requestedLeadershipMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
   private final Time _time;
   private volatile long _inExecutionDataToMove;
@@ -68,28 +70,56 @@ public class ExecutionTaskManager {
   /**
    * The constructor of The Execution task manager.
    *
-   * @param partitionMovementConcurrency The maximum number of concurrent partition movements per broker.
-   * @param leadershipMovementConcurrency The maximum number of concurrent leadership movements per batch.
+   * @param defaultPartitionMovementConcurrency The maximum number of concurrent partition movements per broker. It can
+   *                                            be overwritten by user parameter upon post request.
+   * @param defaultLeadershipMovementConcurrency The maximum number of concurrent leadership movements per batch. It can
+   *                                             be overwritten by user parameter upon post request.
    * @param dropwizardMetricRegistry The metric registry.
    * @param time The time object to get the time.
    */
-  public ExecutionTaskManager(int partitionMovementConcurrency,
-                              int leadershipMovementConcurrency,
+  public ExecutionTaskManager(int defaultPartitionMovementConcurrency,
+                              int defaultLeadershipMovementConcurrency,
                               MetricRegistry dropwizardMetricRegistry,
                               Time time) {
     _inProgressReplicaMovementsByBrokerId = new HashMap<>();
     _inProgressPartitions = new HashSet<>();
     _executionTaskTracker = new ExecutionTaskTracker();
     _executionTaskPlanner = new ExecutionTaskPlanner();
-    _partitionMovementConcurrency = partitionMovementConcurrency;
-    _leadershipMovementConcurrency = leadershipMovementConcurrency;
+    _defaultPartitionMovementConcurrency = defaultPartitionMovementConcurrency;
+    _defaultLeadershipMovementConcurrency = defaultLeadershipMovementConcurrency;
     _brokersToSkipConcurrencyCheck = new HashSet<>();
     _inExecutionDataToMove = 0L;
     _time = time;
     _isKafkaAssignerMode = false;
+    _requestedPartitionMovementConcurrency = null;
+    _requestedLeadershipMovementConcurrency = null;
 
     // Register gauge sensors.
     registerGaugeSensors(dropwizardMetricRegistry);
+  }
+
+  /**
+   * Dynamically set the partition movement concurrency per broker and the leadership movement concurrency.
+   *
+   * @param requestedPartitionMovementConcurrency The maximum number of concurrent partition movements per broker
+   *                                              (if null, use {@link #_defaultPartitionMovementConcurrency}).
+   * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
+   *                                               (if null, {@link #_defaultLeadershipMovementConcurrency}).
+   */
+  public synchronized void setRequestedMovementConcurrency(Integer requestedPartitionMovementConcurrency,
+                                                           Integer requestedLeadershipMovementConcurrency) {
+    _requestedPartitionMovementConcurrency = requestedPartitionMovementConcurrency;
+    _requestedLeadershipMovementConcurrency = requestedLeadershipMovementConcurrency;
+  }
+
+  public synchronized int partitionMovementConcurrency() {
+    return _requestedPartitionMovementConcurrency == null ? _defaultPartitionMovementConcurrency
+                                                          : _requestedPartitionMovementConcurrency;
+  }
+
+  public synchronized int leadershipMovementConcurrency() {
+    return _requestedLeadershipMovementConcurrency == null ? _defaultLeadershipMovementConcurrency
+                                                           : _requestedLeadershipMovementConcurrency;
   }
 
   /**
@@ -128,6 +158,7 @@ public class ExecutionTaskManager {
    */
   public synchronized List<ExecutionTask> getReplicaMovementTasks() {
     Map<Integer, Integer> readyBrokers = new HashMap<>();
+    int partitionMovementConcurrency = partitionMovementConcurrency();
     for (Map.Entry<Integer, Integer> entry : _inProgressReplicaMovementsByBrokerId.entrySet()) {
       // We skip the concurrency level check if caller requested so.
       // This is useful when we detected a broker failure and want to move all its partitions to the
@@ -135,7 +166,7 @@ public class ExecutionTaskManager {
       if (_brokersToSkipConcurrencyCheck.contains(entry.getKey())) {
         readyBrokers.put(entry.getKey(), Integer.MAX_VALUE);
       } else {
-        readyBrokers.put(entry.getKey(), Math.max(0, _partitionMovementConcurrency - entry.getValue()));
+        readyBrokers.put(entry.getKey(), Math.max(0, partitionMovementConcurrency - entry.getValue()));
       }
     }
     return _executionTaskPlanner.getReplicaMovementTasks(readyBrokers, _inProgressPartitions);
@@ -145,7 +176,7 @@ public class ExecutionTaskManager {
    * Returns a list of proposals that move the leadership.
    */
   public synchronized List<ExecutionTask> getLeadershipMovementTasks() {
-    return _executionTaskPlanner.getLeadershipMovementTasks(_leadershipMovementConcurrency);
+    return _executionTaskPlanner.getLeadershipMovementTasks(leadershipMovementConcurrency());
   }
 
   /**

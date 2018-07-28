@@ -35,7 +35,7 @@ public class ExecutionTaskManagerTest {
     Set<PartitionInfo> partitions = new HashSet<>();
     partitions.add(new PartitionInfo(tp.topic(), tp.partition(), expectedReplicas.get(1), isrArray, isrArray));
 
-    return new Cluster(null, expectedReplicas, partitions, Collections.<String>emptySet(), Collections.<String>emptySet());
+    return new Cluster(null, expectedReplicas, partitions, Collections.emptySet(), Collections.emptySet());
   }
 
   @Test
@@ -63,6 +63,7 @@ public class ExecutionTaskManagerTest {
       taskManager.addExecutionProposals(Collections.singletonList(proposal),
                                         Collections.emptySet(),
                                         generateExpectedCluster(proposal, tp));
+      taskManager.setRequestedMovementConcurrency(null, null);
       List<ExecutionTask> tasks = taskManager.getReplicaMovementTasks();
       assertEquals(1, tasks.size());
       ExecutionTask task  = tasks.get(0);

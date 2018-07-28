@@ -34,12 +34,16 @@ public class ExecutorState {
   private final Set<ExecutionTask> _deadPartitionMovements;
   private final long _remainingDataToMoveInMB;
   private final long _finishedDataMovementInMB;
+  private final int _maximumConcurrentPartitionMovementsPerBroker;
+  private final int _maximumConcurrentLeaderMovements;
 
   private ExecutorState(State state,
                         int numFinishedPartitionMovements,
                         int numFinishedLeadershipMovements,
                         ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary,
-                        long finishedDataMovementInMB) {
+                        long finishedDataMovementInMB,
+                        int maximumConcurrentPartitionMovementsPerBroker,
+                        int maximumConcurrentLeaderMovements) {
     _state = state;
     _numFinishedPartitionMovements = numFinishedPartitionMovements;
     _numFinishedLeadershipMovements = numFinishedLeadershipMovements;
@@ -51,6 +55,8 @@ public class ExecutorState {
     _deadPartitionMovements = executionTasksSummary.deadTasks();
     _remainingDataToMoveInMB = executionTasksSummary.remainingDataToMoveInMB();
     _finishedDataMovementInMB = finishedDataMovementInMB;
+    _maximumConcurrentPartitionMovementsPerBroker = maximumConcurrentPartitionMovementsPerBroker;
+    _maximumConcurrentLeaderMovements = maximumConcurrentLeaderMovements;
   }
 
   public static ExecutorState noTaskInProgress() {
@@ -64,7 +70,9 @@ public class ExecutorState {
                                                                             Collections.emptySet(),
                                                                             Collections.emptySet(),
                                                                             0L),
-                             0L);
+                             0L,
+                             0,
+                             0);
   }
 
   public static ExecutorState executionStarted() {
@@ -78,15 +86,19 @@ public class ExecutorState {
                                                                             Collections.emptySet(),
                                                                             Collections.emptySet(),
                                                                             0L),
-                             0L);
+                             0L,
+                             0,
+                             0);
   }
 
   public static ExecutorState replicaMovementInProgress(int finishedPartitionMovements,
                                                         ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary,
-                                                        long finishedDataMovementInMB) {
+                                                        long finishedDataMovementInMB,
+                                                        int maximumConcurrentPartitionMovementsPerBroker,
+                                                        int maximumConcurrentLeaderMovements) {
     return new ExecutorState(State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
                              finishedPartitionMovements, 0, executionTasksSummary,
-                             finishedDataMovementInMB);
+                             finishedDataMovementInMB, maximumConcurrentPartitionMovementsPerBroker, maximumConcurrentLeaderMovements);
   }
 
   public static ExecutorState replicaMovementInProgress(int finishedPartitionMovements,
@@ -96,7 +108,9 @@ public class ExecutorState {
                                                         Set<ExecutionTask> abortedTasks,
                                                         Set<ExecutionTask> deadTasks,
                                                         long remainingDataToMoveInMB,
-                                                        long finishedDataMovementInMB) {
+                                                        long finishedDataMovementInMB,
+                                                        int maximumConcurrentPartitionMovementsPerBroker,
+                                                        int maximumConcurrentLeaderMovements) {
     return new ExecutorState(State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
                              finishedPartitionMovements, 0,
                              new ExecutionTaskManager.ExecutionTasksSummary(remainingPartitionMovements,
@@ -106,11 +120,15 @@ public class ExecutorState {
                                                                             abortedTasks,
                                                                             deadTasks,
                                                                             remainingDataToMoveInMB),
-                             finishedDataMovementInMB);
+                             finishedDataMovementInMB,
+                             maximumConcurrentPartitionMovementsPerBroker,
+                             maximumConcurrentLeaderMovements);
   }
 
   public static ExecutorState leaderMovementInProgress(int finishedLeadershipMovements,
-                                                       ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary) {
+                                                       ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary,
+                                                       int maximumConcurrentPartitionMovementsPerBroker,
+                                                       int maximumConcurrentLeaderMovements) {
     return new ExecutorState(State.LEADER_MOVEMENT_TASK_IN_PROGRESS,
                              0,
                              finishedLeadershipMovements,
@@ -121,18 +139,24 @@ public class ExecutorState {
                                                                             Collections.emptySet(),
                                                                             Collections.emptySet(),
                                                                             0L),
-                             0L);
+                             0L,
+                             maximumConcurrentPartitionMovementsPerBroker,
+                             maximumConcurrentLeaderMovements);
   }
 
   public static ExecutorState stopping(int finishedPartitionMovements,
                                        int finishedLeadershipMovements,
                                        ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary,
-                                       long finishedDataMovementInMB) {
+                                       long finishedDataMovementInMB,
+                                       int maximumConcurrentPartitionMovementsPerBroker,
+                                       int maximumConcurrentLeaderMovements) {
     return new ExecutorState(State.STOPPING_EXECUTION,
                              finishedPartitionMovements,
                              finishedLeadershipMovements,
                              executionTasksSummary,
-                             finishedDataMovementInMB);
+                             finishedDataMovementInMB,
+                             maximumConcurrentPartitionMovementsPerBroker,
+                             maximumConcurrentLeaderMovements);
   }
 
   public State state() {
@@ -206,6 +230,9 @@ public class ExecutorState {
           }
           execState.put("pendingLeadershipMovement", pendingLeadershipMovementList);
         }
+        execState.put("numFinishedLeadershipMovements", _numFinishedLeadershipMovements);
+        execState.put("numTotalLeadershipMovements", numTotalLeadershipMovements());
+        execState.put("maximumConcurrentLeaderMovements", _maximumConcurrentLeaderMovements);
         break;
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
       case STOPPING_EXECUTION:
@@ -218,6 +245,8 @@ public class ExecutorState {
         execState.put("abortingPartitions", _abortingPartitionMovements);
         execState.put("abortedPartitions", _abortedPartitionMovements);
         execState.put("deadPartitions", _deadPartitionMovements);
+        execState.put("maximumConcurrentLeaderMovements", _maximumConcurrentLeaderMovements);
+        execState.put("maximumConcurrentPartitionMovementsPerBroker", _maximumConcurrentPartitionMovementsPerBroker);
         if (verbose) {
           List<Object> inProgressPartitionMovementList = new ArrayList<>(_inProgressPartitionMovements.size());
           List<Object> abortingPartitionMovementList = new ArrayList<>(_abortingPartitionMovements.size());
@@ -260,18 +289,21 @@ public class ExecutorState {
     switch (_state) {
       case NO_TASK_IN_PROGRESS:
       case STARTING_EXECUTION:
+        return String.format("{state: %s}", _state);
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
-        return String.format("{state: %s, finished/total leadership movements: %d/%d}", _state,
-                             _numFinishedLeadershipMovements, numTotalLeadershipMovements());
-
+        return String.format("{state: %s, finished/total leadership movements: %d/%d, "
+                             + "maximum concurrent leadership movements: %d}", _state, _numFinishedLeadershipMovements,
+                             numTotalLeadershipMovements(), _maximumConcurrentLeaderMovements);
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
       case STOPPING_EXECUTION:
         return String.format("{state: %s, in-progress/aborting partitions: %d/%d, completed/total bytes(MB): %d/%d, "
-                                 + "finished/aborted/dead/total partitions: %d/%d/%d/%d, finished leadership movements: %d/%d}",
+                             + "finished/aborted/dead/total partitions: %d/%d/%d/%d, finished leadership movements: %d/%d, "
+                             + "maximum concurrent leadership/per-broker partition movements: %d/%d}",
                              _state, _inProgressPartitionMovements.size(), _abortingPartitionMovements.size(),
                              _finishedDataMovementInMB, totalDataToMoveInMB(), _numFinishedPartitionMovements,
                              _abortedPartitionMovements.size(), _deadPartitionMovements.size(),
-                             numTotalPartitionMovements(), _numFinishedLeadershipMovements, numTotalLeadershipMovements());
+                             numTotalPartitionMovements(), _numFinishedLeadershipMovements, numTotalLeadershipMovements(),
+                             _maximumConcurrentLeaderMovements, _maximumConcurrentPartitionMovementsPerBroker);
       default:
         throw new IllegalStateException("This should never happen");
     }

@@ -53,6 +53,8 @@ class KafkaCruiseControlServletUtils {
   private static final String THROTTLE_ADDED_BROKER_PARAM = "throttle_added_broker";
   private static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
   private static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
+  private static final String CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM = "concurrent_partition_movements_per_broker";
+  private static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
   private static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
 
   static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
@@ -109,6 +111,8 @@ class KafkaCruiseControlServletUtils {
     addOrRemoveBroker.add(KAFKA_ASSIGNER_MODE_PARAM);
     addOrRemoveBroker.add(JSON_PARAM);
     addOrRemoveBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    addOrRemoveBroker.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    addOrRemoveBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
@@ -123,6 +127,7 @@ class KafkaCruiseControlServletUtils {
     demoteBroker.add(DRY_RUN_PARAM);
     demoteBroker.add(JSON_PARAM);
     demoteBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    demoteBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
@@ -131,6 +136,8 @@ class KafkaCruiseControlServletUtils {
     rebalance.add(DATA_FROM_PARAM);
     rebalance.add(JSON_PARAM);
     rebalance.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    rebalance.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    rebalance.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
@@ -314,6 +321,25 @@ class KafkaCruiseControlServletUtils {
   static int entries(HttpServletRequest request) {
     String entriesString = request.getParameter(ENTRIES_PARAM);
     return entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
+  }
+
+  /**
+   * @param isPartitionMovement True if partition movement, false if leader movement.
+   */
+  static Integer concurrentMovementsPerBroker(HttpServletRequest request, boolean isPartitionMovement) {
+    String concurrentMovementsPerBrokerString = isPartitionMovement
+                                                ? request.getParameter(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM)
+                                                : request.getParameter(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    if (concurrentMovementsPerBrokerString == null) {
+      return null;
+    }
+    Integer concurrentMovementsPerBroker = Integer.parseInt(concurrentMovementsPerBrokerString);
+    if (concurrentMovementsPerBroker <= 0) {
+      throw new IllegalArgumentException("The requested movement concurrency must be positive (Requested: "
+                                         + concurrentMovementsPerBroker.toString() + ").");
+    }
+
+    return concurrentMovementsPerBroker;
   }
 
   /**
