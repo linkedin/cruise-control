@@ -6,11 +6,8 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import java.lang.reflect.Field;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
@@ -18,7 +15,6 @@ import org.slf4j.LoggerFactory;
  * @param <T> the return type.
  */
 public class OperationFuture<T> extends CompletableFuture<T> {
-  private static final Logger LOG = LoggerFactory.getLogger(OperationFuture.class);
   // The url encoded request url
   private final String _operation;
   private final OperationProgress _operationProgress;
@@ -93,10 +89,10 @@ public class OperationFuture<T> extends CompletableFuture<T> {
   }
 
   /**
-   * @return the map describing the progress of the operation.
+   * @return the array describing the progress of the operation.
    */
-  public Map<String, Object> getJsonStructure() {
-    return _operationProgress.getJsonStructure();
+  public Object[] getJsonArray() {
+    return _operationProgress.getJsonArray();
   }
 
   /**
