@@ -239,22 +239,30 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * <pre>
    * 1. Decommission a broker.
    *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;throttle_removed_broker=[true/false]&amp;goals=[goal1,goal2...]
+   *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
+   *    &amp;json=[true/false]
    *
    * 2. Add a broker
    *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;throttle_added_broker=[true/false]&amp;goals=[goal1,goal2...]
+   *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
+   *    &amp;json=[true/false]
    *
    * 3. Trigger a workload balance.
-   *    POST /kafkacruisecontrol/rebalance?dryrun=[true/false]&amp;force=[true/false]&amp;goals=[goal1,goal2...]
+   *    POST /kafkacruisecontrol/rebalance?dryrun=[true/false]&amp;force=[true/false]&amp;goals=[goal1,goal2...]&amp;allow_capacity_estimation=[true/false]
+   *    &amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]
    *
    * 4. Stop the proposal execution.
-   *    POST /kafkacruisecontrol/stop_proposal_execution
+   *    POST /kafkacruisecontrol/stop_proposal_execution?json=[true/false]
    *
-   * 5.Pause metrics sampling. (RUNNING -&gt; PAUSED).
-   *    POST /kafkacruisecontrol/pause_sampling
+   * 5. Pause metrics sampling. (RUNNING -&gt; PAUSED).
+   *    POST /kafkacruisecontrol/pause_sampling?json=[true/false]
    *
-   * 6.Resume metrics sampling. (PAUSED -&gt; RUNNING).
-   *    POST /kafkacruisecontrol/resume_sampling
+   * 6. Resume metrics sampling. (PAUSED -&gt; RUNNING).
+   *    POST /kafkacruisecontrol/resume_sampling?json=[true/false]
    *
+   * 7. Demote a broker
+   *    POST /kafkacruisecontrol/demote_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;concurrent_leader_movements=[true/false]
+   *    &amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
    *
    * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
    * </pre>

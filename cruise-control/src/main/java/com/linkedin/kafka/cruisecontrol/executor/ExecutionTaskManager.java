@@ -118,7 +118,7 @@ public class ExecutionTaskManager {
   }
 
   public synchronized int leadershipMovementConcurrency() {
-    return _requestedLeadershipMovementConcurrency == null ? _defaultPartitionMovementConcurrency
+    return _requestedLeadershipMovementConcurrency == null ? _defaultLeadershipMovementConcurrency
                                                            : _requestedLeadershipMovementConcurrency;
   }
 
