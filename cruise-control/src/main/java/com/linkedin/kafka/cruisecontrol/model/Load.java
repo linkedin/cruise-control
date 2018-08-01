@@ -96,6 +96,43 @@ public class Load implements Serializable {
   }
 
   /**
+   * Get a single snapshot value that is representative for the given KafkaMetric type. The current algorithm uses
+   * <ol>
+   *   <li>If the max load is not requested, then:
+   *   <ol>
+   *   <li>It is the mean of the recent load for metric type except disk space usage.</li>
+   *   <li>It is the latest utilization for disk space usage.</li>
+   *   </ol>
+   *   </li>
+   *   <li>If the max load is requested: the peak load.</li>
+   * </ol>
+   *
+   * @param metric KafkaMetric type for which the expected utilization will be provided.
+   * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
+   * @return A single representative utilization value on a metric type.
+   */
+  public double expectedUtilizationFor(KafkaMetricDef metric, boolean wantMaxLoad) {
+    MetricInfo info;
+    switch (metric.defScope()) {
+      case COMMON:
+        info = KafkaMetricDef.commonMetricDef().metricInfo(metric.name());
+        break;
+      case BROKER_ONLY:
+        info = KafkaMetricDef.brokerMetricDef().metricInfo(metric.name());
+        break;
+      default:
+        throw new IllegalArgumentException("Metric scope" + metric.defScope() + "for metric " + metric.name() + " is invalid.");
+    }
+    if (_metricValues.isEmpty()) {
+      return 0.0;
+    }
+    double result = 0;
+    MetricValues valuesForId = _metricValues.valuesFor(info.id());
+    result += wantMaxLoad ? valuesForId.max() : (metric == KafkaMetricDef.DISK_USAGE ? valuesForId.latest() : valuesForId.avg());
+    return max(result, 0.0);
+  }
+
+  /**
    * @return true if this load is empty, false otherwise.
    */
   boolean isEmpty() {
