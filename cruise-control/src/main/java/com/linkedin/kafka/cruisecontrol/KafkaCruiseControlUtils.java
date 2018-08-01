@@ -9,7 +9,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
-import kafka.utils.ZkUtils;
+import kafka.zk.KafkaZkClient;
 import org.apache.kafka.common.config.ConfigException;
 
 
@@ -44,11 +44,11 @@ public class KafkaCruiseControlUtils {
     return value;
   }
 
-  public static void closeZkUtilsWithTimeout(ZkUtils zkUtils, long timeoutMs) {
+  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient, long timeoutMs) {
     Thread t = new Thread() {
       @Override
       public void run() {
-        zkUtils.close();
+        kafkaZkClient.close();
       }
     };
     t.setDaemon(true);
@@ -67,7 +67,7 @@ public class KafkaCruiseControlUtils {
    * Check if set a contains any element in set b.
    * @param a the first set.
    * @param b the second set.
-   * @return true if a contains at least one of the element in b. false otherwise; 
+   * @return true if a contains at least one of the element in b. false otherwise;
    */
   public static boolean containsAny(Set<Integer> a, Set<Integer> b) {
     for (int i : b) {

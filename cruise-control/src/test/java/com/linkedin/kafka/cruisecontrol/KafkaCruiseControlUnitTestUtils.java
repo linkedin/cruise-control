@@ -14,17 +14,18 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
-import kafka.utils.ZkUtils;
-import org.I0Itec.zkclient.ZkClient;
-import org.I0Itec.zkclient.ZkConnection;
+import kafka.zk.KafkaZkClient;
 import org.I0Itec.zkclient.exception.ZkMarshallingError;
 import org.I0Itec.zkclient.serialize.ZkSerializer;
+import org.apache.kafka.common.utils.SystemTime;
 
 
 /**
  * A test util class.
  */
 public class KafkaCruiseControlUnitTestUtils {
+  private final static int ZK_SESSION_TIMEOUT = 30000;
+  private final static int ZK_CONNECTION_TIMEOUT = 30000;
 
   private KafkaCruiseControlUnitTestUtils() {
 
@@ -43,10 +44,9 @@ public class KafkaCruiseControlUnitTestUtils {
     return props;
   }
 
-  public static ZkUtils zkUtils(String zkConnect) {
-    ZkConnection zkConnection = new ZkConnection(zkConnect, 30000);
-    ZkClient zkClient = new ZkClient(zkConnection, 30000, new ZKStringSerializer());
-    return new ZkUtils(zkClient, zkConnection, false);
+  public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
+    return KafkaZkClient.apply(connectString, false, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
+                               new SystemTime(), metricGroup, metricType);
   }
 
   private static class ZKStringSerializer implements ZkSerializer {

@@ -7,8 +7,7 @@ package com.linkedin.kafka.cruisecontrol.executor
 import java.util
 
 import kafka.admin.PreferredReplicaLeaderElectionCommand
-import kafka.common.TopicAndPartition
-import kafka.utils.ZkUtils
+import kafka.zk.KafkaZkClient
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -25,22 +24,20 @@ object ExecutorUtils {
    * Add a list of replica reassignment tasks to execute. Replica reassignment indicates tasks that (1) relocate a replica
    * within the cluster, (2) introduce a new replica to the cluster (3) remove an existing replica from the cluster.
    *
-   * @param zkUtils the ZkUtils class to use for partition reassignment.
+   * @param kafkaZkClient the KafkaZkClient class to use for partition reassignment.
    * @param reassignmentTasks Replica reassignment tasks to be executed.
    */
-  def executeReplicaReassignmentTasks(zkUtils: ZkUtils,
+  def executeReplicaReassignmentTasks(kafkaZkClient: KafkaZkClient,
                                       reassignmentTasks: java.util.List[ExecutionTask]) {
     if (reassignmentTasks != null && !reassignmentTasks.isEmpty) {
-      val inProgressReplicaReassignment = zkUtils.getPartitionsBeingReassigned()
+      val inProgressReplicaReassignment = kafkaZkClient.getPartitionReassignment
       // Add the partition being assigned to the newReplicaAssignment because we are going to add the new
       // reassignment together.
-      val newReplicaAssignment = scala.collection.mutable.Map(inProgressReplicaReassignment.map { case (tp, context) =>
-        tp -> context.newReplicas
-      }.toSeq: _*)
+      val newReplicaAssignment = scala.collection.mutable.Map(inProgressReplicaReassignment.toSeq: _*)
       reassignmentTasks.foreach({ task =>
         val topic = task.proposal.topic
         val partition = task.proposal.partitionId
-        val tp = TopicAndPartition(topic, partition)
+        val tp = new TopicPartition(topic, partition)
         val oldReplicas = asScalaBuffer(task.proposal.oldReplicas()).map(_.toInt)
         val newReplicas = asScalaBuffer(task.proposal().newReplicas()).map(_.toInt)
 
@@ -74,13 +71,13 @@ object ExecutorUtils {
               Seq.empty
             } else {
               // verify with current assignment
-              val currentReplicaAssignment = zkUtils.getReplicasForPartition(topic, partition)
+              val currentReplicaAssignment = kafkaZkClient.getReplicasForPartition(tp)
               if (currentReplicaAssignment.isEmpty) {
                 LOG.warn(s"The partitionId $partition does not exist.")
                 addTask = false
                 Seq.empty
               } else {
-                // we are not verifying the old replicas becuase the we may be reexecuting a task,
+                // we are not verifying the old replicas because the we may be reexecuting a task,
                 // in which case the replica list could be different from the old replicas.
                 newReplicas
               }
@@ -92,36 +89,35 @@ object ExecutorUtils {
 
       // We do not use the ReassignPartitionsCommand here because we want to have incremental partition movement.
       if (newReplicaAssignment.nonEmpty)
-        zkUtils.updatePartitionReassignmentData(newReplicaAssignment)
+        kafkaZkClient.setOrCreatePartitionReassignment(newReplicaAssignment)
     }
   }
 
-  def executePreferredLeaderElection(zkUtils: ZkUtils, tasks: java.util.List[ExecutionTask]) {
+  def executePreferredLeaderElection(kafkaZkClient: KafkaZkClient, tasks: java.util.List[ExecutionTask]) {
     val partitionsToExecute = tasks.map(task =>
-      TopicAndPartition(task.proposal.topic, task.proposal.partitionId)).toSet
+      new TopicPartition(task.proposal.topic, task.proposal.partitionId)).toSet
 
-    val preferredReplicaElectionCommand = new PreferredReplicaLeaderElectionCommand(zkUtils, partitionsToExecute)
+    val preferredReplicaElectionCommand = new PreferredReplicaLeaderElectionCommand(kafkaZkClient, partitionsToExecute)
     preferredReplicaElectionCommand.moveLeaderToPreferredReplica()
   }
 
-  def partitionsBeingReassigned(zkUtils: ZkUtils): util.Set[TopicPartition] = {
-    setAsJavaSet(zkUtils.getPartitionsBeingReassigned().keys.map(tap => new TopicPartition(tap.topic, tap.partition)).toSet)
+  def partitionsBeingReassigned(kafkaZkClient: KafkaZkClient): util.Set[TopicPartition] = {
+    setAsJavaSet(kafkaZkClient.getPartitionReassignment.keys.toSet)
   }
 
-  def ongoingLeaderElection(zkUtils: ZkUtils): util.Set[TopicPartition] = {
-    setAsJavaSet(zkUtils.getPartitionsUndergoingPreferredReplicaElection()
-                        .map(tap => new TopicPartition(tap.topic, tap.partition)).toSet)
+  def ongoingLeaderElection(kafkaZkClient: KafkaZkClient): util.Set[TopicPartition] = {
+    setAsJavaSet(kafkaZkClient.getPreferredReplicaElection)
   }
 
-  def newAssignmentForPartition(zkUtils: ZkUtils, tp : TopicPartition): java.util.List[Integer] = {
+  def newAssignmentForPartition(kafkaZkClient: KafkaZkClient, tp : TopicPartition): java.util.List[Integer] = {
     val inProgressReassignment =
-      zkUtils.getPartitionsBeingReassigned().getOrElse(TopicAndPartition(tp.topic(), tp.partition()),
+      kafkaZkClient.getPartitionReassignment.getOrElse(new TopicPartition(tp.topic(), tp.partition()),
       throw new NoSuchElementException(s"Partition $tp is not being reassigned."))
 
-    seqAsJavaList(inProgressReassignment.newReplicas.map(i => i : java.lang.Integer))
+    seqAsJavaList(inProgressReassignment.map(i => i : java.lang.Integer))
   }
 
-  def currentReplicasForPartition(zkUtils: ZkUtils, tp: TopicPartition): java.util.List[java.lang.Integer] = {
-    seqAsJavaList(zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).map(i => i : java.lang.Integer))
+  def currentReplicasForPartition(kafkaZkClient: KafkaZkClient, tp: TopicPartition): java.util.List[java.lang.Integer] = {
+    seqAsJavaList(kafkaZkClient.getReplicasForPartition(new TopicPartition(tp.topic(), tp.partition())).map(i => i : java.lang.Integer))
   }
 }

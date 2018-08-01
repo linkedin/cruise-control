@@ -21,10 +21,10 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import kafka.admin.AdminUtils;
 import kafka.admin.RackAwareMode;
 import kafka.log.LogConfig;
-import kafka.utils.ZkUtils;
+import kafka.zk.AdminZkClient;
+import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -41,6 +41,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.apache.kafka.common.utils.SystemTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,6 +57,8 @@ public class KafkaSampleStore implements SampleStore {
   // Keep additional windows in case some of the windows do not have enough samples.
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
+  private final static int ZK_SESSION_TIMEOUT = 30000;
+  private final static int ZK_CONNECTION_TIMEOUT = 30000;
 
   protected static final Integer DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
@@ -132,7 +135,9 @@ public class KafkaSampleStore implements SampleStore {
   }
 
   private void ensureTopicsCreated(Map<String, ?> config) {
-    ZkUtils zkUtils = createZkUtils(config);
+    KafkaZkClient kafkaZkClient = createKafkaZkClient((String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG),
+                                                      "KafkaSampleStore",
+                                                      "EnsureTopicCreated");
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
       long windowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
@@ -147,36 +152,37 @@ public class KafkaSampleStore implements SampleStore {
       long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
       brokerSampleRetentionMs = Math.max(MIN_SAMPLE_TOPIC_RETENTION_TIME_MS, brokerSampleRetentionMs);
 
-      int numberOfBrokersInCluster = zkUtils.getAllBrokersInCluster().size();
+      int numberOfBrokersInCluster = kafkaZkClient.getAllBrokersInCluster().size();
       if (numberOfBrokersInCluster == 0) {
         throw new IllegalStateException(String.format("Kafka cluster has no alive brokers. (zookeeper.connect = %s",
                                                       config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
       }
       int replicationFactor = Math.min(2, numberOfBrokersInCluster);
 
-      ensureTopicCreated(zkUtils, topics.keySet(), _partitionMetricSampleStoreTopic, partitionSampleRetentionMs,
+      ensureTopicCreated(kafkaZkClient, topics.keySet(), _partitionMetricSampleStoreTopic, partitionSampleRetentionMs,
                          replicationFactor);
-      ensureTopicCreated(zkUtils, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
+      ensureTopicCreated(kafkaZkClient, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor);
     } finally {
-      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, 10000);
+      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient, 10000);
     }
   }
 
-  private void ensureTopicCreated(ZkUtils zkUtils, Set<String> allTopics, String topic, long retentionMs, int replicationFactor) {
+  private void ensureTopicCreated(KafkaZkClient kafkaZkClient, Set<String> allTopics, String topic, long retentionMs, int replicationFactor) {
     Properties props = new Properties();
     props.setProperty(LogConfig.RetentionMsProp(), Long.toString(retentionMs));
     props.setProperty(LogConfig.CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
+    AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
     if (!allTopics.contains(topic)) {
-      AdminUtils.createTopic(zkUtils, topic, 32, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
+      adminZkClient.createTopic(topic, 32, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
     } else {
-      AdminUtils.changeTopicConfig(zkUtils, topic, props);
+      adminZkClient.changeTopicConfig(topic, props);
     }
   }
 
-  private ZkUtils createZkUtils(Map<String, ?> config) {
-    String zkConnect = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    return ZkUtils.apply(zkConnect, 30000, 30000, false);
+  private KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
+    return KafkaZkClient.apply(connectString, false, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
+                               new SystemTime(), metricGroup, metricType);
   }
 
   @Override

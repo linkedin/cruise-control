@@ -16,7 +16,8 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import kafka.cluster.Broker;
-import kafka.utils.ZkUtils;
+import kafka.zk.BrokerIdsZNode;
+import kafka.zk.KafkaZkClient;
 import org.I0Itec.zkclient.IZkChildListener;
 import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.ZkConnection;
@@ -38,10 +39,12 @@ import static java.util.stream.Collectors.toSet;
 public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
   private static final long MAX_METADATA_WAIT_MS = 60000L;
+  private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
+  private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final String _failedBrokersZkPath;
   private final ZkClient _zkClient;
-  private final ZkUtils _zkUtils;
+  private final KafkaZkClient _kafkaZkClient;
   private final Map<Integer, Long> _failedBrokers;
   private final LoadMonitor _loadMonitor;
   private final Queue<Anomaly> _anomalies;
@@ -57,7 +60,8 @@ public class BrokerFailureDetector {
     ZkConnection zkConnection = new ZkConnection(zkUrl, 30000);
     _zkClient = new ZkClient(zkConnection, 30000, new ZkStringSerializer());
     // Do not support secure ZK at this point.
-    _zkUtils = new ZkUtils(_zkClient, zkConnection, false);
+    _kafkaZkClient = KafkaZkClient.apply(zkUrl, false, 30000, 30000, Integer.MAX_VALUE, time,
+                                         ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE);
     _failedBrokers = new HashMap<>();
     _failedBrokersZkPath = config.getString(KafkaCruiseControlConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
     _loadMonitor = loadMonitor;
@@ -77,7 +81,7 @@ public class BrokerFailureDetector {
     loadPersistedFailedBrokerList();
     // Detect broker failures.
     detectBrokerFailures();
-    _zkClient.subscribeChildChanges(ZkUtils.BrokerIdsPath(), new BrokerFailureListener());
+    _zkClient.subscribeChildChanges(BrokerIdsZNode.path(), new BrokerFailureListener());
   }
 
   synchronized void detectBrokerFailures() {
@@ -122,7 +126,7 @@ public class BrokerFailureDetector {
 
   private Set<Integer> aliveBrokers() {
     // We get the alive brokers from ZK directly.
-    return JavaConversions.asJavaCollection(_zkUtils.getAllBrokersInCluster())
+    return JavaConversions.asJavaCollection(_kafkaZkClient.getAllBrokersInCluster())
                           .stream().map(Broker::id).collect(toSet());
   }
 

@@ -4,9 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
-import com.linkedin.kafka.clients.utils.tests.AbstractKafkaClientsIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.Arrays;
@@ -36,7 +36,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
 import static org.junit.Assert.assertEquals;
 
 
-public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegrationTestHarness {
+public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
   @Before
   public void setUp() {
