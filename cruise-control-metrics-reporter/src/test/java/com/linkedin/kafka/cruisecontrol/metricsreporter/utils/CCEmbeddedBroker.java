@@ -127,9 +127,13 @@ public class CCEmbeddedBroker implements AutoCloseable {
   }
 
   @Override
-  public void close() {
+  public void close() throws Exception {
     CCKafkaTestUtils.quietly(this::shutdown);
     CCKafkaTestUtils.quietly(this::awaitShutdown);
     CCKafkaTestUtils.quietly(() -> FileUtils.forceDelete(logDir));
+  }
+
+  public static CCEmbeddedBrokerBuilder newServer() {
+    return new CCEmbeddedBrokerBuilder();
   }
 }

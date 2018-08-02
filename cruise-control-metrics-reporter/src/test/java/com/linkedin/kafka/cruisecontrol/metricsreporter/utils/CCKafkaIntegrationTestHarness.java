@@ -16,7 +16,7 @@ import org.apache.kafka.common.security.auth.SecurityProtocol;
 
 public abstract class CCKafkaIntegrationTestHarness extends CCAbstractZookeeperTestHarness {
   protected Map<Integer, CCEmbeddedBroker> _brokers = null;
-  private String _bootstrapUrl;
+  protected String _bootstrapUrl;
 
   @Override
   public void setUp() {
@@ -59,6 +59,10 @@ public abstract class CCKafkaIntegrationTestHarness extends CCAbstractZookeeperT
     }
   }
 
+  protected CCEmbeddedBroker serverForId(int id) {
+    return broker(id);
+  }
+
   protected CCEmbeddedBroker broker(int id) {
     CCEmbeddedBroker broker = _brokers.get(id);
     if (broker == null) {
@@ -76,7 +80,7 @@ public abstract class CCKafkaIntegrationTestHarness extends CCAbstractZookeeperT
    * (as determined by clusterSize()
    * @return list of broker configs, one config map per broker to be created
    */
-  private List<Map<Object, Object>> buildBrokerConfigs() {
+  protected List<Map<Object, Object>> buildBrokerConfigs() {
     List<Map<Object, Object>> configs = new ArrayList<>();
     for (int i = 0; i < clusterSize(); i++) {
       CCEmbeddedBrokerBuilder builder = new CCEmbeddedBrokerBuilder();
@@ -108,7 +112,7 @@ public abstract class CCKafkaIntegrationTestHarness extends CCAbstractZookeeperT
   }
 
   protected int clusterSize() {
-    return 1;
+    return 2;
   }
 
   protected Map<Object, Object> overridingProps() {

@@ -153,9 +153,10 @@ public class KafkaSampleStore implements SampleStore {
       brokerSampleRetentionMs = Math.max(MIN_SAMPLE_TOPIC_RETENTION_TIME_MS, brokerSampleRetentionMs);
 
       int numberOfBrokersInCluster = kafkaZkClient.getAllBrokersInCluster().size();
-      if (numberOfBrokersInCluster == 0) {
-        throw new IllegalStateException(String.format("Kafka cluster has no alive brokers. (zookeeper.connect = %s",
-                                                      config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
+      if (numberOfBrokersInCluster <= 1) {
+        throw new IllegalStateException(
+            String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d, zookeeper.connect=%s)",
+                          numberOfBrokersInCluster, config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
       }
       int replicationFactor = Math.min(2, numberOfBrokersInCluster);
 

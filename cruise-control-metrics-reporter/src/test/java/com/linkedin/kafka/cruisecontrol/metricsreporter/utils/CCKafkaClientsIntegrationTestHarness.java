@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter.utils;
 
 import java.io.File;
 import java.util.Properties;
+import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.Producer;
@@ -54,6 +55,7 @@ public abstract class CCKafkaClientsIntegrationTestHarness extends CCKafkaIntegr
         throw new AssertionError("ssl set but no trust store provided");
       }
       clientProps.setProperty(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, protocol.name);
+      clientProps.setProperty(KafkaConfig.SslEndpointIdentificationAlgorithmProp(), "");
       try {
         clientProps.putAll(TestSslUtils.createSslConfig(true, true, Mode.CLIENT, trustStoreFile, certAlias));
       } catch (Exception e) {

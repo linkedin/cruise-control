@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.StringJoiner;
 import java.util.concurrent.atomic.AtomicInteger;
+import kafka.server.KafkaConfig;
 import org.apache.kafka.common.network.Mode;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.test.TestSslUtils;
@@ -44,9 +45,13 @@ public class CCEmbeddedBrokerBuilder {
     return this;
   }
 
-  public CCEmbeddedBrokerBuilder zkConnect(CCEmbeddedZookeeper zk) {
-    this.zkConnect = zk.getConnectionString();
+  public CCEmbeddedBrokerBuilder zkConnect(String zkConnect) {
+    this.zkConnect = zkConnect;
     return this;
+  }
+
+  public CCEmbeddedBrokerBuilder zkConnect(CCEmbeddedZookeeper zk) {
+    return zkConnect(zk.getConnectionString());
   }
 
   public CCEmbeddedBrokerBuilder logDirectory(File logDirectory) {
@@ -68,9 +73,13 @@ public class CCEmbeddedBrokerBuilder {
     return this;
   }
 
-  public CCEmbeddedBrokerBuilder enablePlaintext() {
-    this.plaintextPort = 0;
+  public CCEmbeddedBrokerBuilder plaintextPort(int plaintextPort) {
+    this.plaintextPort = plaintextPort;
     return this;
+  }
+
+  public CCEmbeddedBrokerBuilder enablePlaintext() {
+    return plaintextPort(0);
   }
 
   public CCEmbeddedBrokerBuilder sslPort(int sslPort) {
@@ -153,26 +162,27 @@ public class CCEmbeddedBrokerBuilder {
     if (sslPort >= 0) {
       csvJoiner.add(SecurityProtocol.SSL.name + "://localhost:" + sslPort);
     }
-    props.put("broker.id", Integer.toString(nodeId));
-    props.put("listeners", csvJoiner.toString());
-    props.put("log.dir", logDirectory.getAbsolutePath());
-    props.put("zookeeper.connect", zkConnect);
-    props.put("replica.socket.timeout.ms", Long.toString(socketTimeout));
-    props.put("controller.socket.timeout.ms", Long.toString(socketTimeout));
-    props.put("controlled.shutdown.enable", Boolean.toString(enableControlledShutdown));
-    props.put("delete.topic.enable", Boolean.toString(enableDeleteTopic));
-    props.put("controlled.shutdown.retry.backoff.ms", Long.toString(controlledShutdownRetryBackoff));
-    props.put("log.cleaner.dedupe.buffer.size", Long.toString(logCleanerDedupBufferSize));
-    props.put("log.cleaner.enable", Boolean.toString(enableLogCleaner));
-    props.put("offsets.topic.replication.factor", "1");
+    props.put(KafkaConfig.BrokerIdProp(), Integer.toString(nodeId));
+    props.put(KafkaConfig.ListenersProp(), csvJoiner.toString());
+    props.put(KafkaConfig.LogDirProp(), logDirectory.getAbsolutePath());
+    props.put(KafkaConfig.ZkConnectProp(), zkConnect);
+    props.put(KafkaConfig.ReplicaSocketTimeoutMsProp(), Long.toString(socketTimeout));
+    props.put(KafkaConfig.ControllerSocketTimeoutMsProp(), Long.toString(socketTimeout));
+    props.put(KafkaConfig.ControlledShutdownEnableProp(), Boolean.toString(enableControlledShutdown));
+    props.put(KafkaConfig.DeleteTopicEnableProp(), Boolean.toString(enableDeleteTopic));
+    props.put(KafkaConfig.ControlledShutdownRetryBackoffMsProp(), Long.toString(controlledShutdownRetryBackoff));
+    props.put(KafkaConfig.LogCleanerDedupeBufferSizeProp(), Long.toString(logCleanerDedupBufferSize));
+    props.put(KafkaConfig.LogCleanerEnableProp(), Boolean.toString(enableLogCleaner));
+    props.put(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
+    props.put(KafkaConfig.SslEndpointIdentificationAlgorithmProp(), "");
     if (rack != null) {
-      props.put("broker.rack", rack);
+      props.put(KafkaConfig.RackProp(), rack);
     }
     if (trustStore != null || sslPort > 0) {
       try {
         props.putAll(TestSslUtils.createSslConfig(false, true, Mode.SERVER, trustStore, "server" + nodeId));
-        //switch interbroker to ssl
-        props.put("security.inter.broker.protocol", "SSL");
+        // Switch interbroker to ssl
+        props.put(KafkaConfig.InterBrokerSecurityProtocolProp(), SecurityProtocol.SSL.name);
       } catch (Exception e) {
         throw new IllegalStateException(e);
       }
