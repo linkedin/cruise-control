@@ -42,6 +42,10 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState.SubState.EXECUTOR;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState.SubState.ANALYZER;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState.SubState.MONITOR;
+
 
 /**
  * The main class of Cruise Control.
@@ -534,13 +538,27 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Get the state for Kafka Cruise Control.
+   * Get the state with all substates for Kafka Cruise Control.
    */
   public KafkaCruiseControlState state(OperationProgress operationProgress) {
-    MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
-    return new KafkaCruiseControlState(_executor.state(),
-                                       _loadMonitor.state(operationProgress, clusterAndGeneration),
-                                       _goalOptimizer.state(clusterAndGeneration));
+    return state(operationProgress, new HashSet<>(Arrays.asList(KafkaCruiseControlState.SubState.values())));
+  }
+
+  /**
+   * Get the state with selected substates for Kafka Cruise Control.
+   */
+  public KafkaCruiseControlState state(OperationProgress operationProgress, Set<KafkaCruiseControlState.SubState> substates) {
+    MetadataClient.ClusterAndGeneration clusterAndGeneration = null;
+    if (KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration(substates)) {
+      clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
+    }
+
+    return new KafkaCruiseControlState(substates.contains(EXECUTOR) ? _executor.state()
+                                                                    : null,
+                                       substates.contains(MONITOR) ? _loadMonitor.state(operationProgress, clusterAndGeneration)
+                                                                   : null,
+                                       substates.contains(ANALYZER) ? _goalOptimizer.state(clusterAndGeneration)
+                                                                    : null);
   }
 
   /**

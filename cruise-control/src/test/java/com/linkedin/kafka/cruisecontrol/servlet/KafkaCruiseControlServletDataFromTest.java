@@ -47,7 +47,7 @@ public class KafkaCruiseControlServletDataFromTest {
   private final int _numReadyGoals;
   private final int _totalGoals;
   private final int _numValidWindows;
-  private final KafkaCruiseControlServlet.DataFrom _dataFrom;
+  private final KafkaCruiseControlServletUtils.DataFrom _dataFrom;
   private final List<String> _expectedGoalsToUse;
   private final ModelCompletenessRequirements _expectedRequirements;
 
@@ -55,22 +55,22 @@ public class KafkaCruiseControlServletDataFromTest {
   public static Collection<Object[]> data() {
     List<Object[]> params = new ArrayList<>();
     // all goals are ready, 1 valid window, with available windows.
-    params.add(new Object[]{3, 3, 1, KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS, Collections.emptyList(), null});
+    params.add(new Object[]{3, 3, 1, KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), null});
     // 2 out of 3 goals are ready, 1 valid window, with available windows.
-    params.add(new Object[]{2, 3, 1, KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS, Collections.emptyList(), FOR_AVAILABLE_WINDOWS});
+    params.add(new Object[]{2, 3, 1, KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), FOR_AVAILABLE_WINDOWS});
     // all goals are ready, 1 valid window, with available partitions.
-    params.add(new Object[]{3, 3, 1, KafkaCruiseControlServlet.DataFrom.VALID_PARTITIONS, Collections.emptyList(), FOR_AVAILABLE_PARTITIONS});
+    params.add(new Object[]{3, 3, 1, KafkaCruiseControlServletUtils.DataFrom.VALID_PARTITIONS, Collections.emptyList(), FOR_AVAILABLE_PARTITIONS});
     // 2 out of 3 goals are ready, 1 valid window, with available partitions.
-    params.add(new Object[]{2, 3, 1, KafkaCruiseControlServlet.DataFrom.VALID_PARTITIONS, Collections.emptyList(), FOR_AVAILABLE_PARTITIONS});
+    params.add(new Object[]{2, 3, 1, KafkaCruiseControlServletUtils.DataFrom.VALID_PARTITIONS, Collections.emptyList(), FOR_AVAILABLE_PARTITIONS});
     // 2 out of 3 goals are ready, 0 valid window, with available windows.
-    params.add(new Object[]{2, 3, 0, KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS, Arrays.asList("0", "1"), null});
+    params.add(new Object[]{2, 3, 0, KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS, Arrays.asList("0", "1"), null});
     // No goal is ready, 0 valid window, with available windows.
-    params.add(new Object[]{0, 3, 0, KafkaCruiseControlServlet.DataFrom.VALID_WINDOWS, Collections.emptyList(), null});
+    params.add(new Object[]{0, 3, 0, KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), null});
     return params;
   }
 
   public KafkaCruiseControlServletDataFromTest(int numReadyGoals, int totalGoals, int numValidWindows,
-                                               KafkaCruiseControlServlet.DataFrom dataFrom,
+                                               KafkaCruiseControlServletUtils.DataFrom dataFrom,
                                                List<String> expectedGoalsToUse,
                                                ModelCompletenessRequirements expectedRequirements) {
     _numReadyGoals = numReadyGoals;

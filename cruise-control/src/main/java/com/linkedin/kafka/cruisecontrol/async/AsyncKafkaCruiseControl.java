@@ -14,8 +14,11 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -60,9 +63,17 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * @see KafkaCruiseControl#state(OperationProgress)
    */
   public OperationFuture<KafkaCruiseControlState> state() {
+    // All substates are requested by default.
+    return state(new HashSet<>(Arrays.asList(KafkaCruiseControlState.SubState.values())));
+  }
+
+  /**
+   * @see KafkaCruiseControl#state(OperationProgress, Set)
+   */
+  public OperationFuture<KafkaCruiseControlState> state(Set<KafkaCruiseControlState.SubState> substates) {
     OperationFuture<KafkaCruiseControlState> future = new OperationFuture<>("Get state");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new GetStateRunnable(this, future));
+    _sessionExecutor.submit(new GetStateRunnable(this, future, substates));
     return future;
   }
 
