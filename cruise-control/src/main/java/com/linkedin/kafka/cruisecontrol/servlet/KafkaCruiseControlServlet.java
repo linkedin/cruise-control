@@ -527,7 +527,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     if (!json) {
       int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
       out.write(String.format("%" + topicNameLength + "s%10s%30s%20s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
-                              "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)", "MESSAGE_IN (#/s)")
+                              "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)", "MSG_IN (#/s)")
                       .getBytes(StandardCharsets.UTF_8));
       for (Partition p : sortedPartitions) {
         if ((topic != null && !topic.matcher(p.topicPartition().topic()).matches()) ||
@@ -573,7 +573,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         record.put("DISK", p.leader().load().expectedUtilizationFor(Resource.DISK, wantMaxLoad));
         record.put("NW_IN", p.leader().load().expectedUtilizationFor(Resource.NW_IN, wantMaxLoad));
         record.put("NW_OUT", p.leader().load().expectedUtilizationFor(Resource.NW_OUT, wantMaxLoad));
-        record.put("MESSAGE_IN", p.leader().load().expectedUtilizationFor(KafkaMetricDef.MESSAGE_IN_RATE, wantMaxLoad));
+        record.put("MSG_IN", p.leader().load().expectedUtilizationFor(KafkaMetricDef.MESSAGE_IN_RATE, wantMaxLoad));
         partitionList.add(record);
       }
       partitionMap.put("records", partitionList);

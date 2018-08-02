@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
+import com.linkedin.cruisecontrol.metricdef.ValueComputingStrategy;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -98,13 +99,9 @@ public class Load implements Serializable {
   /**
    * Get a single snapshot value that is representative for the given KafkaMetric type. The current algorithm uses
    * <ol>
-   *   <li>If the max load is not requested, then:
-   *   <ol>
-   *   <li>It is the mean of the recent load for metric type except disk space usage.</li>
-   *   <li>It is the latest utilization for disk space usage.</li>
-   *   </ol>
-   *   </li>
-   *   <li>If the max load is requested: the peak load.</li>
+   *   <li>If the max load is not requested, it is max/latest/mean load depending on the ValueComputingStrategy
+   *   which the KafkaMetric type uses.</li>
+   *   <li>If the max load is requested, it is the max load.</li>
    * </ol>
    *
    * @param metric KafkaMetric type for which the expected utilization will be provided.
@@ -121,14 +118,15 @@ public class Load implements Serializable {
         info = KafkaMetricDef.brokerMetricDef().metricInfo(metric.name());
         break;
       default:
-        throw new IllegalArgumentException("Metric scope" + metric.defScope() + "for metric " + metric.name() + " is invalid.");
+        throw new IllegalArgumentException("Metric scope " + metric.defScope() + " for metric " + metric.name() + " is invalid.");
     }
     if (_metricValues.isEmpty()) {
       return 0.0;
     }
     double result = 0;
     MetricValues valuesForId = _metricValues.valuesFor(info.id());
-    result += wantMaxLoad ? valuesForId.max() : (metric == KafkaMetricDef.DISK_USAGE ? valuesForId.latest() : valuesForId.avg());
+    result += (wantMaxLoad || metric.valueComputingStrategy() == ValueComputingStrategy.MAX) ? valuesForId.max() :
+              (metric.valueComputingStrategy() == ValueComputingStrategy.LATEST ? valuesForId.latest() : valuesForId.avg());
     return max(result, 0.0);
   }
 
