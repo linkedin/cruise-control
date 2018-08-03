@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
-import com.linkedin.cruisecontrol.metricdef.ValueComputingStrategy;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
@@ -123,11 +122,17 @@ public class Load implements Serializable {
     if (_metricValues.isEmpty()) {
       return 0.0;
     }
-    double result = 0;
     MetricValues valuesForId = _metricValues.valuesFor(info.id());
-    result += (wantMaxLoad || metric.valueComputingStrategy() == ValueComputingStrategy.MAX) ? valuesForId.max() :
-              (metric.valueComputingStrategy() == ValueComputingStrategy.LATEST ? valuesForId.latest() : valuesForId.avg());
-    return max(result, 0.0);
+    if (wantMaxLoad) {
+      return max(valuesForId.max(), 0.0);
+    }
+    switch (metric.valueComputingStrategy()) {
+      case MAX: return max(valuesForId.max(), 0.0);
+      case AVG: return max(valuesForId.avg(), 0.0);
+      case LATEST: return max(valuesForId.latest(), 0.0);
+      default: throw new IllegalArgumentException("Metric value computing strategy " + metric.valueComputingStrategy() +
+                          " for metric " + metric.name() + " is invalid.");
+    }
   }
 
   /**
