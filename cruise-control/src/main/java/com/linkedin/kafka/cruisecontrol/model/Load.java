@@ -96,6 +96,46 @@ public class Load implements Serializable {
   }
 
   /**
+   * Get a single snapshot value that is representative for the given KafkaMetric type. The current algorithm uses
+   * <ol>
+   *   <li>If the max load is not requested, it is max/latest/mean load depending on the ValueComputingStrategy
+   *   which the KafkaMetric type uses.</li>
+   *   <li>If the max load is requested, it is the max load.</li>
+   * </ol>
+   *
+   * @param metric KafkaMetric type for which the expected utilization will be provided.
+   * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
+   * @return A single representative utilization value on a metric type.
+   */
+  public double expectedUtilizationFor(KafkaMetricDef metric, boolean wantMaxLoad) {
+    MetricInfo info;
+    switch (metric.defScope()) {
+      case COMMON:
+        info = KafkaMetricDef.commonMetricDef().metricInfo(metric.name());
+        break;
+      case BROKER_ONLY:
+        info = KafkaMetricDef.brokerMetricDef().metricInfo(metric.name());
+        break;
+      default:
+        throw new IllegalArgumentException("Metric scope " + metric.defScope() + " for metric " + metric.name() + " is invalid.");
+    }
+    if (_metricValues.isEmpty()) {
+      return 0.0;
+    }
+    MetricValues valuesForId = _metricValues.valuesFor(info.id());
+    if (wantMaxLoad) {
+      return max(valuesForId.max(), 0.0);
+    }
+    switch (metric.valueComputingStrategy()) {
+      case MAX: return max(valuesForId.max(), 0.0);
+      case AVG: return max(valuesForId.avg(), 0.0);
+      case LATEST: return max(valuesForId.latest(), 0.0);
+      default: throw new IllegalArgumentException("Metric value computing strategy " + metric.valueComputingStrategy() +
+                          " for metric " + metric.name() + " is invalid.");
+    }
+  }
+
+  /**
    * @return true if this load is empty, false otherwise.
    */
   boolean isEmpty() {

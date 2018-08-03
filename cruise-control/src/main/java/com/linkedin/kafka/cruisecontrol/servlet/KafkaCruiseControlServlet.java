@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import java.io.IOException;
@@ -525,8 +526,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean wantMaxLoad = KafkaCruiseControlServletUtils.wantMaxLoad(request);
     if (!json) {
       int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
-      out.write(String.format("%" + topicNameLength + "s%10s%30s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
-                              "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)")
+      out.write(String.format("%" + topicNameLength + "s%10s%30s%20s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
+                              "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)", "MSG_IN (#/s)")
                       .getBytes(StandardCharsets.UTF_8));
       for (Partition p : sortedPartitions) {
         if ((topic != null && !topic.matcher(p.topicPartition().topic()).matches()) ||
@@ -538,14 +539,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           break;
         }
         List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
-        out.write(String.format("%" + topicNameLength + "s%10s%30s%19.6f%19.3f%19.3f%19.3f%n",
+        out.write(String.format("%" + topicNameLength + "s%10s%30s%19.6f%19.3f%19.3f%19.3f%19.3f%n",
                                 p.leader().topicPartition(),
                                 p.leader().broker().id(),
                                 followers,
                                 p.leader().load().expectedUtilizationFor(Resource.CPU, wantMaxLoad),
                                 p.leader().load().expectedUtilizationFor(Resource.DISK, wantMaxLoad),
                                 p.leader().load().expectedUtilizationFor(Resource.NW_IN, wantMaxLoad),
-                                p.leader().load().expectedUtilizationFor(Resource.NW_OUT, wantMaxLoad))
+                                p.leader().load().expectedUtilizationFor(Resource.NW_OUT, wantMaxLoad),
+                                p.leader().load().expectedUtilizationFor(KafkaMetricDef.MESSAGE_IN_RATE, wantMaxLoad))
                         .getBytes(StandardCharsets.UTF_8));
       }
     } else {
@@ -571,6 +573,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         record.put("DISK", p.leader().load().expectedUtilizationFor(Resource.DISK, wantMaxLoad));
         record.put("NW_IN", p.leader().load().expectedUtilizationFor(Resource.NW_IN, wantMaxLoad));
         record.put("NW_OUT", p.leader().load().expectedUtilizationFor(Resource.NW_OUT, wantMaxLoad));
+        record.put("MSG_IN", p.leader().load().expectedUtilizationFor(KafkaMetricDef.MESSAGE_IN_RATE, wantMaxLoad));
         partitionList.add(record);
       }
       partitionMap.put("records", partitionList);
