@@ -42,9 +42,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState.SubState.EXECUTOR;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState.SubState.ANALYZER;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState.SubState.MONITOR;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState.SubState.*;
 
 
 /**
@@ -535,13 +533,6 @@ public class KafkaCruiseControl {
    */
   public void stopProposalExecution() {
     _executor.userTriggeredStopExecution();
-  }
-
-  /**
-   * Get the state with all substates for Kafka Cruise Control.
-   */
-  public KafkaCruiseControlState state(OperationProgress operationProgress) {
-    return state(operationProgress, new HashSet<>(Arrays.asList(KafkaCruiseControlState.SubState.values())));
   }
 
   /**

@@ -95,7 +95,9 @@ public class KafkaCruiseControlServletDataFromTest {
     KafkaCruiseControlState kccState = getState(_numReadyGoals, _totalGoals, _numValidWindows);
     OperationFuture<KafkaCruiseControlState> kccStateFuture = new OperationFuture<>("test");
     kccStateFuture.complete(kccState);
-    EasyMock.expect(mockKCC.state()).andReturn(kccStateFuture).anyTimes();
+    EasyMock.expect(mockKCC.state(new HashSet<>(Arrays.asList(KafkaCruiseControlState.SubState.ANALYZER,
+                                                              KafkaCruiseControlState.SubState.MONITOR))))
+            .andReturn(kccStateFuture).anyTimes();
     EasyMock.replay(mockKCC, request, response, session);
 
     KafkaCruiseControlServlet servlet =
