@@ -10,7 +10,7 @@ import java.util.Properties;
 import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.producer.ProducerConfig;
-import org.apache.kafka.common.protocol.SecurityProtocol;
+import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.junit.Assert;
 
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG;
@@ -43,14 +43,15 @@ public class CruiseControlMetricsReporterSslTest extends CruiseControlMetricsRep
         props.put(appendPrefix(configName), value);
       }
     }
-    props.setProperty("metric.reporters", CruiseControlMetricsReporter.class.getName());
-    props.setProperty("listeners", "SSL://127.0.0.1:" + port);
+    props.setProperty(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
+    props.setProperty(KafkaConfig.ListenersProp(), "SSL://127.0.0.1:" + port);
     props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG), "127.0.0.1:" + port);
-    props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG), "SSL");
+    props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG), SecurityProtocol.SSL.name);
     props.setProperty(CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG, "100");
     props.setProperty(CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
     props.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), "1");
     props.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
+    props.setProperty(KafkaConfig.DefaultReplicationFactorProp(), "2");
     return props;
   }
 

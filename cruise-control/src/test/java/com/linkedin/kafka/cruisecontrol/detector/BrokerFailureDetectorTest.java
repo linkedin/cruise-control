@@ -5,11 +5,11 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
-import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
-import com.linkedin.kafka.clients.utils.tests.EmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCEmbeddedBroker;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,7 +33,7 @@ import static org.junit.Assert.assertTrue;
 /**
  * Unit test for broker failure detector.
  */
-public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarness {
+public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
 
   @Override
   public int clusterSize() {
@@ -141,7 +141,7 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
   }
 
   private void killBroker(int index) throws Exception {
-    EmbeddedBroker broker = _brokers.get(index);
+    CCEmbeddedBroker broker = _brokers.get(index);
     broker.shutdown();
     broker.awaitShutdown();
   }

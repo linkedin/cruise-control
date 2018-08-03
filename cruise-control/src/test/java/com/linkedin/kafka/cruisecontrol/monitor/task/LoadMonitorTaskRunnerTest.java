@@ -7,12 +7,12 @@ package com.linkedin.kafka.cruisecontrol.monitor.task;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
@@ -31,9 +31,9 @@ import java.util.Set;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-import kafka.admin.AdminUtils;
 import kafka.admin.RackAwareMode;
-import kafka.utils.ZkUtils;
+import kafka.zk.AdminZkClient;
+import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
@@ -51,7 +51,7 @@ import static org.junit.Assert.assertTrue;
  * <p>
  * TODO: We copy the test harness code from likafka-clients code. This should be removed after likafka-clients is open sourced.
  */
-public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarness {
+public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   private static final long WINDOW_MS = 10000L;
   private static final int NUM_WINDOWS = 5;
   private static final int NUM_TOPICS = 100;
@@ -65,9 +65,12 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   @Before
   public void setUp() {
     super.setUp();
-    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().getConnectionString(),
+                                                                                      "LoadMonitorTaskRunnerGroup",
+                                                                                      "LoadMonitorTaskRunnerSetup");
+    AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
     for (int i = 0; i < NUM_TOPICS; i++) {
-      AdminUtils.createTopic(zkUtils, "topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
+      adminZkClient.createTopic("topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
     }
   }
 

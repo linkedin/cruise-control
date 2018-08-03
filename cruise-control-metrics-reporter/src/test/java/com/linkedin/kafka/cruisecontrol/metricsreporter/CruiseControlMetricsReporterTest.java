@@ -4,9 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.metricsreporter;
 
-import com.linkedin.kafka.clients.utils.tests.AbstractKafkaClientsIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.Arrays;
@@ -36,7 +36,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
 import static org.junit.Assert.assertEquals;
 
 
-public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegrationTestHarness {
+public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationTestHarness {
   protected static final String TOPIC = "CruiseControlMetricsReporterTest";
   @Before
   public void setUp() {
@@ -68,15 +68,15 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
   public Properties overridingProps() {
     Properties props = new Properties();
     int port = findLocalPort();
-    props.setProperty("metric.reporters", CruiseControlMetricsReporter.class.getName());
-    props.setProperty("listeners", "PLAINTEXT://127.0.0.1:" + port);
+    props.setProperty(CommonClientConfigs.METRIC_REPORTER_CLASSES_CONFIG, CruiseControlMetricsReporter.class.getName());
+    props.setProperty(KafkaConfig.ListenersProp(), "PLAINTEXT://127.0.0.1:" + port);
     props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
                       "127.0.0.1:" + port);
-    props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG,
-                      "100");
+    props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG, "100");
     props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
     props.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), "1");
     props.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
+    props.setProperty(KafkaConfig.DefaultReplicationFactorProp(), "2");
     return props;
   }
 
@@ -91,16 +91,8 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     setSecurityConfigs(props, "consumer");
     Consumer<String, CruiseControlMetric> consumer = new KafkaConsumer<>(props);
 
-    ConsumerRecords<String, CruiseControlMetric> records = ConsumerRecords.empty();
     consumer.subscribe(Collections.singletonList(TOPIC));
     long startMs = System.currentTimeMillis();
-    Set<Integer> metricTypes = new HashSet<>();
-    while (metricTypes.size() < 41 && System.currentTimeMillis() < startMs + 15000) {
-      records = consumer.poll(10);
-      for (ConsumerRecord<String, CruiseControlMetric> record : records) {
-        metricTypes.add((int) record.value().rawMetricType().id());
-      }
-    }
     HashSet<Integer> expectedMetricTypes = new HashSet<>(Arrays.asList((int) ALL_TOPIC_BYTES_IN.id(),
                                                                        (int) ALL_TOPIC_BYTES_OUT.id(),
                                                                        (int) TOPIC_BYTES_IN.id(),
@@ -142,7 +134,15 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
                                                                        (int) BROKER_LOG_FLUSH_RATE.id(),
                                                                        (int) BROKER_LOG_FLUSH_TIME_MS_MAX.id(),
                                                                        (int) BROKER_LOG_FLUSH_TIME_MS_MEAN.id()));
-    assertEquals("Expected to see " + expectedMetricTypes + ", but only see " + metricTypes, expectedMetricTypes, metricTypes);
+    Set<Integer> metricTypes = new HashSet<>();
+    ConsumerRecords<String, CruiseControlMetric> records;
+    while (metricTypes.size() < expectedMetricTypes.size() && System.currentTimeMillis() < startMs + 15000) {
+      records = consumer.poll(10);
+      for (ConsumerRecord<String, CruiseControlMetric> record : records) {
+        metricTypes.add((int) record.value().rawMetricType().id());
+      }
+    }
+    assertEquals("Expected " + expectedMetricTypes + ", but saw " + metricTypes, expectedMetricTypes, metricTypes);
   }
 
   protected int findLocalPort() {

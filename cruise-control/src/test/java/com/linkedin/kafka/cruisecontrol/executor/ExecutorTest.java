@@ -9,9 +9,9 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
-import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
-import kafka.utils.ZkUtils;
+import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -41,7 +41,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
 
 
-public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
+public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   private static final String TOPIC_0 = "testPartitionMovement0";
   private static final String TOPIC_1 = "testPartitionMovement1";
   private static final String TOPIC_2 = "testPartitionMovement2";
@@ -70,8 +70,9 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   @Test
   public void testBasicBalanceMovement() throws InterruptedException {
-    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
-
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().getConnectionString(),
+                                                                                      "ExecutorTestMetricGroup",
+                                                                                      "BasicBalanceMovement");
     Map<String, TopicDescription> topicDescriptions = createTopics();
     int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
     int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
@@ -86,12 +87,14 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
                               Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
     Collection<ExecutionProposal> proposals = Arrays.asList(proposal0, proposal1);
-    executeAndVerifyProposals(zkUtils, proposals, proposals);
+    executeAndVerifyProposals(kafkaZkClient, proposals, proposals);
   }
 
   @Test
   public void testMoveNonExistingPartition() throws InterruptedException {
-    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().getConnectionString(),
+                                                                                      "ExecutorTestMetricGroup",
+                                                                                      "MoveNonExistingPartition");
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
     int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
@@ -116,12 +119,14 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
     Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1, proposal2, proposal3);
     Collection<ExecutionProposal> proposalsToCheck = Arrays.asList(proposal0, proposal1);
-    executeAndVerifyProposals(zkUtils, proposalsToExecute, proposalsToCheck);
+    executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck);
   }
 
   @Test
   public void testBrokerDiesWhenMovePartitions() throws Exception {
-    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().getConnectionString(),
+                                                                                      "ExecutorTestMetricGroup",
+                                                                                      "BrokerDiesWhenMovePartitions");
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
     int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
@@ -138,12 +143,12 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
                               Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
     Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
-    executeAndVerifyProposals(zkUtils, proposalsToExecute, Collections.emptyList());
+    executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, Collections.emptyList());
 
     // We are not doing the rollback.
     assertEquals(Collections.singletonList(initialLeader0 == 0 ? 1 : 0),
-                 ExecutorUtils.newAssignmentForPartition(zkUtils, TP0));
-    assertEquals(initialLeader0, zkUtils.getLeaderForPartition(TOPIC_1, PARTITION).get());
+                 ExecutorUtils.newAssignmentForPartition(kafkaZkClient, TP0));
+    assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(new TopicPartition(TOPIC_1, PARTITION)).get());
   }
 
   @Test
@@ -219,7 +224,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     return topicDescriptions0;
   }
 
-  private void executeAndVerifyProposals(ZkUtils zkUtils,
+  private void executeAndVerifyProposals(KafkaZkClient kafkaZkClient,
                                          Collection<ExecutionProposal> proposalsToExecute,
                                          Collection<ExecutionProposal> proposalsToCheck) {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
@@ -229,8 +234,9 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
     for (ExecutionProposal proposal : proposalsToCheck) {
-      int replicationFactor = zkUtils.getReplicasForPartition(proposal.topic(), proposal.partitionId()).size();
-      replicationFactors.put(new TopicPartition(proposal.topic(), proposal.partitionId()), replicationFactor);
+      TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
+      int replicationFactor = kafkaZkClient.getReplicasForPartition(tp).size();
+      replicationFactors.put(tp, replicationFactor);
     }
 
     waitUntilExecutionFinishes(executor);
@@ -239,16 +245,16 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
       TopicPartition tp = new TopicPartition(proposal.topic(), proposal.partitionId());
       int expectedReplicationFactor = replicationFactors.get(tp);
       assertEquals("Replication factor for partition " + tp + " should be " + expectedReplicationFactor,
-                   expectedReplicationFactor, zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).size());
+                   expectedReplicationFactor, kafkaZkClient.getReplicasForPartition(tp).size());
 
       if (proposal.hasReplicaAction()) {
         for (int brokerId : proposal.newReplicas()) {
           assertTrue("The partition should have moved for " + tp,
-                     zkUtils.getReplicasForPartition(tp.topic(), tp.partition()).contains(brokerId));
+                     kafkaZkClient.getReplicasForPartition(tp).contains(brokerId));
         }
       }
       assertEquals("The leader should have moved for " + tp,
-                   proposal.newLeader(), zkUtils.getLeaderForPartition(tp.topic(), tp.partition()).get());
+                   proposal.newLeader(), kafkaZkClient.getLeaderForPartition(tp).get());
 
     }
   }

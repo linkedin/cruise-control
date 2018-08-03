@@ -19,7 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import kafka.utils.ZkUtils;
+import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
@@ -49,17 +49,18 @@ public class Executor {
   // The maximum time to wait for a leader movement to finish. A leader movement will be marked as failed if
   // it takes longer than this time to finish.
   private static final long LEADER_ACTION_TIMEOUT_MS = 180000L;
+  private static final String ZK_EXECUTOR_METRIC_GROUP = "CruiseControlExecutor";
+  private static final String ZK_EXECUTOR_METRIC_TYPE = "Executor";
   // The execution progress is controlled by the ExecutionTaskManager.
   private final ExecutionTaskManager _executionTaskManager;
   private final MetadataClient _metadataClient;
   private final long _statusCheckingIntervalMs;
   private final ExecutorService _proposalExecutor;
-  private final String _zkConnect;
   private final static int ZK_SESSION_TIMEOUT = 30000;
   private final static int ZK_CONNECTION_TIMEOUT = 30000;
   private final static boolean IS_ZK_SECURITY_ENABLED = false;
   private final static long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
-  private ZkUtils _zkUtils;
+  private final KafkaZkClient _kafkaZkClient;
 
   private final static long METADATA_REFRESH_BACKOFF = 100L;
   private final static long METADATA_EXPIRY_MS = Long.MAX_VALUE;
@@ -107,6 +108,7 @@ public class Executor {
            Time time,
            MetricRegistry dropwizardMetricRegistry,
            MetadataClient metadataClient) {
+    String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     _numExecutionStopped = new AtomicInteger(0);
     _numExecutionStoppedByUser = new AtomicInteger(0);
     _numExecutionStartedInKafkaAssignerMode = new AtomicInteger(0);
@@ -116,8 +118,8 @@ public class Executor {
     registerGaugeSensors(dropwizardMetricRegistry);
 
     _time = time;
-    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
+    _kafkaZkClient = KafkaZkClient.apply(zkUrl, IS_ZK_SECURITY_ENABLED, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
+                                         time, ZK_EXECUTOR_METRIC_GROUP, ZK_EXECUTOR_METRIC_TYPE);
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
                                  config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
@@ -219,7 +221,7 @@ public class Executor {
    * @param loadMonitor Load monitor.
    */
   private void startExecution(LoadMonitor loadMonitor) {
-    if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
+    if (!ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient).isEmpty()) {
       _executionTaskManager.clear();
       // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
       throw new IllegalStateException("There are ongoing partition reassignments.");
@@ -272,7 +274,7 @@ public class Executor {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
     }
     _metadataClient.close();
-    KafkaCruiseControlUtils.closeZkUtilsWithTimeout(_zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
+    KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(_kafkaZkClient, ZK_UTILS_CLOSE_TIMEOUT_MS);
     LOG.info("Executor shutdown completed.");
   }
 
@@ -405,7 +407,7 @@ public class Executor {
         if (!tasksToExecute.isEmpty()) {
           // Execute the tasks.
           _executionTaskManager.markTasksInProgress(tasksToExecute);
-          ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, tasksToExecute);
+          ExecutorUtils.executeReplicaReassignmentTasks(_kafkaZkClient, tasksToExecute);
         }
         // Wait indefinitely for partition movements to finish.
         waitForExecutionTaskToFinish();
@@ -469,7 +471,7 @@ public class Executor {
         _executionTaskManager.markTasksInProgress(leadershipMovementTasks);
 
         // Run preferred leader election.
-        ExecutorUtils.executePreferredLeaderElection(_zkUtils, leadershipMovementTasks);
+        ExecutorUtils.executePreferredLeaderElection(_kafkaZkClient, leadershipMovementTasks);
         LOG.trace("Waiting for leadership movement batch to finish.");
         while (!_executionTaskManager.inProgressTasks().isEmpty() && !_stopRequested.get()) {
           waitForExecutionTaskToFinish();
@@ -668,18 +670,18 @@ public class Executor {
     private void maybeReexecuteTasks() {
       List<ExecutionTask> replicaActionsToReexecute =
           new ArrayList<>(_executionTaskManager.inExecutionTasks(ExecutionTask.TaskType.REPLICA_ACTION));
-      if (!replicaActionsToReexecute.isEmpty() && ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
+      if (!replicaActionsToReexecute.isEmpty() && ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient).isEmpty()) {
         LOG.info("Reexecuting tasks {}", replicaActionsToReexecute);
-        ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, replicaActionsToReexecute);
+        ExecutorUtils.executeReplicaReassignmentTasks(_kafkaZkClient, replicaActionsToReexecute);
       }
 
       // Only reexecute leader actions if there is no replica actions running.
-      if (replicaActionsToReexecute.isEmpty() && ExecutorUtils.ongoingLeaderElection(_zkUtils).isEmpty()) {
+      if (replicaActionsToReexecute.isEmpty() && ExecutorUtils.ongoingLeaderElection(_kafkaZkClient).isEmpty()) {
         List<ExecutionTask> leaderActionsToReexecute =
             new ArrayList<>(_executionTaskManager.inExecutionTasks(ExecutionTask.TaskType.LEADER_ACTION));
         if (!leaderActionsToReexecute.isEmpty()) {
           LOG.info("Reexecuting tasks {}", leaderActionsToReexecute);
-          ExecutorUtils.executePreferredLeaderElection(_zkUtils, leaderActionsToReexecute);
+          ExecutorUtils.executePreferredLeaderElection(_kafkaZkClient, leaderActionsToReexecute);
         }
       }
     }
