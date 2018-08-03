@@ -72,7 +72,7 @@ public class AnomalyDetectorTest {
     EasyMock.expect(mockDetectorScheduler.isTerminated()).andDelegateTo(executorService);
 
     // The following state are used to test the delayed check when executor is busy.
-    EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject()))
+    EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject(), EasyMock.anyObject()))
             .andReturn(new KafkaCruiseControlState(ExecutorState.noTaskInProgress(), null, null));
 
     EasyMock.replay(mockAnomalyNotifier);
@@ -139,7 +139,7 @@ public class AnomalyDetectorTest {
     EasyMock.expect(mockDetectorScheduler.isTerminated()).andDelegateTo(executorService);
 
     // The following state are used to test the delayed check when executor is busy.
-    EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject()))
+    EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject(), EasyMock.anyObject()))
             .andReturn(new KafkaCruiseControlState(ExecutorState.noTaskInProgress(), null, null));
     EasyMock.expect(mockKafkaCruiseControl.rebalance(EasyMock.eq(Collections.emptyList()),
                                                      EasyMock.eq(false),
@@ -212,7 +212,7 @@ public class AnomalyDetectorTest {
     EasyMock.expect(mockDetectorScheduler.isTerminated()).andDelegateTo(executorService);
 
     // The following state are used to test the delayed check when executor is busy.
-    EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject()))
+    EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject(), EasyMock.anyObject()))
             .andReturn(new KafkaCruiseControlState(
                 ExecutorState.replicaMovementInProgress(1,
                                                         Collections.emptySet(),
@@ -274,7 +274,4 @@ public class AnomalyDetectorTest {
     t.join(30000L);
     assertTrue(detectorScheduler.isTerminated());
   }
-
-
-
 }

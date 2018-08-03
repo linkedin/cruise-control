@@ -77,4 +77,17 @@ public class KafkaCruiseControlUtils {
     }
     return false;
   }
+
+  /**
+   * Check if the ClusterAndGeneration needs to be refreshed to retrieve the requested substates.
+   *
+   * @param substates Substates for which the need for refreshing the ClusterAndGeneration will be evaluated.
+   * @return True if substates contain {@link KafkaCruiseControlState.SubState#ANALYZER} or
+   * {@link KafkaCruiseControlState.SubState#MONITOR}, false otherwise.
+   */
+  public static boolean shouldRefreshClusterAndGeneration(Set<KafkaCruiseControlState.SubState> substates) {
+    return substates.stream()
+                    .anyMatch(substate -> substate == KafkaCruiseControlState.SubState.ANALYZER
+                                          || substate == KafkaCruiseControlState.SubState.MONITOR);
+  }
 }
