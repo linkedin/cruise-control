@@ -99,6 +99,7 @@ public class BrokerFailureDetector {
 
   void shutdown() {
     _zkClient.close();
+    _kafkaZkClient.close();
   }
 
   private void persistFailedBrokerList() {
