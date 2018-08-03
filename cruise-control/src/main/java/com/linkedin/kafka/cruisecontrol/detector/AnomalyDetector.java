@@ -27,6 +27,8 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState.SubState.EXECUTOR;
+
 
 /**
  * The anomaly detector class that helps detect and handle anomalies.
@@ -155,7 +157,8 @@ public class AnomalyDetector {
             break;
           }
           // We schedule a delayed check if the executor is doing some work.
-          ExecutorState.State executorState = _kafkaCruiseControl.state(new OperationProgress()).executorState().state();
+          ExecutorState.State executorState = _kafkaCruiseControl.state(
+              new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
           if (executorState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
             LOG.debug("Schedule delayed check for anomaly {} because executor is in {} state", anomaly, executorState);
             checkWithDelay(anomaly, _anomalyDetectionIntervalMs);

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import java.io.UnsupportedEncodingException;
@@ -14,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,7 +25,6 @@ import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet.DataFrom.*;
 
 
 /**
@@ -56,6 +57,7 @@ class KafkaCruiseControlServletUtils {
   private static final String CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM = "concurrent_partition_movements_per_broker";
   private static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
   private static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
+  private static final String SUBSTATES_PARAM = "substates";
 
   static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
@@ -101,6 +103,7 @@ class KafkaCruiseControlServletUtils {
     state.add(VERBOSE_PARAM);
     state.add(SUPER_VERBOSE_PARAM);
     state.add(JSON_PARAM);
+    state.add(SUBSTATES_PARAM);
 
     Set<String> addOrRemoveBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addOrRemoveBroker.add(BROKER_ID_PARAM);
@@ -295,6 +298,29 @@ class KafkaCruiseControlServletUtils {
     return resourceString;
   }
 
+  /**
+   * Empty parameter means all substates are requested.
+   */
+  static Set<KafkaCruiseControlState.SubState> substates(HttpServletRequest request) throws UnsupportedEncodingException {
+    Set<String> substatesString;
+    String substatesParam = urlDecode(request.getParameter(SUBSTATES_PARAM));
+    substatesString = substatesParam == null ? new HashSet<>() : new HashSet<>(Arrays.asList(substatesParam.split(",")));
+    substatesString.removeIf(String::isEmpty);
+
+    Set<KafkaCruiseControlState.SubState> substates = new HashSet<>();
+    try {
+      for (String substateString : substatesString) {
+        substates.add(KafkaCruiseControlState.SubState.valueOf(substateString.toUpperCase()));
+      }
+    } catch (IllegalArgumentException iae) {
+      throw new IllegalArgumentException(
+          String.format("Unsupported substates in %s. Supported: %s", substatesString, Arrays.toString(
+              KafkaCruiseControlState.SubState.values())));
+    }
+
+    return Collections.unmodifiableSet(substates);
+  }
+
   static String urlEncode(String s) throws UnsupportedEncodingException {
     return s == null ? null : URLEncoder.encode(s, StandardCharsets.UTF_8.name());
   }
@@ -315,7 +341,7 @@ class KafkaCruiseControlServletUtils {
       goals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                             KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());
     }
-    return goals;
+    return Collections.unmodifiableList(goals);
   }
 
   static int entries(HttpServletRequest request) {
@@ -366,15 +392,19 @@ class KafkaCruiseControlServletUtils {
     if (brokersString != null) {
       brokerIds = Arrays.stream(brokersString.split(",")).map(Integer::parseInt).collect(Collectors.toList());
     }
-    return brokerIds;
+    return Collections.unmodifiableList(brokerIds);
   }
 
-  static KafkaCruiseControlServlet.DataFrom getDataFrom(HttpServletRequest request) {
-    KafkaCruiseControlServlet.DataFrom dataFrom = VALID_WINDOWS; // default to with available windows.
+  static DataFrom getDataFrom(HttpServletRequest request) {
+    DataFrom dataFrom = DataFrom.VALID_WINDOWS; // default to with available windows.
     String dataFromString = request.getParameter(DATA_FROM_PARAM);
     if (dataFromString != null) {
-      dataFrom = KafkaCruiseControlServlet.DataFrom.valueOf(dataFromString.toUpperCase());
+      dataFrom = DataFrom.valueOf(dataFromString.toUpperCase());
     }
     return dataFrom;
+  }
+
+  enum DataFrom {
+    VALID_WINDOWS, VALID_PARTITIONS
   }
 }

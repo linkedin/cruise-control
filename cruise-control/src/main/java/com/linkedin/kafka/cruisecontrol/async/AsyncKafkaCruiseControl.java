@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -34,6 +35,7 @@ import java.util.concurrent.Executors;
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(OperationProgress, boolean)}</li>
+ * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer)}</li>
  * </ul>
@@ -57,12 +59,12 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#state(OperationProgress)
+   * @see KafkaCruiseControl#state(OperationProgress, Set)
    */
-  public OperationFuture<KafkaCruiseControlState> state() {
+  public OperationFuture<KafkaCruiseControlState> state(Set<KafkaCruiseControlState.SubState> substates) {
     OperationFuture<KafkaCruiseControlState> future = new OperationFuture<>("Get state");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new GetStateRunnable(this, future));
+    _sessionExecutor.submit(new GetStateRunnable(this, future, substates));
     return future;
   }
 
