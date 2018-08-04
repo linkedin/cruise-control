@@ -161,13 +161,17 @@ public class KafkaCruiseControlState {
     }
   }
 
-  public void writeVerbose(OutputStream out, boolean superVerbose) throws IOException {
-    writeVerboseMonitorState(out);
-    writeVerboseAnalyzerState(out);
-    writeVerboseExecutorState(out);
+  public void writeOutputStream(OutputStream out, boolean verbose, boolean superVerbose) throws IOException {
+    out.write(toString().getBytes(StandardCharsets.UTF_8));
 
-    if (superVerbose) {
-      writeSuperVerbose(out);
+    if (verbose || superVerbose) {
+      writeVerboseMonitorState(out);
+      writeVerboseAnalyzerState(out);
+      writeVerboseExecutorState(out);
+
+      if (superVerbose) {
+        writeSuperVerbose(out);
+      }
     }
   }
 
