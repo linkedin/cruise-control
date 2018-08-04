@@ -5,13 +5,21 @@
 package com.linkedin.kafka.cruisecontrol;
 
 import com.google.gson.Gson;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.SortedSet;
+import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
@@ -64,10 +72,10 @@ public class KafkaClusterState {
    * @param otherPartitions state of partitions other than offline or urp.
    * @param verbose true if requested to gather state of partitions other than offline or urp.
    */
-  public void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
-                                          Set<PartitionInfo> offlinePartitions,
-                                          Set<PartitionInfo> otherPartitions,
-                                          boolean verbose) {
+  private void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
+                                           Set<PartitionInfo> offlinePartitions,
+                                           Set<PartitionInfo> otherPartitions,
+                                           boolean verbose) {
     for (String topic : _kafkaCluster.topics()) {
       for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
         boolean isURP = partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
@@ -93,9 +101,9 @@ public class KafkaClusterState {
    * @param outOfSyncCountByBrokerId Out of sync replica count by broker id.
    * @param replicaCountByBrokerId Replica count by broker id.
    */
-  public void populateKafkaBrokerState(Map<Integer, Integer> leaderCountByBrokerId,
-                                       Map<Integer, Integer> outOfSyncCountByBrokerId,
-                                       Map<Integer, Integer> replicaCountByBrokerId) {
+  private void populateKafkaBrokerState(Map<Integer, Integer> leaderCountByBrokerId,
+                                        Map<Integer, Integer> outOfSyncCountByBrokerId,
+                                        Map<Integer, Integer> replicaCountByBrokerId) {
     // Gather the broker states.
     for (String topic : _kafkaCluster.topics()) {
       for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
@@ -176,5 +184,79 @@ public class KafkaClusterState {
     cruiseControlState.put(KAFKA_BROKER_STATE, kafkaClusterByBrokerState);
     cruiseControlState.put(KAFKA_PARTITION_STATE, kafkaClusterByPartitionState);
     return cruiseControlState;
+  }
+
+  private void writeKafkaClusterState(OutputStream out, SortedSet<PartitionInfo> partitions, int topicNameLength)
+      throws IOException {
+    for (PartitionInfo partitionInfo : partitions) {
+      Set<String> replicas =
+          Arrays.stream(partitionInfo.replicas()).map(Node::idString).collect(Collectors.toSet());
+      Set<String> inSyncReplicas =
+          Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::idString).collect(Collectors.toSet());
+      Set<String> outOfSyncReplicas = new HashSet<>(replicas);
+      outOfSyncReplicas.removeAll(inSyncReplicas);
+
+      out.write(String.format("%" + topicNameLength + "s%10s%10s%40s%40s%30s%n",
+                              partitionInfo.topic(),
+                              partitionInfo.partition(),
+                              partitionInfo.leader() == null ? -1 : partitionInfo.leader().id(),
+                              replicas,
+                              inSyncReplicas,
+                              outOfSyncReplicas)
+                      .getBytes(StandardCharsets.UTF_8));
+    }
+  }
+
+  public void writeOutputStream(OutputStream out, boolean verbose) throws IOException {
+    Cluster clusterState = kafkaCluster();
+    // Brokers summary.
+    SortedMap<Integer, Integer> leaderCountByBrokerId = new TreeMap<>();
+    SortedMap<Integer, Integer> outOfSyncCountByBrokerId = new TreeMap<>();
+    SortedMap<Integer, Integer> replicaCountByBrokerId = new TreeMap<>();
+
+    populateKafkaBrokerState(leaderCountByBrokerId, outOfSyncCountByBrokerId, replicaCountByBrokerId);
+
+    String initMessage = "Brokers with replicas:";
+    out.write(String.format("%s%n%20s%20s%20s%20s%n", initMessage, "BROKER", "LEADER(S)", "REPLICAS", "OUT-OF-SYNC")
+                    .getBytes(StandardCharsets.UTF_8));
+
+    for (Integer brokerId : replicaCountByBrokerId.keySet()) {
+      out.write(String.format("%20d%20d%20d%20d%n",
+                              brokerId,
+                              leaderCountByBrokerId.getOrDefault(brokerId, 0),
+                              replicaCountByBrokerId.getOrDefault(brokerId, 0),
+                              outOfSyncCountByBrokerId.getOrDefault(brokerId, 0))
+                      .getBytes(StandardCharsets.UTF_8));
+    }
+
+    // Partitions summary.
+    int topicNameLength = clusterState.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
+
+    initMessage = verbose ? "All Partitions in the Cluster (verbose):"
+                          : "Under Replicated and Offline Partitions in the Cluster:";
+    out.write(String.format("%n%s%n%" + topicNameLength + "s%10s%10s%40s%40s%30s%n", initMessage, "TOPIC", "PARTITION",
+                            "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC")
+                    .getBytes(StandardCharsets.UTF_8));
+
+    // Gather the cluster state.
+    Comparator<PartitionInfo> comparator =
+        Comparator.comparing(PartitionInfo::topic).thenComparingInt(PartitionInfo::partition);
+    SortedSet<PartitionInfo> underReplicatedPartitions = new TreeSet<>(comparator);
+    SortedSet<PartitionInfo> offlinePartitions = new TreeSet<>(comparator);
+    SortedSet<PartitionInfo> otherPartitions = new TreeSet<>(comparator);
+
+    populateKafkaPartitionState(underReplicatedPartitions, offlinePartitions, otherPartitions, verbose);
+
+    // Write the cluster state.
+    out.write(String.format("Offline Partitions:%n").getBytes(StandardCharsets.UTF_8));
+    writeKafkaClusterState(out, offlinePartitions, topicNameLength);
+
+    out.write(String.format("Under Replicated Partitions:%n").getBytes(StandardCharsets.UTF_8));
+    writeKafkaClusterState(out, underReplicatedPartitions, topicNameLength);
+
+    if (verbose) {
+      out.write(String.format("Other Partitions:%n").getBytes(StandardCharsets.UTF_8));
+      writeKafkaClusterState(out, otherPartitions, topicNameLength);
+    }
   }
 }
