@@ -65,7 +65,7 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   @Before
   public void setUp() {
     super.setUp();
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().getConnectionString(),
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                                       "LoadMonitorTaskRunnerGroup",
                                                                                       "LoadMonitorTaskRunnerSetup");
     AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);

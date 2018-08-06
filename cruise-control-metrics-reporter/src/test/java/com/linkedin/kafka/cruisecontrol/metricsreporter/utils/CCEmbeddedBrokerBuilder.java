@@ -19,43 +19,43 @@ public class CCEmbeddedBrokerBuilder {
   private final static AtomicInteger BROKER_ID_COUNTER = new AtomicInteger();
 
   //mandatory fields
-  private int nodeId = BROKER_ID_COUNTER.incrementAndGet();
-  private String zkConnect;
+  private int _nodeId = BROKER_ID_COUNTER.incrementAndGet();
+  private String _zkConnect;
   //storage config
-  private File logDirectory;
+  private File _logDirectory;
   //networking config
-  private int plaintextPort = -1;
-  private int sslPort = -1;
-  private File trustStore;
-  private long socketTimeout = 1500;
+  private int _plaintextPort = -1;
+  private int _sslPort = -1;
+  private File _trustStore;
+  private long _socketTimeout = 1500;
   //feature control
-  private boolean enableControlledShutdown;
-  private long controlledShutdownRetryBackoff = 100;
-  private boolean enableDeleteTopic;
-  private boolean enableLogCleaner;
+  private boolean _enableControlledShutdown;
+  private long _controlledShutdownRetryBackoff = 100;
+  private boolean _enableDeleteTopic;
+  private boolean _enableLogCleaner;
   //resource management
-  private long logCleanerDedupBufferSize = 2097152; //2MB
-  private String rack;
+  private long _logCleanerDedupBufferSize = 2097152; //2MB
+  private String _rack;
 
   public CCEmbeddedBrokerBuilder() {
   }
 
   public CCEmbeddedBrokerBuilder nodeId(int nodeId) {
-    this.nodeId = nodeId;
+    _nodeId = nodeId;
     return this;
   }
 
   public CCEmbeddedBrokerBuilder zkConnect(String zkConnect) {
-    this.zkConnect = zkConnect;
+    _zkConnect = zkConnect;
     return this;
   }
 
   public CCEmbeddedBrokerBuilder zkConnect(CCEmbeddedZookeeper zk) {
-    return zkConnect(zk.getConnectionString());
+    return zkConnect(zk.connectionString());
   }
 
   public CCEmbeddedBrokerBuilder logDirectory(File logDirectory) {
-    this.logDirectory = logDirectory;
+    _logDirectory = logDirectory;
     return this;
   }
 
@@ -74,7 +74,7 @@ public class CCEmbeddedBrokerBuilder {
   }
 
   public CCEmbeddedBrokerBuilder plaintextPort(int plaintextPort) {
-    this.plaintextPort = plaintextPort;
+    _plaintextPort = plaintextPort;
     return this;
   }
 
@@ -83,7 +83,7 @@ public class CCEmbeddedBrokerBuilder {
   }
 
   public CCEmbeddedBrokerBuilder sslPort(int sslPort) {
-    this.sslPort = sslPort;
+    _sslPort = sslPort;
     return this;
   }
 
@@ -92,59 +92,59 @@ public class CCEmbeddedBrokerBuilder {
   }
 
   public CCEmbeddedBrokerBuilder trustStore(File trustStore) {
-    this.trustStore = trustStore;
+    _trustStore = trustStore;
     return this;
   }
 
   public CCEmbeddedBrokerBuilder socketTimeout(long socketTimeout) {
-    this.socketTimeout = socketTimeout;
+    _socketTimeout = socketTimeout;
     return this;
   }
 
   public CCEmbeddedBrokerBuilder enableControlledShutdown(boolean enableControlledShutdown) {
-    this.enableControlledShutdown = enableControlledShutdown;
+    _enableControlledShutdown = enableControlledShutdown;
     return this;
   }
 
   public CCEmbeddedBrokerBuilder controlledShutdownRetryBackoff(long controlledShutdownRetryBackoff) {
-    this.controlledShutdownRetryBackoff = controlledShutdownRetryBackoff;
+    _controlledShutdownRetryBackoff = controlledShutdownRetryBackoff;
     return this;
   }
 
   public CCEmbeddedBrokerBuilder enableDeleteTopic(boolean enableDeleteTopic) {
-    this.enableDeleteTopic = enableDeleteTopic;
+    _enableDeleteTopic = enableDeleteTopic;
     return this;
   }
 
   public CCEmbeddedBrokerBuilder enableLogCleaner(boolean enableLogCleaner) {
-    this.enableLogCleaner = enableLogCleaner;
+    _enableLogCleaner = enableLogCleaner;
     return this;
   }
 
   public CCEmbeddedBrokerBuilder logCleanerDedupBufferSize(long logCleanerDedupBufferSize) {
-    this.logCleanerDedupBufferSize = logCleanerDedupBufferSize;
+    _logCleanerDedupBufferSize = logCleanerDedupBufferSize;
     return this;
   }
 
   public CCEmbeddedBrokerBuilder rack(String rack) {
-    this.rack = rack;
+    _rack = rack;
     return this;
   }
 
   private void applyDefaults() {
-    if (logDirectory == null) {
-      logDirectory = CCKafkaTestUtils.newTempDir();
+    if (_logDirectory == null) {
+      _logDirectory = CCKafkaTestUtils.newTempDir();
     }
   }
 
   private void validate() throws IllegalArgumentException {
-    if (plaintextPort < 0 && sslPort < 0) {
+    if (_plaintextPort < 0 && _sslPort < 0) {
       throw new IllegalArgumentException("at least one protocol must be used");
     }
-    if (logDirectory == null) {
+    if (_logDirectory == null) {
       throw new IllegalArgumentException("log directory must be specified");
     }
-    if (zkConnect == null) {
+    if (_zkConnect == null) {
       throw new IllegalArgumentException("zkConnect must be specified");
     }
   }
@@ -156,31 +156,31 @@ public class CCEmbeddedBrokerBuilder {
     Map<Object, Object> props = new HashMap<>();
 
     StringJoiner csvJoiner = new StringJoiner(",");
-    if (plaintextPort >= 0) {
-      csvJoiner.add(SecurityProtocol.PLAINTEXT.name + "://localhost:" + plaintextPort);
+    if (_plaintextPort >= 0) {
+      csvJoiner.add(SecurityProtocol.PLAINTEXT.name + "://localhost:" + _plaintextPort);
     }
-    if (sslPort >= 0) {
-      csvJoiner.add(SecurityProtocol.SSL.name + "://localhost:" + sslPort);
+    if (_sslPort >= 0) {
+      csvJoiner.add(SecurityProtocol.SSL.name + "://localhost:" + _sslPort);
     }
-    props.put(KafkaConfig.BrokerIdProp(), Integer.toString(nodeId));
+    props.put(KafkaConfig.BrokerIdProp(), Integer.toString(_nodeId));
     props.put(KafkaConfig.ListenersProp(), csvJoiner.toString());
-    props.put(KafkaConfig.LogDirProp(), logDirectory.getAbsolutePath());
-    props.put(KafkaConfig.ZkConnectProp(), zkConnect);
-    props.put(KafkaConfig.ReplicaSocketTimeoutMsProp(), Long.toString(socketTimeout));
-    props.put(KafkaConfig.ControllerSocketTimeoutMsProp(), Long.toString(socketTimeout));
-    props.put(KafkaConfig.ControlledShutdownEnableProp(), Boolean.toString(enableControlledShutdown));
-    props.put(KafkaConfig.DeleteTopicEnableProp(), Boolean.toString(enableDeleteTopic));
-    props.put(KafkaConfig.ControlledShutdownRetryBackoffMsProp(), Long.toString(controlledShutdownRetryBackoff));
-    props.put(KafkaConfig.LogCleanerDedupeBufferSizeProp(), Long.toString(logCleanerDedupBufferSize));
-    props.put(KafkaConfig.LogCleanerEnableProp(), Boolean.toString(enableLogCleaner));
+    props.put(KafkaConfig.LogDirProp(), _logDirectory.getAbsolutePath());
+    props.put(KafkaConfig.ZkConnectProp(), _zkConnect);
+    props.put(KafkaConfig.ReplicaSocketTimeoutMsProp(), Long.toString(_socketTimeout));
+    props.put(KafkaConfig.ControllerSocketTimeoutMsProp(), Long.toString(_socketTimeout));
+    props.put(KafkaConfig.ControlledShutdownEnableProp(), Boolean.toString(_enableControlledShutdown));
+    props.put(KafkaConfig.DeleteTopicEnableProp(), Boolean.toString(_enableDeleteTopic));
+    props.put(KafkaConfig.ControlledShutdownRetryBackoffMsProp(), Long.toString(_controlledShutdownRetryBackoff));
+    props.put(KafkaConfig.LogCleanerDedupeBufferSizeProp(), Long.toString(_logCleanerDedupBufferSize));
+    props.put(KafkaConfig.LogCleanerEnableProp(), Boolean.toString(_enableLogCleaner));
     props.put(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
     props.put(KafkaConfig.SslEndpointIdentificationAlgorithmProp(), "");
-    if (rack != null) {
-      props.put(KafkaConfig.RackProp(), rack);
+    if (_rack != null) {
+      props.put(KafkaConfig.RackProp(), _rack);
     }
-    if (trustStore != null || sslPort > 0) {
+    if (_trustStore != null || _sslPort > 0) {
       try {
-        props.putAll(TestSslUtils.createSslConfig(false, true, Mode.SERVER, trustStore, "server" + nodeId));
+        props.putAll(TestSslUtils.createSslConfig(false, true, Mode.SERVER, _trustStore, "server" + _nodeId));
         // Switch interbroker to ssl
         props.put(KafkaConfig.InterBrokerSecurityProtocolProp(), SecurityProtocol.SSL.name);
       } catch (Exception e) {

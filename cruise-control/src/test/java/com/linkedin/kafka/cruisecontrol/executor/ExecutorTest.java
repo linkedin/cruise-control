@@ -70,7 +70,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
 
   @Test
   public void testBasicBalanceMovement() throws InterruptedException {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().getConnectionString(),
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                                       "ExecutorTestMetricGroup",
                                                                                       "BasicBalanceMovement");
     Map<String, TopicDescription> topicDescriptions = createTopics();
@@ -92,7 +92,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
 
   @Test
   public void testMoveNonExistingPartition() throws InterruptedException {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().getConnectionString(),
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                                       "ExecutorTestMetricGroup",
                                                                                       "MoveNonExistingPartition");
 
@@ -124,7 +124,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
 
   @Test
   public void testBrokerDiesWhenMovePartitions() throws Exception {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().getConnectionString(),
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                                       "ExecutorTestMetricGroup",
                                                                                       "BrokerDiesWhenMovePartitions");
 
@@ -195,7 +195,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   }
 
   private Map<String, TopicDescription> createTopics() throws InterruptedException {
-    AdminClient adminClient = getAdminClient(broker(0).getPlaintextAddr());
+    AdminClient adminClient = getAdminClient(broker(0).plaintextAddr());
 
     adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC_0, 1, (short) 1),
                                            new NewTopic(TOPIC_1, 1, (short) 2)));
@@ -206,8 +206,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     Map<String, TopicDescription> topicDescriptions0 = null;
     Map<String, TopicDescription> topicDescriptions1 = null;
     do {
-      try (AdminClient adminClient0 = getAdminClient(broker(0).getPlaintextAddr());
-          AdminClient adminClient1 = getAdminClient(broker(1).getPlaintextAddr())) {
+      try (AdminClient adminClient0 = getAdminClient(broker(0).plaintextAddr());
+           AdminClient adminClient1 = getAdminClient(broker(1).plaintextAddr())) {
         topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC_0, TOPIC_1)).all().get();
         topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC_0, TOPIC_1)).all().get();
         try {
@@ -286,7 +286,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     props.setProperty(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, capacityConfigFile);
     props.setProperty(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers());
     props.setProperty(KafkaCruiseControlConfig.METRIC_SAMPLER_CLASS_CONFIG, NoopSampler.class.getName());
-    props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().getConnectionString());
+    props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().connectionString());
     props.setProperty(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG, "10");
     props.setProperty(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "1000");
     return props;

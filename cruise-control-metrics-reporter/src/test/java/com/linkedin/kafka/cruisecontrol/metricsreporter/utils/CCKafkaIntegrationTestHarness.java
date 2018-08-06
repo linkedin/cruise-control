@@ -32,7 +32,7 @@ public abstract class CCKafkaIntegrationTestHarness extends CCAbstractZookeeperT
     }
     for (Map<Object, Object> brokerConfig : brokerConfigs) {
       CCEmbeddedBroker broker = new CCEmbeddedBroker(brokerConfig);
-      int id = broker.getId();
+      int id = broker.id();
       if (_brokers.putIfAbsent(id, broker) != null) {
         CCKafkaTestUtils.quietly(broker::close); //wont be picked up by teardown
         throw new IllegalStateException("multiple brokers defined with id " + id);
@@ -40,7 +40,7 @@ public abstract class CCKafkaIntegrationTestHarness extends CCAbstractZookeeperT
     }
 
     StringJoiner joiner = new StringJoiner(",");
-    _brokers.values().forEach(broker -> joiner.add(broker.getAddr(securityProtocol())));
+    _brokers.values().forEach(broker -> joiner.add(broker.addr(securityProtocol())));
     _bootstrapUrl = joiner.toString();
   }
 

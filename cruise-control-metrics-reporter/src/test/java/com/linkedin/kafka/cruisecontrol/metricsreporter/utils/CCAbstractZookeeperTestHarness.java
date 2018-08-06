@@ -26,6 +26,6 @@ public abstract class CCAbstractZookeeperTestHarness {
   }
 
   protected String zkConnect() {
-    return zookeeper().getConnectionString();
+    return zookeeper().connectionString();
   }
 }
