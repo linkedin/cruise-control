@@ -14,8 +14,11 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.io.FileUtils;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.producer.KafkaProducer;
+import org.apache.kafka.clients.producer.ProducerConfig;
 
 
 public class CCKafkaTestUtils {
@@ -56,41 +59,40 @@ public class CCKafkaTestUtils {
     //utility class
   }
 
-  public static KafkaProducer<String, String> vanillaProducerFor(CCEmbeddedBroker broker) {
-    String bootstrap = broker.getPlaintextAddr();
+  public static KafkaProducer<String, String> producerFor(CCEmbeddedBroker broker) {
+    String bootstrap = broker.plaintextAddr();
     if (bootstrap == null) {
-      bootstrap = broker.getSslAddr();
+      bootstrap = broker.sslAddr();
     }
 
     Properties props = new Properties();
-    props.put("bootstrap.servers", bootstrap);
-    props.put("acks", "all");
-    props.put("retries", 0);
-    props.put("batch.size", 16384);
-    props.put("linger.ms", 1);
-    props.put("buffer.memory", 1024 * 1024);
-    props.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-    props.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+    props.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+    props.put(ProducerConfig.ACKS_CONFIG, "all");
+    props.put(ProducerConfig.RETRIES_CONFIG, 0);
+    props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
+    props.put(ProducerConfig.LINGER_MS_CONFIG, 1);
+    props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 1024 * 1024);
+    props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+    props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
 
     return new KafkaProducer<>(props);
   }
 
-  public static KafkaConsumer<String, String> vanillaConsumerFor(CCEmbeddedBroker broker) {
-    String bootstrap = broker.getPlaintextAddr();
+  public static KafkaConsumer<String, String> consumerFor(CCEmbeddedBroker broker) {
+    String bootstrap = broker.plaintextAddr();
     if (bootstrap == null) {
-      bootstrap = broker.getSslAddr();
+      bootstrap = broker.sslAddr();
     }
 
     Properties props = new Properties();
-    props.put("bootstrap.servers", bootstrap);
-    props.put("group.id", "test");
-    props.put("auto.offset.reset", "earliest");
-    props.put("enable.auto.commit", "false");
-    props.put("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-    props.put("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
-    KafkaConsumer<String, String> consumer = new KafkaConsumer<>(props);
+    props.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrap);
+    props.put(ConsumerConfig.GROUP_ID_CONFIG, "test");
+    props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
+    props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringDeserializer");
 
-    return consumer;
+    return new KafkaConsumer<>(props);
   }
 
   public static File newTempDir() {
