@@ -222,14 +222,17 @@ public class KafkaClusterState {
           Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::idString).collect(Collectors.toSet());
       Set<String> outOfSyncReplicas = new HashSet<>(replicas);
       outOfSyncReplicas.removeAll(inSyncReplicas);
+      Set<String> offlineReplicas =
+          Arrays.stream(partitionInfo.offlineReplicas()).map(Node::idString).collect(Collectors.toSet());
 
-      out.write(String.format("%" + topicNameLength + "s%10s%10s%40s%40s%30s%n",
+      out.write(String.format("%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%n",
                               partitionInfo.topic(),
                               partitionInfo.partition(),
                               partitionInfo.leader() == null ? -1 : partitionInfo.leader().id(),
                               replicas,
                               inSyncReplicas,
-                              outOfSyncReplicas)
+                              outOfSyncReplicas,
+                              offlineReplicas)
                       .getBytes(StandardCharsets.UTF_8));
     }
   }
