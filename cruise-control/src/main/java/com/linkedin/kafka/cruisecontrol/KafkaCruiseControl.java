@@ -540,6 +540,10 @@ public class KafkaCruiseControl {
    */
   public KafkaCruiseControlState state(OperationProgress operationProgress, Set<KafkaCruiseControlState.SubState> substates) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = null;
+    // In case no substate is specified, return all substates.
+    substates = !substates.isEmpty() ? substates
+                                     : new HashSet<>(Arrays.asList(KafkaCruiseControlState.SubState.values()));
+
     if (KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration(substates)) {
       clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     }
