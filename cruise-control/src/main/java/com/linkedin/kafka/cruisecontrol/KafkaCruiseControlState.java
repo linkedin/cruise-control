@@ -82,8 +82,8 @@ public class KafkaCruiseControlState {
   public String toString() {
     return String.format("%s%s%s",
                          _monitorState != null ? String.format("MonitorState: %s%n", _monitorState) : "",
-                         _executorState != null ? String.format("ExecutorState: %s%n", _monitorState) : "",
-                         _analyzerState != null ? String.format("AnalyzerState: %s%n", _monitorState) : "");
+                         _executorState != null ? String.format("ExecutorState: %s%n", _executorState) : "",
+                         _analyzerState != null ? String.format("AnalyzerState: %s%n", _analyzerState) : "");
   }
 
   private void writeVerboseMonitorState(OutputStream out) throws IOException {
