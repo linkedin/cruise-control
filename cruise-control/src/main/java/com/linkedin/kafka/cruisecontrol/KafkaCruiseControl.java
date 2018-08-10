@@ -358,7 +358,7 @@ public class KafkaCruiseControl {
    * Get the cluster model for a given time window.
    * @param from the start time of the window
    * @param to the end time of the window
-   * @param minValidPartitionRatio the minimal valid partition ratio requirement of model from request
+   * @param minValidPartitionRatio the minimum valid partition ratio requirement of model
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return the cluster workload model.

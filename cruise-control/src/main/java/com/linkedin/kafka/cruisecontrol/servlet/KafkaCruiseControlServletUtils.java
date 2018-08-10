@@ -299,7 +299,7 @@ class KafkaCruiseControlServletUtils {
     } else {
       Double minValidPartitionRatio = Double.parseDouble(minValidPartitionRatioString);
       if (minValidPartitionRatio > 1.0 || minValidPartitionRatio < 0.0) {
-        throw new IllegalArgumentException("The requested minimal partition ratio must be in range [0.0, 1.0] (Requested: "
+        throw new IllegalArgumentException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
             + minValidPartitionRatio.toString() + ").");
       }
       return minValidPartitionRatio;
