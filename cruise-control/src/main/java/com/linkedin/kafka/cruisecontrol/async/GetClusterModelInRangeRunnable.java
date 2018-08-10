@@ -6,28 +6,27 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 
 /**
- * The async runnable for {@link KafkaCruiseControl#clusterModel(long, long, ModelCompletenessRequirements,
+ * The async runnable for {@link KafkaCruiseControl#clusterModel(long, long, Double,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)}
  */
 class GetClusterModelInRangeRunnable extends OperationRunnable<ClusterModel> {
   private final long _startMs;
   private final long _endMs;
-  private final ModelCompletenessRequirements _modelCompletenessRequirements;
+  private final Double _minValidPartitionRatio;
   private final boolean _allowCapacityEstimation;
 
   GetClusterModelInRangeRunnable(KafkaCruiseControl kafkaCruiseControl,
                                  OperationFuture<ClusterModel> future,
                                  long startMs,
                                  long endMs,
-                                 ModelCompletenessRequirements modelCompletenessRequirements,
+                                 Double minValidPartitionRatio,
                                  boolean allowCapacityEstimation) {
     super(kafkaCruiseControl, future);
     _startMs = startMs;
     _endMs = endMs;
-    _modelCompletenessRequirements = modelCompletenessRequirements;
+    _minValidPartitionRatio = minValidPartitionRatio;
     _allowCapacityEstimation = allowCapacityEstimation;
   }
 
@@ -35,7 +34,7 @@ class GetClusterModelInRangeRunnable extends OperationRunnable<ClusterModel> {
   protected ClusterModel getResult() throws Exception {
     return _kafkaCruiseControl.clusterModel(_startMs,
                                             _endMs,
-                                            _modelCompletenessRequirements,
+                                            _minValidPartitionRatio,
                                             _future.operationProgress(),
                                             _allowCapacityEstimation);
   }
