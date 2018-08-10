@@ -33,7 +33,7 @@ import java.util.concurrent.Executors;
  * OperationProgress, boolean, Integer, Integer)}</li>
  * <li>{@link KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress, boolean, Integer)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
- * <li>{@link KafkaCruiseControl#clusterModel(long, long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
+ * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
@@ -123,16 +123,16 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#clusterModel(long, long, ModelCompletenessRequirements, OperationProgress, boolean)
+   * @see KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)
    */
   public OperationFuture<ClusterModel> clusterModel(long startMs,
                                                     long endMs,
-                                                    ModelCompletenessRequirements requirements,
+                                                    Double minValidPartitionRatio,
                                                     boolean allowCapacityEstimation) {
     OperationFuture<ClusterModel> future =
         new OperationFuture<>(String.format("Get cluster model from %d to %d", startMs, endMs));
     pending(future.operationProgress());
-    _sessionExecutor.submit(new GetClusterModelInRangeRunnable(this, future, startMs, endMs, requirements, allowCapacityEstimation));
+    _sessionExecutor.submit(new GetClusterModelInRangeRunnable(this, future, startMs, endMs, minValidPartitionRatio, allowCapacityEstimation));
     return future;
   }
 

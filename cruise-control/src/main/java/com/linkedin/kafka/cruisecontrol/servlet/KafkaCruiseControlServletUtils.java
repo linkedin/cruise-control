@@ -58,6 +58,7 @@ class KafkaCruiseControlServletUtils {
   private static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
   private static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
   private static final String SUBSTATES_PARAM = "substates";
+  private static final String MIN_VALID_PARTITION_RATIO_PARAM = "min_valid_partition_ratio";
 
   static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
@@ -89,6 +90,7 @@ class KafkaCruiseControlServletUtils {
     partitionLoad.add(MAX_LOAD_PARAM);
     partitionLoad.add(TOPIC_PARAM);
     partitionLoad.add(PARTITION_PARAM);
+    partitionLoad.add(MIN_VALID_PARTITION_RATIO_PARAM);
 
     Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     proposals.add(VERBOSE_PARAM);
@@ -288,6 +290,20 @@ class KafkaCruiseControlServletUtils {
   static Pattern topic(HttpServletRequest request) {
     String topicString = request.getParameter(TOPIC_PARAM);
     return topicString != null ? Pattern.compile(topicString) : null;
+  }
+
+  static Double minValidPartitionRatio(HttpServletRequest request) {
+    String minValidPartitionRatioString = request.getParameter(MIN_VALID_PARTITION_RATIO_PARAM);
+    if (minValidPartitionRatioString == null) {
+      return null;
+    } else {
+      Double minValidPartitionRatio = Double.parseDouble(minValidPartitionRatioString);
+      if (minValidPartitionRatio > 1.0 || minValidPartitionRatio < 0.0) {
+        throw new IllegalArgumentException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
+            + minValidPartitionRatio.toString() + ").");
+      }
+      return minValidPartitionRatio;
+    }
   }
 
   static String resourceString(HttpServletRequest request) {
