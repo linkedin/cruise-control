@@ -471,6 +471,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     int partitionUpperBoundary;
     int partitionLowerBoundary;
     boolean json = wantJSON(request);
+    Double minValidPartitionRatio;
     String resourceString = resourceString(request);
     try {
       resource = Resource.valueOf(resourceString.toUpperCase());
@@ -490,6 +491,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       partitionLowerBoundary = partitionBoundary(request, false);
       partitionUpperBoundary = partitionBoundary(request, true);
       entries = entries(request);
+      minValidPartitionRatio = minValidPartitionRatio(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
@@ -497,10 +499,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
 
     boolean allowCapacityEstimation = allowCapacityEstimation(request);
-    ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, 0.98, false);
     // Get cluster model asynchronously.
     ClusterModel clusterModel = getAndMaybeReturnProgress(
-            request, response, () -> _asyncKafkaCruiseControl.clusterModel(startMs, endMs, requirements, allowCapacityEstimation));
+            request, response, () -> _asyncKafkaCruiseControl.clusterModel(startMs, endMs, minValidPartitionRatio, allowCapacityEstimation));
     if (clusterModel == null) {
       return false;
     }
