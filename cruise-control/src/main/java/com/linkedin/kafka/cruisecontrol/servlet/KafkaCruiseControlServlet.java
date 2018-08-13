@@ -69,8 +69,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private final SessionManager _sessionManager;
   private final long _maxBlockMs;
   private final ThreadLocal<Integer> _asyncOperationStep;
-  private final HashMap<EndPoint, Meter> _requestMeter = new HashMap<>();
-  private final HashMap<EndPoint, Timer> _requestExecutionTimer = new HashMap<>();
+  private final Map<EndPoint, Meter> _requestMeter = new HashMap<>();
+  private final Map<EndPoint, Timer> _requestExecutionTimer = new HashMap<>();
 
   public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                    long maxBlockMs,

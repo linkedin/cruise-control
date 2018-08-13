@@ -19,12 +19,12 @@ public class OperationFuture<T> extends CompletableFuture<T> {
   private final String _operation;
   private final OperationProgress _operationProgress;
   private volatile Thread _executionThread = null;
-  private long _finishTime;
+  private long _finishTimeNs;
 
   public OperationFuture(String operation) {
     _operation = "'" + operation + "'";
     _operationProgress = new OperationProgress();
-    _finishTime = -1;
+    _finishTimeNs = -1;
   }
 
   @Override
@@ -104,11 +104,18 @@ public class OperationFuture<T> extends CompletableFuture<T> {
      return _operationProgress;
   }
 
-  public void setFinishTime(long finishTime) {
-    _finishTime = finishTime;
+  /**
+   * Record the finish time of this operation, invoked at the end of corresponding {@link OperationRunnable#run()}.
+   * @param finishTimeNs the system time when this operation completes.
+   */
+  public void setFinishTimeNs(long finishTimeNs) {
+    _finishTimeNs = finishTimeNs;
   }
 
-  public long getFinishTime() {
-    return _finishTime;
+  /**
+   * @return the integer representing the finish time of this operation.
+   */
+  public long finishTimeNs() {
+    return _finishTimeNs;
   }
 }

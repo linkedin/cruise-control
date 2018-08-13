@@ -54,7 +54,7 @@ public class SessionManager {
                                                                                      null));
   private final Timer _sessionLifetimeTimer;
   private final Meter _sessionCreationFailureMeter;
-  private final HashMap<EndPoint, Timer> _requestExecutionTimer;
+  private final Map<EndPoint, Timer> _requestExecutionTimer;
 
   /**
    * Construct the session manager.
@@ -63,7 +63,7 @@ public class SessionManager {
    * @param time the time object for unit test.
    * @param dropwizardMetricRegistry the metric registry to record metrics.
    */
-  SessionManager(int capacity, long sessionExpiryMs, Time time, MetricRegistry dropwizardMetricRegistry, HashMap<EndPoint, Timer> requestExecutionTimer) {
+  SessionManager(int capacity, long sessionExpiryMs, Time time, MetricRegistry dropwizardMetricRegistry, Map<EndPoint, Timer> requestExecutionTimer) {
     _capacity = capacity;
     _sessionExpiryMs = sessionExpiryMs;
     _time = time;
@@ -252,7 +252,7 @@ public class SessionManager {
     }
 
     private long executionTime() {
-      return lastFuture().getFinishTime() == -1 ? -1 : lastFuture().getFinishTime() - _requestTime;
+      return lastFuture().finishTimeNs() == -1 ? -1 : lastFuture().finishTimeNs() - _requestTime;
     }
 
     private EndPoint endPoint() {

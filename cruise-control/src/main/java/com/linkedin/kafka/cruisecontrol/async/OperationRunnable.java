@@ -43,7 +43,8 @@ abstract class OperationRunnable<T> implements Runnable {
           ((Pending) steps.get(0)).done();
         }
         _future.complete(getResult());
-        _future.setFinishTime(System.nanoTime());
+        // If operation completes successfully (i.e with no exception thrown), record the operation finish time.
+        _future.setFinishTimeNs(System.nanoTime());
       }
     } catch (Exception e) {
       LOG.debug("Received exception when trying to execute runnable for \"" + _future.operation() + "\"", e);
