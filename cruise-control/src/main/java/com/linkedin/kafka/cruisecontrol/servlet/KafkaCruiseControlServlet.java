@@ -4,7 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
+import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.KafkaClusterState;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
@@ -67,16 +69,24 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private final SessionManager _sessionManager;
   private final long _maxBlockMs;
   private final ThreadLocal<Integer> _asyncOperationStep;
+  private final HashMap<EndPoint, Meter> _requestMeter = new HashMap<>();
+  private final HashMap<EndPoint, Timer> _requestExecutionTimer = new HashMap<>();
 
   public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                    long maxBlockMs,
                                    long sessionExpiryMs,
                                    MetricRegistry dropwizardMetricRegistry) {
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
-    _sessionManager = new SessionManager(5, sessionExpiryMs, Time.SYSTEM, dropwizardMetricRegistry);
+    _sessionManager = new SessionManager(5, sessionExpiryMs, Time.SYSTEM, dropwizardMetricRegistry, _requestExecutionTimer);
     _maxBlockMs = maxBlockMs;
     _asyncOperationStep = new ThreadLocal<>();
     _asyncOperationStep.set(0);
+
+    for (EndPoint endpoint : EndPoint.values()) {
+      _requestMeter.put(endpoint, dropwizardMetricRegistry.meter(MetricRegistry.name("KafkaCruiseControlServelet", endpoint.name() + "-request-meter")));
+      _requestExecutionTimer.put(endpoint, dropwizardMetricRegistry.timer(MetricRegistry.name("KafkaCruiseControlServelet",
+                                  endpoint.name() + "-request-execution-timer")));
+    }
   }
 
   @Override
@@ -156,35 +166,44 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                            endPoint, userParams.toString());
           setErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request));
         } else {
+          if (EndPoint.getEndpoint().contains(endPoint)) {
+            _requestMeter.get(endPoint).mark();
+          } else {
+            throw new UserRequestException("Invalid URL for GET");
+          }
+          long requestExecutionStartTime = System.nanoTime();
           switch (endPoint) {
             case BOOTSTRAP:
               bootstrap(request, response);
+              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case TRAIN:
               train(request, response);
+              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case LOAD:
               if (getClusterLoad(request, response)) {
-                _sessionManager.closeSession(request);
+                _sessionManager.closeSession(request, false);
               }
               break;
             case PARTITION_LOAD:
               if (getPartitionLoad(request, response)) {
-                _sessionManager.closeSession(request);
+                _sessionManager.closeSession(request, false);
               }
               break;
             case PROPOSALS:
               if (getProposals(request, response)) {
-                _sessionManager.closeSession(request);
+                _sessionManager.closeSession(request, false);
               }
               break;
             case STATE:
               if (getState(request, response)) {
-                _sessionManager.closeSession(request);
+                _sessionManager.closeSession(request, false);
               }
               break;
             case KAFKA_CLUSTER_STATE:
               getKafkaClusterState(request, response);
+              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             default:
               throw new UserRequestException("Invalid URL for GET");
@@ -202,7 +221,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       StringWriter sw = new StringWriter();
       ure.printStackTrace(new PrintWriter(sw));
       setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
-      _sessionManager.closeSession(request);
+      _sessionManager.closeSession(request, true);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
@@ -210,7 +229,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String errorMessage = String.format("Error processing GET request '%s' due to '%s'.", request.getPathInfo(), e.getMessage());
       LOG.error(errorMessage, e);
       setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
-      _sessionManager.closeSession(request);
+      _sessionManager.closeSession(request, true);
     } finally {
       try {
         response.getOutputStream().close();
@@ -275,33 +294,42 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                            endPoint, userParams.toString());
           setErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request));
         } else {
+          if (EndPoint.postEndpoint().contains(endPoint)) {
+            _requestMeter.get(endPoint).mark();
+          } else {
+            throw new UserRequestException("Invalid URL for POST");
+          }
+          long requestExecutionStartTime = System.nanoTime();
           switch (endPoint) {
             case ADD_BROKER:
             case REMOVE_BROKER:
               if (addOrRemoveBroker(request, response, endPoint)) {
-                _sessionManager.closeSession(request);
+                _sessionManager.closeSession(request, false);
               }
               break;
             case REBALANCE:
               if (rebalance(request, response, endPoint)) {
-                _sessionManager.closeSession(request);
+                _sessionManager.closeSession(request, false);
               }
               break;
             case STOP_PROPOSAL_EXECUTION:
               stopProposalExecution();
               setSuccessResponse(response, "Proposal execution stopped.", wantJSON(request));
+              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case PAUSE_SAMPLING:
               pauseSampling();
               setSuccessResponse(response, "Metric sampling paused.", wantJSON(request));
+              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case RESUME_SAMPLING:
               resumeSampling();
               setSuccessResponse(response, "Metric sampling resumed.", wantJSON(request));
+              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case DEMOTE_BROKER:
               if (demoteBroker(request, response, endPoint)) {
-                _sessionManager.closeSession(request);
+                _sessionManager.closeSession(request, false);
               }
               break;
             default:
@@ -320,7 +348,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       StringWriter sw = new StringWriter();
       ure.printStackTrace(new PrintWriter(sw));
       setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
-      _sessionManager.closeSession(request);
+      _sessionManager.closeSession(request, true);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
@@ -328,7 +356,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String errorMessage = String.format("Error processing POST request '%s' due to: '%s'.", request.getPathInfo(), e.getMessage());
       LOG.error(errorMessage, e);
       setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
-      _sessionManager.closeSession(request);
+      _sessionManager.closeSession(request, true);
     } finally {
       try {
         response.getOutputStream().close();

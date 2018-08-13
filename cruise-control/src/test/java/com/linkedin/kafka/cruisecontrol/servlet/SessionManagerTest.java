@@ -29,21 +29,21 @@ public class SessionManagerTest {
   @Test
   public void testCreateAndCloseSession() {
     TestContext context = prepareRequests(true, 1);
-    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry());
+    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry(), null);
 
     sessionManager.getAndCreateSessionIfNotExist(context.request(0),
                                                  () -> new OperationFuture<>("testCreateSession"),
                                                  0);
     assertEquals(1, sessionManager.numSessions());
 
-    sessionManager.closeSession(context.request(0));
+    sessionManager.closeSession(context.request(0), false);
     assertEquals(0, sessionManager.numSessions());
   }
 
   @Test
   public void testSessionExpiration() {
     TestContext context = prepareRequests(true, 2);
-    SessionManager sessionManager = new SessionManager(2, 1000, context.time(), new MetricRegistry());
+    SessionManager sessionManager = new SessionManager(2, 1000, context.time(), new MetricRegistry(), null);
 
     List<OperationFuture<Integer>> futures = new ArrayList<>();
     for (int i = 0; i < 2; i++) {
@@ -74,7 +74,7 @@ public class SessionManagerTest {
   @Test
   public void testCreateSessionReachingCapacity() {
     TestContext context = prepareRequests(false, 2);
-    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry());
+    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry(), null);
 
     sessionManager.getAndCreateSessionIfNotExist(context.request(0),
                                                  () -> new OperationFuture<>("testCreateSession"),
@@ -100,7 +100,7 @@ public class SessionManagerTest {
   @Test
   public void testMultipleOperationRequest() {
     TestContext context = prepareRequests(false, 1);
-    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry());
+    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry(), null);
     HttpServletRequest request = context.request(0);
     OperationFuture<Integer> future1 = new OperationFuture<>("future1");
     OperationFuture<String> future2 = new OperationFuture<>("future2");
@@ -119,7 +119,7 @@ public class SessionManagerTest {
   @Test (expected = IllegalArgumentException.class)
   public void testSkipStep() {
     TestContext context = prepareRequests(false, 1);
-    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry());
+    SessionManager sessionManager = new SessionManager(1, 1000, context.time(), new MetricRegistry(), null);
     HttpServletRequest request = context.request(0);
     sessionManager.getAndCreateSessionIfNotExist(request, () -> null, 1);
   }
