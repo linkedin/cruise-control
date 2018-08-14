@@ -110,7 +110,6 @@ class KafkaCruiseControlServletUtils {
     Set<String> addOrRemoveBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addOrRemoveBroker.add(BROKER_ID_PARAM);
     addOrRemoveBroker.add(DRY_RUN_PARAM);
-    addOrRemoveBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
     addOrRemoveBroker.add(DATA_FROM_PARAM);
     addOrRemoveBroker.add(GOALS_PARAM);
     addOrRemoveBroker.add(KAFKA_ASSIGNER_MODE_PARAM);
