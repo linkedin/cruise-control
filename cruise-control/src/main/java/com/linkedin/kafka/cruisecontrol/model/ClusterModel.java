@@ -1321,10 +1321,7 @@ public class ClusterModel implements Serializable {
     double[][] utilization = new double[resources.length][brokers().size()];
     int brokerIndex = 0;
     for (Broker broker : brokers()) {
-      double leaderBytesInRate = 0.0;
-      for (Replica leaderReplica : broker.leaderReplicas()) {
-        leaderBytesInRate += leaderReplica.load().expectedUtilizationFor(Resource.NW_IN);
-      }
+      double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
       for (RawAndDerivedResource derivedResource : resources) {
         switch (derivedResource) {
           case DISK: //fall through

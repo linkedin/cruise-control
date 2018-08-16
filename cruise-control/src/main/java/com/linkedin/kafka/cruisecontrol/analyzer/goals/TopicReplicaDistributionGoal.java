@@ -31,7 +31,6 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
-import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.REPLICA_SWAP;
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils.EPSILON;
 
 
@@ -79,16 +78,28 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
+    String sourceTopic = action.topic();
+    Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
+    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
+    int numLocalReplicasOfSourceTopic = sourceBroker.replicasOfTopicInBroker(sourceTopic).size();
+    int numRemoteReplicasOfSourceTopic = destinationBroker.replicasOfTopicInBroker(sourceTopic).size();
+
     switch (action.balancingAction()) {
       case REPLICA_SWAP:
-        return ACCEPT;
-      case LEADERSHIP_MOVEMENT:
-      case REPLICA_MOVEMENT:
-        String topic = action.topic();
-        int numLocalTopicReplicas = clusterModel.broker(action.sourceBrokerId()).replicasOfTopicInBroker(topic).size();
-        int numRemoteTopicReplicas = clusterModel.broker(action.destinationBrokerId()).replicasOfTopicInBroker(topic).size();
+        String destinationTopic = action.destinationTopic();
+        if (sourceTopic.equals(destinationTopic)) {
+          return ACCEPT;
+        }
 
-        return numRemoteTopicReplicas < numLocalTopicReplicas ? ACCEPT : REPLICA_REJECT;
+        int numLocalReplicasOfDestinationTopic = sourceBroker.replicasOfTopicInBroker(destinationTopic).size();
+        int numRemoteReplicasOfDestinationTopic = destinationBroker.replicasOfTopicInBroker(destinationTopic).size();
+
+        return (numRemoteReplicasOfSourceTopic < numLocalReplicasOfSourceTopic
+                && numLocalReplicasOfDestinationTopic < numRemoteReplicasOfDestinationTopic) ? ACCEPT : REPLICA_REJECT;
+      case LEADERSHIP_MOVEMENT:
+        return ACCEPT;
+      case REPLICA_MOVEMENT:
+        return numRemoteReplicasOfSourceTopic < numLocalReplicasOfSourceTopic ? ACCEPT : REPLICA_REJECT;
       default:
         throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
