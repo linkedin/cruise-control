@@ -78,31 +78,75 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
-    String sourceTopic = action.topic();
-    Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
-    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
-    int numLocalReplicasOfSourceTopic = sourceBroker.replicasOfTopicInBroker(sourceTopic).size();
-    int numRemoteReplicasOfSourceTopic = destinationBroker.replicasOfTopicInBroker(sourceTopic).size();
-
     switch (action.balancingAction()) {
       case REPLICA_SWAP:
-        String destinationTopic = action.destinationTopic();
-        if (sourceTopic.equals(destinationTopic)) {
+        if (action.topic().equals(action.destinationTopic())) {
           return ACCEPT;
         }
-
-        int numLocalReplicasOfDestinationTopic = sourceBroker.replicasOfTopicInBroker(destinationTopic).size();
-        int numRemoteReplicasOfDestinationTopic = destinationBroker.replicasOfTopicInBroker(destinationTopic).size();
-
-        return (numRemoteReplicasOfSourceTopic < numLocalReplicasOfSourceTopic
-                && numLocalReplicasOfDestinationTopic < numRemoteReplicasOfDestinationTopic) ? ACCEPT : REPLICA_REJECT;
+        return varianceSum(clusterModel, action, true)
+               >= varianceSum(clusterModel, action, false) ? ACCEPT : REPLICA_REJECT;
       case LEADERSHIP_MOVEMENT:
         return ACCEPT;
       case REPLICA_MOVEMENT:
-        return numRemoteReplicasOfSourceTopic < numLocalReplicasOfSourceTopic ? ACCEPT : REPLICA_REJECT;
+        String sourceTopic = action.topic();
+        Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
+        Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
+        int numSourceTopicReplicasOnSourceBroker = sourceBroker.replicasOfTopicInBroker(sourceTopic).size();
+        int numSourceTopicReplicasOnDestinationBroker = destinationBroker.replicasOfTopicInBroker(sourceTopic).size();
+        return numSourceTopicReplicasOnDestinationBroker < numSourceTopicReplicasOnSourceBroker ? ACCEPT : REPLICA_REJECT;
       default:
         throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
+  }
+
+  /**
+   * Get the sum of variances of the topic replicas defined in the source and the destination of the given swap action.
+   * The result to be returned is before or after the swap action depending on the value of isBeforeSwap parameter.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param swapAction Swap action.
+   * @param isBeforeSwap True if before the variance calculation before the swap is requested, false otherwise.
+   * @return the sum of variances of the topic replicas defined in the source and the destination of the swap action.
+   */
+  private static double varianceSum(ClusterModel clusterModel, BalancingAction swapAction, boolean isBeforeSwap) {
+    String sourceTopic = swapAction.topic();
+    String destinationTopic = swapAction.destinationTopic();
+    Broker sourceBroker = clusterModel.broker(swapAction.sourceBrokerId());
+    Broker destinationBroker = clusterModel.broker(swapAction.destinationBrokerId());
+    int numSourceTopicReplicasOnSourceBroker = sourceBroker.replicasOfTopicInBroker(sourceTopic).size();
+    int numSourceTopicReplicasOnDestinationBroker = destinationBroker.replicasOfTopicInBroker(sourceTopic).size();
+    int numDestinationTopicReplicasOnSourceBroker = sourceBroker.replicasOfTopicInBroker(destinationTopic).size();
+    int numDestinationTopicReplicasOnDestinationBroker = destinationBroker.replicasOfTopicInBroker(destinationTopic).size();
+
+    return varianceSum(clusterModel,
+                    destinationTopic,
+                    isBeforeSwap ? numDestinationTopicReplicasOnSourceBroker
+                                 : numDestinationTopicReplicasOnSourceBroker + 1,
+                    isBeforeSwap ? numDestinationTopicReplicasOnDestinationBroker
+                                 : numDestinationTopicReplicasOnDestinationBroker - 1)
+           + varianceSum(clusterModel,
+                      sourceTopic,
+                      isBeforeSwap ? numSourceTopicReplicasOnSourceBroker
+                                   : numSourceTopicReplicasOnSourceBroker - 1,
+                      isBeforeSwap ? numSourceTopicReplicasOnDestinationBroker
+                                   : numSourceTopicReplicasOnDestinationBroker + 1);
+  }
+
+  /**
+   * Get the sum of variances for the given number of topic replicas on brokers.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param topic The topic for which the variance contribution will be calculated.
+   * @param numTopicReplicasOnBroker1 Number of topic replicas on the first broker.
+   * @param numTopicReplicasOnBroker2 Number of topic replicas on the second broker.
+   * @return the sum of variances for the given number of topic replicas on brokers.
+   */
+  private static double varianceSum(ClusterModel clusterModel,
+                                    String topic,
+                                    int numTopicReplicasOnBroker1,
+                                    int numTopicReplicasOnBroker2) {
+    double avgTopicReplicas = ((double) clusterModel.numTopicReplicas(topic)) / clusterModel.healthyBrokers().size();
+    return Math.pow(numTopicReplicasOnBroker1 - avgTopicReplicas, 2) + Math.pow(numTopicReplicasOnBroker2 - avgTopicReplicas, 2);
   }
 
   @Override
