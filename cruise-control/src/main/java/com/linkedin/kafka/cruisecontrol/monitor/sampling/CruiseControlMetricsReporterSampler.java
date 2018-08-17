@@ -88,7 +88,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
         _metricConsumer.seek(tp, endOffsets.get(tp));
       }
     }
-    LOG.debug("Starting consuming from metrics reporter topic.");
+    LOG.debug("Starting consuming from metrics reporter topic partitions {}", _metricConsumer.assignment());
     _metricConsumer.resume(_metricConsumer.paused());
     int totalMetricsAdded = 0;
     long maxTimeStamp = -1L;
@@ -118,7 +118,8 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
         }
       }
     } while (!consumptionDone(endOffsets) && System.currentTimeMillis() < deadline);
-    LOG.info("Finished sampling for time range [{},{}]. Collected {} metrics.", startTimeMs, endTimeMs, totalMetricsAdded);
+    LOG.info("Finished sampling for topic partitions {} in time range [{},{}]. Collected {} metrics.",
+              _metricConsumer.assignment(), startTimeMs, endTimeMs, totalMetricsAdded);
 
     try {
       if (totalMetricsAdded > 0) {

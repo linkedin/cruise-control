@@ -151,11 +151,17 @@ public class CruiseControlMetricsProcessor {
     MetricDef brokerMetricDef = KafkaMetricDef.brokerMetricDef();
     for (Node node : cluster.nodes()) {
       BrokerLoad brokerLoad = _brokerLoad.get(node.id());
-      if (brokerLoad == null || !brokerLoad.allBrokerMetricsAvailable()) {
-        // A new broker or broker metrics are not consistent.
-        LOG.warn("Skip generating broker metric sample for broker {} because the following metrics are missing {}",
-                  node.id(), brokerLoad == null ? "All Broker Metrics" : brokerLoad.missingBrokerMetrics());
-        skippedBroker++;
+      if (brokerLoad == null) {
+        LOG.warn("Skip generating broker metric sample for broker {} because all broker metrics are missing.", node.id());
+        continue;
+      } else if (!brokerLoad.allBrokerMetricsAvailable()) {
+        if (brokerLoad.missingBrokerMetrics().size() == 0) {
+          LOG.warn("Skip generating broker metric sample for broker {} because there are not enough topic metrics to "
+                  + "generate broker metrics.", node.id());
+        } else {
+          LOG.warn("Skip generating broker metric sample for broker {} because the following metrics are missing {}.",
+              node.id(), brokerLoad.missingBrokerMetrics());
+        }
         continue;
       }
 
@@ -535,9 +541,9 @@ public class CruiseControlMetricsProcessor {
       boolean result = ((double) missingTopics.size() / topicsInBroker.size()) <= MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT
           && ((double) missingPartitions.get() / cluster.partitionsForNode(brokerId).size() <= MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT);
       if (!result) {
-        LOG.warn("Broker {} has {} missing topics metrics and {} missing partition metrics.",
-                 brokerId, missingTopics, missingPartitions);
-        LOG.trace("Missing topics: {}", missingTopics);
+        LOG.warn("Broker {} has {}/{} missing topics metrics and {}/{} missing partition metrics. Missing topics: {}. Missing partitions: {}.",
+                 brokerId, missingTopics.size(), topicsInBroker.size(), missingPartitions.get(), cluster.partitionsForNode(brokerId).size(),
+                 missingTopics, missingPartitions);
       }
       return result;
     }
