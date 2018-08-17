@@ -11,13 +11,12 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.common.Statistic;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
-import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -26,8 +25,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
 import java.util.stream.Collectors;
-import org.apache.commons.math3.stat.descriptive.moment.Mean;
-import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -255,16 +252,16 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
 
     @Override
     public int compare(ClusterModelStats stats1, ClusterModelStats stats2) {
-      double[] stat1 = stats1.utilizationMatrix()[RawAndDerivedResource.LEADER_NW_IN.ordinal()];
-      double meanPreLeaderBytesIn = new Mean().evaluate(stat1, 0, stat1.length);
+      double meanPreLeaderBytesIn = stats1.resourceUtilizationStats().get(Statistic.AVG).get(Resource.NW_IN);
       double threshold = meanPreLeaderBytesIn * _balancingConstraint.resourceBalancePercentage(Resource.NW_IN);
-      if (Arrays.stream(stat1).noneMatch(v -> v > threshold)) {
+      if (stats1.resourceUtilizationStats().get(Statistic.MAX).get(Resource.NW_IN) <= threshold) {
         return 1;
       }
 
-      double[] stat2 = stats2.utilizationMatrix()[RawAndDerivedResource.LEADER_NW_IN.ordinal()];
-      double variance1 = new Variance().evaluate(stat1);
-      double variance2 = new Variance().evaluate(stat2);
+      // If there are brokers with inbound network load over the threshold, the standard deviation of utilization
+      // must not increase compared the initial stats. Otherwise, the goal is producing a worse cluster state.
+      double variance1 = stats1.resourceUtilizationStats().get(Statistic.ST_DEV).get(Resource.NW_IN);
+      double variance2 = stats2.resourceUtilizationStats().get(Statistic.ST_DEV).get(Resource.NW_IN);
       int result = AnalyzerUtils.compare(Math.sqrt(variance2), Math.sqrt(variance1), Resource.NW_IN);
       if (result < 0) {
         _reasonForLastNegativeResult = String.format("Violated leader bytes in balancing. preVariance: %.3f "
