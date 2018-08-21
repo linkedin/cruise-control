@@ -70,22 +70,22 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private final long _maxBlockMs;
   private final ThreadLocal<Integer> _asyncOperationStep;
   private final Map<EndPoint, Meter> _requestMeter = new HashMap<>();
-  private final Map<EndPoint, Timer> _requestExecutionTimer = new HashMap<>();
+  private final Map<EndPoint, Timer> _successfulRequestExecutionTimer = new HashMap<>();
 
   public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                    long maxBlockMs,
                                    long sessionExpiryMs,
                                    MetricRegistry dropwizardMetricRegistry) {
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
-    _sessionManager = new SessionManager(5, sessionExpiryMs, Time.SYSTEM, dropwizardMetricRegistry, _requestExecutionTimer);
+    _sessionManager = new SessionManager(5, sessionExpiryMs, Time.SYSTEM, dropwizardMetricRegistry, _successfulRequestExecutionTimer);
     _maxBlockMs = maxBlockMs;
     _asyncOperationStep = new ThreadLocal<>();
     _asyncOperationStep.set(0);
 
-    for (EndPoint endpoint : EndPoint.values()) {
-      _requestMeter.put(endpoint, dropwizardMetricRegistry.meter(MetricRegistry.name("KafkaCruiseControlServelet", endpoint.name() + "-request-meter")));
-      _requestExecutionTimer.put(endpoint, dropwizardMetricRegistry.timer(MetricRegistry.name("KafkaCruiseControlServelet",
-                                  endpoint.name() + "-request-execution-timer")));
+    for (EndPoint endpoint : EndPoint.cachedValues()) {
+      _requestMeter.put(endpoint, dropwizardMetricRegistry.meter(MetricRegistry.name("KafkaCruiseControlServlet", endpoint.name() + "-request-rate")));
+      _successfulRequestExecutionTimer.put(endpoint, dropwizardMetricRegistry.timer(MetricRegistry.name("KafkaCruiseControlServlet",
+                                  endpoint.name() + "-successful-request-execution-timer")));
     }
   }
 
@@ -175,11 +175,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           switch (endPoint) {
             case BOOTSTRAP:
               bootstrap(request, response);
-              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+              _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case TRAIN:
               train(request, response);
-              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+              _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case LOAD:
               if (getClusterLoad(request, response)) {
@@ -203,7 +203,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               break;
             case KAFKA_CLUSTER_STATE:
               getKafkaClusterState(request, response);
-              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+              _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             default:
               throw new UserRequestException("Invalid URL for GET");
@@ -315,17 +315,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             case STOP_PROPOSAL_EXECUTION:
               stopProposalExecution();
               setSuccessResponse(response, "Proposal execution stopped.", wantJSON(request));
-              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+              _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case PAUSE_SAMPLING:
               pauseSampling();
               setSuccessResponse(response, "Metric sampling paused.", wantJSON(request));
-              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+              _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case RESUME_SAMPLING:
               resumeSampling();
               setSuccessResponse(response, "Metric sampling resumed.", wantJSON(request));
-              _requestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+              _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case DEMOTE_BROKER:
               if (demoteBroker(request, response, endPoint)) {
