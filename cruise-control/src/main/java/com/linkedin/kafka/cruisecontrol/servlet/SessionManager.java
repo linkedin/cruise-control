@@ -27,7 +27,6 @@ import javax.servlet.http.HttpSession;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.endPoint;
 
 
 /**
@@ -136,7 +135,7 @@ public class SessionManager {
                                        + "has reached the servlet capacity.");
       }
       LOG.info("Created session for {}", session);
-      info = new SessionInfo(requestString, request.getParameterMap(), endPoint(request));
+      info = new SessionInfo(requestString, request.getParameterMap(), KafkaCruiseControlServletUtils.endPoint(request));
       OperationFuture<T> future = operation.get();
       info.addFuture(future);
       _inProgressSessions.put(session, info);
