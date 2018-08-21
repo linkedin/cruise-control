@@ -541,7 +541,7 @@ public class CruiseControlMetricsProcessor {
       boolean result = ((double) missingTopics.size() / topicsInBroker.size()) <= MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT
           && ((double) missingPartitions.get() / cluster.partitionsForNode(brokerId).size() <= MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT);
       if (!result) {
-        LOG.warn("Broker {} has {}/{} missing topics metrics and {}/{} missing partition metrics. Missing topics: {}. Missing partitions: {}.",
+        LOG.trace("Broker {} has {}/{} missing topics metrics and {}/{} missing partition metrics. Missing topics: {}. Missing partitions: {}.",
                  brokerId, missingTopics.size(), topicsInBroker.size(), missingPartitions.get(), cluster.partitionsForNode(brokerId).size(),
                  missingTopics, missingPartitions);
       }
