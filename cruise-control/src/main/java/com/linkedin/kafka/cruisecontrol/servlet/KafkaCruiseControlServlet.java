@@ -168,8 +168,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         } else {
           if (EndPoint.getEndpoint().contains(endPoint)) {
             _requestMeter.get(endPoint).mark();
-          } else {
-            throw new UserRequestException("Invalid URL for GET");
           }
           long requestExecutionStartTime = System.nanoTime();
           switch (endPoint) {
@@ -296,8 +294,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         } else {
           if (EndPoint.postEndpoint().contains(endPoint)) {
             _requestMeter.get(endPoint).mark();
-          } else {
-            throw new UserRequestException("Invalid URL for POST");
           }
           long requestExecutionStartTime = System.nanoTime();
           switch (endPoint) {
