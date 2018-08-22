@@ -7,19 +7,21 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.linkedin.kafka.cruisecontrol.KafkaClusterState;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
-import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -28,12 +30,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -46,15 +49,10 @@ import javax.servlet.http.HttpServletResponse;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
-import static javax.servlet.http.HttpServletResponse.SC_OK;
-import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
-import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
-import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+import static javax.servlet.http.HttpServletResponse.*;
 
 
 /**
@@ -67,6 +65,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final int JSON_VERSION = 1;
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
   private final SessionManager _sessionManager;
+  private final UserTaskManager _userTaskManager;
   private final long _maxBlockMs;
   private final ThreadLocal<Integer> _asyncOperationStep;
   private final Map<EndPoint, Meter> _requestMeter = new HashMap<>();
@@ -78,6 +77,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                    MetricRegistry dropwizardMetricRegistry) {
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
     _sessionManager = new SessionManager(5, sessionExpiryMs, Time.SYSTEM, dropwizardMetricRegistry, _successfulRequestExecutionTimer);
+    _userTaskManager = new UserTaskManager(5, sessionExpiryMs, dropwizardMetricRegistry);
     _maxBlockMs = maxBlockMs;
     _asyncOperationStep = new ThreadLocal<>();
     _asyncOperationStep.set(0);
@@ -93,6 +93,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   public void destroy() {
     super.destroy();
     _sessionManager.close();
+    _userTaskManager.close();
   }
 
   /**
@@ -202,6 +203,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             case KAFKA_CLUSTER_STATE:
               getKafkaClusterState(request, response);
               _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+              break;
+            case USER_TASKS:
+              getUserTaskStatus(request, response);
               break;
             default:
               throw new UserRequestException("Invalid URL for GET");
@@ -1064,6 +1068,20 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       // Ok, use default setting and let it throw exception.
       return new GoalsAndRequirements(Collections.emptyList(), null);
     }
+  }
+
+  private void getUserTaskStatus(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    Map<UUID, UserTaskManager.UserTaskInfo> activeUserTasks = _userTaskManager.getActiveUserTasks();
+    List<Map<String, String>> responseStructure = new ArrayList<>();
+    for (Map.Entry<UUID, UserTaskManager.UserTaskInfo> entry : activeUserTasks.entrySet()) {
+      Map<String, String> jsonObjectMap = new HashMap<>();
+      jsonObjectMap.put("UserTaskId", entry.getKey().toString());
+      jsonObjectMap.put("RequestURL", entry.getValue().getRequestUrl());
+      jsonObjectMap.put("ClientIdentity", entry.getValue().getClientIdentity());
+      jsonObjectMap.put("StartMs", Long.toString(entry.getValue().getStartMs()));
+      responseStructure.add(jsonObjectMap);
+    }
+    setSuccessResponse(response, new Gson().toJson(responseStructure), true);
   }
 
   static class GoalsAndRequirements {

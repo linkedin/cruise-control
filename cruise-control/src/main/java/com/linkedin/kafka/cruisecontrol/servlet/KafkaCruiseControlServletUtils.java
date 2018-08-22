@@ -186,7 +186,7 @@ class KafkaCruiseControlServletUtils {
 
   }
 
-  private static final String[] HEADERS_TO_TRY = {
+  public static final String[] HEADERS_TO_TRY = {
     "X-Forwarded-For",
     "Proxy-Client-IP",
     "WL-Proxy-Client-IP",
