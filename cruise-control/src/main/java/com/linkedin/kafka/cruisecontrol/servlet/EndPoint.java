@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -41,6 +42,7 @@ enum EndPoint {
       PAUSE_SAMPLING,
       RESUME_SAMPLING,
       DEMOTE_BROKER);
+  private static final List<EndPoint> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
   public static List<EndPoint> getEndpoint() {
     return GET_ENDPOINT;
@@ -48,5 +50,13 @@ enum EndPoint {
 
   public static List<EndPoint> postEndpoint() {
     return POST_ENDPOINT;
+  }
+
+  /**
+   * Use this instead of values() because values() creates a new array each time.
+   * @return enumerated values in the same order as values()
+   */
+  public static List<EndPoint> cachedValues() {
+    return CACHED_VALUES;
   }
 }
