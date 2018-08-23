@@ -43,7 +43,7 @@ public class BrokerFailures extends KafkaAnomaly {
     if (_failedBrokers != null && !_failedBrokers.isEmpty()) {
       _kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(), false, false,
                                              Collections.emptyList(), null, new OperationProgress(),
-                                              _allowCapacityEstimation, null, null);
+                                              _allowCapacityEstimation, null, null, false);
     }
   }
 

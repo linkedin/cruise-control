@@ -13,7 +13,7 @@ import java.util.List;
  * The async runnable for {@link KafkaCruiseControl#getOptimizationProposals(
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)} and
  * {@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean)}
  */
 class GetOptimizationProposalsRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
   private final List<String> _goals;
@@ -37,7 +37,8 @@ class GetOptimizationProposalsRunnable extends OperationRunnable<GoalOptimizer.O
       return _kafkaCruiseControl.getOptimizationProposals(_goals,
                                                           _modelCompletenessRequirements,
                                                           _future.operationProgress(),
-                                                          _allowCapacityEstimation);
+                                                          _allowCapacityEstimation,
+                                                          true);
     } else {
       return _kafkaCruiseControl.getOptimizationProposals(_future.operationProgress(), _allowCapacityEstimation);
     }

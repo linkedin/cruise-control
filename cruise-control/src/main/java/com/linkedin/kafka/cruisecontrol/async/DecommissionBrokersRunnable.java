@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * The async runnable for {@link KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List,
  * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean,
- * Integer, Integer)}
+ * Integer, Integer, boolean)}
  */
 class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
   private final Collection<Integer> _brokerIds;
@@ -24,6 +24,7 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
   private final boolean _allowCapacityEstimation;
   private final Integer _concurrentPartitionMovements;
   private final Integer _concurrentLeaderMovements;
+  private final boolean _skipHardGoalCheck;
 
   DecommissionBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                               OperationFuture<GoalOptimizer.OptimizerResult> future,
@@ -34,7 +35,8 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
                               ModelCompletenessRequirements modelCompletenessRequirements,
                               boolean allowCapacityEstimation,
                               Integer concurrentPartitionMovements,
-                              Integer concurrentLeaderMovements) {
+                              Integer concurrentLeaderMovements,
+                              boolean skipHardGoalCheck) {
     super(kafkaCruiseControl, future);
     _brokerIds = brokerIds;
     _dryRun = dryRun;
@@ -44,12 +46,14 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
     _allowCapacityEstimation = allowCapacityEstimation;
     _concurrentPartitionMovements = concurrentPartitionMovements;
     _concurrentLeaderMovements = concurrentLeaderMovements;
+    _skipHardGoalCheck = skipHardGoalCheck;
   }
 
   @Override
   protected GoalOptimizer.OptimizerResult getResult() throws Exception {
     return _kafkaCruiseControl.decommissionBrokers(_brokerIds, _dryRun, _throttleRemovedBrokers, _goals,
                                                    _modelCompletenessRequirements, _future.operationProgress(),
-                                                   _allowCapacityEstimation, _concurrentPartitionMovements, _concurrentLeaderMovements);
+                                                   _allowCapacityEstimation, _concurrentPartitionMovements,
+                                                   _concurrentLeaderMovements, _skipHardGoalCheck);
   }
 }

@@ -128,17 +128,18 @@ public class KafkaCruiseControl {
    * Decommission a broker.
    *
    * @param brokerIds The brokers to decommission.
-   * @param dryRun throw
-   * @param throttleDecommissionedBroker whether throttle the brokers that are being decommissioned.
-   * @param goals the goals to be met when decommissioning the brokers. When empty all goals will be used.
+   * @param dryRun Whether it is a dry run or not.
+   * @param throttleDecommissionedBroker Whether throttle the brokers that are being decommissioned.
+   * @param goals The goals to be met when decommissioning the brokers. When empty all goals will be used.
    * @param requirements The cluster model completeness requirements.
-   * @param operationProgress the progress to report.
+   * @param operationProgress The progress to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @return the optimization result.
+   * @param skipHardGoalCheck Whether check and add all hard goals to {@code goals}.
+   * @return The optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
    */
@@ -150,9 +151,10 @@ public class KafkaCruiseControl {
                                                            OperationProgress operationProgress,
                                                            boolean allowCapacityEstimation,
                                                            Integer concurrentPartitionMovements,
-                                                           Integer concurrentLeaderMovements)
+                                                           Integer concurrentLeaderMovements,
+                                                           boolean skipHardGoalCheck)
       throws KafkaCruiseControlException {
-    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals, skipHardGoalCheck);
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
@@ -197,10 +199,10 @@ public class KafkaCruiseControl {
 
   /**
    * Add brokers
-   * @param brokerIds the broker ids.
-   * @param dryRun whether it is a dry run or not.
-   * @param throttleAddedBrokers whether throttle the brokers that are being added.
-   * @param goals the goals to be met when adding the brokers. When empty all goals will be used.
+   * @param brokerIds The broker ids.
+   * @param dryRun Whether it is a dry run or not.
+   * @param throttleAddedBrokers Whether throttle the brokers that are being added.
+   * @param goals The goals to be met when adding the brokers. When empty all goals will be used.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to update.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
@@ -208,8 +210,9 @@ public class KafkaCruiseControl {
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param skipHardGoalCheck Whether check and add all hard goals to {@code goals}.
    * @return The optimization result.
-   * @throws KafkaCruiseControlException when any exception occurred during the broker addition.
+   * @throws KafkaCruiseControlException When any exception occurred during the broker addition.
    */
   public GoalOptimizer.OptimizerResult addBrokers(Collection<Integer> brokerIds,
                                                   boolean dryRun,
@@ -219,9 +222,10 @@ public class KafkaCruiseControl {
                                                   OperationProgress operationProgress,
                                                   boolean allowCapacityEstimation,
                                                   Integer concurrentPartitionMovements,
-                                                  Integer concurrentLeaderMovements) throws KafkaCruiseControlException {
+                                                  Integer concurrentLeaderMovements,
+                                                  boolean skipHardGoalCheck) throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+      Map<Integer, Goal> goalsByPriority = goalsByPriority(goals, skipHardGoalCheck);
       ModelCompletenessRequirements modelCompletenessRequirements =
           modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
@@ -247,17 +251,18 @@ public class KafkaCruiseControl {
 
   /**
    * Rebalance the cluster
-   * @param goals the goals to be met during the rebalance. When empty all goals will be used.
-   * @param dryRun whether it is a dry run or not.
+   * @param goals The goals to be met during the rebalance. When empty all goals will be used.
+   * @param dryRun Whether it is a dry run or not.
    * @param requirements The cluster model completeness requirements.
-   * @param operationProgress the progress of the job to report.
+   * @param operationProgress The progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @return the optimization result.
-   * @throws KafkaCruiseControlException when the rebalance encounter errors.
+   * @param skipHardGoalCheck Whether check and add all hard goals to {@code goals}.
+   * @return The optimization result.
+   * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
   public GoalOptimizer.OptimizerResult rebalance(List<String> goals,
                                                  boolean dryRun,
@@ -265,8 +270,9 @@ public class KafkaCruiseControl {
                                                  OperationProgress operationProgress,
                                                  boolean allowCapacityEstimation,
                                                  Integer concurrentPartitionMovements,
-                                                 Integer concurrentLeaderMovements) throws KafkaCruiseControlException {
-    GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation);
+                                                 Integer concurrentLeaderMovements,
+                                                 boolean skipHardGoalCheck) throws KafkaCruiseControlException {
+    GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation, skipHardGoalCheck);
     sanityCheckCapacityEstimation(allowCapacityEstimation, result.capacityEstimationInfoByBrokerId());
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
@@ -308,7 +314,7 @@ public class KafkaCruiseControl {
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEMOTED));
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel,
-                                   goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName())),
+                                   goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName()), true),
                                    operationProgress, allowCapacityEstimation);
       if (!dryRun) {
         // Kafka Assigner mode is irrelevant for demoting a broker.
@@ -458,19 +464,21 @@ public class KafkaCruiseControl {
 
   /**
    * Optimize a cluster workload model.
-   * @param goals a list of goals to optimize. When empty all goals will be used.
-   * @param requirements the model completeness requirements to enforce when generating the proposals.
-   * @param operationProgress the progress of the job to report.
+   * @param goals A list of goals to optimize. When empty all goals will be used.
+   * @param requirements The model completeness requirements to enforce when generating the proposals.
+   * @param operationProgress The progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param skipHardGoalCheck Whether check and add all hard goals to {@code goals}.
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    */
   public GoalOptimizer.OptimizerResult getOptimizationProposals(List<String> goals,
                                                                 ModelCompletenessRequirements requirements,
                                                                 OperationProgress operationProgress,
-                                                                boolean allowCapacityEstimation) throws KafkaCruiseControlException {
+                                                                boolean allowCapacityEstimation,
+                                                                boolean skipHardGoalCheck) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
-    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals, skipHardGoalCheck);
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     // There are a few cases that we cannot use the cached best proposals:
@@ -586,7 +594,7 @@ public class KafkaCruiseControl {
    * @param goalNames Goal names (and empty list of names indicates all goals).
    */
   public boolean meetCompletenessRequirements(List<String> goalNames) {
-    Collection<Goal> goals = goalsByPriority(goalNames).values();
+    Collection<Goal> goals = goalsByPriority(goalNames, false).values();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     return goals.stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(
         clusterAndGeneration, g.clusterModelCompletenessRequirements()));
@@ -594,10 +602,23 @@ public class KafkaCruiseControl {
 
   /**
    * Get a goals by priority based on the goal list.
+   *
+   * @param goals A list of goals to optimize.
+   * @param skipHardGoalCheck Whether check and add all hard goals to {@code goals}.
+   * @return A map of goal priority to goal.
    */
-  private Map<Integer, Goal> goalsByPriority(List<String> goals) {
+  private Map<Integer, Goal> goalsByPriority(List<String> goals, boolean skipHardGoalCheck) {
     if (goals == null || goals.isEmpty()) {
       return AnalyzerUtils.getGoalMapByPriority(_config);
+    }
+    if (!skipHardGoalCheck) {
+      List<String> hardGoals = _config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG);
+      for (String goalName : goals) {
+        if (!hardGoals.contains(goalName)) {
+          hardGoals.add(goalName);
+        }
+      }
+      goals = hardGoals;
     }
     Map<String, Goal> allGoals = AnalyzerUtils.getCaseInsensitiveGoalsByName(_config);
     Map<Integer, Goal> goalsByPriority = new HashMap<>();

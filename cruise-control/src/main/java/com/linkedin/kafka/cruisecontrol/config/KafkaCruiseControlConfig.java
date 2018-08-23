@@ -445,6 +445,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "priority goals will be executed first.";
 
   /**
+   * <code>hard.goals</code>
+   */
+  public static final String HARD_GOALS_CONFIG = "hard.goals";
+  private static final String HARD_GOALS_DOC = "A list of case insensitive hard goals in the order of priority. Hard goals"
+      + "will be enforced to execute if Cruise Control runs in non-kafka-assigner mode and skip_hard_goal_check parameter "
+      + "is not set in request.";
+
+  /**
    * <code>default.goals</code>
    */
   public static final String DEFAULT_GOALS_CONFIG = "default.goals";
@@ -801,6 +809,17 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(TopicReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
                 GOALS_DOC)
+        .define(HARD_GOALS_CONFIG,
+                ConfigDef.Type.LIST,
+                new StringJoiner(",")
+                    .add(RackAwareGoal.class.getName())
+                    .add(ReplicaCapacityGoal.class.getName())
+                    .add(DiskCapacityGoal.class.getName())
+                    .add(NetworkInboundCapacityGoal.class.getName())
+                    .add(NetworkOutboundCapacityGoal.class.getName())
+                    .add(CpuCapacityGoal.class.getName()).toString(),
+                ConfigDef.Importance.HIGH,
+                HARD_GOALS_DOC)
         .define(DEFAULT_GOALS_CONFIG,
                 ConfigDef.Type.LIST,
                 "",
