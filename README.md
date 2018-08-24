@@ -1,6 +1,8 @@
 Cruise Control for Apache Kafka
 ===================
 
+[![CircleCI](https://circleci.com/gh/linkedin/cruise-control.svg?style=svg)](https://circleci.com/gh/linkedin/cruise-control)
+
 ### Introduction ###
   Cruise Control is a product that helps run Apache Kafka clusters at large scale. Due to the popularity of 
   Apache Kafka, many companies have bigger and bigger Kafka clusters. At LinkedIn, we have 1800+ Kafka brokers, 
