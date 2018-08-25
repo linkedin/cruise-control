@@ -109,15 +109,15 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
     populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW, metricSampleAggregator);
 
-    TopicPartition tp1 = new TopicPartition(TOPIC, 1);
+    TopicPartition tp1 = new TopicPartition(TOPIC + "1", 0);
     Cluster cluster = getCluster(Arrays.asList(TP, tp1));
     metadata.update(cluster, Collections.emptySet(), 1);
 
     Map<PartitionEntity, ValuesAndExtrapolations> aggregateResult =
         metricSampleAggregator.aggregate(clusterAndGeneration(cluster), Long.MAX_VALUE, new OperationProgress())
                               .valuesAndExtrapolations();
-    assertTrue("tp1 should not be included because recent metric window does not include all topics",
-               aggregateResult.isEmpty());
+    assertEquals(1, aggregateResult.size(), 0);
+    assertEquals(NUM_WINDOWS, aggregateResult.get(PE).windows().size(), 0);
 
     ModelCompletenessRequirements requirements =
         new ModelCompletenessRequirements(1, 0.0, true);
@@ -182,7 +182,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
         metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
                                          NUM_WINDOWS * WINDOW_MS,
                                          new OperationProgress());
-    assertTrue(result.valuesAndExtrapolations().isEmpty());
+    assertEquals(NUM_WINDOWS - 2, result.valuesAndExtrapolations().get(PE).windows().size(), 0);
 
     populateSampleAggregator(2, MIN_SAMPLES_PER_WINDOW - 2, metricSampleAggregator);
 
@@ -257,7 +257,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
           metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
                                            NUM_WINDOWS * WINDOW_MS,
                                            new OperationProgress());
-      assertTrue(result.valuesAndExtrapolations().isEmpty());
+      assertEquals(NUM_WINDOWS - 3, result.valuesAndExtrapolations().get(PE).windows().size(), 0);
   }
 
   @Test
