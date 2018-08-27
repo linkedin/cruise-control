@@ -109,15 +109,17 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
     populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW, metricSampleAggregator);
 
-    TopicPartition tp1 = new TopicPartition(TOPIC, 1);
+    TopicPartition tp1 = new TopicPartition(TOPIC + "1", 0);
     Cluster cluster = getCluster(Arrays.asList(TP, tp1));
     metadata.update(cluster, Collections.emptySet(), 1);
 
     Map<PartitionEntity, ValuesAndExtrapolations> aggregateResult =
         metricSampleAggregator.aggregate(clusterAndGeneration(cluster), Long.MAX_VALUE, new OperationProgress())
                               .valuesAndExtrapolations();
-    assertTrue("tp1 should not be included because recent metric window does not include all topics",
-               aggregateResult.isEmpty());
+    // Partition "topic-0" should be valid in all NUM_WINDOW windows and Partition "topic1-0" should not since
+    // there is no sample for it.
+    assertEquals(1, aggregateResult.size());
+    assertEquals(NUM_WINDOWS, aggregateResult.get(PE).windows().size());
 
     ModelCompletenessRequirements requirements =
         new ModelCompletenessRequirements(1, 0.0, true);
@@ -182,7 +184,8 @@ public class KafkaPartitionMetricSampleAggregatorTest {
         metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
                                          NUM_WINDOWS * WINDOW_MS,
                                          new OperationProgress());
-    assertTrue(result.valuesAndExtrapolations().isEmpty());
+    // Partition "topic-0" is expected to be a valid partition in result with valid sample values for window [3, NUM_WINDOWS].
+    assertEquals(NUM_WINDOWS - 2, result.valuesAndExtrapolations().get(PE).windows().size());
 
     populateSampleAggregator(2, MIN_SAMPLES_PER_WINDOW - 2, metricSampleAggregator);
 
@@ -257,7 +260,8 @@ public class KafkaPartitionMetricSampleAggregatorTest {
           metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
                                            NUM_WINDOWS * WINDOW_MS,
                                            new OperationProgress());
-      assertTrue(result.valuesAndExtrapolations().isEmpty());
+      // Partition "topic-0" is expected to be a valid partition in result, with valid sample values collected for window [1, NUM_WINDOW - 3].
+      assertEquals(NUM_WINDOWS - 3, result.valuesAndExtrapolations().get(PE).windows().size());
   }
 
   @Test

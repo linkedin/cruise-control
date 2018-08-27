@@ -405,7 +405,46 @@ public class LoadMonitorTest {
     assertEquals(13, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
   }
 
+  @Test
+  public void testClusterModelWithInvalidSnapshotWindows() throws NotEnoughValidWindowsException {
+    TestContext context = prepareContext(4);
+    LoadMonitor loadMonitor = context.loadmonitor();
+    KafkaPartitionMetricSampleAggregator aggregator = context.aggregator();
+
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T0P0, 0, WINDOW_MS, METRIC_DEF);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T0P1, 0, WINDOW_MS, METRIC_DEF);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
+
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T0P0, 3, WINDOW_MS, METRIC_DEF);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T0P1, 3, WINDOW_MS, METRIC_DEF);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P0, 3, WINDOW_MS, METRIC_DEF);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P1, 3, WINDOW_MS, METRIC_DEF);
+
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T0P0, 4, WINDOW_MS, METRIC_DEF);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T0P1, 4, WINDOW_MS, METRIC_DEF);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P0, 4, WINDOW_MS, METRIC_DEF);
+    CruiseControlUnitTestUtils.populateSampleAggregator(1, 4, aggregator, PE_T1P1, 4, WINDOW_MS, METRIC_DEF);
+
+    ClusterModel clusterModel = loadMonitor.clusterModel(-1, Long.MAX_VALUE,
+        new ModelCompletenessRequirements(2, 0, false),
+        new OperationProgress());
+
+    assertEquals(2, clusterModel.partition(T0P0).leader().load().numWindows());
+    assertEquals(16.5, clusterModel.partition(T0P0).leader().load().expectedUtilizationFor(Resource.CPU), 0.0);
+    assertEquals(2, clusterModel.partition(T0P1).leader().load().numWindows());
+    assertEquals(33, clusterModel.partition(T0P1).leader().load().expectedUtilizationFor(Resource.DISK), 0.0);
+    assertEquals(2, clusterModel.partition(T1P0).leader().load().numWindows());
+    assertEquals(33, clusterModel.partition(T1P0).leader().load().expectedUtilizationFor(Resource.NW_IN), 0.0);
+    assertEquals(2, clusterModel.partition(T1P1).leader().load().numWindows());
+    assertEquals(33, clusterModel.partition(T1P1).leader().load().expectedUtilizationFor(Resource.NW_OUT), 0.0);
+  }
+
   private TestContext prepareContext() {
+    return prepareContext(NUM_WINDOWS);
+  }
+
+  private TestContext prepareContext(int numWindowToPreserve) {
     // Create mock metadata client.
     Metadata metadata = getMetadata(Arrays.asList(T0P0, T0P1, T1P0, T1P1));
     MetadataClient mockMetadataClient = EasyMock.mock(MetadataClient.class);
@@ -426,7 +465,7 @@ public class LoadMonitorTest {
 
     // create load monitor.
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.put(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(NUM_WINDOWS));
+    props.put(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(numWindowToPreserve));
     props.put(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
               Integer.toString(MIN_SAMPLES_PER_WINDOW));
     props.put(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));

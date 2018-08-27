@@ -67,7 +67,7 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
     int totalNumEntities = options.interestedEntities().size();
     int numValidEntitiesAfterMerge =
         numValidElementsAfterMerge(completeness.validEntities(), validEntitiesForWindow);
-    return (float) numValidEntitiesAfterMerge / totalNumEntities >= options.minValidEntityRatio();
+    return numValidEntitiesAfterMerge > 0 && (float) numValidEntitiesAfterMerge / totalNumEntities >= options.minValidEntityRatio();
   }
 
   private boolean meetValidEntityGroupRatioAfterMerge(MetricSampleCompleteness<G, E> completeness,
@@ -76,7 +76,7 @@ public class WindowState<G, E extends Entity<G>> extends LongGenerationed {
     int totalNumEntityGroups = options.interestedEntityGroups().size();
     int numValidEntityGroupsAfterMerge =
         numValidElementsAfterMerge(completeness.validEntityGroups(), validEntityGroupForWindow);
-    return (float) numValidEntityGroupsAfterMerge / totalNumEntityGroups >= options.minValidEntityGroupRatio();
+    return numValidEntityGroupsAfterMerge > 0 && (float) numValidEntityGroupsAfterMerge / totalNumEntityGroups >= options.minValidEntityGroupRatio();
   }
 
   /**
