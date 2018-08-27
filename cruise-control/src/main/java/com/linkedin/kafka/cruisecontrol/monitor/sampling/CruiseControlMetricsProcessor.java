@@ -515,8 +515,9 @@ public class CruiseControlMetricsProcessor {
 
     /**
      * Verify whether we have collected enough metrics to generate the broker metric samples. The broker must have
-     * collected more than 99% of the topic level and partition level metrics in the broker to generate broker
-     * level metrics.
+     * missed less than {@link CruiseControlMetricsProcessor#MAX_ALLOWED_MISSING_TOPIC_METRIC_PERCENT} of the topic level
+     * and {@link CruiseControlMetricsProcessor#MAX_ALLOWED_MISSING_PARTITION_METRIC_PERCENT} partition level metrics in the
+     * broker to generate broker level metrics.
      *
      * @param cluster the Kafka cluster.
      * @param brokerId the broker id to check.
