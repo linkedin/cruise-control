@@ -234,7 +234,7 @@ public class MetricSampleAggregatorTest {
     assertEquals(2, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY1));
     assertTrue(completeness.validEntities().contains(ENTITY3));
-    assertTrue(completeness.validEntityGroups().contains("g2"));
+    assertTrue(completeness.validEntityGroups().contains(ENTITY3.group()));
     assertCompletenessByWindowIndex(completeness);
   }
 

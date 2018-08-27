@@ -116,8 +116,10 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     Map<PartitionEntity, ValuesAndExtrapolations> aggregateResult =
         metricSampleAggregator.aggregate(clusterAndGeneration(cluster), Long.MAX_VALUE, new OperationProgress())
                               .valuesAndExtrapolations();
-    assertEquals(1, aggregateResult.size(), 0);
-    assertEquals(NUM_WINDOWS, aggregateResult.get(PE).windows().size(), 0);
+    // Partition "topic-0" should be valid in all NUM_WINDOW windows and Partition "topic1-0" should not since
+    // there is no sample for it.
+    assertEquals(1, aggregateResult.size());
+    assertEquals(NUM_WINDOWS, aggregateResult.get(PE).windows().size());
 
     ModelCompletenessRequirements requirements =
         new ModelCompletenessRequirements(1, 0.0, true);
@@ -182,7 +184,8 @@ public class KafkaPartitionMetricSampleAggregatorTest {
         metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
                                          NUM_WINDOWS * WINDOW_MS,
                                          new OperationProgress());
-    assertEquals(NUM_WINDOWS - 2, result.valuesAndExtrapolations().get(PE).windows().size(), 0);
+    // Partition "topic-0" is expected to be a valid partition in result with valid sample values for window [3, NUM_WINDOWS].
+    assertEquals(NUM_WINDOWS - 2, result.valuesAndExtrapolations().get(PE).windows().size());
 
     populateSampleAggregator(2, MIN_SAMPLES_PER_WINDOW - 2, metricSampleAggregator);
 
@@ -257,7 +260,8 @@ public class KafkaPartitionMetricSampleAggregatorTest {
           metricSampleAggregator.aggregate(clusterAndGeneration(metadata.fetch()),
                                            NUM_WINDOWS * WINDOW_MS,
                                            new OperationProgress());
-      assertEquals(NUM_WINDOWS - 3, result.valuesAndExtrapolations().get(PE).windows().size(), 0);
+      // Partition "topic-0" is expected to be a valid partition in result, with valid sample values collected for window [1, NUM_WINDOW - 3].
+      assertEquals(NUM_WINDOWS - 3, result.valuesAndExtrapolations().get(PE).windows().size());
   }
 
   @Test
