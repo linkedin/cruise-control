@@ -230,10 +230,11 @@ public class MetricSampleAggregatorTest {
                                  AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(20, completeness.validWindowIndexes().size());
-    assertEquals(1, completeness.validEntities().size());
+    assertEquals(17, completeness.validWindowIndexes().size());
+    assertEquals(2, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY1));
-    assertTrue(completeness.validEntityGroups().isEmpty());
+    assertTrue(completeness.validEntities().contains(ENTITY3));
+    assertTrue(completeness.validEntityGroups().contains(ENTITY3.group()));
     assertCompletenessByWindowIndex(completeness);
   }
 
