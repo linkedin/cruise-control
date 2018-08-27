@@ -72,21 +72,18 @@ public class KafkaSampleStore implements SampleStore {
   protected Producer<byte[], byte[]> _producer;
   protected volatile boolean _shutdown = false;
 
-  public static final String PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "partition.metric.sample.store.topic";
-  public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
-  public static final String NUM_SAMPLE_LOADING_THREADS = "num.sample.loading.threads";
 
   @Override
   public void configure(Map<String, ?> config) {
-    _partitionMetricSampleStoreTopic = (String) config.get(PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
-    _brokerMetricSampleStoreTopic = (String) config.get(BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
+    _partitionMetricSampleStoreTopic = (String) config.get(KafkaCruiseControlConfig.PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
+    _brokerMetricSampleStoreTopic = (String) config.get(KafkaCruiseControlConfig.BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
     if (_partitionMetricSampleStoreTopic == null
         || _brokerMetricSampleStoreTopic == null
         || _partitionMetricSampleStoreTopic.isEmpty()
         || _brokerMetricSampleStoreTopic.isEmpty()) {
       throw new IllegalArgumentException("The sample store topic names must be configured.");
     }
-    String numProcessingThreadsString = (String) config.get(NUM_SAMPLE_LOADING_THREADS);
+    String numProcessingThreadsString = (String) config.get(KafkaCruiseControlConfig.NUM_SAMPLE_LOADING_THREADS_CONFIG);
     int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty()
                                ? DEFAULT_NUM_SAMPLE_LOADING_THREADS : Integer.parseInt(numProcessingThreadsString);
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
