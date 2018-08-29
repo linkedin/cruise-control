@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -137,21 +138,25 @@ public class ReplicaCapacityGoal extends AbstractGoal {
         _isSelfHealingMode = true;
         continue;
       }
-      int excludedReplicasInBroker = 0;
+      Set<Replica> excludedReplicasInBroker = new HashSet<>();
       for (String topic : excludedTopics) {
-        excludedReplicasInBroker += broker.replicasOfTopicInBroker(topic).size();
+        excludedReplicasInBroker.addAll(broker.replicasOfTopicInBroker(topic));
+      }
+      if (broker.getState() == Broker.State.BAD_DISKS) {
+        _isSelfHealingMode = true;
+        excludedReplicasInBroker.removeAll(broker.currentOfflineReplicas());
       }
 
-      if (excludedReplicasInBroker > _balancingConstraint.maxReplicasPerBroker()) {
+      if (excludedReplicasInBroker.size() > _balancingConstraint.maxReplicasPerBroker()) {
         throw new OptimizationFailureException(String.format("Replicas of excluded topics in broker: %d exceeds the maximum "
-            + "allowed number of replicas: %d.", excludedReplicasInBroker, _balancingConstraint.maxReplicasPerBroker()));
+            + "allowed number of replicas: %d.", excludedReplicasInBroker.size(), _balancingConstraint.maxReplicasPerBroker()));
       }
       // Calculate total number of replicas for the next sanity check.
       totalReplicasInCluster += broker.replicas().size();
     }
 
     // Sanity check: total replicas in the cluster cannot be more than the allowed replicas in the cluster.
-    long maxReplicasInCluster = _balancingConstraint.maxReplicasPerBroker() * clusterModel.healthyBrokers().size();
+    long maxReplicasInCluster = _balancingConstraint.maxReplicasPerBroker() * clusterModel.aliveBrokers().size();
     if (totalReplicasInCluster > maxReplicasInCluster) {
       throw new OptimizationFailureException(String.format("Total replicas in cluster: %d exceeds the maximum allowed "
           + "replicas in cluster: %d.", totalReplicasInCluster, maxReplicasInCluster));
@@ -181,8 +186,8 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);
+    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+    AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
 
     if (!_isSelfHealingMode) {
       // One pass in non-self-healing mode is sufficient to satisfy or alert impossibility of this goal.
@@ -222,8 +227,9 @@ public class ReplicaCapacityGoal extends AbstractGoal {
                                     Set<String> excludedTopics)
       throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
-    for (Replica replica : new ArrayList<>(broker.replicas())) {
-      if (broker.isAlive() && broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker()) {
+    for (Replica replica : new TreeSet<>(broker.replicas())) {
+      boolean isReplicaOffline = replica.isCurrentOffline();
+      if (broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker() && !isReplicaOffline) {
         break;
       }
       if (shouldExclude(replica, excludedTopics)) {
@@ -243,6 +249,13 @@ public class ReplicaCapacityGoal extends AbstractGoal {
                                                                clusterModel.partition(replica.topicPartition()),
                                                                eligibleBrokers, _balancingConstraint.maxReplicasPerBroker(),
                                                                clusterModel.brokers()));
+        } else if (isReplicaOffline) {
+          // If the replica is offline on a broker with bad disk, throw an exception!
+          throw new OptimizationFailureException(String.format("Failed to move offline replica %s of partition %s "
+                                                               + "to a broker in %s. Limit: %d for brokers: %s", replica,
+                                                               clusterModel.partition(replica.topicPartition()),
+                                                               eligibleBrokers, _balancingConstraint.maxReplicasPerBroker(),
+                                                               clusterModel.brokers()));
         }
         LOG.debug("Failed to move replica {} to any broker in {}.", replica, eligibleBrokers);
       }
@@ -252,7 +265,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   /**
    * Get a list of replica capacity eligible brokers for the given replica in the given cluster.
    *
-   * A healthy destination broker is eligible for a given replica if
+   * A alive destination broker is eligible for a given replica if
    * (1) the broker contains less than allowed maximum number of replicas, or
    * (2) If the the self healing mode is true.
    *
@@ -268,7 +281,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
 
     int sourceBrokerId = replica.broker().id();
 
-    for (Broker broker : clusterModel.healthyBrokers()) {
+    for (Broker broker : clusterModel.aliveBrokers()) {
       if ((_isSelfHealingMode || broker.replicas().size() < _balancingConstraint.maxReplicasPerBroker())
           && broker.id() != sourceBrokerId) {
         eligibleBrokers.add(new BrokerReplicaCount(broker));

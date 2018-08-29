@@ -54,13 +54,13 @@ import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 public class ReplicaDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicaDistributionGoal.class);
   private static final double BALANCE_MARGIN = 0.9;
-  // Flag to indicate whether the self healing failed to relocate all replicas away from dead brokers in its initial
-  // attempt and currently omitting the resource balance limit to relocate remaining replicas.
-  private boolean _selfHealingDeadBrokersOnly;
+  // Flag to indicate whether the self healing failed to relocate all offline replicas away from dead brokers or broken
+  // disks in its initial attempt and currently omitting the replica balance limit to relocate remaining replicas.
+  private boolean _fixOfflineReplicasOnly;
   private final Set<Integer> _brokerIdsAboveBalanceUpperLimit;
   private final Set<Integer> _brokerIdsUnderBalanceLowerLimit;
-  private Map<Integer, BrokerAndSortedReplicas> _brokerAndReplicasMap;
-  private double _avgReplicasOnHealthyBroker;
+  private final Map<Integer, BrokerAndSortedReplicas> _brokerAndReplicasMap;
+  private double _avgReplicasOnAliveBroker;
   private double _balanceUpperLimit;
   private double _balanceLowerLimit;
 
@@ -70,12 +70,12 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   public ReplicaDistributionGoal() {
     _brokerIdsAboveBalanceUpperLimit = new HashSet<>();
     _brokerIdsUnderBalanceLowerLimit = new HashSet<>();
+    _brokerAndReplicasMap = new HashMap<>();
   }
 
   public ReplicaDistributionGoal(BalancingConstraint balancingConstraint) {
+    this();
     _balancingConstraint = balancingConstraint;
-    _brokerIdsAboveBalanceUpperLimit = new HashSet<>();
-    _brokerIdsUnderBalanceLowerLimit = new HashSet<>();
   }
 
   /**
@@ -91,14 +91,14 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    * @return The replica balance upper threshold in percent.
    */
   private double balanceUpperLimit() {
-    return _avgReplicasOnHealthyBroker * (1 + balancePercentageWithMargin());
+    return _avgReplicasOnAliveBroker * (1 + balancePercentageWithMargin());
   }
 
   /**
    * @return The replica balance lower threshold in percent.
    */
   private double balanceLowerLimit() {
-    return _avgReplicasOnHealthyBroker * Math.max(0, (1 - balancePercentageWithMargin()));
+    return _avgReplicasOnAliveBroker * Math.max(0, (1 - balancePercentageWithMargin()));
   }
 
   /**
@@ -187,23 +187,21 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
-    // Initialize the average replicas on a healthy broker.
+    // Initialize the average replicas on an alive broker.
     int numReplicasInCluster = clusterModel.getReplicaDistribution().values().stream().mapToInt(List::size).sum();
-    _avgReplicasOnHealthyBroker = (numReplicasInCluster / (double) clusterModel.healthyBrokers().size());
+    _avgReplicasOnAliveBroker = (numReplicasInCluster / (double) clusterModel.aliveBrokers().size());
 
     // Log a warning if all replicas are excluded.
     if (clusterModel.topics().equals(excludedTopics)) {
       LOG.warn("All replicas are excluded from {}.", name());
     }
 
-    _brokerAndReplicasMap = new HashMap<>();
-
     for (Broker broker : clusterModel.brokers()) {
       BrokerAndSortedReplicas bas = new BrokerAndSortedReplicas(broker, broker.replicaComparator(DISK));
       _brokerAndReplicasMap.put(broker.id(), bas);
     }
 
-    _selfHealingDeadBrokersOnly = false;
+    _fixOfflineReplicasOnly = false;
     _balanceUpperLimit = balanceUpperLimit();
     _balanceLowerLimit = balanceLowerLimit();
   }
@@ -219,13 +217,13 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
-    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
-    // If the source broker is dead and currently self healing dead brokers only, then the proposal must be executed.
-    if (!sourceBroker.isAlive() && _selfHealingDeadBrokersOnly) {
-      return true;
+    // The action must be executed if currently fixing offline replicas only and the offline source replica is proposed
+    // to be moved to another broker.
+    if (_fixOfflineReplicasOnly && sourceBroker.replica(action.topicPartition()).isCurrentOffline()) {
+      return action.balancingAction() == ActionType.REPLICA_MOVEMENT;
     }
-
+    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     //Check that destination and source would not become unbalanced.
     return isReplicaCountUnderBalanceUpperLimitAfterChange(destinationBroker, ADD) &&
         isReplicaCountAboveBalanceLowerLimitAfterChange(sourceBroker, REMOVE);
@@ -257,27 +255,16 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       _brokerIdsUnderBalanceLowerLimit.clear();
       _succeeded = false;
     }
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (replica.broker().isAlive()) {
-        continue;
+    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+    try {
+      AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
+    } catch (OptimizationFailureException ofe) {
+      if (_fixOfflineReplicasOnly) {
+        throw ofe;
       }
-      if (_selfHealingDeadBrokersOnly) {
-        throw new OptimizationFailureException(
-            "Self healing failed to move the replica away from decommissioned brokers.");
-      }
-      _selfHealingDeadBrokersOnly = true;
-      LOG.warn("Omitting resource balance limit to relocate remaining replicas from dead brokers to healthy ones.");
+      _fixOfflineReplicasOnly = true;
+      LOG.warn("Omitting resource balance limit to relocate remaining replicas from dead brokers/disks.");
       return;
-    }
-    // No dead broker contains replica.
-    _selfHealingDeadBrokersOnly = false;
-
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (!replica.broker().isAlive()) {
-        throw new OptimizationFailureException("Self healing failed to move the replica away from decommissioned broker.");
-      }
     }
     finish();
   }
@@ -297,18 +284,22 @@ public class ReplicaDistributionGoal extends AbstractGoal {
                                     Set<String> excludedTopics) {
     LOG.debug("Rebalancing broker {} [limits] lower: {} upper: {}.", broker.id(), _balanceLowerLimit, _balanceUpperLimit);
     int numReplicas = broker.replicas().size();
-    boolean requireLessReplicas = broker.isAlive() ? numReplicas > _balanceUpperLimit : numReplicas > 0;
-    boolean requireMoreReplicas = broker.isAlive() && numReplicas < _balanceLowerLimit;
+    int numOfflineReplicas = broker.currentOfflineReplicas().size();
+
+    // A broker with a bad disk may take new replicas and give away offline replicas.
+    boolean requireLessReplicas = numOfflineReplicas > 0 || (numReplicas > _balanceUpperLimit);
+    boolean requireMoreReplicas = broker.isAlive() && numReplicas - numOfflineReplicas < _balanceLowerLimit;
     if (broker.isAlive() && !requireMoreReplicas && !requireLessReplicas) {
-      // return if the broker is already under limit.
+      // return if the broker is already within the limit.
       return;
-    } else if (!clusterModel.newBrokers().isEmpty() && requireMoreReplicas && !broker.isNew()) {
-      // return if we have new brokers and the current broker is not a new broker but require more load.
+    } else if (!clusterModel.newBrokers().isEmpty() && requireMoreReplicas && !broker.isNew() && !requireLessReplicas) {
+      // return if we have new brokers and the current broker is not a new broker but requires: more replicas, but not
+      // less replicas -- i.e. hence, does not have offline replicas on it.
       return;
-    } else if (!clusterModel.deadBrokers().isEmpty() && requireLessReplicas && broker.isAlive()
-        && broker.immigrantReplicas().isEmpty()) {
+    } else if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && requireLessReplicas
+               && broker.currentOfflineReplicas().isEmpty() && broker.immigrantReplicas().isEmpty()) {
       // return if the cluster is in self-healing mode and the broker requires less load, but does not have any
-      // immigrant replicas.
+      // offline or immigrant replicas.
       return;
     }
 
@@ -317,11 +308,13 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       _brokerIdsAboveBalanceUpperLimit.add(broker.id());
       LOG.debug("Failed to sufficiently decrease replica count in broker {} with replica movements. Replicas: {}.",
                 broker.id(), broker.replicas().size());
-    } else if (requireMoreReplicas && rebalanceByMovingReplicasIn(broker, clusterModel, optimizedGoals, excludedTopics)) {
+    }
+    if (requireMoreReplicas && rebalanceByMovingReplicasIn(broker, clusterModel, optimizedGoals, excludedTopics)) {
       _brokerIdsUnderBalanceLowerLimit.add(broker.id());
       LOG.debug("Failed to sufficiently increase replica count in broker {} with replica movements. Replicas: {}.",
                 broker.id(), broker.replicas().size());
-    } else {
+    }
+    if (!_brokerIdsAboveBalanceUpperLimit.contains(broker.id()) && !_brokerIdsUnderBalanceLowerLimit.contains(broker.id())) {
       LOG.debug("Successfully balanced replica count for broker {} by moving replicas. Replicas: {}",
                 broker.id(), broker.replicas().size());
     }
@@ -334,18 +327,23 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(Comparator.comparingInt((Broker b) -> b.replicas().size()).thenComparingInt(Broker::id));
 
-    candidateBrokers.addAll(_selfHealingDeadBrokersOnly ? clusterModel.healthyBrokers() : clusterModel
-        .healthyBrokers()
+    candidateBrokers.addAll(_fixOfflineReplicasOnly ? clusterModel.aliveBrokers() : clusterModel
+        .aliveBrokers()
         .stream()
         .filter(b -> b.replicas().size() < _balanceUpperLimit)
         .collect(Collectors.toSet()));
 
     BrokerAndSortedReplicas sourceBas = _brokerAndReplicasMap.get(broker.id());
-    // Get the replicas to rebalance. Replicas are sorted from smallest to largest disk usage.
+    // Get the replicas to rebalance. Replicas are sorted by (1) offline replicas then (2) immigrant replicas then
+    // (3) smallest to largest disk usage.
     List<Replica> replicasToMove = new ArrayList<>(sourceBas.sortedReplicas());
     // Now let's move things around.
+    boolean wasUnableToMoveOfflineReplica = false;
     for (Replica replica : replicasToMove) {
-      if (shouldExclude(replica, excludedTopics)) {
+      if (wasUnableToMoveOfflineReplica && !replica.isCurrentOffline() && broker.replicas().size() <= _balanceUpperLimit) {
+        // Was unable to move offline replicas from the broker, and remaining replica count is under the balance limit.
+        return false;
+      } else if (shouldExclude(replica, excludedTopics)) {
         continue;
       }
 
@@ -357,15 +355,16 @@ public class ReplicaDistributionGoal extends AbstractGoal {
         BrokerAndSortedReplicas destBas = _brokerAndReplicasMap.get(broker.id());
         destBas.sortedReplicas().add(replica);
         sourceBas.sortedReplicas().remove(replica);
-
-        if (broker.replicas().size() <= (broker.isAlive() ? _balanceUpperLimit : 0)) {
+        if (broker.replicas().size() <= (broker.currentOfflineReplicas().isEmpty() ? _balanceUpperLimit : 0)) {
           return false;
         }
         // Remove and reinsert the broker so the order is correct.
         candidateBrokers.remove(b);
-        if (b.replicas().size() < _balanceUpperLimit || _selfHealingDeadBrokersOnly) {
+        if (b.replicas().size() < _balanceUpperLimit || _fixOfflineReplicasOnly) {
           candidateBrokers.add(b);
         }
+      } else if (replica.isCurrentOffline()) {
+        wasUnableToMoveOfflineReplica = true;
       }
     }
     // All the replicas has been moved away from the broker.
@@ -377,13 +376,18 @@ public class ReplicaDistributionGoal extends AbstractGoal {
                                               Set<Goal> optimizedGoals,
                                               Set<String> excludedTopics) {
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
-      int result = Double.compare(b2.replicas().size(), b1.replicas().size());
-      return result == 0 ? Integer.compare(b1.id(), b2.id()) : result;
+      // Brokers are sorted by (1) current offline replica count then (2) all replica count then (3) broker id.
+      int resultByOfflineReplicas = Integer.compare(b2.currentOfflineReplicas().size(), b1.currentOfflineReplicas().size());
+      if (resultByOfflineReplicas == 0) {
+        int resultByAllReplicas = Integer.compare(b2.replicas().size(), b1.replicas().size());
+        return resultByAllReplicas == 0 ? Integer.compare(b1.id(), b2.id()) : resultByAllReplicas;
+      }
+      return resultByOfflineReplicas;
     });
 
-    for (Broker healthyBroker : clusterModel.healthyBrokers()) {
-      if (healthyBroker.replicas().size() > _balanceLowerLimit) {
-        eligibleBrokers.add(healthyBroker);
+    for (Broker aliveBroker : clusterModel.aliveBrokers()) {
+      if (aliveBroker.replicas().size() > _balanceLowerLimit || !aliveBroker.currentOfflineReplicas().isEmpty()) {
+        eligibleBrokers.add(aliveBroker);
       }
     }
 
@@ -413,11 +417,16 @@ public class ReplicaDistributionGoal extends AbstractGoal {
           if (broker.replicas().size() >= (broker.isAlive() ? _balanceLowerLimit : 0)) {
             return false;
           }
-          // If the source broker has a lower number of replicas than the next broker in the eligible broker in the
-          // queue, we reenqueue the source broker and switch to the next broker.
-          if (!eligibleBrokers.isEmpty() && sourceBroker.replicas().size() < eligibleBrokers.peek().replicas().size()) {
-            eligibleBrokers.add(sourceBroker);
-            break;
+          // If the source broker has a lower number of offline replicas or an equal number of offline replicas, but
+          // more total replicas than the next broker in the eligible broker in the queue, we reenqueue the source broker
+          // and switch to the next broker.
+          if (!eligibleBrokers.isEmpty()) {
+            int result = Integer.compare(sourceBroker.currentOfflineReplicas().size(),
+                                         eligibleBrokers.peek().currentOfflineReplicas().size());
+            if (result == -1 || (result == 0 && sourceBroker.replicas().size() < eligibleBrokers.peek().replicas().size())) {
+              eligibleBrokers.add(sourceBroker);
+              break;
+            }
           }
         }
       }

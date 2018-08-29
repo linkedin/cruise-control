@@ -43,7 +43,7 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.DEAD_BROKERS;
+import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.BROKEN_BROKERS;
 import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.NEW_BROKERS;
 import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.REGRESSION;
 import static org.junit.Assert.assertTrue;
@@ -112,7 +112,7 @@ public class DeterministicClusterTest {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(6L));
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
-    List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, DEAD_BROKERS, REGRESSION);
+    List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, BROKEN_BROKERS, REGRESSION);
 
     // ----------##TEST: BALANCE PERCENTAGES.
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
@@ -177,7 +177,7 @@ public class DeterministicClusterTest {
     Map<Integer, String> kafkaAssignerGoals = new HashMap<>();
     kafkaAssignerGoals.put(0, KafkaAssignerEvenRackAwareGoal.class.getName());
     kafkaAssignerGoals.put(1, KafkaAssignerDiskUsageDistributionGoal.class.getName());
-    List<OptimizationVerifier.Verification> kafkaAssignerVerifications = Arrays.asList(DEAD_BROKERS, REGRESSION);
+    List<OptimizationVerifier.Verification> kafkaAssignerVerifications = Arrays.asList(BROKEN_BROKERS, REGRESSION);
     // Small cluster.
     p.add(params(balancingConstraint, DeterministicCluster.smallClusterModel(TestConstants.BROKER_CAPACITY),
                  kafkaAssignerGoals, kafkaAssignerVerifications, null));
@@ -207,7 +207,7 @@ public class DeterministicClusterTest {
       assertTrue("Deterministic Cluster Test failed to improve the existing state.",
           OptimizationVerifier.executeGoalsFor(_balancingConstraint, _cluster, _goalNameByPriority, _verifications));
     } catch (OptimizationFailureException optimizationFailureException) {
-      // This exception is thrown if rebalance fails due to healthy brokers having insufficient capacity.
+      // This exception is thrown if rebalance fails due to alive brokers having insufficient capacity.
       if (!optimizationFailureException.getMessage().contains("Insufficient healthy cluster capacity for resource")) {
         throw optimizationFailureException;
       }

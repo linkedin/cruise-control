@@ -184,6 +184,58 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Fix offline replicas on cluster -- i.e. move offline replicas to alive brokers.
+   *
+   * @param dryRun true if no execution is required, false otherwise.
+   * @param goals the goals to be met when fixing offline replicas on the given brokers. When empty all goals will be used.
+   * @param requirements The cluster model completeness requirements.
+   * @param operationProgress the progress to report.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
+   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   *                                  (if null, use num.concurrent.leader.movements).
+   * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
+   * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
+   * @return the optimization result.
+   *
+   * @throws KafkaCruiseControlException when any exception occurred during the process of fixing offline replicas.
+   */
+  public GoalOptimizer.OptimizerResult fixOfflineReplicas(boolean dryRun,
+                                                          List<String> goals,
+                                                          ModelCompletenessRequirements requirements,
+                                                          OperationProgress operationProgress,
+                                                          boolean allowCapacityEstimation,
+                                                          Integer concurrentPartitionMovements,
+                                                          Integer concurrentLeaderMovements,
+                                                          boolean skipHardGoalCheck,
+                                                          Pattern excludedTopics)
+      throws KafkaCruiseControlException {
+    sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
+    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+    ModelCompletenessRequirements modelCompletenessRequirements =
+        modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
+    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
+                                                            operationProgress);
+      GoalOptimizer.OptimizerResult result =
+          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
+      if (!dryRun) {
+        executeProposals(result.goalProposals(),
+                         Collections.emptyList(),
+                         false,
+                         concurrentPartitionMovements,
+                         concurrentLeaderMovements);
+      }
+      return result;
+    } catch (KafkaCruiseControlException kcce) {
+      throw kcce;
+    } catch (Exception e) {
+      throw new KafkaCruiseControlException(e);
+    }
+  }
+
+  /**
    * Check whether the given capacity estimation info indicates estimations for any broker when capacity estimation is
    * not permitted.
    *

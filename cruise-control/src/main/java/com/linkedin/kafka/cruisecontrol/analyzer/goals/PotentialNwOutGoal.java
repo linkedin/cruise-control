@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -41,9 +42,9 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA
 public class PotentialNwOutGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(PotentialNwOutGoal.class);
 
-  // Flag to indicate whether the self healing failed to relocate all replicas away from dead brokers in its initial
-  // attempt and currently omitting the potential outbound network limit to relocate remaining replicas.
-  private boolean _selfHealingDeadBrokersOnly;
+  // Flag to indicate whether the self healing failed to relocate all offline replicas away from dead brokers or broken
+  // disks in its initial attempt and currently omitting the potential outbound network limit to relocate remaining replicas.
+  private boolean _fixOfflineReplicasOnly;
 
   /**
    * Empty constructor for Potential Network Outbound Goal.
@@ -163,7 +164,11 @@ public class PotentialNwOutGoal extends AbstractGoal {
    */
   @Override
   protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
-    return clusterModel.deadBrokers().isEmpty() ? clusterModel.brokers() : clusterModel.deadBrokers();
+    // Balance the broken brokers (i.e. dead or has bad disks) if any, otherwise balance all brokers.
+    SortedSet<Broker> brokenBrokers = clusterModel.deadBrokers();
+    brokenBrokers.addAll(clusterModel.brokersHavingOfflineReplicasOnBadDisks());
+
+    return brokenBrokers.isEmpty() ? clusterModel.brokers() : brokenBrokers;
   }
 
   /**
@@ -183,9 +188,10 @@ public class PotentialNwOutGoal extends AbstractGoal {
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
     ActionType actionType = action.balancingAction();
     Broker sourceBroker = sourceReplica.broker();
-    // If the source broker is dead and currently self healing dead brokers only, then the action must be executed.
-    if (!sourceBroker.isAlive() && _selfHealingDeadBrokersOnly && actionType != ActionType.REPLICA_SWAP) {
-      return true;
+    // The action must be executed if currently fixing offline replicas only and the offline source replica is proposed
+    // to be moved to another broker.
+    if (_fixOfflineReplicasOnly && sourceReplica.isCurrentOffline()) {
+      return action.balancingAction() == ActionType.REPLICA_MOVEMENT;
     }
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     double destinationBrokerUtilization = clusterModel.potentialLeadershipLoadFor(destinationBroker.id()).expectedUtilizationFor(Resource.NW_OUT);
@@ -222,7 +228,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
   @Override
   protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
     // While proposals exclude the excludedTopics, the potential nw_out still considers replicas of the excludedTopics.
-    _selfHealingDeadBrokersOnly = false;
+    _fixOfflineReplicasOnly = false;
   }
 
   /**
@@ -233,20 +239,17 @@ public class PotentialNwOutGoal extends AbstractGoal {
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws OptimizationFailureException {
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (replica.broker().isAlive()) {
-        continue;
+    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+    try {
+      AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
+    } catch (OptimizationFailureException ofe) {
+      if (_fixOfflineReplicasOnly) {
+        throw ofe;
       }
-      if (_selfHealingDeadBrokersOnly) {
-        throw new OptimizationFailureException("Self healing failed to move the replica away from decommissioned brokers.");
-      }
-      _selfHealingDeadBrokersOnly = true;
-      LOG.warn(
-          "Ignoring potential network outbound limit to relocate remaining replicas from dead brokers to healthy ones.");
+      _fixOfflineReplicasOnly = true;
+      LOG.warn("Omitting resource balance limit to relocate remaining replicas from dead brokers/disks.");
       return;
     }
-
     finish();
   }
 
@@ -266,13 +269,13 @@ public class PotentialNwOutGoal extends AbstractGoal {
     double capacityLimit = broker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
     boolean estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
         clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
-    if (!estimatedMaxPossibleNwOutOverLimit) {
-      // Estimated max possible utilization in broker is under the limit.
+    if (!estimatedMaxPossibleNwOutOverLimit && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
+      // Estimated max possible utilization in broker is under the limit and there is no offline replica on broker.
       return;
     }
     // Get candidate brokers
-    Set<Broker> candidateBrokers = _selfHealingDeadBrokersOnly ?
-        clusterModel.healthyBrokers() : brokersUnderEstimatedMaxPossibleNwOut(clusterModel);
+    Set<Broker> candidateBrokers = _fixOfflineReplicasOnly ?
+                                   clusterModel.aliveBrokers() : brokersUnderEstimatedMaxPossibleNwOut(clusterModel);
     // Attempt to move replicas to eligible brokers until either the estimated max possible network out
     // limit requirement is satisfied for the broker or all replicas are checked.
     SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());
@@ -294,14 +297,17 @@ public class PotentialNwOutGoal extends AbstractGoal {
         // Check if broker capacity limit is satisfied now.
         estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
             clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
-        if (!estimatedMaxPossibleNwOutOverLimit) {
+        if (!estimatedMaxPossibleNwOutOverLimit && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
           break;
         }
-        // Update brokersUnderEstimatedMaxPossibleNwOut (for destination broker).
-        double updatedDestBrokerPotentialNwOut =
-            clusterModel.potentialLeadershipLoadFor(destinationBrokerId).expectedUtilizationFor(Resource.NW_OUT);
-        if (!_selfHealingDeadBrokersOnly && updatedDestBrokerPotentialNwOut > capacityLimit) {
-          candidateBrokers.remove(clusterModel.broker(destinationBrokerId));
+
+        if (!_fixOfflineReplicasOnly) {
+          // Update brokersUnderEstimatedMaxPossibleNwOut (for destination broker).
+          double updatedDestBrokerPotentialNwOut =
+              clusterModel.potentialLeadershipLoadFor(destinationBrokerId).expectedUtilizationFor(Resource.NW_OUT);
+          if (updatedDestBrokerPotentialNwOut > capacityLimit) {
+            candidateBrokers.remove(clusterModel.broker(destinationBrokerId));
+          }
         }
       }
     }
@@ -325,11 +331,11 @@ public class PotentialNwOutGoal extends AbstractGoal {
     Set<Broker> brokersUnderEstimatedMaxPossibleNwOut = new HashSet<>();
     double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);
 
-    for (Broker healthyBroker : clusterModel.healthyBrokers()) {
+    for (Broker aliveBroker : clusterModel.aliveBrokers()) {
       // We use the hosts capacity instead of the broker capacity.
-      double capacityLimit = healthyBroker.host().capacityFor(Resource.NW_OUT) * capacityThreshold;
-      if (clusterModel.potentialLeadershipLoadFor(healthyBroker.id()).expectedUtilizationFor(Resource.NW_OUT) < capacityLimit) {
-        brokersUnderEstimatedMaxPossibleNwOut.add(healthyBroker);
+      double capacityLimit = aliveBroker.host().capacityFor(Resource.NW_OUT) * capacityThreshold;
+      if (clusterModel.potentialLeadershipLoadFor(aliveBroker.id()).expectedUtilizationFor(Resource.NW_OUT) < capacityLimit) {
+        brokersUnderEstimatedMaxPossibleNwOut.add(aliveBroker);
       }
     }
     return brokersUnderEstimatedMaxPossibleNwOut;

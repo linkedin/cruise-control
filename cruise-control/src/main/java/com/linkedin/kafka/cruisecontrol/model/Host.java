@@ -85,10 +85,11 @@ public class Host implements Serializable {
    * brokers in the rack for the requested resource.
    *
    * @param resource Resource for which capacity will be provided.
-   * @return Healthy host capacity of the resource.
+   * @return Alive host capacity of the resource.
    */
   public double capacityFor(Resource resource) {
     return _aliveBrokers > 0 ? _hostCapacity[resource.id()] : -1.0;
+    // TODO: Consider the capacity when there are broken disks.
   }
 
   /**

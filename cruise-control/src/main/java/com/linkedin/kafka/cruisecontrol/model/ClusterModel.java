@@ -48,8 +48,9 @@ public class ClusterModel implements Serializable {
   private final Map<TopicPartition, Partition> _partitionsByTopicPartition;
   private final Set<Replica> _selfHealingEligibleReplicas;
   private final SortedSet<Broker> _newBrokers;
-  private final Set<Broker> _healthyBrokers;
-  private final SortedSet<Broker> _deadBrokes;
+  private final SortedSet<Broker> _brokersWithBadDisks;
+  private final Set<Broker> _aliveBrokers;
+  private final SortedSet<Broker> _deadBrokers;
   private final SortedSet<Broker> _brokers;
   private final double _monitoredPartitionsPercentage;
   private final double[] _clusterCapacity;
@@ -76,12 +77,14 @@ public class ClusterModel implements Serializable {
     _selfHealingEligibleReplicas = new HashSet<>();
     // A sorted set of newly added brokers
     _newBrokers = new TreeSet<>();
-    // A set of healthy brokers
-    _healthyBrokers = new HashSet<>();
+    // A sorted set of alive brokers with bad disks
+    _brokersWithBadDisks = new TreeSet<>();
+    // A set of alive brokers
+    _aliveBrokers = new HashSet<>();
     // A set of all brokers
     _brokers = new TreeSet<>();
     // A set of dead brokers
-    _deadBrokes = new TreeSet<>();
+    _deadBrokers = new TreeSet<>();
     // Initially cluster does not contain any load.
     _load = new Load();
     _clusterCapacity = new double[Resource.cachedValues().size()];
@@ -230,8 +233,8 @@ public class ClusterModel implements Serializable {
    * Set broker alive status. If broker is not alive, add its replicas to self healing eligible replicas, if broker
    * alive status is set to true, remove its replicas from self healing eligible replicas.
    *
-   * @param brokerId    Id of the broker for which the alive status is set.
-   * @param newState True if alive, false otherwise.
+   * @param brokerId Id of the broker for which the alive status is set.
+   * @param newState The new state of the broker.
    */
   public void setBrokerState(int brokerId, Broker.State newState) {
     Broker broker = broker(brokerId);
@@ -240,12 +243,13 @@ public class ClusterModel implements Serializable {
     }
     // We need to go through rack so all the cached capacity will be updated.
     broker.rack().setBrokerState(brokerId, newState);
+    _selfHealingEligibleReplicas.addAll(broker.currentOfflineReplicas());
     refreshCapacity();
     switch (newState) {
       case DEAD:
-        _selfHealingEligibleReplicas.addAll(broker.replicas());
-        _healthyBrokers.remove(broker);
-        _deadBrokes.add(broker);
+        _aliveBrokers.remove(broker);
+        _deadBrokers.add(broker);
+        _brokersWithBadDisks.remove(broker);
         break;
       case NEW:
         _newBrokers.add(broker);
@@ -253,9 +257,15 @@ public class ClusterModel implements Serializable {
       case DEMOTED:
         // As of now we still treat demoted brokers as alive brokers.
       case ALIVE:
-        _selfHealingEligibleReplicas.removeAll(broker.replicas());
-        _healthyBrokers.add(broker);
-        _deadBrokes.remove(broker);
+        _aliveBrokers.add(broker);
+        _deadBrokers.remove(broker);
+        _brokersWithBadDisks.remove(broker);
+        break;
+      case BAD_DISKS:
+        // We treat brokers with bad disks (i.e. brokers with at least one healthy disk) as alive brokers.
+        _aliveBrokers.add(broker);
+        _deadBrokers.remove(broker);
+        _brokersWithBadDisks.add(broker);
         break;
       default:
         throw new IllegalArgumentException("Illegal broker state " + newState + " is provided.");
@@ -335,17 +345,26 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get healthy brokers in the cluster.
+   * Get alive brokers in the cluster.
    */
-  public Set<Broker> healthyBrokers() {
-    return _healthyBrokers;
+  public Set<Broker> aliveBrokers() {
+    return _aliveBrokers;
   }
 
   /**
    * Get the dead brokers in the cluster.
    */
   public SortedSet<Broker> deadBrokers() {
-    return new TreeSet<>(_deadBrokes);
+    return new TreeSet<>(_deadBrokers);
+  }
+
+  /**
+   * Get broken brokers brokers -- i.e. dead brokers and brokers with bad disk in the cluster.
+   */
+  public SortedSet<Broker> brokenBrokers() {
+    SortedSet<Broker> brokenBrokers = new TreeSet<>(_deadBrokers);
+    brokenBrokers.addAll(brokersWithBadDisks());
+    return Collections.unmodifiableSortedSet(brokenBrokers);
   }
 
   /**
@@ -375,6 +394,27 @@ public class ClusterModel implements Serializable {
    */
   public SortedSet<Broker> newBrokers() {
     return _newBrokers;
+  }
+
+  /**
+   * Get the set of brokers with bad disks -- i.e. for which the offline replicas are being fixed.
+   */
+  public SortedSet<Broker> brokersWithBadDisks() {
+    return Collections.unmodifiableSortedSet(_brokersWithBadDisks);
+  }
+
+  /**
+   * Get brokers containing offline replicas residing on bad disks in the current cluster model.
+   */
+  public Set<Broker> brokersHavingOfflineReplicasOnBadDisks() {
+    Set<Broker> brokersWithOfflineReplicasOnBadDisks = new HashSet<>();
+    for (Broker brokerWithBadDisks : _brokersWithBadDisks) {
+      if (!brokerWithBadDisks.currentOfflineReplicas().isEmpty()) {
+        brokersWithOfflineReplicasOnBadDisks.add(brokerWithBadDisks);
+      }
+    }
+
+    return brokersWithOfflineReplicasOnBadDisks;
   }
 
   /**
@@ -543,16 +583,16 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get number of healthy racks in the cluster.
+   * Get number of alive racks in the cluster.
    */
-  public int numHealthyRacks() {
-    int numHealthyRacks = 0;
+  public int numAliveRacks() {
+    int numAliveRacks = 0;
     for (Rack rack : _racksById.values()) {
       if (rack.isRackAlive()) {
-        numHealthyRacks++;
+        numAliveRacks++;
       }
     }
-    return numHealthyRacks;
+    return numAliveRacks;
   }
 
   /**
@@ -587,7 +627,7 @@ public class ClusterModel implements Serializable {
    * brokers in the cluster for the requested resource.
    *
    * @param resource Resource for which the capacity will be provided.
-   * @return Healthy cluster capacity of the resource.
+   * @return Alive cluster capacity of the resource.
    */
   public double capacityFor(Resource resource) {
     return _clusterCapacity[resource.id()];
@@ -647,7 +687,7 @@ public class ClusterModel implements Serializable {
 
   /**
    * Create a replica under given cluster/rack/broker. Add replica to rack and corresponding partition. Get the
-   * created replica.
+   * created replica. Set the replica s offline if it is on a dead broker.
    *
    * @param rackId         Rack id under which the replica will be created.
    * @param brokerId       Broker id under which the replica will be created.
@@ -657,7 +697,23 @@ public class ClusterModel implements Serializable {
    * @return Created replica.
    */
   public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader) {
-    Replica replica = new Replica(tp, broker(brokerId), isLeader);
+    return createReplica(rackId, brokerId, tp, index, isLeader, !broker(brokerId).isAlive());
+  }
+
+  /**
+   * Create a replica under given cluster/rack/broker. Add replica to rack and corresponding partition. Get the
+   * created replica. Explicitly set the offline status of replica upon creation -- e.g. for replicas on dead disks.
+   *
+   * @param rackId         Rack id under which the replica will be created.
+   * @param brokerId       Broker id under which the replica will be created.
+   * @param tp             Topic partition information of the replica.
+   * @param index          The index of the replica in the replica list.
+   * @param isLeader       True if the replica is a leader, false otherwise.
+   * @param isOffline      True if the replica is offline in its original location, false otherwise.
+   * @return Created replica.
+   */
+  public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader, boolean isOffline) {
+    Replica replica = new Replica(tp, broker(brokerId), isLeader, isOffline);
     rack(rackId).addReplica(replica);
 
     // Add replica to its partition.
@@ -681,7 +737,7 @@ public class ClusterModel implements Serializable {
     }
 
     // Keep track of the replication factor per topic.
-    Integer replicationFactor = Math.max(_replicationFactorByTopic.get(tp.topic()), partition.followers().size() + 1);
+    int replicationFactor = Math.max(_replicationFactorByTopic.get(tp.topic()), partition.followers().size() + 1);
     _replicationFactorByTopic.put(tp.topic(), replicationFactor);
 
     // Increment the maximum replication factor if the number of replicas of the partition is larger than the
@@ -710,7 +766,7 @@ public class ClusterModel implements Serializable {
       _capacityEstimationInfoByBrokerId.put(brokerId, brokerCapacityInfo.estimationInfo());
     }
     Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo.capacity());
-    _healthyBrokers.add(broker);
+    _aliveBrokers.add(broker);
     _brokers.add(broker);
     refreshCapacity();
     return broker;
@@ -728,18 +784,18 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get a list of sorted (in ascending order by resource) healthy brokers having utilization under:
+   * Get a list of sorted (in ascending order by resource) alive brokers having utilization under:
    * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#_isHostResource} and
    * {@link Resource#_isBrokerResource}). Utilization threshold might be any capacity constraint thresholds such as
    * balance or capacity.
    *
    * @param resource             Resource for which brokers will be sorted.
    * @param utilizationThreshold Utilization threshold for the given resource.
-   * @return A list of sorted (in ascending order by resource) healthy brokers having utilization under:
+   * @return A list of sorted (in ascending order by resource) alive brokers having utilization under:
    * (given utilization threshold) * (broker and/or host capacity).
    */
-  public List<Broker> sortedHealthyBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
-    List<Broker> sortedTargetBrokersUnderCapacityLimit = healthyBrokersUnderThreshold(resource, utilizationThreshold);
+  public List<Broker> sortedAliveBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
+    List<Broker> sortedTargetBrokersUnderCapacityLimit = aliveBrokersUnderThreshold(resource, utilizationThreshold);
 
     sortedTargetBrokersUnderCapacityLimit.sort((o1, o2) -> {
       Double expectedBrokerLoad1 = o1.load().expectedUtilizationFor(resource);
@@ -757,50 +813,50 @@ public class ClusterModel implements Serializable {
     return sortedTargetBrokersUnderCapacityLimit;
   }
 
-  public List<Broker> healthyBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
-    List<Broker> healthyBrokersUnderThreshold = new ArrayList<>();
+  public List<Broker> aliveBrokersUnderThreshold(Resource resource, double utilizationThreshold) {
+    List<Broker> aliveBrokersUnderThreshold = new ArrayList<>();
 
-    for (Broker healthyBroker : healthyBrokers()) {
+    for (Broker aliveBroker : aliveBrokers()) {
       if (resource.isBrokerResource()) {
-        double brokerCapacityLimit = healthyBroker.capacityFor(resource) * utilizationThreshold;
-        double brokerUtilization = healthyBroker.load().expectedUtilizationFor(resource);
+        double brokerCapacityLimit = aliveBroker.capacityFor(resource) * utilizationThreshold;
+        double brokerUtilization = aliveBroker.load().expectedUtilizationFor(resource);
         if (brokerUtilization >= brokerCapacityLimit) {
           continue;
         }
       }
       if (resource.isHostResource()) {
-        double hostCapacityLimit = healthyBroker.host().capacityFor(resource) * utilizationThreshold;
-        double hostUtilization = healthyBroker.host().load().expectedUtilizationFor(resource);
+        double hostCapacityLimit = aliveBroker.host().capacityFor(resource) * utilizationThreshold;
+        double hostUtilization = aliveBroker.host().load().expectedUtilizationFor(resource);
         if (hostUtilization >= hostCapacityLimit) {
           continue;
         }
       }
-      healthyBrokersUnderThreshold.add(healthyBroker);
+      aliveBrokersUnderThreshold.add(aliveBroker);
     }
-    return healthyBrokersUnderThreshold;
+    return aliveBrokersUnderThreshold;
   }
 
-  public List<Broker> healthyBrokersOverThreshold(Resource resource, double utilizationThreshold) {
-    List<Broker> healthyBrokersOverThreshold = new ArrayList<>();
+  public List<Broker> aliveBrokersOverThreshold(Resource resource, double utilizationThreshold) {
+    List<Broker> aliveBrokersOverThreshold = new ArrayList<>();
 
-    for (Broker healthyBroker : healthyBrokers()) {
+    for (Broker aliveBroker : aliveBrokers()) {
       if (resource.isBrokerResource()) {
-        double brokerCapacityLimit = healthyBroker.capacityFor(resource) * utilizationThreshold;
-        double brokerUtilization = healthyBroker.load().expectedUtilizationFor(resource);
+        double brokerCapacityLimit = aliveBroker.capacityFor(resource) * utilizationThreshold;
+        double brokerUtilization = aliveBroker.load().expectedUtilizationFor(resource);
         if (brokerUtilization <= brokerCapacityLimit) {
           continue;
         }
       }
       if (resource.isHostResource()) {
-        double hostCapacityLimit = healthyBroker.host().capacityFor(resource) * utilizationThreshold;
-        double hostUtilization = healthyBroker.host().load().expectedUtilizationFor(resource);
+        double hostCapacityLimit = aliveBroker.host().capacityFor(resource) * utilizationThreshold;
+        double hostUtilization = aliveBroker.host().load().expectedUtilizationFor(resource);
         if (hostUtilization <= hostCapacityLimit) {
           continue;
         }
       }
-      healthyBrokersOverThreshold.add(healthyBroker);
+      aliveBrokersOverThreshold.add(aliveBroker);
     }
-    return healthyBrokersOverThreshold;
+    return aliveBrokersOverThreshold;
   }
 
   /**
@@ -1393,7 +1449,7 @@ public class ClusterModel implements Serializable {
     StringBuilder bldr = new StringBuilder();
     bldr.append("ClusterModel[brokerCount=").append(this.brokers().size())
         .append(",partitionCount=").append(_partitionsByTopicPartition.size())
-        .append(",healthyBrokerCount=").append(_healthyBrokers.size())
+        .append(",aliveBrokerCount=").append(_aliveBrokers.size())
         .append(']');
     return bldr.toString();
   }

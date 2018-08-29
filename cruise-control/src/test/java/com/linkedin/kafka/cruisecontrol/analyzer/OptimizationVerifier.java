@@ -140,8 +140,8 @@ class OptimizationVerifier {
             return false;
           }
           break;
-        case DEAD_BROKERS:
-          if (!clusterModel.deadBrokers().isEmpty() && !verifyDeadBrokers(clusterModel)) {
+        case BROKEN_BROKERS:
+          if (!clusterModel.brokenBrokers().isEmpty() && !verifyBrokenBrokers(clusterModel)) {
             return false;
           }
           break;
@@ -173,9 +173,9 @@ class OptimizationVerifier {
     }
   }
 
-  private static boolean verifyDeadBrokers(ClusterModel clusterModel) {
+  private static boolean verifyBrokenBrokers(ClusterModel clusterModel) {
     Set<Broker> deadBrokers = clusterModel.brokers();
-    deadBrokers.removeAll(clusterModel.healthyBrokers());
+    deadBrokers.removeAll(clusterModel.aliveBrokers());
     for (Broker deadBroker : deadBrokers) {
       if (deadBroker.replicas().size() > 0) {
         LOG.error("Failed to move {} replicas on dead broker {} to other brokers.", deadBroker.replicas().size(),
@@ -183,11 +183,19 @@ class OptimizationVerifier {
         return false;
       }
     }
+    Set<Broker> brokersHavingOfflineReplicasOnBadDisks = clusterModel.brokersHavingOfflineReplicasOnBadDisks();
+    if (!brokersHavingOfflineReplicasOnBadDisks.isEmpty()) {
+      for (Broker brokerHavingOfflineReplicasOnBadDisks : brokersHavingOfflineReplicasOnBadDisks) {
+        LOG.error("Failed to move offline replicas from broker with bad disk {}.",
+                  brokerHavingOfflineReplicasOnBadDisks.id());
+      }
+      return false;
+    }
     return true;
   }
 
   private static boolean verifyNewBrokers(ClusterModel clusterModel, BalancingConstraint constraint) {
-    for (Broker broker : clusterModel.healthyBrokers()) {
+    for (Broker broker : clusterModel.aliveBrokers()) {
       if (!broker.isNew()) {
         for (Replica replica : broker.replicas()) {
           if (replica.originalBroker() != broker) {
@@ -230,6 +238,6 @@ class OptimizationVerifier {
   }
 
   enum Verification {
-    GOAL_VIOLATION, DEAD_BROKERS, NEW_BROKERS, REGRESSION,
+    GOAL_VIOLATION, BROKEN_BROKERS, NEW_BROKERS, REGRESSION,
   }
 }

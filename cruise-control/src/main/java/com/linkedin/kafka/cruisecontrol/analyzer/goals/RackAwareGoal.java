@@ -173,7 +173,7 @@ public class RackAwareGoal extends AbstractGoal {
   @Override
   protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
     // Sanity Check: not enough racks to satisfy rack awareness.
-    int numHealthyRacks = clusterModel.numHealthyRacks();
+    int numAliveRacks = clusterModel.numAliveRacks();
     if (!excludedTopics.isEmpty()) {
       int maxReplicationFactorOfIncludedTopics = 1;
       Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();
@@ -182,12 +182,12 @@ public class RackAwareGoal extends AbstractGoal {
         if (!excludedTopics.contains(replicationFactorByTopicEntry.getKey())) {
           maxReplicationFactorOfIncludedTopics =
               Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
-          if (maxReplicationFactorOfIncludedTopics > numHealthyRacks) {
+          if (maxReplicationFactorOfIncludedTopics > numAliveRacks) {
             throw new OptimizationFailureException("Insufficient number of racks to distribute included replicas.");
           }
         }
       }
-    } else if (clusterModel.maxReplicationFactor() > numHealthyRacks) {
+    } else if (clusterModel.maxReplicationFactor() > numAliveRacks) {
       throw new OptimizationFailureException("Insufficient number of racks to distribute each replica.");
     }
   }
@@ -207,8 +207,8 @@ public class RackAwareGoal extends AbstractGoal {
     // One pass is sufficient to satisfy or alert impossibility of this goal.
     // Sanity check to confirm that the final distribution is rack aware.
     ensureRackAware(clusterModel, excludedTopics);
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);
+    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+    AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
     finish();
   }
 
@@ -227,10 +227,10 @@ public class RackAwareGoal extends AbstractGoal {
                                     Set<String> excludedTopics)
       throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
-    // Satisfy rack awareness requirement.
+    // Satisfy rack awareness requirement. Note that the default replica comparator prioritizes offline replicas.
     SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());
     for (Replica replica : replicas) {
-      if ((broker.isAlive() && satisfiedRackAwareness(replica, clusterModel))
+      if ((broker.isAlive() && !broker.currentOfflineReplicas().contains(replica) && satisfiedRackAwareness(replica, clusterModel))
           || shouldExclude(replica, excludedTopics)) {
         continue;
       }
@@ -286,7 +286,7 @@ public class RackAwareGoal extends AbstractGoal {
 
     SortedSet<Broker> rackAwareEligibleBrokers = new TreeSet<>((o1, o2) -> {
       return Integer.compare(o1.id(), o2.id()); });
-    for (Broker broker : clusterModel.healthyBrokers()) {
+    for (Broker broker : clusterModel.aliveBrokers()) {
       if (!partitionRackIds.contains(broker.rack().id())) {
         rackAwareEligibleBrokers.add(broker);
       }

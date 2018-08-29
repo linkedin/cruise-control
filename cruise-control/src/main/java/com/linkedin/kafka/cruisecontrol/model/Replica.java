@@ -31,22 +31,64 @@ public class Replica implements Serializable, Comparable<Replica> {
   private final TopicPartition _tp;
   private final Load _load;
   private final Broker _originalBroker;
+  private boolean _isOriginalOffline;
   private Broker _broker;
   private boolean _isLeader;
+
+  /**
+   * The constructor for an online replica.
+   *
+   * @param tp Topic partition information of the replica.
+   * @param broker The broker of the replica.
+   * @param isLeader A flag to represent whether the replica is the isLeader or not.
+   */
+  Replica(TopicPartition tp, Broker broker, boolean isLeader) {
+    this(tp, broker, isLeader, false);
+  }
 
   /**
    * A constructor for a replica.
    *
    * @param tp Topic partition information of the replica.
-   * @param broker         The broker of the replica.
-   * @param isLeader       A flag to represent whether the replica is the isLeader or not.
+   * @param broker The broker of the replica.
+   * @param isLeader A flag to represent whether the replica is the isLeader or not.
+   * @param isOriginalOffline True if the replica is offline in its original location, false otherwise.
    */
-  Replica(TopicPartition tp, Broker broker, boolean isLeader) {
+  Replica(TopicPartition tp, Broker broker, boolean isLeader, boolean isOriginalOffline) {
     _tp = tp;
     _load = new Load();
     _originalBroker = broker;
     _broker = broker;
     _isLeader = isLeader;
+    _isOriginalOffline = isOriginalOffline;
+  }
+
+  /**
+   * Get the original state of the replica before rebalance.
+   * True if the replica is offline in its original location (e.g. due to broken disk or broker), false otherwise.
+   */
+  public boolean isOriginalOffline() {
+    return _isOriginalOffline || !_originalBroker.isAlive();
+  }
+
+  /**
+   * Check whether the replica is currently offline.
+   * True if the replica is currently offline (e.g. due to broken disk or broker), false otherwise.
+   */
+  public boolean isCurrentOffline() {
+    return (isOriginalOffline() && _broker.id() == _originalBroker.id()) || !_broker.isAlive();
+  }
+
+  /**
+   * Package private for unit test.
+   * Mark the original replica as offline and add it to current offline replicas of the original broker.
+   */
+  void markOriginalOffline() {
+    if (_broker.id() != _originalBroker.id()) {
+      throw new IllegalStateException("Cannot mark an immigrant replica as offline.");
+    }
+    _isOriginalOffline = true;
+    _originalBroker.currentOfflineReplicas().add(this);
   }
 
   /**
@@ -236,6 +278,8 @@ public class Replica implements Serializable, Comparable<Replica> {
     replicaMap.put("broker", _broker.id());
     replicaMap.put("topic", _tp.topic());
     replicaMap.put("partition", _tp.partition());
+    replicaMap.put("isOriginalOffline", isOriginalOffline());
+    replicaMap.put("isCurrentOffline", isCurrentOffline());
     replicaMap.put("originalBroker", _originalBroker == null ? -1 : _originalBroker.id());
     return replicaMap;
   }
@@ -250,6 +294,8 @@ public class Replica implements Serializable, Comparable<Replica> {
     replicaMap.put("brokerid", _broker.id());
     replicaMap.put("topic", _tp.topic());
     replicaMap.put("partition", _tp.partition());
+    replicaMap.put("isOriginalOffline", isOriginalOffline());
+    replicaMap.put("isCurrentOffline", isCurrentOffline());
     replicaMap.put("load", _load.getJsonStructure());
     return replicaMap;
   }
@@ -269,24 +315,35 @@ public class Replica implements Serializable, Comparable<Replica> {
    */
   @Override
   public String toString() {
-    return String.format("Replica[isLeader=%s,rack=%s,broker=%d,TopicPartition=%s,origBroker=%d]", _isLeader,
-                         _broker.rack().id(), _broker.id(), _tp,
-                         _originalBroker == null ? -1 : _originalBroker.id());
+    return String.format(
+        "Replica[isLeader=%s,rack=%s,broker=%d,TopicPartition=%s,origBroker=%d,isOriginalOffline=%s,isCurrentOffline=%s]",
+        _isLeader, _broker.rack().id(), _broker.id(), _tp,
+        _originalBroker == null ? -1 : _originalBroker.id(), _isOriginalOffline, isCurrentOffline());
   }
 
   /**
-   * Compare (1) by partition id then (2) by original broker id then (3) by topic name.
+   * Compare by (1) offline / online status (2) partition id then (2) original broker id then (3) topic name.
    */
   @Override
   public int compareTo(Replica o) {
-    // Primary sort: by partition id.
+    // Primary sort: by offline / online status
+    boolean isR1Offline = isCurrentOffline();
+    boolean isR2Offline = o.isCurrentOffline();
+
+    if (isR1Offline && !isR2Offline) {
+      return -1;
+    } else if (!isR1Offline && isR2Offline) {
+      return 1;
+    }
+
+    // Secondary sort: by partition id.
     if (_tp.partition() > o.topicPartition().partition()) {
       return 1;
     } else if (_tp.partition() < o.topicPartition().partition()) {
       return -1;
     }
 
-    // Secondary sort: by original broker id.
+    // Tertiary sort: by original broker id.
     if (_originalBroker.id() > o.originalBroker().id()) {
       return 1;
     } else if (_originalBroker.id() < o.originalBroker().id()) {

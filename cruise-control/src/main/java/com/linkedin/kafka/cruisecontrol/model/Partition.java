@@ -81,6 +81,19 @@ public class Partition implements Serializable {
   }
 
   /**
+   * Get online follower replicas.
+   */
+  public List<Replica> onlineFollowers() {
+    List<Replica> onlineFollowers = new ArrayList<>();
+    for (Replica follower : followers()) {
+      if (!follower.isCurrentOffline()) {
+        onlineFollowers.add(follower);
+      }
+    }
+    return onlineFollowers;
+  }
+
+  /**
    * Get the leader replica.
    */
   public Replica leader() {
@@ -114,6 +127,19 @@ public class Partition implements Serializable {
       }
     });
     return followerBrokers;
+  }
+
+  /**
+   * Get the set of brokers that online followers reside in.
+   */
+  public List<Broker> onlineFollowerBrokers() {
+    List<Broker> onlineFollowerBrokers = new ArrayList<>();
+    _replicas.forEach(r -> {
+      if (!r.isLeader() && !r.isCurrentOffline()) {
+        onlineFollowerBrokers.add(r.broker());
+      }
+    });
+    return onlineFollowerBrokers;
   }
 
   /**

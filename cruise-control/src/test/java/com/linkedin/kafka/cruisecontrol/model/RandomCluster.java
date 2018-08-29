@@ -2,14 +2,14 @@
  * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol.common;
+package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
-import com.linkedin.kafka.cruisecontrol.model.Broker;
-import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 
 import java.util.ArrayList;
@@ -23,6 +23,7 @@ import java.util.Set;
 
 import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import org.apache.kafka.common.TopicPartition;
 
@@ -103,11 +104,15 @@ public class RandomCluster {
                               Set<String> excludedTopics) {
     // Sanity checks.
     int numBrokers = cluster.brokers().size();
-    if (properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() < 0 ||
+    int numDeadBrokers = properties.get(ClusterProperty.NUM_DEAD_BROKERS).intValue();
+    int numBrokersWithBadDisk = properties.get(ClusterProperty.NUM_BROKERS_WITH_BAD_DISK).intValue();
+    if (numDeadBrokers < 0 ||
+        numBrokersWithBadDisk < 0 ||
+        numBrokers < numDeadBrokers + numBrokersWithBadDisk ||
+        properties.get(ClusterProperty.MEAN_NW_IN).doubleValue() < 0 ||
         properties.get(ClusterProperty.MEAN_NW_OUT).doubleValue() < 0 ||
         properties.get(ClusterProperty.MEAN_DISK).doubleValue() < 0 ||
         properties.get(ClusterProperty.MEAN_CPU).doubleValue() < 0 ||
-        properties.get(ClusterProperty.NUM_DEAD_BROKERS).intValue() < 0 ||
         properties.get(ClusterProperty.NUM_TOPICS).intValue() <= 0 ||
         properties.get(ClusterProperty.MIN_REPLICATION).intValue() > properties.get(ClusterProperty.MAX_REPLICATION)
                                                                                .intValue() ||
@@ -284,25 +289,29 @@ public class RandomCluster {
         }
       }
     }
-    // Mark dead brokers
-    int numDeadBrokers = properties.get(ClusterProperty.NUM_DEAD_BROKERS).intValue();
-    markDeadBrokers(cluster, numDeadBrokers, excludedTopics, leaderInFirstPosition);
+    // Mark dead brokers and brokers with bad disk
+    markBrokenBrokers(cluster, numDeadBrokers, numBrokersWithBadDisk, excludedTopics, leaderInFirstPosition);
   }
 
   /**
    * Mark dead brokers: Give priority to marking brokers containing excluded topic replicas. In particular, if the
-   * leader is not in first position in partition replica list, then give priority to brokers containing excluded
+   * leader is not in the first position in partition replica list, then give priority to brokers containing excluded
    * topic replicas in the current position of the leader -- i.e. 1.
+   *
+   * Mark brokers with bad disk:
    *
    * @param cluster he state of the cluster.
    * @param numDeadBrokers Number of dead brokers.
+   * @param numBrokersWithBadDisk Number of brokers with bad disk.
    * @param excludedTopics Excluded topics.
    * @param leaderInFirstPosition Leader of each partition is in the first position or not.
    */
-  private static void markDeadBrokers(ClusterModel cluster,
-                               int numDeadBrokers,
-                               Set<String> excludedTopics,
-                               boolean leaderInFirstPosition) {
+  private static void markBrokenBrokers(ClusterModel cluster,
+                                        int numDeadBrokers,
+                                        int numBrokersWithBadDisk,
+                                        Set<String> excludedTopics,
+                                        boolean leaderInFirstPosition) {
+    // Mark dead brokers
     if (numDeadBrokers > 0) {
       int markedBrokersContainingExcludedTopicReplicas = 0;
 
@@ -334,6 +343,48 @@ public class RandomCluster {
           cluster.setBrokerState(remainingDeadBrokerIndex, Broker.State.DEAD);
         }
         remainingDeadBrokerIndex++;
+      }
+    }
+    // Mark brokers with bad disk
+    if (numBrokersWithBadDisk > 0) {
+      int markedBrokersContainingExcludedTopicReplicas = 0;
+
+      // Find the brokers with high priority to mark as broker with bad disk (if any). These brokers are sorted by their id.
+      SortedMap<String, List<Partition>> partitionsByTopic = cluster.getPartitionsByTopic();
+      SortedMap<Integer, Set<Replica>> replicasOnBadDiskByBrokerId = new TreeMap<>();
+      for (String excludedTopic : excludedTopics) {
+        for (Partition excludedPartition : partitionsByTopic.get(excludedTopic)) {
+          for (Replica replica : excludedPartition.replicas().subList(leaderInFirstPosition ? 0 : 1,
+                                                                      excludedPartition.replicas().size())) {
+            if (!replica.isCurrentOffline()) {
+              replicasOnBadDiskByBrokerId.putIfAbsent(replica.broker().id(), new HashSet<>());
+              replicasOnBadDiskByBrokerId.get(replica.broker().id()).add(replica);
+            }
+          }
+        }
+      }
+
+      // Mark the brokers with high priority as a broker with bad disk(s) (if any).
+      for (Map.Entry<Integer, Set<Replica>> entry : replicasOnBadDiskByBrokerId.entrySet()) {
+        for (Replica offlineReplica : entry.getValue()) {
+          offlineReplica.markOriginalOffline();
+        }
+        cluster.setBrokerState(entry.getKey(), Broker.State.BAD_DISKS);
+        if (++markedBrokersContainingExcludedTopicReplicas >= numBrokersWithBadDisk) {
+          break;
+        }
+      }
+
+      // Mark the remaining brokers as a broker with bad disk(s).
+      int remainingBrokerWithBadDiskIndex = 0;
+      while (numBrokersWithBadDisk - markedBrokersContainingExcludedTopicReplicas - remainingBrokerWithBadDiskIndex > 0) {
+        Broker brokerToMark = cluster.broker(remainingBrokerWithBadDiskIndex);
+        if (!brokerToMark.replicas().isEmpty() && brokerToMark.isAlive() && !brokerToMark.hasBadDisks()) {
+          // Mark one (random) replica on this broker as offline.
+          brokerToMark.replicas().iterator().next().markOriginalOffline();
+          cluster.setBrokerState(remainingBrokerWithBadDiskIndex, Broker.State.BAD_DISKS);
+          remainingBrokerWithBadDiskIndex++;
+        }
       }
     }
   }

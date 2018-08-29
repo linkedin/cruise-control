@@ -130,7 +130,7 @@ public class Rack implements Serializable {
    * brokers in the rack for the requested resource.
    *
    * @param resource Resource for which capacity will be provided.
-   * @return Healthy rack capacity of the resource.
+   * @return Alive rack capacity of the resource.
    */
   public double capacityFor(Resource resource) {
     return _rackCapacity[resource.id()];

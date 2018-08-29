@@ -32,7 +32,7 @@ import org.apache.kafka.common.TopicPartition;
 public class Broker implements Serializable, Comparable<Broker> {
 
   public enum State {
-    ALIVE, DEAD, NEW, DEMOTED
+    ALIVE, DEAD, NEW, DEMOTED, BAD_DISKS
   }
 
   private final int _id;
@@ -44,6 +44,8 @@ public class Broker implements Serializable, Comparable<Broker> {
   private final Map<String, SortedReplicas> _sortedReplicas;
   /** Set of immigrant replicas */
   private final Set<Replica> _immigrantReplicas;
+  /** Set of offline replicas on broker */
+  private final Set<Replica> _currentOfflineReplicas;
   /** A map for tracking topic -&gt; (partitionId -&gt; replica). */
   private final Map<String, Map<Integer, Replica>> _topicReplicas;
   private final Load _load;
@@ -72,6 +74,7 @@ public class Broker implements Serializable, Comparable<Broker> {
     _topicReplicas = new HashMap<>();
     _sortedReplicas = new HashMap<>();
     _immigrantReplicas = new HashSet<>();
+    _currentOfflineReplicas = new HashSet<>();
     // Initially broker does not contain any load.
     _load = new Load();
     _leadershipLoadForNwResources = new Load();
@@ -135,6 +138,13 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
+   * Get current offline replicas -- i.e. replicas (1) whose current broker is this broker, and (2) are offline.
+   */
+  public Set<Replica> currentOfflineReplicas() {
+    return _currentOfflineReplicas;
+  }
+
+  /**
    * Get the replica if it is in the broker.
    *
    * @param tp Topic partition of the replica.
@@ -183,6 +193,14 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
+   * Check if the broker has bad disks (i.e. is being fixed by removing offline replicas from it). Note that contrary to
+   * {@link State#DEAD}, a {@link State#BAD_DISKS} broker might receive replicas from other brokers during a rebalance.
+   */
+  public boolean hasBadDisks() {
+    return _state == State.BAD_DISKS;
+  }
+
+  /**
    * Get the broker load of the broker.
    */
   public Load load() {
@@ -221,24 +239,34 @@ public class Broker implements Serializable, Comparable<Broker> {
 
   /**
    * Get a comparator for the replicas in the broker. The comparisons performed are:
-   * 1. immigrant replicas has higher priority, i.e. comes before the native replicas.
-   * 2. the replicas with lower resource usage comes before those with higher resource usage.
+   * 1. offline replicas has higher priority, i.e. comes before the immigrant and native replicas.
+   * 2. immigrant replicas has higher priority compared to the native replicas.
+   * 3. the replicas with lower resource usage comes before those with higher resource usage.
    *
    * @param resource the resource for the comparator to use.
    * @return a Comparator to compare the replicas for the given resource.
    */
   public Comparator<Replica> replicaComparator(Resource resource) {
     return (r1, r2) -> {
-      boolean isR1Immigrant = _immigrantReplicas.contains(r1);
-      boolean isR2Immigrant = _immigrantReplicas.contains(r2);
-      if (isR1Immigrant && !isR2Immigrant) {
+      boolean isR1Offline = _currentOfflineReplicas.contains(r1);
+      boolean isR2Offline = _currentOfflineReplicas.contains(r2);
+
+      if (isR1Offline && !isR2Offline) {
         return -1;
-      } else if (!isR1Immigrant && isR2Immigrant) {
+      } else if (!isR1Offline && isR2Offline) {
         return 1;
       } else {
-        int result = Double.compare(r1.load().expectedUtilizationFor(resource),
-                                    r2.load().expectedUtilizationFor(resource));
-        return result != 0 ? result : r1.compareTo(r2);
+        boolean isR1Immigrant = _immigrantReplicas.contains(r1);
+        boolean isR2Immigrant = _immigrantReplicas.contains(r2);
+        if (isR1Immigrant && !isR2Immigrant) {
+          return -1;
+        } else if (!isR1Immigrant && isR2Immigrant) {
+          return 1;
+        } else {
+          int result = Double.compare(r1.load().expectedUtilizationFor(resource),
+                                      r2.load().expectedUtilizationFor(resource));
+          return result != 0 ? result : r1.compareTo(r2);
+        }
       }
     };
   }
@@ -264,12 +292,15 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Set broker alive status.
+   * Set broker alive status. If the broker is not alive, add all of its replicas to current offline replicas.
    *
-   * @param newState True if alive, false otherwise.
+   * @param newState The new state of the broker.
    */
   void setState(State newState) {
     _state = newState;
+    if (!isAlive()) {
+      _currentOfflineReplicas.addAll(replicas());
+    }
   }
 
   /**
@@ -286,6 +317,9 @@ public class Broker implements Serializable, Comparable<Broker> {
 
     if (replica.originalBroker().id() != _id) {
       _immigrantReplicas.add(replica);
+    } else if (replica.isOriginalOffline()) {
+      // Current broker is the original broker and the replica resides on an offline disk.
+      _currentOfflineReplicas.add(replica);
     }
 
     // Add topic replica.
@@ -403,6 +437,7 @@ public class Broker implements Serializable, Comparable<Broker> {
         _leaderReplicas.remove(removedReplica);
       }
       _immigrantReplicas.remove(removedReplica);
+      _currentOfflineReplicas.remove(removedReplica);
       _sortedReplicas.values().forEach(sr -> sr.remove(removedReplica));
     }
 
@@ -424,6 +459,7 @@ public class Broker implements Serializable, Comparable<Broker> {
     _leaderReplicas.clear();
     _topicReplicas.clear();
     _immigrantReplicas.clear();
+    _currentOfflineReplicas.clear();
     _load.clearLoad();
     _leadershipLoadForNwResources.clearLoad();
   }

@@ -98,6 +98,31 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
+   * @see KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements, OperationProgress,
+   * boolean, Integer, Integer, boolean, Pattern)
+   */
+  public OperationFuture<GoalOptimizer.OptimizerResult> fixOfflineReplicas(boolean dryRun,
+                                                                           List<String> goals,
+                                                                           ModelCompletenessRequirements requirements,
+                                                                           boolean allowCapacityEstimation,
+                                                                           Integer concurrentPartitionMovements,
+                                                                           Integer concurrentLeaderMovements,
+                                                                           boolean skipHardGoalCheck,
+                                                                           Pattern excludedTopics) {
+    OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Fix offline replicas");
+    pending(future.operationProgress());
+    _sessionExecutor.submit(new FixOfflineReplicasRunnable(this, future, dryRun, goals,
+                                                           requirements,
+                                                           allowCapacityEstimation,
+                                                           concurrentPartitionMovements,
+                                                           concurrentLeaderMovements,
+                                                           skipHardGoalCheck,
+                                                           excludedTopics));
+
+    return future;
+  }
+
+  /**
    * @see KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
    * OperationProgress, boolean, Integer, Integer, boolean, Pattern)
    */

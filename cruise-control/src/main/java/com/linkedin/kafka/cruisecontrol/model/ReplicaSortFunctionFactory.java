@@ -20,10 +20,20 @@ public class ReplicaSortFunctionFactory {
   private ReplicaSortFunctionFactory() {
 
   }
-  /** Prioritize the immigrants replicas */
+  /** Prioritize the immigrant replicas */
   private static final Function<Replica, Integer> PRIORITIZE_IMMIGRANTS = r -> r.originalBroker() != r.broker() ? 0 : 1;
-  /** De-prioritize the immigrants replicas */
+  /** De-prioritize the immigrant replicas */
   private static final Function<Replica, Integer> DEPRIORITIZE_IMMIGRANTS = r -> r.originalBroker() != r.broker() ? 1 : 0;
+  /** Prioritize the immigrant replicas */
+  private static final Function<Replica, Integer> PRIORITIZE_OFFLINE_REPLICAS = r -> r.isCurrentOffline() ? 0 : 1;
+  /** Prioritize the immigrant replicas */
+  private static final Function<Replica, Integer> DEPRIORITIZE_OFFLINE_REPLICAS = r -> r.isCurrentOffline() ? 1 : 0;
+  /** Prioritize the (1) offline replicas, then (2) the immigrant replicas */
+  private static final Function<Replica, Integer> PRIORITIZE_OFFLINE_REPLICAS_THEN_IMMIGRANTS = r ->
+      r.isCurrentOffline() ? -1 : r.originalBroker() != r.broker() ? 0 : 1;
+  /** Deprioritize the (1) offline replicas, then (2) the immigrant replicas */
+  private static final Function<Replica, Integer> DEPRIORITIZE_OFFLINE_REPLICAS_THEN_IMMIGRANTS = r ->
+      r.isCurrentOffline() ? 1 : r.originalBroker() != r.broker() ? 0 : -1;
   /** Select leaders only */
   private static final Function<Replica, Boolean> SELECT_LEADERS = Replica::isLeader;
 
@@ -71,13 +81,47 @@ public class ReplicaSortFunctionFactory {
   }
 
   /**
+   * @return a priority function that prioritize the offline replicas.
+   */
+  public static Function<Replica, Integer> prioritizeOfflineReplicas() {
+    return PRIORITIZE_OFFLINE_REPLICAS;
+  }
+
+  /**
+   * @return a priority function that prioritize the offline replicas then immigrants.
+   */
+  public static Function<Replica, Integer> prioritizeOfflineReplicasThenImmigrants() {
+    return PRIORITIZE_OFFLINE_REPLICAS_THEN_IMMIGRANTS;
+  }
+
+  /**
    * This priority function can be used together with {@link SortedReplicas#reverselySortedReplicas()}
-   * to provide sorted replicas in descending order of score and prioritize the immigrants replicas.
+   * to provide sorted replicas in descending order of score and prioritize the immigrant replicas.
    *
    * @return a priority function that de-prioritize the immigrants replicas
    */
   public static Function<Replica, Integer> deprioritizeImmigrants() {
     return DEPRIORITIZE_IMMIGRANTS;
+  }
+
+  /**
+   * This priority function can be used together with {@link SortedReplicas#reverselySortedReplicas()}
+   * to provide sorted replicas in descending order of score and prioritize the offline replicas.
+   *
+   * @return a priority function that de-prioritize the offline replicas
+   */
+  public static Function<Replica, Integer> deprioritizeOfflineReplicas() {
+    return DEPRIORITIZE_OFFLINE_REPLICAS;
+  }
+
+  /**
+   * This priority function can be used together with {@link SortedReplicas#reverselySortedReplicas()}
+   * to provide sorted replicas in descending order of score and prioritize the offline replicas then immigrants.
+   *
+   * @return a priority function that de-prioritize the offline immigrants
+   */
+  public static Function<Replica, Integer> deprioritizeOfflineReplicasThenImmigrants() {
+    return DEPRIORITIZE_OFFLINE_REPLICAS_THEN_IMMIGRANTS;
   }
 
   // Selection functions

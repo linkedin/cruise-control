@@ -8,6 +8,7 @@ public enum ClusterProperty {
   NUM_RACKS("numRacks"),
   NUM_BROKERS("numBrokers"),
   NUM_DEAD_BROKERS("numDeadBrokers"),
+  NUM_BROKERS_WITH_BAD_DISK("numBrokersWithBadDisk"),
   NUM_REPLICAS("numReplicas"),
   NUM_TOPICS("numTopics"),
   MIN_REPLICATION("minReplication"),

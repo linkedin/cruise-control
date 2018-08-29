@@ -614,7 +614,7 @@ public class Executor {
      *              still alive.
      * 3. DEAD: when any replica in the new replica list is dead. Or when a leader action times out.
      *
-     * Currently KafkaController does not support updates on the partitions that is being reassigned. (KAFKA-6034)
+     * Currently KafkaController does not support updates on the partitions that is being reassigned. (KAFKA-6304)
      * Therefore once a proposals is written to ZK, we cannot revoke it. So the actual behavior we are using is to
      * set the task state to:
      * 1. IN_PROGRESS: when the execution is stopped by the users. i.e. do nothing but let the task finish normally.

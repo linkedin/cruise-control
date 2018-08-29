@@ -33,7 +33,8 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA
 
 
 /**
- * Soft goal to distribute leader bytes evenly.
+ * Soft goal to distribute leader bytes evenly. This goal will not do any actual bytes movement; hence, it cannot be
+ * used to fix offline replicas or decommission dead brokers.
  */
 public class LeaderBytesInDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(LeaderBytesInDistributionGoal.class);
@@ -198,8 +199,8 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     Iterator<Replica> leaderReplicaIt = leaderReplicasSortedByBytesIn.iterator();
     while (overThreshold && leaderReplicaIt.hasNext()) {
       Replica leaderReplica = leaderReplicaIt.next();
-      List<Replica> followers = clusterModel.partition(leaderReplica.topicPartition()).followers();
-      List<Broker> eligibleBrokers = followers.stream().map(Replica::broker)
+      List<Replica> onlineFollowers = clusterModel.partition(leaderReplica.topicPartition()).onlineFollowers();
+      List<Broker> eligibleBrokers = onlineFollowers.stream().map(Replica::broker)
           .sorted(Comparator.comparingDouble(a -> a.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)))
           .collect(Collectors.toList());
       maybeApplyBalancingAction(clusterModel, leaderReplica, eligibleBrokers, ActionType.LEADERSHIP_MOVEMENT,

@@ -10,12 +10,12 @@ import java.util.Map;
 
 
 public class TestConstants {
-  static final long SEED_BASE = 3140;
-  static final long REPLICATION_SEED = 5234;
-  static final long LEADER_SEED = 72033;
-  static final long REPLICA_ASSIGNMENT_SEED = 1240;
-  static final long TOPIC_POPULARITY_SEED = 7234;
-  static final Map<Resource, Long> UTILIZATION_SEED_BY_RESOURCE;
+  public static final long SEED_BASE = 3140;
+  public static final long REPLICATION_SEED = 5234;
+  public static final long LEADER_SEED = 72033;
+  public static final long REPLICA_ASSIGNMENT_SEED = 1240;
+  public static final long TOPIC_POPULARITY_SEED = 7234;
+  public static final Map<Resource, Long> UTILIZATION_SEED_BY_RESOURCE;
   static {
     Map<Resource, Long> utilizationSeedByResource = new HashMap<>();
     utilizationSeedByResource.put(Resource.CPU, 100000L);
@@ -53,6 +53,7 @@ public class TestConstants {
     properties.put(ClusterProperty.NUM_RACKS, 10);
     properties.put(ClusterProperty.NUM_BROKERS, 40);
     properties.put(ClusterProperty.NUM_DEAD_BROKERS, 0);
+    properties.put(ClusterProperty.NUM_BROKERS_WITH_BAD_DISK, 0);
     properties.put(ClusterProperty.NUM_REPLICAS, 50001);
     properties.put(ClusterProperty.NUM_TOPICS, 3000);
     properties.put(ClusterProperty.MIN_REPLICATION, 3);
