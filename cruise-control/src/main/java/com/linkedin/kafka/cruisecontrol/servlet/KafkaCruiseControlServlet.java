@@ -755,7 +755,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       }
       switch (endPoint) {
         case REBALANCE:
-          sb.append("%n%nCluster load after rebalance:%n");
+          sb.append("\n\nCluster load after rebalance:\n");
           break;
         case ADD_BROKER:
           sb.append(String.format("%n%nCluster load after adding broker %s:%n", brokerIds));
