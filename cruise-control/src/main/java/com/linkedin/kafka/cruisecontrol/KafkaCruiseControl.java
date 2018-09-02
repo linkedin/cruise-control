@@ -138,7 +138,7 @@ public class KafkaCruiseControl {
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @param skipHardGoalCheck Whether check and add all hard goals to {@code goals}.
+   * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @return The optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
@@ -210,7 +210,7 @@ public class KafkaCruiseControl {
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @param skipHardGoalCheck Whether check and add all hard goals to {@code goals}.
+   * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the broker addition.
    */
@@ -260,7 +260,7 @@ public class KafkaCruiseControl {
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @param skipHardGoalCheck Whether check and add all hard goals to {@code goals}.
+   * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
@@ -468,7 +468,7 @@ public class KafkaCruiseControl {
    * @param requirements The model completeness requirements to enforce when generating the proposals.
    * @param operationProgress The progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
-   * @param skipHardGoalCheck Whether check and add all hard goals to {@code goals}.
+   * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    */
@@ -603,23 +603,15 @@ public class KafkaCruiseControl {
   /**
    * Get a goals by priority based on the goal list.
    *
-   * @param goals A list of goals to optimize.
-   * @param skipHardGoalCheck Whether check and add all hard goals to {@code goals}.
+   * @param goals A list of goals.
+   * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @return A map of goal priority to goal.
    */
   private Map<Integer, Goal> goalsByPriority(List<String> goals, boolean skipHardGoalCheck) {
     if (goals == null || goals.isEmpty()) {
       return AnalyzerUtils.getGoalMapByPriority(_config);
     }
-    if (!skipHardGoalCheck) {
-      List<String> hardGoals = _config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG);
-      for (String goalName : goals) {
-        if (!hardGoals.contains(goalName)) {
-          hardGoals.add(goalName);
-        }
-      }
-      goals = hardGoals;
-    }
+    Set<String> hardGoals = skipHardGoalCheck ? new HashSet<>() : new HashSet<>(_config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG));
     Map<String, Goal> allGoals = AnalyzerUtils.getCaseInsensitiveGoalsByName(_config);
     Map<Integer, Goal> goalsByPriority = new HashMap<>();
     int i = 0;
@@ -628,7 +620,11 @@ public class KafkaCruiseControl {
       if (goal == null) {
         throw new IllegalArgumentException("Goal with name " + goalName + " does not exist.");
       }
+      hardGoals.remove(goalName);
       goalsByPriority.put(i++, allGoals.get(goalName));
+    }
+    if (!hardGoals.isEmpty()) {
+      throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in provided goal list " + goals + ".");
     }
     return goalsByPriority;
   }
