@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.concurrent.Executors;
@@ -21,17 +21,14 @@ public class ReadOnlyKafkaSampleStore extends KafkaSampleStore {
    */
   @Override
   public void configure(Map<String, ?> config) {
-    _partitionMetricSampleStoreTopic = (String) config.get(KafkaCruiseControlConfig.PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
-    _brokerMetricSampleStoreTopic = (String) config.get(KafkaCruiseControlConfig.BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
-    if (_partitionMetricSampleStoreTopic == null
-        || _brokerMetricSampleStoreTopic == null
-        || _partitionMetricSampleStoreTopic.isEmpty()
-        || _brokerMetricSampleStoreTopic.isEmpty()) {
-      throw new IllegalArgumentException("The sample store topic names must be configured.");
-    }
-    String numProcessingThreadsString = (String) config.get(KafkaCruiseControlConfig.NUM_SAMPLE_LOADING_THREADS_CONFIG);
+    _partitionMetricSampleStoreTopic = KafkaCruiseControlUtils.getRequiredConfig(config, PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
+    _brokerMetricSampleStoreTopic = KafkaCruiseControlUtils.getRequiredConfig(config, BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
+    String metricSampleStoreTopicReplicationFactorString = (String) config.get(NUM_METRIC_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG);
+    _metricSampleStoreTopicReplicationFactor = metricSampleStoreTopicReplicationFactorString == null || metricSampleStoreTopicReplicationFactorString.isEmpty()
+        ? null : Integer.parseInt(metricSampleStoreTopicReplicationFactorString);
+    String numProcessingThreadsString = (String) config.get(NUM_SAMPLE_LOADING_THREADS_CONFIG);
     int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty()
-                               ? DEFAULT_NUM_SAMPLE_LOADING_THREADS : Integer.parseInt(numProcessingThreadsString);
+        ? DEFAULT_NUM_SAMPLE_LOADING_THREADS : Integer.parseInt(numProcessingThreadsString);
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
     _consumers = new ArrayList<>(numProcessingThreads);
     for (int i = 0; i < numProcessingThreads; i++) {

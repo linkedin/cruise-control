@@ -55,17 +55,10 @@ public abstract class AbstractGoal implements Goal {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    _balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(configs, false));
-    String numWindowsString = (String) configs.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
-    if (numWindowsString != null && !numWindowsString.isEmpty()) {
-      _numWindows = Integer.parseInt(numWindowsString);
-    }
-    String minMonitoredPartitionPercentageString =
-        (String) configs.get(KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
-    if (minMonitoredPartitionPercentageString != null
-        && !minMonitoredPartitionPercentageString.isEmpty()) {
-      _minMonitoredPartitionPercentage = Double.parseDouble(minMonitoredPartitionPercentageString);
-    }
+    KafkaCruiseControlConfig parsedConfig = new KafkaCruiseControlConfig(configs, false);
+    _balancingConstraint = new BalancingConstraint(parsedConfig);
+    _numWindows = parsedConfig.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
+    _minMonitoredPartitionPercentage = parsedConfig.getDouble(KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
   }
 
   @Override
