@@ -16,8 +16,10 @@ import java.util.TreeSet;
 import java.util.function.Function;
 
 /**
- * A class used by the brokers to host the replicas sorted in a certain order.
  * <p>
+ * A class used by the brokers to host the replicas sorted in a certain order.
+ * </p>
+ *
  *  The SortedReplicas uses three functions to sort the replicas in the broker.
  *  <ul>
  *     <li>
@@ -38,7 +40,6 @@ import java.util.function.Function;
  *      {@link #sortedReplicas()} is no longer binary searchable based on the score.
  *    </li>
  *  </ul>
- * </p>
  *
  * <p>
  *   The SortedReplicas are initialized lazily, i.e. until one of {@link #sortedReplicas()},
