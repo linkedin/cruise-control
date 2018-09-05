@@ -8,10 +8,12 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
+import java.util.regex.Pattern;
+
 
 /**
  * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern)}
  */
 class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
   private final List<String> _goals;
@@ -21,6 +23,7 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
   private final Integer _concurrentPartitionMovements;
   private final Integer _concurrentLeaderMovements;
   private final boolean _skipHardGoalCheck;
+  private final Pattern _excludedTopics;
 
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture<GoalOptimizer.OptimizerResult> future,
@@ -30,7 +33,8 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
                     boolean allowCapacityEstimation,
                     Integer concurrentPartitionMovements,
                     Integer concurrentLeaderMovements,
-                    boolean skipHardGoalCheck) {
+                    boolean skipHardGoalCheck,
+                    Pattern excludedTopics) {
     super(kafkaCruiseControl, future);
     _goals = goals;
     _dryRun = dryRun;
@@ -39,6 +43,7 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
     _concurrentPartitionMovements = concurrentPartitionMovements;
     _concurrentLeaderMovements = concurrentLeaderMovements;
     _skipHardGoalCheck = skipHardGoalCheck;
+    _excludedTopics = excludedTopics;
   }
 
   @Override
@@ -50,6 +55,7 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
                                          _allowCapacityEstimation,
                                          _concurrentPartitionMovements,
                                          _concurrentLeaderMovements,
-                                         _skipHardGoalCheck);
+                                         _skipHardGoalCheck,
+                                         _excludedTopics);
   }
 }

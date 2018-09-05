@@ -9,11 +9,13 @@ import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collection;
 import java.util.List;
+import java.util.regex.Pattern;
+
 
 /**
  * The async runnable for {@link KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List,
  * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean,
- * Integer, Integer, boolean)}
+ * Integer, Integer, boolean, Pattern)}
  */
 class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
   private final Collection<Integer> _brokerIds;
@@ -25,6 +27,7 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
   private final Integer _concurrentPartitionMovements;
   private final Integer _concurrentLeaderMovements;
   private final boolean _skipHardGoalCheck;
+  private final Pattern _excludedTopics;
 
   DecommissionBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                               OperationFuture<GoalOptimizer.OptimizerResult> future,
@@ -36,7 +39,8 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
                               boolean allowCapacityEstimation,
                               Integer concurrentPartitionMovements,
                               Integer concurrentLeaderMovements,
-                              boolean skipHardGoalCheck) {
+                              boolean skipHardGoalCheck,
+                              Pattern excludedTopics) {
     super(kafkaCruiseControl, future);
     _brokerIds = brokerIds;
     _dryRun = dryRun;
@@ -47,6 +51,7 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
     _concurrentPartitionMovements = concurrentPartitionMovements;
     _concurrentLeaderMovements = concurrentLeaderMovements;
     _skipHardGoalCheck = skipHardGoalCheck;
+    _excludedTopics = excludedTopics;
   }
 
   @Override
@@ -54,6 +59,6 @@ class DecommissionBrokersRunnable extends OperationRunnable<GoalOptimizer.Optimi
     return _kafkaCruiseControl.decommissionBrokers(_brokerIds, _dryRun, _throttleRemovedBrokers, _goals,
                                                    _modelCompletenessRequirements, _future.operationProgress(),
                                                    _allowCapacityEstimation, _concurrentPartitionMovements,
-                                                   _concurrentLeaderMovements, _skipHardGoalCheck);
+                                                   _concurrentLeaderMovements, _skipHardGoalCheck, _excludedTopics);
   }
 }
