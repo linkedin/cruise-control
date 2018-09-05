@@ -176,7 +176,7 @@ public class MetricFetcherManager {
                                              long endMs,
                                              long timeoutMs,
                                              SampleStore sampleStore) throws TimeoutException {
-    LOG.info("Kicking off sampling for time range [{}, {}], duration {} ms using {} fetchers with timeout {} ms.",
+    LOG.info("Kicking off partition metric sampling for time range [{}, {}], duration {} ms using {} fetchers with timeout {} ms.",
         startMs, endMs, endMs - startMs, _numMetricFetchers, timeoutMs);
     List<Set<TopicPartition>> partitionAssignment =
         _partitionAssignor.assignPartitions(_metadataClient.cluster(), _numMetricFetchers);
@@ -212,6 +212,8 @@ public class MetricFetcherManager {
                                           long endMs,
                                           long timeoutMs,
                                           SampleStore sampleStore) throws TimeoutException {
+    LOG.info("Kicking off broker metric sampling for time range [{}, {}], duration {} ms using {} fetchers with timeout {} ms.",
+        startMs, endMs, endMs - startMs, _numMetricFetchers, timeoutMs);
     List<Set<TopicPartition>> partitionAssignment =
         _partitionAssignor.assignPartitions(_metadataClient.cluster(), _numMetricFetchers);
     List<MetricFetcher> trainingFetchers = new ArrayList<>();
