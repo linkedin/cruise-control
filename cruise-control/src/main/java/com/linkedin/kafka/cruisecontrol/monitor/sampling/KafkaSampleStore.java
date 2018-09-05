@@ -324,6 +324,7 @@ public class KafkaSampleStore implements SampleStore {
           try {
             ConsumerRecords<byte[], byte[]> consumerRecords = _consumer.poll(10);
             if (consumerRecords == SHUTDOWN_RECORDS) {
+              LOG.trace("Metric loader received empty records");
               return;
             }
             Set<PartitionMetricSample> partitionMetricSamples = new HashSet<>();

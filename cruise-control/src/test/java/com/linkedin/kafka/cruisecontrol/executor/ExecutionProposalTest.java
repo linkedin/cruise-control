@@ -34,6 +34,5 @@ public class ExecutionProposalTest {
   @Test (expected = IllegalArgumentException.class)
   public void testOldLeaderMissingFromOldReplicas() {
     new ExecutionProposal(TP, 0, 2, Arrays.asList(0, 1), Arrays.asList(2, 2));
-
   }
 }
