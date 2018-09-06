@@ -357,7 +357,7 @@ class KafkaCruiseControlServletUtils {
     // KafkaAssigner mode is assumed to use two KafkaAssigner goals, if client specifies goals in request, throw exception.
     if (isKafkaAssignerMode) {
       if (!goals.isEmpty()) {
-        throw new UserRequestException("Kafka assigner mode does not support explicitly-specifying goals in request.");
+        throw new UserRequestException("Kafka assigner mode does not support explicitly specifying goals in request.");
       }
       goals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                             KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());

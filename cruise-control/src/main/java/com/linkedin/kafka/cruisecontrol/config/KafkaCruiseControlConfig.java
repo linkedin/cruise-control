@@ -448,9 +448,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>hard.goals</code>
    */
   public static final String HARD_GOALS_CONFIG = "hard.goals";
-  private static final String HARD_GOALS_DOC = "A list of case insensitive hard goals in the order of priority. Hard goals"
-      + "will be enforced to execute if Cruise Control runs in non-kafka-assigner mode and skip_hard_goal_check parameter "
-      + "is not set in request.";
+  private static final String HARD_GOALS_DOC = "A list of case insensitive hard goals. Hard goals will be enforced to execute "
+      + "if Cruise Control runs in non-kafka-assigner mode and skip_hard_goal_check parameter is not set in request.";
 
   /**
    * <code>default.goals</code>
