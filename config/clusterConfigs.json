@@ -1,0 +1,4 @@
+{
+  "min.insync.replicas": 1,
+  "an.example.cluster.config": false
+}

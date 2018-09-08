@@ -16,7 +16,7 @@ import org.apache.kafka.test.TestSslUtils;
 
 
 public class CCEmbeddedBrokerBuilder {
-  private final static AtomicInteger BROKER_ID_COUNTER = new AtomicInteger();
+  private static final AtomicInteger BROKER_ID_COUNTER = new AtomicInteger();
 
   //mandatory fields
   private int _nodeId = BROKER_ID_COUNTER.incrementAndGet();

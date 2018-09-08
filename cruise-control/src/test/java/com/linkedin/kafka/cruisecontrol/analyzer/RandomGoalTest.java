@@ -54,7 +54,7 @@ import static org.junit.Assert.assertTrue;
 public class RandomGoalTest {
   private static final Logger LOG = LoggerFactory.getLogger(RandomGoalTest.class);
 
-  private final static Random RANDOM = new Random(34534534);
+  private static final Random RANDOM = new Random(34534534);
 
   /**
    * Populate parameters for the {@link OptimizationVerifier}. All brokers are alive.

@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -70,85 +70,95 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
 
   @Test
   public void testBasicBalanceMovement() throws InterruptedException {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().connectionString(),
-                                                                                      "ExecutorTestMetricGroup",
-                                                                                      "BasicBalanceMovement");
-    Map<String, TopicDescription> topicDescriptions = createTopics();
-    int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
-    int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
+                                                                              "ExecutorTestMetricGroup",
+                                                                              "BasicBalanceMovement");
+    try {
+      Map<String, TopicDescription> topicDescriptions = createTopics();
+      int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
+      int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
 
-    ExecutionProposal proposal0 =
-        new ExecutionProposal(TP0, 0, initialLeader0,
-                              Collections.singletonList(initialLeader0),
-                              Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
-    ExecutionProposal proposal1 =
-        new ExecutionProposal(TP1, 0, initialLeader1,
-                              Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
-                              Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
+      ExecutionProposal proposal0 =
+          new ExecutionProposal(TP0, 0, initialLeader0,
+                                Collections.singletonList(initialLeader0),
+                                Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
+      ExecutionProposal proposal1 =
+          new ExecutionProposal(TP1, 0, initialLeader1,
+                                Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
+                                Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
-    Collection<ExecutionProposal> proposals = Arrays.asList(proposal0, proposal1);
-    executeAndVerifyProposals(kafkaZkClient, proposals, proposals);
+      Collection<ExecutionProposal> proposals = Arrays.asList(proposal0, proposal1);
+      executeAndVerifyProposals(kafkaZkClient, proposals, proposals);
+    } finally {
+      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
+    }
   }
 
   @Test
   public void testMoveNonExistingPartition() throws InterruptedException {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().connectionString(),
-                                                                                      "ExecutorTestMetricGroup",
-                                                                                      "MoveNonExistingPartition");
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
+                                                                              "ExecutorTestMetricGroup",
+                                                                              "MoveNonExistingPartition");
+    try {
+      Map<String, TopicDescription> topicDescriptions = createTopics();
+      int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
+      int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
 
-    Map<String, TopicDescription> topicDescriptions = createTopics();
-    int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
-    int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
+      ExecutionProposal proposal0 =
+          new ExecutionProposal(TP0, 0, initialLeader0,
+                                Collections.singletonList(initialLeader0),
+                                Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
+      ExecutionProposal proposal1 =
+          new ExecutionProposal(TP1, 0, initialLeader1,
+                                Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
+                                Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
+      ExecutionProposal proposal2 =
+          new ExecutionProposal(TP2, 0, initialLeader0,
+                                Collections.singletonList(initialLeader0),
+                                Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
+      ExecutionProposal proposal3 =
+          new ExecutionProposal(TP3, 0, initialLeader1,
+                                Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
+                                Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
-    ExecutionProposal proposal0 =
-        new ExecutionProposal(TP0, 0, initialLeader0,
-                              Collections.singletonList(initialLeader0),
-                              Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
-    ExecutionProposal proposal1 =
-        new ExecutionProposal(TP1, 0, initialLeader1,
-                              Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
-                              Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
-    ExecutionProposal proposal2 =
-        new ExecutionProposal(TP2, 0, initialLeader0,
-                              Collections.singletonList(initialLeader0),
-                              Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
-    ExecutionProposal proposal3 =
-        new ExecutionProposal(TP3, 0, initialLeader1,
-                              Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
-                              Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
-
-    Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1, proposal2, proposal3);
-    Collection<ExecutionProposal> proposalsToCheck = Arrays.asList(proposal0, proposal1);
-    executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck);
+      Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1, proposal2, proposal3);
+      Collection<ExecutionProposal> proposalsToCheck = Arrays.asList(proposal0, proposal1);
+      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, proposalsToCheck);
+    } finally {
+      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
+    }
   }
 
   @Test
   public void testBrokerDiesWhenMovePartitions() throws Exception {
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().connectionString(),
-                                                                                      "ExecutorTestMetricGroup",
-                                                                                      "BrokerDiesWhenMovePartitions");
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
+                                                                              "ExecutorTestMetricGroup",
+                                                                              "BrokerDiesWhenMovePartitions");
+    try {
+      Map<String, TopicDescription> topicDescriptions = createTopics();
+      int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
+      int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
 
-    Map<String, TopicDescription> topicDescriptions = createTopics();
-    int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
-    int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
+      _brokers.get(initialLeader0 == 0 ? 1 : 0).shutdown();
+      ExecutionProposal proposal0 =
+          new ExecutionProposal(TP0, 0, initialLeader0,
+                                Collections.singletonList(initialLeader0),
+                                Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
+      ExecutionProposal proposal1 =
+          new ExecutionProposal(TP1, 0, initialLeader1,
+                                Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
+                                Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
-    _brokers.get(initialLeader0 == 0 ? 1 : 0).shutdown();
-    ExecutionProposal proposal0 =
-        new ExecutionProposal(TP0, 0, initialLeader0,
-                              Collections.singletonList(initialLeader0),
-                              Collections.singletonList(initialLeader0 == 0 ? 1 : 0));
-    ExecutionProposal proposal1 =
-        new ExecutionProposal(TP1, 0, initialLeader1,
-                              Arrays.asList(initialLeader1, initialLeader1 == 0 ? 1 : 0),
-                              Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
+      Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
+      executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, Collections.emptyList());
 
-    Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
-    executeAndVerifyProposals(kafkaZkClient, proposalsToExecute, Collections.emptyList());
-
-    // We are not doing the rollback.
-    assertEquals(Collections.singletonList(initialLeader0 == 0 ? 1 : 0),
-                 ExecutorUtils.newAssignmentForPartition(kafkaZkClient, TP0));
-    assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(new TopicPartition(TOPIC_1, PARTITION)).get());
+      // We are not doing the rollback.
+      assertEquals(Collections.singletonList(initialLeader0 == 0 ? 1 : 0),
+                   ExecutorUtils.newAssignmentForPartition(kafkaZkClient, TP0));
+      assertEquals(initialLeader0, kafkaZkClient.getLeaderForPartition(new TopicPartition(TOPIC_1, PARTITION)).get());
+    } finally {
+      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
+    }
   }
 
   @Test

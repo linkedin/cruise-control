@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.nio.charset.StandardCharsets;
@@ -60,8 +61,7 @@ public class BrokerFailureDetector {
     ZkConnection zkConnection = new ZkConnection(zkUrl, 30000);
     _zkClient = new ZkClient(zkConnection, 30000, new ZkStringSerializer());
     // Do not support secure ZK at this point.
-    _kafkaZkClient = KafkaZkClient.apply(zkUrl, false, 30000, 30000, Integer.MAX_VALUE, time,
-                                         ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE);
+    _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE);
     _failedBrokers = new HashMap<>();
     _failedBrokersZkPath = config.getString(KafkaCruiseControlConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
     _loadMonitor = loadMonitor;
@@ -99,7 +99,7 @@ public class BrokerFailureDetector {
 
   void shutdown() {
     _zkClient.close();
-    _kafkaZkClient.close();
+    KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(_kafkaZkClient);
   }
 
   private void persistFailedBrokerList() {

@@ -41,7 +41,6 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
-import org.apache.kafka.common.utils.SystemTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,8 +56,6 @@ public class KafkaSampleStore implements SampleStore {
   // Keep additional windows in case some of the windows do not have enough samples.
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
-  private final static int ZK_SESSION_TIMEOUT = 30000;
-  private final static int ZK_CONNECTION_TIMEOUT = 30000;
 
   protected static final Integer DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
@@ -132,9 +129,10 @@ public class KafkaSampleStore implements SampleStore {
   }
 
   private void ensureTopicsCreated(Map<String, ?> config) {
-    KafkaZkClient kafkaZkClient = createKafkaZkClient((String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG),
-                                                      "KafkaSampleStore",
-                                                      "EnsureTopicCreated");
+    String connectString = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(connectString,
+                                                                              "KafkaSampleStore",
+                                                                              "EnsureTopicCreated");
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
       long windowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
@@ -162,7 +160,7 @@ public class KafkaSampleStore implements SampleStore {
       ensureTopicCreated(kafkaZkClient, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor);
     } finally {
-      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient, 10000);
+      KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
     }
   }
 
@@ -176,11 +174,6 @@ public class KafkaSampleStore implements SampleStore {
     } else {
       adminZkClient.changeTopicConfig(topic, props);
     }
-  }
-
-  private KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
-    return KafkaZkClient.apply(connectString, false, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
-                               new SystemTime(), metricGroup, metricType);
   }
 
   @Override

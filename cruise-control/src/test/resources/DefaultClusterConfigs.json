@@ -1,0 +1,5 @@
+{
+  "min.insync.replicas": 2,
+  "an.example.config": false,
+  "another.example.config": "here,are,some,configs"
+}

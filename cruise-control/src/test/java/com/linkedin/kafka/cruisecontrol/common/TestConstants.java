@@ -44,7 +44,7 @@ public class TestConstants {
     UNIFORM, LINEAR, EXPONENTIAL
   }
 
-  private final static int NUM_SNAPSHOTS = 2;
+  private static final int NUM_SNAPSHOTS = 2;
   // Cluster properties to be used as a base. Any changes specified in modified properties will be applied to this.
   public final static Map<ClusterProperty, Number> BASE_PROPERTIES;
 

@@ -23,6 +23,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.async.progress.GeneratingClusterModel;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForClusterModel;
+import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
@@ -78,6 +79,7 @@ public class LoadMonitor {
   private final Semaphore _clusterModelSemaphore;
   private final MetadataClient _metadataClient;
   private final BrokerCapacityConfigResolver _brokerCapacityConfigResolver;
+  private final TopicConfigProvider _topicConfigProvider;
   private final ScheduledExecutorService _loadMonitorExecutor;
   private final Timer _clusterModelCreationTimer;
   private final ThreadLocal<Boolean> _acquiredClusterModelSemaphore;
@@ -131,6 +133,8 @@ public class LoadMonitor {
 
     _brokerCapacityConfigResolver = config.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
                                                                  BrokerCapacityConfigResolver.class);
+    _topicConfigProvider = config.getConfiguredInstance(KafkaCruiseControlConfig.TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
+                                                                 TopicConfigProvider.class);
     _numPartitionMetricSampleWindows = config.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
 
     _partitionMetricSampleAggregator = new KafkaPartitionMetricSampleAggregator(config, metadataClient.metadata());
@@ -182,6 +186,7 @@ public class LoadMonitor {
     LOG.info("Shutting down load monitor.");
     try {
       _brokerCapacityConfigResolver.close();
+      _topicConfigProvider.close();
       _loadMonitorExecutor.shutdown();
     } catch (Exception e) {
       LOG.warn("Received exception when closing broker capacity resolver.", e);
@@ -269,6 +274,13 @@ public class LoadMonitor {
       default:
         throw new IllegalStateException("Should never be here.");
     }
+  }
+
+  /**
+   * Get the topic config provider.
+   */
+  public TopicConfigProvider topicConfigProvider() {
+    return _topicConfigProvider;
   }
 
   /**

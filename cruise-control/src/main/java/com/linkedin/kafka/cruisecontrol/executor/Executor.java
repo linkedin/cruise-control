@@ -56,14 +56,10 @@ public class Executor {
   private final MetadataClient _metadataClient;
   private final long _statusCheckingIntervalMs;
   private final ExecutorService _proposalExecutor;
-  private final static int ZK_SESSION_TIMEOUT = 30000;
-  private final static int ZK_CONNECTION_TIMEOUT = 30000;
-  private final static boolean IS_ZK_SECURITY_ENABLED = false;
-  private final static long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
   private final KafkaZkClient _kafkaZkClient;
 
-  private final static long METADATA_REFRESH_BACKOFF = 100L;
-  private final static long METADATA_EXPIRY_MS = Long.MAX_VALUE;
+  private static final long METADATA_REFRESH_BACKOFF = 100L;
+  private static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
 
   // Some state for external service to query
   private final AtomicBoolean _stopRequested;
@@ -118,8 +114,7 @@ public class Executor {
     registerGaugeSensors(dropwizardMetricRegistry);
 
     _time = time;
-    _kafkaZkClient = KafkaZkClient.apply(zkUrl, IS_ZK_SECURITY_ENABLED, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
-                                         time, ZK_EXECUTOR_METRIC_GROUP, ZK_EXECUTOR_METRIC_TYPE);
+    _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_EXECUTOR_METRIC_GROUP, ZK_EXECUTOR_METRIC_TYPE);
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
                                  config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
@@ -274,7 +269,7 @@ public class Executor {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
     }
     _metadataClient.close();
-    KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(_kafkaZkClient, ZK_UTILS_CLOSE_TIMEOUT_MS);
+    KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(_kafkaZkClient);
     LOG.info("Executor shutdown completed.");
   }
 

@@ -9,23 +9,16 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
-
-import java.nio.charset.StandardCharsets;
 import java.util.Properties;
-import kafka.zk.KafkaZkClient;
-import org.I0Itec.zkclient.exception.ZkMarshallingError;
-import org.I0Itec.zkclient.serialize.ZkSerializer;
-import org.apache.kafka.common.utils.SystemTime;
 
 
 /**
  * A test util class.
  */
 public class KafkaCruiseControlUnitTestUtils {
-  private final static int ZK_SESSION_TIMEOUT = 30000;
-  private final static int ZK_CONNECTION_TIMEOUT = 30000;
 
   private KafkaCruiseControlUnitTestUtils() {
 
@@ -35,31 +28,16 @@ public class KafkaCruiseControlUnitTestUtils {
     Properties props = new Properties();
     String capacityConfigFile =
         KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource("DefaultCapacityConfig.json").getFile();
+    String clusterConfigsFile =
+        KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource("DefaultClusterConfigs.json").getFile();
     props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, "localhost:2121");
     props.setProperty(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG, "aaa");
     props.setProperty(KafkaCruiseControlConfig.METRIC_SAMPLER_CLASS_CONFIG, NoopSampler.class.getName());
     props.setProperty(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, capacityConfigFile);
+    props.setProperty(KafkaTopicConfigProvider.CLUSTER_CONFIGS_FILE, clusterConfigsFile);
     props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG, "2");
     props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG, "2");
     return props;
-  }
-
-  public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
-    return KafkaZkClient.apply(connectString, false, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
-                               new SystemTime(), metricGroup, metricType);
-  }
-
-  private static class ZKStringSerializer implements ZkSerializer {
-
-    @Override
-    public byte[] serialize(Object data) throws ZkMarshallingError {
-      return ((String) data).getBytes(StandardCharsets.UTF_8);
-    }
-
-    @Override
-    public Object deserialize(byte[] bytes) throws ZkMarshallingError {
-      return bytes == null ? null : new String(bytes, StandardCharsets.UTF_8);
-    }
   }
 
   /**

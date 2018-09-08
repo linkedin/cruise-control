@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol;
 
 import com.google.gson.Gson;
+import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -15,6 +16,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
@@ -36,6 +38,7 @@ public class KafkaClusterState {
   private static final String OFFLINE = "offline";
   private static final String WITH_OFFLINE_REPLICAS = "with-offline-replicas";
   private static final String URP = "urp";
+  private static final String UNDER_MIN_ISR = "under-min-isr";
   private static final String OTHER = "other";
   private static final String KAFKA_BROKER_STATE = "KafkaBrokerState";
   private static final String KAFKA_PARTITION_STATE = "KafkaPartitionState";
@@ -43,10 +46,16 @@ public class KafkaClusterState {
   private static final String OUT_OF_SYNC_COUNT = "OutOfSyncCountByBrokerId";
   private static final String REPLICA_COUNT = "ReplicaCountByBrokerId";
   private static final String OFFLINE_REPLICA_COUNT = "OfflineReplicaCountByBrokerId";
+  private static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
+  private static final int DEFAULT_MIN_INSYNC_REPLICAS = 1;
   private final Cluster _kafkaCluster;
+  private final Map<String, Properties> _allTopicConfigs;
+  private final Properties _clusterConfigs;
 
-  public KafkaClusterState(Cluster kafkaCluster) {
+  public KafkaClusterState(Cluster kafkaCluster, TopicConfigProvider topicConfigProvider) {
     _kafkaCluster = kafkaCluster;
+    _allTopicConfigs = topicConfigProvider.allTopicConfigs();
+    _clusterConfigs = topicConfigProvider.clusterConfigs();
   }
 
   public Cluster kafkaCluster() {
@@ -67,26 +76,50 @@ public class KafkaClusterState {
   }
 
   /**
-   * Gather the Kafka partition state within the given under replicated, offline, and other partitions (if verbose).
+   * Get the effective config value of {@link #MIN_INSYNC_REPLICAS} for the given topic.
+   *
+   * @param topic Topic for which the {@link #MIN_INSYNC_REPLICAS} is queried
+   */
+  private int minInsyncReplicas(String topic) {
+    Properties topicLevelConfig = _allTopicConfigs.get(topic);
+    if (topicLevelConfig != null && topicLevelConfig.get(MIN_INSYNC_REPLICAS) != null) {
+      return Integer.parseInt(topicLevelConfig.getProperty(MIN_INSYNC_REPLICAS));
+    } else if (_clusterConfigs != null && _clusterConfigs.get(MIN_INSYNC_REPLICAS) != null) {
+      return Integer.parseInt(_clusterConfigs.getProperty(MIN_INSYNC_REPLICAS));
+    } else {
+      return DEFAULT_MIN_INSYNC_REPLICAS;
+    }
+  }
+
+  /**
+   * Gather the Kafka partition state within the given under replicated, offline, under minIsr,
+   * and other partitions (if verbose).
    *
    * @param underReplicatedPartitions state of under replicated partitions.
    * @param offlinePartitions state of offline partitions.
    * @param otherPartitions state of partitions other than offline or urp.
    * @param partitionsWithOfflineReplicas state of partitions with offline replicas.
+   * @param underMinIsrPartitions state of under min isr partitions.
    * @param verbose true if requested to gather state of partitions other than offline or urp.
    */
   private void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
                                            Set<PartitionInfo> offlinePartitions,
                                            Set<PartitionInfo> otherPartitions,
                                            Set<PartitionInfo> partitionsWithOfflineReplicas,
+                                           Set<PartitionInfo> underMinIsrPartitions,
                                            boolean verbose) {
     for (String topic : _kafkaCluster.topics()) {
+      int minInsyncReplicas = minInsyncReplicas(topic);
       for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
-        boolean isURP = partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
+        int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
+        boolean isURP = numInsyncReplicas != partitionInfo.replicas().length;
         if (isURP || verbose) {
           boolean hasOfflineReplica = partitionInfo.offlineReplicas().length != 0;
           if (hasOfflineReplica) {
             partitionsWithOfflineReplicas.add(partitionInfo);
+          }
+          if (numInsyncReplicas < minInsyncReplicas) {
+            underMinIsrPartitions.add(partitionInfo);
           }
           boolean isOffline = partitionInfo.inSyncReplicas().length == 0;
           if (isOffline) {
@@ -191,11 +224,13 @@ public class KafkaClusterState {
     Set<PartitionInfo> offlinePartitions = new HashSet<>();
     Set<PartitionInfo> otherPartitions = new HashSet<>();
     Set<PartitionInfo> partitionsWithOfflineReplicas = new HashSet<>();
+    Set<PartitionInfo> underMinIsrPartitions = new HashSet<>();
 
     populateKafkaPartitionState(underReplicatedPartitions,
                                 offlinePartitions,
                                 otherPartitions,
                                 partitionsWithOfflineReplicas,
+                                underMinIsrPartitions,
                                 verbose);
 
     // Write the partition state.
@@ -203,6 +238,7 @@ public class KafkaClusterState {
     kafkaClusterByPartitionState.put(OFFLINE, getJsonPartitions(offlinePartitions));
     kafkaClusterByPartitionState.put(WITH_OFFLINE_REPLICAS, getJsonPartitions(partitionsWithOfflineReplicas));
     kafkaClusterByPartitionState.put(URP, getJsonPartitions(underReplicatedPartitions));
+    kafkaClusterByPartitionState.put(UNDER_MIN_ISR, getJsonPartitions(underMinIsrPartitions));
     if (verbose) {
       kafkaClusterByPartitionState.put(OTHER, getJsonPartitions(otherPartitions));
     }
@@ -268,9 +304,9 @@ public class KafkaClusterState {
     int topicNameLength = clusterState.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
 
     initMessage = verbose ? "All Partitions in the Cluster (verbose):"
-                          : "Under Replicated and Offline Partitions in the Cluster:";
-    out.write(String.format("%n%s%n%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%n", initMessage, "TOPIC", "PARTITION",
-                            "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE")
+                          : "Under Replicated, Offline, and Under MinIsr Partitions:";
+    out.write(String.format("%n%s%n%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%25s%n", initMessage, "TOPIC",
+                            "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE", "UNDER-MIN-ISR")
                     .getBytes(StandardCharsets.UTF_8));
 
     // Gather the cluster state.
@@ -280,11 +316,13 @@ public class KafkaClusterState {
     SortedSet<PartitionInfo> offlinePartitions = new TreeSet<>(comparator);
     SortedSet<PartitionInfo> otherPartitions = new TreeSet<>(comparator);
     SortedSet<PartitionInfo> partitionsWithOfflineReplicas = new TreeSet<>(comparator);
+    SortedSet<PartitionInfo> underMinIsrPartitions = new TreeSet<>(comparator);
 
     populateKafkaPartitionState(underReplicatedPartitions,
                                 offlinePartitions,
                                 otherPartitions,
                                 partitionsWithOfflineReplicas,
+                                underMinIsrPartitions,
                                 verbose);
 
     // Write the cluster state.
@@ -296,6 +334,9 @@ public class KafkaClusterState {
 
     out.write(String.format("Under Replicated Partitions:%n").getBytes(StandardCharsets.UTF_8));
     writeKafkaClusterState(out, underReplicatedPartitions, topicNameLength);
+
+    out.write(String.format("Under MinIsr Partitions:%n").getBytes(StandardCharsets.UTF_8));
+    writeKafkaClusterState(out, underMinIsrPartitions, topicNameLength);
 
     if (verbose) {
       out.write(String.format("Other Partitions:%n").getBytes(StandardCharsets.UTF_8));
