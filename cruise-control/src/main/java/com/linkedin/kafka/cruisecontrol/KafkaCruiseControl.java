@@ -154,7 +154,7 @@ public class KafkaCruiseControl {
                                                            Integer concurrentLeaderMovements,
                                                            boolean skipHardGoalCheck)
       throws KafkaCruiseControlException {
-    goalListSanityCheck(goals, skipHardGoalCheck);
+    sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
@@ -226,7 +226,7 @@ public class KafkaCruiseControl {
                                                   Integer concurrentLeaderMovements,
                                                   boolean skipHardGoalCheck) throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      goalListSanityCheck(goals, skipHardGoalCheck);
+      sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
       ModelCompletenessRequirements modelCompletenessRequirements =
           modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
@@ -274,13 +274,7 @@ public class KafkaCruiseControl {
                                                  Integer concurrentPartitionMovements,
                                                  Integer concurrentLeaderMovements,
                                                  boolean skipHardGoalCheck) throws KafkaCruiseControlException {
-    GoalOptimizer.OptimizerResult result;
-    //If it is a PLE request, skip hard goal check.
-    if (goals != null && goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getName())) {
-      result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation, true);
-    } else {
-      result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation, skipHardGoalCheck);
-    }
+    GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation, skipHardGoalCheck);
     sanityCheckCapacityEstimation(allowCapacityEstimation, result.capacityEstimationInfoByBrokerId());
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
@@ -486,7 +480,7 @@ public class KafkaCruiseControl {
                                                                 boolean allowCapacityEstimation,
                                                                 boolean skipHardGoalCheck) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
-    goalListSanityCheck(goals, skipHardGoalCheck);
+    sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
@@ -603,7 +597,7 @@ public class KafkaCruiseControl {
    * @param goalNames Goal names (and empty list of names indicates all goals).
    */
   public boolean meetCompletenessRequirements(List<String> goalNames) {
-    goalListSanityCheck(goalNames, false);
+    sanityCheckHardGoalPresence(goalNames, false);
     Collection<Goal> goals = goalsByPriority(goalNames).values();
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     return goals.stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(
@@ -634,14 +628,20 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Check whether all hard goals are included in provided goal list.
+   * Sanity check whether all hard goals are included in provided goal list.
+   * There are two special scenarios where hard goal check is skipped.
+   * <ul>
+   * <li> {@code goals} is null or empty list, according to {@link KafkaCruiseControl#goalsByPriority(List)} either default
+   * goals or all goals(if default.goals config is not set) will be picked up.</li>
+   * <li> {@code goals} only has PreferredLeaderElectionGoal, denotes it is a PLE request.</li>
+   * </ul>
    *
    * @param goals A list of goals.
    * @param skipHardGoalCheck True if hard goal checking is not needed.
    */
-  private void goalListSanityCheck(List<String> goals, boolean skipHardGoalCheck) {
-    // If goals is null, skip hard goal check since all default goals will be picked to calculate proposal.
-    if (goals != null && !skipHardGoalCheck) {
+  private void sanityCheckHardGoalPresence(List<String> goals, boolean skipHardGoalCheck) {
+    if (goals != null && !goals.isEmpty() && !skipHardGoalCheck &&
+      !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
       List<String> hardGoals = _config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG);
       if (!goals.containsAll(hardGoals)) {
         throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in provided goal list " + goals + ".");
