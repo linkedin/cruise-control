@@ -1,5 +1,5 @@
 /*
- * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.servlet;
@@ -252,6 +252,7 @@ public class UserTaskManagerTest {
     EasyMock.expect(request.getRequestURI()).andReturn(resource).anyTimes();
     EasyMock.expect(request.getParameterMap()).andReturn(Collections.emptyMap()).anyTimes();
     EasyMock.expect(request.getHeader(UserTaskManager.USER_TASK_HEADER_NAME)).andReturn(userTaskId).anyTimes();
+    EasyMock.expect(request.getRemoteHost()).andReturn("test-host").anyTimes();
     for (String headerName : KafkaCruiseControlServletUtils.HEADERS_TO_TRY) {
       EasyMock.expect(request.getHeader(headerName)).andReturn("localhost").anyTimes();
     }

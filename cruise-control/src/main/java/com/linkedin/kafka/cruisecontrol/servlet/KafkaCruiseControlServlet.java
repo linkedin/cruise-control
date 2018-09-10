@@ -27,16 +27,19 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.TreeSet;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -46,13 +49,15 @@ import java.util.stream.Collectors;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
-import static javax.servlet.http.HttpServletResponse.*;
+import static javax.servlet.http.HttpServletResponse.SC_OK;
+import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
+import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 
 
 /**
@@ -64,7 +69,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private static final int JSON_VERSION = 1;
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
-  private final SessionManager _sessionManager;
   private final UserTaskManager _userTaskManager;
   private final long _maxBlockMs;
   private final ThreadLocal<Integer> _asyncOperationStep;
@@ -76,8 +80,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                    long sessionExpiryMs,
                                    MetricRegistry dropwizardMetricRegistry) {
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
-    _sessionManager = new SessionManager(5, sessionExpiryMs, Time.SYSTEM, dropwizardMetricRegistry, _successfulRequestExecutionTimer);
-    _userTaskManager = new UserTaskManager(5, sessionExpiryMs, dropwizardMetricRegistry);
+    _userTaskManager = new UserTaskManager(sessionExpiryMs, 5, dropwizardMetricRegistry);
     _maxBlockMs = maxBlockMs;
     _asyncOperationStep = new ThreadLocal<>();
     _asyncOperationStep.set(0);
@@ -92,7 +95,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   @Override
   public void destroy() {
     super.destroy();
-    _sessionManager.close();
     _userTaskManager.close();
   }
 
@@ -143,6 +145,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 7. query the Kafka cluster state
    *    GET /kafkacruisecontrol/kafka_cluster_state
    *
+   * 8. query to get active user tasks
+   *    GET /kafkacruisecontrol/user_tasks
+   *
    * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
    * </pre>
    */
@@ -182,22 +187,22 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               break;
             case LOAD:
               if (getClusterLoad(request, response)) {
-                _sessionManager.closeSession(request, false);
+                _userTaskManager.closeSession(request);
               }
               break;
             case PARTITION_LOAD:
               if (getPartitionLoad(request, response)) {
-                _sessionManager.closeSession(request, false);
+                _userTaskManager.closeSession(request);
               }
               break;
             case PROPOSALS:
               if (getProposals(request, response)) {
-                _sessionManager.closeSession(request, false);
+                _userTaskManager.closeSession(request);
               }
               break;
             case STATE:
               if (getState(request, response)) {
-                _sessionManager.closeSession(request, false);
+                _userTaskManager.closeSession(request);
               }
               break;
             case KAFKA_CLUSTER_STATE:
@@ -205,7 +210,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case USER_TASKS:
-              getUserTaskStatus(request, response);
+              getUserTaskState(request, response);
               break;
             default:
               throw new UserRequestException("Invalid URL for GET");
@@ -223,7 +228,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       StringWriter sw = new StringWriter();
       ure.printStackTrace(new PrintWriter(sw));
       setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
-      _sessionManager.closeSession(request, true);
+      _userTaskManager.closeSession(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
@@ -231,7 +236,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String errorMessage = String.format("Error processing GET request '%s' due to '%s'.", request.getPathInfo(), e.getMessage());
       LOG.error(errorMessage, e);
       setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
-      _sessionManager.closeSession(request, true);
+      _userTaskManager.closeSession(request);
     } finally {
       try {
         response.getOutputStream().close();
@@ -305,12 +310,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             case ADD_BROKER:
             case REMOVE_BROKER:
               if (addOrRemoveBroker(request, response, endPoint)) {
-                _sessionManager.closeSession(request, false);
+                _userTaskManager.closeSession(request);
               }
               break;
             case REBALANCE:
               if (rebalance(request, response, endPoint)) {
-                _sessionManager.closeSession(request, false);
+                _userTaskManager.closeSession(request);
               }
               break;
             case STOP_PROPOSAL_EXECUTION:
@@ -330,7 +335,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               break;
             case DEMOTE_BROKER:
               if (demoteBroker(request, response, endPoint)) {
-                _sessionManager.closeSession(request, false);
+                _userTaskManager.closeSession(request);
               }
               break;
             default:
@@ -349,7 +354,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       StringWriter sw = new StringWriter();
       ure.printStackTrace(new PrintWriter(sw));
       setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
-      _sessionManager.closeSession(request, true);
+      _userTaskManager.closeSession(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
@@ -357,7 +362,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String errorMessage = String.format("Error processing POST request '%s' due to: '%s'.", request.getPathInfo(), e.getMessage());
       LOG.error(errorMessage, e);
       setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
-      _sessionManager.closeSession(request, true);
+      _userTaskManager.closeSession(request);
     } finally {
       try {
         response.getOutputStream().close();
@@ -984,7 +989,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                           Supplier<OperationFuture<T>> supplier)
       throws ExecutionException, InterruptedException, IOException {
     int step = _asyncOperationStep.get();
-    OperationFuture<T> future = _sessionManager.getAndCreateSessionIfNotExist(request, supplier, step);
+    OperationFuture<T> future = _userTaskManager.getOrCreateUserTask(request, response, supplier, step);
     _asyncOperationStep.set(step + 1);
     try {
       return future.get(_maxBlockMs, TimeUnit.MILLISECONDS);
@@ -1070,18 +1075,58 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
   }
 
-  private void getUserTaskStatus(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    Map<UUID, UserTaskManager.UserTaskInfo> activeUserTasks = _userTaskManager.getActiveUserTasks();
-    List<Map<String, String>> responseStructure = new ArrayList<>();
-    for (Map.Entry<UUID, UserTaskManager.UserTaskInfo> entry : activeUserTasks.entrySet()) {
-      Map<String, String> jsonObjectMap = new HashMap<>();
-      jsonObjectMap.put("UserTaskId", entry.getKey().toString());
-      jsonObjectMap.put("RequestURL", entry.getValue().getRequestUrl());
-      jsonObjectMap.put("ClientIdentity", entry.getValue().getClientIdentity());
-      jsonObjectMap.put("StartMs", Long.toString(entry.getValue().getStartMs()));
-      responseStructure.add(jsonObjectMap);
+  private void getUserTaskState(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    List<UserTaskManager.UserTaskInfo> activeUserTasks = _userTaskManager.getActiveUserTasks();
+    List<UserTaskManager.UserTaskInfo> completedUserTasks = _userTaskManager.getInactiveUserTasks();
+
+    String responseString;
+    if (wantJSON(request)) {
+      List<Map<String, String>> responseStructure = new ArrayList<>();
+      for (UserTaskManager.UserTaskInfo userTaskInfo : activeUserTasks) {
+        Map<String, String> jsonObjectMap = new HashMap<>();
+        jsonObjectMap.put("UserTaskId", userTaskInfo.userTaskId().toString());
+        jsonObjectMap.put("RequestURL", userTaskInfo.requestWithParams());
+        jsonObjectMap.put("ClientIdentity", userTaskInfo.clientIdentity());
+        jsonObjectMap.put("StartMs", Long.toString(userTaskInfo.startMs()));
+        jsonObjectMap.put("Status", "Active");
+        responseStructure.add(jsonObjectMap);
+      }
+
+      for (UserTaskManager.UserTaskInfo userTaskInfo : completedUserTasks) {
+        Map<String, String> jsonObjectMap = new HashMap<>();
+        jsonObjectMap.put("UserTaskId", userTaskInfo.userTaskId().toString());
+        jsonObjectMap.put("RequestURL", userTaskInfo.requestWithParams());
+        jsonObjectMap.put("ClientIdentity", userTaskInfo.clientIdentity());
+        jsonObjectMap.put("StartMs", Long.toString(userTaskInfo.startMs()));
+        jsonObjectMap.put("Status", "Completed");
+        responseStructure.add(jsonObjectMap);
+      }
+      responseString = new Gson().toJson(responseStructure);
+    } else {
+      StringBuilder sb = new StringBuilder();
+      sb.append(String.format("%n%40s%20s%20s%15s  %s", "USER TASK ID", "CLIENT ADDRESS", "START MS", "STATUS", "REQUEST URL"));
+      for (UserTaskManager.UserTaskInfo userTaskInfo : activeUserTasks) {
+        Date date = new Date(userTaskInfo.startMs());
+        DateFormat formatter = new SimpleDateFormat("HH:mm:ss.SSSZ");
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String dateFormatted = formatter.format(date);
+        sb.append(String.format("%n%40s%20s%20s%15s  %s", userTaskInfo.userTaskId().toString(),  userTaskInfo.clientIdentity(),
+            dateFormatted, "Active", userTaskInfo.requestWithParams()));
+      }
+
+      for (UserTaskManager.UserTaskInfo userTaskInfo : completedUserTasks) {
+        Date date = new Date(userTaskInfo.startMs());
+        DateFormat formatter = new SimpleDateFormat("HH:mm:ss.SSSZ");
+        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String dateFormatted = formatter.format(date);
+        sb.append(String.format("%n%40s%20s%20s%15s  %s", userTaskInfo.userTaskId().toString(),  userTaskInfo.clientIdentity(),
+            dateFormatted, "Completed", userTaskInfo.requestWithParams()));
+
+      }
+      responseString = sb.toString();
     }
-    setSuccessResponse(response, new Gson().toJson(responseStructure), true);
+
+    setSuccessResponse(response, responseString, wantJSON(request));
   }
 
   static class GoalsAndRequirements {

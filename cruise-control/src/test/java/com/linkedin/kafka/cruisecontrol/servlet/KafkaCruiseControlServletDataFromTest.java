@@ -93,6 +93,7 @@ public class KafkaCruiseControlServletDataFromTest {
     EasyMock.expect(request.getRequestURI()).andReturn("/test").anyTimes();
     EasyMock.expect(request.getParameterMap()).andReturn(Collections.emptyMap()).anyTimes();
     EasyMock.expect(request.getHeader(EasyMock.anyString())).andReturn(null).anyTimes();
+    EasyMock.expect(request.getRemoteAddr()).andReturn("localhost").anyTimes();
     response.setHeader(EasyMock.anyString(), EasyMock.anyString());
     EasyMock.expect(session.getLastAccessedTime()).andReturn(Long.MAX_VALUE);
     KafkaCruiseControlState kccState = getState(_numReadyGoals, _totalGoals, _numValidWindows);

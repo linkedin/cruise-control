@@ -35,7 +35,8 @@ enum EndPoint {
                                                                    PARTITION_LOAD,
                                                                    PROPOSALS,
                                                                    STATE,
-                                                                   KAFKA_CLUSTER_STATE);
+                                                                   KAFKA_CLUSTER_STATE,
+                                                                   USER_TASKS);
   private static final List<EndPoint> POST_ENDPOINT = Arrays.asList(ADD_BROKER,
                                                                     REMOVE_BROKER,
                                                                     REBALANCE,
