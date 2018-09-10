@@ -59,7 +59,7 @@ public class GoalOptimizer implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalOptimizer.class);
   private final SortedMap<Integer, Goal> _goalsByPriority;
   private final BalancingConstraint _balancingConstraint;
-  private final Pattern _excludedTopics;
+  private final Pattern _defaultExcludedTopics;
   private final LoadMonitor _loadMonitor;
 
   private final Time _time;
@@ -103,7 +103,7 @@ public class GoalOptimizer implements Runnable {
     LOG.info("Goals by priority: {}", _goalsByPriority);
     LOG.info("Goals by priority for proposal precomputing: {}", _goalByPriorityForPrecomputing);
     _balancingConstraint = new BalancingConstraint(config);
-    _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
+    _defaultExcludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
     _proposalExpirationMs = config.getLong(KafkaCruiseControlConfig.PROPOSAL_EXPIRATION_MS_CONFIG);
     _proposalPrecomputingExecutor =
         Executors.newScheduledThreadPool(numProposalComputingThreads(),
@@ -203,12 +203,15 @@ public class GoalOptimizer implements Runnable {
         // Check in 30 seconds to see if the load monitor has sufficient number of snapshots.
         sleepTime = 30000L;
       } else if (!validCachedProposal()) {
-        LOG.debug("Invalidated cache. Cached model generation: {}, current model generation: {}",
+        LOG.debug("Invalidated cache. Model generation (cached: {}, current: {}).{}",
                   _bestProposal == null ? null : _bestProposal.modelGeneration(),
-                  _loadMonitor.clusterModelGeneration());
+                  _loadMonitor.clusterModelGeneration(),
+                  _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
+                                                             _bestProposal.excludedTopics()));
         clearBestProposal();
 
         long start = System.nanoTime();
+        // Proposal precomputation runs with the default topics to exclude.
         computeBestProposal();
         _proposalComputationTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
       } else {
@@ -236,7 +239,8 @@ public class GoalOptimizer implements Runnable {
     long start = _time.milliseconds();
     List<Future> futures = new ArrayList<>();
     for (int i = 0; i < (_numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1); i++) {
-      futures.add(_proposalPrecomputingExecutor.submit(new ProposalCandidateComputer(_goalByPriorityForPrecomputing.get(i))));
+      futures.add(_proposalPrecomputingExecutor.submit(
+          new ProposalCandidateComputer(_goalByPriorityForPrecomputing.get(i))));
     }
     for (Future future : futures) {
       try {
@@ -318,12 +322,14 @@ public class GoalOptimizer implements Runnable {
     }
     synchronized (_cacheLock) {
       if (!validCachedProposal() || (!allowCapacityEstimation && _bestProposal.isCapacityEstimated())) {
-        LOG.debug("Cached best proposal is not usable, Cached generation: {}, current generation: {} capacity estimation"
-                  + " (cached: {}, allowed: {}). Wait for cache update.",
+        LOG.debug("Cached best proposal is not usable. Model generation (cached: {}, current: {}). Capacity estimation"
+                  + " (cached: {}, allowed: {}).{} Wait for cache update.",
                   _bestProposal == null ? null : _bestProposal.modelGeneration(),
                   _loadMonitor.clusterModelGeneration(),
                   _bestProposal == null ? null : _bestProposal.isCapacityEstimated(),
-                  allowCapacityEstimation);
+                  allowCapacityEstimation,
+                  _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
+                                                             _bestProposal.excludedTopics()));
         // Invalidate the cache and set the new caching rule regarding capacity estimation.
         _bestProposal = null;
         // Explicitly allow capacity estimation to exit the loop upon computing best proposals.
@@ -374,6 +380,18 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
+   * Provides optimization using {@link #_defaultExcludedTopics}.
+   *
+   * See {@link #optimizations(ClusterModel, Map, OperationProgress, Pattern)}.
+   */
+  public OptimizerResult optimizations(ClusterModel clusterModel,
+                                       Map<Integer, Goal> goalsByPriority,
+                                       OperationProgress operationProgress)
+      throws KafkaCruiseControlException {
+    return optimizations(clusterModel, goalsByPriority, operationProgress, null);
+  }
+
+  /**
    * Depending the existence of dead/decommissioned brokers in the given cluster:
    * (1) Re-balance: Generates proposals to update the state of the cluster to achieve a final balanced state.
    * (2) Self-healing: Generates proposals to move replicas away from decommissioned brokers.
@@ -384,11 +402,13 @@ public class GoalOptimizer implements Runnable {
    *                     cached proposal will be ignored.
    * @param goalsByPriority the goals ordered by priority.
    * @param operationProgress to report the job progress.
+   * @param requestedExcludedTopics Topics excluded from partition movement (if null, use {@link #_defaultExcludedTopics})
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        Map<Integer, Goal> goalsByPriority,
-                                       OperationProgress operationProgress)
+                                       OperationProgress operationProgress,
+                                       Pattern requestedExcludedTopics)
       throws KafkaCruiseControlException {
     if (clusterModel == null) {
       throw new IllegalArgumentException("The cluster model cannot be null");
@@ -413,7 +433,7 @@ public class GoalOptimizer implements Runnable {
     Map<Goal, ClusterModelStats> statsByGoalPriority = new LinkedHashMap<>();
     Map<TopicPartition, List<Integer>> preOptimizedReplicaDistribution = null;
     Map<TopicPartition, Integer> preOptimizedLeaderDistribution = null;
-    Set<String> excludedTopics = excludedTopics(clusterModel);
+    Set<String> excludedTopics = excludedTopics(clusterModel, requestedExcludedTopics);
     LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
     for (Map.Entry<Integer, Goal> entry : goalsByPriority.entrySet()) {
       preOptimizedReplicaDistribution = preOptimizedReplicaDistribution == null ? initReplicaDistribution : clusterModel.getReplicaDistribution();
@@ -455,13 +475,15 @@ public class GoalOptimizer implements Runnable {
                                clusterModel.brokerStats(),
                                clusterModel.generation(),
                                clusterModel.getClusterStats(_balancingConstraint),
-                               clusterModel.capacityEstimationInfoByBrokerId());
+                               clusterModel.capacityEstimationInfoByBrokerId(),
+                               excludedTopics);
   }
 
-  private Set<String> excludedTopics(ClusterModel clusterModel) {
+  private Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
+    Pattern topicsToExclude = requestedExcludedTopics != null ? requestedExcludedTopics : _defaultExcludedTopics;
     return clusterModel.topics()
         .stream()
-        .filter(topic -> _excludedTopics.matcher(topic).matches())
+        .filter(topic -> topicsToExclude.matcher(topic).matches())
         .collect(Collectors.toSet());
   }
 
@@ -528,6 +550,7 @@ public class GoalOptimizer implements Runnable {
     private final ModelGeneration _modelGeneration;
     private final ClusterModelStats _clusterModelStats;
     private final Map<Integer, String> _capacityEstimationInfoByBrokerId;
+    private final Set<String> _excludedTopics;
 
     OptimizerResult(Map<Goal, ClusterModelStats> statsByGoalPriority,
                     Set<Goal> violatedGoalsBeforeOptimization,
@@ -537,7 +560,8 @@ public class GoalOptimizer implements Runnable {
                     ClusterModel.BrokerStats brokerStatsAfterOptimization,
                     ModelGeneration modelGeneration,
                     ClusterModelStats clusterModelStats,
-                    Map<Integer, String> capacityEstimationInfoByBrokerId) {
+                    Map<Integer, String> capacityEstimationInfoByBrokerId,
+                    Set<String> excludedTopics) {
       _statsByGoalPriority = statsByGoalPriority;
       _violatedGoalsBeforeOptimization = violatedGoalsBeforeOptimization;
       _violatedGoalsAfterOptimization = violatedGoalsAfterOptimization;
@@ -547,6 +571,7 @@ public class GoalOptimizer implements Runnable {
       _modelGeneration = modelGeneration;
       _clusterModelStats = clusterModelStats;
       _capacityEstimationInfoByBrokerId = capacityEstimationInfoByBrokerId;
+      _excludedTopics = excludedTopics;
     }
 
     public Map<Goal, ClusterModelStats> statsByGoalPriority() {
@@ -589,10 +614,14 @@ public class GoalOptimizer implements Runnable {
       return Collections.unmodifiableMap(_capacityEstimationInfoByBrokerId);
     }
 
+    public Set<String> excludedTopics() {
+      return _excludedTopics;
+    }
+
     private List<Number> getMovementStats() {
       Integer numReplicaMovements = 0;
       Integer numLeaderMovements = 0;
-      Long dataToMove = 0L;
+      long dataToMove = 0L;
       for (ExecutionProposal p : _optimizationProposals) {
         if (!p.replicasToAdd().isEmpty() || !p.replicasToRemove().isEmpty()) {
           numReplicaMovements++;
@@ -607,9 +636,11 @@ public class GoalOptimizer implements Runnable {
     public String getProposalSummary() {
       List<Number> moveStats = getMovementStats();
       return String.format("%n%nThe optimization proposal has %d replica(%d MB) movements and %d leadership movements "
-              + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions covered.",
-          moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(), _clusterModelStats.numSnapshotWindows(),
-          _clusterModelStats.monitoredPartitionsPercentage() * 100);
+                           + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions "
+                           + "covered.%nExcluded Topics: %s",
+                           moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(),
+                           _clusterModelStats.numSnapshotWindows(), _clusterModelStats.monitoredPartitionsPercentage() * 100,
+                           _excludedTopics);
     }
 
     public Map<String, Object> getProposalSummaryForJson() {
@@ -620,6 +651,7 @@ public class GoalOptimizer implements Runnable {
       ret.put("numLeaderMovements", moveStats.get(2).intValue());
       ret.put("recentWindows", _clusterModelStats.numSnapshotWindows());
       ret.put("monitoredPartitionsPercentage", _clusterModelStats.monitoredPartitionsPercentage() * 100.0);
+      ret.put("excludedTopics", _excludedTopics);
       return ret;
     }
   }

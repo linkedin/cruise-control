@@ -60,6 +60,7 @@ class KafkaCruiseControlServletUtils {
   private static final String SUBSTATES_PARAM = "substates";
   private static final String MIN_VALID_PARTITION_RATIO_PARAM = "min_valid_partition_ratio";
   private static final String SKIP_HARD_GOAL_CHECK_PARAM = "skip_hard_goal_check";
+  private static final String EXCLUDED_TOPICS = "excluded_topics";
 
   static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
@@ -101,6 +102,7 @@ class KafkaCruiseControlServletUtils {
     proposals.add(KAFKA_ASSIGNER_MODE_PARAM);
     proposals.add(JSON_PARAM);
     proposals.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    proposals.add(EXCLUDED_TOPICS);
 
     Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     state.add(VERBOSE_PARAM);
@@ -119,6 +121,7 @@ class KafkaCruiseControlServletUtils {
     addOrRemoveBroker.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     addOrRemoveBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     addOrRemoveBroker.add(SKIP_HARD_GOAL_CHECK_PARAM);
+    addOrRemoveBroker.add(EXCLUDED_TOPICS);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
@@ -134,6 +137,7 @@ class KafkaCruiseControlServletUtils {
     demoteBroker.add(JSON_PARAM);
     demoteBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     demoteBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    demoteBroker.add(EXCLUDED_TOPICS);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
@@ -145,6 +149,7 @@ class KafkaCruiseControlServletUtils {
     rebalance.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     rebalance.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     rebalance.add(SKIP_HARD_GOAL_CHECK_PARAM);
+    rebalance.add(EXCLUDED_TOPICS);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
@@ -387,6 +392,11 @@ class KafkaCruiseControlServletUtils {
     }
 
     return concurrentMovementsPerBroker;
+  }
+
+  static Pattern excludedTopics(HttpServletRequest request) {
+    String excludedTopicsString = request.getParameter(EXCLUDED_TOPICS);
+    return excludedTopicsString != null ? Pattern.compile(excludedTopicsString) : null;
   }
 
   /**

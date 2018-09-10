@@ -29,19 +29,19 @@ enum EndPoint {
   DEMOTE_BROKER;
 
   private static final List<EndPoint> GET_ENDPOINT = Arrays.asList(BOOTSTRAP,
-      TRAIN,
-      LOAD,
-      PARTITION_LOAD,
-      PROPOSALS,
-      STATE,
-      KAFKA_CLUSTER_STATE);
+                                                                   TRAIN,
+                                                                   LOAD,
+                                                                   PARTITION_LOAD,
+                                                                   PROPOSALS,
+                                                                   STATE,
+                                                                   KAFKA_CLUSTER_STATE);
   private static final List<EndPoint> POST_ENDPOINT = Arrays.asList(ADD_BROKER,
-      REMOVE_BROKER,
-      REBALANCE,
-      STOP_PROPOSAL_EXECUTION,
-      PAUSE_SAMPLING,
-      RESUME_SAMPLING,
-      DEMOTE_BROKER);
+                                                                    REMOVE_BROKER,
+                                                                    REBALANCE,
+                                                                    STOP_PROPOSAL_EXECUTION,
+                                                                    PAUSE_SAMPLING,
+                                                                    RESUME_SAMPLING,
+                                                                    DEMOTE_BROKER);
   private static final List<EndPoint> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
   public static List<EndPoint> getEndpoint() {
