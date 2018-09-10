@@ -244,16 +244,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 1. Decommission a broker.
    *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;throttle_removed_broker=[true/false]&amp;goals=[goal1,goal2...]
    *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
-   *    &amp;json=[true/false]
+   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]
    *
    * 2. Add a broker
    *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;throttle_added_broker=[true/false]&amp;goals=[goal1,goal2...]
    *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
-   *    &amp;json=[true/false]
+   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]
    *
    * 3. Trigger a workload balance.
    *    POST /kafkacruisecontrol/rebalance?dryrun=[true/false]&amp;force=[true/false]&amp;goals=[goal1,goal2...]&amp;allow_capacity_estimation=[true/false]
    *    &amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]
+   *    &amp;skip_hard_goal_check=[true/false]
    *
    * 4. Stop the proposal execution.
    *    POST /kafkacruisecontrol/stop_proposal_execution?json=[true/false]
@@ -805,6 +806,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean throttleAddedOrRemovedBrokers;
     List<String> goals;
     boolean json = wantJSON(request);
+    boolean skipHardGoalCheck;
     try {
       brokerIds = brokerIds(request);
       dryrun = getDryRun(request);
@@ -813,6 +815,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       throttleAddedOrRemovedBrokers = throttleAddedOrRemovedBrokers(request, endPoint);
       concurrentPartitionMovements = concurrentMovementsPerBroker(request, true);
       concurrentLeaderMovements = concurrentMovementsPerBroker(request, false);
+      skipHardGoalCheck = skipHardGoalCheck(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
@@ -835,7 +838,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                               goalsAndRequirements.requirements(),
                                                                               allowCapacityEstimation,
                                                                               concurrentPartitionMovements,
-                                                                              concurrentLeaderMovements));
+                                                                              concurrentLeaderMovements,
+                                                                              skipHardGoalCheck));
     } else {
       optimizerResult =
           getAndMaybeReturnProgress(request, response,
@@ -846,7 +850,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                                        goalsAndRequirements.requirements(),
                                                                                        allowCapacityEstimation,
                                                                                        concurrentPartitionMovements,
-                                                                                       concurrentLeaderMovements));
+                                                                                       concurrentLeaderMovements,
+                                                                                       skipHardGoalCheck));
     }
     if (optimizerResult == null) {
       return false;
@@ -866,12 +871,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Integer concurrentPartitionMovements;
     Integer concurrentLeaderMovements;
     boolean json = wantJSON(request);
+    boolean skipHardGoalCheck;
     try {
       dryrun = getDryRun(request);
       goals = getGoals(request);
       dataFrom = getDataFrom(request);
       concurrentPartitionMovements = concurrentMovementsPerBroker(request, true);
       concurrentLeaderMovements = concurrentMovementsPerBroker(request, false);
+      skipHardGoalCheck = skipHardGoalCheck(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
@@ -889,7 +896,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                            goalsAndRequirements.requirements(),
                                                                            allowCapacityEstimation,
                                                                            concurrentPartitionMovements,
-                                                                           concurrentLeaderMovements));
+                                                                           concurrentLeaderMovements,
+                                                                           skipHardGoalCheck));
     if (optimizerResult == null) {
       return false;
     }

@@ -59,6 +59,7 @@ class KafkaCruiseControlServletUtils {
   private static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
   private static final String SUBSTATES_PARAM = "substates";
   private static final String MIN_VALID_PARTITION_RATIO_PARAM = "min_valid_partition_ratio";
+  private static final String SKIP_HARD_GOAL_CHECK_PARAM = "skip_hard_goal_check";
 
   static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
@@ -117,6 +118,7 @@ class KafkaCruiseControlServletUtils {
     addOrRemoveBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     addOrRemoveBroker.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     addOrRemoveBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    addOrRemoveBroker.add(SKIP_HARD_GOAL_CHECK_PARAM);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
@@ -142,6 +144,7 @@ class KafkaCruiseControlServletUtils {
     rebalance.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     rebalance.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     rebalance.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    rebalance.add(SKIP_HARD_GOAL_CHECK_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
@@ -351,8 +354,11 @@ class KafkaCruiseControlServletUtils {
     goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
     goals.removeIf(String::isEmpty);
 
-    // If KafkaAssigner mode is enabled and goals are not specified, it overrides the goal list.
-    if (goals.isEmpty() && isKafkaAssignerMode) {
+    // KafkaAssigner mode is assumed to use two KafkaAssigner goals, if client specifies goals in request, throw exception.
+    if (isKafkaAssignerMode) {
+      if (!goals.isEmpty()) {
+        throw new UserRequestException("Kafka assigner mode does not support explicitly specifying goals in request.");
+      }
       goals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                             KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());
     }
@@ -417,6 +423,10 @@ class KafkaCruiseControlServletUtils {
       dataFrom = DataFrom.valueOf(dataFromString.toUpperCase());
     }
     return dataFrom;
+  }
+
+  static boolean skipHardGoalCheck(HttpServletRequest request) {
+    return getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
   }
 
   enum DataFrom {

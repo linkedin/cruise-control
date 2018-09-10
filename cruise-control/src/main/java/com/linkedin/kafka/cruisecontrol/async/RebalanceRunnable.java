@@ -11,7 +11,7 @@ import java.util.List;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean)}
  */
 class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
   private final List<String> _goals;
@@ -20,6 +20,7 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
   private final boolean _allowCapacityEstimation;
   private final Integer _concurrentPartitionMovements;
   private final Integer _concurrentLeaderMovements;
+  private final boolean _skipHardGoalCheck;
 
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture<GoalOptimizer.OptimizerResult> future,
@@ -28,7 +29,8 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
                     ModelCompletenessRequirements modelCompletenessRequirements,
                     boolean allowCapacityEstimation,
                     Integer concurrentPartitionMovements,
-                    Integer concurrentLeaderMovements) {
+                    Integer concurrentLeaderMovements,
+                    boolean skipHardGoalCheck) {
     super(kafkaCruiseControl, future);
     _goals = goals;
     _dryRun = dryRun;
@@ -36,6 +38,7 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
     _allowCapacityEstimation = allowCapacityEstimation;
     _concurrentPartitionMovements = concurrentPartitionMovements;
     _concurrentLeaderMovements = concurrentLeaderMovements;
+    _skipHardGoalCheck = skipHardGoalCheck;
   }
 
   @Override
@@ -46,6 +49,7 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
                                          _future.operationProgress(),
                                          _allowCapacityEstimation,
                                          _concurrentPartitionMovements,
-                                         _concurrentLeaderMovements);
+                                         _concurrentLeaderMovements,
+                                         _skipHardGoalCheck);
   }
 }
