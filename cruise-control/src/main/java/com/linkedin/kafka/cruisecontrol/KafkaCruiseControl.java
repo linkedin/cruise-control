@@ -37,6 +37,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -139,6 +140,7 @@ public class KafkaCruiseControl {
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
+   * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @return The optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
@@ -152,7 +154,8 @@ public class KafkaCruiseControl {
                                                            boolean allowCapacityEstimation,
                                                            Integer concurrentPartitionMovements,
                                                            Integer concurrentLeaderMovements,
-                                                           boolean skipHardGoalCheck)
+                                                           boolean skipHardGoalCheck,
+                                                           Pattern excludedTopics)
       throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
@@ -163,7 +166,7 @@ public class KafkaCruiseControl {
                                                             operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
       GoalOptimizer.OptimizerResult result =
-          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation);
+          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          throttleDecommissionedBroker ? Collections.emptyList() : brokerIds,
@@ -212,6 +215,7 @@ public class KafkaCruiseControl {
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
+   * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the broker addition.
    */
@@ -224,7 +228,8 @@ public class KafkaCruiseControl {
                                                   boolean allowCapacityEstimation,
                                                   Integer concurrentPartitionMovements,
                                                   Integer concurrentLeaderMovements,
-                                                  boolean skipHardGoalCheck) throws KafkaCruiseControlException {
+                                                  boolean skipHardGoalCheck,
+                                                  Pattern excludedTopics) throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
@@ -235,7 +240,7 @@ public class KafkaCruiseControl {
                                                             operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.NEW));
       GoalOptimizer.OptimizerResult result =
-          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation);
+          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          throttleAddedBrokers ? Collections.emptyList() : brokerIds,
@@ -263,6 +268,7 @@ public class KafkaCruiseControl {
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
+   * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @return The optimization result.
    * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
@@ -273,9 +279,10 @@ public class KafkaCruiseControl {
                                                  boolean allowCapacityEstimation,
                                                  Integer concurrentPartitionMovements,
                                                  Integer concurrentLeaderMovements,
-                                                 boolean skipHardGoalCheck) throws KafkaCruiseControlException {
-    GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress, allowCapacityEstimation, skipHardGoalCheck);
-    sanityCheckCapacityEstimation(allowCapacityEstimation, result.capacityEstimationInfoByBrokerId());
+                                                 boolean skipHardGoalCheck,
+                                                 Pattern excludedTopics) throws KafkaCruiseControlException {
+    GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress,
+                                                                    allowCapacityEstimation, skipHardGoalCheck, excludedTopics);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
                        concurrentPartitionMovements, concurrentLeaderMovements);
@@ -300,13 +307,15 @@ public class KafkaCruiseControl {
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @return the optimization result.
    */
   public GoalOptimizer.OptimizerResult demoteBrokers(Collection<Integer> brokerIds,
                                                      boolean dryRun,
                                                      OperationProgress operationProgress,
                                                      boolean allowCapacityEstimation,
-                                                     Integer concurrentLeaderMovements)
+                                                     Integer concurrentLeaderMovements,
+                                                     Pattern excludedTopics)
       throws KafkaCruiseControlException {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
@@ -317,7 +326,7 @@ public class KafkaCruiseControl {
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel,
                                    goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName())),
-                                   operationProgress, allowCapacityEstimation);
+                                   operationProgress, allowCapacityEstimation, excludedTopics);
       if (!dryRun) {
         // Kafka Assigner mode is irrelevant for demoting a broker.
         executeProposals(result.goalProposals(), brokerIds, false, null, concurrentLeaderMovements);
@@ -471,6 +480,7 @@ public class KafkaCruiseControl {
    * @param operationProgress The progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
+   * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    */
@@ -478,7 +488,8 @@ public class KafkaCruiseControl {
                                                                 ModelCompletenessRequirements requirements,
                                                                 OperationProgress operationProgress,
                                                                 boolean allowCapacityEstimation,
-                                                                boolean skipHardGoalCheck) throws KafkaCruiseControlException {
+                                                                boolean skipHardGoalCheck,
+                                                                Pattern excludedTopics) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
@@ -492,7 +503,7 @@ public class KafkaCruiseControl {
         requirementsForCache.minMonitoredPartitionsPercentage() > modelCompletenessRequirements.minMonitoredPartitionsPercentage()
         || requirementsForCache.minRequiredNumWindows() > modelCompletenessRequirements.minRequiredNumWindows()
         || (requirementsForCache.includeAllTopics() && !modelCompletenessRequirements.includeAllTopics());
-    if ((goals != null && !goals.isEmpty()) || hasWeakerRequirement) {
+    if ((goals != null && !goals.isEmpty()) || hasWeakerRequirement || excludedTopics != null) {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         // The cached proposals are computed with ignoreMinMonitoredPartitions = true. So if user provided a different
         // setting, we need to generate a new model.
@@ -500,7 +511,11 @@ public class KafkaCruiseControl {
                                                               _time.milliseconds(),
                                                               modelCompletenessRequirements,
                                                               operationProgress);
-        result = getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation);
+        result = getOptimizationProposals(clusterModel,
+                                          goalsByPriority,
+                                          operationProgress,
+                                          allowCapacityEstimation,
+                                          excludedTopics);
       } catch (KafkaCruiseControlException kcce) {
         throw kcce;
       } catch (Exception e) {
@@ -515,11 +530,12 @@ public class KafkaCruiseControl {
   private GoalOptimizer.OptimizerResult getOptimizationProposals(ClusterModel clusterModel,
                                                                  Map<Integer, Goal> goalsByPriority,
                                                                  OperationProgress operationProgress,
-                                                                 boolean allowCapacityEstimation)
+                                                                 boolean allowCapacityEstimation,
+                                                                 Pattern excludedTopics)
       throws KafkaCruiseControlException {
     sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
     synchronized (this) {
-      return _goalOptimizer.optimizations(clusterModel, goalsByPriority, operationProgress);
+      return _goalOptimizer.optimizations(clusterModel, goalsByPriority, operationProgress, excludedTopics);
     }
   }
 

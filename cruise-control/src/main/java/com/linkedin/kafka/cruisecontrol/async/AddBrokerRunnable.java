@@ -9,10 +9,13 @@ import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collection;
 import java.util.List;
+import java.util.regex.Pattern;
+
 
 /**
  * The async runnable for {@link KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List,
- * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean)}
+ * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer,
+ * Integer, boolean, Pattern)}
  */
 class AddBrokerRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
   private final Collection<Integer> _brokerIds;
@@ -24,6 +27,7 @@ class AddBrokerRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
   private final Integer _concurrentPartitionMovements;
   private final Integer _concurrentLeaderMovements;
   private final boolean _skipHardGoalCheck;
+  private final Pattern _excludedTopics;
 
   AddBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture<GoalOptimizer.OptimizerResult> future,
@@ -35,7 +39,8 @@ class AddBrokerRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
                     boolean allowCapacityEstimation,
                     Integer concurrentPartitionMovements,
                     Integer concurrentLeaderMovements,
-                    boolean skipHardGoalCheck) {
+                    boolean skipHardGoalCheck,
+                    Pattern excludedTopics) {
     super(kafkaCruiseControl, future);
     _brokerIds = brokerIds;
     _dryRun = dryRun;
@@ -46,6 +51,7 @@ class AddBrokerRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
     _concurrentPartitionMovements = concurrentPartitionMovements;
     _concurrentLeaderMovements = concurrentLeaderMovements;
     _skipHardGoalCheck = skipHardGoalCheck;
+    _excludedTopics = excludedTopics;
   }
 
   @Override
@@ -53,6 +59,6 @@ class AddBrokerRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
     return _kafkaCruiseControl.addBrokers(_brokerIds, _dryRun, _throttleAddedBrokers, _goals,
                                           _modelCompletenessRequirements, _future.operationProgress(),
                                           _allowCapacityEstimation, _concurrentPartitionMovements,
-                                          _concurrentLeaderMovements, _skipHardGoalCheck);
+                                          _concurrentLeaderMovements, _skipHardGoalCheck, _excludedTopics);
   }
 }
