@@ -20,6 +20,16 @@ import kafka.zk.KafkaZkClient;
 import scala.collection.JavaConversions;
 
 
+/**
+ * The Kafka topic config provider implementation based on files. The format of the file is JSON, listing properties:
+ * <pre>
+ *   {
+ *     "min.insync.replicas": 1,
+ *     "an.example.cluster.config": false
+ *   }
+ * </pre>
+ *
+ */
 public class KafkaTopicConfigProvider implements TopicConfigProvider {
   public static final String CLUSTER_CONFIGS_FILE = "cluster.configs.file";
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP = "KafkaTopicConfigProvider";

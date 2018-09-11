@@ -9,6 +9,10 @@ import java.util.Map;
 import java.util.Properties;
 
 
+/**
+ * The interface for getting the topic configs of Kafka. Users should implement this interface so Cruise Control can
+ * get relevant cluster configurations for presenting to user -- e.g. "min.insync.replicas".
+ */
 public interface TopicConfigProvider extends CruiseControlConfigurable, AutoCloseable {
 
   /**

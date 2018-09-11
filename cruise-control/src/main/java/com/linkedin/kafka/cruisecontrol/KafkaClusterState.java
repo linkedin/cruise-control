@@ -113,13 +113,13 @@ public class KafkaClusterState {
       for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
         int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
         boolean isURP = numInsyncReplicas != partitionInfo.replicas().length;
+        if (numInsyncReplicas < minInsyncReplicas) {
+          underMinIsrPartitions.add(partitionInfo);
+        }
         if (isURP || verbose) {
           boolean hasOfflineReplica = partitionInfo.offlineReplicas().length != 0;
           if (hasOfflineReplica) {
             partitionsWithOfflineReplicas.add(partitionInfo);
-          }
-          if (numInsyncReplicas < minInsyncReplicas) {
-            underMinIsrPartitions.add(partitionInfo);
           }
           boolean isOffline = partitionInfo.inSyncReplicas().length == 0;
           if (isOffline) {
@@ -305,8 +305,8 @@ public class KafkaClusterState {
 
     initMessage = verbose ? "All Partitions in the Cluster (verbose):"
                           : "Under Replicated, Offline, and Under MinIsr Partitions:";
-    out.write(String.format("%n%s%n%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%25s%n", initMessage, "TOPIC",
-                            "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE", "UNDER-MIN-ISR")
+    out.write(String.format("%n%s%n%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%n", initMessage, "TOPIC",
+                            "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE")
                     .getBytes(StandardCharsets.UTF_8));
 
     // Gather the cluster state.
