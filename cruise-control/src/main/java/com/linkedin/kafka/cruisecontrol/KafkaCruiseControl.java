@@ -39,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -163,6 +164,11 @@ public class KafkaCruiseControl {
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      Cluster cluster = _loadMonitor.refreshClusterAndGeneration().cluster();
+      List<Integer> invalidBrokerIds = brokerIds.stream().filter(id -> cluster.nodeById(id) == null).collect(Collectors.toList());
+      if (!invalidBrokerIds.isEmpty()) {
+        throw new IllegalArgumentException(String.format("Broker %s does not exist.", invalidBrokerIds));
+      }
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
