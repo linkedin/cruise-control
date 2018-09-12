@@ -11,12 +11,16 @@ import java.util.Map;
 import java.util.Set;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.common.utils.SystemTime;
 
 
 /**
  * Util class for convenience.
  */
 public class KafkaCruiseControlUtils {
+  public static final int ZK_SESSION_TIMEOUT = 30000;
+  public static final int ZK_CONNECTION_TIMEOUT = 30000;
+  public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
 
   private KafkaCruiseControlUtils() {
 
@@ -42,6 +46,15 @@ public class KafkaCruiseControlUtils {
       throw new ConfigException(String.format("Configuration %s must be provided.", configName));
     }
     return value;
+  }
+
+  /**
+   * Close the given KafkaZkClient with the default timeout of {@link #KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS}.
+   *
+   * @param kafkaZkClient KafkaZkClient to be closed
+   */
+  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient) {
+    closeKafkaZkClientWithTimeout(kafkaZkClient, KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS);
   }
 
   public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient, long timeoutMs) {
@@ -89,5 +102,18 @@ public class KafkaCruiseControlUtils {
     return substates.stream()
                     .anyMatch(substate -> substate == KafkaCruiseControlState.SubState.ANALYZER
                                           || substate == KafkaCruiseControlState.SubState.MONITOR);
+  }
+
+  /**
+   * Create an instance of KafkaZkClient with security disabled.
+   *
+   * @param connectString Comma separated host:port pairs, each corresponding to a zk server
+   * @param metricGroup Metric group
+   * @param metricType Metric type
+   * @return A new instance of KafkaZkClient
+   */
+  public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
+    return KafkaZkClient.apply(connectString, false, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
+                               new SystemTime(), metricGroup, metricType);
   }
 }

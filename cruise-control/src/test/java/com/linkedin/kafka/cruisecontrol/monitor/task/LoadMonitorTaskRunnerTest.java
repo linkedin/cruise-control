@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
@@ -65,13 +66,14 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
   @Before
   public void setUp() {
     super.setUp();
-    KafkaZkClient kafkaZkClient = KafkaCruiseControlUnitTestUtils.createKafkaZkClient(zookeeper().connectionString(),
-                                                                                      "LoadMonitorTaskRunnerGroup",
-                                                                                      "LoadMonitorTaskRunnerSetup");
+    KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
+                                                                              "LoadMonitorTaskRunnerGroup",
+                                                                              "LoadMonitorTaskRunnerSetup");
     AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
     for (int i = 0; i < NUM_TOPICS; i++) {
       adminZkClient.createTopic("topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
     }
+    KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
   }
 
   @After

@@ -22,9 +22,9 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 
 
 public class CCKafkaTestUtils {
-  private final static AtomicBoolean SHUTDOWN_HOOK_INSTALLED = new AtomicBoolean(false);
-  private final static Thread SHUTDOWN_HOOK;
-  private final static List<File> FILES_TO_CLEAN_UP = Collections.synchronizedList(new ArrayList<>());
+  private static final AtomicBoolean SHUTDOWN_HOOK_INSTALLED = new AtomicBoolean(false);
+  private static final Thread SHUTDOWN_HOOK;
+  private static final List<File> FILES_TO_CLEAN_UP = Collections.synchronizedList(new ArrayList<>());
 
   static {
     SHUTDOWN_HOOK = new Thread(() -> {

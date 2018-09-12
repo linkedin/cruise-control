@@ -470,7 +470,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public static final String ANOMALY_NOTIFIER_CLASS_CONFIG = "anomaly.notifier.class";
   private static final String ANOMALY_NOTIFIER_CLASS_DOC = "The notifier class to trigger an alert when an "
-      + "anomaly is violated. The anomaly could be either a goal violation or a broker failure.";
+      + "anomaly is violated. The anomaly could be either a goal violation, broker failure, or metric anomaly.";
 
   /**
    * <code>anomaly.detection.interval.ms</code>
@@ -534,6 +534,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
   private static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_DOC = "The name of topic which is used to store the broker sample records.";
+
+  /**
+   * <code>topic.config.provider.class</code>
+   */
+  public static final String TOPIC_CONFIG_PROVIDER_CLASS_CONFIG = "topic.config.provider.class";
+  private static final String TOPIC_CONFIG_PROVIDER_CLASS_DOC = "The provider class that reports the active configuration of topics.";
 
   static {
     CONFIG = new ConfigDef()
@@ -902,6 +908,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 KafkaSampleStore.class.getName(),
                 ConfigDef.Importance.LOW,
                 SAMPLE_STORE_CLASS_DOC)
+        .define(TOPIC_CONFIG_PROVIDER_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                KafkaTopicConfigProvider.class.getName(),
+                ConfigDef.Importance.LOW,
+                TOPIC_CONFIG_PROVIDER_CLASS_DOC)
         .define(PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG,
             ConfigDef.Type.STRING,
             "__KafkaCruiseControlPartitionMetricSamples",
