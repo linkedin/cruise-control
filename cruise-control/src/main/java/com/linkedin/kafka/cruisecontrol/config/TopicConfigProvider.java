@@ -7,12 +7,14 @@ package com.linkedin.kafka.cruisecontrol.config;
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import java.util.Map;
 import java.util.Properties;
+import org.apache.kafka.common.annotation.InterfaceStability;
 
 
 /**
  * The interface for getting the topic configs of Kafka. Users should implement this interface so Cruise Control can
  * get relevant cluster configurations for presenting to user -- e.g. "min.insync.replicas".
  */
+@InterfaceStability.Evolving
 public interface TopicConfigProvider extends CruiseControlConfigurable, AutoCloseable {
 
   /**

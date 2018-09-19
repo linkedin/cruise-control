@@ -11,15 +11,49 @@ import java.util.Map;
 public class BrokerCapacityInfo {
   private final Map<Resource, Double> _capacity;
   private final String _estimationInfo;
+  private final Map<String, Double> _diskCapacityByLogDir;
 
-  public BrokerCapacityInfo(Map<Resource, Double> capacity, String estimationInfo) {
+  /**
+   * BrokerCapacityInfo with the given capacity, estimation, and per absolute logDir disk capacity information.
+   *
+   * @param capacity Capacity information for each resource.
+   * @param estimationInfo Description if there is any capacity estimation, null or empty string otherwise.
+   * @param diskCapacityByLogDir Disk capacity by absolute logDir.
+   */
+  public BrokerCapacityInfo(Map<Resource, Double> capacity, String estimationInfo,
+                            Map<String, Double> diskCapacityByLogDir) {
     _capacity = capacity;
     _estimationInfo = estimationInfo == null ? "" : estimationInfo;
+    _diskCapacityByLogDir = diskCapacityByLogDir;
   }
 
+  /**
+   * BrokerCapacityInfo with no capacity information specified per absolute logDir.
+   *
+   * @param capacity Capacity information for each resource.
+   * @param estimationInfo Description if there is any capacity estimation, null or empty string otherwise.
+   */
+  public BrokerCapacityInfo(Map<Resource, Double> capacity, String estimationInfo) {
+    this(capacity, estimationInfo, null);
+  }
+
+  /**
+   * BrokerCapacityInfo with no estimation.
+   *
+   * @param capacity Capacity information for each resource.
+   * @param diskCapacityByLogDir Disk capacity by absolute logDir.
+   */
+  public BrokerCapacityInfo(Map<Resource, Double> capacity, Map<String, Double> diskCapacityByLogDir) {
+    this(capacity, null, diskCapacityByLogDir);
+  }
+
+  /**
+   * BrokerCapacityInfo with no estimation, no capacity information specified per absolute logDir.
+   *
+   * @param capacity Capacity information for each resource.
+   */
   public BrokerCapacityInfo(Map<Resource, Double> capacity) {
-    _capacity = capacity;
-    _estimationInfo = "";
+    this(capacity, null, null);
   }
 
   /**
@@ -41,5 +75,12 @@ public class BrokerCapacityInfo {
    */
   public String estimationInfo() {
     return _estimationInfo;
+  }
+
+  /**
+   * @return Disk capacity by absolute logDir if the capacity is specified per logDir, null otherwise.
+   */
+  public Map<String, Double> diskCapacityByLogDir() {
+    return _diskCapacityByLogDir;
   }
 }

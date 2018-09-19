@@ -119,8 +119,8 @@ public class Host implements Serializable {
   }
 
   // Model manipulation.
-  Broker createBroker(Integer brokerId, Map<Resource, Double> brokerCapacity) {
-    Broker broker = new Broker(this, brokerId, brokerCapacity);
+  Broker createBroker(Integer brokerId, Map<Resource, Double> brokerCapacity, Map<String, Double> diskCapacityByLogDir) {
+    Broker broker = new Broker(this, brokerId, brokerCapacity, diskCapacityByLogDir);
     _brokers.put(brokerId, broker);
     _aliveBrokers++;
     for (Map.Entry<Resource, Double> entry : brokerCapacity.entrySet()) {

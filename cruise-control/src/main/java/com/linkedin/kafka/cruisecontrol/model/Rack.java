@@ -244,14 +244,18 @@ public class Rack implements Serializable {
   /**
    * Create a broker under this rack, and get the created broker.
    *
-   * @param brokerId       Id of the broker to be created.
-   * @param hostName           The hostName of the broker
+   * @param brokerId Id of the broker to be created.
+   * @param hostName The hostName of the broker
    * @param brokerCapacity Capacity of the created broker.
+   * @param diskCapacityByLogDir Disk capacity by absolute logDir.
    * @return Created broker.
    */
-  Broker createBroker(int brokerId, String hostName, Map<Resource, Double> brokerCapacity) {
+  Broker createBroker(int brokerId,
+                      String hostName,
+                      Map<Resource, Double> brokerCapacity,
+                      Map<String, Double> diskCapacityByLogDir) {
     Host host = _hosts.computeIfAbsent(hostName, name -> new Host(name, this));
-    Broker broker = host.createBroker(brokerId, brokerCapacity);
+    Broker broker = host.createBroker(brokerId, brokerCapacity, diskCapacityByLogDir);
     _brokers.put(brokerId, broker);
     for (Map.Entry<Resource, Double> entry : brokerCapacity.entrySet()) {
       _rackCapacity[entry.getKey().id()] += entry.getValue();
