@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -658,7 +659,8 @@ public class KafkaCruiseControl {
   private void sanityCheckHardGoalPresence(List<String> goals, boolean skipHardGoalCheck) {
     if (goals != null && !goals.isEmpty() && !skipHardGoalCheck &&
       !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
-      List<String> hardGoals = _config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG);
+      List<String> hardGoals = _config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG).stream()
+                               .map(goalName -> goalName.substring(goalName.lastIndexOf(".") + 1)).collect(Collectors.toList());
       if (!goals.containsAll(hardGoals)) {
         throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in provided goal list " + goals + ".");
       }
