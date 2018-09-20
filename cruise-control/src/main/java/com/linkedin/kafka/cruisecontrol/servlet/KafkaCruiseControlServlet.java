@@ -830,6 +830,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean json = wantJSON(request);
     boolean skipHardGoalCheck;
     try {
+      // The parameters retrieved here are supported by either ADD_BROKER, REMOVE_BROKER, or FIX_OFFLINE_REPLICAS.
       brokerIds = brokerIds(request);
       dryrun = getDryRun(request);
       goals = getGoals(request);

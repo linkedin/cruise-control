@@ -134,6 +134,7 @@ class KafkaCruiseControlServletUtils {
 
     Set<String> fixOfflineReplicas = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     fixOfflineReplicas.addAll(addOrRemoveBroker);
+    fixOfflineReplicas.remove(KAFKA_ASSIGNER_MODE_PARAM);
 
     Set<String> demoteBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     demoteBroker.add(BROKER_ID_PARAM);
@@ -358,12 +359,6 @@ class KafkaCruiseControlServletUtils {
 
   static List<String> getGoals(HttpServletRequest request) throws UnsupportedEncodingException {
     boolean isKafkaAssignerMode = getMode(request);
-    EndPoint endPoint = endPoint(request);
-    if (endPoint == FIX_OFFLINE_REPLICAS && isKafkaAssignerMode) {
-      throw new IllegalArgumentException(
-          String.format("The endpoint %s cannot be used in Kafka Assigner mode.", endPoint.name()));
-    }
-
     List<String> goals;
     String goalsString = urlDecode(request.getParameter(GOALS_PARAM));
     goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
