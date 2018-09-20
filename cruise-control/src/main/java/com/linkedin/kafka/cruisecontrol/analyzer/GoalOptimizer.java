@@ -402,7 +402,8 @@ public class GoalOptimizer implements Runnable {
    *                     cached proposal will be ignored.
    * @param goalsByPriority the goals ordered by priority.
    * @param operationProgress to report the job progress.
-   * @param requestedExcludedTopics Topics excluded from partition movement (if null, use {@link #_defaultExcludedTopics})
+   * @param requestedExcludedTopics Topics requested to be excluded from partition movement (if null,
+   *                                use {@link #_defaultExcludedTopics})
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
