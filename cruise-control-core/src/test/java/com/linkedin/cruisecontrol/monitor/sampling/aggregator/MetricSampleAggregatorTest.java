@@ -161,6 +161,25 @@ public class MetricSampleAggregatorTest {
   }
 
   @Test
+  public void testAddSamplesWithLargeInterval() {
+    MetricSampleAggregator<String, IntegerEntity> aggregator =
+        new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS, MIN_SAMPLES_PER_WINDOW,
+            0, _metricDef);
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW,
+        aggregator, ENTITY1, 0, WINDOW_MS,
+        _metricDef);
+
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS, MIN_SAMPLES_PER_WINDOW,
+        aggregator, ENTITY1, 4 * NUM_WINDOWS, WINDOW_MS,
+        _metricDef);
+    List<Long> availableWindows = aggregator.availableWindows();
+    assertEquals(NUM_WINDOWS, availableWindows.size());
+    for (int i = 0; i < NUM_WINDOWS; i++) {
+      assertEquals((i + 4 * NUM_WINDOWS) * WINDOW_MS, availableWindows.get(i).longValue());
+    }
+  }
+
+  @Test
   public void testAggregationOption1() throws NotEnoughValidWindowsException {
     MetricSampleAggregator<String, IntegerEntity> aggregator = prepareCompletenessTestEnv();
 
