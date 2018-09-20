@@ -26,7 +26,8 @@ enum EndPoint {
   PAUSE_SAMPLING,
   RESUME_SAMPLING,
   KAFKA_CLUSTER_STATE,
-  DEMOTE_BROKER;
+  DEMOTE_BROKER,
+  USER_TASKS;
 
   private static final List<EndPoint> GET_ENDPOINT = Arrays.asList(BOOTSTRAP,
                                                                    TRAIN,
@@ -34,7 +35,8 @@ enum EndPoint {
                                                                    PARTITION_LOAD,
                                                                    PROPOSALS,
                                                                    STATE,
-                                                                   KAFKA_CLUSTER_STATE);
+                                                                   KAFKA_CLUSTER_STATE,
+                                                                   USER_TASKS);
   private static final List<EndPoint> POST_ENDPOINT = Arrays.asList(ADD_BROKER,
                                                                     REMOVE_BROKER,
                                                                     REBALANCE,
