@@ -68,6 +68,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private static final Logger ACCESS_LOG = LoggerFactory.getLogger("CruiseControlPublicAccessLogger");
 
   private static final int JSON_VERSION = 1;
+  private static final long MAX_ACTIVE_USER_TASKS = 5;
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
   private final UserTaskManager _userTaskManager;
   private final long _maxBlockMs;
@@ -80,7 +81,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                    long sessionExpiryMs,
                                    MetricRegistry dropwizardMetricRegistry) {
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
-    _userTaskManager = new UserTaskManager(sessionExpiryMs, 5, dropwizardMetricRegistry);
+    _userTaskManager = new UserTaskManager(sessionExpiryMs, MAX_ACTIVE_USER_TASKS, dropwizardMetricRegistry);
     _maxBlockMs = maxBlockMs;
     _asyncOperationStep = new ThreadLocal<>();
     _asyncOperationStep.set(0);
@@ -1077,7 +1078,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private void getUserTaskState(HttpServletRequest request, HttpServletResponse response) throws IOException {
     List<UserTaskManager.UserTaskInfo> activeUserTasks = _userTaskManager.getActiveUserTasks();
-    List<UserTaskManager.UserTaskInfo> completedUserTasks = _userTaskManager.getInactiveUserTasks();
+    List<UserTaskManager.UserTaskInfo> completedUserTasks = _userTaskManager.getCompletedUserTasks();
 
     String responseString;
     if (wantJSON(request)) {

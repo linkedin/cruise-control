@@ -11,11 +11,13 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -53,10 +55,17 @@ public class UserTaskManager implements Closeable {
   private final ScheduledExecutorService _userTaskScannerExecutor =
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskScanner", true, null));
   private final UUIDGenerator _uuidGenerator;
+  private static final Comparator<UUID> USER_TASK_ID_COMPARATOR = new Comparator<UUID>() {
+    @Override
+    public int compare(UUID o1, UUID o2) {
+      return o1.compareTo(o2);
+    }
+  };
+  private static final long COMPLETED_USER_TASK_RETENTION_TIME_HOUR = TimeUnit.HOURS.toMillis(6);
 
   public UserTaskManager(long sessionExpiryMs, long maxActiveUserTasks, MetricRegistry dropwizardMetricRegistry) {
-    this(new HashMap<>(), new HashMap<>(), new HashMap<>(), sessionExpiryMs, maxActiveUserTasks,
-        dropwizardMetricRegistry);
+    this(new HashMap<>(), new TreeMap<>(USER_TASK_ID_COMPARATOR), new TreeMap<>(USER_TASK_ID_COMPARATOR), sessionExpiryMs,
+        maxActiveUserTasks, dropwizardMetricRegistry);
   }
 
   private UserTaskManager(Map<SessionKey, UUID> sessionToUserTaskIdMap,
@@ -202,7 +211,6 @@ public class UserTaskManager implements Closeable {
           LOG.info("Expiring SessionKey {}", entry.getKey());
           iter.remove();
           session.invalidate();
-          // NOTE: Does it make sense to cancel the future?
         }
       }
     }
@@ -213,7 +221,7 @@ public class UserTaskManager implements Closeable {
    * the User-Task-ID from the request header and check if there is any UserTask with the same User-Task-ID.
    * If no User-Task-ID is passed then the {@link HttpSession} is used to fetch the User-Task-ID.
    *
-   * @param httpServletRequest
+   * @param httpServletRequest the HttpServletRequest to fetch the User-Task-ID and HTTPSession.
    * @return UUID of the user tasks or null if user task doesn't exist.
    */
   private UUID getUserTaskId(HttpServletRequest httpServletRequest) {
@@ -255,9 +263,9 @@ public class UserTaskManager implements Closeable {
   }
 
   private synchronized void removeOldUserTasks() {
-    LOG.info("Remove inactive tasks");
+    LOG.info("Remove old user tasks");
     _completedUserTaskIdToFuturesMap.entrySet()
-        .removeIf(entry -> (entry.getValue().startMs() + TimeUnit.HOURS.toMillis(6) < _time.milliseconds()));
+        .removeIf(entry -> (entry.getValue().startMs() + COMPLETED_USER_TASK_RETENTION_TIME_HOUR < _time.milliseconds()));
   }
 
   synchronized List<OperationFuture> getFuturesByUserTaskId(UUID userTaskId, HttpServletRequest httpServletRequest) {
@@ -306,13 +314,13 @@ public class UserTaskManager implements Closeable {
     return new ArrayList<>(_activeUserTaskIdToFuturesMap.values());
   }
 
-  public synchronized List<UserTaskInfo> getInactiveUserTasks() {
+  public synchronized List<UserTaskInfo> getCompletedUserTasks() {
     return new ArrayList<>(_completedUserTaskIdToFuturesMap.values());
   }
 
   @Override
   public String toString() {
-    return "UserTaskManager{" + "_sessionToUserTaskIdMap=" + _sessionToUserTaskIdMap
+    return "UserTaskManager{_sessionToUserTaskIdMap=" + _sessionToUserTaskIdMap
         + ", _activeUserTaskIdToFuturesMap=" + _activeUserTaskIdToFuturesMap + ", _completedUserTaskIdToFuturesMap="
         + _completedUserTaskIdToFuturesMap + '}';
   }
