@@ -329,8 +329,12 @@ public class KafkaCruiseControl {
                                    goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName())),
                                    operationProgress, allowCapacityEstimation, excludedTopics);
       if (!dryRun) {
-        // Kafka Assigner mode is irrelevant for demoting a broker.
-        executeProposals(result.goalProposals(), brokerIds, false, null, concurrentLeaderMovements);
+        // (1) Kafka Assigner mode is irrelevant for demoting. (2) Ensure that replica swaps within partitions, which are
+        // prerequisites for broker demotion and does not trigger data move, are throttled by concurrentLeaderMovements.
+        int concurrentSwaps = concurrentLeaderMovements != null
+                              ? concurrentLeaderMovements
+                              : _config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
+        executeProposals(result.goalProposals(), brokerIds, false, concurrentSwaps, concurrentLeaderMovements);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
