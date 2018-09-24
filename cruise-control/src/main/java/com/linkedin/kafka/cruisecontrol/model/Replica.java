@@ -318,7 +318,7 @@ public class Replica implements Serializable, Comparable<Replica> {
     return String.format(
         "Replica[isLeader=%s,rack=%s,broker=%d,TopicPartition=%s,origBroker=%d,isOriginalOffline=%s,isCurrentOffline=%s]",
         _isLeader, _broker.rack().id(), _broker.id(), _tp,
-        _originalBroker == null ? -1 : _originalBroker.id(), _isOriginalOffline, isCurrentOffline());
+        _originalBroker == null ? -1 : _originalBroker.id(), isOriginalOffline(), isCurrentOffline());
   }
 
   /**

@@ -230,8 +230,11 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Set broker alive status. If broker is not alive, add its replicas to self healing eligible replicas, if broker
-   * alive status is set to true, remove its replicas from self healing eligible replicas.
+   * Set the {@link Broker.State liveness state} of the given broker.
+   * <ul>
+   * <li>All currently offline replicas of a broker are considered to be self healing eligible.</li>
+   * <li>A broker with bad disks is also considered as an alive broker.</li>
+   * </ul>
    *
    * @param brokerId Id of the broker for which the alive status is set.
    * @param newState The new state of the broker.
@@ -687,7 +690,15 @@ public class ClusterModel implements Serializable {
 
   /**
    * Create a replica under given cluster/rack/broker. Add replica to rack and corresponding partition. Get the
-   * created replica. Set the replica s offline if it is on a dead broker.
+   * created replica. Set the replica as offline if it is on a dead broker.
+   *
+   * The {@link com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor} uses {@link #createReplica(String, int,
+   * TopicPartition, int, boolean, boolean)} while setting the replica offline status, and it considers the broken disks,
+   * as well. Whereas, this method is used only by the unit tests. The relevant unit tests may use
+   * {@link Replica#markOriginalOffline()} to mark offline replicas on broken disks.
+   *
+   * The main reason for this separation is the lack of disk representation in the current broker model. Once the
+   * <a href="https://github.com/linkedin/cruise-control/pull/327">patch #327</a> is merged, we can simplify this logic.
    *
    * @param rackId         Rack id under which the replica will be created.
    * @param brokerId       Broker id under which the replica will be created.

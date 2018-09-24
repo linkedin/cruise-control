@@ -478,7 +478,7 @@ public class LoadMonitor {
       // Get the dead brokers and mark them as dead.
       deadBrokers(kafkaCluster).forEach(brokerId -> clusterModel.setBrokerState(brokerId, Broker.State.DEAD));
       // Get the alive brokers with bad disks and mark them accordingly.
-      for (Integer brokerId : brokersWithBadDisks(kafkaCluster)) {
+      for (Integer brokerId : brokersWithOfflineReplicas(kafkaCluster)) {
         if (clusterModel.broker(brokerId).isAlive()) {
           clusterModel.setBrokerState(brokerId, Broker.State.BAD_DISKS);
         }
@@ -688,7 +688,7 @@ public class LoadMonitor {
     return brokersWithPartitions;
   }
 
-  private Set<Integer> brokersWithBadDisks(Cluster kafkaCluster) {
+  private Set<Integer> brokersWithOfflineReplicas(Cluster kafkaCluster) {
     Set<Integer> brokersWithBadDisks = new HashSet<>();
     for (String topic : kafkaCluster.topics()) {
       for (PartitionInfo partition : kafkaCluster.partitionsForTopic(topic)) {

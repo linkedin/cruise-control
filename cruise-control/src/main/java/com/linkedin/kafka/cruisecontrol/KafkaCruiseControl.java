@@ -218,6 +218,8 @@ public class KafkaCruiseControl {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
+      // Ensure that the generated cluster model contains offline replicas.
+      sanityCheckOfflineReplicaPresence(clusterModel);
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
       if (!dryRun) {
@@ -283,11 +285,11 @@ public class KafkaCruiseControl {
                                                   Integer concurrentLeaderMovements,
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics) throws KafkaCruiseControlException {
+    sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
+    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+    ModelCompletenessRequirements modelCompletenessRequirements =
+        modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
-      Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
-      ModelCompletenessRequirements modelCompletenessRequirements =
-          modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
                                                             modelCompletenessRequirements,
                                                             operationProgress);
@@ -552,7 +554,8 @@ public class KafkaCruiseControl {
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     // There are a few cases that we cannot use the cached best proposals:
     // 1. When users specified goals.
-    // 2. When provided requirements contains a weaker requirement than what is used by the cached proposal.
+    // 2. When provided requirements contain a weaker requirement than what is used by the cached proposal.
+    // 3. When a dynamic parameter explicitly specifies excluded topics.
     ModelCompletenessRequirements requirementsForCache = _goalOptimizer.modelCompletenessRequirementsForPrecomputing();
     boolean hasWeakerRequirement =
         requirementsForCache.minMonitoredPartitionsPercentage() > modelCompletenessRequirements.minMonitoredPartitionsPercentage()
@@ -718,6 +721,21 @@ public class KafkaCruiseControl {
       if (!goals.containsAll(hardGoals)) {
         throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in provided goal list " + goals + ".");
       }
+    }
+  }
+
+  /**
+   * Sanity check to ensure that the given cluster model contains brokers with offline replicas.
+   * @param clusterModel Cluster model for which the existence of an offline replica will be verified.
+   */
+  private void sanityCheckOfflineReplicaPresence(ClusterModel clusterModel) {
+    if (clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
+      for (Broker deadBroker : clusterModel.deadBrokers()) {
+        if (!deadBroker.replicas().isEmpty()) {
+          break;
+        }
+      }
+      throw new IllegalStateException("Cluster has no offline replica on brokers " + clusterModel.brokers() + " to fix.");
     }
   }
 }

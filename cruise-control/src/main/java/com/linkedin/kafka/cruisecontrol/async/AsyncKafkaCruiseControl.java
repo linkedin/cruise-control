@@ -39,6 +39,8 @@ import java.util.regex.Pattern;
  * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress,
  * boolean, boolean, Pattern)}</li>
+ * <li>{@link KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements, OperationProgress,
+ * boolean, Integer, Integer, boolean, Pattern)}</li>
  * <li>{@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress,
  * boolean, Integer, Integer, boolean, Pattern)}</li>
  * </ul>
