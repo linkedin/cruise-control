@@ -142,9 +142,9 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
         }
       }
     }
-    ensureRackAware(clusterModel, excludedTopics);
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
+    ensureRackAware(clusterModel, excludedTopics);
     return true;
   }
 
@@ -279,8 +279,8 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   }
 
   /**
-   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if its topic
-   * is in the excluded topics set and its broker is still alive.
+   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if (1) its topic
+   * is in the excluded topics set, (2) its original broker is still alive, and (3) its original disk is alive.
    *
    * @param partition The partition of replica to be checked.
    * @param position The position of replica in the given partition.
@@ -289,7 +289,8 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    */
   private boolean shouldExclude(Partition partition, int position, Set<String> excludedTopics) {
     Replica replica = replicaAtPosition(partition, position);
-    return excludedTopics.contains(replica.topicPartition().topic()) && replica.originalBroker().isAlive();
+    Broker originalBroker = replica.originalBroker();
+    return excludedTopics.contains(replica.topicPartition().topic()) && originalBroker.isAlive() && !replica.isOriginalOffline();
   }
 
   /**

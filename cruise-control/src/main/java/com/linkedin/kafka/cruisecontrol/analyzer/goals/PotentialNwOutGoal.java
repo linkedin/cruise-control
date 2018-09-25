@@ -195,7 +195,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
     }
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     double destinationBrokerUtilization = clusterModel.potentialLeadershipLoadFor(destinationBroker.id()).expectedUtilizationFor(Resource.NW_OUT);
-    double destinationCapacity = destinationBroker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
+    double destinationCapacity = destinationBroker.host().capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
     double sourceReplicaUtilization = clusterModel.partition(sourceReplica.topicPartition()).leader().load()
                                                   .expectedUtilizationFor(Resource.NW_OUT);
 
@@ -214,13 +214,13 @@ public class PotentialNwOutGoal extends AbstractGoal {
 
     // Ensure that the source capacity of self-satisfied for action type swap is not violated.
     double sourceBrokerUtilization = clusterModel.potentialLeadershipLoadFor(sourceBroker.id()).expectedUtilizationFor(Resource.NW_OUT);
-    double sourceCapacity = sourceBroker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
+    double sourceCapacity = sourceBroker.host().capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
     return sourceCapacity >= sourceBrokerUtilization + destinationReplicaUtilization - sourceReplicaUtilization;
   }
 
   /**
-   * Set the flag which indicates whether the self healing failed to relocate all replicas away from dead brokers in
-   * its initial attempt. Since self healing has not been executed yet, this flag is false.
+   * Set the flag which indicates whether the self healing failed to relocate all offline replicas away from dead brokers
+   * or the corresponding dead disks in its initial attempt. Since self healing has not been executed yet, this flag is false.
    *
    * @param clusterModel The state of the cluster.
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
@@ -266,7 +266,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics) {
-    double capacityLimit = broker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
+    double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);
+    double capacityLimit = broker.host().capacityFor(Resource.NW_OUT) * capacityThreshold;
     boolean estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
         clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
     if (!estimatedMaxPossibleNwOutOverLimit && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
@@ -305,7 +306,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
           // Update brokersUnderEstimatedMaxPossibleNwOut (for destination broker).
           double updatedDestBrokerPotentialNwOut =
               clusterModel.potentialLeadershipLoadFor(destinationBrokerId).expectedUtilizationFor(Resource.NW_OUT);
-          if (updatedDestBrokerPotentialNwOut > capacityLimit) {
+          double destCapacityLimit = destinationBroker.host().capacityFor(Resource.NW_OUT) * capacityThreshold;
+          if (updatedDestBrokerPotentialNwOut > destCapacityLimit) {
             candidateBrokers.remove(clusterModel.broker(destinationBrokerId));
           }
         }

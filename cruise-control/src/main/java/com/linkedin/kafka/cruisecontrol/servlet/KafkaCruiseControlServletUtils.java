@@ -110,30 +110,30 @@ class KafkaCruiseControlServletUtils {
     state.add(JSON_PARAM);
     state.add(SUBSTATES_PARAM);
 
-    Set<String> addOrRemoveBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    addOrRemoveBroker.add(DRY_RUN_PARAM);
-    addOrRemoveBroker.add(DATA_FROM_PARAM);
-    addOrRemoveBroker.add(GOALS_PARAM);
-    addOrRemoveBroker.add(KAFKA_ASSIGNER_MODE_PARAM);
-    addOrRemoveBroker.add(JSON_PARAM);
-    addOrRemoveBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-    addOrRemoveBroker.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
-    addOrRemoveBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
-    addOrRemoveBroker.add(SKIP_HARD_GOAL_CHECK_PARAM);
-    addOrRemoveBroker.add(EXCLUDED_TOPICS);
+    Set<String> addRemoveOrFixBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    addRemoveOrFixBroker.add(DRY_RUN_PARAM);
+    addRemoveOrFixBroker.add(DATA_FROM_PARAM);
+    addRemoveOrFixBroker.add(GOALS_PARAM);
+    addRemoveOrFixBroker.add(KAFKA_ASSIGNER_MODE_PARAM);
+    addRemoveOrFixBroker.add(JSON_PARAM);
+    addRemoveOrFixBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    addRemoveOrFixBroker.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    addRemoveOrFixBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    addRemoveOrFixBroker.add(SKIP_HARD_GOAL_CHECK_PARAM);
+    addRemoveOrFixBroker.add(EXCLUDED_TOPICS);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
     addBroker.add(BROKER_ID_PARAM);
-    addBroker.addAll(addOrRemoveBroker);
+    addBroker.addAll(addRemoveOrFixBroker);
 
     Set<String> removeBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     removeBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
     removeBroker.add(BROKER_ID_PARAM);
-    removeBroker.addAll(addOrRemoveBroker);
+    removeBroker.addAll(addRemoveOrFixBroker);
 
     Set<String> fixOfflineReplicas = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    fixOfflineReplicas.addAll(addOrRemoveBroker);
+    fixOfflineReplicas.addAll(addRemoveOrFixBroker);
     fixOfflineReplicas.remove(KAFKA_ASSIGNER_MODE_PARAM);
 
     Set<String> demoteBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);

@@ -24,7 +24,7 @@ public class ReplicaSortFunctionFactory {
   private static final Function<Replica, Integer> PRIORITIZE_IMMIGRANTS = r -> r.originalBroker() != r.broker() ? 0 : 1;
   /** De-prioritize the immigrant replicas */
   private static final Function<Replica, Integer> DEPRIORITIZE_IMMIGRANTS = r -> r.originalBroker() != r.broker() ? 1 : 0;
-  /** Prioritize the immigrant replicas */
+  /** Prioritize the offline replicas */
   private static final Function<Replica, Integer> PRIORITIZE_OFFLINE_REPLICAS = r -> r.isCurrentOffline() ? 0 : 1;
   /** Prioritize the immigrant replicas */
   private static final Function<Replica, Integer> DEPRIORITIZE_OFFLINE_REPLICAS = r -> r.isCurrentOffline() ? 1 : 0;

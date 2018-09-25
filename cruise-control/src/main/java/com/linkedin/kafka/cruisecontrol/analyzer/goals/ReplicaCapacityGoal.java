@@ -230,6 +230,8 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     for (Replica replica : new TreeSet<>(broker.replicas())) {
       boolean isReplicaOffline = replica.isCurrentOffline();
       if (broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker() && !isReplicaOffline) {
+        // The loop uses a TreeSet over replicas with the default replica comparator. This comparator prioritizes offline
+        // replicas; hence, if the current replica is not offline, it means there is no other offline replica on the broker.
         break;
       }
       if (shouldExclude(replica, excludedTopics)) {

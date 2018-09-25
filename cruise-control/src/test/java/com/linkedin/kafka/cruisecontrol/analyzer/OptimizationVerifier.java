@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Test fails for
- * (a) self healing if there are replicas on dead brokers after self healing.
+ * (a) self healing if there are replicas on dead brokers or broken disks after self healing.
  * (b) adding a new broker causes the replicas to move between old brokers.
  * (c) rebalance if rebalance causes a worse goal state. See {@link #executeGoalsFor} for details of pass / fail status.
  * <p>
@@ -56,7 +56,7 @@ class OptimizationVerifier {
    * A test fails if:
    * 1) Rebalance: During the optimization process, optimization of a goal leads to a worse cluster state (in terms of
    * the requirements of the same goal) than the cluster state just before starting the optimization.
-   * 2) Self Healing: There are replicas on dead brokers after self healing.
+   * 2) Self Healing: There are offline replicas on dead brokers or on broken disks of brokers after self healing.
    * 3) Adding a new broker causes the replicas to move among old brokers.
    *
    * @param constraint         Balancing constraint for the given cluster.
@@ -77,7 +77,7 @@ class OptimizationVerifier {
    * A test fails if:
    * 1) Rebalance: During the optimization process, optimization of a goal leads to a worse cluster state (in terms of
    * the requirements of the same goal) than the cluster state just before starting the optimization.
-   * 2) Self Healing: There are replicas on dead brokers after self healing.
+   * 2) Self Healing: There are offline replicas on dead brokers or on broken disks of brokers after self healing.
    * 3) Adding a new broker causes the replicas to move among old brokers.
    *
    * @param constraint         Balancing constraint for the given cluster.
