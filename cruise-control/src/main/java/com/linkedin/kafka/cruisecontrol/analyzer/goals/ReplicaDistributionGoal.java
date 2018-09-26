@@ -292,9 +292,9 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     if (broker.isAlive() && !requireMoreReplicas && !requireLessReplicas) {
       // return if the broker is already within the limit.
       return;
-    } else if (!clusterModel.newBrokers().isEmpty() && requireMoreReplicas && !broker.isNew() && !requireLessReplicas) {
-      // return if we have new brokers and the current broker is not a new broker but requires: more replicas, but not
-      // less replicas -- i.e. hence, does not have offline replicas on it.
+    } else if (!clusterModel.newBrokers().isEmpty() && !broker.isNew() && !requireLessReplicas) {
+      // return if we have new brokers and the current broker is not a new broker and does not require less replicas
+      // -- i.e. hence, does not have offline replicas on it.
       return;
     } else if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && requireLessReplicas
                && broker.currentOfflineReplicas().isEmpty() && broker.immigrantReplicas().isEmpty()) {
@@ -352,7 +352,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       // Only check if we successfully moved something.
       if (b != null) {
         // Update the global sorted broker set to reflect the replica movement.
-        BrokerAndSortedReplicas destBas = _brokerAndReplicasMap.get(broker.id());
+        BrokerAndSortedReplicas destBas = _brokerAndReplicasMap.get(b.id());
         destBas.sortedReplicas().add(replica);
         sourceBas.sortedReplicas().remove(replica);
         if (broker.replicas().size() <= (broker.currentOfflineReplicas().isEmpty() ? _balanceUpperLimit : 0)) {
@@ -371,7 +371,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     return !broker.replicas().isEmpty();
   }
 
-  private boolean rebalanceByMovingReplicasIn(Broker broker,
+  private boolean rebalanceByMovingReplicasIn(Broker aliveDestBroker,
                                               ClusterModel clusterModel,
                                               Set<Goal> optimizedGoals,
                                               Set<String> excludedTopics) {
@@ -385,14 +385,20 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       return resultByOfflineReplicas;
     });
 
-    for (Broker aliveBroker : clusterModel.aliveBrokers()) {
-      if (aliveBroker.replicas().size() > _balanceLowerLimit || !aliveBroker.currentOfflineReplicas().isEmpty()) {
-        eligibleBrokers.add(aliveBroker);
+    // Source broker can be dead, alive, or may have bad disks.
+    if (_fixOfflineReplicasOnly) {
+      clusterModel.brokers().stream().filter(sourceBroker -> sourceBroker.id() != aliveDestBroker.id())
+                  .forEach(eligibleBrokers::add);
+    } else {
+      for (Broker sourceBroker : clusterModel.brokers()) {
+        if (sourceBroker.replicas().size() > _balanceLowerLimit || !sourceBroker.currentOfflineReplicas().isEmpty()) {
+          eligibleBrokers.add(sourceBroker);
+        }
       }
     }
 
     // Remove the destination broker from the global sorted broker set.
-    BrokerAndSortedReplicas destBas = _brokerAndReplicasMap.get(broker.id());
+    BrokerAndSortedReplicas destBas = _brokerAndReplicasMap.get(aliveDestBroker.id());
 
     // Stop when no replicas can be moved in anymore.
     while (!eligibleBrokers.isEmpty()) {
@@ -407,14 +413,16 @@ public class ReplicaDistributionGoal extends AbstractGoal {
           continue;
         }
 
-        Broker b = maybeApplyBalancingAction(clusterModel, replica, Collections.singletonList(broker), ActionType.REPLICA_MOVEMENT, optimizedGoals);
+        Broker b = maybeApplyBalancingAction(clusterModel, replica, Collections.singletonList(aliveDestBroker),
+                                             ActionType.REPLICA_MOVEMENT, optimizedGoals);
         // Only need to check status if the action is taken. This will also handle the case that the source broker
         // has nothing to move in. In that case we will never reenqueue that source broker.
         if (b != null) {
           // Update the BrokerAndSortedReplicas in the global sorted broker set to ensure consistency.
           sourceReplicaIter.remove();
           destBas.sortedReplicas().add(replica);
-          if (broker.replicas().size() >= (broker.isAlive() ? _balanceLowerLimit : 0)) {
+          if (aliveDestBroker.replicas().size() >= _balanceLowerLimit) {
+            // Note that the broker passed to this method is always alive; hence, there is no need to check if it is dead.
             return false;
           }
           // If the source broker has a lower number of offline replicas or an equal number of offline replicas, but

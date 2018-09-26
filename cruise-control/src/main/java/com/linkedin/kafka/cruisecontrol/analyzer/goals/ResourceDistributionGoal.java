@@ -464,6 +464,20 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     return candidateReplicas;
   }
 
+  private double getMaxReplicaLoad(SortedSet<Replica> sortedReplicas) {
+    // Compare the load of the first replica with the first online replica.
+    double maxReplicaLoad = sortedReplicas.first().load().expectedUtilizationFor(resource());
+    for (Replica replica : sortedReplicas) {
+      if (replica.isCurrentOffline()) {
+        continue;
+      } else if (replica.load().expectedUtilizationFor(resource()) > maxReplicaLoad) {
+        maxReplicaLoad = replica.load().expectedUtilizationFor(resource());
+      }
+      break;
+    }
+    return maxReplicaLoad;
+  }
+
   private boolean rebalanceBySwappingLoadOut(Broker broker,
                                              ClusterModel clusterModel,
                                              Set<Goal> optimizedGoals,
@@ -487,13 +501,13 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     });
 
     sourceReplicas.addAll(resource() == Resource.NW_OUT ? broker.leaderReplicas() : broker.replicas());
+    double maxSourceReplicaLoad = getMaxReplicaLoad(sourceReplicas);
 
     // Sort the replicas initially to avoid sorting it every time.
     PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
     for (Broker candidate : clusterModel.aliveBrokersUnderThreshold(resource(), _balanceUpperThreshold)
                                         .stream().filter(b -> !b.replicas().isEmpty()).collect(Collectors.toSet())) {
       // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (ascending load).
-      double maxSourceReplicaLoad = sourceReplicas.first().load().expectedUtilizationFor(resource());
       SortedSet<Replica> replicasToSwapWith = sortedCandidateReplicas(candidate, excludedTopics, maxSourceReplicaLoad, true);
       CandidateBroker candidateBroker = new CandidateBroker(candidate, replicasToSwapWith, true);
       candidateBrokerPQ.add(candidateBroker);
