@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
  * OperationProgress, boolean, Integer, Integer, boolean, Pattern)}</li>
  * <li>{@link KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
  * OperationProgress, boolean, Integer, Integer, boolean, Pattern)}</li>
- * <li>{@link KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress, boolean, Integer, Pattern)}</li>
+ * <li>{@link KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress, boolean, Integer)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(OperationProgress, boolean)}</li>
@@ -197,17 +197,16 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress, boolean, Integer, Pattern)
+   * @see KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress, boolean, Integer)
    */
   public OperationFuture<GoalOptimizer.OptimizerResult> demoteBrokers(Collection<Integer> brokerIds,
                                                                       boolean dryRun,
                                                                       boolean allowCapacityEstimation,
-                                                                      Integer concurrentLeaderMovements,
-                                                                      Pattern excludedTopics) {
+                                                                      Integer concurrentLeaderMovements) {
     OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Demote");
     pending(future.operationProgress());
     _sessionExecutor.submit(new DemoteBrokerRunnable(this, future, brokerIds, dryRun,
-                                                     allowCapacityEstimation, concurrentLeaderMovements, excludedTopics));
+                                                     allowCapacityEstimation, concurrentLeaderMovements));
     return future;
   }
 
