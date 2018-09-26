@@ -941,12 +941,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean dryrun;
     Integer concurrentLeaderMovements;
     boolean json = wantJSON(request);
-    Pattern excludedTopics;
     try {
       brokerIds = brokerIds(request);
       dryrun = getDryRun(request);
       concurrentLeaderMovements = concurrentMovementsPerBroker(request, false);
-      excludedTopics = excludedTopics(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
@@ -960,8 +958,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                     () -> _asyncKafkaCruiseControl.demoteBrokers(brokerIds,
                                                                                  dryrun,
                                                                                  allowCapacityEstimation,
-                                                                                 concurrentLeaderMovements,
-                                                                                 excludedTopics));
+                                                                                 concurrentLeaderMovements));
     if (optimizerResult == null) {
       return false;
     }

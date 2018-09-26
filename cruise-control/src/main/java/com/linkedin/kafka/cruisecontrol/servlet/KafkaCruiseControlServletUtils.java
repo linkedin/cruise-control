@@ -137,7 +137,6 @@ class KafkaCruiseControlServletUtils {
     demoteBroker.add(JSON_PARAM);
     demoteBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     demoteBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
-    demoteBroker.add(EXCLUDED_TOPICS);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
