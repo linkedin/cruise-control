@@ -472,7 +472,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
           // Reset all the data starting from previous oldest window. After this point the old samples cannot get
           // into the raw metric values. We only need to reset the index if the new index is at least _numWindows;
           if (numOldWindowIndexesToReset > 0) {
-            resetIndexes(prevOldestWindowIndex, numOldWindowIndexesToReset, _oldestWindowIndex);
+            resetIndexes(prevOldestWindowIndex, numOldWindowIndexesToReset);
           }
           // Set the generation of the old current window.
           _aggregatorState.updateWindowGeneration(_currentWindowIndex, generation());
@@ -489,12 +489,13 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     return false;
   }
 
-  private void resetIndexes(long prevOldestWindowIndex, int numIndexesToReset, long newOldestWindowIndex) {
+  private void resetIndexes(long prevOldestWindowIndex, int numIndexesToReset) {
+    long currentOldestWindowIndex = _oldestWindowIndex;
     for (RawMetricValues rawValues : _rawMetrics.values()) {
-      rawValues.updateOldestWindowIndex(newOldestWindowIndex);
+      rawValues.updateOldestWindowIndex(currentOldestWindowIndex);
       rawValues.resetWindowIndexes(prevOldestWindowIndex, numIndexesToReset);
     }
-    _aggregatorState.updateOldestWindowIndex(newOldestWindowIndex);
+    _aggregatorState.updateOldestWindowIndex(currentOldestWindowIndex);
     _aggregatorState.resetWindowIndexes(prevOldestWindowIndex, numIndexesToReset);
   }
 
