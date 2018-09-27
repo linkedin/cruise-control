@@ -164,11 +164,7 @@ public class KafkaCruiseControl {
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      Cluster cluster = _loadMonitor.refreshClusterAndGeneration().cluster();
-      List<Integer> invalidBrokerIds = brokerIds.stream().filter(id -> cluster.nodeById(id) == null).collect(Collectors.toList());
-      if (!invalidBrokerIds.isEmpty()) {
-        throw new IllegalArgumentException(String.format("Broker %s does not exist.", invalidBrokerIds));
-      }
+      sanityCheckBrokerPresence(brokerIds);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
@@ -326,6 +322,7 @@ public class KafkaCruiseControl {
       throws KafkaCruiseControlException {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      sanityCheckBrokerPresence(brokerIds);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
                                                             goal.clusterModelCompletenessRequirements(),
                                                             operationProgress);
@@ -670,6 +667,18 @@ public class KafkaCruiseControl {
       if (!goals.containsAll(hardGoals)) {
         throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in provided goal list " + goals + ".");
       }
+    }
+  }
+
+  /**
+   * Sanity check whether the provided brokers to be decommissioned/demoted exist in cluster or not.
+   * @param brokerIds A list of broker id.
+   */
+  private void sanityCheckBrokerPresence(Collection<Integer> brokerIds) {
+    Cluster cluster = _loadMonitor.refreshClusterAndGeneration().cluster();
+    Set<Integer> invalidBrokerIds = brokerIds.stream().filter(id -> cluster.nodeById(id) == null).collect(Collectors.toSet());
+    if (!invalidBrokerIds.isEmpty()) {
+      throw new IllegalArgumentException(String.format("Broker %s does not exist.", invalidBrokerIds));
     }
   }
 }
