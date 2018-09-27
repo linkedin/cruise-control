@@ -234,6 +234,7 @@ public class KafkaCruiseControl {
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics) throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      sanityCheckBrokerPresence(brokerIds);
       sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
       ModelCompletenessRequirements modelCompletenessRequirements =
@@ -671,7 +672,7 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Sanity check whether the provided brokers to be decommissioned/demoted exist in cluster or not.
+   * Sanity check whether the provided brokers exist in cluster or not.
    * @param brokerIds A list of broker id.
    */
   private void sanityCheckBrokerPresence(Collection<Integer> brokerIds) {
