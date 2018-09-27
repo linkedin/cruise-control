@@ -91,10 +91,12 @@ public class SelfHealingNotifierTest {
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
     TestingBrokerFailureAutoFixNotifier anomalyNotifier = new TestingBrokerFailureAutoFixNotifier(mockTime);
 
-    Map<String, String> selfHealingExplicitlyDisabled = new HashMap<>(3);
+    Map<String, String> selfHealingExplicitlyDisabled = new HashMap<>(4);
     selfHealingExplicitlyDisabled.put(SelfHealingNotifier.SELF_HEALING_BROKER_FAILURE_ENABLED_CONFIG, "false");
     selfHealingExplicitlyDisabled.put(SelfHealingNotifier.SELF_HEALING_GOAL_VIOLATION_ENABLED_CONFIG, "false");
     selfHealingExplicitlyDisabled.put(SelfHealingNotifier.SELF_HEALING_METRIC_ANOMALY_ENABLED_CONFIG, "false");
+    // Set to verify the overriding of specific config over general config
+    selfHealingExplicitlyDisabled.put(SelfHealingNotifier.SELF_HEALING_ENABLED_CONFIG, "true");
     anomalyNotifier.configure(selfHealingExplicitlyDisabled);
 
     // (1) Broker Failure

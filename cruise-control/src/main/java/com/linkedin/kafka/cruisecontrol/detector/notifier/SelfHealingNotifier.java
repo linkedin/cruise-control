@@ -113,9 +113,23 @@ public class SelfHealingNotifier implements AnomalyNotifier {
    * @param anomalyType Type of anomaly.
    */
   public void alert(Object anomaly, boolean autoFixTriggered, long selfHealingStartTime, AnomalyType anomalyType) {
+    boolean selfHealingEnabled;
+    switch (anomalyType) {
+      case BROKER_FAILURE:
+        selfHealingEnabled = _selfHealingBrokerFailureEnabled;
+        break;
+      case GOAL_VIOLATION:
+        selfHealingEnabled = _selfHealingGoalViolationEnabled;
+        break;
+      case METRIC_ANOMALY:
+        selfHealingEnabled = _selfHealingMetricAnomalyEnabled;
+        break;
+      default:
+        throw new IllegalArgumentException("Illegal anomaly type " + anomalyType + " is provided.");
+    }
+
     LOG.warn("{} detected {}. Self healing {}.", anomalyType, anomaly,
-             _selfHealingMetricAnomalyEnabled ? String.format("start time %s", toDateString(selfHealingStartTime))
-                                              : "is disabled");
+             selfHealingEnabled ? String.format("start time %s", toDateString(selfHealingStartTime)) : "is disabled");
 
     if (autoFixTriggered) {
       LOG.warn("Self-healing has been triggered.");
