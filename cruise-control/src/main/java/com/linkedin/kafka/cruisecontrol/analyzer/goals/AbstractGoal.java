@@ -42,8 +42,8 @@ public abstract class AbstractGoal implements Goal {
   private boolean _finished;
   protected boolean _succeeded = true;
   protected BalancingConstraint _balancingConstraint;
-  protected int _numWindows = 1;
-  protected double _minMonitoredPartitionPercentage = 0.995;
+  protected int _numWindows;
+  protected double _minMonitoredPartitionPercentage;
 
   /**
    * Constructor of Abstract Goal class sets the _finished flag to false to signal that the goal requirements have not

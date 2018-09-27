@@ -48,6 +48,16 @@ import org.slf4j.LoggerFactory;
 /**
  * The sample store that implements the {@link SampleStore}. It stores the partition metric samples and broker metric
  * samples back to Kafka and load from Kafka at startup.
+ *
+ * Required configurations for this class.
+ * <ul>
+ *   <li>{@link #PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG}: The config for the topic name of Kafka topic to store partition samples.</li>
+ *   <li>{@link #BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG}: The config for the topic name of Kafka topic to store broker samples.</li>
+ *   <li>{@link #NUM_SAMPLE_LOADING_THREADS_CONFIG}: The config for the number of Kafka sample store consumer threads, default value is
+ *   set to {@link #DEFAULT_NUM_SAMPLE_LOADING_THREADS}.</li>
+ *   <li>{@link #SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG}: The config for the replication factor of Kafka sample store topics,
+ *   default value is set to {@link #DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR}.</li>
+ * </ul>
  */
 public class KafkaSampleStore implements SampleStore {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaSampleStore.class);
@@ -58,6 +68,7 @@ public class KafkaSampleStore implements SampleStore {
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
 
   protected static final Integer DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
+  protected static final Integer DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
   protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   protected static final Random RANDOM = new Random();
@@ -65,7 +76,7 @@ public class KafkaSampleStore implements SampleStore {
   protected ExecutorService _metricProcessorExecutor;
   protected String _partitionMetricSampleStoreTopic;
   protected String _brokerMetricSampleStoreTopic;
-  protected Integer _metricSampleStoreTopicReplicationFactor;
+  protected Integer _sampleStoreTopicReplicationFactor;
   protected volatile double _loadingProgress;
   protected Producer<byte[], byte[]> _producer;
   protected volatile boolean _shutdown = false;
@@ -73,14 +84,14 @@ public class KafkaSampleStore implements SampleStore {
   public static final String PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "partition.metric.sample.store.topic";
   public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
   public static final String NUM_SAMPLE_LOADING_THREADS_CONFIG = "num.sample.loading.threads";
-  public static final String NUM_METRIC_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG = "num.metric.sample.store.topic.replication.factor";
+  public static final String SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG = "sample.store.topic.replication.factor";
 
   @Override
   public void configure(Map<String, ?> config) {
     _partitionMetricSampleStoreTopic = KafkaCruiseControlUtils.getRequiredConfig(config, PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
     _brokerMetricSampleStoreTopic = KafkaCruiseControlUtils.getRequiredConfig(config, BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
-    String metricSampleStoreTopicReplicationFactorString = (String) config.get(NUM_METRIC_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG);
-    _metricSampleStoreTopicReplicationFactor = metricSampleStoreTopicReplicationFactorString == null || metricSampleStoreTopicReplicationFactorString.isEmpty()
+    String metricSampleStoreTopicReplicationFactorString = (String) config.get(SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG);
+    _sampleStoreTopicReplicationFactor = metricSampleStoreTopicReplicationFactorString == null || metricSampleStoreTopicReplicationFactorString.isEmpty()
                                ? null : Integer.parseInt(metricSampleStoreTopicReplicationFactorString);
     String numProcessingThreadsString = (String) config.get(NUM_SAMPLE_LOADING_THREADS_CONFIG);
     int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty()
@@ -151,8 +162,8 @@ public class KafkaSampleStore implements SampleStore {
         throw new IllegalStateException(String.format("Kafka cluster has no alive brokers. (zookeeper.connect = %s",
                                                       config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
       }
-      int replicationFactor = _metricSampleStoreTopicReplicationFactor == null ? Math.min(2, numberOfBrokersInCluster) :
-                              _metricSampleStoreTopicReplicationFactor;
+      int replicationFactor = _sampleStoreTopicReplicationFactor == null ? Math.min(DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR,
+                              numberOfBrokersInCluster) : _sampleStoreTopicReplicationFactor;
 
       ensureTopicCreated(zkUtils, topics.keySet(), _partitionMetricSampleStoreTopic, partitionSampleRetentionMs,
                          replicationFactor);
