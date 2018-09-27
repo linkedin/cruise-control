@@ -23,6 +23,8 @@ import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
@@ -35,6 +37,7 @@ import static java.lang.Math.max;
 
 
 public class KafkaClusterState {
+  public static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
   private static final String TOPIC = "topic";
   private static final String PARTITION = "partition";
   private static final String LEADER = "leader";
@@ -74,7 +77,8 @@ public class KafkaClusterState {
    * @param version JSON version
    * @param verbose True if verbose, false otherwise.
    */
-  public String getJSONString(int version, boolean verbose) throws ExecutionException, InterruptedException {
+  public String getJSONString(int version, boolean verbose)
+      throws ExecutionException, InterruptedException, TimeoutException {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure(verbose);
     jsonStructure.put("version", version);
@@ -208,7 +212,8 @@ public class KafkaClusterState {
    *
    * @param verbose True if verbose, false otherwise.
    */
-  public Map<String, Object> getJsonStructure(boolean verbose) throws ExecutionException, InterruptedException {
+  public Map<String, Object> getJsonStructure(boolean verbose)
+      throws ExecutionException, InterruptedException, TimeoutException {
     // Gather the broker state.
     Map<Integer, Integer> leaderCountByBrokerId = new HashMap<>();
     Map<Integer, Integer> outOfSyncCountByBrokerId = new HashMap<>();
@@ -291,7 +296,7 @@ public class KafkaClusterState {
   private void populateKafkaBrokerLogDirState(Map<Integer, Set<String>> onlineLogDirsByBrokerId,
                                               Map<Integer, Set<String>> offlineLogDirsByBrokerId,
                                               Set<Integer> brokers)
-      throws ExecutionException, InterruptedException {
+      throws ExecutionException, InterruptedException, TimeoutException {
     Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId
         = KafkaCruiseControlUtils.describeLogDirs(_bootstrapServers, brokers).values();
 
@@ -299,7 +304,7 @@ public class KafkaClusterState {
       onlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
       offlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
 
-      entry.getValue().get().forEach((key, value) -> {
+      entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((key, value) -> {
         if (value.error == Errors.NONE) {
           onlineLogDirsByBrokerId.get(entry.getKey()).add(key);
         } else {
@@ -309,7 +314,7 @@ public class KafkaClusterState {
     }
   }
 
-  private int getLogDirsNameLength(Map<Integer, Set<String>> logDirsByBrokerId) {
+  private static int getLogDirsNameLength(Map<Integer, Set<String>> logDirsByBrokerId) {
     int maxLogDirsNameLength = 0;
     for (Set<String> logDirs : logDirsByBrokerId.values()) {
       int logDirsNameLength = logDirs.toString().length();
@@ -321,7 +326,7 @@ public class KafkaClusterState {
   }
 
   private void writeKafkaBrokerLogDirState(OutputStream out, Set<Integer> brokers)
-      throws IOException, ExecutionException, InterruptedException {
+      throws IOException, ExecutionException, InterruptedException, TimeoutException {
     Map<Integer, Set<String>> onlineLogDirsByBrokerId = new HashMap<>(brokers.size());
     Map<Integer, Set<String>> offlineLogDirsByBrokerId = new HashMap<>(brokers.size());
     populateKafkaBrokerLogDirState(onlineLogDirsByBrokerId, offlineLogDirsByBrokerId, brokers);
@@ -342,7 +347,8 @@ public class KafkaClusterState {
     }
   }
 
-  private void writeBrokerSummary(OutputStream out) throws IOException, ExecutionException, InterruptedException {
+  private void writeBrokerSummary(OutputStream out)
+      throws IOException, ExecutionException, InterruptedException, TimeoutException {
     SortedMap<Integer, Integer> leaderCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> outOfSyncCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> replicaCountByBrokerId = new TreeMap<>();
@@ -415,7 +421,7 @@ public class KafkaClusterState {
   }
 
   public void writeOutputStream(OutputStream out, boolean verbose)
-      throws IOException, ExecutionException, InterruptedException {
+      throws IOException, ExecutionException, InterruptedException, TimeoutException {
     // Broker summary.
     writeBrokerSummary(out);
     // Partition summary.

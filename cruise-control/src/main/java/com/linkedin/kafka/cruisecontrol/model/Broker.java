@@ -172,7 +172,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return LogDir for the requested logDirIndex.
    */
   public String logDirForIndex(int index) {
-    if (index >= numLogDirs()) {
+    if (index >= numLogDirs() || index < 0) {
       throw new IllegalArgumentException("Index(" + index + ") is out of range(" + numLogDirs() + ") for broker:" + _id + ".");
     }
     return _logDirs[index];
@@ -185,7 +185,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return LogDir capacity for the requested logDirIndex.
    */
   public double logDirCapacityForIndex(int index) {
-    if (index >= numLogDirs()) {
+    if (index >= numLogDirs() || index < 0) {
       throw new IllegalArgumentException("Index(" + index + ") is out of range(" + numLogDirs() + ") for broker:" + _id + ".");
     }
     return _logDirCapacity[index];
