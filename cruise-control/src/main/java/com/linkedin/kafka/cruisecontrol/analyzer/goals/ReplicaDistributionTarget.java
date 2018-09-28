@@ -51,11 +51,11 @@ class ReplicaDistributionTarget {
    *
    * @param numReplicasToBalance The number of replicas to balance. In case replicas to be balanced are for specific
    *                             topic, this number indicates the number of replicas of this topic in the cluster.
-   * @param healthyBrokers       Healthy brokers in the cluster -- i.e. brokers that are not dead.
+   * @param aliveBrokers       Alive brokers in the cluster -- i.e. brokers that are not dead.
    */
-  ReplicaDistributionTarget(int numReplicasToBalance, Set<Broker> healthyBrokers) {
-    _minNumReplicasPerBroker = numReplicasToBalance / healthyBrokers.size();
-    _warmBrokerCredits = numReplicasToBalance % healthyBrokers.size();
+  ReplicaDistributionTarget(int numReplicasToBalance, Set<Broker> aliveBrokers) {
+    _minNumReplicasPerBroker = numReplicasToBalance / aliveBrokers.size();
+    _warmBrokerCredits = numReplicasToBalance % aliveBrokers.size();
     _requiredNumReplicasByBrokerId = new HashMap<>();
     _secondaryEligibleBrokerIds = new HashSet<>();
     _consumedWarmBrokerCredits = 0;
@@ -69,7 +69,7 @@ class ReplicaDistributionTarget {
   }
 
   /**
-   * Move replicas residing in the given cluster and given healthy source broker having given set of topic partitions
+   * Move replicas residing in the given cluster and given alive source broker having given set of topic partitions
    * to eligible brokers. Replica movements are guaranteed not to violate the requirements of optimized goals.
    *
    * @param clusterModel           The state of the cluster.
@@ -108,34 +108,31 @@ class ReplicaDistributionTarget {
   }
 
   /**
-   * Move given self healing eligible replica residing in the given cluster in a dead or healthy broker to an eligible
+   * Move given self healing eligible replica residing in the given cluster in a dead or alive broker to an eligible
    * broker. Replica movements are guaranteed not to violate the requirements of optimized goals.
    *
    * @param clusterModel     The state of the cluster.
    * @param replicaToMove    Replica to move away from its current broker.
-   * @param numLocalReplicas Number of local replicas.
    * @param optimizedGoals   Goals that have already been optimized. The function ensures that their requirements won't
    *                         be violated.
    */
-  void moveSelfHealingEligibleReplicaToEligibleBroker(ClusterModel clusterModel,
-                                                      Replica replicaToMove,
-                                                      int numLocalReplicas,
-                                                      Set<Goal> optimizedGoals)
+  void moveSelfHealingEligibleReplicaToEligibleBroker(ClusterModel clusterModel, Replica replicaToMove, Set<Goal> optimizedGoals)
       throws OptimizationFailureException {
+    int numLocalReplicas = replicaToMove.broker().replicasOfTopicInBroker(replicaToMove.topicPartition().topic()).size();
     // Sanity check the number of replicas to move from the local to a remote broker to achieve the distribution
     // target. If the broker is dead, the replica must move to another broker.
-    if (replicaToMove.broker().isAlive() && numReplicasToMove(numLocalReplicas) == 0) {
+    if (!replicaToMove.isCurrentOffline() && numReplicasToMove(numLocalReplicas) == 0) {
       return;
     }
 
     // Attempt to move the replica to an eligible broker.
     boolean isMoveSuccessful = moveReplicaToEligibleBroker(clusterModel, replicaToMove, optimizedGoals);
-    if (!replicaToMove.broker().isAlive()) {
-      throw new OptimizationFailureException("Self healing failed to move the replica away from decommissioned broker.");
+    if (replicaToMove.isCurrentOffline()) {
+      throw new OptimizationFailureException("Self healing failed to move the offline replica away from broker.");
     }
 
     // Update consumed warm broker credits. Credit is consumed because the broker was unable to move replicas.
-    if (isMoveSuccessful) {
+    if (!isMoveSuccessful) {
       _consumedWarmBrokerCredits++;
     }
   }
@@ -217,9 +214,9 @@ class ReplicaDistributionTarget {
   private boolean moveReplicaToEligibleBroker(ClusterModel clusterModel, Replica replicaToMove, Set<Goal> optimizedGoals) {
     boolean isMoveSuccessful = false;
     // Get eligible brokers to receive this replica.
-    for (int brokerId : replicaToMove.broker().isAlive()
-                        ? sortedCandidateBrokerIds()
-                        : clusterModel.healthyBrokers().stream().map(Broker::id).collect(Collectors.toList())) {
+    for (int brokerId : !replicaToMove.isCurrentOffline()
+                        ? sortedCandidateBrokerIds().stream().filter(id -> id != replicaToMove.originalBroker().id()).collect(Collectors.toList())
+                        : clusterModel.aliveBrokers().stream().map(Broker::id).collect(Collectors.toList())) {
       // filter out the broker that is not eligible.
       if (!isEligibleForReplica(clusterModel, replicaToMove, brokerId)) {
         continue;

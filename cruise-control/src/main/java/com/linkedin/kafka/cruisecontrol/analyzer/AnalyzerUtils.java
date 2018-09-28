@@ -112,19 +112,19 @@ public class AnalyzerUtils {
   }
 
   /**
-   * Checks the replicas that are supposed to be moved away from the dead brokers. If there are still replicas
-   * on the dead broker, throw exception.
+   * Checks the replicas that are supposed to be moved away from the dead brokers or broken disks have been moved.
+   * If there are still replicas on the dead brokers or broken disks, throws an exception.
    * @param clusterModel the cluster model to check.
-   * @throws OptimizationFailureException when there are still replicas on the dead broker.
+   * @throws OptimizationFailureException when there are still replicas on the dead brokers or on broken disks.
    */
-  public static void ensureNoReplicaOnDeadBrokers(ClusterModel clusterModel) throws OptimizationFailureException {
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
+  public static void ensureNoOfflineReplicas(ClusterModel clusterModel) throws OptimizationFailureException {
+    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker or on broken disk.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (!replica.broker().isAlive()) {
+      if (replica.isCurrentOffline()) {
         throw new OptimizationFailureException(String.format(
-            "Self healing failed to move the replica %s away from decommissioned broker %d for goal. There are still "
+            "Self healing failed to move the replica %s away from %s broker %d for goal. There are still "
                 + "%d replicas on the broker.",
-            replica, replica.broker().id(), replica.broker().replicas().size()));
+            replica, replica.broker().getState(), replica.broker().id(), replica.broker().replicas().size()));
       }
     }
   }

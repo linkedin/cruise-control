@@ -392,9 +392,9 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
-   * Depending the existence of dead/decommissioned brokers in the given cluster:
+   * Depending the existence of dead/broken/decommissioned brokers in the given cluster:
    * (1) Re-balance: Generates proposals to update the state of the cluster to achieve a final balanced state.
-   * (2) Self-healing: Generates proposals to move replicas away from decommissioned brokers.
+   * (2) Self-healing: Generates proposals to move replicas away from decommissioned brokers and broken disks.
    * Returns a map from goal names to stats. Initial stats are returned under goal name "init".
    *
    * @param clusterModel The state of the cluster over which the balancing proposal will be applied. Function execution

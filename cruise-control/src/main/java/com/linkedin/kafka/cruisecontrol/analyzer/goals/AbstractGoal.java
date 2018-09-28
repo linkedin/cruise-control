@@ -79,7 +79,7 @@ public abstract class AbstractGoal implements Goal {
     _finished = false;
     long goalStartTime = System.currentTimeMillis();
     initGoalState(clusterModel, excludedTopics);
-    Collection<Broker> deadBrokers = clusterModel.deadBrokers();
+    SortedSet<Broker> brokenBrokers = clusterModel.brokenBrokers();
 
     while (!_finished) {
       for (Broker broker : brokersToBalance(clusterModel)) {
@@ -92,7 +92,7 @@ public abstract class AbstractGoal implements Goal {
     LOG.debug("Finished optimization for {} in {}ms.", name(), System.currentTimeMillis() - goalStartTime);
     LOG.trace("Cluster after optimization is {}", clusterModel);
     // We only ensure the optimization did not make stats worse when it is not self-healing.
-    if (deadBrokers.isEmpty()) {
+    if (brokenBrokers.isEmpty()) {
       ClusterModelStatsComparator comparator = clusterModelStatsComparator();
       // Throw exception when the stats before optimization is preferred.
       if (comparator.compare(statsAfterOptimization, statsBeforeOptimization) < 0) {
@@ -111,14 +111,15 @@ public abstract class AbstractGoal implements Goal {
   public abstract String name();
 
   /**
-   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if its topic
-   * is in the excluded topics set and its broker is still alive.
+   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if (1) its topic
+   * is in the excluded topics and set, (2) its original broker is still alive, and (3) its original disk is alive.
    * @param replica the replica to check.
    * @param excludedTopics the excluded topics set.
    * @return true if the replica should be excluded, false otherwise.
    */
   protected boolean shouldExclude(Replica replica, Set<String> excludedTopics) {
-    return excludedTopics.contains(replica.topicPartition().topic()) && replica.originalBroker().isAlive();
+    Broker originalBroker = replica.originalBroker();
+    return excludedTopics.contains(replica.topicPartition().topic()) && originalBroker.isAlive() && !replica.isOriginalOffline();
   }
 
   /**
@@ -202,9 +203,10 @@ public abstract class AbstractGoal implements Goal {
                                              ActionType action,
                                              Set<Goal> optimizedGoals) {
     // In self healing mode, allow a move only from dead to alive brokers.
-    if (!clusterModel.deadBrokers().isEmpty() && replica.originalBroker().isAlive()) {
+    if ((!clusterModel.deadBrokers().isEmpty() && replica.originalBroker().isAlive())
+        || (!clusterModel.brokersWithBadDisks().isEmpty() && !replica.isOriginalOffline())) {
       //return null;
-      LOG.trace("Applying {} to a replica in a healthy broker in self-healing mode.", action);
+      LOG.trace("Applying {} to an online replica in in self-healing mode.", action);
     }
     Collection<Broker> eligibleBrokers = getEligibleBrokers(clusterModel, replica, candidateBrokers);
     for (Broker broker : eligibleBrokers) {
@@ -303,7 +305,8 @@ public abstract class AbstractGoal implements Goal {
   }
 
   private boolean legitMove(Replica replica, Broker destBroker, ActionType actionType) {
-    if (actionType == ActionType.REPLICA_MOVEMENT && destBroker.replica(replica.topicPartition()) == null) {
+    if (actionType == ActionType.REPLICA_MOVEMENT && destBroker.replica(replica.topicPartition()) == null
+        && !(replica.isOriginalOffline() && replica.originalBroker().id() == destBroker.id())) {
       return true;
     } else if (actionType == ActionType.LEADERSHIP_MOVEMENT && replica.isLeader()
         && destBroker.replica(replica.topicPartition()) != null) {

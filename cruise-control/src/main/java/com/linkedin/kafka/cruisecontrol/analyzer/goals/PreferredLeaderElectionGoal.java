@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
-import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -31,8 +30,7 @@ public class PreferredLeaderElectionGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(PreferredLeaderElectionGoal.class);
 
   @Override
-  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
-      throws KafkaCruiseControlException {
+  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics) {
     // First move the replica on the demoted brokers to the end of the replica list.
     // If all the replicas are demoted, no change is made to the leader.
     Set<TopicPartition> partitionsToMove = new HashSet<>();
@@ -52,6 +50,10 @@ public class PreferredLeaderElectionGoal implements Goal {
         for (Replica r : p.replicas()) {
           // Iterate over the replicas and ensure the leader is set to the first alive replica.
           if (r.broker().isAlive()) {
+            if (r.isCurrentOffline()) {
+              LOG.warn("The preferred replica of partition {} on broker {} is offline.", p.topicPartition(), r.broker());
+              continue;
+            }
             if (!r.isLeader()) {
               clusterModel.relocateLeadership(r.topicPartition(), p.leader().broker().id(), r.broker().id());
             }
@@ -91,7 +93,7 @@ public class PreferredLeaderElectionGoal implements Goal {
 
       @Override
       public String explainLastComparison() {
-        return "This goals do not care about stats.";
+        return String.format("Comparison for the %s is irrelevant.", name());
       }
     };
   }

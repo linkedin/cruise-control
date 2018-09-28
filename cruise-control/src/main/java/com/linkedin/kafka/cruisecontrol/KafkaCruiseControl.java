@@ -165,6 +165,7 @@ public class KafkaCruiseControl {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
+      sanityCheckBrokersHavingOfflineReplicasOnBadDisks(goals, clusterModel);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
@@ -172,6 +173,60 @@ public class KafkaCruiseControl {
         executeProposals(result.goalProposals(),
                          throttleDecommissionedBroker ? Collections.emptyList() : brokerIds,
                          isKafkaAssignerMode(goals),
+                         concurrentPartitionMovements,
+                         concurrentLeaderMovements);
+      }
+      return result;
+    } catch (KafkaCruiseControlException kcce) {
+      throw kcce;
+    } catch (Exception e) {
+      throw new KafkaCruiseControlException(e);
+    }
+  }
+
+  /**
+   * Fix offline replicas on cluster -- i.e. move offline replicas to alive brokers.
+   *
+   * @param dryRun true if no execution is required, false otherwise.
+   * @param goals the goals to be met when fixing offline replicas on the given brokers. When empty all goals will be used.
+   * @param requirements The cluster model completeness requirements.
+   * @param operationProgress the progress to report.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
+   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   *                                  (if null, use num.concurrent.leader.movements).
+   * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
+   * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
+   * @return the optimization result.
+   *
+   * @throws KafkaCruiseControlException when any exception occurred during the process of fixing offline replicas.
+   */
+  public GoalOptimizer.OptimizerResult fixOfflineReplicas(boolean dryRun,
+                                                          List<String> goals,
+                                                          ModelCompletenessRequirements requirements,
+                                                          OperationProgress operationProgress,
+                                                          boolean allowCapacityEstimation,
+                                                          Integer concurrentPartitionMovements,
+                                                          Integer concurrentLeaderMovements,
+                                                          boolean skipHardGoalCheck,
+                                                          Pattern excludedTopics)
+      throws KafkaCruiseControlException {
+    sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
+    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+    ModelCompletenessRequirements modelCompletenessRequirements =
+        modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
+    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
+                                                            operationProgress);
+      // Ensure that the generated cluster model contains offline replicas.
+      sanityCheckOfflineReplicaPresence(clusterModel);
+      GoalOptimizer.OptimizerResult result =
+          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
+      if (!dryRun) {
+        executeProposals(result.goalProposals(),
+                         Collections.emptyList(),
+                         false,
                          concurrentPartitionMovements,
                          concurrentLeaderMovements);
       }
@@ -231,14 +286,15 @@ public class KafkaCruiseControl {
                                                   Integer concurrentLeaderMovements,
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics) throws KafkaCruiseControlException {
+    sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
+    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+    ModelCompletenessRequirements modelCompletenessRequirements =
+        modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
-      Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
-      ModelCompletenessRequirements modelCompletenessRequirements =
-          modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
                                                             modelCompletenessRequirements,
                                                             operationProgress);
+      sanityCheckBrokersHavingOfflineReplicasOnBadDisks(goals, clusterModel);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.NEW));
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
@@ -500,7 +556,8 @@ public class KafkaCruiseControl {
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     // There are a few cases that we cannot use the cached best proposals:
     // 1. When users specified goals.
-    // 2. When provided requirements contains a weaker requirement than what is used by the cached proposal.
+    // 2. When provided requirements contain a weaker requirement than what is used by the cached proposal.
+    // 3. When a dynamic parameter explicitly specifies excluded topics.
     ModelCompletenessRequirements requirementsForCache = _goalOptimizer.modelCompletenessRequirementsForPrecomputing();
     boolean hasWeakerRequirement =
         requirementsForCache.minMonitoredPartitionsPercentage() > modelCompletenessRequirements.minMonitoredPartitionsPercentage()
@@ -514,6 +571,7 @@ public class KafkaCruiseControl {
                                                               _time.milliseconds(),
                                                               modelCompletenessRequirements,
                                                               operationProgress);
+        sanityCheckBrokersHavingOfflineReplicasOnBadDisks(goals, clusterModel);
         result = getOptimizationProposals(clusterModel,
                                           goalsByPriority,
                                           operationProgress,
@@ -666,6 +724,35 @@ public class KafkaCruiseControl {
       if (!goals.containsAll(hardGoals)) {
         throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in provided goal list " + goals + ".");
       }
+    }
+  }
+
+  /**
+   * Sanity check to ensure that the given cluster model contains brokers with offline replicas.
+   * @param clusterModel Cluster model for which the existence of an offline replica will be verified.
+   */
+  private void sanityCheckOfflineReplicaPresence(ClusterModel clusterModel) {
+    if (clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
+      for (Broker deadBroker : clusterModel.deadBrokers()) {
+        if (!deadBroker.replicas().isEmpty()) {
+          // Has offline replica(s) on a dead broker.
+          return;
+        }
+      }
+      throw new IllegalStateException("Cluster has no offline replica on brokers " + clusterModel.brokers() + " to fix.");
+    }
+    // Has offline replica(s) on a broken disk.
+  }
+
+  /**
+   * Sanity check to ensure that the given cluster model has no offline replicas on bad disks in Kafka Assigner mode.
+   * @param goals Goals to check whether it is Kafka Assigner mode or not.
+   * @param clusterModel Cluster model for which the existence of an offline replicas on bad disks will be verified.
+   */
+  private void sanityCheckBrokersHavingOfflineReplicasOnBadDisks(List<String> goals, ClusterModel clusterModel) {
+    if (isKafkaAssignerMode(goals) && !clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
+      throw new IllegalStateException("Kafka Assigner mode is not supported when there are offline replicas on bad disks."
+                                      + " Please run fix_offline_replicas before using Kafka Assigner mode.");
     }
   }
 }

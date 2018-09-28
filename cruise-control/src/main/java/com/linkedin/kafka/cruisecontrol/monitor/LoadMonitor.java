@@ -36,6 +36,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -50,6 +51,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
@@ -475,6 +477,12 @@ public class LoadMonitor {
 
       // Get the dead brokers and mark them as dead.
       deadBrokers(kafkaCluster).forEach(brokerId -> clusterModel.setBrokerState(brokerId, Broker.State.DEAD));
+      // Get the alive brokers with bad disks and mark them accordingly.
+      for (Integer brokerId : brokersWithOfflineReplicas(kafkaCluster)) {
+        if (clusterModel.broker(brokerId).isAlive()) {
+          clusterModel.setBrokerState(brokerId, Broker.State.BAD_DISKS);
+        }
+      }
       LOG.debug("Generated cluster model in {} ms", System.currentTimeMillis() - start);
     } finally {
       ctx.stop();
@@ -591,7 +599,10 @@ public class LoadMonitor {
         } else {
           isLeader = replica.id() == partitionInfo.leader().id();
         }
-        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader);
+        boolean isOffline = Arrays.stream(partitionInfo.offlineReplicas())
+                                  .anyMatch(offlineReplica -> offlineReplica.id() == replica.id());
+
+        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader, isOffline);
         clusterModel.setReplicaLoad(rack,
                                     replica.id(),
                                     tp,
@@ -675,6 +686,18 @@ public class LoadMonitor {
     Set<Integer> brokersWithPartitions = brokersWithPartitions(kafkaCluster);
     kafkaCluster.nodes().forEach(node -> brokersWithPartitions.remove(node.id()));
     return brokersWithPartitions;
+  }
+
+  private Set<Integer> brokersWithOfflineReplicas(Cluster kafkaCluster) {
+    Set<Integer> brokersWithBadDisks = new HashSet<>();
+    for (String topic : kafkaCluster.topics()) {
+      for (PartitionInfo partition : kafkaCluster.partitionsForTopic(topic)) {
+        if (partition.leader() != null) {
+          brokersWithBadDisks.addAll(Arrays.stream(partition.offlineReplicas()).map(Node::id).collect(Collectors.toSet()));
+        }
+      }
+    }
+    return brokersWithBadDisks;
   }
 
   private Map<TopicPartition, List<SampleExtrapolation>> partitionSampleExtrapolations(Map<PartitionEntity, ValuesAndExtrapolations> valuesAndExtrapolations) {

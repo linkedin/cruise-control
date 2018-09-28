@@ -52,7 +52,6 @@ import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
@@ -279,6 +278,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *    POST /kafkacruisecontrol/demote_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;concurrent_leader_movements=[true/false]
    *    &amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]&amp;excluded_topics=[pattern]
    *
+   * 8. Fix offline replicas
+   *    POST /kafkacruisecontrol/fix_offline_replicas?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;goals=[goal1,goal2...]
+   *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]
+   *    &amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]
+   *
    * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
    * </pre>
    */
@@ -310,7 +314,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           switch (endPoint) {
             case ADD_BROKER:
             case REMOVE_BROKER:
-              if (addOrRemoveBroker(request, response, endPoint)) {
+            case FIX_OFFLINE_REPLICAS:
+              if (addRemoveOrFixBroker(request, response, endPoint)) {
                 _userTaskManager.closeSession(request);
               }
               break;
@@ -777,6 +782,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         case REMOVE_BROKER:
           sb.append(String.format("%n%nCluster load after removing broker %s:%n", brokerIds));
           break;
+        case FIX_OFFLINE_REPLICAS:
+          sb.append(String.format("%n%nCluster load after fixing offline replicas on broker %s:%n", brokerIds));
+          break;
         case DEMOTE_BROKER:
           sb.append(String.format("%n%nCluster load after demoting broker %s:%n", brokerIds));
           break;
@@ -809,7 +817,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return sb.toString();
   }
 
-  private boolean addOrRemoveBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
+  private boolean addRemoveOrFixBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
       throws Exception {
     List<Integer> brokerIds;
     Integer concurrentPartitionMovements;
@@ -822,6 +830,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     boolean json = wantJSON(request);
     boolean skipHardGoalCheck;
     try {
+      // The parameters retrieved here are supported by either ADD_BROKER, REMOVE_BROKER, or FIX_OFFLINE_REPLICAS.
       brokerIds = brokerIds(request);
       dryrun = getDryRun(request);
       goals = getGoals(request);
@@ -843,32 +852,49 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     // Get proposals asynchronously.
     GoalOptimizer.OptimizerResult optimizerResult;
     boolean allowCapacityEstimation = allowCapacityEstimation(request);
-    if (endPoint == ADD_BROKER) {
-      optimizerResult =
-          getAndMaybeReturnProgress(request, response,
-                                    () -> _asyncKafkaCruiseControl.addBrokers(brokerIds,
-                                                                              dryrun,
-                                                                              throttleAddedOrRemovedBrokers,
-                                                                              goalsAndRequirements.goals(),
-                                                                              goalsAndRequirements.requirements(),
-                                                                              allowCapacityEstimation,
-                                                                              concurrentPartitionMovements,
-                                                                              concurrentLeaderMovements,
-                                                                              skipHardGoalCheck,
-                                                                              excludedTopics));
-    } else {
-      optimizerResult =
-          getAndMaybeReturnProgress(request, response,
-                                    () -> _asyncKafkaCruiseControl.decommissionBrokers(brokerIds,
-                                                                                       dryrun,
-                                                                                       throttleAddedOrRemovedBrokers,
-                                                                                       goalsAndRequirements.goals(),
-                                                                                       goalsAndRequirements.requirements(),
-                                                                                       allowCapacityEstimation,
-                                                                                       concurrentPartitionMovements,
-                                                                                       concurrentLeaderMovements,
-                                                                                       skipHardGoalCheck,
-                                                                                       excludedTopics));
+    switch (endPoint) {
+      case ADD_BROKER:
+        optimizerResult =
+            getAndMaybeReturnProgress(
+                request, response, () -> _asyncKafkaCruiseControl.addBrokers(brokerIds,
+                                                                             dryrun,
+                                                                             throttleAddedOrRemovedBrokers,
+                                                                             goalsAndRequirements.goals(),
+                                                                             goalsAndRequirements.requirements(),
+                                                                             allowCapacityEstimation,
+                                                                             concurrentPartitionMovements,
+                                                                             concurrentLeaderMovements,
+                                                                             skipHardGoalCheck,
+                                                                             excludedTopics));
+        break;
+      case REMOVE_BROKER:
+        optimizerResult =
+            getAndMaybeReturnProgress(
+                request, response, () -> _asyncKafkaCruiseControl.decommissionBrokers(brokerIds,
+                                                                                      dryrun,
+                                                                                      throttleAddedOrRemovedBrokers,
+                                                                                      goalsAndRequirements.goals(),
+                                                                                      goalsAndRequirements.requirements(),
+                                                                                      allowCapacityEstimation,
+                                                                                      concurrentPartitionMovements,
+                                                                                      concurrentLeaderMovements,
+                                                                                      skipHardGoalCheck,
+                                                                                      excludedTopics));
+        break;
+      case FIX_OFFLINE_REPLICAS:
+        optimizerResult = getAndMaybeReturnProgress(
+            request, response, () -> _asyncKafkaCruiseControl.fixOfflineReplicas(dryrun,
+                                                                                 goalsAndRequirements.goals(),
+                                                                                 goalsAndRequirements.requirements(),
+                                                                                 allowCapacityEstimation,
+                                                                                 concurrentPartitionMovements,
+                                                                                 concurrentLeaderMovements,
+                                                                                 skipHardGoalCheck,
+                                                                                 excludedTopics));
+        break;
+      default:
+        // Should never reach here.
+        return false;
     }
     if (optimizerResult == null) {
       return false;

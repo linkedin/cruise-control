@@ -38,6 +38,7 @@ Cruise Control for Apache Kafka
     * Decommission brokers
     * Rebalance the cluster
     * Perform preferred leader election (PLE)
+    * Fix offline replicas
 
 ### Environment Requirements
 * The current master branch of Cruise Control is compatible with Apache Kafka 0.11.0.0 and above
@@ -90,7 +91,7 @@ model to simulate the workload of the Kafka cluster. The goal optimizer explores
 cluster workload optimization proposals based on the user-specified list of goals.
 
 Cruise Control also monitors the liveness of all the brokers in the cluster.
-To avoid the loss of redundancy, Cruise Control automatically moves replicas from failed brokers to healthy ones.
+To avoid the loss of redundancy, Cruise Control automatically moves replicas from failed brokers to alive ones.
 
 For more details about how Cruise Control achieves that, see 
 [these slides](https://www.slideshare.net/JiangjieQin/introduction-to-kafka-cruise-control-68180931).
@@ -137,7 +138,7 @@ The goals in Cruise Control are pluggable with different priorities. The default
  * **NetworkInboundUsageDistributionGoal** - Attempts to keep the inbound network utilization variance among brokers within a certain range relative to the average inbound network utilization.
  * **NetworkOutboundUsageDistributionGoal** - Attempts to keep the outbound network utilization variance among brokers within a certain range relative to the average outbound network utilization.
  * **LeaderBytesInDistributionGoal** - Attempts to equalize the leader bytes in rate on each host.
- * **TopicReplicaDistributionGoal** - Attempts to maintain an even distribution of any topic's replicas across the entire cluster.
+ * **TopicReplicaDistributionGoal** - Attempts to maintain an even distribution of any topic's partitions across the entire cluster.
  * **ReplicaDistributionGoal** - Attempts to make all the brokers in a cluster have a similar number of replicas.
  * **PreferredLeaderElectionGoal** - Simply move the leaders to the first replica of each partition.
  * **KafkaAssignerDiskUsageDistributionGoal** - (Kafka-assigner mode) Attempts to distribute disk usage evenly among brokers based on swap.

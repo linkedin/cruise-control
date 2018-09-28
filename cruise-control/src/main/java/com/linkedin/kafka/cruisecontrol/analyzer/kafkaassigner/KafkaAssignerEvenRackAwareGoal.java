@@ -38,19 +38,19 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_
 
 public class KafkaAssignerEvenRackAwareGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaAssignerEvenRackAwareGoal.class);
-  private final Map<Integer, SortedSet<BrokerReplicaCount>> _healthyBrokerReplicaCountByPosition;
+  private final Map<Integer, SortedSet<BrokerReplicaCount>> _aliveBrokerReplicaCountByPosition;
   private Map<String, List<Partition>> _partitionsByTopic;
 
   public KafkaAssignerEvenRackAwareGoal() {
     _partitionsByTopic = null;
-    _healthyBrokerReplicaCountByPosition = new HashMap<>();
+    _aliveBrokerReplicaCountByPosition = new HashMap<>();
   }
 
   /**
    * Sanity Check: There exists sufficient number of racks for achieving rack-awareness.
    * 1. Initialize partitions by topic.
    * 2. Initialize the number of excluded replicas by position for each broker.
-   * 3. Initialize the healthy broker replica count by position.
+   * 3. Initialize the alive broker replica count by position.
    *
    * @param clusterModel The state of the cluster.
    * @param excludedTopics The topics that should be excluded from the optimization action.
@@ -81,16 +81,16 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
       }
     }
 
-    // 3. Initialize the healthy broker replica count by position.
+    // 3. Initialize the alive broker replica count by position.
     int maxReplicationFactor = clusterModel.maxReplicationFactor();
     for (int i = 0; i < maxReplicationFactor; i++) {
-      SortedSet<BrokerReplicaCount> healthyBrokersByReplicaCount = new TreeSet<>();
-      for (Broker broker : clusterModel.healthyBrokers()) {
+      SortedSet<BrokerReplicaCount> aliveBrokersByReplicaCount = new TreeSet<>();
+      for (Broker broker : clusterModel.aliveBrokers()) {
         int numExcludedReplicasInPosition = numExcludedReplicasByPositionInBroker.get(broker.id()).getOrDefault(i, 0);
         BrokerReplicaCount brokerReplicaCount = new BrokerReplicaCount(broker, numExcludedReplicasInPosition);
-        healthyBrokersByReplicaCount.add(brokerReplicaCount);
+        aliveBrokersByReplicaCount.add(brokerReplicaCount);
       }
-      _healthyBrokerReplicaCountByPosition.put(i, healthyBrokersByReplicaCount);
+      _aliveBrokerReplicaCountByPosition.put(i, aliveBrokersByReplicaCount);
     }
   }
 
@@ -142,14 +142,14 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
         }
       }
     }
+    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+    AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
     ensureRackAware(clusterModel, excludedTopics);
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);
     return true;
   }
 
   /**
-   * Apply the move to the first eligible destination broker selected from _healthyBrokerReplicaCountByPosition for the
+   * Apply the move to the first eligible destination broker selected from _aliveBrokerReplicaCountByPosition for the
    * relevant replica position.
    *
    * An eligible destination broker must reside in a rack that has no other replicas from the same partition, which has
@@ -175,7 +175,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     }
     // Find an eligible destination and apply the relevant move.
     BrokerReplicaCount eligibleBrokerReplicaCount = null;
-    for (final Iterator<BrokerReplicaCount> it = _healthyBrokerReplicaCountByPosition.get(replicaPosition).iterator();
+    for (final Iterator<BrokerReplicaCount> it = _aliveBrokerReplicaCountByPosition.get(replicaPosition).iterator();
          it.hasNext(); ) {
       BrokerReplicaCount destinationBrokerReplicaCount = it.next();
       if (ineligibleRackIds.contains(destinationBrokerReplicaCount.broker().rack().id())) {
@@ -223,7 +223,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     if (eligibleBrokerReplicaCount != null) {
       // Success: Increment the replica count on the destination.
       eligibleBrokerReplicaCount.incReplicaCount();
-      _healthyBrokerReplicaCountByPosition.get(replicaPosition).add(eligibleBrokerReplicaCount);
+      _aliveBrokerReplicaCountByPosition.get(replicaPosition).add(eligibleBrokerReplicaCount);
       return true;
     }
     // Failure: Unable to apply any valid move -- i.e. optimization failed to place the source replica to a valid broker.
@@ -279,8 +279,8 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   }
 
   /**
-   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if its topic
-   * is in the excluded topics set and its broker is still alive.
+   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if (1) its topic
+   * is in the excluded topics set, (2) its original broker is still alive, and (3) its original disk is alive.
    *
    * @param partition The partition of replica to be checked.
    * @param position The position of replica in the given partition.
@@ -289,7 +289,8 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
    */
   private boolean shouldExclude(Partition partition, int position, Set<String> excludedTopics) {
     Replica replica = replicaAtPosition(partition, position);
-    return excludedTopics.contains(replica.topicPartition().topic()) && replica.originalBroker().isAlive();
+    Broker originalBroker = replica.originalBroker();
+    return excludedTopics.contains(replica.topicPartition().topic()) && originalBroker.isAlive() && !replica.isOriginalOffline();
   }
 
   /**
@@ -301,7 +302,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   private void ensureRackAwareSatisfiable(ClusterModel clusterModel, Set<String> excludedTopics)
       throws OptimizationFailureException {
     // Sanity Check: not enough racks to satisfy rack awareness.
-    int numHealthyRacks = clusterModel.numHealthyRacks();
+    int numAliveRacks = clusterModel.numAliveRacks();
     if (!excludedTopics.isEmpty()) {
       int maxReplicationFactorOfIncludedTopics = 1;
       Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();
@@ -310,12 +311,12 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
         if (!excludedTopics.contains(replicationFactorByTopicEntry.getKey())) {
           maxReplicationFactorOfIncludedTopics =
               Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
-          if (maxReplicationFactorOfIncludedTopics > numHealthyRacks) {
+          if (maxReplicationFactorOfIncludedTopics > numAliveRacks) {
             throw new OptimizationFailureException("Insufficient number of racks to distribute included replicas.");
           }
         }
       }
-    } else if (clusterModel.maxReplicationFactor() > numHealthyRacks) {
+    } else if (clusterModel.maxReplicationFactor() > numAliveRacks) {
       throw new OptimizationFailureException("Insufficient number of racks to distribute each replica.");
     }
   }

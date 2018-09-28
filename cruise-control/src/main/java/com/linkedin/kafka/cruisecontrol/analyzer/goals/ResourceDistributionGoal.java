@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -38,7 +39,6 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
-import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.REPLICA_SWAP;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.REPLICA_MOVEMENT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.LEADERSHIP_MOVEMENT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributionGoal.ChangeType.ADD;
@@ -53,9 +53,9 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributi
 public abstract class ResourceDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ResourceDistributionGoal.class);
   private static final double BALANCE_MARGIN = 0.9;
-  // Flag to indicate whether the self healing failed to relocate all replicas away from dead brokers in its initial
-  // attempt and currently omitting the resource balance limit to relocate remaining replicas.
-  private boolean _selfHealingDeadBrokersOnly;
+  // Flag to indicate whether the self healing failed to relocate all offline replicas away from dead brokers or broken
+  // disks in its initial attempt and currently omitting the resource balance limit to relocate remaining replicas.
+  private boolean _fixOfflineReplicasOnly;
   private double _balanceUpperThreshold;
   private double _balanceLowerThreshold;
 
@@ -188,10 +188,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     Replica sourceReplica = clusterModel.broker(action.sourceBrokerId()).replica(action.topicPartition());
-    // If the source broker is dead and currently self healing dead brokers only, unless it is replica swap, the action
-    // must be executed.
-    if (!sourceReplica.broker().isAlive() && _selfHealingDeadBrokersOnly) {
-      return action.balancingAction() != REPLICA_SWAP;
+    // The action must be executed if currently fixing offline replicas only and the offline source replica is proposed
+    // to be moved to another broker.
+    if (_fixOfflineReplicasOnly && sourceReplica.broker().replica(action.topicPartition()).isCurrentOffline()) {
+      return action.balancingAction() == ActionType.REPLICA_MOVEMENT;
     }
 
     switch (action.balancingAction()) {
@@ -212,8 +212,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * (1) Initialize the current resource to be balanced or self healed. resource selection is based on the order of
-   * priority set in the _balancingConstraint.
+   * (1) Initialize the current resource to be balanced or self healed.
    * (2) Set the flag which indicates whether the self healing failed to relocate all replicas away from dead brokers
    * in its initial attempt. Since self healing has not been executed yet, this flag is false.
    *
@@ -222,11 +221,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    */
   @Override
   protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
-    _selfHealingDeadBrokersOnly = false;
+    _fixOfflineReplicasOnly = false;
     _balanceUpperThreshold = computeBalanceUpperThreshold(clusterModel);
     _balanceLowerThreshold = computeBalanceLowerThreshold(clusterModel);
     clusterModel.trackSortedReplicas(sortName(),
-                                     ReplicaSortFunctionFactory.deprioritizeImmigrants(),
+                                     ReplicaSortFunctionFactory.deprioritizeOfflineReplicasThenImmigrants(),
                                      ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
   }
 
@@ -251,7 +250,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     Set<Integer> brokerIdsUnderBalanceLowerLimit = new HashSet<>();
     // Log broker Ids over balancing limit.
     // While proposals exclude the excludedTopics, the balance still considers utilization of the excludedTopic replicas.
-    for (Broker broker : clusterModel.healthyBrokers()) {
+    for (Broker broker : clusterModel.aliveBrokers()) {
       if (!isLoadUnderBalanceUpperLimit(broker)) {
         brokerIdsAboveBalanceUpperLimit.add(broker.id());
       }
@@ -271,36 +270,26 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
       _succeeded = false;
     }
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (replica.broker().isAlive()) {
-        continue;
+    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+    try {
+      AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
+    } catch (OptimizationFailureException ofe) {
+      if (_fixOfflineReplicasOnly) {
+        throw ofe;
       }
-      if (_selfHealingDeadBrokersOnly) {
-        throw new OptimizationFailureException(
-            "Self healing failed to move the replica away from decommissioned brokers.");
-      }
-      _selfHealingDeadBrokersOnly = true;
-      LOG.warn("Omitting resource balance limit to relocate remaining replicas from dead brokers to healthy ones.");
+      _fixOfflineReplicasOnly = true;
+      LOG.warn("Omitting resource balance limit to relocate remaining replicas from dead brokers/disks.");
       return;
     }
-    // No dead broker contains replica.
-    _selfHealingDeadBrokersOnly = false;
 
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (!replica.broker().isAlive()) {
-        throw new OptimizationFailureException("Self healing failed to move the replica away from decommissioned broker.");
-      }
-    }
     finish();
     clusterModel.untrackSortedReplicas(sortName());
   }
 
   /**
    * (1) REBALANCE BY LEADERSHIP MOVEMENT:
-   * Perform leadership movement to ensure that the load on brokers for the outbound network load is under the balance
-   * limit.
+   * Perform leadership movement to ensure that the load on brokers for the outbound network and CPU load is under the
+   * balance limit.
    * <p>
    * (2) REBALANCE BY REPLICA MOVEMENT:
    * Perform optimization via replica movement for the given resource (without breaking the balance for already
@@ -319,28 +308,32 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics) {
-    boolean requireLessLoad = !isLoadUnderBalanceUpperLimit(broker);
+    int numOfflineReplicas = broker.currentOfflineReplicas().size();
+
+    boolean requireLessLoad = numOfflineReplicas > 0 || !isLoadUnderBalanceUpperLimit(broker);
     boolean requireMoreLoad = !isLoadAboveBalanceLowerLimit(broker);
     if (broker.isAlive() && !requireMoreLoad && !requireLessLoad) {
-      // return if the broker is already under limit.
+      // return if the broker is already within the limit.
       return;
-    } else if (!clusterModel.deadBrokers().isEmpty() && requireLessLoad && broker.isAlive()
-        && broker.immigrantReplicas().isEmpty()) {
-      // return if the cluster is in self-healing mode and the broker requires less load but does not have any
-      // immigrant replicas.
+    } else if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && requireLessLoad
+             && broker.currentOfflineReplicas().isEmpty() && broker.immigrantReplicas().isEmpty()) {
+      // return if the cluster is in self-healing mode and the broker requires less load, but does not have any
+      // offline or immigrant replicas.
       return;
     }
 
     // First try leadership movement
-    if (resource() == Resource.NW_OUT || resource() == Resource.CPU) {
+    if ((resource() == Resource.NW_OUT || resource() == Resource.CPU)
+        && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
       if (requireLessLoad && !rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals,
                                                        LEADERSHIP_MOVEMENT, excludedTopics)) {
         LOG.debug("Successfully balanced {} for broker {} by moving out leaders.", resource(), broker.id());
-        return;
-      } else if (requireMoreLoad && !rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals,
-                                                             LEADERSHIP_MOVEMENT, excludedTopics)) {
+        requireLessLoad = false;
+      }
+      if (requireMoreLoad && !rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals,
+                                                      LEADERSHIP_MOVEMENT, excludedTopics)) {
         LOG.debug("Successfully balanced {} for broker {} by moving in leaders.", resource(), broker.id());
-        return;
+        requireMoreLoad = false;
       }
     }
 
@@ -350,9 +343,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       if (rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals, REPLICA_MOVEMENT, excludedTopics)) {
         unbalanced = rebalanceBySwappingLoadOut(broker, clusterModel, optimizedGoals, excludedTopics);
       }
-    } else if (requireMoreLoad) {
+    }
+    if (requireMoreLoad) {
       if (rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals, REPLICA_MOVEMENT, excludedTopics)) {
-        unbalanced = rebalanceBySwappingLoadIn(broker, clusterModel, optimizedGoals, excludedTopics);
+        unbalanced = unbalanced || rebalanceBySwappingLoadIn(broker, clusterModel, optimizedGoals, excludedTopics);
       }
     }
 
@@ -376,7 +370,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // Sort the replicas initially to avoid sorting it every time.
 
     double clusterUtilization = clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource());
-    for (Broker candidate : clusterModel.healthyBrokers()) {
+    for (Broker candidate : clusterModel.aliveBrokers()) {
       // Get candidate replicas on candidate broker to try moving load from -- sorted in the order of trial (descending load).
       if (utilizationPercentage(candidate) > clusterUtilization) {
         SortedSet<Replica> replicasToMoveIn = sortedCandidateReplicas(candidate, excludedTopics, 0, false);
@@ -423,7 +417,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   /**
    * Get the sorted replicas in the given broker whose (1) topic is not an excluded topic AND (2) do not violate the given load
    * limit in ascending or descending order. Load limit requires the replica load to be (1) above the given limit in
-   * descending order, (2) below the given limit in ascending order.
+   * descending order, (2) below the given limit in ascending order. Offline replicas have priority over online replicas.
    *
    * @param broker Broker whose replicas will be considered.
    * @param excludedTopics Excluded topics for which the replicas will be remove from the returned candidate replicas.
@@ -437,6 +431,15 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                                      double loadLimit,
                                                      boolean isAscending) {
     SortedSet<Replica> candidateReplicas = new TreeSet<>((r1, r2) -> {
+      // Primary sort: by offline / online status
+      boolean isR1Offline = r1.isCurrentOffline();
+      boolean isR2Offline = r2.isCurrentOffline();
+
+      if (isR1Offline && !isR2Offline) {
+        return -1;
+      } else if (!isR1Offline && isR2Offline) {
+        return 1;
+      }
       int result = isAscending
                    ? Double.compare(r1.load().expectedUtilizationFor(resource()), r2.load().expectedUtilizationFor(resource()))
                    : Double.compare(r2.load().expectedUtilizationFor(resource()), r1.load().expectedUtilizationFor(resource()));
@@ -461,6 +464,20 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     return candidateReplicas;
   }
 
+  private double getMaxReplicaLoad(SortedSet<Replica> sortedReplicas) {
+    // Compare the load of the first replica with the first online replica.
+    double maxReplicaLoad = sortedReplicas.first().load().expectedUtilizationFor(resource());
+    for (Replica replica : sortedReplicas) {
+      if (replica.isCurrentOffline()) {
+        continue;
+      } else if (replica.load().expectedUtilizationFor(resource()) > maxReplicaLoad) {
+        maxReplicaLoad = replica.load().expectedUtilizationFor(resource());
+      }
+      break;
+    }
+    return maxReplicaLoad;
+  }
+
   private boolean rebalanceBySwappingLoadOut(Broker broker,
                                              ClusterModel clusterModel,
                                              Set<Goal> optimizedGoals,
@@ -470,18 +487,27 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
     // Get the replicas to rebalance.
     SortedSet<Replica> sourceReplicas = new TreeSet<>((r1, r2) -> {
+      // Primary sort: by offline / online status
+      boolean isR1Offline = r1.isCurrentOffline();
+      boolean isR2Offline = r2.isCurrentOffline();
+
+      if (isR1Offline && !isR2Offline) {
+        return -1;
+      } else if (!isR1Offline && isR2Offline) {
+        return 1;
+      }
       int result = Double.compare(r2.load().expectedUtilizationFor(resource()), r1.load().expectedUtilizationFor(resource()));
       return result == 0 ? r1.topicPartition().toString().compareTo(r2.topicPartition().toString()) : result;
     });
 
     sourceReplicas.addAll(resource() == Resource.NW_OUT ? broker.leaderReplicas() : broker.replicas());
+    double maxSourceReplicaLoad = getMaxReplicaLoad(sourceReplicas);
 
     // Sort the replicas initially to avoid sorting it every time.
     PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
-    for (Broker candidate : clusterModel.healthyBrokersUnderThreshold(resource(), _balanceUpperThreshold)
+    for (Broker candidate : clusterModel.aliveBrokersUnderThreshold(resource(), _balanceUpperThreshold)
                                         .stream().filter(b -> !b.replicas().isEmpty()).collect(Collectors.toSet())) {
       // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (ascending load).
-      double maxSourceReplicaLoad = sourceReplicas.first().load().expectedUtilizationFor(resource());
       SortedSet<Replica> replicasToSwapWith = sortedCandidateReplicas(candidate, excludedTopics, maxSourceReplicaLoad, true);
       CandidateBroker candidateBroker = new CandidateBroker(candidate, replicasToSwapWith, true);
       candidateBrokerPQ.add(candidateBroker);
@@ -558,15 +584,25 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     // Get the replicas to rebalance.
-    SortedSet<Replica> sourceReplicas = new TreeSet<>(
-        Comparator.comparingDouble((Replica r) -> r.load().expectedUtilizationFor(resource()))
-                  .thenComparing(r -> r.topicPartition().toString()));
+    SortedSet<Replica> sourceReplicas = new TreeSet<>((r1, r2) -> {
+      // Primary sort: by offline / online status
+      boolean isR1Offline = r1.isCurrentOffline();
+      boolean isR2Offline = r2.isCurrentOffline();
+
+      if (isR1Offline && !isR2Offline) {
+        return -1;
+      } else if (!isR1Offline && isR2Offline) {
+        return 1;
+      }
+      int result = Double.compare(r1.load().expectedUtilizationFor(resource()), r2.load().expectedUtilizationFor(resource()));
+      return result == 0 ? r1.topicPartition().toString().compareTo(r2.topicPartition().toString()) : result;
+    });
 
     sourceReplicas.addAll(broker.replicas());
 
     // Sort the replicas initially to avoid sorting it every time.
     PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
-    for (Broker candidate : clusterModel.healthyBrokersOverThreshold(resource(), _balanceLowerThreshold)) {
+    for (Broker candidate : clusterModel.aliveBrokersOverThreshold(resource(), _balanceLowerThreshold)) {
       // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (descending load).
       double minSourceReplicaLoad = sourceReplicas.first().load().expectedUtilizationFor(resource());
       SortedSet<Replica> replicasToSwapWith = sortedCandidateReplicas(candidate, excludedTopics, minSourceReplicaLoad, false);
@@ -617,10 +653,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(
         Comparator.comparingDouble(this::utilizationPercentage).thenComparingInt(Broker::id));
-    if (_selfHealingDeadBrokersOnly) {
-      candidateBrokers.addAll(clusterModel.healthyBrokers());
+    if (_fixOfflineReplicasOnly) {
+      candidateBrokers.addAll(clusterModel.aliveBrokers());
     } else {
-      candidateBrokers.addAll(clusterModel.healthyBrokersUnderThreshold(resource(), _balanceUpperThreshold));
+      candidateBrokers.addAll(clusterModel.aliveBrokersUnderThreshold(resource(), _balanceUpperThreshold));
     }
 
     // Get the replicas to rebalance.
@@ -640,8 +676,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       if (shouldExclude(replica, excludedTopics)) {
         continue;
       }
-      // It does not make sense to move a replica without utilization from a live broker.
-      if (replica.load().expectedUtilizationFor(resource()) == 0.0 && broker.isAlive()) {
+      // It does not make sense to move an online replica without utilization from a live broker.
+      if (replica.load().expectedUtilizationFor(resource()) == 0.0 && !replica.isCurrentOffline()) {
         break;
       }
 
@@ -650,7 +686,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       if (actionType == LEADERSHIP_MOVEMENT) {
         eligibleBrokers = new TreeSet<>(Comparator.comparingDouble(this::utilizationPercentage)
                                                   .thenComparingInt(Broker::id));
-        clusterModel.partition(replica.topicPartition()).followerBrokers().forEach(b -> {
+        clusterModel.partition(replica.topicPartition()).onlineFollowerBrokers().forEach(b -> {
           if (candidateBrokers.contains(b)) {
             eligibleBrokers.add(b);
           }
@@ -662,7 +698,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, actionType, optimizedGoals);
       // Only check if we successfully moved something.
       if (b != null) {
-        if (isLoadUnderBalanceUpperLimit(broker)) {
+        if (isLoadUnderBalanceUpperLimit(broker) && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
           return false;
         }
         // Remove and reinsert the broker so the order is correct.

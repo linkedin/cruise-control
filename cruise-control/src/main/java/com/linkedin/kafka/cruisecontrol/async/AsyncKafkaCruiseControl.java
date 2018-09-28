@@ -39,6 +39,8 @@ import java.util.regex.Pattern;
  * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress,
  * boolean, boolean, Pattern)}</li>
+ * <li>{@link KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements, OperationProgress,
+ * boolean, Integer, Integer, boolean, Pattern)}</li>
  * <li>{@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress,
  * boolean, Integer, Integer, boolean, Pattern)}</li>
  * </ul>
@@ -94,6 +96,31 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
                                                             concurrentLeaderMovements,
                                                             skipHardGoalCheck,
                                                             excludedTopics));
+    return future;
+  }
+
+  /**
+   * @see KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements, OperationProgress,
+   * boolean, Integer, Integer, boolean, Pattern)
+   */
+  public OperationFuture<GoalOptimizer.OptimizerResult> fixOfflineReplicas(boolean dryRun,
+                                                                           List<String> goals,
+                                                                           ModelCompletenessRequirements requirements,
+                                                                           boolean allowCapacityEstimation,
+                                                                           Integer concurrentPartitionMovements,
+                                                                           Integer concurrentLeaderMovements,
+                                                                           boolean skipHardGoalCheck,
+                                                                           Pattern excludedTopics) {
+    OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Fix offline replicas");
+    pending(future.operationProgress());
+    _sessionExecutor.submit(new FixOfflineReplicasRunnable(this, future, dryRun, goals,
+                                                           requirements,
+                                                           allowCapacityEstimation,
+                                                           concurrentPartitionMovements,
+                                                           concurrentLeaderMovements,
+                                                           skipHardGoalCheck,
+                                                           excludedTopics));
+
     return future;
   }
 

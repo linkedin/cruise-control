@@ -21,6 +21,7 @@ enum EndPoint {
   STATE,
   ADD_BROKER,
   REMOVE_BROKER,
+  FIX_OFFLINE_REPLICAS,
   REBALANCE,
   STOP_PROPOSAL_EXECUTION,
   PAUSE_SAMPLING,
@@ -39,6 +40,7 @@ enum EndPoint {
                                                                    USER_TASKS);
   private static final List<EndPoint> POST_ENDPOINT = Arrays.asList(ADD_BROKER,
                                                                     REMOVE_BROKER,
+                                                                    FIX_OFFLINE_REPLICAS,
                                                                     REBALANCE,
                                                                     STOP_PROPOSAL_EXECUTION,
                                                                     PAUSE_SAMPLING,

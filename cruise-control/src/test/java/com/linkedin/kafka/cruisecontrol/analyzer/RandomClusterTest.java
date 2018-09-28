@@ -27,7 +27,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
-import com.linkedin.kafka.cruisecontrol.common.RandomCluster;
+import com.linkedin.kafka.cruisecontrol.model.RandomCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -47,7 +47,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.NEW_BROKERS;
-import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.DEAD_BROKERS;
+import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.BROKEN_BROKERS;
 import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.GOAL_VIOLATION;
 import static com.linkedin.kafka.cruisecontrol.analyzer.OptimizationVerifier.Verification.REGRESSION;
 import static org.junit.Assert.assertTrue;
@@ -88,9 +88,9 @@ public class RandomClusterTest {
     kafkaAssignerGoals.put(1, KafkaAssignerEvenRackAwareGoal.class.getName());
     kafkaAssignerGoals.put(2, KafkaAssignerDiskUsageDistributionGoal.class.getName());
 
-    List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, DEAD_BROKERS, REGRESSION);
+    List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, BROKEN_BROKERS, REGRESSION);
     List<OptimizationVerifier.Verification> kafkaAssignerVerifications =
-        Arrays.asList(GOAL_VIOLATION, DEAD_BROKERS, REGRESSION);
+        Arrays.asList(GOAL_VIOLATION, BROKEN_BROKERS, REGRESSION);
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1500L));
