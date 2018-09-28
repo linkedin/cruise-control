@@ -194,7 +194,7 @@ public class KafkaCruiseControl {
                                                    Map<Integer, String> capacityEstimationInfoByBrokerId) {
     if (!(allowCapacityEstimation || capacityEstimationInfoByBrokerId.isEmpty())) {
       StringBuilder sb = new StringBuilder();
-      sb.append("Allow capacity estimation or fix dependencies to capture broker capacities.%n");
+      sb.append(String.format("Allow capacity estimation or fix dependencies to capture broker capacities.%n"));
       for (Map.Entry<Integer, String> entry : capacityEstimationInfoByBrokerId.entrySet()) {
         sb.append(String.format("Broker: %d: info: %s%n", entry.getKey(), entry.getValue()));
       }
