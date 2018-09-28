@@ -265,12 +265,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_DOC = "The minimum number of full CPU"
       + " utilization buckets required to generate a linear regression model.";
 
-  /**
-   * <code>num.sample.loading.threads</code>
-   */
-  public static final String NUM_SAMPLE_LOADING_THREADS_CONFIG = "num.sample.loading.threads";
-  private static final String NUM_SAMPLE_LOADING_THREADS_DOC = "The config for the number of Kafka sample store consumer threads.";
-
   // Analyzer configs
   /**
    * <code>cpu.balance.threshold</code>
@@ -523,18 +517,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "that persist the metric samples that have already been aggregated into Kafka Cruise Control. Later on the "
       + "persisted samples can be reloaded from the sample store to Kafka Cruise Control.";
 
-  /**
-   * <code>partition.metric.sample.store.topic</code>
-   */
-  public static final String PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "partition.metric.sample.store.topic";
-  private static final String PARTITION_METRIC_SAMPLE_STORE_TOPIC_DOC = "The name of topic which is used to store the partition sample records.";
-
-  /**
-   * <code>broker.metric.sample.store.topic</code>
-   */
-  public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
-  private static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_DOC = "The name of topic which is used to store the broker sample records.";
-
   static {
     CONFIG = new ConfigDef()
         .define(BOOTSTRAP_SERVERS_CONFIG, ConfigDef.Type.LIST, ConfigDef.Importance.HIGH,
@@ -685,11 +667,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 5,
                 ConfigDef.Importance.MEDIUM,
                 LINEAR_REGRESSION_MODEL_MIN_NUM_CPU_UTIL_BUCKETS_DOC)
-        .define(NUM_SAMPLE_LOADING_THREADS_CONFIG,
-                ConfigDef.Type.INT,
-                8,
-                ConfigDef.Importance.MEDIUM,
-                NUM_SAMPLE_LOADING_THREADS_DOC)
         .define(LINEAR_REGRESSION_MODEL_REQUIRED_SAMPLES_PER_CPU_UTIL_BUCKET_CONFIG,
                 ConfigDef.Type.INT,
                 100,
@@ -902,16 +879,6 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 KafkaSampleStore.class.getName(),
                 ConfigDef.Importance.LOW,
                 SAMPLE_STORE_CLASS_DOC)
-        .define(PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG,
-            ConfigDef.Type.STRING,
-            "__KafkaCruiseControlPartitionMetricSamples",
-            ConfigDef.Importance.HIGH,
-            PARTITION_METRIC_SAMPLE_STORE_TOPIC_DOC)
-        .define(BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG,
-            ConfigDef.Type.STRING,
-            "__KafkaCruiseControlModelTrainingSamples",
-            ConfigDef.Importance.HIGH,
-            BROKER_METRIC_SAMPLE_STORE_TOPIC_DOC)
         .withClientSslSupport()
         .withClientSaslSupport();
   }

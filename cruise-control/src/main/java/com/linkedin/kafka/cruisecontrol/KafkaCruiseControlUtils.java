@@ -38,7 +38,7 @@ public class KafkaCruiseControlUtils {
    */
   public static String getRequiredConfig(Map<String, ?> configs, String configName) {
     String value = (String) configs.get(configName);
-    if (value == null) {
+    if (value == null || value.isEmpty()) {
       throw new ConfigException(String.format("Configuration %s must be provided.", configName));
     }
     return value;
