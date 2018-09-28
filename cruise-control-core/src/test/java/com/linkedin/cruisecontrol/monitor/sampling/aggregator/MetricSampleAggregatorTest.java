@@ -161,6 +161,29 @@ public class MetricSampleAggregatorTest {
   }
 
   @Test
+  public void testAddSamplesWithLargeInterval() {
+    MetricSampleAggregator<String, IntegerEntity> aggregator =
+        new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS, MIN_SAMPLES_PER_WINDOW,
+            0, _metricDef);
+    // Populate samples for time window indexed from 0 to NUM_WINDOWS to aggregator.
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW,
+        aggregator, ENTITY1, 0, WINDOW_MS,
+        _metricDef);
+
+    // Populate samples for time window index from 4 * NUM_WINDOWS to 5 * NUM_WINDOWS - 1 to aggregator.
+    CruiseControlUnitTestUtils.populateSampleAggregator(NUM_WINDOWS, MIN_SAMPLES_PER_WINDOW,
+        aggregator, ENTITY1, 4 * NUM_WINDOWS, WINDOW_MS,
+        _metricDef);
+    // If aggregator rolls out time window properly, time window indexed from 4 * NUM_WINDOW -1 to 5 * NUM_WINDOW -1 are
+    // currently in memory and time window indexed from 4 * NUM_WINDOW -1 to  5 * NUM_WINDOW - 2 should be returned from query.
+    List<Long> availableWindows = aggregator.availableWindows();
+    assertEquals(NUM_WINDOWS, availableWindows.size());
+    for (int i = 0; i < NUM_WINDOWS; i++) {
+      assertEquals((i + 4 * NUM_WINDOWS) * WINDOW_MS, availableWindows.get(i).longValue());
+    }
+  }
+
+  @Test
   public void testAggregationOption1() throws NotEnoughValidWindowsException {
     MetricSampleAggregator<String, IntegerEntity> aggregator = prepareCompletenessTestEnv();
 
