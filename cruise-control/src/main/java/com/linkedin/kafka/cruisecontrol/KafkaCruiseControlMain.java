@@ -51,7 +51,7 @@ public class KafkaCruiseControlMain {
     MetricRegistry dropwizardMetricsRegistry = new MetricRegistry();
     JmxReporter jmxReporter = JmxReporter.forRegistry(dropwizardMetricsRegistry).inDomain(METRIC_DOMAIN).build();
     jmxReporter.start();
-    
+
     AsyncKafkaCruiseControl kafkaCruiseControl = new AsyncKafkaCruiseControl(new KafkaCruiseControlConfig(props),
                                                                              dropwizardMetricsRegistry);
 
@@ -66,7 +66,7 @@ public class KafkaCruiseControlMain {
     holderWebapp.setInitParameter("resourceBase", "./cruise-control-ui/dist/");
     context.addServlet(holderWebapp, "/*");
     // Kafka Cruise Control servlet data
-    KafkaCruiseControlServlet kafkaCruiseControlServlet = 
+    KafkaCruiseControlServlet kafkaCruiseControlServlet =
         new KafkaCruiseControlServlet(kafkaCruiseControl, 10000L, 60000L, dropwizardMetricsRegistry);
     ServletHolder servletHolder = new ServletHolder(kafkaCruiseControlServlet);
     context.addServlet(servletHolder, "/kafkacruisecontrol/*");
