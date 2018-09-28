@@ -165,6 +165,7 @@ public class KafkaCruiseControl {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
+      sanityCheckBrokersHavingOfflineReplicasOnBadDisks(goals, clusterModel);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
@@ -293,6 +294,7 @@ public class KafkaCruiseControl {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
                                                             modelCompletenessRequirements,
                                                             operationProgress);
+      sanityCheckBrokersHavingOfflineReplicasOnBadDisks(goals, clusterModel);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.NEW));
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
@@ -569,6 +571,7 @@ public class KafkaCruiseControl {
                                                               _time.milliseconds(),
                                                               modelCompletenessRequirements,
                                                               operationProgress);
+        sanityCheckBrokersHavingOfflineReplicasOnBadDisks(goals, clusterModel);
         result = getOptimizationProposals(clusterModel,
                                           goalsByPriority,
                                           operationProgress,
@@ -732,10 +735,24 @@ public class KafkaCruiseControl {
     if (clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
       for (Broker deadBroker : clusterModel.deadBrokers()) {
         if (!deadBroker.replicas().isEmpty()) {
-          break;
+          // Has offline replica(s) on a dead broker.
+          return;
         }
       }
       throw new IllegalStateException("Cluster has no offline replica on brokers " + clusterModel.brokers() + " to fix.");
+    }
+    // Has offline replica(s) on a broken disk.
+  }
+
+  /**
+   * Sanity check to ensure that the given cluster model has no offline replicas on bad disks in Kafka Assigner mode.
+   * @param goals Goals to check whether it is Kafka Assigner mode or not.
+   * @param clusterModel Cluster model for which the existence of an offline replicas on bad disks will be verified.
+   */
+  private void sanityCheckBrokersHavingOfflineReplicasOnBadDisks(List<String> goals, ClusterModel clusterModel) {
+    if (isKafkaAssignerMode(goals) && !clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
+      throw new IllegalStateException("Kafka Assigner mode is not supported when there are offline replicas on bad disks."
+                                      + " Please run fix_offline_replicas before using Kafka Assigner mode.");
     }
   }
 }

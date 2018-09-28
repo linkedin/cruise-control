@@ -378,14 +378,14 @@ public class RandomCluster {
       // Mark the remaining brokers as a broker with bad disk(s).
       int remainingBrokerWithBadDiskIndex = 0;
       for (Broker brokerToMark : cluster.brokers()) {
+        if (numBrokersWithBadDisk - markedBrokersContainingExcludedTopicReplicas == remainingBrokerWithBadDiskIndex) {
+          break;
+        }
         if (!brokerToMark.replicas().isEmpty() && brokerToMark.isAlive() && !brokerToMark.hasBadDisks()) {
           // Mark one (random) replica on this broker as offline.
           brokerToMark.replicas().iterator().next().markOriginalOffline();
           cluster.setBrokerState(remainingBrokerWithBadDiskIndex, Broker.State.BAD_DISKS);
           remainingBrokerWithBadDiskIndex++;
-        }
-        if (numBrokersWithBadDisk - markedBrokersContainingExcludedTopicReplicas == remainingBrokerWithBadDiskIndex) {
-          break;
         }
       }
       if (numBrokersWithBadDisk - markedBrokersContainingExcludedTopicReplicas != remainingBrokerWithBadDiskIndex) {

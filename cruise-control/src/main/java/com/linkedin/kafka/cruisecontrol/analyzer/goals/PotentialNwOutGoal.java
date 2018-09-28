@@ -195,7 +195,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
     }
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
     double destinationBrokerUtilization = clusterModel.potentialLeadershipLoadFor(destinationBroker.id()).expectedUtilizationFor(Resource.NW_OUT);
-    double destinationCapacity = destinationBroker.host().capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
+    double destinationCapacity = destinationBroker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
     double sourceReplicaUtilization = clusterModel.partition(sourceReplica.topicPartition()).leader().load()
                                                   .expectedUtilizationFor(Resource.NW_OUT);
 
@@ -214,7 +214,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
 
     // Ensure that the source capacity of self-satisfied for action type swap is not violated.
     double sourceBrokerUtilization = clusterModel.potentialLeadershipLoadFor(sourceBroker.id()).expectedUtilizationFor(Resource.NW_OUT);
-    double sourceCapacity = sourceBroker.host().capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
+    double sourceCapacity = sourceBroker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
     return sourceCapacity >= sourceBrokerUtilization + destinationReplicaUtilization - sourceReplicaUtilization;
   }
 
@@ -267,7 +267,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics) {
     double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);
-    double capacityLimit = broker.host().capacityFor(Resource.NW_OUT) * capacityThreshold;
+    double capacityLimit = broker.capacityFor(Resource.NW_OUT) * capacityThreshold;
     boolean estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
         clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
     if (!estimatedMaxPossibleNwOutOverLimit && !(_fixOfflineReplicasOnly && !broker.currentOfflineReplicas().isEmpty())) {
@@ -306,7 +306,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
           // Update brokersUnderEstimatedMaxPossibleNwOut (for destination broker).
           double updatedDestBrokerPotentialNwOut =
               clusterModel.potentialLeadershipLoadFor(destinationBrokerId).expectedUtilizationFor(Resource.NW_OUT);
-          double destCapacityLimit = destinationBroker.host().capacityFor(Resource.NW_OUT) * capacityThreshold;
+          double destCapacityLimit = destinationBroker.capacityFor(Resource.NW_OUT) * capacityThreshold;
           if (updatedDestBrokerPotentialNwOut > destCapacityLimit) {
             candidateBrokers.remove(clusterModel.broker(destinationBrokerId));
           }
@@ -334,8 +334,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
     double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);
 
     for (Broker aliveBroker : clusterModel.aliveBrokers()) {
-      // We use the hosts capacity instead of the broker capacity.
-      double capacityLimit = aliveBroker.host().capacityFor(Resource.NW_OUT) * capacityThreshold;
+      double capacityLimit = aliveBroker.capacityFor(Resource.NW_OUT) * capacityThreshold;
       if (clusterModel.potentialLeadershipLoadFor(aliveBroker.id()).expectedUtilizationFor(Resource.NW_OUT) < capacityLimit) {
         brokersUnderEstimatedMaxPossibleNwOut.add(aliveBroker);
       }
