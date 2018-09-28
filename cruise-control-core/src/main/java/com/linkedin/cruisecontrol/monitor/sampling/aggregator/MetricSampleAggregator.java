@@ -489,13 +489,14 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     return false;
   }
 
-  private void resetIndexes(long startingWindowIndex, int numIndexesToReset) {
+  private void resetIndexes(long prevOldestWindowIndex, int numIndexesToReset) {
+    long currentOldestWindowIndex = _oldestWindowIndex;
     for (RawMetricValues rawValues : _rawMetrics.values()) {
-      rawValues.updateOldestWindowIndex(startingWindowIndex + numIndexesToReset);
-      rawValues.resetWindowIndexes(startingWindowIndex, numIndexesToReset);
+      rawValues.updateOldestWindowIndex(currentOldestWindowIndex);
+      rawValues.resetWindowIndexes(prevOldestWindowIndex, numIndexesToReset);
     }
-    _aggregatorState.updateOldestWindowIndex(startingWindowIndex + numIndexesToReset);
-    _aggregatorState.resetWindowIndexes(startingWindowIndex, numIndexesToReset);
+    _aggregatorState.updateOldestWindowIndex(currentOldestWindowIndex);
+    _aggregatorState.resetWindowIndexes(prevOldestWindowIndex, numIndexesToReset);
   }
 
   private void validateCompleteness(long from,
