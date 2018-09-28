@@ -831,9 +831,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       concurrentLeaderMovements = concurrentMovementsPerBroker(request, false);
       skipHardGoalCheck = skipHardGoalCheck(request);
       excludedTopics = excludedTopics(request);
-      if (brokerIds.isEmpty()) {
-        throw new IllegalArgumentException("Target broker ID is not provided.");
-      }
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session

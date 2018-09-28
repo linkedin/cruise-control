@@ -423,6 +423,9 @@ class KafkaCruiseControlServletUtils {
     if (brokersString != null) {
       brokerIds = Arrays.stream(brokersString.split(",")).map(Integer::parseInt).collect(Collectors.toList());
     }
+    if (brokerIds.isEmpty()) {
+      throw new IllegalArgumentException("Target broker ID is not provided.");
+    }
     return Collections.unmodifiableList(brokerIds);
   }
 
