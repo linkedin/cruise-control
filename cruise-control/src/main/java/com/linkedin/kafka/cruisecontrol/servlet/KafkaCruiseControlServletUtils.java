@@ -440,8 +440,11 @@ class KafkaCruiseControlServletUtils {
     return dataFrom;
   }
 
+  /**
+   * Skip hard goal check in kafka_assigner mode,
+   */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
-    return getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
+    return getMode(request) || getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
   }
 
   enum DataFrom {
