@@ -33,8 +33,6 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
 
-import static java.lang.Math.max;
-
 
 public class KafkaClusterState {
   public static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
@@ -314,25 +312,16 @@ public class KafkaClusterState {
     }
   }
 
-  private static int getLogDirsNameLength(Map<Integer, Set<String>> logDirsByBrokerId) {
-    int maxLogDirsNameLength = 0;
-    for (Set<String> logDirs : logDirsByBrokerId.values()) {
-      int logDirsNameLength = logDirs.toString().length();
-      if (logDirsNameLength > maxLogDirsNameLength) {
-        maxLogDirsNameLength = logDirsNameLength;
-      }
-    }
-    return maxLogDirsNameLength;
-  }
-
   private void writeKafkaBrokerLogDirState(OutputStream out, Set<Integer> brokers)
       throws IOException, ExecutionException, InterruptedException, TimeoutException {
     Map<Integer, Set<String>> onlineLogDirsByBrokerId = new HashMap<>(brokers.size());
     Map<Integer, Set<String>> offlineLogDirsByBrokerId = new HashMap<>(brokers.size());
     populateKafkaBrokerLogDirState(onlineLogDirsByBrokerId, offlineLogDirsByBrokerId, brokers);
 
-    int onlineLogDirsNameLength = max(26, getLogDirsNameLength(onlineLogDirsByBrokerId));
-    int offlineLogDirsNameLength = max(27, getLogDirsNameLength(offlineLogDirsByBrokerId));
+    int onlineLogDirsNameLength = onlineLogDirsByBrokerId.values().stream().mapToInt(dir -> dir.toString().length())
+                                                         .max().orElse(20) + 6;
+    int offlineLogDirsNameLength = offlineLogDirsByBrokerId.values().stream().mapToInt(dir -> dir.toString().length())
+                                                           .max().orElse(20) + 7;
 
     String initMessage = "LogDirs of brokers with replicas:";
     out.write(String.format("%n%s%n%20s%" + onlineLogDirsNameLength + "s%" + offlineLogDirsNameLength + "s%n",

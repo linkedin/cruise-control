@@ -142,7 +142,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       for (String topic : excludedTopics) {
         excludedReplicasInBroker.addAll(broker.replicasOfTopicInBroker(topic));
       }
-      if (broker.getState() == Broker.State.BAD_DISKS) {
+      if (broker.state() == Broker.State.BAD_DISKS) {
         _isSelfHealingMode = true;
         excludedReplicasInBroker.removeAll(broker.currentOfflineReplicas());
       }
