@@ -135,7 +135,7 @@ class ReplicaDistributionTarget {
     }
 
     // Update consumed warm broker credits. Credit is consumed because the broker was unable to move replicas.
-    if (isMoveSuccessful) {
+    if (!isMoveSuccessful) {
       _consumedWarmBrokerCredits++;
     }
   }

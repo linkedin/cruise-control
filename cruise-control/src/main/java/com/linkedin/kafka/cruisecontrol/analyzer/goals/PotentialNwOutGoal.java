@@ -263,7 +263,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
                                     Set<String> excludedTopics) {
-    double capacityLimit = broker.capacityFor(Resource.NW_OUT) * _balancingConstraint.capacityThreshold(Resource.NW_OUT);
+    double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);
+    double capacityLimit = broker.capacityFor(Resource.NW_OUT) * capacityThreshold;
     boolean estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
         clusterModel.potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT) > capacityLimit;
     if (!estimatedMaxPossibleNwOutOverLimit) {
@@ -300,7 +301,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
         // Update brokersUnderEstimatedMaxPossibleNwOut (for destination broker).
         double updatedDestBrokerPotentialNwOut =
             clusterModel.potentialLeadershipLoadFor(destinationBrokerId).expectedUtilizationFor(Resource.NW_OUT);
-        if (!_selfHealingDeadBrokersOnly && updatedDestBrokerPotentialNwOut > capacityLimit) {
+        double destCapacityLimit = destinationBroker.capacityFor(Resource.NW_OUT) * capacityThreshold;
+        if (!_selfHealingDeadBrokersOnly && updatedDestBrokerPotentialNwOut > destCapacityLimit) {
           candidateBrokers.remove(clusterModel.broker(destinationBrokerId));
         }
       }
@@ -326,8 +328,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
     double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);
 
     for (Broker healthyBroker : clusterModel.healthyBrokers()) {
-      // We use the hosts capacity instead of the broker capacity.
-      double capacityLimit = healthyBroker.host().capacityFor(Resource.NW_OUT) * capacityThreshold;
+      double capacityLimit = healthyBroker.capacityFor(Resource.NW_OUT) * capacityThreshold;
       if (clusterModel.potentialLeadershipLoadFor(healthyBroker.id()).expectedUtilizationFor(Resource.NW_OUT) < capacityLimit) {
         brokersUnderEstimatedMaxPossibleNwOut.add(healthyBroker);
       }

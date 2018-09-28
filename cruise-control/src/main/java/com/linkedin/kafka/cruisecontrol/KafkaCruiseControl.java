@@ -233,12 +233,12 @@ public class KafkaCruiseControl {
                                                   Integer concurrentLeaderMovements,
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics) throws KafkaCruiseControlException {
+    sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
+    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+    ModelCompletenessRequirements modelCompletenessRequirements =
+        modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       sanityCheckBrokerPresence(brokerIds);
-      sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
-      Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
-      ModelCompletenessRequirements modelCompletenessRequirements =
-          modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
                                                             modelCompletenessRequirements,
                                                             operationProgress);
