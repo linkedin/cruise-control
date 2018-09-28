@@ -39,6 +39,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -163,6 +164,7 @@ public class KafkaCruiseControl {
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      sanityCheckBrokerPresence(brokerIds);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
@@ -232,6 +234,7 @@ public class KafkaCruiseControl {
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics) throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      sanityCheckBrokerPresence(brokerIds);
       sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
       Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
       ModelCompletenessRequirements modelCompletenessRequirements =
@@ -318,6 +321,7 @@ public class KafkaCruiseControl {
       throws KafkaCruiseControlException {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      sanityCheckBrokerPresence(brokerIds);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
                                                             goal.clusterModelCompletenessRequirements(),
                                                             operationProgress);
@@ -665,6 +669,18 @@ public class KafkaCruiseControl {
       if (!goals.containsAll(hardGoals)) {
         throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in provided goal list " + goals + ".");
       }
+    }
+  }
+
+  /**
+   * Sanity check whether the provided brokers exist in cluster or not.
+   * @param brokerIds A list of broker id.
+   */
+  private void sanityCheckBrokerPresence(Collection<Integer> brokerIds) {
+    Cluster cluster = _loadMonitor.refreshClusterAndGeneration().cluster();
+    Set<Integer> invalidBrokerIds = brokerIds.stream().filter(id -> cluster.nodeById(id) == null).collect(Collectors.toSet());
+    if (!invalidBrokerIds.isEmpty()) {
+      throw new IllegalArgumentException(String.format("Broker %s does not exist.", invalidBrokerIds));
     }
   }
 }
