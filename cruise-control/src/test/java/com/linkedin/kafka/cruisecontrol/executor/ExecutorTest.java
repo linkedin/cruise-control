@@ -21,7 +21,6 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
-import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.Cluster;
@@ -205,10 +204,10 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   }
 
   private Map<String, TopicDescription> createTopics() throws InterruptedException {
-    AdminClient adminClient = getAdminClient(broker(0).plaintextAddr());
-
-    adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC_0, 1, (short) 1),
-                                           new NewTopic(TOPIC_1, 1, (short) 2)));
+    try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(broker(0).plaintextAddr())) {
+      adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC_0, 1, (short) 1),
+                                             new NewTopic(TOPIC_1, 1, (short) 2)));
+    }
 
     // We need to use the admin clients to query the metadata from two different brokers to make sure that
     // both brokers have the latest metadata. Otherwise the Executor may get confused when it does not
@@ -216,8 +215,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     Map<String, TopicDescription> topicDescriptions0 = null;
     Map<String, TopicDescription> topicDescriptions1 = null;
     do {
-      try (AdminClient adminClient0 = getAdminClient(broker(0).plaintextAddr());
-           AdminClient adminClient1 = getAdminClient(broker(1).plaintextAddr())) {
+      try (AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(broker(0).plaintextAddr());
+           AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(broker(1).plaintextAddr())) {
         topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC_0, TOPIC_1)).all().get();
         topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC_0, TOPIC_1)).all().get();
         try {
@@ -282,12 +281,6 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     if (executor.state().state() != ExecutorState.State.NO_TASK_IN_PROGRESS) {
       fail("The execution did not finish in 30 seconds.");
     }
-  }
-
-  private AdminClient getAdminClient(String bootstrapServer) {
-    Properties props = new Properties();
-    props.setProperty(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServer);
-    return AdminClient.create(props);
   }
 
   private Properties getExecutorProperties() {

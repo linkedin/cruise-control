@@ -1,0 +1,35 @@
+{
+  "brokerCapacities":[
+    {
+      "brokerId": "-1",
+      "capacity": {
+        "DISK": {"/tmp/kafka-logs-1": "100000", "/tmp/kafka-logs-2": "100000", "/tmp/kafka-logs-3": "50000",
+          "/tmp/kafka-logs-4": "50000", "/tmp/kafka-logs-5": "150000", "/tmp/kafka-logs-6": "50000"},
+        "CPU": "100",
+        "NW_IN": "10000",
+        "NW_OUT": "10000"
+      },
+      "doc": "The default capacity for a broker with multiple logDirs each on a separate heterogeneous disk."
+    },
+    {
+      "brokerId": "0",
+      "capacity": {
+        "DISK": {"/tmp/kafka-logs": "500000"},
+        "CPU": "100",
+        "NW_IN": "50000",
+        "NW_OUT": "50000"
+      },
+      "doc": "This overrides the capacity for broker 0. This broker is not a JBOD broker."
+    },
+    {
+      "brokerId": "1",
+      "capacity": {
+        "DISK": {"/tmp/kafka-logs-1": "250000", "/tmp/kafka-logs-2": "250000"},
+        "CPU": "100",
+        "NW_IN": "50000",
+        "NW_OUT": "50000"
+      },
+      "doc": "This overrides the capacity for broker 1. This broker is a JBOD broker."
+    }
+  ]
+}

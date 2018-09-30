@@ -124,7 +124,7 @@ public class AnalyzerUtils {
         throw new OptimizationFailureException(String.format(
             "Self healing failed to move the replica %s away from %s broker %d for goal. There are still "
                 + "%d replicas on the broker.",
-            replica, replica.broker().getState(), replica.broker().id(), replica.broker().replicas().size()));
+            replica, replica.broker().state(), replica.broker().id(), replica.broker().replicas().size()));
       }
     }
   }

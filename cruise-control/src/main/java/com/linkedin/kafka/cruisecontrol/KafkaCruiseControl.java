@@ -652,7 +652,8 @@ public class KafkaCruiseControl {
    * Get the cluster state for Kafka.
    */
   public KafkaClusterState kafkaClusterState() {
-    return new KafkaClusterState(_loadMonitor.kafkaCluster(), _loadMonitor.topicConfigProvider());
+    String bootstrapServers = _config.getString(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG);
+    return new KafkaClusterState(_loadMonitor.kafkaCluster(), _loadMonitor.topicConfigProvider(), bootstrapServers);
   }
 
   /**

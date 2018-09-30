@@ -776,7 +776,7 @@ public class ClusterModel implements Serializable {
     if (brokerCapacityInfo.isEstimated()) {
       _capacityEstimationInfoByBrokerId.put(brokerId, brokerCapacityInfo.estimationInfo());
     }
-    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo.capacity());
+    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo.capacity(), brokerCapacityInfo.diskCapacityByLogDir());
     _aliveBrokers.add(broker);
     _brokers.add(broker);
     refreshCapacity();
@@ -809,14 +809,14 @@ public class ClusterModel implements Serializable {
     List<Broker> sortedTargetBrokersUnderCapacityLimit = aliveBrokersUnderThreshold(resource, utilizationThreshold);
 
     sortedTargetBrokersUnderCapacityLimit.sort((o1, o2) -> {
-      Double expectedBrokerLoad1 = o1.load().expectedUtilizationFor(resource);
-      Double expectedBrokerLoad2 = o2.load().expectedUtilizationFor(resource);
+      double expectedBrokerLoad1 = o1.load().expectedUtilizationFor(resource);
+      double expectedBrokerLoad2 = o2.load().expectedUtilizationFor(resource);
       // For host resource we first compare host util then look at the broker util -- even if a resource is a
       // host-resource, but not broker-resource.
       int hostComparison = 0;
       if (resource.isHostResource()) {
-        Double expectedHostLoad1 = resource.isHostResource() ? o1.host().load().expectedUtilizationFor(resource) : 0.0;
-        Double expectedHostLoad2 = resource.isHostResource() ? o2.host().load().expectedUtilizationFor(resource) : 0.0;
+        double expectedHostLoad1 = resource.isHostResource() ? o1.host().load().expectedUtilizationFor(resource) : 0.0;
+        double expectedHostLoad2 = resource.isHostResource() ? o2.host().load().expectedUtilizationFor(resource) : 0.0;
         hostComparison = Double.compare(expectedHostLoad1, expectedHostLoad2);
       }
       return hostComparison == 0 ? Double.compare(expectedBrokerLoad1, expectedBrokerLoad2) : hostComparison;
@@ -1067,7 +1067,7 @@ public class ClusterModel implements Serializable {
       Map<String, Object> hostEntry = new HashMap<>();
       hostEntry.put("Host", broker.host().name());
       hostEntry.put("Broker", broker.id());
-      hostEntry.put("BrokerState", broker.getState());
+      hostEntry.put("BrokerState", broker.state());
       hostEntry.put("DiskMB", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.DISK)));
       hostEntry.put("CpuPct", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.CPU)));
       hostEntry.put("LeaderNwInRate", AnalyzerUtils.nanToZero(leaderBytesInRate));
@@ -1101,7 +1101,7 @@ public class ClusterModel implements Serializable {
       double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
       brokerStats.addSingleBrokerStats(broker.host().name(),
                                        broker.id(),
-                                       broker.getState(),
+                                       broker.state(),
                                        broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
                                        broker.load().expectedUtilizationFor(Resource.CPU),
                                        leaderBytesInRate,

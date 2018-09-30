@@ -6,10 +6,15 @@ package com.linkedin.kafka.cruisecontrol;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import kafka.zk.KafkaZkClient;
+import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
+import org.apache.kafka.clients.admin.DescribeLogDirsResult;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.utils.SystemTime;
 
@@ -115,5 +120,30 @@ public class KafkaCruiseControlUtils {
   public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
     return KafkaZkClient.apply(connectString, false, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
                                new SystemTime(), metricGroup, metricType);
+  }
+
+  /**
+   * Describe LogDirs using the given bootstrap servers for the given brokers.
+   *
+   * @param bootstrapServers Bootstrap servers that the underlying AdminClient will use.
+   * @param brokers Brokers for which the logDirs will be described.
+   * @return DescribeLogDirsResult using the given bootstrap servers for the given brokers.
+   */
+  public static DescribeLogDirsResult describeLogDirs(String bootstrapServers, Collection<Integer> brokers) {
+    try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(bootstrapServers)) {
+      return adminClient.describeLogDirs(brokers);
+    }
+  }
+
+  /**
+   * Create an instance of AdminClient using the given bootstrap servers.
+   *
+   * @param bootstrapServers Bootstrap servers that the AdminClient will use.
+   * @return A new instance of AdminClient.
+   */
+  public static AdminClient createAdminClient(String bootstrapServers) {
+    Properties props = new Properties();
+    props.setProperty(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    return AdminClient.create(props);
   }
 }

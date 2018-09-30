@@ -22,13 +22,20 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.protocol.Errors;
+import org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
 
 
 public class KafkaClusterState {
+  public static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
   private static final String TOPIC = "topic";
   private static final String PARTITION = "partition";
   private static final String LEADER = "leader";
@@ -47,19 +54,19 @@ public class KafkaClusterState {
   private static final String REPLICA_COUNT = "ReplicaCountByBrokerId";
   private static final String OFFLINE_REPLICA_COUNT = "OfflineReplicaCountByBrokerId";
   private static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
+  private static final String ONLINE_LOGDIRS = "OnlineLogDirsByBrokerId";
+  private static final String OFFLINE_LOGDIRS = "OfflineLogDirsByBrokerId";
   private static final int DEFAULT_MIN_INSYNC_REPLICAS = 1;
   private final Cluster _kafkaCluster;
   private final Map<String, Properties> _allTopicConfigs;
   private final Properties _clusterConfigs;
+  private final String _bootstrapServers;
 
-  public KafkaClusterState(Cluster kafkaCluster, TopicConfigProvider topicConfigProvider) {
+  public KafkaClusterState(Cluster kafkaCluster, TopicConfigProvider topicConfigProvider, String bootstrapServers) {
     _kafkaCluster = kafkaCluster;
     _allTopicConfigs = topicConfigProvider.allTopicConfigs();
     _clusterConfigs = topicConfigProvider.clusterConfigs();
-  }
-
-  public Cluster kafkaCluster() {
-    return _kafkaCluster;
+    _bootstrapServers = bootstrapServers;
   }
 
   /**
@@ -68,7 +75,8 @@ public class KafkaClusterState {
    * @param version JSON version
    * @param verbose True if verbose, false otherwise.
    */
-  public String getJSONString(int version, boolean verbose) {
+  public String getJSONString(int version, boolean verbose)
+      throws ExecutionException, InterruptedException, TimeoutException {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure(verbose);
     jsonStructure.put("version", version);
@@ -202,7 +210,9 @@ public class KafkaClusterState {
    *
    * @param verbose True if verbose, false otherwise.
    */
-  public Map<String, Object> getJsonStructure(boolean verbose) {
+  public Map<String, Object> getJsonStructure(boolean verbose)
+      throws ExecutionException, InterruptedException, TimeoutException {
+    // Gather the broker state.
     Map<Integer, Integer> leaderCountByBrokerId = new HashMap<>();
     Map<Integer, Integer> outOfSyncCountByBrokerId = new HashMap<>();
     Map<Integer, Integer> replicaCountByBrokerId = new HashMap<>();
@@ -218,6 +228,14 @@ public class KafkaClusterState {
     kafkaClusterByBrokerState.put(OUT_OF_SYNC_COUNT, outOfSyncCountByBrokerId);
     kafkaClusterByBrokerState.put(REPLICA_COUNT, replicaCountByBrokerId);
     kafkaClusterByBrokerState.put(OFFLINE_REPLICA_COUNT, offlineReplicaCountByBrokerId);
+
+    // Broker LogDirs Summary
+    Map<Integer, Set<String>> onlineLogDirsByBrokerId = new HashMap<>(replicaCountByBrokerId.keySet().size());
+    Map<Integer, Set<String>> offlineLogDirsByBrokerId = new HashMap<>(replicaCountByBrokerId.keySet().size());
+    populateKafkaBrokerLogDirState(onlineLogDirsByBrokerId, offlineLogDirsByBrokerId, replicaCountByBrokerId.keySet());
+
+    kafkaClusterByBrokerState.put(ONLINE_LOGDIRS, onlineLogDirsByBrokerId);
+    kafkaClusterByBrokerState.put(OFFLINE_LOGDIRS, offlineLogDirsByBrokerId);
 
     // Gather the partition state.
     Set<PartitionInfo> underReplicatedPartitions = new HashSet<>();
@@ -249,7 +267,7 @@ public class KafkaClusterState {
     return cruiseControlState;
   }
 
-  private void writeKafkaClusterState(OutputStream out, SortedSet<PartitionInfo> partitions, int topicNameLength)
+  private void writeKafkaPartitionState(OutputStream out, SortedSet<PartitionInfo> partitions, int topicNameLength)
       throws IOException {
     for (PartitionInfo partitionInfo : partitions) {
       Set<String> replicas =
@@ -273,9 +291,53 @@ public class KafkaClusterState {
     }
   }
 
-  public void writeOutputStream(OutputStream out, boolean verbose) throws IOException {
-    Cluster clusterState = kafkaCluster();
-    // Brokers summary.
+  private void populateKafkaBrokerLogDirState(Map<Integer, Set<String>> onlineLogDirsByBrokerId,
+                                              Map<Integer, Set<String>> offlineLogDirsByBrokerId,
+                                              Set<Integer> brokers)
+      throws ExecutionException, InterruptedException, TimeoutException {
+    Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId
+        = KafkaCruiseControlUtils.describeLogDirs(_bootstrapServers, brokers).values();
+
+    for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
+      onlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
+      offlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
+
+      entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((key, value) -> {
+        if (value.error == Errors.NONE) {
+          onlineLogDirsByBrokerId.get(entry.getKey()).add(key);
+        } else {
+          offlineLogDirsByBrokerId.get(entry.getKey()).add(key);
+        }
+      });
+    }
+  }
+
+  private void writeKafkaBrokerLogDirState(OutputStream out, Set<Integer> brokers)
+      throws IOException, ExecutionException, InterruptedException, TimeoutException {
+    Map<Integer, Set<String>> onlineLogDirsByBrokerId = new HashMap<>(brokers.size());
+    Map<Integer, Set<String>> offlineLogDirsByBrokerId = new HashMap<>(brokers.size());
+    populateKafkaBrokerLogDirState(onlineLogDirsByBrokerId, offlineLogDirsByBrokerId, brokers);
+
+    int onlineLogDirsNameLength = onlineLogDirsByBrokerId.values().stream().mapToInt(dir -> dir.toString().length())
+                                                         .max().orElse(20) + 6;
+    int offlineLogDirsNameLength = offlineLogDirsByBrokerId.values().stream().mapToInt(dir -> dir.toString().length())
+                                                           .max().orElse(20) + 7;
+
+    String initMessage = "LogDirs of brokers with replicas:";
+    out.write(String.format("%n%s%n%20s%" + onlineLogDirsNameLength + "s%" + offlineLogDirsNameLength + "s%n",
+                            initMessage, "BROKER", "ONLINE-LOGDIRS", "OFFLINE-LOGDIRS").getBytes(StandardCharsets.UTF_8));
+
+    for (int brokerId : brokers) {
+      out.write(String.format("%20d%" + onlineLogDirsNameLength + "s%" + offlineLogDirsNameLength + "s%n",
+                              brokerId,
+                              onlineLogDirsByBrokerId.get(brokerId).toString(),
+                              offlineLogDirsByBrokerId.get(brokerId).toString())
+                      .getBytes(StandardCharsets.UTF_8));
+    }
+  }
+
+  private void writeBrokerSummary(OutputStream out)
+      throws IOException, ExecutionException, InterruptedException, TimeoutException {
     SortedMap<Integer, Integer> leaderCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> outOfSyncCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> replicaCountByBrokerId = new TreeMap<>();
@@ -299,12 +361,15 @@ public class KafkaClusterState {
                               offlineReplicaCountByBrokerId.getOrDefault(brokerId, 0))
                       .getBytes(StandardCharsets.UTF_8));
     }
+    // Broker LogDirs Summary
+    writeKafkaBrokerLogDirState(out, replicaCountByBrokerId.keySet());
+  }
 
-    // Partitions summary.
-    int topicNameLength = clusterState.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
+  private void writePartitionSummary(OutputStream out, boolean verbose) throws IOException {
+    int topicNameLength = _kafkaCluster.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
 
-    initMessage = verbose ? "All Partitions in the Cluster (verbose):"
-                          : "Under Replicated, Offline, and Under MinIsr Partitions:";
+    String initMessage = verbose ? "All Partitions in the Cluster (verbose):"
+                                 : "Under Replicated, Offline, and Under MinIsr Partitions:";
     out.write(String.format("%n%s%n%" + topicNameLength + "s%10s%10s%30s%30s%25s%25s%n", initMessage, "TOPIC",
                             "PARTITION", "LEADER", "REPLICAS", "IN-SYNC", "OUT-OF-SYNC", "OFFLINE")
                     .getBytes(StandardCharsets.UTF_8));
@@ -327,20 +392,28 @@ public class KafkaClusterState {
 
     // Write the cluster state.
     out.write(String.format("Offline Partitions:%n").getBytes(StandardCharsets.UTF_8));
-    writeKafkaClusterState(out, offlinePartitions, topicNameLength);
+    writeKafkaPartitionState(out, offlinePartitions, topicNameLength);
 
     out.write(String.format("Partitions with Offline Replicas:%n").getBytes(StandardCharsets.UTF_8));
-    writeKafkaClusterState(out, partitionsWithOfflineReplicas, topicNameLength);
+    writeKafkaPartitionState(out, partitionsWithOfflineReplicas, topicNameLength);
 
     out.write(String.format("Under Replicated Partitions:%n").getBytes(StandardCharsets.UTF_8));
-    writeKafkaClusterState(out, underReplicatedPartitions, topicNameLength);
+    writeKafkaPartitionState(out, underReplicatedPartitions, topicNameLength);
 
     out.write(String.format("Under MinIsr Partitions:%n").getBytes(StandardCharsets.UTF_8));
-    writeKafkaClusterState(out, underMinIsrPartitions, topicNameLength);
+    writeKafkaPartitionState(out, underMinIsrPartitions, topicNameLength);
 
     if (verbose) {
       out.write(String.format("Other Partitions:%n").getBytes(StandardCharsets.UTF_8));
-      writeKafkaClusterState(out, otherPartitions, topicNameLength);
+      writeKafkaPartitionState(out, otherPartitions, topicNameLength);
     }
+  }
+
+  public void writeOutputStream(OutputStream out, boolean verbose)
+      throws IOException, ExecutionException, InterruptedException, TimeoutException {
+    // Broker summary.
+    writeBrokerSummary(out);
+    // Partition summary.
+    writePartitionSummary(out, verbose);
   }
 }

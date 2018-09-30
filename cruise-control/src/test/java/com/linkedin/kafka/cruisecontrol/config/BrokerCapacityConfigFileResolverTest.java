@@ -32,7 +32,7 @@ public class BrokerCapacityConfigFileResolverTest {
     assertEquals(100000.0, configResolver.capacityForBroker("", "", 2)
                                          .capacity().get(Resource.NW_IN), 0.01);
     try {
-      configResolver.capacityForBroker("", "", -1);
+      configResolver.capacityForBroker("", "", BrokerCapacityConfigFileResolver.DEFAULT_CAPACITY_BROKER_ID);
       fail("Should have thrown exception for negative broker id");
     } catch (IllegalArgumentException e) {
       // let it go
@@ -40,5 +40,25 @@ public class BrokerCapacityConfigFileResolverTest {
 
     assertTrue(configResolver.capacityForBroker("", "", 2).isEstimated());
     assertTrue(configResolver.capacityForBroker("", "", 2).estimationInfo().length() > 0);
+  }
+
+  @Test
+  public void testParseConfigJBODFile() {
+    BrokerCapacityConfigResolver configResolver = new BrokerCapacityConfigFileResolver();
+    Map<String, String> configs = new HashMap<>();
+    String fileName = this.getClass().getClassLoader().getResource("testCapacityConfigJBOD.json").getFile();
+    configs.put(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, fileName);
+    configResolver.configure(configs);
+
+    assertEquals(2000000.0, configResolver.capacityForBroker("", "", 0)
+                                         .capacity().get(Resource.DISK), 0.01);
+    assertEquals(2200000.0, configResolver.capacityForBroker("", "", 3)
+                                         .capacity().get(Resource.DISK), 0.01);
+    assertEquals(200000.0, configResolver.capacityForBroker("", "", 3)
+                                         .diskCapacityByLogDir().get("/tmp/kafka-logs-4"), 0.01);
+
+    assertTrue(!configResolver.capacityForBroker("", "", 2).isEstimated());
+    assertTrue(configResolver.capacityForBroker("", "", 3).isEstimated());
+    assertTrue(configResolver.capacityForBroker("", "", 3).estimationInfo().length() > 0);
   }
 }

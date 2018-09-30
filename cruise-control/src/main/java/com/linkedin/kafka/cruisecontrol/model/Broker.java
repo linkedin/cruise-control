@@ -38,6 +38,9 @@ public class Broker implements Serializable, Comparable<Broker> {
   private final int _id;
   private final Host _host;
   private final double[] _brokerCapacity;
+  // To reduce memory footprint, use arrays of logDirs and logDirCapacity rather than a map of diskCapacityByLogDir.
+  private final String[] _logDirs;
+  private final double[] _logDirCapacity;
   private final Set<Replica> _replicas;
   private final Set<Replica> _leaderReplicas;
   /** A map of cached sorted replicas using different user defined score functions. */
@@ -53,13 +56,25 @@ public class Broker implements Serializable, Comparable<Broker> {
   private State _state;
 
   /**
-   * Constructor for Broker class.
+   * Constructor for Broker class with no disk capacity specified per absolute logDir -- i.e. non-JBOD broker.
    *
    * @param host           The host this broker is on
    * @param id             The id of the broker.
    * @param brokerCapacity The capacity of the broker.
    */
   Broker(Host host, int id, Map<Resource, Double> brokerCapacity) {
+    this(host, id, brokerCapacity, null);
+  }
+
+  /**
+   * Constructor for Broker class.
+   *
+   * @param host           The host this broker is on
+   * @param id             The id of the broker.
+   * @param brokerCapacity The capacity of the broker.
+   * @param diskCapacityByLogDir Disk capacity by absolute logDir.
+   */
+  Broker(Host host, int id, Map<Resource, Double> brokerCapacity, Map<String, Double> diskCapacityByLogDir) {
     if (brokerCapacity == null) {
       throw new IllegalArgumentException("Attempt to create broker " + id + " on host " + host.name() + " with null capacity.");
     }
@@ -69,6 +84,20 @@ public class Broker implements Serializable, Comparable<Broker> {
     for (Map.Entry<Resource, Double> entry : brokerCapacity.entrySet()) {
       _brokerCapacity[entry.getKey().id()] = entry.getValue();
     }
+
+    if (diskCapacityByLogDir == null || diskCapacityByLogDir.isEmpty()) {
+      _logDirs = null;
+      _logDirCapacity = null;
+    } else {
+      _logDirs = new String[diskCapacityByLogDir.size()];
+      _logDirCapacity = new double[diskCapacityByLogDir.size()];
+      int logIndex = 0;
+      for (Map.Entry<String, Double> entry : diskCapacityByLogDir.entrySet()) {
+        _logDirs[logIndex] = entry.getKey();
+        _logDirCapacity[logIndex++] = entry.getValue();
+      }
+    }
+
     _replicas = new HashSet<>();
     _leaderReplicas = new HashSet<>();
     _topicReplicas = new HashMap<>();
@@ -85,7 +114,7 @@ public class Broker implements Serializable, Comparable<Broker> {
     return _host;
   }
 
-  public State getState() {
+  public State state() {
     return _state;
   }
 
@@ -114,6 +143,59 @@ public class Broker implements Serializable, Comparable<Broker> {
       return _brokerCapacity[resource.id()];
     }
     return -1.0;
+  }
+
+  /**
+   * Get logDir capacity for the requested logDir.
+   *
+   * @param logDir LogDir for which the capacity will be provided.
+   * @return The healthy capacity of the requested logDir. Note that if the broker is not alive or the disk is dead,
+   * this method still returns the healthy disk capacity.
+   */
+  public double logDirCapacityFor(String logDir) {
+    if (_logDirs == null) {
+      throw new IllegalStateException("No logDir capacity has been provided for broker:" + _id + ".");
+    }
+
+    for (int logDirIndex = 0; logDirIndex < _logDirs.length; logDirIndex++) {
+      if (logDir.equals(_logDirs[logDirIndex])) {
+        return _logDirCapacity[logDirIndex];
+      }
+    }
+    throw new IllegalArgumentException("Requested logDir:" + logDir + " does not exist in broker:" + _id + ".");
+  }
+
+  /**
+   * Get logDir for the requested logDirIndex.
+   *
+   * @param index Index of the queried logDir.
+   * @return LogDir for the requested logDirIndex.
+   */
+  public String logDirForIndex(int index) {
+    if (index >= numLogDirs() || index < 0) {
+      throw new IllegalArgumentException("Index(" + index + ") is out of range(" + numLogDirs() + ") for broker:" + _id + ".");
+    }
+    return _logDirs[index];
+  }
+
+  /**
+   * Get logDir capacity for the requested logDirIndex.
+   *
+   * @param index Index of the queried logDir capacity.
+   * @return LogDir capacity for the requested logDirIndex.
+   */
+  public double logDirCapacityForIndex(int index) {
+    if (index >= numLogDirs() || index < 0) {
+      throw new IllegalArgumentException("Index(" + index + ") is out of range(" + numLogDirs() + ") for broker:" + _id + ".");
+    }
+    return _logDirCapacity[index];
+  }
+
+  /**
+   * Get number of logDirs in the broker if provided, 0 otherwise.
+   */
+  public int numLogDirs() {
+    return _logDirs == null ? 0 : _logDirs.length;
   }
 
   /**
