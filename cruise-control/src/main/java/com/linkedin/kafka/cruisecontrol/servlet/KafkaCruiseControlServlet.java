@@ -81,7 +81,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                    long sessionExpiryMs,
                                    MetricRegistry dropwizardMetricRegistry) {
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
-    _userTaskManager = new UserTaskManager(sessionExpiryMs, MAX_ACTIVE_USER_TASKS, dropwizardMetricRegistry);
+    _userTaskManager = new UserTaskManager(sessionExpiryMs, MAX_ACTIVE_USER_TASKS, dropwizardMetricRegistry, _successfulRequestExecutionTimer);
     _maxBlockMs = maxBlockMs;
     _asyncOperationStep = new ThreadLocal<>();
     _asyncOperationStep.set(0);
@@ -212,6 +212,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               break;
             case USER_TASKS:
               getUserTaskState(request, response);
+              _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             default:
               throw new UserRequestException("Invalid URL for GET");
