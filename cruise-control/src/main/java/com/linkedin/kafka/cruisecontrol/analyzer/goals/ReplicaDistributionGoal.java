@@ -55,11 +55,11 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicaDistributionGoal.class);
   private static final double BALANCE_MARGIN = 0.9;
   // Flag to indicate whether the self healing failed to relocate all replicas away from dead brokers in its initial
-  // attempt and currently omitting the resource balance limit to relocate remaining replicas.
+  // attempt and currently omitting the replica balance limit to relocate remaining replicas.
   private boolean _selfHealingDeadBrokersOnly;
   private final Set<Integer> _brokerIdsAboveBalanceUpperLimit;
   private final Set<Integer> _brokerIdsUnderBalanceLowerLimit;
-  private Map<Integer, BrokerAndSortedReplicas> _brokerAndReplicasMap;
+  private final Map<Integer, BrokerAndSortedReplicas> _brokerAndReplicasMap;
   private double _avgReplicasOnHealthyBroker;
   private double _balanceUpperLimit;
   private double _balanceLowerLimit;
@@ -70,12 +70,12 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   public ReplicaDistributionGoal() {
     _brokerIdsAboveBalanceUpperLimit = new HashSet<>();
     _brokerIdsUnderBalanceLowerLimit = new HashSet<>();
+    _brokerAndReplicasMap = new HashMap<>();
   }
 
   public ReplicaDistributionGoal(BalancingConstraint balancingConstraint) {
+    this();
     _balancingConstraint = balancingConstraint;
-    _brokerIdsAboveBalanceUpperLimit = new HashSet<>();
-    _brokerIdsUnderBalanceLowerLimit = new HashSet<>();
   }
 
   /**
@@ -196,8 +196,6 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       LOG.warn("All replicas are excluded from {}.", name());
     }
 
-    _brokerAndReplicasMap = new HashMap<>();
-
     for (Broker broker : clusterModel.brokers()) {
       BrokerAndSortedReplicas bas = new BrokerAndSortedReplicas(broker, broker.replicaComparator(DISK));
       _brokerAndReplicasMap.put(broker.id(), bas);
@@ -300,7 +298,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     boolean requireLessReplicas = broker.isAlive() ? numReplicas > _balanceUpperLimit : numReplicas > 0;
     boolean requireMoreReplicas = broker.isAlive() && numReplicas < _balanceLowerLimit;
     if (broker.isAlive() && !requireMoreReplicas && !requireLessReplicas) {
-      // return if the broker is already under limit.
+      // return if the broker is already within the limit.
       return;
     } else if (!clusterModel.newBrokers().isEmpty() && requireMoreReplicas && !broker.isNew()) {
       // return if we have new brokers and the current broker is not a new broker but require more load.
@@ -354,7 +352,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       // Only check if we successfully moved something.
       if (b != null) {
         // Update the global sorted broker set to reflect the replica movement.
-        BrokerAndSortedReplicas destBas = _brokerAndReplicasMap.get(broker.id());
+        BrokerAndSortedReplicas destBas = _brokerAndReplicasMap.get(b.id());
         destBas.sortedReplicas().add(replica);
         sourceBas.sortedReplicas().remove(replica);
 
