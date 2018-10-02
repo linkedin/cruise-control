@@ -8,6 +8,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -129,8 +130,8 @@ public class KafkaCruiseControlUtils {
    * @param brokers Brokers for which the logDirs will be described.
    * @return DescribeLogDirsResult using the given bootstrap servers for the given brokers.
    */
-  public static DescribeLogDirsResult describeLogDirs(String bootstrapServers, Collection<Integer> brokers) {
-    try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(bootstrapServers)) {
+  public static DescribeLogDirsResult describeLogDirs(List<String> bootstrapServers, Collection<Integer> brokers) {
+    try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(bootstrapServers.toString())) {
       return adminClient.describeLogDirs(brokers);
     }
   }
