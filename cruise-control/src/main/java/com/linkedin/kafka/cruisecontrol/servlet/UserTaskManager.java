@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
+import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import java.io.Closeable;
@@ -62,15 +63,21 @@ public class UserTaskManager implements Closeable {
     }
   };
   private static final long COMPLETED_USER_TASK_RETENTION_TIME_HOUR = TimeUnit.HOURS.toMillis(6);
+  private final Map<EndPoint, Timer> _successfulRequestExecutionTimer;
 
-  public UserTaskManager(long sessionExpiryMs, long maxActiveUserTasks, MetricRegistry dropwizardMetricRegistry) {
+  public UserTaskManager(long sessionExpiryMs, long maxActiveUserTasks, MetricRegistry dropwizardMetricRegistry,
+                         Map<EndPoint, Timer> successfulRequestExecutionTimer) {
     this(new HashMap<>(), new TreeMap<>(USER_TASK_ID_COMPARATOR), new TreeMap<>(USER_TASK_ID_COMPARATOR), sessionExpiryMs,
-        maxActiveUserTasks, dropwizardMetricRegistry);
+        maxActiveUserTasks, dropwizardMetricRegistry, successfulRequestExecutionTimer);
   }
 
   private UserTaskManager(Map<SessionKey, UUID> sessionToUserTaskIdMap,
-      Map<UUID, UserTaskInfo> activeUserTaskIdToFuturesMap, Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap,
-      long sessionExpiryMs, long maxActiveUserTasks, MetricRegistry dropwizardMetricRegistry) {
+                          Map<UUID, UserTaskInfo> activeUserTaskIdToFuturesMap,
+                          Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap,
+                          long sessionExpiryMs,
+                          long maxActiveUserTasks,
+                          MetricRegistry dropwizardMetricRegistry,
+                          Map<EndPoint, Timer> successfulRequestExecutionTimer) {
     _sessionToUserTaskIdMap = sessionToUserTaskIdMap;
     _activeUserTaskIdToFuturesMap = activeUserTaskIdToFuturesMap;
     _completedUserTaskIdToFuturesMap = completedUserTaskIdToFuturesMap;
@@ -84,6 +91,7 @@ public class UserTaskManager implements Closeable {
         (Gauge<Integer>) _sessionToUserTaskIdMap::size);
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-user-tasks"),
         (Gauge<Integer>) _activeUserTaskIdToFuturesMap::size);
+    _successfulRequestExecutionTimer = successfulRequestExecutionTimer;
   }
 
   // for unit-tests only
@@ -96,6 +104,8 @@ public class UserTaskManager implements Closeable {
     _time = time;
     _uuidGenerator = uuidGenerator;
     _userTaskScannerExecutor.scheduleAtFixedRate(new UserTaskScanner(), 0, 5, TimeUnit.SECONDS);
+    _successfulRequestExecutionTimer = new HashMap<>();
+    EndPoint.cachedValues().stream().forEach(e -> _successfulRequestExecutionTimer.put(e, new Timer()));
   }
 
   // for unit-tests only
@@ -256,6 +266,7 @@ public class UserTaskManager implements Closeable {
       Map.Entry<UUID, UserTaskInfo> entry = iter.next();
       if (isActiveUserTasksDone(entry.getKey())) {
         LOG.info("UserTask {} is complete and removed from active tasks list", entry.getKey());
+        _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
         _completedUserTaskIdToFuturesMap.put(entry.getKey(), entry.getValue());
         iter.remove();
       }
@@ -389,22 +400,24 @@ public class UserTaskManager implements Closeable {
     private final long _startMs;
     private final UUID _userTaskId;
     private final Map<String, String[]> _queryParams;
+    private final EndPoint _endPoint;
 
     public UserTaskInfo(HttpServletRequest httpServletRequest, List<OperationFuture> futures, long startMs,
         UUID userTaskId) {
       this(futures, httpServletRequestToString(httpServletRequest),
           KafkaCruiseControlServletUtils.getClientIpAddress(httpServletRequest), startMs, userTaskId,
-          httpServletRequest.getParameterMap());
+          httpServletRequest.getParameterMap(), KafkaCruiseControlServletUtils.endPoint(httpServletRequest));
     }
 
     public UserTaskInfo(List<OperationFuture> futures, String requestUrl, String clientIdentity, long startMs,
-        UUID userTaskId, Map<String, String[]> queryParams) {
+        UUID userTaskId, Map<String, String[]> queryParams, EndPoint endPoint) {
       _futures = futures;
       _requestUrl = requestUrl;
       _clientIdentity = clientIdentity;
       _startMs = startMs;
       _userTaskId = userTaskId;
       _queryParams = queryParams;
+      _endPoint = endPoint;
     }
 
     public List<OperationFuture> futures() {
@@ -429,6 +442,14 @@ public class UserTaskManager implements Closeable {
 
     public Map<String, String[]> queryParams() {
       return _queryParams;
+    }
+
+    public EndPoint endPoint() {
+      return _endPoint;
+    }
+
+    public long executionTimeNs() {
+      return _futures.get(_futures.size() - 1).finishTimeNs() - TimeUnit.MILLISECONDS.toNanos(_startMs);
     }
 
     public String requestWithParams() {
