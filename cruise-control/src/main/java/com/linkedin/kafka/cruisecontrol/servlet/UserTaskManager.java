@@ -48,6 +48,7 @@ import org.slf4j.LoggerFactory;
 public class UserTaskManager implements Closeable {
   public static final String USER_TASK_HEADER_NAME = "User-Task-ID";
   public static final long USER_TASK_SCANNER_PERIOD_SECONDS = 5;
+  public static final long USER_TASK_SCANNER_INITIAL_DELAY_SECONDS = 0;
 
   private static final Logger LOG = LoggerFactory.getLogger(UserTaskManager.class);
   private final Map<SessionKey, UUID> _sessionToUserTaskIdMap;
@@ -68,10 +69,12 @@ public class UserTaskManager implements Closeable {
   private static final long COMPLETED_USER_TASK_RETENTION_TIME_HOUR = TimeUnit.HOURS.toMillis(6);
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer;
 
-  public UserTaskManager(long sessionExpiryMs, long maxActiveUserTasks, MetricRegistry dropwizardMetricRegistry,
+  public UserTaskManager(long sessionExpiryMs,
+                         long maxActiveUserTasks,
+                         MetricRegistry dropwizardMetricRegistry,
                          Map<EndPoint, Timer> successfulRequestExecutionTimer) {
     this(new HashMap<>(), new TreeMap<>(USER_TASK_ID_COMPARATOR), new TreeMap<>(USER_TASK_ID_COMPARATOR), sessionExpiryMs,
-        maxActiveUserTasks, dropwizardMetricRegistry, successfulRequestExecutionTimer);
+         maxActiveUserTasks, dropwizardMetricRegistry, successfulRequestExecutionTimer);
   }
 
   private UserTaskManager(Map<SessionKey, UUID> sessionToUserTaskIdMap,
@@ -88,12 +91,14 @@ public class UserTaskManager implements Closeable {
     _maxActiveUserTasks = maxActiveUserTasks;
     _time = Time.SYSTEM;
     _uuidGenerator = new UUIDGenerator();
-    _userTaskScannerExecutor.scheduleAtFixedRate(new UserTaskScanner(), 0, USER_TASK_SCANNER_PERIOD_SECONDS,
-        TimeUnit.SECONDS);
+    _userTaskScannerExecutor.scheduleAtFixedRate(new UserTaskScanner(),
+                                                 USER_TASK_SCANNER_INITIAL_DELAY_SECONDS,
+                                                 USER_TASK_SCANNER_PERIOD_SECONDS,
+                                                 TimeUnit.SECONDS);
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-sessions"),
-        (Gauge<Integer>) _sessionToUserTaskIdMap::size);
+                                      (Gauge<Integer>) _sessionToUserTaskIdMap::size);
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-user-tasks"),
-        (Gauge<Integer>) _activeUserTaskIdToFuturesMap::size);
+                                      (Gauge<Integer>) _activeUserTaskIdToFuturesMap::size);
     _successfulRequestExecutionTimer = successfulRequestExecutionTimer;
   }
 
@@ -106,7 +111,10 @@ public class UserTaskManager implements Closeable {
     _maxActiveUserTasks = maxActiveUserTasks;
     _time = time;
     _uuidGenerator = uuidGenerator;
-    _userTaskScannerExecutor.scheduleAtFixedRate(new UserTaskScanner(), 0, 5, TimeUnit.SECONDS);
+    _userTaskScannerExecutor.scheduleAtFixedRate(new UserTaskScanner(),
+                                                 USER_TASK_SCANNER_INITIAL_DELAY_SECONDS,
+                                                 USER_TASK_SCANNER_PERIOD_SECONDS,
+                                                 TimeUnit.SECONDS);
     _successfulRequestExecutionTimer = new HashMap<>();
     EndPoint.cachedValues().stream().forEach(e -> _successfulRequestExecutionTimer.put(e, new Timer()));
   }
@@ -136,7 +144,9 @@ public class UserTaskManager implements Closeable {
    */
   @SuppressWarnings("unchecked")
   public <T> OperationFuture<T> getOrCreateUserTask(HttpServletRequest httpServletRequest,
-      HttpServletResponse httpServletResponse, Supplier<OperationFuture<T>> operation, int step) {
+                                                    HttpServletResponse httpServletResponse,
+                                                    Supplier<OperationFuture<T>> operation,
+                                                    int step) {
     UUID userTaskId = getUserTaskId(httpServletRequest);
     List<OperationFuture> operationFutures = getFuturesByUserTaskId(userTaskId, httpServletRequest);
 
@@ -277,7 +287,7 @@ public class UserTaskManager implements Closeable {
   }
 
   private synchronized void removeOldUserTasks() {
-    LOG.info("Remove old user tasks");
+    LOG.debug("Remove old user tasks");
     _completedUserTaskIdToFuturesMap.entrySet()
         .removeIf(entry -> (entry.getValue().startMs() + COMPLETED_USER_TASK_RETENTION_TIME_HOUR < _time.milliseconds()));
   }
@@ -307,15 +317,14 @@ public class UserTaskManager implements Closeable {
     return null;
   }
 
-  private synchronized void insertFuturesByUserTaskId(UUID userTaskId, OperationFuture operationFuture,
-      HttpServletRequest httpServletRequest) {
+  private synchronized void insertFuturesByUserTaskId(UUID userTaskId,
+                                                      OperationFuture operationFuture,
+                                                      HttpServletRequest httpServletRequest) {
     if (_activeUserTaskIdToFuturesMap.containsKey(userTaskId)) {
       _activeUserTaskIdToFuturesMap.get(userTaskId).futures().add(operationFuture);
     } else {
       if (_activeUserTaskIdToFuturesMap.size() >= _maxActiveUserTasks) {
-        throw new RuntimeException(
-            "There are already " + _activeUserTaskIdToFuturesMap.size() + " active user tasks, which "
-                + "has reached the servlet capacity.");
+        throw new RuntimeException("There are already " + _activeUserTaskIdToFuturesMap.size() + " active user tasks, which has reached the servlet capacity.");
       }
       UserTaskInfo userTaskInfo =
           new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operationFuture)),
@@ -384,8 +393,9 @@ public class UserTaskManager implements Closeable {
         return false;
       }
       SessionKey that = (SessionKey) o;
-      return Objects.equals(_httpSession, that._httpSession) && Objects.equals(_requestUrl, that._requestUrl) && Objects
-          .equals(_queryParams, that._queryParams);
+      return Objects.equals(_httpSession, that._httpSession)
+             && Objects.equals(_requestUrl, that._requestUrl)
+             && Objects.equals(_queryParams, that._queryParams);
     }
 
     @Override
@@ -396,7 +406,7 @@ public class UserTaskManager implements Closeable {
     @Override
     public String toString() {
       return String.format("SessionKey{_httpSession=%s,_requestUrl=%s,_queryParams=%s}", _httpSession, _requestUrl,
-          _queryParams);
+                           _queryParams);
     }
 
     public HttpSession httpSession() {
@@ -425,15 +435,22 @@ public class UserTaskManager implements Closeable {
     private final Map<String, String[]> _queryParams;
     private final EndPoint _endPoint;
 
-    public UserTaskInfo(HttpServletRequest httpServletRequest, List<OperationFuture> futures, long startMs,
-        UUID userTaskId) {
+    public UserTaskInfo(HttpServletRequest httpServletRequest,
+                        List<OperationFuture> futures,
+                        long startMs,
+                        UUID userTaskId) {
       this(futures, httpServletRequestToString(httpServletRequest),
-          KafkaCruiseControlServletUtils.getClientIpAddress(httpServletRequest), startMs, userTaskId,
-          httpServletRequest.getParameterMap(), KafkaCruiseControlServletUtils.endPoint(httpServletRequest));
+           KafkaCruiseControlServletUtils.getClientIpAddress(httpServletRequest), startMs, userTaskId,
+           httpServletRequest.getParameterMap(), KafkaCruiseControlServletUtils.endPoint(httpServletRequest));
     }
 
-    public UserTaskInfo(List<OperationFuture> futures, String requestUrl, String clientIdentity, long startMs,
-        UUID userTaskId, Map<String, String[]> queryParams, EndPoint endPoint) {
+    public UserTaskInfo(List<OperationFuture> futures,
+                        String requestUrl,
+                        String clientIdentity,
+                        long startMs,
+                        UUID userTaskId,
+                        Map<String, String[]> queryParams,
+                        EndPoint endPoint) {
       _futures = futures;
       _requestUrl = requestUrl;
       _clientIdentity = clientIdentity;
