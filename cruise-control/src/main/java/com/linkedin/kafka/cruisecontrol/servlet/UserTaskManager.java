@@ -10,13 +10,16 @@ import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import java.io.Closeable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.Executors;
@@ -277,7 +280,7 @@ public class UserTaskManager implements Closeable {
     if (_completedUserTaskIdToFuturesMap.containsKey(userTaskId)) {
       UserTaskInfo userTaskInfo = _completedUserTaskIdToFuturesMap.get(userTaskId);
       if (userTaskInfo.requestUrl().equals(requestUrl)
-          && userTaskInfo.queryParams().equals(httpServletRequest.getParameterMap())) {
+          && hasTheSameHttpParameter(userTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
         return userTaskInfo.futures();
       }
     }
@@ -285,7 +288,7 @@ public class UserTaskManager implements Closeable {
     if (_activeUserTaskIdToFuturesMap.containsKey(userTaskId)) {
       UserTaskInfo userTaskInfo = _activeUserTaskIdToFuturesMap.get(userTaskId);
       if (userTaskInfo.requestUrl().equals(requestUrl)
-          && userTaskInfo.queryParams().equals(httpServletRequest.getParameterMap())) {
+          && hasTheSameHttpParameter(userTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
         return userTaskInfo.futures();
       }
     }
@@ -330,15 +333,35 @@ public class UserTaskManager implements Closeable {
     _userTaskScannerExecutor.shutdownNow();
   }
 
+  private boolean hasTheSameHttpParameter(Map<String, String[]> params1, Map<String, String[]> params2) {
+    boolean isSameParameters = params1.keySet().equals(params2.keySet());
+    if (isSameParameters) {
+      for (Map.Entry<String, String[]> entry : params1.entrySet()) {
+        Set<String> values1 = new HashSet<>(Arrays.asList(entry.getValue()));
+        Set<String> values2 = new HashSet<>(Arrays.asList(params2.get(entry.getKey())));
+        if (!values1.equals(values2)) {
+          return false;
+        }
+      }
+    }
+    return isSameParameters;
+  }
+
+  // for unit-test only
+  int activeSessionNum() {
+    return _sessionToUserTaskIdMap.size();
+  }
+
   static public class SessionKey {
     private final HttpSession _httpSession;
     private final String _requestUrl;
-    private final Map<String, String[]> _queryParams;
+    private final Map<String, Set<String>> _queryParams;
 
     SessionKey(HttpServletRequest httpServletRequest) {
       _httpSession = httpServletRequest.getSession();
       _requestUrl = httpServletRequestToString(httpServletRequest);
-      _queryParams = httpServletRequest.getParameterMap();
+      _queryParams = new HashMap<>();
+      httpServletRequest.getParameterMap().forEach((k, v) -> _queryParams.put(k, new HashSet<>(Arrays.asList(v))));
     }
 
     @Override
