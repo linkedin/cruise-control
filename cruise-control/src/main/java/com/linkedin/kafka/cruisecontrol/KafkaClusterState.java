@@ -60,9 +60,9 @@ public class KafkaClusterState {
   private final Cluster _kafkaCluster;
   private final Map<String, Properties> _allTopicConfigs;
   private final Properties _clusterConfigs;
-  private final String _bootstrapServers;
+  private final List<String> _bootstrapServers;
 
-  public KafkaClusterState(Cluster kafkaCluster, TopicConfigProvider topicConfigProvider, String bootstrapServers) {
+  public KafkaClusterState(Cluster kafkaCluster, TopicConfigProvider topicConfigProvider, List<String> bootstrapServers) {
     _kafkaCluster = kafkaCluster;
     _allTopicConfigs = topicConfigProvider.allTopicConfigs();
     _clusterConfigs = topicConfigProvider.clusterConfigs();
