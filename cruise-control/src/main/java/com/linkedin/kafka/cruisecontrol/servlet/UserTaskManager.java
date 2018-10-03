@@ -72,8 +72,12 @@ public class UserTaskManager implements Closeable {
   }
 
   private UserTaskManager(Map<SessionKey, UUID> sessionToUserTaskIdMap,
-      Map<UUID, UserTaskInfo> activeUserTaskIdToFuturesMap, Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap,
-      long sessionExpiryMs, long maxActiveUserTasks, MetricRegistry dropwizardMetricRegistry, Map<EndPoint, Timer> successfulRequestExecutionTimer) {
+                          Map<UUID, UserTaskInfo> activeUserTaskIdToFuturesMap,
+                          Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap,
+                          long sessionExpiryMs,
+                          long maxActiveUserTasks,
+                          MetricRegistry dropwizardMetricRegistry,
+                          Map<EndPoint, Timer> successfulRequestExecutionTimer) {
     _sessionToUserTaskIdMap = sessionToUserTaskIdMap;
     _activeUserTaskIdToFuturesMap = activeUserTaskIdToFuturesMap;
     _completedUserTaskIdToFuturesMap = completedUserTaskIdToFuturesMap;
@@ -262,7 +266,7 @@ public class UserTaskManager implements Closeable {
       Map.Entry<UUID, UserTaskInfo> entry = iter.next();
       if (isActiveUserTasksDone(entry.getKey())) {
         LOG.info("UserTask {} is complete and removed from active tasks list", entry.getKey());
-        _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTime(), TimeUnit.NANOSECONDS);
+        _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
         _completedUserTaskIdToFuturesMap.put(entry.getKey(), entry.getValue());
         iter.remove();
       }
@@ -440,11 +444,11 @@ public class UserTaskManager implements Closeable {
       return _queryParams;
     }
 
-    private EndPoint endPoint() {
+    public EndPoint endPoint() {
       return _endPoint;
     }
 
-    private long executionTime() {
+    public long executionTimeNs() {
       return _futures.get(_futures.size() - 1).finishTimeNs() - TimeUnit.MILLISECONDS.toNanos(_startMs);
     }
 
