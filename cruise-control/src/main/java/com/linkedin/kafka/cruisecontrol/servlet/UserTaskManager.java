@@ -348,7 +348,7 @@ public class UserTaskManager implements Closeable {
   }
 
   // for unit-test only
-  int activeSessionNum() {
+  int numActiveSessions() {
     return _sessionToUserTaskIdMap.size();
   }
 
