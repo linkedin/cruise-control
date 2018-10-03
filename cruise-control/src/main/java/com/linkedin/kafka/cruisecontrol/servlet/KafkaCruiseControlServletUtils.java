@@ -168,6 +168,9 @@ class KafkaCruiseControlServletUtils {
     Set<String> stopProposalExecution = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     stopProposalExecution.add(JSON_PARAM);
 
+    Set<String> userTasks = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    userTasks.add(JSON_PARAM);
+
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
     validParamNames.put(LOAD, Collections.unmodifiableSet(load));
@@ -183,6 +186,7 @@ class KafkaCruiseControlServletUtils {
     validParamNames.put(PAUSE_SAMPLING, Collections.unmodifiableSet(pauseSampling));
     validParamNames.put(RESUME_SAMPLING, Collections.unmodifiableSet(resumeSampling));
     validParamNames.put(KAFKA_CLUSTER_STATE, Collections.unmodifiableSet(kafkaClusterState));
+    validParamNames.put(USER_TASKS, Collections.unmodifiableSet(userTasks));
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }

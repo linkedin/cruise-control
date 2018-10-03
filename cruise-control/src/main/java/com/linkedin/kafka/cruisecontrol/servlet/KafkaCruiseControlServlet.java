@@ -162,8 +162,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       if (endPoint != null) {
         Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
         Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        userParams.addAll(request.getParameterMap().keySet());
         if (validParamNames != null) {
-          userParams.addAll(request.getParameterMap().keySet());
           userParams.removeAll(validParamNames);
         }
         if (!userParams.isEmpty()) {
