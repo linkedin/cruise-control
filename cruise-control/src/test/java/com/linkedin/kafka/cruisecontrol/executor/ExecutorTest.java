@@ -21,6 +21,7 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
+import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.common.Cluster;
@@ -204,7 +205,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   }
 
   private Map<String, TopicDescription> createTopics() throws InterruptedException {
-    try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(broker(0).plaintextAddr())) {
+    try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()))) {
       adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC_0, 1, (short) 1),
                                              new NewTopic(TOPIC_1, 1, (short) 2)));
     }
@@ -215,8 +217,10 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     Map<String, TopicDescription> topicDescriptions0 = null;
     Map<String, TopicDescription> topicDescriptions1 = null;
     do {
-      try (AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(broker(0).plaintextAddr());
-           AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(broker(1).plaintextAddr())) {
+      try (AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+           AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+               AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(1).plaintextAddr()))) {
         topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC_0, TOPIC_1)).all().get();
         topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC_0, TOPIC_1)).all().get();
         try {
