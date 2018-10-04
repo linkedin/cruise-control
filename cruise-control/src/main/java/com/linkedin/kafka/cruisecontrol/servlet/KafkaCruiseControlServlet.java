@@ -1103,13 +1103,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       responseString = new Gson().toJson(responseStructure);
     } else {
       StringBuilder sb = new StringBuilder();
-      sb.append(String.format("%n%40s%20s%20s%15s  %s", "USER TASK ID", "CLIENT ADDRESS", "START MS", "STATUS", "REQUEST URL"));
+      sb.append(String.format("%n%40s%40s%20s%15s  %s", "USER TASK ID", "CLIENT ADDRESS", "START MS", "STATUS", "REQUEST URL"));
       for (UserTaskManager.UserTaskInfo userTaskInfo : activeUserTasks) {
         Date date = new Date(userTaskInfo.startMs());
         DateFormat formatter = new SimpleDateFormat("HH:mm:ss.SSSZ");
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         String dateFormatted = formatter.format(date);
-        sb.append(String.format("%n%40s%20s%20s%15s  %s", userTaskInfo.userTaskId().toString(),  userTaskInfo.clientIdentity(),
+        sb.append(String.format("%n%40s%40s%20s%15s  %s", userTaskInfo.userTaskId().toString(),  userTaskInfo.clientIdentity(),
             dateFormatted, "Active", userTaskInfo.requestWithParams()));
       }
 
@@ -1118,7 +1118,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         DateFormat formatter = new SimpleDateFormat("HH:mm:ss.SSSZ");
         formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
         String dateFormatted = formatter.format(date);
-        sb.append(String.format("%n%40s%20s%20s%15s  %s", userTaskInfo.userTaskId().toString(),  userTaskInfo.clientIdentity(),
+        sb.append(String.format("%n%40s%40s%20s%15s  %s", userTaskInfo.userTaskId().toString(),  userTaskInfo.clientIdentity(),
             dateFormatted, "Completed", userTaskInfo.requestWithParams()));
 
       }
