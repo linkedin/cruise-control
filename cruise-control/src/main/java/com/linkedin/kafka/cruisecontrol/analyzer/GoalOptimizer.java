@@ -331,7 +331,7 @@ public class GoalOptimizer implements Runnable {
                   _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
                                                              _bestProposal.excludedTopics()));
         // Invalidate the cache and set the new caching rule regarding capacity estimation.
-        _bestProposal = null;
+        clearBestProposal();
         // Explicitly allow capacity estimation to exit the loop upon computing best proposals.
         while (!validCachedProposal()) {
           try {
@@ -347,6 +347,7 @@ public class GoalOptimizer implements Runnable {
                 // No precomputing thread is available, schedule a computing and wait for the cache update.
                 _proposalPrecomputingExecutor.submit(this::computeBestProposal);
               }
+              operationProgress.refer(_proposalPrecomputingProgress);
             }
             _cacheLock.wait();
           } finally {
