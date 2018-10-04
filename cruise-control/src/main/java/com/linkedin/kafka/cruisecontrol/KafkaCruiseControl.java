@@ -173,7 +173,6 @@ public class KafkaCruiseControl {
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      sanityCheckBrokerPresence(brokerIds);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
       sanityCheckBrokersHavingOfflineReplicasOnBadDisks(goals, clusterModel);
