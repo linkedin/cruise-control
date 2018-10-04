@@ -60,13 +60,15 @@ public class KafkaClusterState {
   private final Cluster _kafkaCluster;
   private final Map<String, Properties> _allTopicConfigs;
   private final Properties _clusterConfigs;
-  private final List<String> _bootstrapServers;
+  private final Map<String, Object> _adminClientConfigs;
 
-  public KafkaClusterState(Cluster kafkaCluster, TopicConfigProvider topicConfigProvider, List<String> bootstrapServers) {
+  public KafkaClusterState(Cluster kafkaCluster,
+                           TopicConfigProvider topicConfigProvider,
+                           Map<String, Object> adminClientConfigs) {
     _kafkaCluster = kafkaCluster;
     _allTopicConfigs = topicConfigProvider.allTopicConfigs();
     _clusterConfigs = topicConfigProvider.clusterConfigs();
-    _bootstrapServers = bootstrapServers;
+    _adminClientConfigs = adminClientConfigs;
   }
 
   /**
@@ -296,7 +298,7 @@ public class KafkaClusterState {
                                               Set<Integer> brokers)
       throws ExecutionException, InterruptedException, TimeoutException {
     Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId
-        = KafkaCruiseControlUtils.describeLogDirs(_bootstrapServers, brokers).values();
+        = KafkaCruiseControlUtils.describeLogDirs(brokers, _adminClientConfigs).values();
 
     for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
       onlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
