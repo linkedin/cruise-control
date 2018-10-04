@@ -321,9 +321,9 @@ public class KafkaClusterState {
     populateKafkaBrokerLogDirState(onlineLogDirsByBrokerId, offlineLogDirsByBrokerId, brokers);
 
     int onlineLogDirsNameLength = onlineLogDirsByBrokerId.values().stream().mapToInt(dir -> dir.toString().length())
-                                                         .max().orElse(20) + 6;
+                                                         .max().orElse(20) + 14;
     int offlineLogDirsNameLength = offlineLogDirsByBrokerId.values().stream().mapToInt(dir -> dir.toString().length())
-                                                           .max().orElse(20) + 7;
+                                                           .max().orElse(20) + 15;
 
     String initMessage = "LogDirs of brokers with replicas:";
     out.write(String.format("%n%s%n%20s%" + onlineLogDirsNameLength + "s%" + offlineLogDirsNameLength + "s%n",
