@@ -5,7 +5,7 @@ Cruise Control for Apache Kafka
 
 ### Introduction ###
   Cruise Control is a product that helps run Apache Kafka clusters at large scale. Due to the popularity of 
-  Apache Kafka, many companies have bigger and bigger Kafka clusters. At LinkedIn, we have 1800+ Kafka brokers, 
+  Apache Kafka, many companies have bigger and bigger Kafka clusters. At LinkedIn, we have 2.6K+ Kafka brokers, 
   which means broker deaths are an almost daily occurrence and balancing the workload of Kafka also becomes a big overhead. 
   
   Kafka Cruise Control is designed to address this operation scalability issue.
@@ -15,8 +15,8 @@ Cruise Control for Apache Kafka
   
   * Resource utilization tracking for brokers, topics, and partitions.
   
-  * Query the current Kafka cluster state to see the online and offline partitions, in-sync and out-of-sync replicas, and
-  distribution of replicas in the cluster.
+  * Query the current Kafka cluster state to see the online and offline partitions, in-sync and out-of-sync replicas,
+  replicas under `min.insync.replicas`, online and offline logDirs, and distribution of replicas in the cluster.
   
   * Multi-goal rebalance proposal generation for:
     * Rack-awareness
@@ -28,7 +28,7 @@ Cruise Control for Apache Kafka
     * Global replica distribution
     * Custom goals that you wrote and plugged in
   
-  * Anomaly detection and alerting for the Kafka cluster, including:
+  * Anomaly detection, alerting, and self-healing for the Kafka cluster, including:
     * Goal violation
     * Broker failure detection
     * Metric anomaly detection
@@ -36,41 +36,58 @@ Cruise Control for Apache Kafka
   * Admin operations, including:
     * Add brokers
     * Decommission brokers
+    * Demote brokers
     * Rebalance the cluster
     * Perform preferred leader election (PLE)
     * Fix offline replicas
 
 ### Environment Requirements
-* The current master branch of Cruise Control is compatible with Apache Kafka 0.11.0.0 and above
-* message.format.version 0.10.0 and above is needed
-* The master branch compiles with Scala 2.11
+* The current `master` branch of Cruise Control is compatible with Apache Kafka `0.11.0.0` and above
+* The `migrate_to_kafka_2_0` branch of Cruise Control is compatible with Apache Kafka `2.0.0` and above
+* `message.format.version` `0.10.0` and above is needed
+* The `master` branch compiles with `Scala 2.11`
 
 ### Quick Start ###
-0. This step is required if `CruiseControlMetricsReporter` is used for metrics collection (this is the default config
-for Cruise Control). The metrics reporter periodically samples the Kafka raw metrics on the broker and sends them 
-to a Kafka topic.
-    * ```./gradlew jar```
-    * Copy `./cruise-control-metrics-reporter/build/libs/cruise-control-metrics-reporter-A.B.C.jar` (Where A.B.C is the version of the Cruise Control) to your Kafka server 
-    dependency jar folder. For Apache Kafka, the folder would be `core/build/dependant-libs-SCALA_VERSION/`
-    * Modify Kafka server configuration to set `metric.reporters` to 
-    `com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter`. For Apache Kafka, server properties
-    are located at `./config/server.properties`.
-    * If the default broker cleanup policy is `compact`, make sure that the topic to which Cruise Control metrics 
-    reporter should send messages is created with the `delete` cleanup policy -- the default metrics reporter topic is
-    `__CruiseControlMetrics`.
-1. Start ZooKeeper and Kafka server ([See tutorial](https://kafka.apache.org/quickstart)).
-2. Modify config/cruisecontrol.properties to 
-    * fill in `bootstrap.servers` and `zookeeper.connect` to the Kafka cluster to be monitored.
-    * set `metric.sampler.class` to your implementation (the default sampler class is CruiseControlMetricsReporterSampler) 
-    * set `sample.store.class` to your implementation if necessary (the default SampleStore is KafkaSampleStore)
-3. Run the following command 
+0. Get Cruise Control
+    1. (Option-1): via `git clone`
+        * `git clone https://github.com/linkedin/cruise-control.git && cd cruise-control/`
+    2. (Option-2): via browsing the available releases:
+        * Browse `https://github.com/linkedin/cruise-control/releases` to pick a release -- e.g. `0.1.10`
+        * Get and extract the release: `wget https://github.com/linkedin/cruise-control/archive/0.1.10.tar.gz 
+        && tar zxvf 0.1.10.tar.gz && cd cruise-control-0.1.10/`
+        * Initialize the local repo: `git init && git add . && git commit -m "Init local repo."
+        && git tag -a 0.1.10 -m "Init local version."`
+1. This step is required if `CruiseControlMetricsReporter` is used for metrics collection (i.e. the default for Cruise
+Control). The metrics reporter periodically samples the Kafka raw metrics on the broker and sends them to a Kafka topic.
+    * `./gradlew jar`
+    * Copy `./cruise-control-metrics-reporter/build/libs/cruise-control-metrics-reporter-A.B.C.jar` (Where `A.B.C` is
+    the version of the Cruise Control) to your Kafka server dependency jar folder. For Apache Kafka, the folder would
+    be `core/build/dependant-libs-SCALA_VERSION/`
+    * Modify Kafka server configuration to set `metric.reporters` to
+    `com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter`. For Apache Kafka, server 
+    properties are located at `./config/server.properties`.
+    * If `SSL` is enabled, ensure that the relevant client configurations are properly set for all brokers in 
+    `./config/server.properties`. Note that `CruiseControlMetricsReporter` takes all configurations for vanilla 
+    `KafkaProducer` with a prefix of `cruise.control.metrics.reporter.` -- e.g. 
+    `cruise.control.metrics.reporter.ssl.truststore.password`.    
+    * If the default broker cleanup policy is `compact`, make sure that the topic to which Cruise Control metrics
+    reporter should send messages is created with the `delete` cleanup policy -- the default metrics reporter topic
+    is `__CruiseControlMetrics`.
+2. Start ZooKeeper and Kafka server ([See tutorial](https://kafka.apache.org/quickstart)).
+3. Modify `config/cruisecontrol.properties` of Cruise Control:
+    * (Required) fill in `bootstrap.servers` and `zookeeper.connect` to the Kafka cluster to be monitored.
+    * (Optional) set `metric.sampler.class` to your implementation (the default sampler class is `CruiseControlMetricsReporterSampler`) 
+    * (Optional) set `sample.store.class` to your implementation if you have one (the default `SampleStore` is `KafkaSampleStore`)
+4. Run the following command 
     ```
     ./gradlew jar copyDependantLibs
     ./kafka-cruise-control-start.sh [-jars PATH_TO_YOUR_JAR_1,PATH_TO_YOUR_JAR_2] config/cruisecontrol.properties [port]
     ```
-    JAR files correspond to your applications and `port` enables customizing the Cruise Control port number (default: 9090).
-4. Visit http://localhost:9090/kafkacruisecontrol/state or http://localhost:\[port\]/kafkacruisecontrol/state if 
-you specified the port when starting Cruise Control. 
+    JAR files correspond to your applications and `port` enables customizing the Cruise Control port number (default: `9090`).
+    * (Note) To emit Cruise Control JMX metrics on a particular port (e.g. `56666`), `export JMX_PORT=56666` before
+    running `kafka-cruise-control-start.sh`
+5. (Verify your setup) Visit `http://localhost:9090/kafkacruisecontrol/state` (or 
+`http://localhost:\[port\]/kafkacruisecontrol/state` if you specified the port when starting Cruise Control).
 
 **Note**: 
 * Cruise Control will need some time to read the raw Kafka metrics from the cluster.
