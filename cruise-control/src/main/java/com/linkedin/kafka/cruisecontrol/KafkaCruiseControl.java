@@ -675,9 +675,12 @@ public class KafkaCruiseControl {
    * @param supportedGoals Supported goals.
    */
   private void sanityCheckNonExistingGoal(List<String> goals, Map<String, Goal> supportedGoals) {
-    goals.stream().filter(goalName -> supportedGoals.get(goalName) == null).forEach(goalName -> {
-      throw new IllegalArgumentException("Goal: " + goalName + " does not exist. Supported: " + supportedGoals.keySet());
-    });
+    Set<String> nonExistingGoals = new HashSet<>();
+    goals.stream().filter(goalName -> supportedGoals.get(goalName) == null).forEach(nonExistingGoals::add);
+
+    if (!nonExistingGoals.isEmpty()) {
+      throw new IllegalArgumentException("Goals " + nonExistingGoals + " are not supported. Supported: " + supportedGoals.keySet());
+    }
   }
 
   /**
