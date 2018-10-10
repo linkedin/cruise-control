@@ -39,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -1073,59 +1074,109 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return new GoalsAndRequirements(Collections.emptyList(), null);
     }
   }
-
+  
   private void getUserTaskState(HttpServletRequest request, HttpServletResponse response) throws IOException {
     List<UserTaskManager.UserTaskInfo> activeUserTasks = _userTaskManager.getActiveUserTasks();
     List<UserTaskManager.UserTaskInfo> completedUserTasks = _userTaskManager.getCompletedUserTasks();
 
     String responseString;
-    if (wantJSON(request)) {
-      List<Map<String, String>> responseStructure = new ArrayList<>();
+    boolean json = wantJSON(request);
+    if (json) {
+      List<Map<String, Object>> jsonUserTaskList = new ArrayList<>();
       for (UserTaskManager.UserTaskInfo userTaskInfo : activeUserTasks) {
-        Map<String, String> jsonObjectMap = new HashMap<>();
+        Map<String, Object> jsonObjectMap = new HashMap<>();
         jsonObjectMap.put("UserTaskId", userTaskInfo.userTaskId().toString());
         jsonObjectMap.put("RequestURL", userTaskInfo.requestWithParams());
         jsonObjectMap.put("ClientIdentity", userTaskInfo.clientIdentity());
         jsonObjectMap.put("StartMs", Long.toString(userTaskInfo.startMs()));
         jsonObjectMap.put("Status", "Active");
-        responseStructure.add(jsonObjectMap);
+        jsonUserTaskList.add(jsonObjectMap);
       }
 
       for (UserTaskManager.UserTaskInfo userTaskInfo : completedUserTasks) {
-        Map<String, String> jsonObjectMap = new HashMap<>();
+        Map<String, Object> jsonObjectMap = new HashMap<>();
         jsonObjectMap.put("UserTaskId", userTaskInfo.userTaskId().toString());
         jsonObjectMap.put("RequestURL", userTaskInfo.requestWithParams());
         jsonObjectMap.put("ClientIdentity", userTaskInfo.clientIdentity());
         jsonObjectMap.put("StartMs", Long.toString(userTaskInfo.startMs()));
         jsonObjectMap.put("Status", "Completed");
-        responseStructure.add(jsonObjectMap);
+        jsonUserTaskList.add(jsonObjectMap);
       }
-      responseString = new Gson().toJson(responseStructure);
+
+      Map<String, Object> jsonResponse = new HashMap<>();
+      jsonResponse.put("userTasks", jsonUserTaskList);
+      jsonResponse.put("version", JSON_VERSION);
+      responseString = new Gson().toJson(jsonResponse);
     } else {
       StringBuilder sb = new StringBuilder();
-      sb.append(String.format("%n%40s%40s%20s%15s  %s", "USER TASK ID", "CLIENT ADDRESS", "START MS", "STATUS", "REQUEST URL"));
-      for (UserTaskManager.UserTaskInfo userTaskInfo : activeUserTasks) {
-        Date date = new Date(userTaskInfo.startMs());
-        DateFormat formatter = new SimpleDateFormat("HH:mm:ss.SSSZ");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-        String dateFormatted = formatter.format(date);
-        sb.append(String.format("%n%40s%40s%20s%15s  %s", userTaskInfo.userTaskId().toString(),  userTaskInfo.clientIdentity(),
-            dateFormatted, "Active", userTaskInfo.requestWithParams()));
+      int padding = 2;
+      int userTaskIdLabelSize = 20;
+      int clientAddressLabelSize = 20;
+      int startMsLabelSize = 20;
+      int statusLabelSize = 10;
+      int requestURLLabelSize = 20;
+      String dataFormat = "YYYY-MM-dd_hh:mm:ss z";
+      String timeZone = "UTC";
+      String activeTaskLabelValue = "Active";
+      String completedTaskLabelValue = "Completed";
+
+      Map<String, List<UserTaskManager.UserTaskInfo>> taskTypeMap = new TreeMap<>();
+      taskTypeMap.put(activeTaskLabelValue, activeUserTasks);
+      taskTypeMap.put(completedTaskLabelValue, completedUserTasks);
+
+      for (List<UserTaskManager.UserTaskInfo> taskList : taskTypeMap.values()) {
+        for (UserTaskManager.UserTaskInfo userTaskInfo : taskList) {
+          userTaskIdLabelSize =
+              userTaskIdLabelSize < userTaskInfo.userTaskId().toString().length() ? userTaskInfo.userTaskId()
+                                                                                                .toString()
+                                                                                                .length()
+                                                                                  : userTaskIdLabelSize;
+          clientAddressLabelSize =
+              clientAddressLabelSize < userTaskInfo.clientIdentity().length() ? userTaskInfo.clientIdentity().length()
+                                                                              : clientAddressLabelSize;
+          Date date = new Date(userTaskInfo.startMs());
+          DateFormat formatter = new SimpleDateFormat(dataFormat);
+          formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
+          String dateFormatted = formatter.format(date);
+          startMsLabelSize = startMsLabelSize < dateFormatted.length() ? dateFormatted.length() : startMsLabelSize;
+          requestURLLabelSize =
+              requestURLLabelSize < userTaskInfo.requestWithParams().length() ? userTaskInfo.requestWithParams()
+                                                                                            .length()
+                                                                              : requestURLLabelSize;
+        }
       }
 
-      for (UserTaskManager.UserTaskInfo userTaskInfo : completedUserTasks) {
-        Date date = new Date(userTaskInfo.startMs());
-        DateFormat formatter = new SimpleDateFormat("HH:mm:ss.SSSZ");
-        formatter.setTimeZone(TimeZone.getTimeZone("UTC"));
-        String dateFormatted = formatter.format(date);
-        sb.append(String.format("%n%40s%40s%20s%15s  %s", userTaskInfo.userTaskId().toString(),  userTaskInfo.clientIdentity(),
-            dateFormatted, "Completed", userTaskInfo.requestWithParams()));
+      StringBuilder formattingStringBuilder = new StringBuilder("%n%-");
+      formattingStringBuilder.append(userTaskIdLabelSize + padding)
+                             .append("s%-")
+                             .append(clientAddressLabelSize + padding)
+                             .append("s%-")
+                             .append(startMsLabelSize + padding)
+                             .append("s%-")
+                             .append(statusLabelSize + padding)
+                             .append("s%-")
+                             .append(requestURLLabelSize + padding)
+                             .append("s");
 
+      sb.append(String.format(formattingStringBuilder.toString(), "USER TASK ID", "CLIENT ADDRESS", "START TIME", "STATUS",
+                              "REQUEST URL")); // header
+      for (Map.Entry<String, List<UserTaskManager.UserTaskInfo>> entry : taskTypeMap.entrySet()) {
+        for (UserTaskManager.UserTaskInfo userTaskInfo : entry.getValue()) {
+          Date date = new Date(userTaskInfo.startMs());
+          DateFormat formatter = new SimpleDateFormat(dataFormat);
+          formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
+          String dateFormatted = formatter.format(date);
+          sb.append(String.format(formattingStringBuilder.toString(), userTaskInfo.userTaskId().toString(), userTaskInfo.clientIdentity(),
+                                  dateFormatted, entry.getKey(), userTaskInfo.requestWithParams())); // values
+        }
       }
       responseString = sb.toString();
     }
 
-    setSuccessResponse(response, responseString, wantJSON(request));
+    setResponseCode(response, SC_OK, json);
+    response.setContentLength(responseString.length());
+    response.getOutputStream().write(responseString.getBytes(StandardCharsets.UTF_8));
+    response.getOutputStream().flush();
   }
 
   static class GoalsAndRequirements {
