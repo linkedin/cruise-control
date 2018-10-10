@@ -336,7 +336,7 @@ public class KafkaSampleStore implements SampleStore {
         }
         while (!sampleLoadingFinished(endOffsets)) {
           try {
-            ConsumerRecords<byte[], byte[]> consumerRecords = _consumer.poll(10);
+            ConsumerRecords<byte[], byte[]> consumerRecords = _consumer.poll(1000);
             if (consumerRecords == SHUTDOWN_RECORDS) {
               LOG.trace("Metric loader received empty records");
               return;
@@ -348,7 +348,6 @@ public class KafkaSampleStore implements SampleStore {
                 if (record.topic().equals(_partitionMetricSampleStoreTopic)) {
                   PartitionMetricSample sample = PartitionMetricSample.fromBytes(record.value());
                   partitionMetricSamples.add(sample);
-                  _numPartitionMetricSamples.incrementAndGet();
                   LOG.trace("Loaded partition metric sample {}", sample);
                 } else if (record.topic().equals(_brokerMetricSampleStoreTopic)) {
                   BrokerMetricSample sample = BrokerMetricSample.fromBytes(record.value());
@@ -356,7 +355,6 @@ public class KafkaSampleStore implements SampleStore {
                   // we use the record timestamp as the broker metric timestamp.
                   sample.close(record.timestamp());
                   brokerMetricSamples.add(sample);
-                  _numBrokerMetricSamples.incrementAndGet();
                   LOG.trace("Loaded broker metric sample {}", sample);
                 }
               } catch (UnknownVersionException e) {
@@ -364,6 +362,8 @@ public class KafkaSampleStore implements SampleStore {
               }
             }
             _sampleLoader.loadSamples(new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples));
+            _numPartitionMetricSamples.getAndAdd(partitionMetricSamples.size());
+            _numBrokerMetricSamples.getAndAdd(brokerMetricSamples.size());
             _loadingProgress = (double) _numLoadedSamples.addAndGet(consumerRecords.count()) / _totalSamples.get();
           } catch (KafkaException ke) {
             if (ke.getMessage().toLowerCase().contains("record is corrupt")) {
@@ -390,15 +390,16 @@ public class KafkaSampleStore implements SampleStore {
     }
 
     private boolean sampleLoadingFinished(Map<TopicPartition, Long> endOffsets) {
+      boolean finishedFlag = true;
       for (Map.Entry<TopicPartition, Long> entry : endOffsets.entrySet()) {
         long position = _consumer.position(entry.getKey());
         if (position < entry.getValue()) {
-          LOG.trace("Partition {} is still lagging. Current position: {}, LEO: {}", entry.getKey(),
+          LOG.debug("Partition {} is still lagging. Current position: {}, LEO: {}", entry.getKey(),
                     position, entry.getValue());
-          return false;
+          finishedFlag = false;
         }
       }
-      return true;
+      return finishedFlag;
     }
   }
 }
