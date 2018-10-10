@@ -637,13 +637,10 @@ public class KafkaCruiseControl {
       return AnalyzerUtils.getGoalMapByPriority(_config);
     }
     Map<String, Goal> allGoals = AnalyzerUtils.getCaseInsensitiveGoalsByName(_config);
+    sanityCheckNonExistingGoal(goals, allGoals);
     Map<Integer, Goal> goalsByPriority = new HashMap<>();
     int i = 0;
     for (String goalName : goals) {
-      Goal goal = allGoals.get(goalName);
-      if (goal == null) {
-        throw new IllegalArgumentException("Goal with name " + goalName + " does not exist.");
-      }
       goalsByPriority.put(i++, allGoals.get(goalName));
     }
     return goalsByPriority;
@@ -663,11 +660,26 @@ public class KafkaCruiseControl {
   private void sanityCheckHardGoalPresence(List<String> goals, boolean skipHardGoalCheck) {
     if (goals != null && !goals.isEmpty() && !skipHardGoalCheck &&
       !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
+      sanityCheckNonExistingGoal(goals, AnalyzerUtils.getCaseInsensitiveGoalsByName(_config));
       Set<String> hardGoals = _config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG).stream()
                                .map(goalName -> goalName.substring(goalName.lastIndexOf(".") + 1)).collect(Collectors.toSet());
       if (!goals.containsAll(hardGoals)) {
         throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in provided goal list " + goals + ".");
       }
+    }
+  }
+
+  /**
+   * Sanity check whether the given goals exist in the given supported goals.
+   * @param goals A list of goals.
+   * @param supportedGoals Supported goals.
+   */
+  private void sanityCheckNonExistingGoal(List<String> goals, Map<String, Goal> supportedGoals) {
+    Set<String> nonExistingGoals = new HashSet<>();
+    goals.stream().filter(goalName -> supportedGoals.get(goalName) == null).forEach(nonExistingGoals::add);
+
+    if (!nonExistingGoals.isEmpty()) {
+      throw new IllegalArgumentException("Goals " + nonExistingGoals + " are not supported. Supported: " + supportedGoals.keySet());
     }
   }
 
