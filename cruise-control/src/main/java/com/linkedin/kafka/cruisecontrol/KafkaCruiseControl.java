@@ -650,7 +650,7 @@ public class KafkaCruiseControl {
    * Sanity check whether all hard goals are included in provided goal list.
    * There are two special scenarios where hard goal check is skipped.
    * <ul>
-   * <li> {@code goals} is null or empty list.</li>
+   * <li> {@code goals} is null or empty -- i.e. even if hard goals are excluded from the default goals, this check will pass</li>
    * <li> {@code goals} only has PreferredLeaderElectionGoal, denotes it is a PLE request.</li>
    * </ul>
    *
@@ -659,12 +659,13 @@ public class KafkaCruiseControl {
    */
   private void sanityCheckHardGoalPresence(List<String> goals, boolean skipHardGoalCheck) {
     if (goals != null && !goals.isEmpty() && !skipHardGoalCheck &&
-      !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
+        !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
       sanityCheckNonExistingGoal(goals, AnalyzerUtils.getCaseInsensitiveGoalsByName(_config));
       Set<String> hardGoals = _config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG).stream()
-                               .map(goalName -> goalName.substring(goalName.lastIndexOf(".") + 1)).collect(Collectors.toSet());
+          .map(goalName -> goalName.substring(goalName.lastIndexOf(".") + 1)).collect(Collectors.toSet());
       if (!goals.containsAll(hardGoals)) {
-        throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in provided goal list " + goals + ".");
+        throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in the provided goals: " + goals
+                                           + ". Add skip_hard_goal_check=true parameter to ignore this sanity check.");
       }
     }
   }

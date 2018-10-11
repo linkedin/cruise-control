@@ -30,19 +30,17 @@ public class GoalShuffleTest {
 
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
-    return Arrays.asList(new Object[][]{{0, 1, false}, {1, 1, false}, {3, 3, false},  {6, 6, false}, {7, 6, false},
-                                        {0, 1, true}, {1, 1, true},  {16, 16, true}, {32, 32, true}});
+    return Arrays.asList(new Object[][]{{0, 1}, {1, 1}, {3, 3},  {6, 6}, {7, 6}});
   }
 
+  // Goal config is guaranteed to be non empty via KafkaCruiseControlConfig#sanityCheckGoalNames.
   private int _numPrecomputingThreadConfig;
   private int _numPrecomputingThreadExpect;
-  private boolean _emptyGoalConfig;
 
 
-  public GoalShuffleTest(int numPrecomputingThreadConfig, int numPrecomputingThreadExpect, boolean emptyGoalConfig) {
+  public GoalShuffleTest(int numPrecomputingThreadConfig, int numPrecomputingThreadExpect) {
     _numPrecomputingThreadConfig = numPrecomputingThreadConfig;
     _numPrecomputingThreadExpect = numPrecomputingThreadExpect;
-    _emptyGoalConfig = emptyGoalConfig;
   }
 
   private void validateOriginalGoalOrder(List<SortedMap<Integer, Goal>> goalByPriorityForPrecomputing) {
@@ -64,14 +62,10 @@ public class GoalShuffleTest {
   public void testGoalGetShuffled() {
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG, Long.toString(_numPrecomputingThreadConfig));
-    if (_emptyGoalConfig) {
-      props.setProperty(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, "");
-    } else {
-      props.setProperty(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, new StringJoiner(",").add(RackAwareGoal.class.getName())
-                                                                                            .add(ReplicaCapacityGoal.class.getName())
-                                                                                            .add(DiskCapacityGoal.class.getName())
-                                                                                            .toString());
-    }
+    props.setProperty(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, new StringJoiner(",").add(RackAwareGoal.class.getName())
+                                                                                          .add(ReplicaCapacityGoal.class.getName())
+                                                                                          .add(DiskCapacityGoal.class.getName())
+                                                                                          .toString());
     BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
