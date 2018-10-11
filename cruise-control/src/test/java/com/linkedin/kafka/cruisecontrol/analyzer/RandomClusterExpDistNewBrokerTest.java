@@ -26,7 +26,7 @@ public class RandomClusterExpDistNewBrokerTest extends RandomClusterTest {
    * @param verifications       The verifications to make.
    */
   public RandomClusterExpDistNewBrokerTest(Map<ClusterProperty, Number> modifiedProperties,
-                                           Map<Integer, String> goalNameByPriority,
+                                           List<String> goalNameByPriority,
                                            TestConstants.Distribution replicaDistribution,
                                            BalancingConstraint balancingConstraint,
                                            List<OptimizationVerifier.Verification> verifications) {

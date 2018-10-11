@@ -16,7 +16,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
-import java.util.SortedMap;
 import java.util.StringJoiner;
 import org.apache.kafka.common.utils.SystemTime;
 import org.junit.Test;
@@ -43,10 +42,10 @@ public class GoalShuffleTest {
     _numPrecomputingThreadExpect = numPrecomputingThreadExpect;
   }
 
-  private void validateOriginalGoalOrder(List<SortedMap<Integer, Goal>> goalByPriorityForPrecomputing) {
+  private void validateOriginalGoalOrder(List<List<Goal>> goalByPriorityForPrecomputing) {
     // Check whether one of the generated goal priorities has the same order as set in config.
     boolean foundTheOriginalGoalPriorities = false;
-    for (SortedMap<Integer, Goal> goalByPriority : goalByPriorityForPrecomputing) {
+    for (List<Goal> goalByPriority : goalByPriorityForPrecomputing) {
       foundTheOriginalGoalPriorities = goalByPriority.get(0).name().equals(RackAwareGoal.class.getSimpleName())
                                        && goalByPriority.get(1).name().equals(ReplicaCapacityGoal.class.getSimpleName())
                                        && goalByPriority.get(2).name().equals(DiskCapacityGoal.class.getSimpleName());
@@ -73,18 +72,11 @@ public class GoalShuffleTest {
                                                     null,
                                                     new SystemTime(),
                                                     new MetricRegistry());
-    List<SortedMap<Integer, Goal>> goalByPriorityForPrecomputing = goalOptimizer.goalByPriorityForPrecomputing();
+    List<List<Goal>> goalByPriorityForPrecomputing = goalOptimizer.goalByPriorityForPrecomputing();
 
     // Check whether the correct number of goal priority is generated
     assertEquals(_numPrecomputingThreadExpect, goalByPriorityForPrecomputing.size());
     validateOriginalGoalOrder(goalByPriorityForPrecomputing);
-
-    // Check whether all generated goal priorities are valid.
-    for (SortedMap<Integer, Goal> aGoalByPriorityForPrecomputing : goalByPriorityForPrecomputing) {
-      for (int j = 0; j < 3; j++) {
-        assertTrue(aGoalByPriorityForPrecomputing.keySet().contains(j));
-      }
-    }
 
     // Check all generated goal priorities are unique.
     for (int i = 0; i < goalByPriorityForPrecomputing.size() - 1; i++) {

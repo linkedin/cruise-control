@@ -26,10 +26,10 @@ public class RandomClusterUniformDistNewBrokerTest extends RandomClusterTest {
    * @param verifications       The verifications to make.
    */
   public RandomClusterUniformDistNewBrokerTest(Map<ClusterProperty, Number> modifiedProperties,
-      Map<Integer, String> goalNameByPriority,
-      TestConstants.Distribution replicaDistribution,
-      BalancingConstraint balancingConstraint,
-      List<OptimizationVerifier.Verification> verifications) {
+                                               List<String> goalNameByPriority,
+                                               TestConstants.Distribution replicaDistribution,
+                                               BalancingConstraint balancingConstraint,
+                                               List<OptimizationVerifier.Verification> verifications) {
     super(modifiedProperties, goalNameByPriority, replicaDistribution, balancingConstraint, verifications);
   }
 
