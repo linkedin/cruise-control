@@ -23,6 +23,18 @@ import java.net.InetSocketAddress;
  */
 public class KafkaCruiseControlMain {
   private static final String METRIC_DOMAIN = "kafka.cruisecontrol";
+  // Default API protocol exposed by the webserver
+  private static final String DEFAULT_API_PROTOCOL = "http";
+  // IP Address on which the service is made available by default
+  private static final String DEFAULT_BIND_ADDRESS = "127.0.0.1";
+  // Port Number on which the service listens by default
+  private static final int DEFAULT_BIND_PORT = 9090;
+  // API Prefix (from server root) under which all resources are made available
+  private static final String DEFAULT_API_PATH_PREFIX = "/kafkacruisecontrol/*";
+  // Place where the Admin UI contents are made available
+  private static final String DEFAULT_WEBUI_DIR = "./cruise-control-ui/dist/";
+  // Default URL for Admin UI
+  private static final String DEFAULT_WEBUI_PATH_PREFIX = "/*";
 
   private KafkaCruiseControlMain() {
 
@@ -40,7 +52,7 @@ public class KafkaCruiseControlMain {
       props.load(propStream);
     }
 
-    int port = 9090;
+    int port = DEFAULT_BIND_PORT;
     if (args.length > 1) {
       try {
         port = Integer.parseInt(args[1]);
@@ -49,10 +61,10 @@ public class KafkaCruiseControlMain {
       }
     }
     // Future ssl bits
-    String protocol = "http";
+    String protocol = DEFAULT_API_PROTOCOL;
 
     // For security reasons listen on the loopback address by default
-    String hostname = "127.0.0.1";
+    String hostname = DEFAULT_BIND_ADDRESS;
     if (args.length > 2) {
       hostname = args[2];
     }
@@ -66,21 +78,25 @@ public class KafkaCruiseControlMain {
 
     // Listen on a specific host & port combination
     Server server = new Server(new InetSocketAddress(hostname, port));
+
     // Define context for servlet
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
     context.setContextPath("/");
     server.setHandler(context);
+
     // Placeholder for any static content
     DefaultServlet defaultServlet = new DefaultServlet();
     ServletHolder holderWebapp = new ServletHolder("default", defaultServlet);
     holderWebapp.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed", "false");
-    holderWebapp.setInitParameter("resourceBase", "./cruise-control-ui/dist/");
-    context.addServlet(holderWebapp, "/*");
+    holderWebapp.setInitParameter("resourceBase", DEFAULT_WEBUI_DIR);
+    context.addServlet(holderWebapp, DEFAULT_WEBUI_PATH_PREFIX);
+
     // Kafka Cruise Control servlet data
     KafkaCruiseControlServlet kafkaCruiseControlServlet =
         new KafkaCruiseControlServlet(kafkaCruiseControl, 10000L, 60000L, dropwizardMetricsRegistry);
     ServletHolder servletHolder = new ServletHolder(kafkaCruiseControlServlet);
-    context.addServlet(servletHolder, "/kafkacruisecontrol/*");
+    context.addServlet(servletHolder, DEFAULT_API_PATH_PREFIX);
+
     Runtime.getRuntime().addShutdownHook(new Thread() {
       @Override
       public void run() {
