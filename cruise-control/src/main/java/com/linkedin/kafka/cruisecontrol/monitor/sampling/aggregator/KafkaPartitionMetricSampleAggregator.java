@@ -63,6 +63,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
     _metadata = metadata;
     _maxAllowedExtrapolationsPerPartition =
         config.getInt(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG);
+    _metricSampleType = "Partition";
 
   }
 
