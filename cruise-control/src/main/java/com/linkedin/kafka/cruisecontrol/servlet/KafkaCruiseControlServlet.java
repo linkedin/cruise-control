@@ -140,6 +140,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 5. Get an optimization proposal
    *    GET /kafkacruisecontrol/proposals?verbose=[ENABLE_VERBOSE]&amp;ignore_proposal_cache=[true/false]
    *    &amp;goals=[goal1,goal2...]&amp;data_from=[valid_windows/valid_partitions]&amp;excluded_topics=[pattern]
+   *    &amp;use_ready_default_goals=[true/false]
    *
    * 6. query the state of Kafka Cruise Control
    *    GET /kafkacruisecontrol/state
@@ -256,17 +257,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 1. Decommission a broker.
    *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;throttle_removed_broker=[true/false]&amp;goals=[goal1,goal2...]
    *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
-   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
+   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]
    *
    * 2. Add a broker
    *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;throttle_added_broker=[true/false]&amp;goals=[goal1,goal2...]
    *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
-   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
+   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]
    *
    * 3. Trigger a workload balance.
    *    POST /kafkacruisecontrol/rebalance?dryrun=[true/false]&amp;force=[true/false]&amp;goals=[goal1,goal2...]&amp;allow_capacity_estimation=[true/false]
    *    &amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]
-   *    &amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
+   *    &amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]
    *
    * 4. Stop the proposal execution.
    *    POST /kafkacruisecontrol/stop_proposal_execution?json=[true/false]

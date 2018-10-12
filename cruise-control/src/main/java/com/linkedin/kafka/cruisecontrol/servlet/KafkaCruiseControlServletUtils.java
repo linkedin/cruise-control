@@ -277,12 +277,13 @@ class KafkaCruiseControlServletUtils {
   }
 
   static boolean useReadyDefaultGoals(HttpServletRequest request) {
+    boolean useReadyDefaultGoals = getBooleanParam(request, USE_READY_DEFAULT_GOALS_PARAM, false);
     // Ensure that goals parameter is not specified.
-    if (request.getParameter(GOALS_PARAM) != null) {
+    if (useReadyDefaultGoals && request.getParameter(GOALS_PARAM) != null) {
       throw new UserRequestException("Cannot specify " + USE_READY_DEFAULT_GOALS_PARAM + " parameter when explicitly "
                                      + "specifying goals in request.");
     }
-    return getBooleanParam(request, USE_READY_DEFAULT_GOALS_PARAM, false);
+    return useReadyDefaultGoals;
   }
 
   static boolean getDryRun(HttpServletRequest request) {
