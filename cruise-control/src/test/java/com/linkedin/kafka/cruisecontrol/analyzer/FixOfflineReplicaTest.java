@@ -59,20 +59,19 @@ public class FixOfflineReplicaTest {
   public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
 
-    Map<Integer, String> goalNameByPriority = new HashMap<>();
-    goalNameByPriority.put(1, RackAwareGoal.class.getName());
-    goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
-    goalNameByPriority.put(3, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(4, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(5, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(6, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(7, ReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(8, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, TopicReplicaDistributionGoal.class.getName());
+    List<String> goalNameByPriority = Arrays.asList(RackAwareGoal.class.getName(),
+                                                    ReplicaCapacityGoal.class.getName(),
+                                                    DiskCapacityGoal.class.getName(),
+                                                    NetworkInboundCapacityGoal.class.getName(),
+                                                    NetworkOutboundCapacityGoal.class.getName(),
+                                                    CpuCapacityGoal.class.getName(),
+                                                    ReplicaDistributionGoal.class.getName(),
+                                                    PotentialNwOutGoal.class.getName(),
+                                                    DiskUsageDistributionGoal.class.getName(),
+                                                    NetworkInboundUsageDistributionGoal.class.getName(),
+                                                    NetworkOutboundUsageDistributionGoal.class.getName(),
+                                                    CpuUsageDistributionGoal.class.getName(),
+                                                    TopicReplicaDistributionGoal.class.getName());
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(2000L));
@@ -87,15 +86,13 @@ public class FixOfflineReplicaTest {
     Map<ClusterProperty, Number> singleBrokerWithBadDisk = new HashMap<>();
     singleBrokerWithBadDisk.put(ClusterProperty.NUM_BROKERS_WITH_BAD_DISK, 1);
     int testId = 0;
-    for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
-      p.add(params(testId++, singleBrokerWithBadDisk, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.emptySet(), verifications, true));
-      p.add(params(testId++, singleBrokerWithBadDisk, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.emptySet(), verifications, false));
-      p.add(params(testId++, singleBrokerWithBadDisk, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.singleton("T0"), verifications, true));
-      p.add(params(testId++, singleBrokerWithBadDisk, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.singleton("T0"), verifications, false));
+    List<String> testGoal;
+    for (int i = 0; i < goalNameByPriority.size(); i++) {
+      testGoal = goalNameByPriority.subList(i, i + 1);
+      p.add(params(testId++, singleBrokerWithBadDisk, testGoal, balancingConstraint, Collections.emptySet(), verifications, true));
+      p.add(params(testId++, singleBrokerWithBadDisk, testGoal, balancingConstraint, Collections.emptySet(), verifications, false));
+      p.add(params(testId++, singleBrokerWithBadDisk, testGoal, balancingConstraint, Collections.singleton("T0"), verifications, true));
+      p.add(params(testId++, singleBrokerWithBadDisk, testGoal, balancingConstraint, Collections.singleton("T0"), verifications, false));
     }
 
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5100L));
@@ -113,11 +110,10 @@ public class FixOfflineReplicaTest {
     // Test: Single Goal.
     Map<ClusterProperty, Number> multipleBrokersWithBadDisk = new HashMap<>();
     multipleBrokersWithBadDisk.put(ClusterProperty.NUM_BROKERS_WITH_BAD_DISK, 5);
-    for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
-      p.add(params(testId++, multipleBrokersWithBadDisk, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.emptySet(), verifications, true));
-      p.add(params(testId++, multipleBrokersWithBadDisk, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.singleton("T0"), verifications, true));
+    for (int i = 0; i < goalNameByPriority.size(); i++) {
+      testGoal = goalNameByPriority.subList(i, i + 1);
+      p.add(params(testId++, multipleBrokersWithBadDisk, testGoal, balancingConstraint, Collections.emptySet(), verifications, true));
+      p.add(params(testId++, multipleBrokersWithBadDisk, testGoal, balancingConstraint, Collections.singleton("T0"), verifications, true));
     }
 
     // Test: All Goals.
@@ -131,7 +127,7 @@ public class FixOfflineReplicaTest {
 
   private static Object[] params(int testId,
                                  Map<ClusterProperty, Number> modifiedProperties,
-                                 Map<Integer, String> goalNameByPriority,
+                                 List<String> goalNameByPriority,
                                  BalancingConstraint balancingConstraint,
                                  Collection<String> excludedTopics,
                                  List<OptimizationVerifier.Verification> verifications,
@@ -143,7 +139,7 @@ public class FixOfflineReplicaTest {
 
   private int _testId;
   private Map<ClusterProperty, Number> _modifiedProperties;
-  private Map<Integer, String> _goalNameByPriority;
+  private List<String> _goalNameByPriority;
   private BalancingConstraint _balancingConstraint;
   private Set<String> _excludedTopics;
   private List<OptimizationVerifier.Verification> _verifications;
@@ -161,7 +157,7 @@ public class FixOfflineReplicaTest {
    */
   public FixOfflineReplicaTest(int testId,
                                Map<ClusterProperty, Number> modifiedProperties,
-                               Map<Integer, String> goalNameByPriority,
+                               List<String> goalNameByPriority,
                                BalancingConstraint balancingConstraint,
                                Collection<String> excludedTopics,
                                List<OptimizationVerifier.Verification> verifications,

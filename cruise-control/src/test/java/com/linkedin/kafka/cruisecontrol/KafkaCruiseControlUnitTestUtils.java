@@ -37,6 +37,23 @@ public class KafkaCruiseControlUnitTestUtils {
     props.setProperty(KafkaTopicConfigProvider.CLUSTER_CONFIGS_FILE, clusterConfigsFile);
     props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG, "2");
     props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG, "2");
+    props.setProperty(
+        KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG,
+        "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal");
+
     return props;
   }
 

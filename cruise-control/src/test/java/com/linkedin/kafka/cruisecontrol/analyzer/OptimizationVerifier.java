@@ -15,15 +15,14 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 
 import java.lang.reflect.Constructor;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.StringJoiner;
-import java.util.TreeMap;
 
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.stream.Collectors;
@@ -67,7 +66,7 @@ class OptimizationVerifier {
    */
   static boolean executeGoalsFor(BalancingConstraint constraint,
                                  ClusterModel clusterModel,
-                                 Map<Integer, String> goalNameByPriority,
+                                 List<String> goalNameByPriority,
                                  List<Verification> verifications) throws Exception {
     return executeGoalsFor(constraint, clusterModel, goalNameByPriority, Collections.emptySet(), verifications);
   }
@@ -87,28 +86,26 @@ class OptimizationVerifier {
    * @param verifications      The verifications to make after the optimization.
    * @return Pass / fail status of a test.
    */
+  @SuppressWarnings("unchecked")
   static boolean executeGoalsFor(BalancingConstraint constraint,
                                  ClusterModel clusterModel,
-                                 Map<Integer, String> goalNameByPriority,
+                                 List<String> goalNameByPriority,
                                  Collection<String> excludedTopics,
                                  List<Verification> verifications) throws Exception {
     // Get the initial stats from the cluster.
     ClusterModelStats preOptimizedStats = clusterModel.getClusterStats(constraint);
 
     // Set goals by their priority.
-    SortedMap<Integer, Goal> goalByPriority = new TreeMap<>();
-    for (Map.Entry<Integer, String> goalEntry : goalNameByPriority.entrySet()) {
-      Integer priority = goalEntry.getKey();
-      String goalClassName = goalEntry.getValue();
-
+    List<Goal> goalByPriority = new ArrayList<>(goalNameByPriority.size());
+    for (String goalClassName : goalNameByPriority) {
       Class<? extends Goal> goalClass = (Class<? extends Goal>) Class.forName(goalClassName);
       try {
         Constructor<? extends Goal> constructor = goalClass.getDeclaredConstructor(BalancingConstraint.class);
         constructor.setAccessible(true);
-        goalByPriority.put(priority, constructor.newInstance(constraint));
+        goalByPriority.add(constructor.newInstance(constraint));
       } catch (NoSuchMethodException badConstructor) {
         //Try default constructor
-        goalByPriority.put(priority, goalClass.newInstance());
+        goalByPriority.add(goalClass.newInstance());
       }
     }
 

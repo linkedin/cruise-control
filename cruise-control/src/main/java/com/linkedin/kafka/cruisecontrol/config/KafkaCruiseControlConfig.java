@@ -830,8 +830,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 HARD_GOALS_DOC)
         .define(DEFAULT_GOALS_CONFIG,
                 ConfigDef.Type.LIST,
-                "",
-                ConfigDef.Importance.MEDIUM,
+                ConfigDef.Importance.HIGH,
                 DEFAULT_GOALS_DOC)
         .define(ANOMALY_NOTIFIER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS,
@@ -928,15 +927,27 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
-   * Sanity check for case insensitive goal names.
+   * Sanity check for
+   * (1) {@link KafkaCruiseControlConfig#GOALS_CONFIG} is non-empty.
+   * (2) Case insensitive goal names.
+   * (3) {@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} is non-empty.
    */
   private void sanityCheckGoalNames() {
     List<String> goalNames = getList(KafkaCruiseControlConfig.GOALS_CONFIG);
+    // Ensure that goals is non-empty.
+    if (goalNames.isEmpty()) {
+      throw new ConfigException("Attempt to configure goals configuration with an empty list of goals.");
+    }
+
     Set<String> caseInsensitiveGoalNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     for (String goalName: goalNames) {
       if (!caseInsensitiveGoalNames.add(goalName.replaceAll(".*\\.", ""))) {
         throw new ConfigException("Attempt to configure goals with case sensitive names.");
       }
+    }
+    // Ensure that default goals is non-empty.
+    if (getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG).isEmpty()) {
+      throw new ConfigException("Attempt to configure default goals configuration with an empty list of goals.");
     }
   }
 

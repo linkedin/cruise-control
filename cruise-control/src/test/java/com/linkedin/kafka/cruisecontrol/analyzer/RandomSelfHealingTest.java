@@ -61,30 +61,29 @@ public class RandomSelfHealingTest {
   public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
 
-    Map<Integer, String> goalNameByPriority = new HashMap<>();
-    goalNameByPriority.put(1, RackAwareGoal.class.getName());
-    goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
-    goalNameByPriority.put(3, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(4, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(5, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(6, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(7, ReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(8, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, TopicReplicaDistributionGoal.class.getName());
+    // Sorted by priority.
+    List<String> goalNameByPriority = Arrays.asList(RackAwareGoal.class.getName(),
+                                                    ReplicaCapacityGoal.class.getName(),
+                                                    DiskCapacityGoal.class.getName(),
+                                                    NetworkInboundCapacityGoal.class.getName(),
+                                                    NetworkOutboundCapacityGoal.class.getName(),
+                                                    CpuCapacityGoal.class.getName(),
+                                                    ReplicaDistributionGoal.class.getName(),
+                                                    PotentialNwOutGoal.class.getName(),
+                                                    DiskUsageDistributionGoal.class.getName(),
+                                                    NetworkInboundUsageDistributionGoal.class.getName(),
+                                                    NetworkOutboundUsageDistributionGoal.class.getName(),
+                                                    CpuUsageDistributionGoal.class.getName(),
+                                                    TopicReplicaDistributionGoal.class.getName());
 
-    Map<Integer, String> kafkaAssignerGoals = new HashMap<>();
-    kafkaAssignerGoals.put(0, KafkaAssignerEvenRackAwareGoal.class.getName());
-    kafkaAssignerGoals.put(1, KafkaAssignerDiskUsageDistributionGoal.class.getName());
+    List<String> kafkaAssignerGoals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getName(),
+                                                    KafkaAssignerDiskUsageDistributionGoal.class.getName());
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(2000L));
-    BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
-    balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
-    balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
+    BalancingConstraint constraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
+    constraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
+    constraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
     List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, BROKEN_BROKERS, REGRESSION);
     List<OptimizationVerifier.Verification> kafkaAssignerVerifications =
@@ -92,74 +91,59 @@ public class RandomSelfHealingTest {
 
     // -- TEST DECK #1: SINGLE DEAD BROKER.
     // Test: Single Goal.
-    Map<ClusterProperty, Number> singleDeadBroker = new HashMap<>();
-    singleDeadBroker.put(ClusterProperty.NUM_DEAD_BROKERS, 1);
+    Map<ClusterProperty, Number> singleDeadBroker = Collections.singletonMap(ClusterProperty.NUM_DEAD_BROKERS, 1);
     int testId = 0;
-    for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
-      p.add(params(testId++, singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.emptySet(), verifications, true));
-      p.add(params(testId++, singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.emptySet(), verifications, false));
-      p.add(params(testId++, singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.singleton("T0"), verifications, true));
-      p.add(params(testId++, singleDeadBroker, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.singleton("T0"), verifications, false));
+    List<String> testGoal;
+    for (int i = 0; i < goalNameByPriority.size(); i++) {
+      testGoal = goalNameByPriority.subList(i, i + 1);
+      p.add(params(testId++, singleDeadBroker, testGoal, constraint, Collections.emptySet(), verifications, true));
+      p.add(params(testId++, singleDeadBroker, testGoal, constraint, Collections.emptySet(), verifications, false));
+      p.add(params(testId++, singleDeadBroker, testGoal, constraint, Collections.singleton("T0"), verifications, true));
+      p.add(params(testId++, singleDeadBroker, testGoal, constraint, Collections.singleton("T0"), verifications, false));
     }
-    p.add(params(testId++, singleDeadBroker, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
-                 balancingConstraint, Collections.emptySet(), kafkaAssignerVerifications, true));
-    p.add(params(testId++, singleDeadBroker, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
-                 balancingConstraint, Collections.emptySet(), kafkaAssignerVerifications, false));
-    p.add(params(testId++, singleDeadBroker, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
-                 balancingConstraint, Collections.singleton("T0"), kafkaAssignerVerifications, true));
-    p.add(params(testId++, singleDeadBroker, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
-                 balancingConstraint, Collections.singleton("T0"), kafkaAssignerVerifications, false));
+    // In Kafka Assigner mode, the goal order is well-defined -- i.e. KafkaAssignerEvenRackAwareGoal is the first goal.
+    testGoal = Collections.singletonList(KafkaAssignerEvenRackAwareGoal.class.getName());
+    p.add(params(testId++, singleDeadBroker, testGoal, constraint, Collections.emptySet(), kafkaAssignerVerifications, true));
+    p.add(params(testId++, singleDeadBroker, testGoal, constraint, Collections.emptySet(), kafkaAssignerVerifications, false));
+    p.add(params(testId++, singleDeadBroker, testGoal, constraint, Collections.singleton("T0"), kafkaAssignerVerifications, true));
+    p.add(params(testId++, singleDeadBroker, testGoal, constraint, Collections.singleton("T0"), kafkaAssignerVerifications, false));
 
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(5100L));
-    balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
-    balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
-    balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
+    constraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
+    constraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
+    constraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
 
     // Test: All Goals.
-    p.add(params(testId++, singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.emptySet(),
-                 verifications, true));
-    p.add(params(testId++, singleDeadBroker, goalNameByPriority, balancingConstraint, Collections.singleton("T0"),
-                 verifications, true));
-    p.add(params(testId++, singleDeadBroker, kafkaAssignerGoals, balancingConstraint, Collections.emptySet(),
-                 kafkaAssignerVerifications, true));
-    p.add(params(testId++, singleDeadBroker, kafkaAssignerGoals, balancingConstraint, Collections.singleton("T0"),
-                 kafkaAssignerVerifications, true));
+    p.add(params(testId++, singleDeadBroker, goalNameByPriority, constraint, Collections.emptySet(), verifications, true));
+    p.add(params(testId++, singleDeadBroker, goalNameByPriority, constraint, Collections.singleton("T0"), verifications, true));
+    p.add(params(testId++, singleDeadBroker, kafkaAssignerGoals, constraint, Collections.emptySet(), kafkaAssignerVerifications, true));
+    p.add(params(testId++, singleDeadBroker, kafkaAssignerGoals, constraint, Collections.singleton("T0"), kafkaAssignerVerifications, true));
 
     // -- TEST DECK #2: MULTIPLE DEAD BROKERS.
     // Test: Single Goal.
-    Map<ClusterProperty, Number> multipleDeadBrokers = new HashMap<>();
-    multipleDeadBrokers.put(ClusterProperty.NUM_DEAD_BROKERS, 5);
-    for (Map.Entry<Integer, String> entry : goalNameByPriority.entrySet()) {
-      p.add(params(testId++, multipleDeadBrokers, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.emptySet(), verifications, true));
-      p.add(params(testId++, multipleDeadBrokers, Collections.singletonMap(entry.getKey(), entry.getValue()),
-                   balancingConstraint, Collections.singleton("T0"), verifications, true));
+    Map<ClusterProperty, Number> multipleDeadBrokers = Collections.singletonMap(ClusterProperty.NUM_DEAD_BROKERS, 5);
+    for (int i = 0; i < goalNameByPriority.size(); i++) {
+      testGoal = goalNameByPriority.subList(i, i + 1);
+      p.add(params(testId++, multipleDeadBrokers, testGoal, constraint, Collections.emptySet(), verifications, true));
+      p.add(params(testId++, multipleDeadBrokers, testGoal, constraint, Collections.singleton("T0"), verifications, true));
     }
-    p.add(params(testId++, multipleDeadBrokers, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
-                 balancingConstraint, Collections.emptySet(), kafkaAssignerVerifications, true));
-    p.add(params(testId++, multipleDeadBrokers, Collections.singletonMap(0, KafkaAssignerEvenRackAwareGoal.class.getName()),
-                 balancingConstraint, Collections.singleton("T0"), kafkaAssignerVerifications, true));
+    // In Kafka Assigner mode, the goal order is well-defined -- i.e. KafkaAssignerEvenRackAwareGoal is the first goal.
+    testGoal = Collections.singletonList(KafkaAssignerEvenRackAwareGoal.class.getName());
+    p.add(params(testId++, multipleDeadBrokers, testGoal, constraint, Collections.emptySet(), kafkaAssignerVerifications, true));
+    p.add(params(testId++, multipleDeadBrokers, testGoal, constraint, Collections.singleton("T0"), kafkaAssignerVerifications, true));
 
     // Test: All Goals.
-    p.add(params(testId++, multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.emptySet(),
-                 verifications, true));
-    p.add(params(testId++, multipleDeadBrokers, goalNameByPriority, balancingConstraint, Collections.singleton("T0"),
-                 verifications, true));
-    p.add(params(testId++, multipleDeadBrokers, kafkaAssignerGoals, balancingConstraint, Collections.emptySet(),
-                 kafkaAssignerVerifications, true));
-    p.add(params(testId++, multipleDeadBrokers, kafkaAssignerGoals, balancingConstraint, Collections.singleton("T0"),
-                 kafkaAssignerVerifications, true));
+    p.add(params(testId++, multipleDeadBrokers, goalNameByPriority, constraint, Collections.emptySet(), verifications, true));
+    p.add(params(testId++, multipleDeadBrokers, goalNameByPriority, constraint, Collections.singleton("T0"), verifications, true));
+    p.add(params(testId++, multipleDeadBrokers, kafkaAssignerGoals, constraint, Collections.emptySet(), kafkaAssignerVerifications, true));
+    p.add(params(testId++, multipleDeadBrokers, kafkaAssignerGoals, constraint, Collections.singleton("T0"), kafkaAssignerVerifications, true));
 
     return p;
   }
 
   private static Object[] params(int testId,
                                  Map<ClusterProperty, Number> modifiedProperties,
-                                 Map<Integer, String> goalNameByPriority,
+                                 List<String> goalNameByPriority,
                                  BalancingConstraint balancingConstraint,
                                  Collection<String> excludedTopics,
                                  List<OptimizationVerifier.Verification> verifications,
@@ -171,7 +155,7 @@ public class RandomSelfHealingTest {
 
   private int _testId;
   private Map<ClusterProperty, Number> _modifiedProperties;
-  private Map<Integer, String> _goalNameByPriority;
+  private List<String> _goalNameByPriority;
   private BalancingConstraint _balancingConstraint;
   private Set<String> _excludedTopics;
   private List<OptimizationVerifier.Verification> _verifications;
@@ -190,7 +174,7 @@ public class RandomSelfHealingTest {
    */
   public RandomSelfHealingTest(int testId,
                                Map<ClusterProperty, Number> modifiedProperties,
-                               Map<Integer, String> goalNameByPriority,
+                               List<String> goalNameByPriority,
                                BalancingConstraint balancingConstraint,
                                Collection<String> excludedTopics,
                                List<OptimizationVerifier.Verification> verifications,

@@ -54,6 +54,7 @@ class KafkaCruiseControlServletUtils {
   private static final String THROTTLE_ADDED_BROKER_PARAM = "throttle_added_broker";
   private static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
   private static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
+  private static final String USE_READY_DEFAULT_GOALS_PARAM = "use_ready_default_goals";
   private static final String CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM = "concurrent_partition_movements_per_broker";
   private static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
   private static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
@@ -103,6 +104,7 @@ class KafkaCruiseControlServletUtils {
     proposals.add(JSON_PARAM);
     proposals.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     proposals.add(EXCLUDED_TOPICS);
+    proposals.add(USE_READY_DEFAULT_GOALS_PARAM);
 
     Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     state.add(VERBOSE_PARAM);
@@ -121,6 +123,7 @@ class KafkaCruiseControlServletUtils {
     addRemoveOrFixBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     addRemoveOrFixBroker.add(SKIP_HARD_GOAL_CHECK_PARAM);
     addRemoveOrFixBroker.add(EXCLUDED_TOPICS);
+    addRemoveOrFixBroker.add(USE_READY_DEFAULT_GOALS_PARAM);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
@@ -154,6 +157,7 @@ class KafkaCruiseControlServletUtils {
     rebalance.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     rebalance.add(SKIP_HARD_GOAL_CHECK_PARAM);
     rebalance.add(EXCLUDED_TOPICS);
+    rebalance.add(USE_READY_DEFAULT_GOALS_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
@@ -278,6 +282,16 @@ class KafkaCruiseControlServletUtils {
     return getBooleanParam(request, IGNORE_PROPOSAL_CACHE_PARAM, false);
   }
 
+  static boolean useReadyDefaultGoals(HttpServletRequest request) {
+    boolean useReadyDefaultGoals = getBooleanParam(request, USE_READY_DEFAULT_GOALS_PARAM, false);
+    // Ensure that goals parameter is not specified.
+    if (useReadyDefaultGoals && request.getParameter(GOALS_PARAM) != null) {
+      throw new UserRequestException("Cannot specify " + USE_READY_DEFAULT_GOALS_PARAM + " parameter when explicitly "
+                                     + "specifying goals in request.");
+    }
+    return useReadyDefaultGoals;
+  }
+
   static boolean getDryRun(HttpServletRequest request) {
     return getBooleanParam(request, DRY_RUN_PARAM, true);
   }
@@ -385,9 +399,9 @@ class KafkaCruiseControlServletUtils {
   }
 
   /**
-   * @param isPartitionMovement True if partition movement, false if leader movement.
+   * @param isPartitionMovement True if partition movement per broker, false if the total leader movement.
    */
-  static Integer concurrentMovementsPerBroker(HttpServletRequest request, boolean isPartitionMovement) {
+  static Integer concurrentMovements(HttpServletRequest request, boolean isPartitionMovement) {
     String concurrentMovementsPerBrokerString = isPartitionMovement
                                                 ? request.getParameter(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM)
                                                 : request.getParameter(CONCURRENT_LEADER_MOVEMENTS_PARAM);
@@ -438,8 +452,11 @@ class KafkaCruiseControlServletUtils {
     return Collections.unmodifiableList(brokerIds);
   }
 
+  /**
+   * Default: {@link DataFrom#VALID_WINDOWS}
+   */
   static DataFrom getDataFrom(HttpServletRequest request) {
-    DataFrom dataFrom = DataFrom.VALID_WINDOWS; // default to with available windows.
+    DataFrom dataFrom = DataFrom.VALID_WINDOWS;
     String dataFromString = request.getParameter(DATA_FROM_PARAM);
     if (dataFromString != null) {
       dataFrom = DataFrom.valueOf(dataFromString.toUpperCase());

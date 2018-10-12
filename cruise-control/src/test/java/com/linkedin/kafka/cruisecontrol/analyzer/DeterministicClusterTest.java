@@ -56,7 +56,7 @@ import static org.junit.Assert.assertTrue;
 public class DeterministicClusterTest {
   private BalancingConstraint _balancingConstraint;
   private ClusterModel _cluster;
-  private Map<Integer, String> _goalNameByPriority;
+  private List<String> _goalNameByPriority;
   private List<OptimizationVerifier.Verification> _verifications;
 
   @Rule
@@ -71,7 +71,7 @@ public class DeterministicClusterTest {
    */
   public DeterministicClusterTest(BalancingConstraint balancingConstraint,
                                   ClusterModel cluster,
-                                  Map<Integer, String> goalNameByPriority,
+                                  List<String> goalNameByPriority,
                                   List<OptimizationVerifier.Verification> verifications,
                                   Class<? extends Throwable> expectedException) {
     _balancingConstraint = balancingConstraint;
@@ -92,22 +92,21 @@ public class DeterministicClusterTest {
   public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
 
-    Map<Integer, String> goalNameByPriority = new HashMap<>();
-    goalNameByPriority.put(1, RackAwareGoal.class.getName());
-    goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
-    goalNameByPriority.put(3, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(4, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(5, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(6, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(7, ReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(8, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(14, PreferredLeaderElectionGoal.class.getName());
-    goalNameByPriority.put(15, LeaderBytesInDistributionGoal.class.getName());
+    List<String> goalNameByPriority = Arrays.asList(RackAwareGoal.class.getName(),
+                                                    ReplicaCapacityGoal.class.getName(),
+                                                    DiskCapacityGoal.class.getName(),
+                                                    NetworkInboundCapacityGoal.class.getName(),
+                                                    NetworkOutboundCapacityGoal.class.getName(),
+                                                    CpuCapacityGoal.class.getName(),
+                                                    ReplicaDistributionGoal.class.getName(),
+                                                    PotentialNwOutGoal.class.getName(),
+                                                    DiskUsageDistributionGoal.class.getName(),
+                                                    NetworkInboundUsageDistributionGoal.class.getName(),
+                                                    NetworkOutboundUsageDistributionGoal.class.getName(),
+                                                    CpuUsageDistributionGoal.class.getName(),
+                                                    TopicReplicaDistributionGoal.class.getName(),
+                                                    PreferredLeaderElectionGoal.class.getName(),
+                                                    LeaderBytesInDistributionGoal.class.getName());
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(6L));
@@ -174,9 +173,8 @@ public class DeterministicClusterTest {
                    goalNameByPriority, verifications, null));
     }
 
-    Map<Integer, String> kafkaAssignerGoals = new HashMap<>();
-    kafkaAssignerGoals.put(0, KafkaAssignerEvenRackAwareGoal.class.getName());
-    kafkaAssignerGoals.put(1, KafkaAssignerDiskUsageDistributionGoal.class.getName());
+    List<String> kafkaAssignerGoals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getName(),
+                                                    KafkaAssignerDiskUsageDistributionGoal.class.getName());
     List<OptimizationVerifier.Verification> kafkaAssignerVerifications = Arrays.asList(BROKEN_BROKERS, REGRESSION);
     // Small cluster.
     p.add(params(balancingConstraint, DeterministicCluster.smallClusterModel(TestConstants.BROKER_CAPACITY),
@@ -195,7 +193,7 @@ public class DeterministicClusterTest {
 
   private static Object[] params(BalancingConstraint balancingConstraint,
                                  ClusterModel cluster,
-                                 Map<Integer, String> goalNameByPriority,
+                                 List<String> goalNameByPriority,
                                  List<OptimizationVerifier.Verification> verifications,
                                  Class<? extends Throwable> expectedException) {
     return new Object[]{balancingConstraint, cluster, goalNameByPriority, verifications, expectedException};
