@@ -67,26 +67,25 @@ public class RandomClusterTest {
   public static Collection<Object[]> data(TestConstants.Distribution distribution) {
     Collection<Object[]> p = new ArrayList<>();
 
-    Map<Integer, String> goalNameByPriority = new HashMap<>();
-    goalNameByPriority.put(1, RackAwareGoal.class.getName());
-    goalNameByPriority.put(2, ReplicaCapacityGoal.class.getName());
-    goalNameByPriority.put(3, DiskCapacityGoal.class.getName());
-    goalNameByPriority.put(4, NetworkInboundCapacityGoal.class.getName());
-    goalNameByPriority.put(5, NetworkOutboundCapacityGoal.class.getName());
-    goalNameByPriority.put(6, CpuCapacityGoal.class.getName());
-    goalNameByPriority.put(7, ReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(8, PotentialNwOutGoal.class.getName());
-    goalNameByPriority.put(9, DiskUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(10, NetworkInboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(11, NetworkOutboundUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(12, CpuUsageDistributionGoal.class.getName());
-    goalNameByPriority.put(13, TopicReplicaDistributionGoal.class.getName());
-    goalNameByPriority.put(14, PreferredLeaderElectionGoal.class.getName());
-    goalNameByPriority.put(15, LeaderBytesInDistributionGoal.class.getName());
+    // Sorted by priority.
+    List<String> goalNameByPriority = Arrays.asList(RackAwareGoal.class.getName(),
+                                                    ReplicaCapacityGoal.class.getName(),
+                                                    DiskCapacityGoal.class.getName(),
+                                                    NetworkInboundCapacityGoal.class.getName(),
+                                                    NetworkOutboundCapacityGoal.class.getName(),
+                                                    CpuCapacityGoal.class.getName(),
+                                                    ReplicaDistributionGoal.class.getName(),
+                                                    PotentialNwOutGoal.class.getName(),
+                                                    DiskUsageDistributionGoal.class.getName(),
+                                                    NetworkInboundUsageDistributionGoal.class.getName(),
+                                                    NetworkOutboundUsageDistributionGoal.class.getName(),
+                                                    CpuUsageDistributionGoal.class.getName(),
+                                                    TopicReplicaDistributionGoal.class.getName(),
+                                                    PreferredLeaderElectionGoal.class.getName(),
+                                                    LeaderBytesInDistributionGoal.class.getName());
 
-    Map<Integer, String> kafkaAssignerGoals = new HashMap<>();
-    kafkaAssignerGoals.put(1, KafkaAssignerEvenRackAwareGoal.class.getName());
-    kafkaAssignerGoals.put(2, KafkaAssignerDiskUsageDistributionGoal.class.getName());
+    List<String> kafkaAssignerGoals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getName(),
+                                                    KafkaAssignerDiskUsageDistributionGoal.class.getName());
 
     List<OptimizationVerifier.Verification> verifications = Arrays.asList(NEW_BROKERS, DEAD_BROKERS, REGRESSION);
     List<OptimizationVerifier.Verification> kafkaAssignerVerifications =
@@ -139,7 +138,7 @@ public class RandomClusterTest {
   }
 
   private static Object[] params(Map<ClusterProperty, Number> modifiedProperties,
-                                 Map<Integer, String> goalNameByPriority,
+                                 List<String> goalNameByPriority,
                                  TestConstants.Distribution replicaDistribution,
                                  BalancingConstraint balancingConstraint,
                                  List<OptimizationVerifier.Verification> verifications) {
@@ -147,7 +146,7 @@ public class RandomClusterTest {
   }
 
   private Map<ClusterProperty, Number> _modifiedProperties;
-  private Map<Integer, String> _goalNameByPriority;
+  private List<String> _goalNameByPriority;
   private TestConstants.Distribution _replicaDistribution;
   private BalancingConstraint _balancingConstraint;
   private List<OptimizationVerifier.Verification> _verifications;
@@ -162,7 +161,7 @@ public class RandomClusterTest {
    * @param verifications       The verifications to make.
    */
   public RandomClusterTest(Map<ClusterProperty, Number> modifiedProperties,
-                           Map<Integer, String> goalNameByPriority,
+                           List<String> goalNameByPriority,
                            TestConstants.Distribution replicaDistribution,
                            BalancingConstraint balancingConstraint,
                            List<OptimizationVerifier.Verification> verifications) {

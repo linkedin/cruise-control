@@ -283,6 +283,22 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().getConnectionString());
     props.setProperty(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG, "10");
     props.setProperty(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG, "1000");
+    props.setProperty(
+        KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG,
+        "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal,"
+        + "com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal");
     return props;
   }
 }

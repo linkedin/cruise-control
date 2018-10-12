@@ -140,6 +140,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 5. Get an optimization proposal
    *    GET /kafkacruisecontrol/proposals?verbose=[ENABLE_VERBOSE]&amp;ignore_proposal_cache=[true/false]
    *    &amp;goals=[goal1,goal2...]&amp;data_from=[valid_windows/valid_partitions]&amp;excluded_topics=[pattern]
+   *    &amp;use_ready_default_goals=[true/false]
    *
    * 6. query the state of Kafka Cruise Control
    *    GET /kafkacruisecontrol/state
@@ -256,17 +257,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 1. Decommission a broker.
    *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;throttle_removed_broker=[true/false]&amp;goals=[goal1,goal2...]
    *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
-   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
+   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]
    *
    * 2. Add a broker
    *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;throttle_added_broker=[true/false]&amp;goals=[goal1,goal2...]
    *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
-   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
+   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]
    *
    * 3. Trigger a workload balance.
    *    POST /kafkacruisecontrol/rebalance?dryrun=[true/false]&amp;force=[true/false]&amp;goals=[goal1,goal2...]&amp;allow_capacity_estimation=[true/false]
    *    &amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]
-   *    &amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
+   *    &amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]
    *
    * 4. Stop the proposal execution.
    *    POST /kafkacruisecontrol/stop_proposal_execution?json=[true/false]
@@ -613,6 +614,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private boolean getProposals(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean verbose = isVerbose(request);
     boolean ignoreProposalCache;
+    boolean useReadyDefaultGoals;
     DataFrom dataFrom;
     List<String> goals;
     boolean json = wantJSON(request);
@@ -621,6 +623,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       goals = getGoals(request);
       dataFrom = getDataFrom(request);
       ignoreProposalCache = ignoreProposalCache(request) || !goals.isEmpty();
+      useReadyDefaultGoals = useReadyDefaultGoals(request);
       excludedTopics = excludedTopics(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
@@ -628,7 +631,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return true;
     }
     GoalsAndRequirements goalsAndRequirements =
-        getGoalsAndRequirements(request, response, goals, dataFrom, ignoreProposalCache);
+        getGoalsAndRequirements(request, response, goals, dataFrom, ignoreProposalCache, useReadyDefaultGoals);
     if (goalsAndRequirements == null) {
       return false;
     }
@@ -704,7 +707,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
            optimizerResult.violatedGoalsAfterOptimization().contains(goal) ? "(VIOLATED)" : "(FIXED)" : "(NO-ACTION)";
   }
 
-  private ModelCompletenessRequirements getRequirements(DataFrom dataFrom) {
+  // package private for testing.
+  static ModelCompletenessRequirements getRequirements(DataFrom dataFrom) {
     if (dataFrom == DataFrom.VALID_PARTITIONS) {
       return new ModelCompletenessRequirements(Integer.MAX_VALUE, 0.0, true);
     } else {
@@ -823,14 +827,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     List<String> goals;
     boolean json = wantJSON(request);
     boolean skipHardGoalCheck;
+    boolean useReadyDefaultGoals;
     try {
       brokerIds = brokerIds(request);
       dryrun = getDryRun(request);
       goals = getGoals(request);
       dataFrom = getDataFrom(request);
       throttleAddedOrRemovedBrokers = throttleAddedOrRemovedBrokers(request, endPoint);
-      concurrentPartitionMovements = concurrentMovementsPerBroker(request, true);
-      concurrentLeaderMovements = concurrentMovementsPerBroker(request, false);
+      concurrentPartitionMovements = concurrentMovements(request, true);
+      concurrentLeaderMovements = concurrentMovements(request, false);
+      useReadyDefaultGoals = useReadyDefaultGoals(request);
       skipHardGoalCheck = skipHardGoalCheck(request);
       excludedTopics = excludedTopics(request);
     } catch (Exception e) {
@@ -838,7 +844,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       // Close session
       return true;
     }
-    GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(request, response, goals, dataFrom, false);
+    GoalsAndRequirements goalsAndRequirements =
+        getGoalsAndRequirements(request, response, goals, dataFrom, false, useReadyDefaultGoals);
     if (goalsAndRequirements == null) {
       return false;
     }
@@ -892,12 +899,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Pattern excludedTopics;
     boolean json = wantJSON(request);
     boolean skipHardGoalCheck;
+    boolean useReadyDefaultGoals;
     try {
       dryrun = getDryRun(request);
       goals = getGoals(request);
       dataFrom = getDataFrom(request);
-      concurrentPartitionMovements = concurrentMovementsPerBroker(request, true);
-      concurrentLeaderMovements = concurrentMovementsPerBroker(request, false);
+      concurrentPartitionMovements = concurrentMovements(request, true);
+      concurrentLeaderMovements = concurrentMovements(request, false);
+      useReadyDefaultGoals = useReadyDefaultGoals(request);
       skipHardGoalCheck = skipHardGoalCheck(request);
       excludedTopics = excludedTopics(request);
     } catch (Exception e) {
@@ -905,7 +914,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       // Close session
       return true;
     }
-    GoalsAndRequirements goalsAndRequirements = getGoalsAndRequirements(request, response, goals, dataFrom, false);
+    GoalsAndRequirements goalsAndRequirements =
+        getGoalsAndRequirements(request, response, goals, dataFrom, false, useReadyDefaultGoals);
     if (goalsAndRequirements == null) {
       return false;
     }
@@ -946,7 +956,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       brokerIds = brokerIds(request);
       dryrun = getDryRun(request);
-      concurrentLeaderMovements = concurrentMovementsPerBroker(request, false);
+      concurrentLeaderMovements = concurrentMovements(request, false);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
       // Close session
@@ -1039,7 +1049,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                HttpServletResponse response,
                                                List<String> userProvidedGoals,
                                                DataFrom dataFrom,
-                                               boolean ignoreCache) throws Exception {
+                                               boolean ignoreCache,
+                                               boolean useReadyDefaultGoals) throws Exception {
     if (!userProvidedGoals.isEmpty() || dataFrom == DataFrom.VALID_PARTITIONS) {
       return new GoalsAndRequirements(userProvidedGoals, getRequirements(dataFrom));
     }
@@ -1065,16 +1076,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), null);
     } else if (availableWindows > 0) {
       // If some valid windows are available, use it.
-      return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), getRequirements(DataFrom.VALID_WINDOWS));
-    } else if (readyGoals.size() > 0) {
-      // If no window is valid but some goals are ready, use them.
+      return new GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), getRequirements(dataFrom));
+    } else if (useReadyDefaultGoals && readyGoals.size() > 0) {
+      // If no window is valid but some goals are ready, use them if using ready goals is permitted.
       return new GoalsAndRequirements(readyGoals, null);
     } else {
       // Ok, use default setting and let it throw exception.
       return new GoalsAndRequirements(Collections.emptyList(), null);
     }
   }
-  
+
   private void getUserTaskState(HttpServletRequest request, HttpServletResponse response) throws IOException {
     List<UserTaskManager.UserTaskInfo> activeUserTasks = _userTaskManager.getActiveUserTasks();
     List<UserTaskManager.UserTaskInfo> completedUserTasks = _userTaskManager.getCompletedUserTasks();
@@ -1184,7 +1195,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     private final ModelCompletenessRequirements _requirements;
 
     private GoalsAndRequirements(List<String> goals, ModelCompletenessRequirements requirements) {
-      _goals = goals;
+      _goals = goals; // An empty list indicates the default goals.
       _requirements = requirements;
     }
 

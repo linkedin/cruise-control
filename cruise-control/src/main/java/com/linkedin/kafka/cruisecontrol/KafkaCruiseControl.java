@@ -30,7 +30,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -123,7 +122,7 @@ public class KafkaCruiseControl {
    * @param goals The goals to check
    * @return True if the given goals contain a Kafka Assigner goal, false otherwise.
    */
-  private boolean isKafkaAssignerMode(List<String> goals) {
+  private boolean isKafkaAssignerMode(Collection<String> goals) {
     return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
   }
 
@@ -160,9 +159,9 @@ public class KafkaCruiseControl {
                                                            Pattern excludedTopics)
       throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
-    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+    List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
-        modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
+        modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
@@ -233,9 +232,9 @@ public class KafkaCruiseControl {
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics) throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
-    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+    List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
-        modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
+        modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       sanityCheckBrokerPresence(brokerIds);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
@@ -404,7 +403,7 @@ public class KafkaCruiseControl {
     } catch (KafkaCruiseControlException kcce) {
       throw kcce;
     } catch (Exception e) {
-        throw new KafkaCruiseControlException(e);
+      throw new KafkaCruiseControlException(e);
     }
   }
 
@@ -498,9 +497,9 @@ public class KafkaCruiseControl {
                                                                 Pattern excludedTopics) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
-    Map<Integer, Goal> goalsByPriority = goalsByPriority(goals);
+    List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
-        modelCompletenessRequirements(goalsByPriority.values()).weaker(requirements);
+        modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     // There are a few cases that we cannot use the cached best proposals:
     // 1. When users specified goals.
     // 2. When provided requirements contains a weaker requirement than what is used by the cached proposal.
@@ -534,7 +533,7 @@ public class KafkaCruiseControl {
   }
 
   private GoalOptimizer.OptimizerResult getOptimizationProposals(ClusterModel clusterModel,
-                                                                 Map<Integer, Goal> goalsByPriority,
+                                                                 List<Goal> goalsByPriority,
                                                                  OperationProgress operationProgress,
                                                                  boolean allowCapacityEstimation,
                                                                  Pattern requestedExcludedTopics)
@@ -556,8 +555,8 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    */
   private void executeProposals(Collection<ExecutionProposal> proposals,
-                               Collection<Integer> unthrottledBrokers,
-                               boolean isKafkaAssignerMode,
+                                Collection<Integer> unthrottledBrokers,
+                                boolean isKafkaAssignerMode,
                                 Integer concurrentPartitionMovements,
                                 Integer concurrentLeaderMovements) {
     // Set the execution mode, add execution proposals, and start execution.
@@ -610,7 +609,7 @@ public class KafkaCruiseControl {
 
   private ModelCompletenessRequirements modelCompletenessRequirements(Collection<Goal> overrides) {
     return overrides == null || overrides.isEmpty() ?
-        _goalOptimizer.defaultModelCompletenessRequirements() : MonitorUtils.combineLoadRequirementOptions(overrides);
+           _goalOptimizer.defaultModelCompletenessRequirements() : MonitorUtils.combineLoadRequirementOptions(overrides);
   }
 
   /**
@@ -620,7 +619,7 @@ public class KafkaCruiseControl {
    */
   public boolean meetCompletenessRequirements(List<String> goalNames) {
     sanityCheckHardGoalPresence(goalNames, false);
-    Collection<Goal> goals = goalsByPriority(goalNames).values();
+    Collection<Goal> goals = goalsByPriority(goalNames);
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     return goals.stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(
         clusterAndGeneration, g.clusterModelCompletenessRequirements()));
@@ -630,27 +629,22 @@ public class KafkaCruiseControl {
    * Get a goals by priority based on the goal list.
    *
    * @param goals A list of goals.
-   * @return A map of goal priority to goal.
+   * @return A list of goals sorted by highest to lowest priority.
    */
-  private Map<Integer, Goal> goalsByPriority(List<String> goals) {
+  private List<Goal> goalsByPriority(List<String> goals) {
     if (goals == null || goals.isEmpty()) {
       return AnalyzerUtils.getGoalMapByPriority(_config);
     }
     Map<String, Goal> allGoals = AnalyzerUtils.getCaseInsensitiveGoalsByName(_config);
     sanityCheckNonExistingGoal(goals, allGoals);
-    Map<Integer, Goal> goalsByPriority = new HashMap<>();
-    int i = 0;
-    for (String goalName : goals) {
-      goalsByPriority.put(i++, allGoals.get(goalName));
-    }
-    return goalsByPriority;
+    return goals.stream().map(allGoals::get).collect(Collectors.toList());
   }
 
   /**
    * Sanity check whether all hard goals are included in provided goal list.
    * There are two special scenarios where hard goal check is skipped.
    * <ul>
-   * <li> {@code goals} is null or empty list.</li>
+   * <li> {@code goals} is null or empty -- i.e. even if hard goals are excluded from the default goals, this check will pass</li>
    * <li> {@code goals} only has PreferredLeaderElectionGoal, denotes it is a PLE request.</li>
    * </ul>
    *
@@ -659,12 +653,13 @@ public class KafkaCruiseControl {
    */
   private void sanityCheckHardGoalPresence(List<String> goals, boolean skipHardGoalCheck) {
     if (goals != null && !goals.isEmpty() && !skipHardGoalCheck &&
-      !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
+        !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
       sanityCheckNonExistingGoal(goals, AnalyzerUtils.getCaseInsensitiveGoalsByName(_config));
       Set<String> hardGoals = _config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG).stream()
-                               .map(goalName -> goalName.substring(goalName.lastIndexOf(".") + 1)).collect(Collectors.toSet());
+                                     .map(goalName -> goalName.substring(goalName.lastIndexOf(".") + 1)).collect(Collectors.toSet());
       if (!goals.containsAll(hardGoals)) {
-        throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in provided goal list " + goals + ".");
+        throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in the provided goals: " + goals
+                                           + ". Add skip_hard_goal_check=true parameter to ignore this sanity check.");
       }
     }
   }

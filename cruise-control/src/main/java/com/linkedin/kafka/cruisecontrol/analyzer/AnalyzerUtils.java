@@ -21,7 +21,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedMap;
 import java.util.TreeMap;
 
 import org.apache.commons.math3.random.MersenneTwister;
@@ -200,24 +199,10 @@ public class AnalyzerUtils {
   }
 
   /**
-   * Get a priority to goal mapping. This is a default mapping.
+   * Get an list of goals sorted by highest to lowest default priority.
    */
-  public static SortedMap<Integer, Goal> getGoalMapByPriority(KafkaCruiseControlConfig config) {
-    List<String> defaultGoalsConfig = config.getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG);
-    List<Goal> goals;
-    if (defaultGoalsConfig == null || defaultGoalsConfig.isEmpty()) {
-      // Default goals config not set or it is empty, use all the goals.
-      goals = config.getConfiguredInstances(KafkaCruiseControlConfig.GOALS_CONFIG, Goal.class);
-    } else {
-      // Use the provided default goals config.
-      goals = config.getConfiguredInstances(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, Goal.class);
-    }
-    SortedMap<Integer, Goal> orderedGoals = new TreeMap<>();
-    int i = 0;
-    for (Goal goal: goals) {
-      orderedGoals.put(i++, goal);
-    }
-    return orderedGoals;
+  public static List<Goal> getGoalMapByPriority(KafkaCruiseControlConfig config) {
+    return config.getConfiguredInstances(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, Goal.class);
   }
 
   /**
