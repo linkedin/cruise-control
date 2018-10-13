@@ -185,7 +185,7 @@ public class RawMetricValues extends WindowIndexedArrays {
    *
    * @param startingWindowIndex the starting index of the windows to reset.
    * @param numWindowIndexesToReset the number of windows to reset.
-   * @return number of samples abandoned in window clearing process.
+   * @return number of samples abandoned in window clearing process. The abandoned samples are samples in the windows which get reset.
    */
   public synchronized int resetWindowIndexes(long startingWindowIndex, int numWindowIndexesToReset) {
     if (inValidRange(startingWindowIndex)
@@ -193,17 +193,17 @@ public class RawMetricValues extends WindowIndexedArrays {
       throw new IllegalStateException("Should never reset a window index that is in the valid range");
     }
     // We are not resetting all the data here. The data will be interpreted to 0 if count is 0.
-    int numAbandonedSample = 0;
+    int numAbandonedSamples = 0;
     for (long i = startingWindowIndex; i < startingWindowIndex + numWindowIndexesToReset; i++) {
       int index = arrayIndex(i);
-      numAbandonedSample += _counts[index];
+      numAbandonedSamples += _counts[index];
       _counts[index] = 0;
       _validity.clear(index);
       _extrapolations.clear(index);
     }
     LOG.trace("Resetting window index [{}, {}], abandon {} samples.", startingWindowIndex,
-        startingWindowIndex + numWindowIndexesToReset - 1, numAbandonedSample);
-    return numAbandonedSample;
+              startingWindowIndex + numWindowIndexesToReset - 1, numAbandonedSamples);
+    return numAbandonedSamples;
   }
 
   /**

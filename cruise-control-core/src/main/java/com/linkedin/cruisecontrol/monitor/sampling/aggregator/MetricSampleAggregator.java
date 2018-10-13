@@ -92,8 +92,9 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   protected final int _minSamplesPerWindow;
   protected final int _numWindowsToKeep;
   protected final long _windowMs;
+  protected final long _monitoringPeriodMs;
   protected final MetricDef _metricDef;
-  protected String _metricSampleType;
+  protected SampleType _sampleType;
 
   private volatile long _currentWindowIndex;
   private volatile long _oldestWindowIndex;
@@ -118,6 +119,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     _rawMetrics = new ConcurrentHashMap<>();
     _numWindows = numWindows;
     _windowMs = windowMs;
+    _monitoringPeriodMs = _numWindows * _windowMs;
     // We keep one more window for the active window.
     _numWindowsToKeep = _numWindows + 1;
     _minSamplesPerWindow = minSamplesPerWindow;
@@ -470,18 +472,19 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
           // The first possible window index is actually 1 instead of 0.
           _oldestWindowIndex = Math.max(1, index - _numWindows);
           int numOldWindowIndexesToReset = (int) Math.min(_numWindowsToKeep, _oldestWindowIndex - prevOldestWindowIndex);
-          int numAbandonedSample = 0;
+          int numAbandonedSamples = 0;
           // Reset all the data starting from previous oldest window. After this point the old samples cannot get
           // into the raw metric values. We only need to reset the index if the new index is at least _numWindows;
           if (numOldWindowIndexesToReset > 0) {
-            numAbandonedSample = resetIndexes(prevOldestWindowIndex, numOldWindowIndexesToReset);
+            numAbandonedSamples = resetIndexes(prevOldestWindowIndex, numOldWindowIndexesToReset);
           }
           // Set the generation of the old current window.
           _aggregatorState.updateWindowGeneration(_currentWindowIndex, generation());
           // Lastly update current window.
           _currentWindowIndex = index;
-          LOG.info("{}Aggregator rolled out {} new windows, reset {} windows, current window range [{}, {}], abandon {} samples.", _metricSampleType,
-                   numWindowsToRollOut, numOldWindowIndexesToReset, _oldestWindowIndex * _windowMs, _currentWindowIndex * _windowMs, numAbandonedSample);
+          LOG.info("{} Aggregator rolled out {} new windows, reset {} windows, current window range [{}, {}], abandon {} samples.",
+                    _sampleType, numWindowsToRollOut, numOldWindowIndexesToReset, _oldestWindowIndex * _windowMs,
+                    _currentWindowIndex * _windowMs, numAbandonedSamples);
           return true;
         }
       } finally {
@@ -493,14 +496,14 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
 
   private int resetIndexes(long prevOldestWindowIndex, int numIndexesToReset) {
     long currentOldestWindowIndex = _oldestWindowIndex;
-    int numAbandonedSample = 0;
+    int numAbandonedSamples = 0;
     for (RawMetricValues rawValues : _rawMetrics.values()) {
       rawValues.updateOldestWindowIndex(currentOldestWindowIndex);
-      numAbandonedSample += rawValues.resetWindowIndexes(prevOldestWindowIndex, numIndexesToReset);
+      numAbandonedSamples += rawValues.resetWindowIndexes(prevOldestWindowIndex, numIndexesToReset);
     }
     _aggregatorState.updateOldestWindowIndex(currentOldestWindowIndex);
     _aggregatorState.resetWindowIndexes(prevOldestWindowIndex, numIndexesToReset);
-    return numAbandonedSample;
+    return numAbandonedSamples;
   }
 
   private void validateCompleteness(long from,
@@ -573,10 +576,16 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   }
 
   /**
-   * Get the length of time to look back(from current time) when loading the historical samples.
-   * @return length of time to look back.
+   * Get the length of time aggregator keeps sample in memory.
+   * It is used to determine the time length to look back(from current time) when loading the historical samples.
+   * @return length of time.
    */
-  public long sampleTimeLengthToLoadMs() {
-    return _numWindows * _windowMs;
+  public long monitoringPeriodMs() {
+    return _monitoringPeriodMs;
+  }
+
+  protected enum SampleType {
+    BROKER,
+    PARTITION;
   }
 }

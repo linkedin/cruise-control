@@ -148,17 +148,17 @@ public class KafkaSampleStore implements SampleStore {
     ZkUtils zkUtils = createZkUtils(config);
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
-      long partitionSamplewindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
-      long brokerSamplewindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG));
+      long partitionSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
+      long brokerSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG));
 
       int numPartitionSampleWindows =
           Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG));
-      long partitionSampleRetentionMs = (numPartitionSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * partitionSamplewindowMs;
+      long partitionSampleRetentionMs = (numPartitionSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * partitionSampleWindowMs;
       partitionSampleRetentionMs = Math.max(MIN_SAMPLE_TOPIC_RETENTION_TIME_MS, partitionSampleRetentionMs);
 
       int numBrokerSampleWindows =
           Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG));
-      long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * brokerSamplewindowMs;
+      long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * brokerSampleWindowMs;
       brokerSampleRetentionMs = Math.max(MIN_SAMPLE_TOPIC_RETENTION_TIME_MS, brokerSampleRetentionMs);
 
       int numberOfBrokersInCluster = zkUtils.getAllBrokersInCluster().size();
@@ -365,7 +365,7 @@ public class KafkaSampleStore implements SampleStore {
                 LOG.warn("Ignoring sample due to", e);
               }
             }
-            if (partitionMetricSamples.size() > 0 || brokerMetricSamples.size() > 0) {
+            if (!partitionMetricSamples.isEmpty() || !brokerMetricSamples.isEmpty()) {
               _sampleLoader.loadSamples(new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples));
               _numPartitionMetricSamples.getAndAdd(partitionMetricSamples.size());
               _numBrokerMetricSamples.getAndAdd(brokerMetricSamples.size());
@@ -413,9 +413,9 @@ public class KafkaSampleStore implements SampleStore {
       long currentTimeMs = System.currentTimeMillis();
       for (TopicPartition tp : _consumer.assignment()) {
         if (tp.topic().equals(_brokerMetricSampleStoreTopic)) {
-          beginningTimestamp.put(tp, currentTimeMs - _sampleLoader.brokerSampleTimeLengthToLoadMs());
+          beginningTimestamp.put(tp, currentTimeMs - _sampleLoader.brokerMonitoringPeriodMs());
         } else {
-          beginningTimestamp.put(tp, currentTimeMs - _sampleLoader.partitionSampleTimeLengthToLoadMs());
+          beginningTimestamp.put(tp, currentTimeMs - _sampleLoader.partitionMonitoringPeriodMs());
         }
       }
 

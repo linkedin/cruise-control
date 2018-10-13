@@ -78,12 +78,12 @@ public interface SampleStore extends CruiseControlConfigurable {
       return _brokerMetricSampleAggregator.numSamples();
     }
 
-    public long partitionSampleTimeLengthToLoadMs() {
-      return _partitionMetricSampleAggregator.sampleTimeLengthToLoadMs();
+    public long partitionMonitoringPeriodMs() {
+      return _partitionMetricSampleAggregator.monitoringPeriodMs();
     }
 
-    public long brokerSampleTimeLengthToLoadMs() {
-      return _brokerMetricSampleAggregator.sampleTimeLengthToLoadMs();
+    public long brokerMonitoringPeriodMs() {
+      return _brokerMetricSampleAggregator.monitoringPeriodMs();
     }
   }
 }
