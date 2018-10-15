@@ -42,6 +42,7 @@ public class KafkaBrokerMetricSampleAggregator extends MetricSampleAggregator<St
           KafkaMetricDef.brokerMetricDef());
     _maxAllowedExtrapoloationsPerBroker =
         config.getInt(KafkaCruiseControlConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_BROKER_CONFIG);
+    _sampleType = SampleType.BROKER;
   }
 
   /**

@@ -92,7 +92,9 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   protected final int _minSamplesPerWindow;
   protected final int _numWindowsToKeep;
   protected final long _windowMs;
+  protected final long _monitoringPeriodMs;
   protected final MetricDef _metricDef;
+  protected SampleType _sampleType;
 
   private volatile long _currentWindowIndex;
   private volatile long _oldestWindowIndex;
@@ -117,6 +119,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     _rawMetrics = new ConcurrentHashMap<>();
     _numWindows = numWindows;
     _windowMs = windowMs;
+    _monitoringPeriodMs = _numWindows * _windowMs;
     // We keep one more window for the active window.
     _numWindowsToKeep = _numWindows + 1;
     _minSamplesPerWindow = minSamplesPerWindow;
@@ -469,17 +472,19 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
           // The first possible window index is actually 1 instead of 0.
           _oldestWindowIndex = Math.max(1, index - _numWindows);
           int numOldWindowIndexesToReset = (int) Math.min(_numWindowsToKeep, _oldestWindowIndex - prevOldestWindowIndex);
+          int numAbandonedSamples = 0;
           // Reset all the data starting from previous oldest window. After this point the old samples cannot get
           // into the raw metric values. We only need to reset the index if the new index is at least _numWindows;
           if (numOldWindowIndexesToReset > 0) {
-            resetIndexes(prevOldestWindowIndex, numOldWindowIndexesToReset);
+            numAbandonedSamples = resetIndexes(prevOldestWindowIndex, numOldWindowIndexesToReset);
           }
           // Set the generation of the old current window.
           _aggregatorState.updateWindowGeneration(_currentWindowIndex, generation());
           // Lastly update current window.
           _currentWindowIndex = index;
-          LOG.info("Rolled out {} new windows, current window range [{}, {}]",
-                   numWindowsToRollOut, _oldestWindowIndex * _windowMs, _currentWindowIndex * _windowMs);
+          LOG.info("{} Aggregator rolled out {} new windows, reset {} windows, current window range [{}, {}], abandon {} samples.",
+                    _sampleType, numWindowsToRollOut, numOldWindowIndexesToReset, _oldestWindowIndex * _windowMs,
+                    _currentWindowIndex * _windowMs, numAbandonedSamples);
           return true;
         }
       } finally {
@@ -489,14 +494,16 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     return false;
   }
 
-  private void resetIndexes(long prevOldestWindowIndex, int numIndexesToReset) {
+  private int resetIndexes(long prevOldestWindowIndex, int numIndexesToReset) {
     long currentOldestWindowIndex = _oldestWindowIndex;
+    int numAbandonedSamples = 0;
     for (RawMetricValues rawValues : _rawMetrics.values()) {
       rawValues.updateOldestWindowIndex(currentOldestWindowIndex);
-      rawValues.resetWindowIndexes(prevOldestWindowIndex, numIndexesToReset);
+      numAbandonedSamples += rawValues.resetWindowIndexes(prevOldestWindowIndex, numIndexesToReset);
     }
     _aggregatorState.updateOldestWindowIndex(currentOldestWindowIndex);
     _aggregatorState.resetWindowIndexes(prevOldestWindowIndex, numIndexesToReset);
+    return numAbandonedSamples;
   }
 
   private void validateCompleteness(long from,
@@ -566,5 +573,21 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    */
   private E identity(E entity) {
     return _identityEntityMap.computeIfAbsent(entity, e -> entity);
+  }
+
+  /**
+   * Get the length of time aggregator keeps samples in memory.
+   * @return length of time.
+   */
+  public long monitoringPeriodMs() {
+    return _monitoringPeriodMs;
+  }
+
+  /**
+   * The {@link MetricSample MetricSamples} type which the aggregator collects.
+   */
+  protected enum SampleType {
+    BROKER,
+    PARTITION
   }
 }

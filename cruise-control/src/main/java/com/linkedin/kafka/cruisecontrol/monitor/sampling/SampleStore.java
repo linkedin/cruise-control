@@ -77,5 +77,13 @@ public interface SampleStore extends CruiseControlConfigurable {
     public long brokerSampleCount() {
       return _brokerMetricSampleAggregator.numSamples();
     }
+
+    public long partitionMonitoringPeriodMs() {
+      return _partitionMetricSampleAggregator.monitoringPeriodMs();
+    }
+
+    public long brokerMonitoringPeriodMs() {
+      return _brokerMetricSampleAggregator.monitoringPeriodMs();
+    }
   }
 }

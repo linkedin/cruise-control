@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersion
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +31,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.Producer;
@@ -66,6 +68,7 @@ public class KafkaSampleStore implements SampleStore {
   // Keep additional windows in case some of the windows do not have enough samples.
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
+  private static final long SAMPLE_POLL_TIMEOUT = 1000L;
 
   protected static final Integer DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final Integer DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;
@@ -148,16 +151,17 @@ public class KafkaSampleStore implements SampleStore {
                                                                               "EnsureTopicCreated");
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
-      long windowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
+      long partitionSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
+      long brokerSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG));
 
       int numPartitionSampleWindows =
           Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG));
-      long partitionSampleRetentionMs = (numPartitionSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
+      long partitionSampleRetentionMs = (numPartitionSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * partitionSampleWindowMs;
       partitionSampleRetentionMs = Math.max(MIN_SAMPLE_TOPIC_RETENTION_TIME_MS, partitionSampleRetentionMs);
 
       int numBrokerSampleWindows =
           Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG));
-      long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * windowMs;
+      long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * brokerSampleWindowMs;
       brokerSampleRetentionMs = Math.max(MIN_SAMPLE_TOPIC_RETENTION_TIME_MS, brokerSampleRetentionMs);
 
       int numberOfBrokersInCluster = kafkaZkClient.getAllBrokersInCluster().size();
@@ -298,7 +302,6 @@ public class KafkaSampleStore implements SampleStore {
     }
     for (int i = 0; i < numConsumers; i++) {
       _consumers.get(i).assign(assignments.get(i));
-      _consumers.get(i).seekToBeginning(assignments.get(i));
     }
   }
 
@@ -327,6 +330,7 @@ public class KafkaSampleStore implements SampleStore {
     @Override
     public void run() {
       try {
+        prepareConsumerOffset();
         Map<TopicPartition, Long> beginningOffsets = _consumer.beginningOffsets(_consumer.assignment());
         Map<TopicPartition, Long> endOffsets = _consumer.endOffsets(_consumer.assignment());
         LOG.debug("Loading beginning offsets: {}, loading end offsets: {}", beginningOffsets, endOffsets);
@@ -336,7 +340,7 @@ public class KafkaSampleStore implements SampleStore {
         }
         while (!sampleLoadingFinished(endOffsets)) {
           try {
-            ConsumerRecords<byte[], byte[]> consumerRecords = _consumer.poll(10);
+            ConsumerRecords<byte[], byte[]> consumerRecords = _consumer.poll(SAMPLE_POLL_TIMEOUT);
             if (consumerRecords == SHUTDOWN_RECORDS) {
               LOG.trace("Metric loader received empty records");
               return;
@@ -348,7 +352,6 @@ public class KafkaSampleStore implements SampleStore {
                 if (record.topic().equals(_partitionMetricSampleStoreTopic)) {
                   PartitionMetricSample sample = PartitionMetricSample.fromBytes(record.value());
                   partitionMetricSamples.add(sample);
-                  _numPartitionMetricSamples.incrementAndGet();
                   LOG.trace("Loaded partition metric sample {}", sample);
                 } else if (record.topic().equals(_brokerMetricSampleStoreTopic)) {
                   BrokerMetricSample sample = BrokerMetricSample.fromBytes(record.value());
@@ -356,15 +359,18 @@ public class KafkaSampleStore implements SampleStore {
                   // we use the record timestamp as the broker metric timestamp.
                   sample.close(record.timestamp());
                   brokerMetricSamples.add(sample);
-                  _numBrokerMetricSamples.incrementAndGet();
                   LOG.trace("Loaded broker metric sample {}", sample);
                 }
               } catch (UnknownVersionException e) {
                 LOG.warn("Ignoring sample due to", e);
               }
             }
-            _sampleLoader.loadSamples(new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples));
-            _loadingProgress = (double) _numLoadedSamples.addAndGet(consumerRecords.count()) / _totalSamples.get();
+            if (!partitionMetricSamples.isEmpty() || !brokerMetricSamples.isEmpty()) {
+              _sampleLoader.loadSamples(new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples));
+              _numPartitionMetricSamples.getAndAdd(partitionMetricSamples.size());
+              _numBrokerMetricSamples.getAndAdd(brokerMetricSamples.size());
+              _loadingProgress = (double) _numLoadedSamples.addAndGet(consumerRecords.count()) / _totalSamples.get();
+            }
           } catch (KafkaException ke) {
             if (ke.getMessage().toLowerCase().contains("record is corrupt")) {
               for (TopicPartition tp : _consumer.assignment()) {
@@ -384,6 +390,7 @@ public class KafkaSampleStore implements SampleStore {
             }
           }
         }
+        LOG.info("Metric loader finished loading samples.");
       } catch (Throwable t) {
         LOG.warn("Encountered error when loading sample from Kafka.", t);
       }
@@ -393,12 +400,44 @@ public class KafkaSampleStore implements SampleStore {
       for (Map.Entry<TopicPartition, Long> entry : endOffsets.entrySet()) {
         long position = _consumer.position(entry.getKey());
         if (position < entry.getValue()) {
-          LOG.trace("Partition {} is still lagging. Current position: {}, LEO: {}", entry.getKey(),
+          LOG.debug("Partition {} is still lagging. Current position: {}, LEO: {}", entry.getKey(),
                     position, entry.getValue());
           return false;
         }
       }
       return true;
+    }
+
+    /**
+     * Config the sample loading consumers to consume from proper starting offsets. The sample store Kafka topic may contain data
+     * which are too old for {@link com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator} to keep in memory,
+     * to prevent loading these stale data, manually seek the consumers' staring offset to the offset at proper timestamp.
+     */
+    private void prepareConsumerOffset() {
+      Map<TopicPartition, Long> beginningTimestamp = new HashMap<>(_consumer.assignment().size());
+      long currentTimeMs = System.currentTimeMillis();
+      for (TopicPartition tp : _consumer.assignment()) {
+        if (tp.topic().equals(_brokerMetricSampleStoreTopic)) {
+          beginningTimestamp.put(tp, currentTimeMs - _sampleLoader.brokerMonitoringPeriodMs());
+        } else {
+          beginningTimestamp.put(tp, currentTimeMs - _sampleLoader.partitionMonitoringPeriodMs());
+        }
+      }
+
+      Set<TopicPartition> partitionWithNoRecentMessage = new HashSet<>();
+      Map<TopicPartition, OffsetAndTimestamp> beginningOffsetAndTimestamp = _consumer.offsetsForTimes(beginningTimestamp);
+      for (Map.Entry<TopicPartition, OffsetAndTimestamp> entry: beginningOffsetAndTimestamp.entrySet()) {
+        if (entry.getValue() == null) {
+          // If this sample store topic partition does not have data available after beginning timestamp, then seek to the
+          // beginning of this topic partition.
+          partitionWithNoRecentMessage.add(entry.getKey());
+        } else {
+          _consumer.seek(entry.getKey(), entry.getValue().offset());
+        }
+      }
+      if (partitionWithNoRecentMessage.size() > 0) {
+        _consumer.seekToBeginning(partitionWithNoRecentMessage);
+      }
     }
   }
 }
