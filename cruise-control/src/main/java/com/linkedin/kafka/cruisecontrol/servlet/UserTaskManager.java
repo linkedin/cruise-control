@@ -321,6 +321,7 @@ public class UserTaskManager implements Closeable {
                                                       OperationFuture operationFuture,
                                                       HttpServletRequest httpServletRequest) {
     if (_activeUserTaskIdToFuturesMap.containsKey(userTaskId)) {
+      _completedUserTaskIdToFuturesMap.remove(userTaskId);
       _activeUserTaskIdToFuturesMap.get(userTaskId).futures().add(operationFuture);
     } else {
       if (_activeUserTaskIdToFuturesMap.size() >= _maxActiveUserTasks) {
