@@ -576,16 +576,18 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
   }
 
   /**
-   * Get the length of time aggregator keeps sample in memory.
-   * It is used to determine the time length to look back(from current time) when loading the historical samples.
+   * Get the length of time aggregator keeps samples in memory.
    * @return length of time.
    */
   public long monitoringPeriodMs() {
     return _monitoringPeriodMs;
   }
 
+  /**
+   * The {@link MetricSample MetricSamples} type which the aggregator collects.
+   */
   protected enum SampleType {
     BROKER,
-    PARTITION;
+    PARTITION
   }
 }

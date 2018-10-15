@@ -408,6 +408,11 @@ public class KafkaSampleStore implements SampleStore {
       return true;
     }
 
+    /**
+     * Config the sample loading consumers to consume from proper starting offsets. The sample store Kafka topic may contains datas
+     * which are too old for {@link com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator} to keep in memory,
+     * to prevent loading these stale datas, manually seek the consumers' staring offset to the offset at proper timestamp.
+     */
     private void prepareConsumerOffset() {
       Map<TopicPartition, Long> beginningTimestamp = new HashMap<>(_consumer.assignment().size());
       long currentTimeMs = System.currentTimeMillis();
@@ -423,6 +428,8 @@ public class KafkaSampleStore implements SampleStore {
       Map<TopicPartition, OffsetAndTimestamp> beginningOffsetAndTimestamp = _consumer.offsetsForTimes(beginningTimestamp);
       for (Map.Entry<TopicPartition, OffsetAndTimestamp> entry: beginningOffsetAndTimestamp.entrySet()) {
         if (entry.getValue() == null) {
+          // If this sample store topic partition does not have data available after beginning timestamp, then seek to the
+          // beginning of this topic partition.
           partitionWithNoRecentMessage.add(entry.getKey());
         } else {
           _consumer.seek(entry.getKey(), entry.getValue().offset());
