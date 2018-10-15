@@ -409,9 +409,9 @@ public class KafkaSampleStore implements SampleStore {
     }
 
     /**
-     * Config the sample loading consumers to consume from proper starting offsets. The sample store Kafka topic may contains datas
+     * Config the sample loading consumers to consume from proper starting offsets. The sample store Kafka topic may contain data
      * which are too old for {@link com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregator} to keep in memory,
-     * to prevent loading these stale datas, manually seek the consumers' staring offset to the offset at proper timestamp.
+     * to prevent loading these stale data, manually seek the consumers' staring offset to the offset at proper timestamp.
      */
     private void prepareConsumerOffset() {
       Map<TopicPartition, Long> beginningTimestamp = new HashMap<>(_consumer.assignment().size());
