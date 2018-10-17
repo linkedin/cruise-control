@@ -114,7 +114,7 @@ public class KafkaSampleStore implements SampleStore {
                                          ? null : Integer.parseInt(metricSampleStoreTopicReplicationFactorString);
     String partitionSampleStoreTopicPartitionCountString = (String) config.get(PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG);
     _partitionSampleStoreTopicPartitionCount = partitionSampleStoreTopicPartitionCountString == null || partitionSampleStoreTopicPartitionCountString.isEmpty()
-                                               ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT : Integer.parseInt(partitionSampleStoreTopicPartitionCountString);
+                                      ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT : Integer.parseInt(partitionSampleStoreTopicPartitionCountString);
     String brokerSampleStoreTopicPartitionCountString = (String) config.get(BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG);
     _brokerSampleStoreTopicPartitionCount = brokerSampleStoreTopicPartitionCountString == null || brokerSampleStoreTopicPartitionCountString.isEmpty()
                                             ? DEFAULT_BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT : Integer.parseInt(brokerSampleStoreTopicPartitionCountString);
