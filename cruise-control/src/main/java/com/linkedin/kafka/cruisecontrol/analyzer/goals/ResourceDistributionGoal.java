@@ -489,7 +489,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       candidateBrokerPQ.add(candidateBroker);
     }
 
-    while (!candidateBrokerPQ.isEmpty() && remainingPerBrokerSwapTimeMs(swapStartTimeMs) > 0) {
+    while (!candidateBrokerPQ.isEmpty()) {
+      if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
+        LOG.debug("Swap load out timeout for broker {}.", broker.id());
+        break;
+      }
+
       CandidateBroker cb = candidateBrokerPQ.poll();
       SortedSet<Replica> candidateReplicasToSwapWith = cb.replicas();
 
@@ -512,7 +517,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           swappedOutReplica = sourceReplica;
           break;
         } else if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
-          LOG.debug("Swap load out timeout for broker {}.", broker.id());
+          LOG.debug("Swap load out timeout for source replica {}.", sourceReplica.toString());
           return true;
         }
       }
@@ -590,7 +595,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       candidateBrokerPQ.add(candidateBroker);
     }
 
-    while (!candidateBrokerPQ.isEmpty() && remainingPerBrokerSwapTimeMs(swapStartTimeMs) > 0) {
+    while (!candidateBrokerPQ.isEmpty()) {
+      if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
+        LOG.debug("Swap load in timeout for broker {}.", broker.id());
+        break;
+      }
       CandidateBroker cb = candidateBrokerPQ.poll();
       SortedSet<Replica> candidateReplicasToSwapWith = cb.replicas();
 
@@ -617,7 +626,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           swappedOutReplica = sourceReplica;
           break;
         } else if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
-          LOG.debug("Swap load in timeout for broker {}.", broker.id());
+          LOG.debug("Swap load in timeout for source replica {}.", sourceReplica.toString());
           return true;
         }
       }
