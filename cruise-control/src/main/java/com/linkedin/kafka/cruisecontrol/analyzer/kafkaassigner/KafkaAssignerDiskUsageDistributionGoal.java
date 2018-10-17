@@ -496,11 +496,6 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   }
 
   @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    throw new IllegalStateException("No goal should be executed after " + name());
-  }
-
-  @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     throw new IllegalStateException("No goal should be executed after " + name());
   }

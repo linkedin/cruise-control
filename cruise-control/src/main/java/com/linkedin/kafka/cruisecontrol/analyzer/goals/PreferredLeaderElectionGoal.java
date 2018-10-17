@@ -67,15 +67,6 @@ public class PreferredLeaderElectionGoal implements Goal {
     return true;
   }
 
-  /**
-   * @deprecated
-   * Please use {@link #actionAcceptance(BalancingAction, ClusterModel)} instead.
-   */
-  @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    return true;
-  }
-
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     return ACCEPT;

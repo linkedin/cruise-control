@@ -167,11 +167,6 @@ public class KafkaCruiseControlServletDataFromTest {
     }
 
     @Override
-    public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-      return false;
-    }
-
-    @Override
     public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
       return REPLICA_REJECT;
     }
