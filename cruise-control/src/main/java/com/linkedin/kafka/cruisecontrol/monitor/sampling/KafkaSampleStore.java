@@ -59,6 +59,16 @@ import org.slf4j.LoggerFactory;
  *   set to {@link #DEFAULT_NUM_SAMPLE_LOADING_THREADS}.</li>
  *   <li>{@link #SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG}: The config for the replication factor of Kafka sample store topics,
  *   default value is set to {@link #DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR}.</li>
+ *   <li>{@link #PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG}: The config for the number of partition for Kafka partition sample store
+ *    topic, default value is set to {@link #DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT}.</li>
+ *   <li>{@link #BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG}: The config for the number of partition for Kafka broker sample store topic
+ *
+ *
+ *
+ *
+ *
+ *   ,
+ *   default value is set to {@link #DEFAULT_BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT}.</li>
  * </ul>
  */
 public class KafkaSampleStore implements SampleStore {
@@ -72,6 +82,8 @@ public class KafkaSampleStore implements SampleStore {
 
   protected static final Integer DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final Integer DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;
+  protected static final Integer DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT = 32;
+  protected static final Integer DEFAULT_BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT = 32;
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
   protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   protected static final Random RANDOM = new Random();
@@ -80,6 +92,8 @@ public class KafkaSampleStore implements SampleStore {
   protected String _partitionMetricSampleStoreTopic;
   protected String _brokerMetricSampleStoreTopic;
   protected Integer _sampleStoreTopicReplicationFactor;
+  protected Integer _partitionSampleStoreTopicPartitionCount;
+  protected Integer _brokerSampleStoreTopicPartitionCount;
   protected volatile double _loadingProgress;
   protected Producer<byte[], byte[]> _producer;
   protected volatile boolean _shutdown = false;
@@ -88,6 +102,8 @@ public class KafkaSampleStore implements SampleStore {
   public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
   public static final String NUM_SAMPLE_LOADING_THREADS_CONFIG = "num.sample.loading.threads";
   public static final String SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG = "sample.store.topic.replication.factor";
+  public static final String PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG = "partition.sample.store.topic.partition.count";
+  public static final String BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG = "broker.sample.store.topic.partition.count";
 
   @Override
   public void configure(Map<String, ?> config) {
@@ -95,7 +111,13 @@ public class KafkaSampleStore implements SampleStore {
     _brokerMetricSampleStoreTopic = KafkaCruiseControlUtils.getRequiredConfig(config, BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
     String metricSampleStoreTopicReplicationFactorString = (String) config.get(SAMPLE_STORE_TOPIC_REPLICATION_FACTOR_CONFIG);
     _sampleStoreTopicReplicationFactor = metricSampleStoreTopicReplicationFactorString == null || metricSampleStoreTopicReplicationFactorString.isEmpty()
-                               ? null : Integer.parseInt(metricSampleStoreTopicReplicationFactorString);
+                                         ? null : Integer.parseInt(metricSampleStoreTopicReplicationFactorString);
+    String partitionSampleStoreTopicPartitionCountString = (String) config.get(PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG);
+    _partitionSampleStoreTopicPartitionCount = partitionSampleStoreTopicPartitionCountString == null || partitionSampleStoreTopicPartitionCountString.isEmpty()
+                                               ? DEFAULT_PARTITION_SAMPLE_STORE_TOPIC_PARTITION_COUNT : Integer.parseInt(partitionSampleStoreTopicPartitionCountString);
+    String brokerSampleStoreTopicPartitionCountString = (String) config.get(BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG);
+    _brokerSampleStoreTopicPartitionCount = brokerSampleStoreTopicPartitionCountString == null || brokerSampleStoreTopicPartitionCountString.isEmpty()
+                                            ? DEFAULT_BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT : Integer.parseInt(brokerSampleStoreTopicPartitionCountString);
     String numProcessingThreadsString = (String) config.get(NUM_SAMPLE_LOADING_THREADS_CONFIG);
     int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty()
                                ? DEFAULT_NUM_SAMPLE_LOADING_THREADS : Integer.parseInt(numProcessingThreadsString);
@@ -170,20 +192,20 @@ public class KafkaSampleStore implements SampleStore {
                               numberOfBrokersInCluster) : _sampleStoreTopicReplicationFactor;
 
       ensureTopicCreated(zkUtils, topics.keySet(), _partitionMetricSampleStoreTopic, partitionSampleRetentionMs,
-                         replicationFactor);
+                         replicationFactor, _partitionSampleStoreTopicPartitionCount);
       ensureTopicCreated(zkUtils, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
-                         replicationFactor);
+                         replicationFactor, _brokerSampleStoreTopicPartitionCount);
     } finally {
       KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, 10000);
     }
   }
 
-  private void ensureTopicCreated(ZkUtils zkUtils, Set<String> allTopics, String topic, long retentionMs, int replicationFactor) {
+  private void ensureTopicCreated(ZkUtils zkUtils, Set<String> allTopics, String topic, long retentionMs, int replicationFactor, int partitionCount) {
     Properties props = new Properties();
     props.setProperty(LogConfig.RetentionMsProp(), Long.toString(retentionMs));
     props.setProperty(LogConfig.CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
     if (!allTopics.contains(topic)) {
-      AdminUtils.createTopic(zkUtils, topic, 32, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
+      AdminUtils.createTopic(zkUtils, topic, partitionCount, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
     } else {
       AdminUtils.changeTopicConfig(zkUtils, topic, props);
     }
