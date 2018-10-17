@@ -53,6 +53,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ResourceDistributi
 public abstract class ResourceDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ResourceDistributionGoal.class);
   private static final double BALANCE_MARGIN = 0.9;
+  private static final long PER_BROKER_SWAP_TIMEOUT_MS = 1000L;
   // Flag to indicate whether the self healing failed to relocate all replicas away from dead brokers in its initial
   // attempt and currently omitting the resource balance limit to relocate remaining replicas.
   private boolean _selfHealingDeadBrokersOnly;
@@ -465,6 +466,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                              ClusterModel clusterModel,
                                              Set<Goal> optimizedGoals,
                                              Set<String> excludedTopics) {
+    long swapStartTimeMs = System.currentTimeMillis();
     if (!broker.isAlive()) {
       return true;
     }
@@ -488,6 +490,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     while (!candidateBrokerPQ.isEmpty()) {
+      if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
+        LOG.debug("Swap load out timeout for broker {}.", broker.id());
+        break;
+      }
+
       CandidateBroker cb = candidateBrokerPQ.poll();
       SortedSet<Replica> candidateReplicasToSwapWith = cb.replicas();
 
@@ -509,6 +516,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           swappedInReplica = swappedIn;
           swappedOutReplica = sourceReplica;
           break;
+        } else if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
+          LOG.debug("Swap load out timeout for source replica {}.", sourceReplica.toString());
+          return true;
         }
       }
 
@@ -516,6 +526,16 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     return true;
+  }
+
+  /**
+   * Get the remaining per broker swap time in milliseconds based on the given swap start time.
+   *
+   * @param swapStartTimeMs Per broker swap start time in milliseconds.
+   * @return Remaining per broker swap time in milliseconds.
+   */
+  private long remainingPerBrokerSwapTimeMs(long swapStartTimeMs) {
+    return PER_BROKER_SWAP_TIMEOUT_MS - (System.currentTimeMillis() - swapStartTimeMs);
   }
 
   /**
@@ -552,6 +572,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                             ClusterModel clusterModel,
                                             Set<Goal> optimizedGoals,
                                             Set<String> excludedTopics) {
+    long swapStartTimeMs = System.currentTimeMillis();
     if (!broker.isAlive() || broker.replicas().isEmpty()) {
       // Source broker is dead or has no replicas to swap.
       return true;
@@ -575,6 +596,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     }
 
     while (!candidateBrokerPQ.isEmpty()) {
+      if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
+        LOG.debug("Swap load in timeout for broker {}.", broker.id());
+        break;
+      }
       CandidateBroker cb = candidateBrokerPQ.poll();
       SortedSet<Replica> candidateReplicasToSwapWith = cb.replicas();
 
@@ -600,6 +625,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           swappedInReplica = swappedIn;
           swappedOutReplica = sourceReplica;
           break;
+        } else if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
+          LOG.debug("Swap load in timeout for source replica {}.", sourceReplica.toString());
+          return true;
         }
       }
 
