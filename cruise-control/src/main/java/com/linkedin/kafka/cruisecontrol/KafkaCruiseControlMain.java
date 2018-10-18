@@ -35,6 +35,10 @@ public class KafkaCruiseControlMain {
   private static final String DEFAULT_WEBUI_DIR = "./cruise-control-ui/dist/";
   // Default URL for Admin UI
   private static final String DEFAULT_WEBUI_PATH_PREFIX = "/*";
+  // Default maximum blocking time for async endpoints.
+  private static final long DEFAULT_MAX_BLOCK_MS = 10000L;
+  // Default session expiration time for async endpoints.
+  private static final long DEFAULT_SESSION_EXPIRY_MS = 60000L;
 
   private KafkaCruiseControlMain() {
 
@@ -93,7 +97,7 @@ public class KafkaCruiseControlMain {
 
     // Kafka Cruise Control servlet data
     KafkaCruiseControlServlet kafkaCruiseControlServlet =
-        new KafkaCruiseControlServlet(kafkaCruiseControl, 10000L, 60000L, dropwizardMetricsRegistry);
+        new KafkaCruiseControlServlet(kafkaCruiseControl, DEFAULT_MAX_BLOCK_MS, DEFAULT_SESSION_EXPIRY_MS, dropwizardMetricsRegistry);
     ServletHolder servletHolder = new ServletHolder(kafkaCruiseControlServlet);
     context.addServlet(servletHolder, DEFAULT_API_PATH_PREFIX);
 

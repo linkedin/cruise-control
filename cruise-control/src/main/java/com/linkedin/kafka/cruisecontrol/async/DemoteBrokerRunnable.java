@@ -5,18 +5,18 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
 import java.util.Collection;
 
 
-public class DemoteBrokerRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
+public class DemoteBrokerRunnable extends OperationRunnable<KafkaOptimizationResult> {
   private final Collection<Integer> _brokerIds;
   private final boolean _dryRun;
   private final boolean _allowCapacityEstimation;
   private final Integer _concurrentLeaderMovements;
 
   DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
-                       OperationFuture<GoalOptimizer.OptimizerResult> future,
+                       OperationFuture<KafkaOptimizationResult> future,
                        Collection<Integer> brokerIds,
                        boolean dryRun,
                        boolean allowCapacityEstimation,
@@ -29,8 +29,11 @@ public class DemoteBrokerRunnable extends OperationRunnable<GoalOptimizer.Optimi
   }
 
   @Override
-  protected GoalOptimizer.OptimizerResult getResult() throws Exception {
-    return _kafkaCruiseControl.demoteBrokers(_brokerIds, _dryRun, _future.operationProgress(),
-                                             _allowCapacityEstimation, _concurrentLeaderMovements);
+  protected KafkaOptimizationResult getResult() throws Exception {
+    return new KafkaOptimizationResult(_kafkaCruiseControl.demoteBrokers(_brokerIds,
+                                                                         _dryRun,
+                                                                         _future.operationProgress(),
+                                                                         _allowCapacityEstimation,
+                                                                         _concurrentLeaderMovements));
   }
 }
