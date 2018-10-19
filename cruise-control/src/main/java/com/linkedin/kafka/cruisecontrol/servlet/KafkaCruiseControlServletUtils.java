@@ -23,6 +23,7 @@ import java.util.TreeSet;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
 
@@ -31,6 +32,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
  * The util class for Kafka Cruise Control servlet.
  */
 class KafkaCruiseControlServletUtils {
+  private static final String REQUEST_URI = "/KAFKACRUISECONTROL/";
 
   private static final String JSON_PARAM = "json";
   private static final String START_MS_PARAM = "start";
@@ -45,7 +47,6 @@ class KafkaCruiseControlServletUtils {
   private static final String DATA_FROM_PARAM = "data_from";
   private static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
   private static final String MAX_LOAD_PARAM = "max_load";
-
   private static final String GOALS_PARAM = "goals";
   private static final String BROKER_ID_PARAM = "brokerid";
   private static final String TOPIC_PARAM = "topic";
@@ -170,6 +171,9 @@ class KafkaCruiseControlServletUtils {
     Set<String> userTasks = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     userTasks.add(JSON_PARAM);
 
+    Set<String> admin = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    admin.add(JSON_PARAM);
+
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
     validParamNames.put(LOAD, Collections.unmodifiableSet(load));
@@ -185,6 +189,7 @@ class KafkaCruiseControlServletUtils {
     validParamNames.put(RESUME_SAMPLING, Collections.unmodifiableSet(resumeSampling));
     validParamNames.put(KAFKA_CLUSTER_STATE, Collections.unmodifiableSet(kafkaClusterState));
     validParamNames.put(USER_TASKS, Collections.unmodifiableSet(userTasks));
+    validParamNames.put(ADMIN, Collections.unmodifiableSet(admin));
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
@@ -194,17 +199,17 @@ class KafkaCruiseControlServletUtils {
   }
 
   public static final String[] HEADERS_TO_TRY = {
-    "X-Forwarded-For",
-    "Proxy-Client-IP",
-    "WL-Proxy-Client-IP",
-    "HTTP_X_FORWARDED_FOR",
-    "HTTP_X_FORWARDED",
-    "HTTP_X_CLUSTER_CLIENT_IP",
-    "HTTP_CLIENT_IP",
-    "HTTP_FORWARDED_FOR",
-    "HTTP_FORWARDED",
-    "HTTP_VIA",
-    "REMOTE_ADDR"
+      "X-Forwarded-For",
+      "Proxy-Client-IP",
+      "WL-Proxy-Client-IP",
+      "HTTP_X_FORWARDED_FOR",
+      "HTTP_X_FORWARDED",
+      "HTTP_X_CLUSTER_CLIENT_IP",
+      "HTTP_CLIENT_IP",
+      "HTTP_FORWARDED_FOR",
+      "HTTP_FORWARDED",
+      "HTTP_VIA",
+      "REMOTE_ADDR"
   };
 
   static String getClientIpAddress(HttpServletRequest request) {
@@ -230,13 +235,19 @@ class KafkaCruiseControlServletUtils {
         throw new IllegalArgumentException("Unsupported request method: " + request.getMethod() + ".");
     }
 
-    String path = request.getRequestURI().toUpperCase().replace("/KAFKACRUISECONTROL/", "");
+    String path = request.getRequestURI().toUpperCase().replace(REQUEST_URI, "");
     for (EndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
       }
     }
     return null;
+  }
+
+  static String getStateUrl(HttpServletRequest request) {
+    String url = request.getRequestURL().toString().toUpperCase();
+    int pos = url.indexOf(REQUEST_URI);
+    return url.substring(0, pos + REQUEST_URI.length()) + STATE;
   }
 
   private static boolean getBooleanParam(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
@@ -463,6 +474,14 @@ class KafkaCruiseControlServletUtils {
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
     return getMode(request) || getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
+  }
+
+  static void setResponseCode(HttpServletResponse response, int code, boolean json) {
+    response.setStatus(code);
+    response.setContentType(json ? "application/json" : "text/plain");
+    response.setCharacterEncoding(StandardCharsets.UTF_8.name());
+    response.setHeader("Access-Control-Allow-Origin", "*");
+    response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
   }
 
   enum DataFrom {

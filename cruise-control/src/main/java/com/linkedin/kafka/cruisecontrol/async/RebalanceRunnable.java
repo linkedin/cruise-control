@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -15,7 +15,7 @@ import java.util.regex.Pattern;
  * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern)}
  */
-class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
+class RebalanceRunnable extends OperationRunnable<KafkaOptimizationResult> {
   private final List<String> _goals;
   private final boolean _dryRun;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
@@ -26,7 +26,7 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
   private final Pattern _excludedTopics;
 
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
-                    OperationFuture<GoalOptimizer.OptimizerResult> future,
+                    OperationFuture<KafkaOptimizationResult> future,
                     List<String> goals,
                     boolean dryRun,
                     ModelCompletenessRequirements modelCompletenessRequirements,
@@ -47,15 +47,15 @@ class RebalanceRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
   }
 
   @Override
-  protected GoalOptimizer.OptimizerResult getResult() throws Exception {
-    return _kafkaCruiseControl.rebalance(_goals,
-                                         _dryRun,
-                                         _modelCompletenessRequirements,
-                                         _future.operationProgress(),
-                                         _allowCapacityEstimation,
-                                         _concurrentPartitionMovements,
-                                         _concurrentLeaderMovements,
-                                         _skipHardGoalCheck,
-                                         _excludedTopics);
+  protected KafkaOptimizationResult getResult() throws Exception {
+    return new KafkaOptimizationResult(_kafkaCruiseControl.rebalance(_goals,
+                                                                     _dryRun,
+                                                                     _modelCompletenessRequirements,
+                                                                     _future.operationProgress(),
+                                                                     _allowCapacityEstimation,
+                                                                     _concurrentPartitionMovements,
+                                                                     _concurrentLeaderMovements,
+                                                                     _skipHardGoalCheck,
+                                                                     _excludedTopics));
   }
 }
