@@ -263,9 +263,9 @@ public class KafkaSampleStore implements SampleStore {
       AdminUtils.changeTopicConfig(zkUtils, topic, props);
       MetadataResponse.TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(topic, zkUtils);
       OptionalInt currentReplicaFactor = topicMetadata.partitionMetadata().stream().mapToInt(pm -> pm.replicas().size()).max();
-      if(!currentReplicaFactor.isPresent()) {
+      if (!currentReplicaFactor.isPresent()) {
         throw new IllegalStateException("Kafka topic " + topic + " seems does not have any partition from latest metadata : " + topicMetadata + ".");
-      } else if(currentReplicaFactor.getAsInt() <= 0) {
+      } else if (currentReplicaFactor.getAsInt() <= 0) {
         throw new IllegalStateException("Kafka topic " + topic + " seems does not have any replica from latest metadata : " + topicMetadata + ".");
       }
       if (replicationFactor > currentReplicaFactor.getAsInt()) {
