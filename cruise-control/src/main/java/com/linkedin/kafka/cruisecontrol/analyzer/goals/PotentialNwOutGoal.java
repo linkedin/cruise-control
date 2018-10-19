@@ -59,15 +59,6 @@ public class PotentialNwOutGoal extends AbstractGoal {
   }
 
   /**
-   * @deprecated
-   * Please use {@link #actionAcceptance(BalancingAction, ClusterModel)} instead.
-   */
-  @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    return actionAcceptance(action, clusterModel) == ACCEPT;
-  }
-
-  /**
    * Check whether given action is acceptable by this goal. Action is acceptable by this goal if it satisfies
    * either of the following:
    * (1) it is a leadership movement,
