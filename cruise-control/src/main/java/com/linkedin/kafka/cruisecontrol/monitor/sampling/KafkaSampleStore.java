@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
@@ -261,8 +262,13 @@ public class KafkaSampleStore implements SampleStore {
     } else {
       AdminUtils.changeTopicConfig(zkUtils, topic, props);
       MetadataResponse.TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(topic, zkUtils);
-      int currentReplicaFactor = topicMetadata.partitionMetadata().stream().mapToInt(pm -> pm.replicas().size()).max().orElse(0);
-      if (replicationFactor > currentReplicaFactor) {
+      OptionalInt currentReplicaFactor = topicMetadata.partitionMetadata().stream().mapToInt(pm -> pm.replicas().size()).max();
+      if(!currentReplicaFactor.isPresent()) {
+        throw new IllegalStateException("Kafka topic " + topic + " seems does not have any partition from latest metadata : " + topicMetadata + ".");
+      } else if(currentReplicaFactor.getAsInt() <= 0) {
+        throw new IllegalStateException("Kafka topic " + topic + " seems does not have any replica from latest metadata : " + topicMetadata + ".");
+      }
+      if (replicationFactor > currentReplicaFactor.getAsInt()) {
         increaseTopicReplicaFactor(zkUtils, topicMetadata, replicationFactor, topic, props);
       }
       if (partitionCount > topicMetadata.partitionMetadata().size()) {
