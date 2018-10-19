@@ -133,13 +133,13 @@ public class KafkaSampleStore implements SampleStore {
     String minPartitionSampleStoreTopicRetentionTimeMsString = (String) config.get(MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS_CONFIG);
     _minPartitionSampleStoreTopicRetentionTimeMs = minPartitionSampleStoreTopicRetentionTimeMsString == null
                                                   || minPartitionSampleStoreTopicRetentionTimeMsString.isEmpty()
-                                                  ? DEFAULT_MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS :
-                                                  Integer.parseInt(minPartitionSampleStoreTopicRetentionTimeMsString);
+                                                  ? DEFAULT_MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS
+                                                  : Long.parseLong(minPartitionSampleStoreTopicRetentionTimeMsString);
     String minBrokerSampleStoreTopicRetentionTimeMsString = (String) config.get(MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS_CONFIG);
     _minBrokerSampleStoreTopicRetentionTimeMs = minBrokerSampleStoreTopicRetentionTimeMsString == null
                                                || minBrokerSampleStoreTopicRetentionTimeMsString.isEmpty()
-                                               ? DEFAULT_MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS :
-                                               Integer.parseInt(minBrokerSampleStoreTopicRetentionTimeMsString);
+                                               ? DEFAULT_MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS
+                                               : Long.parseLong(minBrokerSampleStoreTopicRetentionTimeMsString);
     String numProcessingThreadsString = (String) config.get(NUM_SAMPLE_LOADING_THREADS_CONFIG);
     int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty()
                                ? DEFAULT_NUM_SAMPLE_LOADING_THREADS : Integer.parseInt(numProcessingThreadsString);
@@ -222,16 +222,19 @@ public class KafkaSampleStore implements SampleStore {
     }
   }
 
-  private void increaseTopicReplicaFactor(ZkUtils zkUtils, MetadataResponse.TopicMetadata topicMetadata, int replicationFactor,
-      String topic, Properties props) {
+  private void increaseTopicReplicaFactor(ZkUtils zkUtils,
+                                          MetadataResponse.TopicMetadata topicMetadata,
+                                          int replicationFactor,
+                                          String topic,
+                                          Properties props) {
     List<Integer> brokers = new ArrayList<>();
     JavaConversions.seqAsJavaList(AdminUtils.getBrokerMetadatas(zkUtils, RackAwareMode.Safe$.MODULE$, Option.empty()))
-    .stream().forEach(bm -> brokers.add(bm.id()));
+                   .stream().forEach(bm -> brokers.add(bm.id()));
     if (replicationFactor > brokers.size()) {
       throw new RuntimeException("Unable to increase topic " + topic + " replica factor to " + replicationFactor +
                                  " since there are only " + brokers.size() + " brokers in the cluster.");
     }
-    scala.collection.Map<Object, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
+    scala.collection.mutable.Map<Object, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
     int cursor = 0;
     for (MetadataResponse.PartitionMetadata pm : topicMetadata.partitionMetadata()) {
       List<Object> newAssignedReplica = new ArrayList<>();
@@ -244,8 +247,7 @@ public class KafkaSampleStore implements SampleStore {
         }
         cursor = (cursor + 1) % brokers.size();
       }
-      ((scala.collection.mutable.HashMap<Object, Seq<Object>>) newReplicaAssignment).put(pm.partition(),
-          JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
+      newReplicaAssignment.put(pm.partition(), JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
     }
     AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(zkUtils, topic, newReplicaAssignment, props, true);
   }
@@ -259,7 +261,8 @@ public class KafkaSampleStore implements SampleStore {
     } else {
       AdminUtils.changeTopicConfig(zkUtils, topic, props);
       MetadataResponse.TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(topic, zkUtils);
-      if (replicationFactor > topicMetadata.partitionMetadata().get(0).replicas().size()) {
+      int currentReplicaFactor = topicMetadata.partitionMetadata().stream().mapToInt(pm -> pm.replicas().size()).max().orElse(0);
+      if (replicationFactor > currentReplicaFactor) {
         increaseTopicReplicaFactor(zkUtils, topicMetadata, replicationFactor, topic, props);
       }
       if (partitionCount > topicMetadata.partitionMetadata().size()) {
