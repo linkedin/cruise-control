@@ -98,9 +98,6 @@ public abstract class AbstractGoal implements Goal {
   }
 
   @Override
-  public abstract boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel);
-
-  @Override
   public abstract String name();
 
   /**

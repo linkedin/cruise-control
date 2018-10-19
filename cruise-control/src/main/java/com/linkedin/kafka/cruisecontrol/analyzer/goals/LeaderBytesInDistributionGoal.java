@@ -51,15 +51,6 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * @deprecated
-   * Please use {@link #actionAcceptance(BalancingAction, ClusterModel)} instead.
-   */
-  @Override
-  public boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel) {
-    return actionAcceptance(action, clusterModel) == ACCEPT;
-  }
-
-  /**
    * An action is acceptable if it does not move the leader bytes in above the threshold for leader bytes in.
    *
    * @param action Action to be checked for acceptance.
