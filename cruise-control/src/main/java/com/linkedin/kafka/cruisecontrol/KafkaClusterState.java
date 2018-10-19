@@ -32,9 +32,12 @@ import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class KafkaClusterState {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterState.class);
   public static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
   private static final String TOPIC = "topic";
   private static final String PARTITION = "partition";
@@ -77,11 +80,15 @@ public class KafkaClusterState {
    * @param version JSON version
    * @param verbose True if verbose, false otherwise.
    */
-  public String getJSONString(int version, boolean verbose)
-      throws ExecutionException, InterruptedException, TimeoutException {
+  public String getJSONString(int version, boolean verbose) {
     Gson gson = new Gson();
-    Map<String, Object> jsonStructure = getJsonStructure(verbose);
-    jsonStructure.put("version", version);
+    Map<String, Object> jsonStructure = null;
+    try {
+      jsonStructure = getJsonStructure(verbose);
+      jsonStructure.put("version", version);
+    }  catch (TimeoutException | InterruptedException | ExecutionException e) {
+      LOG.error("Failed to populate broker logDir state.", e);
+    }
     return gson.toJson(jsonStructure);
   }
 
@@ -411,11 +418,16 @@ public class KafkaClusterState {
     }
   }
 
-  public void writeOutputStream(OutputStream out, boolean verbose)
-      throws IOException, ExecutionException, InterruptedException, TimeoutException {
-    // Broker summary.
-    writeBrokerSummary(out);
-    // Partition summary.
-    writePartitionSummary(out, verbose);
+  public void writeOutputStream(OutputStream out, boolean verbose) {
+    try {
+      // Broker summary.
+      writeBrokerSummary(out);
+      // Partition summary.
+      writePartitionSummary(out, verbose);
+    } catch (IOException e) {
+      LOG.error("Failed to write output stream.", e);
+    } catch (TimeoutException | InterruptedException | ExecutionException e) {
+      LOG.error("Failed to populate broker logDir state.", e);
+    }
   }
 }

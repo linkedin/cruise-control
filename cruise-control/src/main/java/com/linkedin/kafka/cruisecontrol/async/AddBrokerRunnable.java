@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collection;
 import java.util.List;
@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer,
  * Integer, boolean, Pattern)}
  */
-class AddBrokerRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
+class AddBrokerRunnable extends OperationRunnable<KafkaOptimizationResult> {
   private final Collection<Integer> _brokerIds;
   private final boolean _dryRun;
   private final boolean _throttleAddedBrokers;
@@ -30,7 +30,7 @@ class AddBrokerRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
   private final Pattern _excludedTopics;
 
   AddBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
-                    OperationFuture<GoalOptimizer.OptimizerResult> future,
+                    OperationFuture<KafkaOptimizationResult> future,
                     Collection<Integer> brokerIds,
                     boolean dryRun,
                     boolean throttleAddedBrokers,
@@ -55,10 +55,10 @@ class AddBrokerRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult>
   }
 
   @Override
-  protected GoalOptimizer.OptimizerResult getResult() throws Exception {
-    return _kafkaCruiseControl.addBrokers(_brokerIds, _dryRun, _throttleAddedBrokers, _goals,
-                                          _modelCompletenessRequirements, _future.operationProgress(),
-                                          _allowCapacityEstimation, _concurrentPartitionMovements,
-                                          _concurrentLeaderMovements, _skipHardGoalCheck, _excludedTopics);
+  protected KafkaOptimizationResult getResult() throws Exception {
+    return new KafkaOptimizationResult(_kafkaCruiseControl.addBrokers(_brokerIds, _dryRun, _throttleAddedBrokers, _goals,
+                                                                      _modelCompletenessRequirements, _future.operationProgress(),
+                                                                      _allowCapacityEstimation, _concurrentPartitionMovements,
+                                                                      _concurrentLeaderMovements, _skipHardGoalCheck, _excludedTopics));
   }
 }

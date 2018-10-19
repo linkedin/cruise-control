@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
-import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.Pending;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
@@ -77,17 +77,17 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * @see KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
    * OperationProgress, boolean, Integer, Integer, boolean, Pattern)
    */
-  public OperationFuture<GoalOptimizer.OptimizerResult> decommissionBrokers(Collection<Integer> brokerIds,
-                                                                            boolean dryRun,
-                                                                            boolean throttleDecommissionedBrokers,
-                                                                            List<String> goals,
-                                                                            ModelCompletenessRequirements requirements,
-                                                                            boolean allowCapacityEstimation,
-                                                                            Integer concurrentPartitionMovements,
-                                                                            Integer concurrentLeaderMovements,
-                                                                            boolean skipHardGoalCheck,
-                                                                            Pattern excludedTopics) {
-    OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Decommission brokers");
+  public OperationFuture<KafkaOptimizationResult> decommissionBrokers(Collection<Integer> brokerIds,
+                                                                      boolean dryRun,
+                                                                      boolean throttleDecommissionedBrokers,
+                                                                      List<String> goals,
+                                                                      ModelCompletenessRequirements requirements,
+                                                                      boolean allowCapacityEstimation,
+                                                                      Integer concurrentPartitionMovements,
+                                                                      Integer concurrentLeaderMovements,
+                                                                      boolean skipHardGoalCheck,
+                                                                      Pattern excludedTopics) {
+    OperationFuture<KafkaOptimizationResult> future = new OperationFuture<>("Decommission brokers");
     pending(future.operationProgress());
     _sessionExecutor.submit(new DecommissionBrokersRunnable(this, future, brokerIds, dryRun,
                                                             throttleDecommissionedBrokers, goals, requirements,
@@ -103,7 +103,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * @see KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements, OperationProgress,
    * boolean, Integer, Integer, boolean, Pattern)
    */
-  public OperationFuture<GoalOptimizer.OptimizerResult> fixOfflineReplicas(boolean dryRun,
+  public OperationFuture<KafkaOptimizationResult> fixOfflineReplicas(boolean dryRun,
                                                                            List<String> goals,
                                                                            ModelCompletenessRequirements requirements,
                                                                            boolean allowCapacityEstimation,
@@ -111,7 +111,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
                                                                            Integer concurrentLeaderMovements,
                                                                            boolean skipHardGoalCheck,
                                                                            Pattern excludedTopics) {
-    OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Fix offline replicas");
+    OperationFuture<KafkaOptimizationResult> future = new OperationFuture<>("Fix offline replicas");
     pending(future.operationProgress());
     _sessionExecutor.submit(new FixOfflineReplicasRunnable(this, future, dryRun, goals,
                                                            requirements,
@@ -128,17 +128,17 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * @see KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
    * OperationProgress, boolean, Integer, Integer, boolean, Pattern)
    */
-  public OperationFuture<GoalOptimizer.OptimizerResult> addBrokers(Collection<Integer> brokerIds,
-                                                                   boolean dryRun,
-                                                                   boolean throttleAddedBrokers,
-                                                                   List<String> goals,
-                                                                   ModelCompletenessRequirements requirements,
-                                                                   boolean allowCapacityEstimation,
-                                                                   Integer concurrentPartitionMovements,
-                                                                   Integer concurrentLeaderMovements,
-                                                                   boolean skipHardGoalCheck,
-                                                                   Pattern excludedTopics) {
-    OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Add brokers");
+  public OperationFuture<KafkaOptimizationResult> addBrokers(Collection<Integer> brokerIds,
+                                                             boolean dryRun,
+                                                             boolean throttleAddedBrokers,
+                                                             List<String> goals,
+                                                             ModelCompletenessRequirements requirements,
+                                                             boolean allowCapacityEstimation,
+                                                             Integer concurrentPartitionMovements,
+                                                             Integer concurrentLeaderMovements,
+                                                             boolean skipHardGoalCheck,
+                                                             Pattern excludedTopics) {
+    OperationFuture<KafkaOptimizationResult> future = new OperationFuture<>("Add brokers");
     pending(future.operationProgress());
     _sessionExecutor.submit(
         new AddBrokerRunnable(this, future, brokerIds, dryRun, throttleAddedBrokers, goals, requirements,
@@ -191,12 +191,11 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * @see KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress, boolean,
    * boolean, Pattern)
    */
-  public OperationFuture<GoalOptimizer.OptimizerResult> getOptimizationProposals(List<String> goals,
-                                                                                 ModelCompletenessRequirements requirements,
-                                                                                 boolean allowCapacityEstimation,
-                                                                                 Pattern excludedTopics) {
-    OperationFuture<GoalOptimizer.OptimizerResult> future =
-        new OperationFuture<>("Get customized optimization proposals");
+  public OperationFuture<KafkaOptimizationResult> getOptimizationProposals(List<String> goals,
+                                                                           ModelCompletenessRequirements requirements,
+                                                                           boolean allowCapacityEstimation,
+                                                                           Pattern excludedTopics) {
+    OperationFuture<KafkaOptimizationResult> future = new OperationFuture<>("Get customized optimization proposals");
     pending(future.operationProgress());
     _sessionExecutor.submit(new GetOptimizationProposalsRunnable(this, future, goals, requirements,
                                                                  allowCapacityEstimation, excludedTopics));
@@ -207,15 +206,15 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * @see KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress, boolean, Integer,
    * Integer, boolean, Pattern)
    */
-  public OperationFuture<GoalOptimizer.OptimizerResult> rebalance(List<String> goals,
-                                                                  boolean dryRun,
-                                                                  ModelCompletenessRequirements requirements,
-                                                                  boolean allowCapacityEstimation,
-                                                                  Integer concurrentPartitionMovements,
-                                                                  Integer concurrentLeaderMovements,
-                                                                  boolean skipHardGoalCheck,
-                                                                  Pattern excludedTopics) {
-    OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Rebalance");
+  public OperationFuture<KafkaOptimizationResult> rebalance(List<String> goals,
+                                                            boolean dryRun,
+                                                            ModelCompletenessRequirements requirements,
+                                                            boolean allowCapacityEstimation,
+                                                            Integer concurrentPartitionMovements,
+                                                            Integer concurrentLeaderMovements,
+                                                            boolean skipHardGoalCheck,
+                                                            Pattern excludedTopics) {
+    OperationFuture<KafkaOptimizationResult> future = new OperationFuture<>("Rebalance");
     pending(future.operationProgress());
     _sessionExecutor.submit(new RebalanceRunnable(this, future, goals, dryRun, requirements,
                                                   allowCapacityEstimation, concurrentPartitionMovements,
@@ -226,11 +225,11 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   /**
    * @see KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress, boolean, Integer)
    */
-  public OperationFuture<GoalOptimizer.OptimizerResult> demoteBrokers(Collection<Integer> brokerIds,
-                                                                      boolean dryRun,
-                                                                      boolean allowCapacityEstimation,
-                                                                      Integer concurrentLeaderMovements) {
-    OperationFuture<GoalOptimizer.OptimizerResult> future = new OperationFuture<>("Demote");
+  public OperationFuture<KafkaOptimizationResult> demoteBrokers(Collection<Integer> brokerIds,
+                                                                boolean dryRun,
+                                                                boolean allowCapacityEstimation,
+                                                                Integer concurrentLeaderMovements) {
+    OperationFuture<KafkaOptimizationResult> future = new OperationFuture<>("Demote");
     pending(future.operationProgress());
     _sessionExecutor.submit(new DemoteBrokerRunnable(this, future, brokerIds, dryRun,
                                                      allowCapacityEstimation, concurrentLeaderMovements));

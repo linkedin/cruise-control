@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean,
  * Integer, Integer, boolean, Pattern)}
  */
-class FixOfflineReplicasRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
+class FixOfflineReplicasRunnable extends OperationRunnable<KafkaOptimizationResult> {
   private final boolean _dryRun;
   private final List<String> _goals;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
@@ -27,7 +27,7 @@ class FixOfflineReplicasRunnable extends OperationRunnable<GoalOptimizer.Optimiz
   private final Pattern _excludedTopics;
 
   FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
-                             OperationFuture<GoalOptimizer.OptimizerResult> future,
+                             OperationFuture<KafkaOptimizationResult> future,
                              boolean dryRun,
                              List<String> goals,
                              ModelCompletenessRequirements modelCompletenessRequirements,
@@ -48,10 +48,10 @@ class FixOfflineReplicasRunnable extends OperationRunnable<GoalOptimizer.Optimiz
   }
 
   @Override
-  protected GoalOptimizer.OptimizerResult getResult() throws Exception {
-    return _kafkaCruiseControl.fixOfflineReplicas(_dryRun, _goals, _modelCompletenessRequirements,
-                                                  _future.operationProgress(), _allowCapacityEstimation,
-                                                  _concurrentPartitionMovements, _concurrentLeaderMovements,
-                                                  _skipHardGoalCheck, _excludedTopics);
+  protected KafkaOptimizationResult getResult() throws Exception {
+    return new KafkaOptimizationResult(_kafkaCruiseControl.fixOfflineReplicas(_dryRun, _goals, _modelCompletenessRequirements,
+                                                                              _future.operationProgress(), _allowCapacityEstimation,
+                                                                              _concurrentPartitionMovements, _concurrentLeaderMovements,
+                                                                              _skipHardGoalCheck, _excludedTopics));
   }
 }

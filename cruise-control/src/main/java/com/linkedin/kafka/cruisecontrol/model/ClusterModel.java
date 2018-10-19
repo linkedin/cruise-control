@@ -1088,8 +1088,7 @@ public class ClusterModel implements Serializable {
    */
   public String brokerStatsJSON() {
     Gson gson = new Gson();
-    String json = gson.toJson(getJsonStructure());
-    return json;
+    return gson.toJson(getJsonStructure());
   }
 
   /**

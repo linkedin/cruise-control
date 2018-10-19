@@ -19,14 +19,17 @@ import java.util.Map;
 import com.google.gson.Gson;
 import java.util.StringJoiner;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class KafkaCruiseControlState {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlState.class);
   private static final String PARTITION_MOVEMENTS = "partition movements";
   private static final String LEADERSHIP_MOVEMENTS = "leadership movements";
-  private ExecutorState _executorState;
-  private LoadMonitorState _monitorState;
-  private AnalyzerState _analyzerState;
+  private final ExecutorState _executorState;
+  private final LoadMonitorState _monitorState;
+  private final AnalyzerState _analyzerState;
 
   public KafkaCruiseControlState(ExecutorState executionState,
                                  LoadMonitorState monitorState,
@@ -161,17 +164,21 @@ public class KafkaCruiseControlState {
     }
   }
 
-  public void writeOutputStream(OutputStream out, boolean verbose, boolean superVerbose) throws IOException {
-    out.write(toString().getBytes(StandardCharsets.UTF_8));
+  public void writeOutputStream(OutputStream out, boolean verbose, boolean superVerbose) {
+    try {
+      out.write(toString().getBytes(StandardCharsets.UTF_8));
 
-    if (verbose || superVerbose) {
-      writeVerboseMonitorState(out);
-      writeVerboseAnalyzerState(out);
-      writeVerboseExecutorState(out);
+      if (verbose || superVerbose) {
+        writeVerboseMonitorState(out);
+        writeVerboseAnalyzerState(out);
+        writeVerboseExecutorState(out);
 
-      if (superVerbose) {
-        writeSuperVerbose(out);
+        if (superVerbose) {
+          writeSuperVerbose(out);
+        }
       }
+    } catch (IOException e) {
+      LOG.error("Failed to write output stream.", e);
     }
   }
 
