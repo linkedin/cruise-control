@@ -133,9 +133,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "maintain.";
 
   /**
-   * <code>broker.metrics.windows.ms</code>
+   * <code>broker.metrics.window.ms</code>
    */
-  public static final String BROKER_METRICS_WINDOW_MS_CONFIG = "broker.metrics.windows.ms";
+  public static final String BROKER_METRICS_WINDOW_MS_CONFIG = "broker.metrics.window.ms";
   private static final String BROKER_METRICS_WINDOW_MS_DOC = "The size of the window in milliseconds to aggregate the"
       + " Kafka broker metrics.";
 
