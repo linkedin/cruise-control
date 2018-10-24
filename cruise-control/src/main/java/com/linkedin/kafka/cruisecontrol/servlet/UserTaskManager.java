@@ -204,22 +204,6 @@ public class UserTaskManager implements Closeable {
     return (T) operationFutures.get(operationFutures.size() - 1);
   }
 
-  public void closeSession(HttpServletRequest request) {
-    SessionKey sessionKey = new SessionKey(request);
-    UUID userTaskId;
-    synchronized (_sessionToUserTaskIdMap) {
-      userTaskId = _sessionToUserTaskIdMap.remove(sessionKey);
-    }
-
-    if (userTaskId != null) {
-      LOG.info("Closing SessionKey {} and UserTaskId {}", sessionKey, userTaskId);
-      if (isActiveUserTasksDone(userTaskId)) {
-        LOG.info("Invalidate SessionKey {}", sessionKey);
-        sessionKey.httpSession().invalidate();
-      }
-    }
-  }
-
   private void expireOldSessions() {
     long now = _time.milliseconds();
     synchronized (_sessionToUserTaskIdMap) {

@@ -219,37 +219,6 @@ public class UserTaskManagerTest {
   }
 
   @Test
-  public void testCloseSession() {
-    HttpSession mockHttpSession = EasyMock.mock(HttpSession.class);
-    mockHttpSession.invalidate();
-    EasyMock.expect(mockHttpSession.getLastAccessedTime()).andReturn(100L).anyTimes();
-
-    UserTaskManager.UUIDGenerator mockUUIDGenerator = EasyMock.mock(UserTaskManager.UUIDGenerator.class);
-    EasyMock.expect(mockUUIDGenerator.randomUUID()).andReturn(UUID.randomUUID()).anyTimes();
-
-    HttpServletRequest mockHttpServletRequest = prepareRequest(mockHttpSession, null);
-
-    OperationFuture<Integer> future = new OperationFuture<>("future");
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 1, new MockTime(), mockUUIDGenerator);
-
-    HttpServletResponse mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
-    mockHttpServletResponse.setHeader(EasyMock.anyString(), EasyMock.anyString());
-
-    EasyMock.replay(mockUUIDGenerator, mockHttpSession, mockHttpServletResponse);
-    // test-case: close session invalidates session
-    OperationFuture future1 =
-        userTaskManager.getOrCreateUserTask(mockHttpServletRequest, mockHttpServletResponse, () -> future, 0);
-    Assert.assertEquals(future, future1);
-
-    userTaskManager.closeSession(mockHttpServletRequest);
-
-    OperationFuture future2 = userTaskManager.getFuture(mockHttpServletRequest);
-    Assert.assertNull(future2);
-
-    userTaskManager.close();
-  }
-
-  @Test
   public void testMaximumActiveTasks() {
     HttpSession mockHttpSession1 = EasyMock.mock(HttpSession.class);
     EasyMock.expect(mockHttpSession1.getLastAccessedTime()).andReturn(100L).anyTimes();

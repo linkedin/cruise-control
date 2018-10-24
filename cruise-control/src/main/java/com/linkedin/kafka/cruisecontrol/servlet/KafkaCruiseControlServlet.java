@@ -181,24 +181,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case LOAD:
-              if (getClusterLoad(request, response)) {
-                _userTaskManager.closeSession(request);
-              }
+              getClusterLoad(request, response);
               break;
             case PARTITION_LOAD:
-              if (getPartitionLoad(request, response)) {
-                _userTaskManager.closeSession(request);
-              }
+              getPartitionLoad(request, response);
               break;
             case PROPOSALS:
-              if (getProposals(request, response)) {
-                _userTaskManager.closeSession(request);
-              }
+              getProposals(request, response);
               break;
             case STATE:
-              if (getState(request, response)) {
-                _userTaskManager.closeSession(request);
-              }
+              getState(request, response);
               break;
             case KAFKA_CLUSTER_STATE:
               getKafkaClusterState(request, response);
@@ -224,7 +216,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       StringWriter sw = new StringWriter();
       ure.printStackTrace(new PrintWriter(sw));
       setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
-      _userTaskManager.closeSession(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
@@ -232,7 +223,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String errorMessage = String.format("Error processing GET request '%s' due to '%s'.", request.getPathInfo(), e.getMessage());
       LOG.error(errorMessage, e);
       setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
-      _userTaskManager.closeSession(request);
     } finally {
       try {
         response.getOutputStream().close();
@@ -305,14 +295,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           switch (endPoint) {
             case ADD_BROKER:
             case REMOVE_BROKER:
-              if (addOrRemoveBroker(request, response, endPoint)) {
-                _userTaskManager.closeSession(request);
-              }
+              addOrRemoveBroker(request, response, endPoint);
               break;
             case REBALANCE:
-              if (rebalance(request, response)) {
-                _userTaskManager.closeSession(request);
-              }
+              rebalance(request, response);
               break;
             case STOP_PROPOSAL_EXECUTION:
               stopProposalExecution();
@@ -330,9 +316,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case DEMOTE_BROKER:
-              if (demoteBroker(request, response)) {
-                _userTaskManager.closeSession(request);
-              }
+              demoteBroker(request, response);
               break;
             default:
               throw new UserRequestException("Invalid URL for POST");
@@ -350,7 +334,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       StringWriter sw = new StringWriter();
       ure.printStackTrace(new PrintWriter(sw));
       setErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
-      _userTaskManager.closeSession(request);
     } catch (Exception e) {
       StringWriter sw = new StringWriter();
       PrintWriter pw = new PrintWriter(sw);
@@ -358,7 +341,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String errorMessage = String.format("Error processing POST request '%s' due to: '%s'.", request.getPathInfo(), e.getMessage());
       LOG.error(errorMessage, e);
       setErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
-      _userTaskManager.closeSession(request);
     } finally {
       try {
         response.getOutputStream().close();
