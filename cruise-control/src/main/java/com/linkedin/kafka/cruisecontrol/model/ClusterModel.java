@@ -41,6 +41,7 @@ import org.apache.kafka.common.TopicPartition;
  */
 public class ClusterModel implements Serializable {
   private static final long serialVersionUID = -6840253566423285966L;
+  private static final String VERSION = "version";
 
   private final ModelGeneration _generation;
   private final Map<String, Rack> _racksById;
@@ -1083,7 +1084,7 @@ public class ClusterModel implements Serializable {
     public String getJSONString(int version) {
       Gson gson = new Gson();
       Map<String, Object> jsonStructure = getJsonStructure();
-      jsonStructure.put("version", version);
+      jsonStructure.put(VERSION, version);
       return gson.toJson(jsonStructure);
     }
 
@@ -1359,7 +1360,7 @@ public class ClusterModel implements Serializable {
   public String getJSONString(int version) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure2();
-    jsonStructure.put("version", version);
+    jsonStructure.put(VERSION, version);
     return gson.toJson(jsonStructure);
   }
 

@@ -4,9 +4,17 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
+import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
@@ -20,18 +28,27 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
-
+import static javax.servlet.http.HttpServletResponse.SC_OK;
+import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
 /**
  * The util class for Kafka Cruise Control servlet.
  */
 class KafkaCruiseControlServletUtils {
+  static final int JSON_VERSION = 1;
+  private static final String VERSION = "version";
+  private static final String MESSAGE = "message";
+  private static final String STACK_TRACE = "stackTrace";
+  private static final String ERROR_MESSAGE = "errorMessage";
+  private static final String PROGRESS = "progress";
   private static final String REQUEST_URI = "/KAFKACRUISECONTROL/";
 
   private static final String JSON_PARAM = "json";
@@ -335,7 +352,7 @@ class KafkaCruiseControlServletUtils {
       Double minValidPartitionRatio = Double.parseDouble(minValidPartitionRatioString);
       if (minValidPartitionRatio > 1.0 || minValidPartitionRatio < 0.0) {
         throw new IllegalArgumentException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
-            + minValidPartitionRatio.toString() + ").");
+                                           + minValidPartitionRatio.toString() + ").");
       }
       return minValidPartitionRatio;
     }
@@ -482,6 +499,94 @@ class KafkaCruiseControlServletUtils {
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     response.setHeader("Access-Control-Allow-Origin", "*");
     response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
+  }
+
+  static void writeSuccessResponse(HttpServletResponse response,
+                                   Supplier<String> jsonStringSupplier,
+                                   Consumer<OutputStream> plaintextWriter,
+                                   boolean json) throws IOException {
+    OutputStream out = response.getOutputStream();
+    setResponseCode(response, SC_OK, json);
+    if (json) {
+      String jsonString = jsonStringSupplier.get();
+      response.setContentLength(jsonString.length());
+      out.write(jsonString.getBytes(StandardCharsets.UTF_8));
+    } else {
+      plaintextWriter.accept(out);
+    }
+    out.flush();
+  }
+
+  static ModelCompletenessRequirements getRequirements(DataFrom dataFrom) {
+    return dataFrom == DataFrom.VALID_PARTITIONS ? new ModelCompletenessRequirements(Integer.MAX_VALUE, 0.0, true)
+                                                 : new ModelCompletenessRequirements(1, 1.0, true);
+  }
+
+  static void writeResponseToOutputStream(HttpServletResponse response,
+                                          int responseCode,
+                                          boolean json,
+                                          String responseMsg)
+      throws IOException {
+    OutputStream out = response.getOutputStream();
+    setResponseCode(response, responseCode, json);
+    response.setContentLength(responseMsg.length());
+    out.write(responseMsg.getBytes(StandardCharsets.UTF_8));
+    out.flush();
+  }
+
+  static void setErrorResponse(HttpServletResponse response,
+                               String stackTrace,
+                               String errorMessage,
+                               int responseCode,
+                               boolean json)
+      throws IOException {
+    String responseMsg;
+    if (json) {
+      Map<String, Object> exceptionMap = new HashMap<>();
+      exceptionMap.put(VERSION, JSON_VERSION);
+      exceptionMap.put(STACK_TRACE, stackTrace);
+      exceptionMap.put(ERROR_MESSAGE, errorMessage);
+      Gson gson = new Gson();
+      responseMsg = gson.toJson(exceptionMap);
+    } else {
+      responseMsg = errorMessage == null ? "" : errorMessage;
+    }
+    writeResponseToOutputStream(response, responseCode, json, responseMsg);
+  }
+
+  static void setSuccessResponse(HttpServletResponse response, String message, boolean json) throws IOException {
+    String responseMsg;
+    if (json) {
+      Map<String, Object> respMap = new HashMap<>();
+      respMap.put(VERSION, JSON_VERSION);
+      respMap.put(MESSAGE, message);
+      Gson gson = new Gson();
+      responseMsg = gson.toJson(respMap);
+    } else {
+      responseMsg = message == null ? "" : message;
+    }
+    writeResponseToOutputStream(response, SC_OK, json, responseMsg);
+  }
+
+  static void handleParameterParseException(Exception e, HttpServletResponse response, String errorMsg, boolean json)
+      throws IOException {
+    StringWriter sw = new StringWriter();
+    e.printStackTrace(new PrintWriter(sw));
+    setErrorResponse(response, sw.toString(), errorMsg, SC_BAD_REQUEST, json);
+  }
+
+  static void returnProgress(HttpServletResponse response, OperationFuture future, boolean json) throws IOException {
+    String responseMsg;
+    if (json) {
+      Map<String, Object> respMap = new HashMap<>();
+      respMap.put(VERSION, JSON_VERSION);
+      respMap.put(PROGRESS, future.getJsonArray());
+      Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
+       responseMsg = gson.toJson(respMap);
+    } else {
+       responseMsg = future.progressString();
+    }
+    writeResponseToOutputStream(response, SC_OK, json, responseMsg);
   }
 
   enum DataFrom {

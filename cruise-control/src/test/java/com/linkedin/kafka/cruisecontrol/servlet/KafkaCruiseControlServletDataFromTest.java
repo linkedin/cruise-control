@@ -12,6 +12,8 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitorState;
@@ -40,9 +42,9 @@ import static org.junit.Assert.*;
 @RunWith(Parameterized.class)
 public class KafkaCruiseControlServletDataFromTest {
   private static final ModelCompletenessRequirements FOR_AVAILABLE_WINDOWS =
-      KafkaCruiseControlServlet.getRequirements(KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS);
+      KafkaCruiseControlServletUtils.getRequirements(KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS);
   private static final ModelCompletenessRequirements FOR_AVAILABLE_PARTITIONS =
-      KafkaCruiseControlServlet.getRequirements(KafkaCruiseControlServletUtils.DataFrom.VALID_PARTITIONS);
+      KafkaCruiseControlServletUtils.getRequirements(KafkaCruiseControlServletUtils.DataFrom.VALID_PARTITIONS);
 
   private final int _numReadyGoals;
   private final int _totalGoals;
@@ -149,7 +151,8 @@ public class KafkaCruiseControlServletDataFromTest {
       goalReadiness.put(new MockGoal(i), false);
     }
     AnalyzerState analyzerState = new AnalyzerState(true, goalReadiness);
-    return new KafkaCruiseControlState(executorState, loadMonitorState, analyzerState);
+    AnomalyDetectorState anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()));
+    return new KafkaCruiseControlState(executorState, loadMonitorState, analyzerState, anomalyDetectorState);
   }
 
   /**

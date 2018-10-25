@@ -7,6 +7,8 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.Map;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
@@ -48,14 +50,12 @@ public class SelfHealingNotifier implements AnomalyNotifier {
 
   private static final Logger LOG = LoggerFactory.getLogger(SelfHealingNotifier.class);
   protected final Time _time;
-  protected boolean _selfHealingBrokerFailureEnabled;
-  protected boolean _selfHealingGoalViolationEnabled;
-  protected boolean _selfHealingMetricAnomalyEnabled;
+  protected final Map<AnomalyType, Boolean> _selfHealingEnabled;
   protected long _brokerFailureAlertThresholdMs;
   protected long _selfHealingThresholdMs;
 
   public SelfHealingNotifier() {
-    _time = new SystemTime();
+    this(new SystemTime());
   }
 
   /**
@@ -63,18 +63,30 @@ public class SelfHealingNotifier implements AnomalyNotifier {
    */
   SelfHealingNotifier(Time time) {
     _time = time;
+    _selfHealingEnabled = new HashMap<>(AnomalyType.cachedValues().size());
   }
 
   @Override
   public AnomalyNotificationResult onGoalViolation(GoalViolations goalViolations) {
-    alert(goalViolations, _selfHealingGoalViolationEnabled, System.currentTimeMillis(), AnomalyType.GOAL_VIOLATION);
-    return _selfHealingGoalViolationEnabled ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
+    alert(goalViolations, _selfHealingEnabled.get(AnomalyType.GOAL_VIOLATION), System.currentTimeMillis(), AnomalyType.GOAL_VIOLATION);
+    return _selfHealingEnabled.get(AnomalyType.GOAL_VIOLATION) ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
   }
 
   @Override
   public AnomalyNotificationResult onMetricAnomaly(KafkaMetricAnomaly metricAnomaly) {
-    alert(metricAnomaly, _selfHealingMetricAnomalyEnabled, System.currentTimeMillis(), AnomalyType.METRIC_ANOMALY);
-    return _selfHealingMetricAnomalyEnabled ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
+    alert(metricAnomaly, _selfHealingEnabled.get(AnomalyType.METRIC_ANOMALY), System.currentTimeMillis(), AnomalyType.METRIC_ANOMALY);
+    return _selfHealingEnabled.get(AnomalyType.METRIC_ANOMALY) ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
+  }
+
+  @Override
+  public Map<AnomalyType, Boolean> selfHealingEnabled() {
+    return Collections.unmodifiableMap(_selfHealingEnabled);
+  }
+
+  @Override
+  public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
+    Boolean oldValue = _selfHealingEnabled.put(anomalyType, isSelfHealingEnabled);
+    return oldValue != null && oldValue;
   }
 
   @Override
@@ -98,8 +110,8 @@ public class SelfHealingNotifier implements AnomalyNotifier {
       result = AnomalyNotificationResult.check(delay);
     } else {
       // Reached auto fix threshold. Alert and fix if self healing is enabled.
-      alert(brokerFailures, _selfHealingBrokerFailureEnabled, selfHealingTime, AnomalyType.BROKER_FAILURE);
-      result = _selfHealingBrokerFailureEnabled ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
+      alert(brokerFailures, _selfHealingEnabled.get(AnomalyType.BROKER_FAILURE), selfHealingTime, AnomalyType.BROKER_FAILURE);
+      result = _selfHealingEnabled.get(AnomalyType.BROKER_FAILURE) ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
     }
     return result;
   }
@@ -113,23 +125,8 @@ public class SelfHealingNotifier implements AnomalyNotifier {
    * @param anomalyType Type of anomaly.
    */
   public void alert(Object anomaly, boolean autoFixTriggered, long selfHealingStartTime, AnomalyType anomalyType) {
-    boolean selfHealingEnabled;
-    switch (anomalyType) {
-      case BROKER_FAILURE:
-        selfHealingEnabled = _selfHealingBrokerFailureEnabled;
-        break;
-      case GOAL_VIOLATION:
-        selfHealingEnabled = _selfHealingGoalViolationEnabled;
-        break;
-      case METRIC_ANOMALY:
-        selfHealingEnabled = _selfHealingMetricAnomalyEnabled;
-        break;
-      default:
-        throw new IllegalArgumentException("Illegal anomaly type " + anomalyType + " is provided.");
-    }
-
     LOG.warn("{} detected {}. Self healing {}.", anomalyType, anomaly,
-             selfHealingEnabled ? String.format("start time %s", toDateString(selfHealingStartTime)) : "is disabled");
+             _selfHealingEnabled.get(anomalyType) ? String.format("start time %s", toDateString(selfHealingStartTime)) : "is disabled");
 
     if (autoFixTriggered) {
       LOG.warn("Self-healing has been triggered.");
@@ -152,13 +149,16 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     boolean selfHealingAllEnabled = Boolean.parseBoolean(selfHealingEnabledString);
     // Per anomaly detector configs for self healing.
     String selfHealingBrokerFailureEnabledString = (String) config.get(SELF_HEALING_BROKER_FAILURE_ENABLED_CONFIG);
-    _selfHealingBrokerFailureEnabled = selfHealingBrokerFailureEnabledString == null
-                                       ? selfHealingAllEnabled : Boolean.parseBoolean(selfHealingBrokerFailureEnabledString);
+    _selfHealingEnabled.put(AnomalyType.BROKER_FAILURE, selfHealingBrokerFailureEnabledString == null
+                                                        ? selfHealingAllEnabled
+                                                        : Boolean.parseBoolean(selfHealingBrokerFailureEnabledString));
     String selfHealingGoalViolationEnabledString = (String) config.get(SELF_HEALING_GOAL_VIOLATION_ENABLED_CONFIG);
-    _selfHealingGoalViolationEnabled = selfHealingGoalViolationEnabledString == null
-                                       ? selfHealingAllEnabled : Boolean.parseBoolean(selfHealingGoalViolationEnabledString);
+    _selfHealingEnabled.put(AnomalyType.GOAL_VIOLATION, selfHealingGoalViolationEnabledString == null
+                                                        ? selfHealingAllEnabled
+                                                        : Boolean.parseBoolean(selfHealingGoalViolationEnabledString));
     String selfHealingMetricAnomalyEnabledString = (String) config.get(SELF_HEALING_METRIC_ANOMALY_ENABLED_CONFIG);
-    _selfHealingMetricAnomalyEnabled = selfHealingMetricAnomalyEnabledString == null
-                                       ? selfHealingAllEnabled : Boolean.parseBoolean(selfHealingMetricAnomalyEnabledString);
+    _selfHealingEnabled.put(AnomalyType.METRIC_ANOMALY, selfHealingMetricAnomalyEnabledString == null
+                                                        ? selfHealingAllEnabled
+                                                        : Boolean.parseBoolean(selfHealingMetricAnomalyEnabledString));
   }
 }
