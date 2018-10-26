@@ -52,7 +52,7 @@ import scala.Option;
 import scala.collection.JavaConversions;
 import scala.collection.JavaConverters;
 import scala.collection.Seq;
-import static java.lang.Thread.sleep;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicNotUnderPartitionReassignment;
 
 
 /**
@@ -234,14 +234,15 @@ public class KafkaSampleStore implements SampleStore {
     Map<Integer, String> rackByBroker = new HashMap<>();
     for (BrokerMetadata bm:
          JavaConversions.seqAsJavaList(AdminUtils.getBrokerMetadatas(zkUtils, RackAwareMode.Enforced$.MODULE$, Option.empty()))) {
-      String rack = bm.rack().get();
+      // If the rack is not specified, we use the broker id info as rack info.
+      String rack = bm.rack().isEmpty() ? String.valueOf(bm.id()) : bm.rack().get();
       brokersByRack.putIfAbsent(rack, new ArrayList<>());
       brokersByRack.get(rack).add(bm.id());
       rackByBroker.put(bm.id(), rack);
     }
     if (replicationFactor > brokersByRack.size()) {
-      throw new RuntimeException("Unable to increase topic " + topic + " replica factor to " + replicationFactor +
-                                 " since there are only " + brokersByRack.size() + " racks in the cluster.");
+      throw new RuntimeException("Unable to increase topic " + topic + " replica factor to " + replicationFactor
+                                 + " since there are only " + brokersByRack.size() + " racks in the cluster.");
     }
 
     scala.collection.mutable.Map<Object, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
@@ -257,7 +258,7 @@ public class KafkaSampleStore implements SampleStore {
         newAssignedReplica.add(node.id());
         currentOccupiedRack.add(rackByBroker.get(node.id()));
       });
-      // Add new replica to partition in rack-aware, round-robin way.
+      // Add new replica to partition in rack-aware(if rack info is available), round-robin way.
       while (newAssignedReplica.size() < replicationFactor) {
         if (!currentOccupiedRack.contains(racks.get(rackCursor))) {
           String rack = racks.get(rackCursor);
@@ -270,21 +271,6 @@ public class KafkaSampleStore implements SampleStore {
       newReplicaAssignment.put(pm.partition(), JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
     }
     AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(zkUtils, topic, newReplicaAssignment, props, true);
-  }
-
-  private void ensureTopicNotUnderPartitionReassignment(ZkUtils zkUtils, String topic) {
-    int attempt = 0;
-    while (JavaConversions.asJavaCollection(zkUtils.getPartitionsBeingReassigned().keys())
-          .stream().anyMatch(tp -> tp.topic().equals(topic))) {
-      try {
-        sleep(1000 << attempt);
-      } catch (InterruptedException e) {
-        // Let it go.
-      }
-      if (attempt++ == 10) {
-        throw new IllegalStateException("Kafka topic " + topic + " has stuck partition reassignment task.");
-      }
-    }
   }
 
   private void ensureTopicCreated(ZkUtils zkUtils, Set<String> allTopics, String topic, long retentionMs, int replicationFactor, int partitionCount) {
