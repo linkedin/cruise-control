@@ -179,6 +179,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String NUM_METRIC_FETCHERS_DOC = "The number of metric fetchers to fetch from the Kafka cluster.";
 
   /**
+   * <code>num.cached.recent.anomaly.states</code>
+   */
+  public static final String NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG = "num.cached.recent.anomaly.states";
+  public static final String NUM_CACHED_RECENT_ANOMALY_STATES_DOC = "The number of recent anomaly states cached for "
+      + "different anomaly types presented via the anomaly substate response of the state endpoint.";
+
+  /**
    * <code>metric.sampler.class</code>
    */
   public static final String METRIC_SAMPLER_CLASS_CONFIG = "metric.sampler.class";
@@ -618,6 +625,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 1,
                 ConfigDef.Importance.HIGH,
                 NUM_METRIC_FETCHERS_DOC)
+        .define(NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG,
+            ConfigDef.Type.INT,
+            10,
+            between(1, 100),
+            ConfigDef.Importance.LOW,
+            NUM_CACHED_RECENT_ANOMALY_STATES_DOC)
         .define(METRIC_SAMPLER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS,
                 CruiseControlMetricsReporterSampler.class.getName(),

@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 public class KafkaClusterState {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterState.class);
   public static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
+  private static final String VERSION = "version";
   private static final String TOPIC = "topic";
   private static final String PARTITION = "partition";
   private static final String LEADER = "leader";
@@ -85,7 +86,7 @@ public class KafkaClusterState {
     Map<String, Object> jsonStructure = null;
     try {
       jsonStructure = getJsonStructure(verbose);
-      jsonStructure.put("version", version);
+      jsonStructure.put(VERSION, version);
     }  catch (TimeoutException | InterruptedException | ExecutionException e) {
       LOG.error("Failed to populate broker logDir state.", e);
     }

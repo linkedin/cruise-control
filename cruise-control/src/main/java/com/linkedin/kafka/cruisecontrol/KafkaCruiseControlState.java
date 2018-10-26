@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitorState;
@@ -25,18 +26,22 @@ import org.slf4j.LoggerFactory;
 
 public class KafkaCruiseControlState {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlState.class);
+  private static final String VERSION = "version";
   private static final String PARTITION_MOVEMENTS = "partition movements";
   private static final String LEADERSHIP_MOVEMENTS = "leadership movements";
   private final ExecutorState _executorState;
   private final LoadMonitorState _monitorState;
   private final AnalyzerState _analyzerState;
+  private final AnomalyDetectorState _anomalyDetectorState;
 
   public KafkaCruiseControlState(ExecutorState executionState,
                                  LoadMonitorState monitorState,
-                                 AnalyzerState analyzerState) {
+                                 AnalyzerState analyzerState,
+                                 AnomalyDetectorState anomalyDetectorState) {
     _executorState = executionState;
     _monitorState = monitorState;
     _analyzerState = analyzerState;
+    _anomalyDetectorState = anomalyDetectorState;
   }
 
   public ExecutorState executorState() {
@@ -51,6 +56,10 @@ public class KafkaCruiseControlState {
     return _analyzerState;
   }
 
+  public AnomalyDetectorState anomalyDetectorState() {
+    return _anomalyDetectorState;
+  }
+
   /**
    * Return a valid JSON encoded string
    *
@@ -59,7 +68,7 @@ public class KafkaCruiseControlState {
   public String getJSONString(int version, boolean verbose) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure(verbose);
-    jsonStructure.put("version", version);
+    jsonStructure.put(VERSION, version);
     return gson.toJson(jsonStructure);
   }
 
@@ -78,15 +87,20 @@ public class KafkaCruiseControlState {
     if (_analyzerState != null) {
       cruiseControlState.put("AnalyzerState", _analyzerState.getJsonStructure(verbose));
     }
+    if (_anomalyDetectorState != null) {
+      cruiseControlState.put("AnomalyDetectorState", _anomalyDetectorState.getJsonStructure());
+    }
+
     return cruiseControlState;
   }
 
   @Override
   public String toString() {
-    return String.format("%s%s%s",
+    return String.format("%s%s%s%s",
                          _monitorState != null ? String.format("MonitorState: %s%n", _monitorState) : "",
                          _executorState != null ? String.format("ExecutorState: %s%n", _executorState) : "",
-                         _analyzerState != null ? String.format("AnalyzerState: %s%n", _analyzerState) : "");
+                         _analyzerState != null ? String.format("AnalyzerState: %s%n", _analyzerState) : "",
+                         _anomalyDetectorState != null ? String.format("AnomalyDetectorState: %s%n", _anomalyDetectorState) : "");
   }
 
   private void writeVerboseMonitorState(OutputStream out) throws IOException {
@@ -183,6 +197,6 @@ public class KafkaCruiseControlState {
   }
 
   public enum SubState {
-    ANALYZER, MONITOR, EXECUTOR
+    ANALYZER, MONITOR, EXECUTOR, ANOMALY_DETECTOR
   }
 }
