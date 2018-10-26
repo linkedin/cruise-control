@@ -7,8 +7,6 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.linkedin.kafka.cruisecontrol.KafkaClusterState;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
@@ -20,10 +18,8 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.io.IOException;
-import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -36,7 +32,6 @@ import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
 import javax.servlet.http.HttpServlet;
@@ -59,7 +54,6 @@ import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 public class KafkaCruiseControlServlet extends HttpServlet {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlServlet.class);
   private static final Logger ACCESS_LOG = LoggerFactory.getLogger("CruiseControlPublicAccessLogger");
-  private static final int JSON_VERSION = 1;
   private static final long MAX_ACTIVE_USER_TASKS = 5;
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
   private final UserTaskManager _userTaskManager;
@@ -264,6 +258,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *    POST /kafkacruisecontrol/demote_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;concurrent_leader_movements=[true/false]
    *    &amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]&amp;excluded_topics=[pattern]
    *
+   * 8. Admin.
+   *    POST /kafkacruisecontrol/admin?json=[true/false]
+   *
    * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
    * </pre>
    */
@@ -301,18 +298,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               rebalance(request, response);
               break;
             case STOP_PROPOSAL_EXECUTION:
-              stopProposalExecution();
-              setSuccessResponse(response, "Proposal execution stopped.", wantJSON(request));
+              stopProposalExecution(request, response);
               _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case PAUSE_SAMPLING:
-              pauseSampling();
-              setSuccessResponse(response, "Metric sampling paused.", wantJSON(request));
+              pauseSampling(request, response);
               _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case RESUME_SAMPLING:
-              resumeSampling();
-              setSuccessResponse(response, "Metric sampling resumed.", wantJSON(request));
+              resumeSampling(request, response);
               _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
               break;
             case DEMOTE_BROKER:
@@ -381,49 +375,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     setSuccessResponse(response, msg, json);
   }
 
-  private void setErrorResponse(HttpServletResponse response,
-                                String stackTrace,
-                                String errorMessage,
-                                int responseCode,
-                                boolean json)
-      throws IOException {
-    String resp;
-    if (json) {
-      Map<String, Object> exceptionMap = new HashMap<>();
-      exceptionMap.put("version", JSON_VERSION);
-      exceptionMap.put("stackTrace", stackTrace);
-      exceptionMap.put("errorMessage", errorMessage);
-      Gson gson = new Gson();
-      resp = gson.toJson(exceptionMap);
-    } else {
-      resp = errorMessage == null ? "" : errorMessage;
-    }
-    setResponseCode(response, responseCode, json);
-    response.setContentLength(resp.length());
-    response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
-    response.getOutputStream().flush();
-  }
-
-  private void setSuccessResponse(HttpServletResponse response,
-                                  String message,
-                                  boolean json)
-      throws IOException {
-    String resp;
-    if (json) {
-      Map<String, Object> respMap = new HashMap<>();
-      respMap.put("version", JSON_VERSION);
-      respMap.put("Message", message);
-      Gson gson = new Gson();
-      resp = gson.toJson(respMap);
-    } else {
-      resp = message == null ? "" : message;
-    }
-    setResponseCode(response, SC_OK, json);
-    response.setContentLength(resp.length());
-    response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
-    response.getOutputStream().flush();
-  }
-
   private void train(HttpServletRequest request, HttpServletResponse response) throws Exception {
     Long startMs;
     Long endMs;
@@ -467,10 +418,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       }
     }
     String brokerLoad = json ? brokerStats.getJSONString(JSON_VERSION) : brokerStats.toString();
-    setResponseCode(response, SC_OK, json);
-    response.setContentLength(brokerLoad.length());
-    response.getOutputStream().write(brokerLoad.getBytes(StandardCharsets.UTF_8));
-    response.getOutputStream().flush();
+    writeResponseToOutputStream(response, SC_OK, json, brokerLoad);
     return true;
   }
 
@@ -574,15 +522,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                          wantJSON(request));
 
     return true;
-  }
-
-  // package private for testing.
-  static ModelCompletenessRequirements getRequirements(DataFrom dataFrom) {
-    if (dataFrom == DataFrom.VALID_PARTITIONS) {
-      return new ModelCompletenessRequirements(Integer.MAX_VALUE, 0.0, true);
-    } else {
-      return new ModelCompletenessRequirements(1, 1.0, true);
-    }
   }
 
   private void getKafkaClusterState(HttpServletRequest request, HttpServletResponse response) throws Exception {
@@ -702,22 +641,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return true;
   }
 
-  private static void writeSuccessResponse(HttpServletResponse response,
-                                           Supplier<String> jsonStringSupplier,
-                                           Consumer<OutputStream> plaintextWriter,
-                                           boolean json) throws IOException {
-    OutputStream out = response.getOutputStream();
-    setResponseCode(response, SC_OK, json);
-    if (json) {
-      String jsonString = jsonStringSupplier.get();
-      response.setContentLength(jsonString.length());
-      out.write(jsonString.getBytes(StandardCharsets.UTF_8));
-    } else {
-      plaintextWriter.accept(out);
-    }
-    out.flush();
-  }
-
   private boolean rebalance(HttpServletRequest request, HttpServletResponse response) throws Exception {
     boolean dryrun;
     DataFrom dataFrom;
@@ -769,13 +692,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return true;
   }
 
-  private void handleParameterParseException(Exception e, HttpServletResponse response, String errorMsg, boolean json)
-      throws IOException {
-    StringWriter sw = new StringWriter();
-    e.printStackTrace(new PrintWriter(sw));
-    setErrorResponse(response, sw.toString(), errorMsg, SC_BAD_REQUEST, json);
-  }
-
   private boolean demoteBroker(HttpServletRequest request, HttpServletResponse response) throws Exception {
     List<Integer> brokerIds;
     boolean dryrun;
@@ -811,16 +727,19 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return true;
   }
 
-  private void stopProposalExecution() {
+  private void stopProposalExecution(HttpServletRequest request, HttpServletResponse response) throws IOException {
     _asyncKafkaCruiseControl.stopProposalExecution();
+    setSuccessResponse(response, "Proposal execution stopped.", wantJSON(request));
   }
 
-  private void pauseSampling() {
+  private void pauseSampling(HttpServletRequest request, HttpServletResponse response) throws IOException {
     _asyncKafkaCruiseControl.pauseLoadMonitorActivity();
+    setSuccessResponse(response, "Metric sampling paused.", wantJSON(request));
   }
 
-  private void resumeSampling() {
+  private void resumeSampling(HttpServletRequest request, HttpServletResponse response) throws IOException {
     _asyncKafkaCruiseControl.resumeLoadMonitorActivity();
+    setSuccessResponse(response, "Metric sampling resumed.", wantJSON(request));
   }
 
   private <T> T getAndMaybeReturnProgress(HttpServletRequest request,
@@ -836,23 +755,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       returnProgress(response, future, wantJSON(request));
       return null;
     }
-  }
-
-  private void returnProgress(HttpServletResponse response, OperationFuture future, boolean json) throws IOException {
-    setResponseCode(response, SC_OK, json);
-    String resp;
-    if (!json) {
-      resp = future.progressString();
-    } else {
-      Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
-      Map<String, Object> respMap = new HashMap<>();
-      respMap.put("version", JSON_VERSION);
-      respMap.put("progress", future.getJsonArray());
-      resp = gson.toJson(respMap);
-    }
-    response.setContentLength(resp.length());
-    response.getOutputStream().write(resp.getBytes(StandardCharsets.UTF_8));
-    response.getOutputStream().flush();
   }
 
   // package private for testing.

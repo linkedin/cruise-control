@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 public class KafkaClusterState {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterState.class);
+  private static final String VERSION = "version";
   private final Cluster _kafkaCluster;
   private static final String TOPIC = "topic";
   private static final String PARTITION = "partition";
@@ -63,7 +64,7 @@ public class KafkaClusterState {
   public String getJSONString(int version, boolean verbose) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure(verbose);
-    jsonStructure.put("version", version);
+    jsonStructure.put(VERSION, version);
     return gson.toJson(jsonStructure);
   }
 
