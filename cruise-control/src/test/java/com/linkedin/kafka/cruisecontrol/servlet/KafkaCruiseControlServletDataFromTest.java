@@ -151,7 +151,7 @@ public class KafkaCruiseControlServletDataFromTest {
       goalReadiness.put(new MockGoal(i), false);
     }
     AnalyzerState analyzerState = new AnalyzerState(true, goalReadiness);
-    AnomalyDetectorState anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()));
+    AnomalyDetectorState anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()), 10);
     return new KafkaCruiseControlState(executorState, loadMonitorState, analyzerState, anomalyDetectorState);
   }
 

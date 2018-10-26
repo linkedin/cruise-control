@@ -77,7 +77,8 @@ public class AnomalyDetector {
     _goalViolationRate = dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "goal-violation-rate"));
     _metricAnomalyRate = dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "metric-anomaly-rate"));
     // Add anomaly detector state
-    _anomalyDetectorState = new AnomalyDetectorState(_anomalyNotifier.selfHealingEnabled());
+    int numCachedRecentAnomalyStates = config.getInt(KafkaCruiseControlConfig.NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG);
+    _anomalyDetectorState = new AnomalyDetectorState(_anomalyNotifier.selfHealingEnabled(), numCachedRecentAnomalyStates);
   }
 
   /**
@@ -106,7 +107,7 @@ public class AnomalyDetector {
     _metricAnomalyRate = new Meter();
     _loadMonitor = loadMonitor;
     // Add anomaly detector state
-    _anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()));
+    _anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()), 10);
   }
 
   public void startDetection() {
