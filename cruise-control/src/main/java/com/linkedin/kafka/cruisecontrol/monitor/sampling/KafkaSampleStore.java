@@ -43,6 +43,8 @@ import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.network.ListenerName;
+import org.apache.kafka.common.protocol.SecurityProtocol;
 import org.apache.kafka.common.requests.MetadataResponse;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
@@ -225,6 +227,16 @@ public class KafkaSampleStore implements SampleStore {
     }
   }
 
+  /**
+   * Increase the replication factor of a Kafka topic through adding new replicas in a rack-aware, round-robin way.
+   * If Zookeeper does not have rack information about brokers, then rack-aware property is not guaranteed.
+   * In this case it is only guaranteed that new replicas are added to brokers which do not currently host the partition.
+   * @param zkUtils ZkUtils class to use to increase replication factor.
+   * @param topicMetadata Topic metadata stored in Zookeeper.
+   * @param replicationFactor The replication factor to set for the topic.
+   * @param topic The topic to apply the change.
+   * @param props The properties to set for the topic.
+   */
   private void increaseTopicReplicationFactor(ZkUtils zkUtils,
                                               MetadataResponse.TopicMetadata topicMetadata,
                                               int replicationFactor,
@@ -246,13 +258,12 @@ public class KafkaSampleStore implements SampleStore {
     }
 
     scala.collection.mutable.Map<Object, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
-    List<String> racks = new ArrayList<>();
-    racks.addAll(brokersByRack.keySet());
+    List<String> racks = new ArrayList<>(brokersByRack.keySet());
     int [] cursors = new int[racks.size()];
     int rackCursor = 0;
     for (MetadataResponse.PartitionMetadata pm : topicMetadata.partitionMetadata()) {
       List<Object> newAssignedReplica = new ArrayList<>();
-      List<String> currentOccupiedRack = new ArrayList<>();
+      Set<String> currentOccupiedRack = new HashSet<>();
       // Make sure the current replicas are in new replica list.
       pm.replicas().forEach(node -> {
         newAssignedReplica.add(node.id());
@@ -271,6 +282,7 @@ public class KafkaSampleStore implements SampleStore {
       newReplicaAssignment.put(pm.partition(), JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
     }
     AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(zkUtils, topic, newReplicaAssignment, props, true);
+    LOG.info("The replication factor of Kafka topic " + topic + " has increased to " + replicationFactor + ".");
   }
 
   private void ensureTopicCreated(ZkUtils zkUtils, Set<String> allTopics, String topic, long retentionMs, int replicationFactor, int partitionCount) {
@@ -282,7 +294,10 @@ public class KafkaSampleStore implements SampleStore {
     } else {
       ensureTopicNotUnderPartitionReassignment(zkUtils, topic);
       AdminUtils.changeTopicConfig(zkUtils, topic, props);
-      MetadataResponse.TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(topic, zkUtils);
+      MetadataResponse.TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(
+          JavaConversions.asScalaSet(new HashSet<>(Arrays.asList(topic))),
+          zkUtils,
+          ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
       OptionalInt currentReplicationFactor = topicMetadata.partitionMetadata().stream().mapToInt(pm -> pm.replicas().size()).min();
       if (!currentReplicationFactor.isPresent()) {
         throw new IllegalStateException("Kafka topic " + topic + " has no partition (Metadata: " + topicMetadata + ").");
@@ -292,6 +307,7 @@ public class KafkaSampleStore implements SampleStore {
       }
       if (partitionCount > topicMetadata.partitionMetadata().size()) {
         AdminUtils.addPartitions(zkUtils, topic, partitionCount, "", true, RackAwareMode.Safe$.MODULE$);
+        LOG.info("Kafka topic " + topic + " now has " + partitionCount + " partitions.");
       }
     }
   }

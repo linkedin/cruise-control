@@ -21,7 +21,7 @@ import org.apache.kafka.common.TopicPartition;
 import scala.collection.JavaConversions;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
-import static java.lang.Thread.*;
+import static java.lang.Thread.sleep;
 
 
 /**
@@ -147,7 +147,7 @@ public class MonitorUtils {
   public static void ensureTopicNotUnderPartitionReassignment(ZkUtils zkUtils, String topic) {
     int attempt = 0;
     while (JavaConversions.asJavaCollection(zkUtils.getPartitionsBeingReassigned().keys()).stream()
-                                                                                          .anyMatch(tp -> tp.topic().equals(topic))) {
+                          .anyMatch(tp -> tp.topic().equals(topic))) {
       try {
         sleep(1000 << attempt);
       } catch (InterruptedException e) {
