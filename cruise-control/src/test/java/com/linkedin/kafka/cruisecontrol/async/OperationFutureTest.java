@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -15,7 +16,7 @@ import static org.junit.Assert.*;
 
 
 public class OperationFutureTest {
-  
+
   @Test
   public void testGetCompleted() throws InterruptedException {
     OperationFuture<Integer> future = new OperationFuture<>("testGetCompleted");
@@ -26,7 +27,7 @@ public class OperationFutureTest {
     assertTrue(future.isDone());
     assertEquals(10, t.result());
   }
-  
+
   @Test
   public void testGetCompletedWithTimeout() throws InterruptedException {
     OperationFuture<Integer> future = new OperationFuture<>("testGetCompletedWithTimeout");
@@ -37,7 +38,7 @@ public class OperationFutureTest {
     assertEquals(0, t.result());
     assertTrue(t.exception() instanceof TimeoutException);
   }
-  
+
   @Test
   public void testGetFailed() throws InterruptedException {
     OperationFuture<Integer> future = new OperationFuture<>("testGetFailed");
@@ -51,16 +52,19 @@ public class OperationFutureTest {
     assertTrue(t.exception() instanceof ExecutionException);
     assertEquals(cause, t.exception().getCause());
   }
-  
+
   @Test
-  public void testCancelInProgressFuture() throws InterruptedException, ExecutionException {
+  public void testCancelInProgressFuture() throws InterruptedException {
     OperationFuture<Integer> future = new OperationFuture<>("testCancelInProgressFuture");
     AtomicBoolean interrupted = new AtomicBoolean(false);
-    
+
+    Semaphore resultIsCalledSemaphore = new Semaphore(1);
+    resultIsCalledSemaphore.acquire();
     // An execution thread that should be interrupted before completing the future.
     Thread executionThread = new Thread(new OperationRunnable<Integer>(null, future) {
       @Override
       protected Integer getResult() throws Exception {
+        resultIsCalledSemaphore.release();
         try {
           synchronized (this) {
             while (!interrupted.get()) {
@@ -75,9 +79,10 @@ public class OperationFutureTest {
       }
     });
     executionThread.start();
-    
+
     TestThread t = new TestThread(future::get);
     t.start();
+    resultIsCalledSemaphore.acquire();
     future.cancel(true);
     t.join();
     executionThread.join();
@@ -87,7 +92,7 @@ public class OperationFutureTest {
     assertTrue(future.isCancelled());
     assertTrue(interrupted.get());
   }
-  
+
   @Test
   public void testCancelPendingFuture() throws InterruptedException, ExecutionException {
     OperationFuture<Integer> future = new OperationFuture<>("testCancelPendingFuture");
@@ -98,18 +103,18 @@ public class OperationFutureTest {
       // let it go.
     }
   }
-  
+
   @Test
   public void testSetExecutionThread() {
     OperationFuture<Integer> future = new OperationFuture<>("testSetExecutionThread");
     assertTrue(future.setExecutionThread(new Thread()));
     future.cancel(true);
-    assertTrue("Should be able to set the execution thread of canceled future to null", 
+    assertTrue("Should be able to set the execution thread of canceled future to null",
                future.setExecutionThread(null));
     assertFalse("Should failed to set execution thread for the canceled future.",
                 future.setExecutionThread(new Thread()));
   }
-  
+
   @FunctionalInterface
   private interface IntSupplier {
     Integer get() throws TimeoutException, InterruptedException, ExecutionException;
@@ -118,11 +123,11 @@ public class OperationFutureTest {
     private final IntSupplier _supplier;
     private int _result = 0;
     private Exception _exception = null;
-    
+
     private TestThread(IntSupplier supplier) {
       _supplier = supplier;
     }
-    
+
     @Override
     public void run() {
       try {
@@ -132,11 +137,11 @@ public class OperationFutureTest {
         // let it go.
       }
     }
-    
+
     private int result() {
       return _result;
     }
-    
+
     private Exception exception() {
       return _exception;
     }
