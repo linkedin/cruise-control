@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -15,11 +16,15 @@ import java.util.Map;
  * A no-op notifier.
  */
 public class NoopNotifier implements AnomalyNotifier {
-  private final Map<AnomalyType, Boolean> _selfHealingEnabled = new HashMap<>(AnomalyType.cachedValues().size());
+  private final Map<AnomalyType, Boolean> _selfHealingEnabled;
+
+  public NoopNotifier() {
+    _selfHealingEnabled = new HashMap<>(AnomalyType.cachedValues().size());
+  }
 
   @Override
   public void configure(Map<String, ?> configs) {
-
+    AnomalyType.cachedValues().forEach(anomalyType -> _selfHealingEnabled.put(anomalyType, false));
   }
 
   @Override
@@ -39,7 +44,7 @@ public class NoopNotifier implements AnomalyNotifier {
 
   @Override
   public Map<AnomalyType, Boolean> selfHealingEnabled() {
-    return _selfHealingEnabled;
+    return Collections.unmodifiableMap(_selfHealingEnabled);
   }
 
   @Override
