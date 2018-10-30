@@ -142,7 +142,7 @@ public class AnomalyDetectorState {
       }
     });
 
-    return String.format("%s:%s%n%s:%s%n%s:%s%n%s:%s%n%s:%s%n",
+    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s}%n",
                          SELF_HEALING_ENABLED, selfHealingEnabled,
                          SELF_HEALING_DISABLED, selfHealingDisabled,
                          RECENT_GOAL_VIOLATIONS, recentGoalViolations(true),
