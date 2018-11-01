@@ -206,10 +206,13 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   }
 
   private Map<String, TopicDescription> createTopics() throws InterruptedException {
-    try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-        AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()))) {
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+                              AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+    try {
       adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC_0, 1, (short) 1),
                                              new NewTopic(TOPIC_1, 1, (short) 2)));
+    } finally {
+      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }
 
     // We need to use the admin clients to query the metadata from two different brokers to make sure that
@@ -218,10 +221,11 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     Map<String, TopicDescription> topicDescriptions0 = null;
     Map<String, TopicDescription> topicDescriptions1 = null;
     do {
-      try (AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-          AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
-           AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
-               AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(1).plaintextAddr()))) {
+      AdminClient adminClient0 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+                                 AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(0).plaintextAddr()));
+      AdminClient adminClient1 = KafkaCruiseControlUtils.createAdminClient(Collections.singletonMap(
+                                 AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, broker(1).plaintextAddr()));
+      try {
         topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC_0, TOPIC_1)).all().get();
         topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC_0, TOPIC_1)).all().get();
         try {
@@ -231,6 +235,9 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
         }
       } catch (ExecutionException ee) {
         // Let it go.
+      } finally {
+        KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient0);
+        KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient1);
       }
     } while (topicDescriptions0 == null || topicDescriptions0.size() < 2
         || topicDescriptions1 == null || topicDescriptions1.size() < 2);

@@ -30,6 +30,7 @@ public class KafkaCruiseControlUtils {
   public static final int ZK_SESSION_TIMEOUT = 30000;
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
+  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
 
   private KafkaCruiseControlUtils() {
 
@@ -57,22 +58,8 @@ public class KafkaCruiseControlUtils {
     return value;
   }
 
-  /**
-   * Close the given KafkaZkClient with the default timeout of {@link #KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS}.
-   *
-   * @param kafkaZkClient KafkaZkClient to be closed
-   */
-  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient) {
-    closeKafkaZkClientWithTimeout(kafkaZkClient, KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS);
-  }
-
-  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient, long timeoutMs) {
-    Thread t = new Thread() {
-      @Override
-      public void run() {
-        kafkaZkClient.close();
-      }
-    };
+  private static void closeClientWithTimeout(Runnable clientCloseTask, long timeoutMs) {
+    Thread t = new Thread(clientCloseTask);
     t.setDaemon(true);
     t.start();
     try {
@@ -83,6 +70,19 @@ public class KafkaCruiseControlUtils {
     if (t.isAlive()) {
       t.interrupt();
     }
+  }
+
+  /**
+   * Close the given KafkaZkClient with the default timeout of {@link #KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS}.
+   *
+   * @param kafkaZkClient KafkaZkClient to be closed
+   */
+  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient) {
+    closeKafkaZkClientWithTimeout(kafkaZkClient, KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS);
+  }
+
+  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient, long timeoutMs) {
+    closeClientWithTimeout(kafkaZkClient::close, timeoutMs);
   }
 
   /**
@@ -134,8 +134,11 @@ public class KafkaCruiseControlUtils {
    * @return DescribeLogDirsResult using the given bootstrap servers for the given brokers.
    */
   public static DescribeLogDirsResult describeLogDirs(Collection<Integer> brokers, Map<String, Object> adminClientConfigs) {
-    try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs)) {
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
+    try {
       return adminClient.describeLogDirs(brokers);
+    } finally {
+      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }
   }
 
@@ -147,6 +150,19 @@ public class KafkaCruiseControlUtils {
    */
   public static AdminClient createAdminClient(Map<String, Object> adminClientConfigs) {
     return AdminClient.create(adminClientConfigs);
+  }
+
+  /**
+   * Close the given AdminClient with the default timeout of {@link #ADMIN_CLIENT_CLOSE_TIMEOUT_MS}.
+   *
+   * @param adminClient AdminClient to be closed
+   */
+  public static void closeAdminClientWithTimeout(AdminClient adminClient) {
+    closeAdminClientWithTimeout(adminClient, ADMIN_CLIENT_CLOSE_TIMEOUT_MS);
+  }
+
+  public static void closeAdminClientWithTimeout(AdminClient adminClient, long timeoutMs) {
+    closeClientWithTimeout(adminClient::close, timeoutMs);
   }
 
   /**
