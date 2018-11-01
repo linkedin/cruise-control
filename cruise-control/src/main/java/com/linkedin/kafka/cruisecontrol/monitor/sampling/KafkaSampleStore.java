@@ -222,6 +222,8 @@ public class KafkaSampleStore implements SampleStore {
                          replicationFactor, _partitionSampleStoreTopicPartitionCount);
       ensureTopicCreated(zkUtils, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor, _brokerSampleStoreTopicPartitionCount);
+    } catch (RuntimeException re) {
+      LOG.error("Skip sample store topic creation/reconfiguration due to " + re.getMessage() + ".");
     } finally {
       KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, 10000);
     }
@@ -244,7 +246,7 @@ public class KafkaSampleStore implements SampleStore {
                                               Properties props) {
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
     Map<Integer, String> rackByBroker = new HashMap<>();
-    for (BrokerMetadata bm:
+    for (BrokerMetadata bm :
          JavaConversions.seqAsJavaList(AdminUtils.getBrokerMetadatas(zkUtils, RackAwareMode.Enforced$.MODULE$, Option.empty()))) {
       // If the rack is not specified, we use the broker id info as rack info.
       String rack = bm.rack().isEmpty() ? String.valueOf(bm.id()) : bm.rack().get();
