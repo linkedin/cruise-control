@@ -154,7 +154,7 @@ public class MonitorUtils {
         // Let it go.
       }
       if (++attempt == 10) {
-        throw new IllegalStateException("Kafka topic " + topic + " has stuck partition reassignment task.");
+        throw new IllegalStateException("Kafka topic " + topic + " has ongoing partition reassignment task.");
       }
     }
   }
