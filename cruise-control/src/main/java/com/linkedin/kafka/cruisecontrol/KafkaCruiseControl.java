@@ -38,6 +38,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import javax.servlet.http.HttpServletRequest;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
@@ -142,6 +143,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
+   * @param request Request that triggered the execution, null if not a user request.
    * @return The optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
@@ -156,7 +158,8 @@ public class KafkaCruiseControl {
                                                            Integer concurrentPartitionMovements,
                                                            Integer concurrentLeaderMovements,
                                                            boolean skipHardGoalCheck,
-                                                           Pattern excludedTopics)
+                                                           Pattern excludedTopics,
+                                                           HttpServletRequest request)
       throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
@@ -173,7 +176,8 @@ public class KafkaCruiseControl {
                          throttleDecommissionedBroker ? Collections.emptyList() : brokerIds,
                          isKafkaAssignerMode(goals),
                          concurrentPartitionMovements,
-                         concurrentLeaderMovements);
+                         concurrentLeaderMovements,
+                         request);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -217,6 +221,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
+   * @param request Request that triggered the execution, null if not a user request.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the broker addition.
    */
@@ -230,7 +235,8 @@ public class KafkaCruiseControl {
                                                   Integer concurrentPartitionMovements,
                                                   Integer concurrentLeaderMovements,
                                                   boolean skipHardGoalCheck,
-                                                  Pattern excludedTopics) throws KafkaCruiseControlException {
+                                                  Pattern excludedTopics,
+                                                  HttpServletRequest request) throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -248,7 +254,8 @@ public class KafkaCruiseControl {
                          throttleAddedBrokers ? Collections.emptyList() : brokerIds,
                          isKafkaAssignerMode(goals),
                          concurrentPartitionMovements,
-                         concurrentLeaderMovements);
+                         concurrentLeaderMovements,
+                         request);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -271,6 +278,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
+   * @param request Request that triggered the execution, null if not a user request.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
@@ -282,12 +290,13 @@ public class KafkaCruiseControl {
                                                  Integer concurrentPartitionMovements,
                                                  Integer concurrentLeaderMovements,
                                                  boolean skipHardGoalCheck,
-                                                 Pattern excludedTopics) throws KafkaCruiseControlException {
+                                                 Pattern excludedTopics,
+                                                 HttpServletRequest request) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress,
                                                                     allowCapacityEstimation, skipHardGoalCheck, excludedTopics);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
-                       concurrentPartitionMovements, concurrentLeaderMovements);
+                       concurrentPartitionMovements, concurrentLeaderMovements, request);
     }
     return result;
   }
@@ -309,13 +318,15 @@ public class KafkaCruiseControl {
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param request Request that triggered the execution, null if not a user request.
    * @return the optimization result.
    */
   public GoalOptimizer.OptimizerResult demoteBrokers(Collection<Integer> brokerIds,
                                                      boolean dryRun,
                                                      OperationProgress operationProgress,
                                                      boolean allowCapacityEstimation,
-                                                     Integer concurrentLeaderMovements)
+                                                     Integer concurrentLeaderMovements,
+                                                     HttpServletRequest request)
       throws KafkaCruiseControlException {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
@@ -334,7 +345,7 @@ public class KafkaCruiseControl {
         int concurrentSwaps = concurrentLeaderMovements != null
                               ? concurrentLeaderMovements
                               : _config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
-        executeProposals(result.goalProposals(), brokerIds, false, concurrentSwaps, concurrentLeaderMovements);
+        executeProposals(result.goalProposals(), brokerIds, false, concurrentSwaps, concurrentLeaderMovements, request);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -553,15 +564,18 @@ public class KafkaCruiseControl {
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param request Request that triggered the execution, null if not a user request.
    */
   private void executeProposals(Collection<ExecutionProposal> proposals,
                                 Collection<Integer> unthrottledBrokers,
                                 boolean isKafkaAssignerMode,
                                 Integer concurrentPartitionMovements,
-                                Integer concurrentLeaderMovements) {
+                                Integer concurrentLeaderMovements,
+                                HttpServletRequest request) {
     // Set the execution mode, add execution proposals, and start execution.
     _executor.setExecutionMode(isKafkaAssignerMode);
-    _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor, concurrentPartitionMovements, concurrentLeaderMovements);
+    _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor, concurrentPartitionMovements,
+                               concurrentLeaderMovements, request);
   }
 
   /**

@@ -19,6 +19,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.servlet.http.HttpServletRequest;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
@@ -54,7 +55,6 @@ public class Executor {
   private final MetadataClient _metadataClient;
   private final long _statusCheckingIntervalMs;
   private final ExecutorService _proposalExecutor;
-  private final String _zkConnect;
   private final static int ZK_SESSION_TIMEOUT = 30000;
   private final static int ZK_CONNECTION_TIMEOUT = 30000;
   private final static boolean IS_ZK_SECURITY_ENABLED = false;
@@ -72,6 +72,7 @@ public class Executor {
   private volatile int _numFinishedLeadershipMovements;
   private volatile long _finishedDataMovementInMB;
   private volatile ExecutorState _executorState;
+  private volatile HttpServletRequest _request;
 
   private AtomicInteger _numExecutionStopped;
   private AtomicInteger _numExecutionStoppedByUser;
@@ -116,8 +117,8 @@ public class Executor {
     registerGaugeSensors(dropwizardMetricRegistry);
 
     _time = time;
-    _zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    _zkUtils = ZkUtils.apply(_zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
+    String zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    _zkUtils = ZkUtils.apply(zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
                                  config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
@@ -135,6 +136,7 @@ public class Executor {
     _executorState = ExecutorState.noTaskInProgress();
     _stopRequested = new AtomicBoolean(false);
     _hasOngoingExecution = false;
+    _request = null;
   }
 
   /**
@@ -169,12 +171,14 @@ public class Executor {
    *                                              (if null, use num.concurrent.partition.movements.per.broker).
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
    *                                               (if null, use num.concurrent.leader.movements).
+   * @param request Request that triggered the execution, null if not a user request.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Collection<Integer> unthrottledBrokers,
                                             LoadMonitor loadMonitor,
                                             Integer requestedPartitionMovementConcurrency,
-                                            Integer requestedLeadershipMovementConcurrency) {
+                                            Integer requestedLeadershipMovementConcurrency,
+                                            HttpServletRequest request) {
     if (_hasOngoingExecution) {
       throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
     }
@@ -185,6 +189,10 @@ public class Executor {
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
     _executionTaskManager.addExecutionProposals(proposals, unthrottledBrokers, _metadataClient.refreshMetadata().cluster());
     _executionTaskManager.setRequestedMovementConcurrency(requestedPartitionMovementConcurrency, requestedLeadershipMovementConcurrency);
+    if (request == null) {
+      LOG.info("Executing a request triggered by an anomaly detector.");
+    }
+    _request = request;
     startExecution(loadMonitor);
   }
 
@@ -221,6 +229,7 @@ public class Executor {
   private void startExecution(LoadMonitor loadMonitor) {
     if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
       _executionTaskManager.clear();
+      _request = null;
       // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
       throw new IllegalStateException("There are ongoing partition reassignments.");
     }
@@ -309,7 +318,7 @@ public class Executor {
      */
     private void execute() {
       _state = ExecutorState.State.STARTING_EXECUTION;
-      _executorState = ExecutorState.executionStarted();
+      _executorState = ExecutorState.executionStarted(_request);
       try {
         // Pause the metric sampling to avoid the loss of accuracy during execution.
         while (true) {
@@ -331,7 +340,8 @@ public class Executor {
                                                                    _executionTaskManager.getExecutionTasksSummary(),
                                                                    _finishedDataMovementInMB,
                                                                    _executionTaskManager.partitionMovementConcurrency(),
-                                                                   _executionTaskManager.leadershipMovementConcurrency());
+                                                                   _executionTaskManager.leadershipMovementConcurrency(),
+                                                                   _request);
           moveReplicas();
           updateOngoingExecutionState();
         }
@@ -342,7 +352,8 @@ public class Executor {
           _executorState = ExecutorState.leaderMovementInProgress(_numFinishedLeadershipMovements,
                                                                   _executionTaskManager.getExecutionTasksSummary(),
                                                                   _executionTaskManager.partitionMovementConcurrency(),
-                                                                  _executionTaskManager.leadershipMovementConcurrency());
+                                                                  _executionTaskManager.leadershipMovementConcurrency(),
+                                                                  _request);
           moveLeaderships();
           updateOngoingExecutionState();
         }
@@ -352,6 +363,7 @@ public class Executor {
       } finally {
         _loadMonitor.resumeMetricSampling();
         _executionTaskManager.clear();
+        _request = null;
         _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
         // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
         _executorState = ExecutorState.noTaskInProgress();
@@ -367,14 +379,16 @@ public class Executor {
             _executorState = ExecutorState.leaderMovementInProgress(_numFinishedLeadershipMovements,
                                                                     _executionTaskManager.getExecutionTasksSummary(),
                                                                     _executionTaskManager.partitionMovementConcurrency(),
-                                                                    _executionTaskManager.leadershipMovementConcurrency());
+                                                                    _executionTaskManager.leadershipMovementConcurrency(),
+                                                                    _request);
             break;
           case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
             _executorState = ExecutorState.replicaMovementInProgress(_numFinishedPartitionMovements,
                                                                      _executionTaskManager.getExecutionTasksSummary(),
                                                                      _finishedDataMovementInMB,
                                                                      _executionTaskManager.partitionMovementConcurrency(),
-                                                                     _executionTaskManager.leadershipMovementConcurrency());
+                                                                     _executionTaskManager.leadershipMovementConcurrency(),
+                                                                     _request);
             break;
           default:
             throw new IllegalStateException("Unexpected ongoing execution state " + _state);
@@ -386,7 +400,7 @@ public class Executor {
                                                 _executionTaskManager.getExecutionTasksSummary(),
                                                 _finishedDataMovementInMB,
                                                 _executionTaskManager.partitionMovementConcurrency(),
-                                                _executionTaskManager.leadershipMovementConcurrency());
+                                                _executionTaskManager.leadershipMovementConcurrency(), _request);
       }
     }
 

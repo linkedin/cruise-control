@@ -48,7 +48,7 @@ public class GoalViolations extends KafkaAnomaly {
     try {
       _kafkaCruiseControl.rebalance(
           Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation,
-          null, null, false, null);
+          null, null, false, null, null);
     } catch (IllegalStateException e) {
       LOG.warn("Got exception when trying to fix the cluster. " + e.getMessage());
     }

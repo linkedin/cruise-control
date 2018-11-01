@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitorState;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
+import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -65,9 +66,9 @@ public class KafkaCruiseControlState {
    *
    * @param version JSON version
    */
-  public String getJSONString(int version, boolean verbose) {
+  public String getJSONString(int version, boolean verbose, UserTaskManager userTaskManager) {
     Gson gson = new Gson();
-    Map<String, Object> jsonStructure = getJsonStructure(verbose);
+    Map<String, Object> jsonStructure = getJsonStructure(verbose, userTaskManager);
     jsonStructure.put(VERSION, version);
     return gson.toJson(jsonStructure);
   }
@@ -76,13 +77,13 @@ public class KafkaCruiseControlState {
    * Return an object that can be further used
    * to encode into JSON
    */
-  public Map<String, Object> getJsonStructure(boolean verbose) {
+  public Map<String, Object> getJsonStructure(boolean verbose, UserTaskManager userTaskManager) {
     Map<String, Object> cruiseControlState = new HashMap<>();
     if (_monitorState != null) {
       cruiseControlState.put("MonitorState", _monitorState.getJsonStructure(verbose));
     }
     if (_executorState != null) {
-      cruiseControlState.put("ExecutorState", _executorState.getJsonStructure(verbose));
+      cruiseControlState.put("ExecutorState", _executorState.getJsonStructure(verbose, userTaskManager));
     }
     if (_analyzerState != null) {
       cruiseControlState.put("AnalyzerState", _analyzerState.getJsonStructure(verbose));
@@ -92,15 +93,6 @@ public class KafkaCruiseControlState {
     }
 
     return cruiseControlState;
-  }
-
-  @Override
-  public String toString() {
-    return String.format("%s%s%s%s",
-                         _monitorState != null ? String.format("MonitorState: %s%n", _monitorState) : "",
-                         _executorState != null ? String.format("ExecutorState: %s%n", _executorState) : "",
-                         _analyzerState != null ? String.format("AnalyzerState: %s%n", _analyzerState) : "",
-                         _anomalyDetectorState != null ? String.format("AnomalyDetectorState: %s%n", _anomalyDetectorState) : "");
   }
 
   private void writeVerboseMonitorState(OutputStream out) throws IOException {
@@ -178,9 +170,17 @@ public class KafkaCruiseControlState {
     }
   }
 
-  public void writeOutputStream(OutputStream out, boolean verbose, boolean superVerbose) {
+  public void writeOutputStream(OutputStream out, boolean verbose, boolean superVerbose, UserTaskManager userTaskManager) {
     try {
-      out.write(toString().getBytes(StandardCharsets.UTF_8));
+      out.write((_monitorState != null ? String.format("MonitorState: %s%n", _monitorState) : "").getBytes(StandardCharsets.UTF_8));
+      if (_executorState == null) {
+        out.write("".getBytes(StandardCharsets.UTF_8));
+      } else {
+        _executorState.writeOutputStream(out, userTaskManager);
+      }
+      out.write((_analyzerState != null ? String.format("AnalyzerState: %s%n", _analyzerState) : "").getBytes(StandardCharsets.UTF_8));
+      out.write((_anomalyDetectorState != null ? String.format("AnomalyDetectorState: %s%n", _anomalyDetectorState) : "")
+                    .getBytes(StandardCharsets.UTF_8));
 
       if (verbose || superVerbose) {
         writeVerboseMonitorState(out);
