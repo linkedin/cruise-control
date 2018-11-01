@@ -13,12 +13,15 @@ import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
+import kafka.utils.ZkUtils;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
+import scala.collection.JavaConversions;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
+import static java.lang.Thread.sleep;
 
 
 /**
@@ -139,5 +142,20 @@ public class MonitorUtils {
       totalNumPartitions += cluster.partitionCountForTopic(topic);
     }
     return totalNumPartitions;
+  }
+
+  public static void ensureTopicNotUnderPartitionReassignment(ZkUtils zkUtils, String topic) {
+    int attempt = 0;
+    while (JavaConversions.asJavaCollection(zkUtils.getPartitionsBeingReassigned().keys()).stream()
+                          .anyMatch(tp -> tp.topic().equals(topic))) {
+      try {
+        sleep(1000 << attempt);
+      } catch (InterruptedException e) {
+        // Let it go.
+      }
+      if (++attempt == 10) {
+        throw new IllegalStateException("Kafka topic " + topic + " has ongoing partition reassignment task.");
+      }
+    }
   }
 }
