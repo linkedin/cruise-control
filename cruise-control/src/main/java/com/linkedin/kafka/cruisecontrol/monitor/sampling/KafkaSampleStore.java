@@ -222,8 +222,6 @@ public class KafkaSampleStore implements SampleStore {
                          replicationFactor, _partitionSampleStoreTopicPartitionCount);
       ensureTopicCreated(zkUtils, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor, _brokerSampleStoreTopicPartitionCount);
-    } catch (RuntimeException re) {
-      LOG.error("Skip sample store topic creation/reconfiguration due to " + re.getMessage() + ".");
     } finally {
       KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, 10000);
     }
@@ -294,22 +292,26 @@ public class KafkaSampleStore implements SampleStore {
     if (!allTopics.contains(topic)) {
       AdminUtils.createTopic(zkUtils, topic, partitionCount, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
     } else {
-      ensureTopicNotUnderPartitionReassignment(zkUtils, topic);
-      AdminUtils.changeTopicConfig(zkUtils, topic, props);
-      MetadataResponse.TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(
-          JavaConversions.asScalaSet(new HashSet<>(Arrays.asList(topic))),
-          zkUtils,
-          ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
-      OptionalInt currentReplicationFactor = topicMetadata.partitionMetadata().stream().mapToInt(pm -> pm.replicas().size()).min();
-      if (!currentReplicationFactor.isPresent()) {
-        throw new IllegalStateException("Kafka topic " + topic + " has no partition (Metadata: " + topicMetadata + ").");
-      }
-      if (replicationFactor > currentReplicationFactor.getAsInt()) {
-        increaseTopicReplicationFactor(zkUtils, topicMetadata, replicationFactor, topic, props);
-      }
-      if (partitionCount > topicMetadata.partitionMetadata().size()) {
-        AdminUtils.addPartitions(zkUtils, topic, partitionCount, "", true, RackAwareMode.Safe$.MODULE$);
-        LOG.info("Kafka topic " + topic + " now has " + partitionCount + " partitions.");
+      try {
+        ensureTopicNotUnderPartitionReassignment(zkUtils, topic);
+        AdminUtils.changeTopicConfig(zkUtils, topic, props);
+        MetadataResponse.TopicMetadata topicMetadata =
+            AdminUtils.fetchTopicMetadataFromZk(JavaConversions.asScalaSet(Collections.singleton(topic)), zkUtils,
+                ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
+        OptionalInt currentReplicationFactor =
+            topicMetadata.partitionMetadata().stream().mapToInt(pm -> pm.replicas().size()).min();
+        if (!currentReplicationFactor.isPresent()) {
+          throw new IllegalStateException("Kafka topic " + topic + " has no partition (Metadata: " + topicMetadata + ").");
+        }
+        if (replicationFactor > currentReplicationFactor.getAsInt()) {
+          increaseTopicReplicationFactor(zkUtils, topicMetadata, replicationFactor, topic, props);
+        }
+        if (partitionCount > topicMetadata.partitionMetadata().size()) {
+          AdminUtils.addPartitions(zkUtils, topic, partitionCount, "", true, RackAwareMode.Safe$.MODULE$);
+          LOG.info("Kafka topic " + topic + " now has " + partitionCount + " partitions.");
+        }
+      }  catch (RuntimeException re) {
+        LOG.error("Skip updating topic " +  topic + "configuration due to failure:" + re.getMessage() + ".");
       }
     }
   }
