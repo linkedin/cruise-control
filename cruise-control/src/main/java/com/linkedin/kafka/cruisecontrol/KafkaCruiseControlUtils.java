@@ -30,6 +30,7 @@ public class KafkaCruiseControlUtils {
   public static final int ZK_SESSION_TIMEOUT = 30000;
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
+  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
 
   private KafkaCruiseControlUtils() {
 
@@ -147,6 +148,34 @@ public class KafkaCruiseControlUtils {
    */
   public static AdminClient createAdminClient(Map<String, Object> adminClientConfigs) {
     return AdminClient.create(adminClientConfigs);
+  }
+
+  /**
+   * Close the given AdminClient with the default timeout of {@link #ADMIN_CLIENT_CLOSE_TIMEOUT_MS}.
+   *
+   * @param adminClient AdminClient to be closed
+   */
+  public static void closeAdminClientWithTimeout(AdminClient adminClient) {
+    closeAdminClientWithTimeout(adminClient, ADMIN_CLIENT_CLOSE_TIMEOUT_MS);
+  }
+
+  public static void closeAdminClientWithTimeout(AdminClient adminClient, long timeoutMs) {
+    Thread t = new Thread() {
+      @Override
+      public void run() {
+        adminClient.close();
+      }
+    };
+    t.setDaemon(true);
+    t.start();
+    try {
+      t.join(timeoutMs);
+    } catch (InterruptedException e) {
+      // let it go
+    }
+    if (t.isAlive()) {
+      t.interrupt();
+    }
   }
 
   /**
