@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
@@ -79,7 +80,8 @@ class KafkaCruiseControlServletUtils {
   private static final String SUBSTATES_PARAM = "substates";
   private static final String MIN_VALID_PARTITION_RATIO_PARAM = "min_valid_partition_ratio";
   private static final String SKIP_HARD_GOAL_CHECK_PARAM = "skip_hard_goal_check";
-  private static final String EXCLUDED_TOPICS = "excluded_topics";
+  private static final String EXCLUDED_TOPICS_PARAM = "excluded_topics";
+  private static final String USER_TASK_IDS_PARAM = "user_task_ids";
 
   static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
@@ -121,7 +123,7 @@ class KafkaCruiseControlServletUtils {
     proposals.add(KAFKA_ASSIGNER_MODE_PARAM);
     proposals.add(JSON_PARAM);
     proposals.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
-    proposals.add(EXCLUDED_TOPICS);
+    proposals.add(EXCLUDED_TOPICS_PARAM);
     proposals.add(USE_READY_DEFAULT_GOALS_PARAM);
 
     Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -141,7 +143,7 @@ class KafkaCruiseControlServletUtils {
     addOrRemoveBroker.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     addOrRemoveBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     addOrRemoveBroker.add(SKIP_HARD_GOAL_CHECK_PARAM);
-    addOrRemoveBroker.add(EXCLUDED_TOPICS);
+    addOrRemoveBroker.add(EXCLUDED_TOPICS_PARAM);
     addOrRemoveBroker.add(USE_READY_DEFAULT_GOALS_PARAM);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -169,7 +171,7 @@ class KafkaCruiseControlServletUtils {
     rebalance.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     rebalance.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     rebalance.add(SKIP_HARD_GOAL_CHECK_PARAM);
-    rebalance.add(EXCLUDED_TOPICS);
+    rebalance.add(EXCLUDED_TOPICS_PARAM);
     rebalance.add(USE_READY_DEFAULT_GOALS_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -187,6 +189,7 @@ class KafkaCruiseControlServletUtils {
 
     Set<String> userTasks = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     userTasks.add(JSON_PARAM);
+    userTasks.add(USER_TASK_IDS_PARAM);
 
     Set<String> admin = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     admin.add(JSON_PARAM);
@@ -440,7 +443,7 @@ class KafkaCruiseControlServletUtils {
   }
 
   static Pattern excludedTopics(HttpServletRequest request) {
-    String excludedTopicsString = request.getParameter(EXCLUDED_TOPICS);
+    String excludedTopicsString = request.getParameter(EXCLUDED_TOPICS_PARAM);
     return excludedTopicsString != null ? Pattern.compile(excludedTopicsString) : null;
   }
 
@@ -472,6 +475,16 @@ class KafkaCruiseControlServletUtils {
       throw new IllegalArgumentException("Target broker ID is not provided.");
     }
     return Collections.unmodifiableList(brokerIds);
+  }
+
+  /**
+   * Default: An empty set.
+   */
+  static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
+    String userTaskIdsString = urlDecode(request.getParameter(USER_TASK_IDS_PARAM));
+    return userTaskIdsString == null ? Collections.emptySet()
+                                     : Arrays.stream(userTaskIdsString.split(",")).map(UUID::fromString)
+                                             .collect(Collectors.toSet());
   }
 
   /**
