@@ -104,10 +104,10 @@ public class KafkaSampleStore implements SampleStore {
   protected String _partitionMetricSampleStoreTopic;
   protected String _brokerMetricSampleStoreTopic;
   protected Integer _sampleStoreTopicReplicationFactor;
-  protected Integer _partitionSampleStoreTopicPartitionCount;
-  protected Integer _brokerSampleStoreTopicPartitionCount;
-  protected Long _minPartitionSampleStoreTopicRetentionTimeMs;
-  protected Long _minBrokerSampleStoreTopicRetentionTimeMs;
+  protected int _partitionSampleStoreTopicPartitionCount;
+  protected int _brokerSampleStoreTopicPartitionCount;
+  protected long _minPartitionSampleStoreTopicRetentionTimeMs;
+  protected long _minBrokerSampleStoreTopicRetentionTimeMs;
   protected volatile double _loadingProgress;
   protected Producer<byte[], byte[]> _producer;
   protected volatile boolean _shutdown = false;
@@ -196,6 +196,7 @@ public class KafkaSampleStore implements SampleStore {
       return new KafkaConsumer<>(consumerProps);
   }
 
+  @SuppressWarnings("unchecked")
   private void ensureTopicsCreated(Map<String, ?> config) {
     String connectString = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(connectString,
@@ -247,6 +248,7 @@ public class KafkaSampleStore implements SampleStore {
    * @param replicationFactor The replication factor to set for the topic.
    * @param topic The topic to apply the change.
    */
+  @SuppressWarnings("unchecked")
   private void increaseTopicReplicationFactor(KafkaZkClient kafkaZkClient,
                                               AdminClient adminClient,
                                               TopicDescription topicDescription,
@@ -309,6 +311,7 @@ public class KafkaSampleStore implements SampleStore {
     LOG.info("The replication factor of Kafka topic " + topic + " has increased to " + replicationFactor + ".");
   }
 
+  @SuppressWarnings("unchecked")
   private void ensureTopicCreated(KafkaZkClient kafkaZkClient,
                                   AdminZkClient adminZkClient,
                                   AdminClient adminClient,

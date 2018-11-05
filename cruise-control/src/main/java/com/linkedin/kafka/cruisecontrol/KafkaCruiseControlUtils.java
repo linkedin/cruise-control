@@ -135,9 +135,13 @@ public class KafkaCruiseControlUtils {
    * @return DescribeLogDirsResult using the given bootstrap servers for the given brokers.
    */
   public static DescribeLogDirsResult describeLogDirs(Collection<Integer> brokers, Map<String, Object> adminClientConfigs) {
-    try (AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs)) {
+    AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient(adminClientConfigs);
+    try {
       return adminClient.describeLogDirs(brokers);
+    } finally {
+      KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }
+
   }
 
   /**
