@@ -258,15 +258,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    *    POST /kafkacruisecontrol/demote_broker?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;concurrent_leader_movements=[true/false]
    *    &amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]&amp;excluded_topics=[pattern]
    *
-<<<<<<< HEAD
-   * 8. Fix offline replicas
+   * 8. Admin.
+   *    POST /kafkacruisecontrol/admin?json=[true/false]
+   *
+   * 9. Fix offline replicas
    *    POST /kafkacruisecontrol/fix_offline_replicas?brokerid=[id1,id2...]&amp;dryrun=[true/false]&amp;goals=[goal1,goal2...]
    *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]
    *    &amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]
-=======
-   * 8. Admin.
-   *    POST /kafkacruisecontrol/admin?json=[true/false]
->>>>>>> 43c6ff5... Add anomaly detector state. (#376)
    *
    * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
    * </pre>
@@ -557,8 +555,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
 
     writeSuccessResponse(response,
-                         () -> state.getJSONString(JSON_VERSION, verbose),
-                         out -> state.writeOutputStream(out, verbose, superVerbose),
+                         () -> state.getJSONString(JSON_VERSION, verbose, _userTaskManager),
+                         out -> state.writeOutputStream(out, verbose, superVerbose, _userTaskManager),
                          json);
     return true;
   }
@@ -613,7 +611,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                                 concurrentPartitionMovements,
                                                                                 concurrentLeaderMovements,
                                                                                 skipHardGoalCheck,
-                                                                                excludedTopics));
+                                                                                excludedTopics,
+                                                                                request));
         break;
       case REMOVE_BROKER:
         optimizationResult =
@@ -627,7 +626,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                                          concurrentPartitionMovements,
                                                                                          concurrentLeaderMovements,
                                                                                          skipHardGoalCheck,
-                                                                                         excludedTopics));
+                                                                                         excludedTopics,
+                                                                                         request));
         break;
       case FIX_OFFLINE_REPLICAS:
         optimizationResult = getAndMaybeReturnProgress(request, response,
@@ -638,7 +638,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                                                          concurrentPartitionMovements,
                                                                                                          concurrentLeaderMovements,
                                                                                                          skipHardGoalCheck,
-                                                                                                         excludedTopics));
+                                                                                                         excludedTopics,
+                                                                                                         request));
         break;
       default:
         // Should never reach here.
@@ -709,7 +710,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                            concurrentPartitionMovements,
                                                                            concurrentLeaderMovements,
                                                                            skipHardGoalCheck,
-                                                                           excludedTopics));
+                                                                           excludedTopics,
+                                                                           request));
     if (optimizationResult == null) {
       return false;
     }
@@ -742,7 +744,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                   () -> _asyncKafkaCruiseControl.demoteBrokers(brokerIds,
                                                                                dryrun,
                                                                                allowCapacityEstimation,
-                                                                               concurrentLeaderMovements));
+                                                                               concurrentLeaderMovements,
+                                                                               request));
     if (optimizationResult == null) {
       return false;
     }
