@@ -231,7 +231,7 @@ public class UserTaskManager implements Closeable {
    * @param httpServletRequest the HttpServletRequest to fetch the User-Task-ID and HTTPSession.
    * @return UUID of the user tasks or null if user task doesn't exist.
    */
-  private UUID getUserTaskId(HttpServletRequest httpServletRequest) {
+  public UUID getUserTaskId(HttpServletRequest httpServletRequest) {
     String userTaskIdString = httpServletRequest.getHeader(USER_TASK_HEADER_NAME);
 
     UUID userTaskId;

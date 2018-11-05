@@ -7,25 +7,33 @@ package com.linkedin.kafka.cruisecontrol.async;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
 import java.util.Collection;
+import javax.servlet.http.HttpServletRequest;
 
 
+/**
+ * The async runnable for {@link KafkaCruiseControl#demoteBrokers(Collection, boolean,
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, HttpServletRequest)}
+ */
 public class DemoteBrokerRunnable extends OperationRunnable<KafkaOptimizationResult> {
   private final Collection<Integer> _brokerIds;
   private final boolean _dryRun;
   private final boolean _allowCapacityEstimation;
   private final Integer _concurrentLeaderMovements;
+  private final HttpServletRequest _request;
 
   DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                        OperationFuture<KafkaOptimizationResult> future,
                        Collection<Integer> brokerIds,
                        boolean dryRun,
                        boolean allowCapacityEstimation,
-                       Integer concurrentLeaderMovements) {
+                       Integer concurrentLeaderMovements,
+                       HttpServletRequest request) {
     super(kafkaCruiseControl, future);
     _brokerIds = brokerIds;
     _dryRun = dryRun;
     _allowCapacityEstimation = allowCapacityEstimation;
     _concurrentLeaderMovements = concurrentLeaderMovements;
+    _request = request;
   }
 
   @Override
@@ -34,6 +42,7 @@ public class DemoteBrokerRunnable extends OperationRunnable<KafkaOptimizationRes
                                                                          _dryRun,
                                                                          _future.operationProgress(),
                                                                          _allowCapacityEstimation,
-                                                                         _concurrentLeaderMovements));
+                                                                         _concurrentLeaderMovements,
+                                                                         _request));
   }
 }

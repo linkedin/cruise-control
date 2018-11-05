@@ -9,11 +9,12 @@ import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.regex.Pattern;
+import javax.servlet.http.HttpServletRequest;
 
 
 /**
  * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern, HttpServletRequest)}
  */
 class RebalanceRunnable extends OperationRunnable<KafkaOptimizationResult> {
   private final List<String> _goals;
@@ -24,6 +25,7 @@ class RebalanceRunnable extends OperationRunnable<KafkaOptimizationResult> {
   private final Integer _concurrentLeaderMovements;
   private final boolean _skipHardGoalCheck;
   private final Pattern _excludedTopics;
+  private final HttpServletRequest _request;
 
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture<KafkaOptimizationResult> future,
@@ -34,7 +36,8 @@ class RebalanceRunnable extends OperationRunnable<KafkaOptimizationResult> {
                     Integer concurrentPartitionMovements,
                     Integer concurrentLeaderMovements,
                     boolean skipHardGoalCheck,
-                    Pattern excludedTopics) {
+                    Pattern excludedTopics,
+                    HttpServletRequest request) {
     super(kafkaCruiseControl, future);
     _goals = goals;
     _dryRun = dryRun;
@@ -44,6 +47,7 @@ class RebalanceRunnable extends OperationRunnable<KafkaOptimizationResult> {
     _concurrentLeaderMovements = concurrentLeaderMovements;
     _skipHardGoalCheck = skipHardGoalCheck;
     _excludedTopics = excludedTopics;
+    _request = request;
   }
 
   @Override
@@ -56,6 +60,7 @@ class RebalanceRunnable extends OperationRunnable<KafkaOptimizationResult> {
                                                                      _concurrentPartitionMovements,
                                                                      _concurrentLeaderMovements,
                                                                      _skipHardGoalCheck,
-                                                                     _excludedTopics));
+                                                                     _excludedTopics,
+                                                                     _request));
   }
 }

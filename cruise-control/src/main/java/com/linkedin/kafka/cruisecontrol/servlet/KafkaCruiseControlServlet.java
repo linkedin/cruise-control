@@ -550,8 +550,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
 
     writeSuccessResponse(response,
-                         () -> state.getJSONString(JSON_VERSION, verbose),
-                         out -> state.writeOutputStream(out, verbose, superVerbose),
+                         () -> state.getJSONString(JSON_VERSION, verbose, _userTaskManager),
+                         out -> state.writeOutputStream(out, verbose, superVerbose, _userTaskManager),
                          json);
     return true;
   }
@@ -604,7 +604,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                               concurrentPartitionMovements,
                                                                               concurrentLeaderMovements,
                                                                               skipHardGoalCheck,
-                                                                              excludedTopics));
+                                                                              excludedTopics,
+                                                                              request));
     } else {
       optimizationResult =
           getAndMaybeReturnProgress(request, response,
@@ -617,7 +618,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                                        concurrentPartitionMovements,
                                                                                        concurrentLeaderMovements,
                                                                                        skipHardGoalCheck,
-                                                                                       excludedTopics));
+                                                                                       excludedTopics,
+                                                                                       request));
     }
     if (optimizationResult == null) {
       return false;
@@ -674,7 +676,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                                            concurrentPartitionMovements,
                                                                            concurrentLeaderMovements,
                                                                            skipHardGoalCheck,
-                                                                           excludedTopics));
+                                                                           excludedTopics,
+                                                                           request));
     if (optimizationResult == null) {
       return false;
     }
@@ -707,7 +710,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                   () -> _asyncKafkaCruiseControl.demoteBrokers(brokerIds,
                                                                                dryrun,
                                                                                allowCapacityEstimation,
-                                                                               concurrentLeaderMovements));
+                                                                               concurrentLeaderMovements,
+                                                                               request));
     if (optimizationResult == null) {
       return false;
     }
