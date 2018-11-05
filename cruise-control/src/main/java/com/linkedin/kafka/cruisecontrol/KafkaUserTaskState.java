@@ -17,8 +17,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,10 +55,18 @@ public class KafkaUserTaskState {
     return Collections.unmodifiableList(_completedUserTasks);
   }
 
-  public String getJSONString(int version) {
+  /**
+   * Return a valid JSON encoded String
+   *
+   * @param version Json version.
+   * @param requestedUserTaskIds Requested user task Ids to filter the existing user tasks.
+   * @return A valid JSON encoded string.
+   */
+  public String getJSONString(int version, Set<UUID> requestedUserTaskIds) {
     List<Map<String, Object>> jsonUserTaskList = new ArrayList<>();
-    addJSONTaskInfo(jsonUserTaskList, _activeUserTasks, ACTIVE_TASK_LABEL_VALUE);
-    addJSONTaskInfo(jsonUserTaskList, _completedUserTasks, COMPLETED_TASK_LABEL_VALUE);
+
+    addFilteredJSONTasks(jsonUserTaskList, _activeUserTasks, ACTIVE_TASK_LABEL_VALUE, requestedUserTaskIds);
+    addFilteredJSONTasks(jsonUserTaskList, _completedUserTasks, COMPLETED_TASK_LABEL_VALUE, requestedUserTaskIds);
 
     Map<String, Object> jsonResponse = new HashMap<>();
     jsonResponse.put(USER_TASKS, jsonUserTaskList);
@@ -64,17 +74,26 @@ public class KafkaUserTaskState {
     return new Gson().toJson(jsonResponse);
   }
 
-  private void addJSONTaskInfo(List<Map<String, Object>> jsonUserTaskList,
-                               List<UserTaskManager.UserTaskInfo> userTasks,
-                               String status) {
+  private void addJSONTask(List<Map<String, Object>> jsonUserTaskList,
+                           UserTaskManager.UserTaskInfo userTaskInfo,
+                           String status) {
+    Map<String, Object> jsonObjectMap = new HashMap<>();
+    jsonObjectMap.put(USER_TASK_ID, userTaskInfo.userTaskId().toString());
+    jsonObjectMap.put(REQUEST_URL, userTaskInfo.requestWithParams());
+    jsonObjectMap.put(CLIENT_ID, userTaskInfo.clientIdentity());
+    jsonObjectMap.put(START_MS, Long.toString(userTaskInfo.startMs()));
+    jsonObjectMap.put(STATUS, status);
+    jsonUserTaskList.add(jsonObjectMap);
+  }
+
+  private void addFilteredJSONTasks(List<Map<String, Object>> jsonUserTaskList,
+                                    List<UserTaskManager.UserTaskInfo> userTasks,
+                                    String status,
+                                    Set<UUID> requestedUserTaskIds) {
     for (UserTaskManager.UserTaskInfo userTaskInfo : userTasks) {
-      Map<String, Object> jsonObjectMap = new HashMap<>();
-      jsonObjectMap.put(USER_TASK_ID, userTaskInfo.userTaskId().toString());
-      jsonObjectMap.put(REQUEST_URL, userTaskInfo.requestWithParams());
-      jsonObjectMap.put(CLIENT_ID, userTaskInfo.clientIdentity());
-      jsonObjectMap.put(START_MS, Long.toString(userTaskInfo.startMs()));
-      jsonObjectMap.put(STATUS, status);
-      jsonUserTaskList.add(jsonObjectMap);
+      if (requestedUserTaskIds == null || requestedUserTaskIds.isEmpty() || requestedUserTaskIds.contains(userTaskInfo.userTaskId())) {
+        addJSONTask(jsonUserTaskList, userTaskInfo, status);
+      }
     }
   }
 
@@ -82,8 +101,9 @@ public class KafkaUserTaskState {
    * Write the user task state result to the given output stream.
    *
    * @param out Output stream to write the user task state result.
+   * @param requestedUserTaskIds Requested user task Ids to filter the existing user tasks.
    */
-  public void writeOutputStream(OutputStream out) {
+  public void writeOutputStream(OutputStream out, Set<UUID> requestedUserTaskIds) {
     StringBuilder sb = new StringBuilder();
     int padding = 2;
     int userTaskIdLabelSize = 20;
@@ -134,12 +154,15 @@ public class KafkaUserTaskState {
                             "REQUEST URL")); // header
     for (Map.Entry<String, List<UserTaskManager.UserTaskInfo>> entry : taskTypeMap.entrySet()) {
       for (UserTaskManager.UserTaskInfo userTaskInfo : entry.getValue()) {
-        Date date = new Date(userTaskInfo.startMs());
-        DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
-        formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
-        String dateFormatted = formatter.format(date);
-        sb.append(String.format(formattingStringBuilder.toString(), userTaskInfo.userTaskId().toString(), userTaskInfo.clientIdentity(),
-                                dateFormatted, entry.getKey(), userTaskInfo.requestWithParams())); // values
+        if (requestedUserTaskIds == null || requestedUserTaskIds.isEmpty()
+            || requestedUserTaskIds.contains(userTaskInfo.userTaskId())) {
+          Date date = new Date(userTaskInfo.startMs());
+          DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
+          formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
+          String dateFormatted = formatter.format(date);
+          sb.append(String.format(formattingStringBuilder.toString(), userTaskInfo.userTaskId().toString(), userTaskInfo.clientIdentity(),
+                                  dateFormatted, entry.getKey(), userTaskInfo.requestWithParams())); // values
+        }
       }
     }
 
