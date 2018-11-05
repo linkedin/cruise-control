@@ -176,7 +176,9 @@ public class KafkaCruiseControlState {
       if (_executorState == null) {
         out.write("".getBytes(StandardCharsets.UTF_8));
       } else {
+        out.write("ExecutorState: ".getBytes(StandardCharsets.UTF_8));
         _executorState.writeOutputStream(out, userTaskManager);
+        out.write("%n".getBytes(StandardCharsets.UTF_8));
       }
       out.write((_analyzerState != null ? String.format("AnalyzerState: %s%n", _analyzerState) : "").getBytes(StandardCharsets.UTF_8));
       out.write((_anomalyDetectorState != null ? String.format("AnomalyDetectorState: %s%n", _anomalyDetectorState) : "")
