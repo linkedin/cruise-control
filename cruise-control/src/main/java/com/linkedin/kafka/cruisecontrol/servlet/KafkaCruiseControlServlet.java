@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
+import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -409,7 +410,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       time = time(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
-      // Close session
       return true;
     }
 
@@ -446,7 +446,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       String errorMsg = String.format("Invalid resource type %s. The resource type must be one of the following: "
                                       + "CPU, DISK, NW_IN, NW_OUT", resourceString);
       handleParameterParseException(iae, response, errorMsg, json);
-      // Close session
       return true;
     }
 
@@ -461,7 +460,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       minValidPartitionRatio = minValidPartitionRatio(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
-      // Close session
       return true;
     }
 
@@ -504,7 +502,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       excludedTopics = excludedTopics(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
-      // Close session
       return true;
     }
     GoalsAndRequirements goalsAndRequirements =
@@ -550,7 +547,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       substates = substates(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
-      // Close session
       return true;
     }
 
@@ -594,7 +590,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       excludedTopics = excludedTopics(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
-      // Close session
       return true;
     }
     GoalsAndRequirements goalsAndRequirements =
@@ -697,7 +692,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       excludedTopics = excludedTopics(request);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
-      // Close session
       return true;
     }
     GoalsAndRequirements goalsAndRequirements =
@@ -738,7 +732,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       concurrentLeaderMovements = concurrentMovements(request, false);
     } catch (Exception e) {
       handleParameterParseException(e, response, e.getMessage(), json);
-      // Close session
       return true;
     }
 
@@ -835,11 +828,19 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private void getUserTaskState(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    Set<UUID> userTaskIds;
+    try {
+      userTaskIds = userTaskIds(request);
+    } catch (Exception e) {
+      handleParameterParseException(e, response, e.getMessage(), wantJSON(request));
+      return;
+    }
+
     KafkaUserTaskState kafkaUserTaskState = new KafkaUserTaskState(_userTaskManager.getActiveUserTasks(),
                                                                    _userTaskManager.getCompletedUserTasks());
     writeSuccessResponse(response,
-                         () -> kafkaUserTaskState.getJSONString(JSON_VERSION),
-                         kafkaUserTaskState::writeOutputStream,
+                         () -> kafkaUserTaskState.getJSONString(JSON_VERSION, userTaskIds),
+                         out -> kafkaUserTaskState.writeOutputStream(out, userTaskIds),
                          wantJSON(request));
   }
 
