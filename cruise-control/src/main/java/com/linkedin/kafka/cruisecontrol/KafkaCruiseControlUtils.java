@@ -58,22 +58,8 @@ public class KafkaCruiseControlUtils {
     return value;
   }
 
-  /**
-   * Close the given KafkaZkClient with the default timeout of {@link #KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS}.
-   *
-   * @param kafkaZkClient KafkaZkClient to be closed
-   */
-  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient) {
-    closeKafkaZkClientWithTimeout(kafkaZkClient, KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS);
-  }
-
-  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient, long timeoutMs) {
-    Thread t = new Thread() {
-      @Override
-      public void run() {
-        kafkaZkClient.close();
-      }
-    };
+  private static void closeClientWithTimeout(Runnable clientCloseTask, long timeoutMs) {
+    Thread t = new Thread(clientCloseTask);
     t.setDaemon(true);
     t.start();
     try {
@@ -84,6 +70,19 @@ public class KafkaCruiseControlUtils {
     if (t.isAlive()) {
       t.interrupt();
     }
+  }
+
+  /**
+   * Close the given KafkaZkClient with the default timeout of {@link #KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS}.
+   *
+   * @param kafkaZkClient KafkaZkClient to be closed
+   */
+  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient) {
+    closeKafkaZkClientWithTimeout(kafkaZkClient, KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS);
+  }
+
+  public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient, long timeoutMs) {
+    closeClientWithTimeout(kafkaZkClient::close, timeoutMs);
   }
 
   /**
@@ -141,7 +140,6 @@ public class KafkaCruiseControlUtils {
     } finally {
       KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
     }
-
   }
 
   /**
@@ -164,22 +162,7 @@ public class KafkaCruiseControlUtils {
   }
 
   public static void closeAdminClientWithTimeout(AdminClient adminClient, long timeoutMs) {
-    Thread t = new Thread() {
-      @Override
-      public void run() {
-        adminClient.close();
-      }
-    };
-    t.setDaemon(true);
-    t.start();
-    try {
-      t.join(timeoutMs);
-    } catch (InterruptedException e) {
-      // let it go
-    }
-    if (t.isAlive()) {
-      t.interrupt();
-    }
+    closeClientWithTimeout(adminClient::close, timeoutMs);
   }
 
   /**
