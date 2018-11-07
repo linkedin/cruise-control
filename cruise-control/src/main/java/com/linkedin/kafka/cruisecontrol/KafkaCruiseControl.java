@@ -555,6 +555,10 @@ public class KafkaCruiseControl {
     }
   }
 
+  public KafkaCruiseControlConfig config() {
+    return _config;
+  }
+
   /**
    * Execute the given balancing proposals.
    * @param proposals the given balancing proposals

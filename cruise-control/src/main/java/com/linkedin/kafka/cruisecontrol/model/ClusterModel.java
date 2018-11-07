@@ -132,13 +132,12 @@ public class ClusterModel implements Serializable {
    * @return The replica distribution of leader and follower replicas in the cluster at the point of call.
    */
   public Map<TopicPartition, List<Integer>> getReplicaDistribution() {
-    Map<TopicPartition, List<Integer>> replicaDistribution = new HashMap<>();
+    Map<TopicPartition, List<Integer>> replicaDistribution = new HashMap<>(_partitionsByTopicPartition.size());
 
     for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
       TopicPartition tp = entry.getKey();
       Partition partition = entry.getValue();
-      List<Integer> brokerIds = new ArrayList<>();
-      partition.replicas().forEach(r -> brokerIds.add(r.broker().id()));
+      List<Integer> brokerIds = partition.replicas().stream().map(r -> r.broker().id()).collect(Collectors.toList());
       // Add distribution of replicas in the partition.
       replicaDistribution.put(tp, brokerIds);
     }

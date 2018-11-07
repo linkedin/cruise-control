@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -524,6 +525,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "that persist the metric samples that have already been aggregated into Kafka Cruise Control. Later on the "
       + "persisted samples can be reloaded from the sample store to Kafka Cruise Control.";
 
+  /**
+   * <code>completed.user.task.retention.time.ms</code>
+   */
+  public static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG = "completed.user.task.retention.time.ms";
+  private static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to store the "
+      + " response and access details of a completed user task.";
+
   static {
     CONFIG = new ConfigDef()
         .define(BOOTSTRAP_SERVERS_CONFIG, ConfigDef.Type.LIST, ConfigDef.Importance.HIGH,
@@ -585,6 +593,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.HIGH,
                 BROKER_METRICS_WINDOW_MS_DOC)
+        .define(COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                TimeUnit.HOURS.toMillis(6),
+                atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC)
         .define(NUM_BROKER_METRICS_WINDOWS_CONFIG,
                 ConfigDef.Type.INT,
                 5,
