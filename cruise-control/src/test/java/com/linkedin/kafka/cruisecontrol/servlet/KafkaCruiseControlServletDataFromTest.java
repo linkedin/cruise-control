@@ -6,12 +6,14 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
@@ -109,6 +111,8 @@ public class KafkaCruiseControlServletDataFromTest {
     EasyMock.expect(mockKCC.state(new HashSet<>(Arrays.asList(KafkaCruiseControlState.SubState.ANALYZER,
                                                               KafkaCruiseControlState.SubState.MONITOR))))
             .andReturn(kccStateFuture).anyTimes();
+    EasyMock.expect(mockKCC.config()).andReturn(
+        new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties())).anyTimes();
     EasyMock.replay(mockKCC, request, response, session);
 
     KafkaCruiseControlServlet servlet =
