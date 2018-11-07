@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import kafka.utils.ZkUtils;
 import org.I0Itec.zkclient.ZkClient;
 import org.I0Itec.zkclient.ZkConnection;
@@ -40,6 +41,7 @@ public class KafkaCruiseControlUnitTestUtils {
     props.setProperty(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE, capacityConfigFile);
     props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG, "2");
     props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG, "2");
+    props.setProperty(KafkaCruiseControlConfig.COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG, Long.toString(TimeUnit.HOURS.toMillis(6)));
     props.setProperty(
         KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG,
         "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"

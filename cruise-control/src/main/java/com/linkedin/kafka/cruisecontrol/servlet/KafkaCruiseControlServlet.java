@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaUserTaskState;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.io.IOException;
@@ -68,7 +69,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                    long sessionExpiryMs,
                                    MetricRegistry dropwizardMetricRegistry) {
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
-    _userTaskManager = new UserTaskManager(sessionExpiryMs, MAX_ACTIVE_USER_TASKS, dropwizardMetricRegistry, _successfulRequestExecutionTimer);
+    _userTaskManager = new UserTaskManager(sessionExpiryMs, MAX_ACTIVE_USER_TASKS, asynckafkaCruiseControl
+        .config().getLong(KafkaCruiseControlConfig.COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG),
+        dropwizardMetricRegistry, _successfulRequestExecutionTimer);
     _maxBlockMs = maxBlockMs;
     _asyncOperationStep = new ThreadLocal<>();
     _asyncOperationStep.set(0);
