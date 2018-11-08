@@ -42,8 +42,8 @@ public class UserTaskManagerTest {
     EasyMock.replay(mockUUIDGenerator, mockHttpSession, mockHttpServletResponse);
 
     OperationFuture<Integer> future = new OperationFuture<>("future");
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 1,
-                                                          TimeUnit.HOURS.toMillis(6), new MockTime(), mockUUIDGenerator);
+    UserTaskManager userTaskManager = new UserTaskManager(1000, 1, TimeUnit.HOURS.toMillis(6),
+                                                          100, new MockTime(), mockUUIDGenerator);
     // test-case: create user-task based on request and get future
     OperationFuture future1 =
         userTaskManager.getOrCreateUserTask(mockHttpServletRequest1, mockHttpServletResponse, () -> future, 0);
@@ -107,8 +107,8 @@ public class UserTaskManagerTest {
     EasyMock.replay(mockUUIDGenerator, mockHttpSession, mockHttpServletResponse1, mockHttpServletResponse2, mockHttpServletResponse3);
 
     OperationFuture<Integer> future = new OperationFuture<>("future");
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 5,
-                                                          TimeUnit.HOURS.toMillis(6), new MockTime(), mockUUIDGenerator);
+    UserTaskManager userTaskManager = new UserTaskManager(1000, 5, TimeUnit.HOURS.toMillis(6),
+                                                          100, new MockTime(), mockUUIDGenerator);
     userTaskManager.getOrCreateUserTask(mockHttpServletRequest1, mockHttpServletResponse1, () -> future, 0);
     userTaskManager.getOrCreateUserTask(mockHttpServletRequest2, mockHttpServletResponse2, () -> future, 0);
     // Test UserTaskManger can recognize the previous created task by taskId.
@@ -135,8 +135,8 @@ public class UserTaskManagerTest {
     mockHttpServletResponse.setHeader(EasyMock.anyString(), EasyMock.anyString());
     EasyMock.replay(mockUUIDGenerator, mockHttpSession, mockHttpServletResponse);
 
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 1,
-                                                          TimeUnit.HOURS.toMillis(6), new MockTime(), mockUUIDGenerator);
+    UserTaskManager userTaskManager = new UserTaskManager(1000, 1, TimeUnit.HOURS.toMillis(6),
+                                                          100, new MockTime(), mockUUIDGenerator);
 
     OperationFuture<Integer> testFuture1 = new OperationFuture<>("testFuture1");
     OperationFuture<Integer> testFuture2 = new OperationFuture<>("testFuture2");
@@ -164,8 +164,8 @@ public class UserTaskManagerTest {
     EasyMock.expect(mockUUIDGenerator.randomUUID()).andReturn(UUID.randomUUID()).anyTimes();
 
     OperationFuture<Integer> future = new OperationFuture<>("future");
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 1,
-                                                          TimeUnit.HOURS.toMillis(6), new MockTime(), mockUUIDGenerator);
+    UserTaskManager userTaskManager = new UserTaskManager(1000, 1, TimeUnit.HOURS.toMillis(6),
+                                                          100, new MockTime(), mockUUIDGenerator);
 
     HttpServletResponse mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
     Capture<String> userTaskHeader = Capture.newInstance();
@@ -202,8 +202,8 @@ public class UserTaskManagerTest {
     HttpServletRequest mockHttpServletRequest = prepareRequest(mockHttpSession, null);
 
     OperationFuture<Integer> future = new OperationFuture<>("future");
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 1,
-                                                          TimeUnit.HOURS.toMillis(6), mockTime, mockUUIDGenerator);
+    UserTaskManager userTaskManager = new UserTaskManager(1000, 1, TimeUnit.HOURS.toMillis(6),
+                                                          100, mockTime, mockUUIDGenerator);
 
     HttpServletResponse mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
     mockHttpServletResponse.setHeader(EasyMock.anyString(), EasyMock.anyString());
@@ -231,8 +231,8 @@ public class UserTaskManagerTest {
     HttpServletRequest mockHttpServletRequest1 = prepareRequest(mockHttpSession1, null);
 
     OperationFuture<Integer> future = new OperationFuture<>("future");
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 1,
-                                                          TimeUnit.HOURS.toMillis(6), new MockTime());
+    UserTaskManager userTaskManager = new UserTaskManager(1000, 1, TimeUnit.HOURS.toMillis(6),
+                                                          100, new MockTime());
 
     HttpServletResponse mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
     mockHttpServletResponse.setHeader(EasyMock.anyString(), EasyMock.anyString());
