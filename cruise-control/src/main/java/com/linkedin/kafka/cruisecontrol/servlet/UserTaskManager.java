@@ -54,7 +54,7 @@ public class UserTaskManager implements Closeable {
   private final Map<UUID, UserTaskInfo> _activeUserTaskIdToFuturesMap;
   private final Map<UUID, UserTaskInfo> _completedUserTaskIdToFuturesMap;
   private final long _sessionExpiryMs;
-  private final long _maxActiveUserTasks; // maximum number of active async user operations across all users
+  private final long _maxActiveUserTasks;
   private final Time _time;
   private final ScheduledExecutorService _userTaskScannerExecutor =
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskScanner", true, null));
