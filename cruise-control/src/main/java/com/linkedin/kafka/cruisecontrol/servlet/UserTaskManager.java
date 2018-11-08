@@ -13,15 +13,14 @@ import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -60,23 +59,23 @@ public class UserTaskManager implements Closeable {
   private final ScheduledExecutorService _userTaskScannerExecutor =
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskScanner", true, null));
   private final UUIDGenerator _uuidGenerator;
-  private static final Comparator<UUID> USER_TASK_ID_COMPARATOR = new Comparator<UUID>() {
-    @Override
-    public int compare(UUID o1, UUID o2) {
-      return o1.compareTo(o2);
-    }
-  };
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer;
   private final long _completedUserTaskRetentionTimeMs;
 
   public UserTaskManager(long sessionExpiryMs,
                          long maxActiveUserTasks,
                          long completedUserTaskRetentionTimeMs,
+                         int maxCachedCompletedUserTasks,
                          MetricRegistry dropwizardMetricRegistry,
                          Map<EndPoint, Timer> successfulRequestExecutionTimer) {
     _sessionToUserTaskIdMap = new HashMap<>();
-    _activeUserTaskIdToFuturesMap = new TreeMap<>(USER_TASK_ID_COMPARATOR);
-    _completedUserTaskIdToFuturesMap = new TreeMap<>(USER_TASK_ID_COMPARATOR);
+    _activeUserTaskIdToFuturesMap = new LinkedHashMap<>();
+    _completedUserTaskIdToFuturesMap = new LinkedHashMap<UUID, UserTaskInfo>() {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry<UUID, UserTaskInfo> eldest) {
+        return this.size() > maxCachedCompletedUserTasks;
+      }
+    };
     _sessionExpiryMs = sessionExpiryMs;
     _maxActiveUserTasks = maxActiveUserTasks;
     _completedUserTaskRetentionTimeMs = completedUserTaskRetentionTimeMs;
@@ -97,11 +96,17 @@ public class UserTaskManager implements Closeable {
   UserTaskManager(long sessionExpiryMs,
                   long maxActiveUserTasks,
                   long completedUserTaskRetentionTimeMs,
+                  int maxCachedCompletedUserTasks,
                   Time time,
                   UUIDGenerator uuidGenerator) {
     _sessionToUserTaskIdMap = new HashMap<>();
-    _activeUserTaskIdToFuturesMap = new HashMap<>();
-    _completedUserTaskIdToFuturesMap = new HashMap<>();
+    _activeUserTaskIdToFuturesMap = new LinkedHashMap<>();
+    _completedUserTaskIdToFuturesMap = new LinkedHashMap<UUID, UserTaskInfo>() {
+      @Override
+      protected boolean removeEldestEntry(Map.Entry<UUID, UserTaskInfo> eldest) {
+        return this.size() > maxCachedCompletedUserTasks;
+      }
+    };
     _sessionExpiryMs = sessionExpiryMs;
     _maxActiveUserTasks = maxActiveUserTasks;
     _completedUserTaskRetentionTimeMs = completedUserTaskRetentionTimeMs;
@@ -112,15 +117,16 @@ public class UserTaskManager implements Closeable {
                                                  USER_TASK_SCANNER_PERIOD_SECONDS,
                                                  TimeUnit.SECONDS);
     _successfulRequestExecutionTimer = new HashMap<>();
-    EndPoint.cachedValues().stream().forEach(e -> _successfulRequestExecutionTimer.put(e, new Timer()));
+    EndPoint.cachedValues().forEach(e -> _successfulRequestExecutionTimer.put(e, new Timer()));
   }
 
   // for unit-tests only
   UserTaskManager(long sessionExpiryMs,
                   long maxActiveUserTasks,
                   long completedUserTaskRetentionTimeMs,
+                  int maxCachedCompletedUserTasks,
                   Time time) {
-    this(sessionExpiryMs, maxActiveUserTasks, completedUserTaskRetentionTimeMs, time, new UUIDGenerator());
+    this(sessionExpiryMs, maxActiveUserTasks, completedUserTaskRetentionTimeMs, maxCachedCompletedUserTasks, time, new UUIDGenerator());
   }
 
   private static String httpServletRequestToString(HttpServletRequest request) {
