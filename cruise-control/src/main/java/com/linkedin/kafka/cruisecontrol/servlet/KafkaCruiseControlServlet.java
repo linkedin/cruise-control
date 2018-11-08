@@ -56,7 +56,6 @@ import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 public class KafkaCruiseControlServlet extends HttpServlet {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlServlet.class);
   private static final Logger ACCESS_LOG = LoggerFactory.getLogger("CruiseControlPublicAccessLogger");
-  private static final long MAX_ACTIVE_USER_TASKS = 5;
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
   private final UserTaskManager _userTaskManager;
   private final long _maxBlockMs;
@@ -70,7 +69,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                    MetricRegistry dropwizardMetricRegistry) {
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
     KafkaCruiseControlConfig config = asynckafkaCruiseControl.config();
-    _userTaskManager = new UserTaskManager(sessionExpiryMs, MAX_ACTIVE_USER_TASKS,
+    _userTaskManager = new UserTaskManager(sessionExpiryMs, config.getInt(KafkaCruiseControlConfig.MAX_ACTIVE_USER_TASKS_CONFIG),
                                            config.getLong(KafkaCruiseControlConfig.COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG),
                                            config.getInt(KafkaCruiseControlConfig.MAX_CACHED_COMPLETED_USER_TASKS_CONFIG),
                                            dropwizardMetricRegistry, _successfulRequestExecutionTimer);
