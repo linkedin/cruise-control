@@ -535,8 +535,15 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>completed.user.task.retention.time.ms</code>
    */
   public static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG = "completed.user.task.retention.time.ms";
-  private static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to store the "
+  private static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to store the"
       + " response and access details of a completed user task.";
+
+  /**
+   * <code>max.cached.completed.user.tasks</code>
+   */
+  public static final String MAX_CACHED_COMPLETED_USER_TASKS_CONFIG = "max.cached.completed.user.tasks";
+  private static final String MAX_CACHED_COMPLETED_USER_TASKS_DOC = "The maximum number of completed user tasks for "
+      + "which the response and access details will be cached.";
 
   static {
     CONFIG = new ConfigDef()
@@ -605,6 +612,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC)
+        .define(MAX_CACHED_COMPLETED_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                100,
+                atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                MAX_CACHED_COMPLETED_USER_TASKS_DOC)
         .define(NUM_BROKER_METRICS_WINDOWS_CONFIG,
                 ConfigDef.Type.INT,
                 5,
