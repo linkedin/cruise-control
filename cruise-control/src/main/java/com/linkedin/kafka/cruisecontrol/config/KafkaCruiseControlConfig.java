@@ -539,6 +539,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String MAX_CACHED_COMPLETED_USER_TASKS_DOC = "The maximum number of completed user tasks for "
       + "which the response and access details will be cached.";
 
+  /**
+   * <code>max.active.user.tasks</code>
+   */
+  public static final String MAX_ACTIVE_USER_TASKS_CONFIG = "max.active.user.tasks";
+  private static final String MAX_ACTIVE_USER_TASKS_DOC = "The maximum number of user tasks for concurrently running in "
+       + "async endpoints across all users.";
+
   static {
     CONFIG = new ConfigDef()
         .define(BOOTSTRAP_SERVERS_CONFIG, ConfigDef.Type.LIST, ConfigDef.Importance.HIGH,
@@ -612,6 +619,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 MAX_CACHED_COMPLETED_USER_TASKS_DOC)
+        .define(MAX_ACTIVE_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                5,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                MAX_ACTIVE_USER_TASKS_DOC)
         .define(NUM_BROKER_METRICS_WINDOWS_CONFIG,
                 ConfigDef.Type.INT,
                 5,
