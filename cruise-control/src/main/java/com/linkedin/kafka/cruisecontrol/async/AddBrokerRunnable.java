@@ -5,7 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaOptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collection;
 import java.util.List;
@@ -18,7 +19,7 @@ import javax.servlet.http.HttpServletRequest;
  * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer,
  * Integer, boolean, Pattern, HttpServletRequest)}
  */
-class AddBrokerRunnable extends OperationRunnable<KafkaOptimizationResult> {
+class AddBrokerRunnable extends OperationRunnable {
   private final Collection<Integer> _brokerIds;
   private final boolean _dryRun;
   private final boolean _throttleAddedBrokers;
@@ -32,29 +33,22 @@ class AddBrokerRunnable extends OperationRunnable<KafkaOptimizationResult> {
   private final HttpServletRequest _request;
 
   AddBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
-                    OperationFuture<KafkaOptimizationResult> future,
-                    Collection<Integer> brokerIds,
-                    boolean dryRun,
-                    boolean throttleAddedBrokers,
+                    OperationFuture future,
                     List<String> goals,
                     ModelCompletenessRequirements modelCompletenessRequirements,
-                    boolean allowCapacityEstimation,
-                    Integer concurrentPartitionMovements,
-                    Integer concurrentLeaderMovements,
-                    boolean skipHardGoalCheck,
-                    Pattern excludedTopics,
+                    AddedOrRemovedBrokerParameters parameters,
                     HttpServletRequest request) {
     super(kafkaCruiseControl, future);
-    _brokerIds = brokerIds;
-    _dryRun = dryRun;
-    _throttleAddedBrokers = throttleAddedBrokers;
+    _brokerIds = parameters.brokerIds();
+    _dryRun = parameters.dryRun();
+    _throttleAddedBrokers = parameters.throttleAddedOrRemovedBrokers();
     _goals = goals;
     _modelCompletenessRequirements = modelCompletenessRequirements;
-    _allowCapacityEstimation = allowCapacityEstimation;
-    _concurrentPartitionMovements = concurrentPartitionMovements;
-    _concurrentLeaderMovements = concurrentLeaderMovements;
-    _skipHardGoalCheck = skipHardGoalCheck;
-    _excludedTopics = excludedTopics;
+    _allowCapacityEstimation = parameters.allowCapacityEstimation();
+    _concurrentPartitionMovements = parameters.concurrentPartitionMovements();
+    _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    _skipHardGoalCheck = parameters.skipHardGoalCheck();
+    _excludedTopics = parameters.excludedTopics();
     _request = request;
   }
 

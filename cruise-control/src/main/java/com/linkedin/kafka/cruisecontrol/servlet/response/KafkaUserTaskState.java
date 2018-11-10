@@ -2,10 +2,12 @@
  * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol;
+package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -25,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class KafkaUserTaskState {
+public class KafkaUserTaskState extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaUserTaskState.class);
   private static final String DATA_FORMAT = "YYYY-MM-dd_hh:mm:ss z";
   private static final String TIME_ZONE = "UTC";
@@ -36,7 +38,6 @@ public class KafkaUserTaskState {
   private static final String CLIENT_ID = "ClientIdentity";
   private static final String START_MS = "StartMs";
   private static final String STATUS = "Status";
-  private static final String VERSION = "version";
   private static final String USER_TASKS = "userTasks";
   private final List<UserTaskManager.UserTaskInfo> _activeUserTasks;
   private final List<UserTaskManager.UserTaskInfo> _completedUserTasks;
@@ -55,22 +56,17 @@ public class KafkaUserTaskState {
     return Collections.unmodifiableList(_completedUserTasks);
   }
 
-  /**
-   * Return a valid JSON encoded String
-   *
-   * @param version Json version.
-   * @param requestedUserTaskIds Requested user task Ids to filter the existing user tasks.
-   * @return A valid JSON encoded string.
-   */
-  public String getJSONString(int version, Set<UUID> requestedUserTaskIds) {
+  @Override
+  public String getJSONString(CruiseControlParameters parameters) {
     List<Map<String, Object>> jsonUserTaskList = new ArrayList<>();
 
+    Set<UUID> requestedUserTaskIds = ((UserTasksParameters) parameters).userTaskIds();
     addFilteredJSONTasks(jsonUserTaskList, _activeUserTasks, ACTIVE_TASK_LABEL_VALUE, requestedUserTaskIds);
     addFilteredJSONTasks(jsonUserTaskList, _completedUserTasks, COMPLETED_TASK_LABEL_VALUE, requestedUserTaskIds);
 
     Map<String, Object> jsonResponse = new HashMap<>();
     jsonResponse.put(USER_TASKS, jsonUserTaskList);
-    jsonResponse.put(VERSION, version);
+    jsonResponse.put(VERSION, JSON_VERSION);
     return new Gson().toJson(jsonResponse);
   }
 
@@ -97,13 +93,9 @@ public class KafkaUserTaskState {
     }
   }
 
-  /**
-   * Write the user task state result to the given output stream.
-   *
-   * @param out Output stream to write the user task state result.
-   * @param requestedUserTaskIds Requested user task Ids to filter the existing user tasks.
-   */
-  public void writeOutputStream(OutputStream out, Set<UUID> requestedUserTaskIds) {
+  @Override
+  public void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
+    Set<UUID> requestedUserTaskIds = ((UserTasksParameters) parameters).userTaskIds();
     StringBuilder sb = new StringBuilder();
     int padding = 2;
     int userTaskIdLabelSize = 20;

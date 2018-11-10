@@ -4,6 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.async;
 
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
+import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaPauseSampling;
+import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaResumeSampling;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
@@ -12,58 +15,62 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertFalse;
 
 
 public class OperationFutureTest {
+  private static CruiseControlResponse DEFAULT_RESULT = new KafkaPauseSampling();
 
   @Test
   public void testGetCompleted() throws InterruptedException {
-    OperationFuture<Integer> future = new OperationFuture<>("testGetCompleted");
-    TestThread t = new TestThread(future::get);
+    OperationFuture future = new OperationFuture("testGetCompleted");
+    TestThread t = new TestThread(future);
     t.start();
-    future.complete(10);
+    CruiseControlResponse expectedResponse = new KafkaResumeSampling();
+    future.complete(expectedResponse);
     t.join();
     assertTrue(future.isDone());
-    assertEquals(10, t.result());
+    assertEquals(expectedResponse, t.result());
   }
 
   @Test
   public void testGetCompletedWithTimeout() throws InterruptedException {
-    OperationFuture<Integer> future = new OperationFuture<>("testGetCompletedWithTimeout");
-    TestThread t = new TestThread(() -> future.get(1, TimeUnit.MILLISECONDS));
+    OperationFuture future = new OperationFuture("testGetCompletedWithTimeout");
+    TestThread t = new TestThread(future, 1, TimeUnit.MILLISECONDS);
     t.start();
     t.join();
     assertFalse(future.isDone());
-    assertEquals(0, t.result());
+    assertEquals(DEFAULT_RESULT, t.result());
     assertTrue(t.exception() instanceof TimeoutException);
   }
 
   @Test
   public void testGetFailed() throws InterruptedException {
-    OperationFuture<Integer> future = new OperationFuture<>("testGetFailed");
-    TestThread t = new TestThread(future::get);
+    OperationFuture future = new OperationFuture("testGetFailed");
+    TestThread t = new TestThread(future);
     t.start();
     Exception cause = new Exception();
     future.completeExceptionally(cause);
     assertTrue(future.isDone());
     t.join();
-    assertEquals(0, t.result());
+    assertEquals(DEFAULT_RESULT, t.result());
     assertTrue(t.exception() instanceof ExecutionException);
     assertEquals(cause, t.exception().getCause());
   }
 
   @Test
   public void testCancelInProgressFuture() throws InterruptedException {
-    OperationFuture<Integer> future = new OperationFuture<>("testCancelInProgressFuture");
+    OperationFuture future = new OperationFuture("testCancelInProgressFuture");
     AtomicBoolean interrupted = new AtomicBoolean(false);
 
     Semaphore resultIsCalledSemaphore = new Semaphore(1);
     resultIsCalledSemaphore.acquire();
     // An execution thread that should be interrupted before completing the future.
-    Thread executionThread = new Thread(new OperationRunnable<Integer>(null, future) {
+    Thread executionThread = new Thread(new OperationRunnable(null, future) {
       @Override
-      protected Integer getResult() throws Exception {
+      protected CruiseControlResponse getResult() throws Exception {
         resultIsCalledSemaphore.release();
         try {
           synchronized (this) {
@@ -71,7 +78,7 @@ public class OperationFutureTest {
               this.wait();
             }
           }
-          return 100;
+          return new KafkaResumeSampling();
         } catch (InterruptedException ie) {
           interrupted.set(true);
           throw ie;
@@ -80,13 +87,13 @@ public class OperationFutureTest {
     });
     executionThread.start();
 
-    TestThread t = new TestThread(future::get);
+    TestThread t = new TestThread(future);
     t.start();
     resultIsCalledSemaphore.acquire();
     future.cancel(true);
     t.join();
     executionThread.join();
-    assertEquals(0, t.result());
+    assertTrue(t.result() instanceof KafkaPauseSampling);
     assertTrue(t.exception() instanceof CancellationException);
     assertTrue(future.isDone());
     assertTrue(future.isCancelled());
@@ -95,7 +102,7 @@ public class OperationFutureTest {
 
   @Test
   public void testCancelPendingFuture() throws InterruptedException, ExecutionException {
-    OperationFuture<Integer> future = new OperationFuture<>("testCancelPendingFuture");
+    OperationFuture future = new OperationFuture("testCancelPendingFuture");
     future.cancel(true);
     try {
       future.get();
@@ -106,7 +113,7 @@ public class OperationFutureTest {
 
   @Test
   public void testSetExecutionThread() {
-    OperationFuture<Integer> future = new OperationFuture<>("testSetExecutionThread");
+    OperationFuture future = new OperationFuture("testSetExecutionThread");
     assertTrue(future.setExecutionThread(new Thread()));
     future.cancel(true);
     assertTrue("Should be able to set the execution thread of canceled future to null",
@@ -115,30 +122,34 @@ public class OperationFutureTest {
                 future.setExecutionThread(new Thread()));
   }
 
-  @FunctionalInterface
-  private interface IntSupplier {
-    Integer get() throws TimeoutException, InterruptedException, ExecutionException;
-  }
   private static class TestThread extends Thread {
-    private final IntSupplier _supplier;
-    private int _result = 0;
+    private final OperationFuture _future;
+    private CruiseControlResponse _result = DEFAULT_RESULT;
     private Exception _exception = null;
+    private final long _timeout;
+    private final TimeUnit _unit;
 
-    private TestThread(IntSupplier supplier) {
-      _supplier = supplier;
+    private TestThread(OperationFuture future) {
+      this(future, -1, null);
+    }
+
+    private TestThread(OperationFuture future, long timeout, TimeUnit unit) {
+      _future = future;
+      _timeout = timeout;
+      _unit = unit;
     }
 
     @Override
     public void run() {
       try {
-        _result = _supplier.get();
+        _result = _unit != null ? _future.get(_timeout, _unit) : _future.get();
       } catch (Exception e) {
         _exception = e;
         // let it go.
       }
     }
 
-    private int result() {
+    private CruiseControlResponse result() {
       return _result;
     }
 

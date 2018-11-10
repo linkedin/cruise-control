@@ -5,7 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
+import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
@@ -39,19 +40,20 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 
 @RunWith(Parameterized.class)
 public class KafkaCruiseControlServletDataFromTest {
   private static final ModelCompletenessRequirements FOR_AVAILABLE_WINDOWS =
-      KafkaCruiseControlServletUtils.getRequirements(KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS);
+      KafkaCruiseControlServletUtils.getRequirements(ParameterUtils.DataFrom.VALID_WINDOWS);
   private static final ModelCompletenessRequirements FOR_AVAILABLE_PARTITIONS =
-      KafkaCruiseControlServletUtils.getRequirements(KafkaCruiseControlServletUtils.DataFrom.VALID_PARTITIONS);
+      KafkaCruiseControlServletUtils.getRequirements(ParameterUtils.DataFrom.VALID_PARTITIONS);
 
   private final int _numReadyGoals;
   private final int _totalGoals;
   private final int _numValidWindows;
-  private final KafkaCruiseControlServletUtils.DataFrom _dataFrom;
+  private final ParameterUtils.DataFrom _dataFrom;
   private final List<String> _expectedGoalsToUse;
   private final ModelCompletenessRequirements _expectedRequirements;
   private final boolean _useReadyGoals;
@@ -60,24 +62,24 @@ public class KafkaCruiseControlServletDataFromTest {
   public static Collection<Object[]> data() {
     List<Object[]> params = new ArrayList<>();
     // all goals are ready, 1 valid window, with available windows.
-    params.add(new Object[]{3, 3, 1, KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), null, true});
+    params.add(new Object[]{3, 3, 1, ParameterUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), null, true});
     // 2 out of 3 goals are ready, 1 valid window, with available windows.
-    params.add(new Object[]{2, 3, 1, KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), FOR_AVAILABLE_WINDOWS, true});
+    params.add(new Object[]{2, 3, 1, ParameterUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), FOR_AVAILABLE_WINDOWS, true});
     // all goals are ready, 1 valid window, with available partitions.
-    params.add(new Object[]{3, 3, 1, KafkaCruiseControlServletUtils.DataFrom.VALID_PARTITIONS, Collections.emptyList(), FOR_AVAILABLE_PARTITIONS, true});
+    params.add(new Object[]{3, 3, 1, ParameterUtils.DataFrom.VALID_PARTITIONS, Collections.emptyList(), FOR_AVAILABLE_PARTITIONS, true});
     // 2 out of 3 goals are ready, 1 valid window, with available partitions.
-    params.add(new Object[]{2, 3, 1, KafkaCruiseControlServletUtils.DataFrom.VALID_PARTITIONS, Collections.emptyList(), FOR_AVAILABLE_PARTITIONS, true});
+    params.add(new Object[]{2, 3, 1, ParameterUtils.DataFrom.VALID_PARTITIONS, Collections.emptyList(), FOR_AVAILABLE_PARTITIONS, true});
     // 2 out of 3 goals are ready, 0 valid window, with available windows.
-    params.add(new Object[]{2, 3, 0, KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS, Arrays.asList("0", "1"), null, true});
+    params.add(new Object[]{2, 3, 0, ParameterUtils.DataFrom.VALID_WINDOWS, Arrays.asList("0", "1"), null, true});
     // 2 out of 3 goals are ready, 0 valid window, with available windows, and does not use ready goals.
-    params.add(new Object[]{2, 3, 0, KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), null, false});
+    params.add(new Object[]{2, 3, 0, ParameterUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), null, false});
     // No goal is ready, 0 valid window, with available windows.
-    params.add(new Object[]{0, 3, 0, KafkaCruiseControlServletUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), null, true});
+    params.add(new Object[]{0, 3, 0, ParameterUtils.DataFrom.VALID_WINDOWS, Collections.emptyList(), null, true});
     return params;
   }
 
   public KafkaCruiseControlServletDataFromTest(int numReadyGoals, int totalGoals, int numValidWindows,
-                                               KafkaCruiseControlServletUtils.DataFrom dataFrom,
+                                               ParameterUtils.DataFrom dataFrom,
                                                List<String> expectedGoalsToUse,
                                                ModelCompletenessRequirements expectedRequirements,
                                                boolean useReadyGoals) {
@@ -106,10 +108,9 @@ public class KafkaCruiseControlServletDataFromTest {
     response.setHeader(EasyMock.anyString(), EasyMock.anyString());
     EasyMock.expect(session.getLastAccessedTime()).andReturn(Long.MAX_VALUE);
     KafkaCruiseControlState kccState = getState(_numReadyGoals, _totalGoals, _numValidWindows);
-    OperationFuture<KafkaCruiseControlState> kccStateFuture = new OperationFuture<>("test");
+    OperationFuture kccStateFuture = new OperationFuture("test");
     kccStateFuture.complete(kccState);
-    EasyMock.expect(mockKCC.state(new HashSet<>(Arrays.asList(KafkaCruiseControlState.SubState.ANALYZER,
-                                                              KafkaCruiseControlState.SubState.MONITOR))))
+    EasyMock.expect(mockKCC.state(EasyMock.anyObject(), EasyMock.anyObject()))
             .andReturn(kccStateFuture).anyTimes();
     EasyMock.expect(mockKCC.config()).andReturn(
         new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties())).anyTimes();
@@ -156,7 +157,7 @@ public class KafkaCruiseControlServletDataFromTest {
     }
     AnalyzerState analyzerState = new AnalyzerState(true, goalReadiness);
     AnomalyDetectorState anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()), 10);
-    return new KafkaCruiseControlState(executorState, loadMonitorState, analyzerState, anomalyDetectorState);
+    return new KafkaCruiseControlState(executorState, loadMonitorState, analyzerState, anomalyDetectorState, null);
   }
 
   /**

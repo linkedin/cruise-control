@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
 
 
 /**
@@ -16,20 +17,18 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
  * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)
  */
-class GetBrokerStatsRunnable extends OperationRunnable<ClusterModel.BrokerStats> {
+class GetBrokerStatsRunnable extends OperationRunnable {
   private final long _time;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
 
   GetBrokerStatsRunnable(KafkaCruiseControl kafkaCruiseControl,
-                         OperationFuture<ClusterModel.BrokerStats> future,
-                         long time,
-                         ModelCompletenessRequirements modelCompletenessRequirements,
-                         boolean allowCapacityEstimation) {
+                         OperationFuture future,
+                         ClusterLoadParameters parameters) {
     super(kafkaCruiseControl, future);
-    _time = time;
-    _modelCompletenessRequirements = modelCompletenessRequirements;
-    _allowCapacityEstimation = allowCapacityEstimation;
+    _time = parameters.time();
+    _modelCompletenessRequirements = parameters.requirements();
+    _allowCapacityEstimation = parameters.allowCapacityEstimation();
   }
 
   @Override

@@ -2,7 +2,7 @@
  * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol;
+package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -10,6 +10,11 @@ import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
+import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaOptimizationParameters;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -22,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 
-public class KafkaOptimizationResult {
+public class KafkaOptimizationResult extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaOptimizationResult.class);
   private final GoalOptimizer.OptimizerResult _optimizerResult;
   private static final String SUMMARY = "summary";
@@ -31,7 +36,6 @@ public class KafkaOptimizationResult {
   private static final String GOAL_SUMMARY = "goalSummary";
   private static final String STATUS = "status";
   private static final String CLUSTER_MODEL_STATS = "clusterModelStats";
-  private static final String VERSION = "version";
   private static final String LOAD_AFTER_OPTIMIZATION = "loadAfterOptimization";
   private static final String LOAD_BEFORE_OPTIMIZATION = "loadBeforeOptimization";
   private static final String VIOLATED = "VIOLATED";
@@ -46,15 +50,43 @@ public class KafkaOptimizationResult {
     return _optimizerResult;
   }
 
-  /**
-   * Write the optimization result to the given output stream.
-   *
-   * @param out Output stream to write the optimization result.
-   * @param pretext The string describing what triggered the optimization.
-   */
-  public void writeOutputStream(OutputStream out, String pretext) {
+  @Override
+  public void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
     try {
+      EndPoint endPoint = parameters.endPoint();
+      String pretext;
+      switch (endPoint) {
+        case ADD_BROKER:
+          pretext = String.format("%n%nCluster load after adding broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
+          break;
+        case REMOVE_BROKER:
+          pretext = String.format("%n%nCluster load after removing broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
+          break;
+        case PROPOSALS:
+          pretext = String.format("%n%nOptimized load:%n");
+          break;
+        case REBALANCE:
+          pretext = String.format("%n%nCluster load after rebalance:%n");
+          break;
+        case DEMOTE_BROKER:
+          pretext = String.format("%n%nCluster load after demoting broker %s:%n", ((DemoteBrokerParameters) parameters).brokerIds());
+          break;
+        default:
+          LOG.error("Unrecognized endpoint.");
+          return;
+      }
+
+      boolean isVerbose = ((KafkaOptimizationParameters) parameters).isVerbose();
+      if (isVerbose) {
+        out.write(_optimizerResult.goalProposals().toString().getBytes(StandardCharsets.UTF_8));
+      }
+
       writeProposalSummary(out);
+      if (isVerbose) {
+        out.write(String.format("%n%nCurrent load:%n%s", _optimizerResult.brokerStatsBeforeOptimization().toString())
+                        .getBytes(StandardCharsets.UTF_8));
+      }
+
       out.write(pretext.getBytes(StandardCharsets.UTF_8));
       out.write(_optimizerResult.brokerStatsAfterOptimization().toString().getBytes(StandardCharsets.UTF_8));
     } catch (IOException e) {
@@ -62,38 +94,10 @@ public class KafkaOptimizationResult {
     }
   }
 
-  /**
-   * Write the optimization result to the given output stream.
-   *
-   * @param out Output stream to write the optimization result.
-   * @param verbose True if verbose, false otherwise.
-   */
-  public void writeOutputStream(OutputStream out, boolean verbose) {
-    try {
-      if (verbose) {
-        out.write(_optimizerResult.goalProposals().toString().getBytes(StandardCharsets.UTF_8));
-      }
-
-      writeProposalSummary(out);
-      // Print summary before & after optimization
-      if (verbose) {
-        out.write(String.format("%n%nCurrent load:%n%s", _optimizerResult.brokerStatsBeforeOptimization().toString())
-                        .getBytes(StandardCharsets.UTF_8));
-      }
-      out.write(String.format("%n%nOptimized load:%n%s", _optimizerResult.brokerStatsAfterOptimization().toString())
-                      .getBytes(StandardCharsets.UTF_8));
-    } catch (IOException e) {
-      LOG.error("Failed to write output stream.", e);
-    }
-  }
-
-  public String getJSONString(int version) {
-    return getJSONString(version, false);
-  }
-
-  public String getJSONString(int version, boolean verbose) {
+  @Override
+  public String getJSONString(CruiseControlParameters parameters) {
     Map<String, Object> optimizationResult = new HashMap<>();
-    if (verbose) {
+    if (((KafkaOptimizationParameters) parameters).isVerbose()) {
       optimizationResult.put(PROPOSALS, _optimizerResult.goalProposals().stream()
                                                         .map(ExecutionProposal::getJsonStructure).collect(Collectors.toSet()));
       optimizationResult.put(LOAD_BEFORE_OPTIMIZATION, _optimizerResult.brokerStatsBeforeOptimization().getJsonStructure());
@@ -111,7 +115,7 @@ public class KafkaOptimizationResult {
     }
     optimizationResult.put(GOAL_SUMMARY, goalSummary);
     optimizationResult.put(LOAD_AFTER_OPTIMIZATION, _optimizerResult.brokerStatsAfterOptimization().getJsonStructure());
-    optimizationResult.put(VERSION, version);
+    optimizationResult.put(VERSION, JSON_VERSION);
     Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
 
     return gson.toJson(optimizationResult);

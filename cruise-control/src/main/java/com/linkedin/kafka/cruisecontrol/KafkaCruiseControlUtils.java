@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;

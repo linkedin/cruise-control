@@ -5,26 +5,31 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState;
-import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.util.Set;
 
 
 /**
- * The async runnable for {@link KafkaCruiseControl#state(OperationProgress, Set)}
+ * The async runnable for {@link KafkaCruiseControl#state(com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress,
+ * Set, com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager)}
  */
-class GetStateRunnable extends OperationRunnable<KafkaCruiseControlState> {
+class GetStateRunnable extends OperationRunnable {
   private final Set<KafkaCruiseControlState.SubState> _substates;
+  private final UserTaskManager _userTaskManager;
 
   GetStateRunnable(KafkaCruiseControl kafkaCruiseControl,
-                   OperationFuture<KafkaCruiseControlState> future,
-                   Set<KafkaCruiseControlState.SubState> substates) {
+                   OperationFuture future,
+                   CruiseControlStateParameters parameters,
+                   UserTaskManager userTaskManager) {
     super(kafkaCruiseControl, future);
-    _substates = substates;
+    _substates = parameters.substates();
+    _userTaskManager = userTaskManager;
   }
 
   @Override
   protected KafkaCruiseControlState getResult() {
-    return _kafkaCruiseControl.state(_future.operationProgress(), _substates);
+    return _kafkaCruiseControl.state(_future.operationProgress(), _substates, _userTaskManager);
   }
 }

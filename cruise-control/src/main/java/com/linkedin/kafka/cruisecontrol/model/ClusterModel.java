@@ -6,6 +6,8 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.google.gson.Gson;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.AbstractCruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
@@ -33,6 +35,9 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 /**
  * A class that holds the information of the cluster, including topology, liveness and load for racks, brokers and
@@ -1049,7 +1054,9 @@ public class ClusterModel implements Serializable {
   /**
    * Get broker level stats in human readable format.
    */
-  public static class BrokerStats {
+  public static class BrokerStats extends AbstractCruiseControlResponse {
+    static final int JSON_VERSION = 1;
+    private static final Logger LOG = LoggerFactory.getLogger(BrokerStats.class);
     private final List<SingleBrokerStats> _brokerStats = new ArrayList<>();
     private int _hostFieldLength = 0;
     private SortedMap<String, BasicStats> _hostStats = new ConcurrentSkipListMap<>();
@@ -1075,15 +1082,11 @@ public class ClusterModel implements Serializable {
       return _brokerStats;
     }
 
-    /**
-     * Return a valid JSON encoded string
-     *
-     * @param version JSON version
-     */
-    public String getJSONString(int version) {
+    @Override
+    public String getJSONString(CruiseControlParameters parameters) {
       Gson gson = new Gson();
       Map<String, Object> jsonStructure = getJsonStructure();
-      jsonStructure.put(VERSION, version);
+      jsonStructure.put(VERSION, JSON_VERSION);
       return gson.toJson(jsonStructure);
     }
 
@@ -1117,7 +1120,20 @@ public class ClusterModel implements Serializable {
     }
 
     @Override
+    public void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
+      try {
+        out.write(toStringBuilder().toString().getBytes(StandardCharsets.UTF_8));
+      } catch (IOException e) {
+        LOG.error("Failed to write output stream.", e);
+      }
+    }
+
+    @Override
     public String toString() {
+      return toStringBuilder().toString();
+    }
+
+    private StringBuilder toStringBuilder() {
       StringBuilder sb = new StringBuilder();
       // put host stats.
       sb.append(String.format("%n%" + _hostFieldLength + "s%20s%15s%25s%25s%20s%20s%20s%n",
@@ -1155,7 +1171,7 @@ public class ClusterModel implements Serializable {
                                 stats.basicStats().numReplicas()));
       }
 
-      return sb.toString();
+      return sb;
     }
   }
 
