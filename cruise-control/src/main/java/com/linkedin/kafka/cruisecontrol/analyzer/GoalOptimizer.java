@@ -322,6 +322,7 @@ public class GoalOptimizer implements Runnable {
         // Explicitly allow capacity estimation to exit the loop upon computing best proposals.
         while (!validCachedProposal()) {
           try {
+            operationProgress.clear();
             // Prevent multiple thread submit from computing task together.
             int numWaitingThread = _threadsWaitingForCache.getAndIncrement();
             if (_numPrecomputingThreads > 0) {
