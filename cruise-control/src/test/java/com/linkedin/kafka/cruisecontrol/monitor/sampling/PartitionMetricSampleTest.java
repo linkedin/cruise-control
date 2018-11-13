@@ -12,7 +12,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.*;
-import static org.junit.Assert.*;
+import static org.junit.Assert.fail;
+import static org.junit.Assert.assertEquals;
 
 
 /**

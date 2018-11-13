@@ -2,9 +2,11 @@
  * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol;
+package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -27,10 +29,12 @@ import org.apache.kafka.common.PartitionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-public class KafkaClusterState {
+
+public class KafkaClusterState extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterState.class);
-  private static final String VERSION = "version";
   private final Cluster _kafkaCluster;
   private static final String TOPIC = "topic";
   private static final String PARTITION = "partition";
@@ -55,16 +59,11 @@ public class KafkaClusterState {
     return _kafkaCluster;
   }
 
-  /**
-   * Return a valid JSON encoded string
-   *
-   * @param version JSON version
-   * @param verbose True if verbose, false otherwise.
-   */
-  public String getJSONString(int version, boolean verbose) {
+  @Override
+  public String getJSONString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
-    Map<String, Object> jsonStructure = getJsonStructure(verbose);
-    jsonStructure.put(VERSION, version);
+    Map<String, Object> jsonStructure = getJsonStructure(((KafkaClusterStateParameters) parameters).isVerbose());
+    jsonStructure.put(VERSION, JSON_VERSION);
     return gson.toJson(jsonStructure);
   }
 
@@ -211,7 +210,8 @@ public class KafkaClusterState {
     }
   }
 
-  public void writeOutputStream(OutputStream out, boolean verbose) {
+  @Override
+  public void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
     Cluster clusterState = kafkaCluster();
     // Brokers summary.
     SortedMap<Integer, Integer> leaderCountByBrokerId = new TreeMap<>();
@@ -237,6 +237,7 @@ public class KafkaClusterState {
       // Partitions summary.
       int topicNameLength = clusterState.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
 
+      boolean verbose = ((KafkaClusterStateParameters) parameters).isVerbose();
       initMessage = verbose ? "All Partitions in the Cluster (verbose):"
                             : "Under Replicated and Offline Partitions in the Cluster:";
 

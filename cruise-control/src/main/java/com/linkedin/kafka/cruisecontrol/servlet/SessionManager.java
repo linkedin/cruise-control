@@ -10,6 +10,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -101,9 +102,9 @@ public class SessionManager {
    * @return the {@link OperationFuture} for the provided async operation.
    */
   @SuppressWarnings("unchecked")
-  synchronized <T> OperationFuture<T> getAndCreateSessionIfNotExist(HttpServletRequest request,
-                                                                    Supplier<OperationFuture<T>> operation,
-                                                                    int step) {
+  synchronized OperationFuture getAndCreateSessionIfNotExist(HttpServletRequest request,
+                                                             Supplier<OperationFuture> operation,
+                                                             int step) {
     HttpSession session = request.getSession();
     SessionInfo info = _inProgressSessions.get(session);
     String requestString = toRequestString(request);
@@ -113,11 +114,11 @@ public class SessionManager {
       info.ensureSameRequest(requestString, request.getParameterMap());
       // If there is next future return it.
       if (step < info.numFutures()) {
-        return (OperationFuture<T>) info.future(step);
+        return info.future(step);
       } else if (step == info.numFutures()) {
         LOG.info("Adding new future to existing session {}.", session);
         // if there is no next future, add the future to the next list.
-        OperationFuture<T> future = operation.get();
+        OperationFuture future = operation.get();
         info.addFuture(future);
         return future;
       } else {
@@ -132,11 +133,11 @@ public class SessionManager {
       if (_inProgressSessions.size() >= _capacity) {
         _sessionCreationFailureMeter.mark();
         throw new RuntimeException("There are already " + _inProgressSessions.size() + " active sessions, which "
-                                       + "has reached the servlet capacity.");
+                                   + "has reached the servlet capacity.");
       }
       LOG.info("Created session for {}", session);
-      info = new SessionInfo(requestString, request.getParameterMap(), KafkaCruiseControlServletUtils.endPoint(request));
-      OperationFuture<T> future = operation.get();
+      info = new SessionInfo(requestString, request.getParameterMap(), ParameterUtils.endPoint(request));
+      OperationFuture future = operation.get();
       info.addFuture(future);
       _inProgressSessions.put(session, info);
       return future;
@@ -156,7 +157,7 @@ public class SessionManager {
       return null;
     } else if (!info.requestUrl().equals(toRequestString(request))) {
       throw new IllegalStateException("The session has an ongoing operation " + info.requestUrl() + " while it "
-                                         + "is trying another operation of " + toRequestString(request));
+                                      + "is trying another operation of " + toRequestString(request));
     }
     return (T) info.lastFuture();
   }
@@ -277,7 +278,7 @@ public class SessionManager {
       if (!_requestUrl.equals(requestUrl) || !paramEquals(parameters)) {
         throw new IllegalStateException(String.format(
             "The session has an ongoing operation [URL: %s, Parameters: %s] "
-                + "while it is trying another operation of [URL: %s, Parameters: %s].",
+            + "while it is trying another operation of [URL: %s, Parameters: %s].",
             _requestUrl, _requestParameters, requestUrl, parameters));
       }
     }

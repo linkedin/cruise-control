@@ -9,6 +9,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -148,10 +149,10 @@ public class UserTaskManager implements Closeable {
    * @return The {@link OperationFuture} for the provided asynchronous operation.
    */
   @SuppressWarnings("unchecked")
-  public <T> OperationFuture<T> getOrCreateUserTask(HttpServletRequest httpServletRequest,
-                                                    HttpServletResponse httpServletResponse,
-                                                    Supplier<OperationFuture<T>> operation,
-                                                    int step) {
+  public OperationFuture getOrCreateUserTask(HttpServletRequest httpServletRequest,
+                                             HttpServletResponse httpServletResponse,
+                                             Supplier<OperationFuture> operation,
+                                             int step) {
     UUID userTaskId = getUserTaskId(httpServletRequest);
     List<OperationFuture> operationFutures = getFuturesByUserTaskId(userTaskId, httpServletRequest);
 
@@ -159,7 +160,7 @@ public class UserTaskManager implements Closeable {
       LOG.info("Fetch an existing UserTask {}", userTaskId);
       httpServletResponse.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
       if (step < operationFutures.size()) {
-        return (OperationFuture<T>) operationFutures.get(step);
+        return operationFutures.get(step);
       } else if (step == operationFutures.size()) {
         LOG.info("Add a new future to existing UserTask {}", userTaskId);
         OperationFuture future = operation.get();
@@ -218,7 +219,7 @@ public class UserTaskManager implements Closeable {
         SessionKey sessionKey = entry.getKey();
         HttpSession session = sessionKey.httpSession();
         LOG.trace("Session {} was last accessed at {}, age is {} ms", session, session.getLastAccessedTime(),
-            now - session.getLastAccessedTime());
+                  now - session.getLastAccessedTime());
         if (now >= session.getLastAccessedTime() + _sessionExpiryMs) {
           LOG.info("Expiring SessionKey {}", entry.getKey());
           iter.remove();
@@ -318,7 +319,7 @@ public class UserTaskManager implements Closeable {
       }
       UserTaskInfo userTaskInfo =
           new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operationFuture)),
-              _time.milliseconds(), userTaskId);
+                           _time.milliseconds(), userTaskId);
       _activeUserTaskIdToFuturesMap.put(userTaskId, userTaskInfo);
     }
   }
@@ -334,8 +335,8 @@ public class UserTaskManager implements Closeable {
   @Override
   public String toString() {
     return "UserTaskManager{_sessionToUserTaskIdMap=" + _sessionToUserTaskIdMap
-        + ", _activeUserTaskIdToFuturesMap=" + _activeUserTaskIdToFuturesMap + ", _completedUserTaskIdToFuturesMap="
-        + _completedUserTaskIdToFuturesMap + '}';
+           + ", _activeUserTaskIdToFuturesMap=" + _activeUserTaskIdToFuturesMap + ", _completedUserTaskIdToFuturesMap="
+           + _completedUserTaskIdToFuturesMap + '}';
   }
 
   @Override
@@ -431,7 +432,7 @@ public class UserTaskManager implements Closeable {
                         UUID userTaskId) {
       this(futures, httpServletRequestToString(httpServletRequest),
            KafkaCruiseControlServletUtils.getClientIpAddress(httpServletRequest), startMs, userTaskId,
-           httpServletRequest.getParameterMap(), KafkaCruiseControlServletUtils.endPoint(httpServletRequest));
+           httpServletRequest.getParameterMap(), ParameterUtils.endPoint(httpServletRequest));
     }
 
     public UserTaskInfo(List<OperationFuture> futures,

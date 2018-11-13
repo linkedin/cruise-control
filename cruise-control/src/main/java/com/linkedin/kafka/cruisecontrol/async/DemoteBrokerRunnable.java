@@ -5,7 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collection;
 import javax.servlet.http.HttpServletRequest;
 
@@ -14,7 +15,7 @@ import javax.servlet.http.HttpServletRequest;
  * The async runnable for {@link KafkaCruiseControl#demoteBrokers(Collection, boolean,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, HttpServletRequest)}
  */
-public class DemoteBrokerRunnable extends OperationRunnable<KafkaOptimizationResult> {
+public class DemoteBrokerRunnable extends OperationRunnable {
   private final Collection<Integer> _brokerIds;
   private final boolean _dryRun;
   private final boolean _allowCapacityEstimation;
@@ -22,27 +23,24 @@ public class DemoteBrokerRunnable extends OperationRunnable<KafkaOptimizationRes
   private final HttpServletRequest _request;
 
   DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
-                       OperationFuture<KafkaOptimizationResult> future,
-                       Collection<Integer> brokerIds,
-                       boolean dryRun,
-                       boolean allowCapacityEstimation,
-                       Integer concurrentLeaderMovements,
-                       HttpServletRequest request) {
+                       OperationFuture future,
+                       HttpServletRequest request,
+                       DemoteBrokerParameters parameters) {
     super(kafkaCruiseControl, future);
-    _brokerIds = brokerIds;
-    _dryRun = dryRun;
-    _allowCapacityEstimation = allowCapacityEstimation;
-    _concurrentLeaderMovements = concurrentLeaderMovements;
+    _brokerIds = parameters.brokerIds();
+    _dryRun = parameters.dryRun();
+    _allowCapacityEstimation = parameters.allowCapacityEstimation();
+    _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _request = request;
   }
 
   @Override
-  protected KafkaOptimizationResult getResult() throws Exception {
-    return new KafkaOptimizationResult(_kafkaCruiseControl.demoteBrokers(_brokerIds,
-                                                                         _dryRun,
-                                                                         _future.operationProgress(),
-                                                                         _allowCapacityEstimation,
-                                                                         _concurrentLeaderMovements,
-                                                                         _request));
+  protected OptimizationResult getResult() throws Exception {
+    return new OptimizationResult(_kafkaCruiseControl.demoteBrokers(_brokerIds,
+                                                                    _dryRun,
+                                                                    _future.operationProgress(),
+                                                                    _allowCapacityEstimation,
+                                                                    _concurrentLeaderMovements,
+                                                                    _request));
   }
 }

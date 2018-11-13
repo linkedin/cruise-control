@@ -2,12 +2,13 @@
  * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol;
+package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -20,9 +21,12 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-public class KafkaPartitionLoadState {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaPartitionLoadState.class);
+
+public class PartitionLoadState extends AbstractCruiseControlResponse {
+  private static final Logger LOG = LoggerFactory.getLogger(PartitionLoadState.class);
   private final List<Partition> _sortedPartitions;
   private final boolean _wantMaxLoad;
   private final int _entries;
@@ -30,7 +34,6 @@ public class KafkaPartitionLoadState {
   private final int _partitionLowerBoundary;
   private final Pattern _topic;
   private final int _topicNameLength;
-  private static final String VERSION = "version";
   private static final String TOPIC = "topic";
   private static final String PARTITION = "partition";
   private static final String LEADER = "leader";
@@ -38,13 +41,13 @@ public class KafkaPartitionLoadState {
   private static final String MSG_IN = "msg_in";
   private static final String RECORDS = "records";
 
-  public KafkaPartitionLoadState(List<Partition> sortedPartitions,
-                                 boolean wantMaxLoad,
-                                 int entries,
-                                 int partitionUpperBoundary,
-                                 int partitionLowerBoundary,
-                                 Pattern topic,
-                                 int topicNameLength) {
+  public PartitionLoadState(List<Partition> sortedPartitions,
+                            boolean wantMaxLoad,
+                            int entries,
+                            int partitionUpperBoundary,
+                            int partitionLowerBoundary,
+                            Pattern topic,
+                            int topicNameLength) {
     _sortedPartitions = sortedPartitions;
     _wantMaxLoad = wantMaxLoad;
     _entries = entries;
@@ -54,13 +57,8 @@ public class KafkaPartitionLoadState {
     _topicNameLength = topicNameLength;
   }
 
-
-  /**
-   * Write the partition load state to the given output stream.
-   *
-   * @param out Output stream to write the partition load state.
-   */
-  public void writeOutputStream(OutputStream out) {
+  @Override
+  public void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
     try {
       out.write(String.format("%" + _topicNameLength + "s%10s%30s%20s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
                               "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)", "MSG_IN (#/s)")
@@ -92,10 +90,11 @@ public class KafkaPartitionLoadState {
     }
   }
 
-  public String getJSONString(int version) {
+  @Override
+  public String getJSONString(CruiseControlParameters parameters) {
     Map<String, Object> partitionMap = new HashMap<>();
     List<Object> partitionList = new ArrayList<>();
-    partitionMap.put(VERSION, version);
+    partitionMap.put(VERSION, JSON_VERSION);
     int numEntries = 0;
     for (Partition p : _sortedPartitions) {
       if ((_topic != null && !_topic.matcher(p.topicPartition().topic()).matches()) ||
