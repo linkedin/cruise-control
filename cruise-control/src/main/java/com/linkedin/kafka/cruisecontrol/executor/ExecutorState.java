@@ -247,7 +247,7 @@ public class ExecutorState {
   }
 
   private String triggeredUserTaskId(UserTaskManager userTaskManager) {
-    if (_triggeredUserRequest == null) {
+    if (_triggeredUserRequest == null || userTaskManager == null) {
       return "Initiated-by-AnomalyDetector";
     }
 

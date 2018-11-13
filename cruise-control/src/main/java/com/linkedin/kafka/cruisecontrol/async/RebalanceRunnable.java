@@ -5,7 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -16,7 +17,7 @@ import javax.servlet.http.HttpServletRequest;
  * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern, HttpServletRequest)}
  */
-class RebalanceRunnable extends OperationRunnable<KafkaOptimizationResult> {
+class RebalanceRunnable extends OperationRunnable {
   private final List<String> _goals;
   private final boolean _dryRun;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
@@ -28,39 +29,34 @@ class RebalanceRunnable extends OperationRunnable<KafkaOptimizationResult> {
   private final HttpServletRequest _request;
 
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
-                    OperationFuture<KafkaOptimizationResult> future,
+                    OperationFuture future,
                     List<String> goals,
-                    boolean dryRun,
                     ModelCompletenessRequirements modelCompletenessRequirements,
-                    boolean allowCapacityEstimation,
-                    Integer concurrentPartitionMovements,
-                    Integer concurrentLeaderMovements,
-                    boolean skipHardGoalCheck,
-                    Pattern excludedTopics,
+                    RebalanceParameters parameters,
                     HttpServletRequest request) {
     super(kafkaCruiseControl, future);
     _goals = goals;
-    _dryRun = dryRun;
+    _dryRun = parameters.dryRun();
     _modelCompletenessRequirements = modelCompletenessRequirements;
-    _allowCapacityEstimation = allowCapacityEstimation;
-    _concurrentPartitionMovements = concurrentPartitionMovements;
-    _concurrentLeaderMovements = concurrentLeaderMovements;
-    _skipHardGoalCheck = skipHardGoalCheck;
-    _excludedTopics = excludedTopics;
+    _allowCapacityEstimation = parameters.allowCapacityEstimation();
+    _concurrentPartitionMovements = parameters.concurrentPartitionMovements();
+    _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    _skipHardGoalCheck = parameters.skipHardGoalCheck();
+    _excludedTopics = parameters.excludedTopics();
     _request = request;
   }
 
   @Override
-  protected KafkaOptimizationResult getResult() throws Exception {
-    return new KafkaOptimizationResult(_kafkaCruiseControl.rebalance(_goals,
-                                                                     _dryRun,
-                                                                     _modelCompletenessRequirements,
-                                                                     _future.operationProgress(),
-                                                                     _allowCapacityEstimation,
-                                                                     _concurrentPartitionMovements,
-                                                                     _concurrentLeaderMovements,
-                                                                     _skipHardGoalCheck,
-                                                                     _excludedTopics,
-                                                                     _request));
+  protected OptimizationResult getResult() throws Exception {
+    return new OptimizationResult(_kafkaCruiseControl.rebalance(_goals,
+                                                                _dryRun,
+                                                                _modelCompletenessRequirements,
+                                                                _future.operationProgress(),
+                                                                _allowCapacityEstimation,
+                                                                _concurrentPartitionMovements,
+                                                                _concurrentLeaderMovements,
+                                                                _skipHardGoalCheck,
+                                                                _excludedTopics,
+                                                                _request));
   }
 }

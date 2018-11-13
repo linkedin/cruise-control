@@ -12,7 +12,7 @@ import java.util.List;
 /**
  * An enum that lists all supported endpoints by Cruise Control.
  */
-enum EndPoint {
+public enum EndPoint {
   BOOTSTRAP,
   TRAIN,
   LOAD,

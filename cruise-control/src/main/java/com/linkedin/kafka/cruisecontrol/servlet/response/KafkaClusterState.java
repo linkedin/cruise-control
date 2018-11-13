@@ -2,10 +2,12 @@
  * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol;
+package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -35,11 +37,14 @@ import org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.describeLogDirs;
 
-public class KafkaClusterState {
+
+public class KafkaClusterState extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterState.class);
-  public static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
-  private static final String VERSION = "version";
+  private static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
   private static final String TOPIC = "topic";
   private static final String PARTITION = "partition";
   private static final String LEADER = "leader";
@@ -75,18 +80,13 @@ public class KafkaClusterState {
     _adminClientConfigs = adminClientConfigs;
   }
 
-  /**
-   * Return a valid JSON encoded string
-   *
-   * @param version JSON version
-   * @param verbose True if verbose, false otherwise.
-   */
-  public String getJSONString(int version, boolean verbose) {
+  @Override
+  public String getJSONString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = null;
     try {
-      jsonStructure = getJsonStructure(verbose);
-      jsonStructure.put(VERSION, version);
+      jsonStructure = getJsonStructure(((KafkaClusterStateParameters) parameters).isVerbose());
+      jsonStructure.put(VERSION, JSON_VERSION);
     }  catch (TimeoutException | InterruptedException | ExecutionException e) {
       LOG.error("Failed to populate broker logDir state.", e);
     }
@@ -305,8 +305,7 @@ public class KafkaClusterState {
                                               Map<Integer, Set<String>> offlineLogDirsByBrokerId,
                                               Set<Integer> brokers)
       throws ExecutionException, InterruptedException, TimeoutException {
-    Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId
-        = KafkaCruiseControlUtils.describeLogDirs(brokers, _adminClientConfigs).values();
+    Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId = describeLogDirs(brokers, _adminClientConfigs).values();
 
     for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
       onlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
@@ -375,8 +374,9 @@ public class KafkaClusterState {
     writeKafkaBrokerLogDirState(out, replicaCountByBrokerId.keySet());
   }
 
-  private void writePartitionSummary(OutputStream out, boolean verbose) throws IOException {
+  private void writePartitionSummary(OutputStream out, CruiseControlParameters parameters) throws IOException {
     int topicNameLength = _kafkaCluster.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
+    boolean verbose = ((KafkaClusterStateParameters) parameters).isVerbose();
 
     String initMessage = verbose ? "All Partitions in the Cluster (verbose):"
                                  : "Under Replicated, Offline, and Under MinIsr Partitions:";
@@ -419,12 +419,13 @@ public class KafkaClusterState {
     }
   }
 
-  public void writeOutputStream(OutputStream out, boolean verbose) {
+  @Override
+  public void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
     try {
       // Broker summary.
       writeBrokerSummary(out);
       // Partition summary.
-      writePartitionSummary(out, verbose);
+      writePartitionSummary(out, parameters);
     } catch (IOException e) {
       LOG.error("Failed to write output stream.", e);
     } catch (TimeoutException | InterruptedException | ExecutionException e) {

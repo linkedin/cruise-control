@@ -2,7 +2,7 @@
  * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol;
+package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
@@ -12,6 +12,8 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitorState;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -24,25 +26,30 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-public class KafkaCruiseControlState {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlState.class);
-  private static final String VERSION = "version";
+
+public class CruiseControlState extends AbstractCruiseControlResponse {
+  private static final Logger LOG = LoggerFactory.getLogger(CruiseControlState.class);
   private static final String PARTITION_MOVEMENTS = "partition movements";
   private static final String LEADERSHIP_MOVEMENTS = "leadership movements";
   private final ExecutorState _executorState;
   private final LoadMonitorState _monitorState;
   private final AnalyzerState _analyzerState;
   private final AnomalyDetectorState _anomalyDetectorState;
+  private final UserTaskManager _userTaskManager;
 
-  public KafkaCruiseControlState(ExecutorState executionState,
-                                 LoadMonitorState monitorState,
-                                 AnalyzerState analyzerState,
-                                 AnomalyDetectorState anomalyDetectorState) {
+  public CruiseControlState(ExecutorState executionState,
+                            LoadMonitorState monitorState,
+                            AnalyzerState analyzerState,
+                            AnomalyDetectorState anomalyDetectorState,
+                            UserTaskManager userTaskManager) {
     _executorState = executionState;
     _monitorState = monitorState;
     _analyzerState = analyzerState;
     _anomalyDetectorState = anomalyDetectorState;
+    _userTaskManager = userTaskManager;
   }
 
   public ExecutorState executorState() {
@@ -61,15 +68,11 @@ public class KafkaCruiseControlState {
     return _anomalyDetectorState;
   }
 
-  /**
-   * Return a valid JSON encoded string
-   *
-   * @param version JSON version
-   */
-  public String getJSONString(int version, boolean verbose, UserTaskManager userTaskManager) {
+  @Override
+  public String getJSONString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
-    Map<String, Object> jsonStructure = getJsonStructure(verbose, userTaskManager);
-    jsonStructure.put(VERSION, version);
+    Map<String, Object> jsonStructure = getJsonStructure(((CruiseControlStateParameters) parameters).isVerbose());
+    jsonStructure.put(VERSION, JSON_VERSION);
     return gson.toJson(jsonStructure);
   }
 
@@ -77,13 +80,13 @@ public class KafkaCruiseControlState {
    * Return an object that can be further used
    * to encode into JSON
    */
-  public Map<String, Object> getJsonStructure(boolean verbose, UserTaskManager userTaskManager) {
+  public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> cruiseControlState = new HashMap<>();
     if (_monitorState != null) {
       cruiseControlState.put("MonitorState", _monitorState.getJsonStructure(verbose));
     }
     if (_executorState != null) {
-      cruiseControlState.put("ExecutorState", _executorState.getJsonStructure(verbose, userTaskManager));
+      cruiseControlState.put("ExecutorState", _executorState.getJsonStructure(verbose, _userTaskManager));
     }
     if (_analyzerState != null) {
       cruiseControlState.put("AnalyzerState", _analyzerState.getJsonStructure(verbose));
@@ -170,14 +173,17 @@ public class KafkaCruiseControlState {
     }
   }
 
-  public void writeOutputStream(OutputStream out, boolean verbose, boolean superVerbose, UserTaskManager userTaskManager) {
+  @Override
+  public void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
+    boolean verbose = ((CruiseControlStateParameters) parameters).isVerbose();
+    boolean superVerbose = ((CruiseControlStateParameters) parameters).isSuperVerbose();
     try {
       out.write((_monitorState != null ? String.format("MonitorState: %s%n", _monitorState) : "").getBytes(StandardCharsets.UTF_8));
       if (_executorState == null) {
         out.write("".getBytes(StandardCharsets.UTF_8));
       } else {
         out.write("ExecutorState: ".getBytes(StandardCharsets.UTF_8));
-        _executorState.writeOutputStream(out, userTaskManager);
+        _executorState.writeOutputStream(out, _userTaskManager);
         out.write("%n".getBytes(StandardCharsets.UTF_8));
       }
       out.write((_analyzerState != null ? String.format("AnalyzerState: %s%n", _analyzerState) : "").getBytes(StandardCharsets.UTF_8));

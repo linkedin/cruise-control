@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -408,7 +409,7 @@ public class GoalOptimizer implements Runnable {
     }
 
     LOG.trace("Cluster before optimization is {}", clusterModel);
-    ClusterModel.BrokerStats brokerStatsBeforeOptimization = clusterModel.brokerStats();
+    BrokerStats brokerStatsBeforeOptimization = clusterModel.brokerStats();
     Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, Integer> initLeaderDistribution = clusterModel.getLeaderDistribution();
     boolean isSelfHealing = !clusterModel.selfHealingEligibleReplicas().isEmpty();
@@ -532,8 +533,8 @@ public class GoalOptimizer implements Runnable {
     private final Set<ExecutionProposal> _optimizationProposals;
     private final Set<Goal> _violatedGoalsBeforeOptimization;
     private final Set<Goal> _violatedGoalsAfterOptimization;
-    private final ClusterModel.BrokerStats _brokerStatsBeforeOptimization;
-    private final ClusterModel.BrokerStats _brokerStatsAfterOptimization;
+    private final BrokerStats _brokerStatsBeforeOptimization;
+    private final BrokerStats _brokerStatsAfterOptimization;
     private final ModelGeneration _modelGeneration;
     private final ClusterModelStats _clusterModelStats;
     private final Map<Integer, String> _capacityEstimationInfoByBrokerId;
@@ -543,8 +544,8 @@ public class GoalOptimizer implements Runnable {
                     Set<Goal> violatedGoalsBeforeOptimization,
                     Set<Goal> violatedGoalsAfterOptimization,
                     Set<ExecutionProposal> optimizationProposals,
-                    ClusterModel.BrokerStats brokerStatsBeforeOptimization,
-                    ClusterModel.BrokerStats brokerStatsAfterOptimization,
+                    BrokerStats brokerStatsBeforeOptimization,
+                    BrokerStats brokerStatsAfterOptimization,
                     ModelGeneration modelGeneration,
                     ClusterModelStats clusterModelStats,
                     Map<Integer, String> capacityEstimationInfoByBrokerId,
@@ -585,11 +586,11 @@ public class GoalOptimizer implements Runnable {
       return _clusterModelStats;
     }
 
-    public ClusterModel.BrokerStats brokerStatsBeforeOptimization() {
+    public BrokerStats brokerStatsBeforeOptimization() {
       return _brokerStatsBeforeOptimization;
     }
 
-    public ClusterModel.BrokerStats brokerStatsAfterOptimization() {
+    public BrokerStats brokerStatsAfterOptimization() {
       return _brokerStatsAfterOptimization;
     }
 

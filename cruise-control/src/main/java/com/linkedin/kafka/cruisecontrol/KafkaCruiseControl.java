@@ -27,6 +27,13 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
+import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
+import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -45,7 +52,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlState.SubState.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.*;
 
 
 /**
@@ -418,8 +425,8 @@ public class KafkaCruiseControl {
   /**
    * Get the broker load stats from the cache. null will be returned if their is no cached broker load stats.
    */
-  public ClusterModel.BrokerStats cachedBrokerLoadStats(boolean allowCapacityEstimation) {
-    return _loadMonitor.cachedBrokerLoadStats(allowCapacityEstimation);
+  public BrokerStats cachedBrokerLoadStats(ClusterLoadParameters parameters) {
+    return _loadMonitor.cachedBrokerLoadStats(parameters.allowCapacityEstimation());
   }
 
   /**
@@ -479,43 +486,34 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Bootstrap the load monitor for a given period.
-   * @param startMs the starting time of the bootstrap period.
-   * @param endMs the end time of the bootstrap period.
-   * @param clearMetrics clear the existing metrics.
-   */
-  public void bootstrapLoadMonitor(long startMs, long endMs, boolean clearMetrics) {
-    _loadMonitor.bootstrap(startMs, endMs, clearMetrics);
-  }
-
-  /**
-   * Bootstrap the load monitor from the given timestamp until it catches up.
-   * This method clears all existing metric samples.
+   * Bootstrap the load monitor.
    *
-   * @param startMs the starting time of the bootstrap period.
-   * @param clearMetrics clear the existing metric samples
+   * @param parameters Bootstrap parameters.
    */
-  public void bootstrapLoadMonitor(long startMs, boolean clearMetrics) {
-    _loadMonitor.bootstrap(startMs, clearMetrics);
-  }
+  public void bootstrapLoadMonitor(BootstrapParameters parameters) {
+    Long startMs = parameters.startMs();
+    Long endMs = parameters.endMs();
+    boolean clearMetrics = parameters.clearMetrics();
 
-  /**
-   * Bootstrap the load monitor with the most recent metric samples until it catches up.
-   * This method clears all existing metric samples.
-   *
-   * @param clearMetrics clear the existing metric samples
-   */
-  public void bootstrapLoadMonitor(boolean clearMetrics) {
-    _loadMonitor.bootstrap(clearMetrics);
+    if (startMs != null && endMs != null) {
+      // Bootstrap the load monitor for a given period.
+      _loadMonitor.bootstrap(startMs, endMs, clearMetrics);
+    } else if (startMs != null) {
+      // Bootstrap the load monitor from the given timestamp until it catches up -- i.e. clears all metric samples.
+      _loadMonitor.bootstrap(startMs, clearMetrics);
+    } else {
+      // Bootstrap the load monitor with the most recent metric samples until it catches up -- clears all metric samples.
+      _loadMonitor.bootstrap(clearMetrics);
+    }
   }
 
   /**
    * Train load model of Kafka Cruise Control with metric samples in a training period.
-   * @param startMs the starting time of the training period.
-   * @param endMs the end time of the training period.
+   *
+   * @param parameters Train parameters.
    */
-  public void trainLoadModel(long startMs, long endMs) {
-    _loadMonitor.train(startMs, endMs);
+  public void trainLoadModel(TrainParameters parameters) {
+    _loadMonitor.train(parameters.startMs(), parameters.endMs());
   }
 
   /**
@@ -653,24 +651,26 @@ public class KafkaCruiseControl {
   /**
    * Get the state with selected substates for Kafka Cruise Control.
    */
-  public KafkaCruiseControlState state(OperationProgress operationProgress, Set<KafkaCruiseControlState.SubState> substates) {
+  public CruiseControlState state(OperationProgress operationProgress,
+                                  Set<CruiseControlState.SubState> substates,
+                                  UserTaskManager userTaskManager) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = null;
     // In case no substate is specified, return all substates.
     substates = !substates.isEmpty() ? substates
-                                     : new HashSet<>(Arrays.asList(KafkaCruiseControlState.SubState.values()));
+                                     : new HashSet<>(Arrays.asList(CruiseControlState.SubState.values()));
 
     if (KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration(substates)) {
       clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     }
 
-    return new KafkaCruiseControlState(substates.contains(EXECUTOR) ? _executor.state()
-                                                                    : null,
+    return new CruiseControlState(substates.contains(EXECUTOR) ? _executor.state()
+                                                               : null,
                                        substates.contains(MONITOR) ? _loadMonitor.state(operationProgress, clusterAndGeneration)
                                                                    : null,
                                        substates.contains(ANALYZER) ? _goalOptimizer.state(clusterAndGeneration)
                                                                     : null,
-                                       substates.contains(ANOMALY_DETECTOR) ? _anomalyDetector.anomalyDetectorState()
-                                                                            : null);
+                                  substates.contains(ANOMALY_DETECTOR) ? _anomalyDetector.anomalyDetectorState()
+                                                                            : null, userTaskManager);
   }
 
   /**

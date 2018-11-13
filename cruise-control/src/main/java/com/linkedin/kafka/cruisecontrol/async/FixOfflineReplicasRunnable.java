@@ -5,8 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.KafkaOptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.FixOfflineReplicasParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.List;
 import java.util.regex.Pattern;
 import javax.servlet.http.HttpServletRequest;
@@ -17,7 +18,7 @@ import javax.servlet.http.HttpServletRequest;
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean,
  * Integer, Integer, boolean, Pattern, HttpServletRequest)}
  */
-class FixOfflineReplicasRunnable extends OperationRunnable<KafkaOptimizationResult> {
+class FixOfflineReplicasRunnable extends OperationRunnable {
   private final boolean _dryRun;
   private final List<String> _goals;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
@@ -29,33 +30,28 @@ class FixOfflineReplicasRunnable extends OperationRunnable<KafkaOptimizationResu
   private final HttpServletRequest _request;
 
   FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
-                             OperationFuture<KafkaOptimizationResult> future,
-                             boolean dryRun,
+                             OperationFuture future,
                              List<String> goals,
                              ModelCompletenessRequirements modelCompletenessRequirements,
-                             boolean allowCapacityEstimation,
-                             Integer concurrentPartitionMovements,
-                             Integer concurrentLeaderMovements,
-                             boolean skipHardGoalCheck,
-                             Pattern excludedTopics,
+                             FixOfflineReplicasParameters parameters,
                              HttpServletRequest request) {
     super(kafkaCruiseControl, future);
-    _dryRun = dryRun;
+    _dryRun = parameters.dryRun();
     _goals = goals;
     _modelCompletenessRequirements = modelCompletenessRequirements;
-    _allowCapacityEstimation = allowCapacityEstimation;
-    _concurrentPartitionMovements = concurrentPartitionMovements;
-    _concurrentLeaderMovements = concurrentLeaderMovements;
-    _skipHardGoalCheck = skipHardGoalCheck;
-    _excludedTopics = excludedTopics;
+    _allowCapacityEstimation = parameters.allowCapacityEstimation();
+    _concurrentPartitionMovements = parameters.concurrentPartitionMovements();
+    _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    _skipHardGoalCheck = parameters.skipHardGoalCheck();
+    _excludedTopics = parameters.excludedTopics();
     _request = request;
   }
 
   @Override
-  protected KafkaOptimizationResult getResult() throws Exception {
-    return new KafkaOptimizationResult(_kafkaCruiseControl.fixOfflineReplicas(_dryRun, _goals, _modelCompletenessRequirements,
-                                                                              _future.operationProgress(), _allowCapacityEstimation,
-                                                                              _concurrentPartitionMovements, _concurrentLeaderMovements,
-                                                                              _skipHardGoalCheck, _excludedTopics, _request));
+  protected OptimizationResult getResult() throws Exception {
+    return new OptimizationResult(_kafkaCruiseControl.fixOfflineReplicas(_dryRun, _goals, _modelCompletenessRequirements,
+                                                                         _future.operationProgress(), _allowCapacityEstimation,
+                                                                         _concurrentPartitionMovements, _concurrentLeaderMovements,
+                                                                         _skipHardGoalCheck, _excludedTopics, _request));
   }
 }
