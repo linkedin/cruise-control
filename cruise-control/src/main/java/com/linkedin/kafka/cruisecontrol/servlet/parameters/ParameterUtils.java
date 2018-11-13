@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import java.io.IOException;
@@ -32,7 +32,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.writeErrorResponse;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
 
@@ -359,21 +359,21 @@ public class ParameterUtils {
   /**
    * Empty parameter means all substates are requested.
    */
-  static Set<KafkaCruiseControlState.SubState> substates(HttpServletRequest request) throws UnsupportedEncodingException {
+  static Set<CruiseControlState.SubState> substates(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<String> substatesString;
     String substatesParam = urlDecode(request.getParameter(SUBSTATES_PARAM));
     substatesString = substatesParam == null ? new HashSet<>() : new HashSet<>(Arrays.asList(substatesParam.split(",")));
     substatesString.removeIf(String::isEmpty);
 
-    Set<KafkaCruiseControlState.SubState> substates = new HashSet<>();
+    Set<CruiseControlState.SubState> substates = new HashSet<>();
     try {
       for (String substateString : substatesString) {
-        substates.add(KafkaCruiseControlState.SubState.valueOf(substateString.toUpperCase()));
+        substates.add(CruiseControlState.SubState.valueOf(substateString.toUpperCase()));
       }
     } catch (IllegalArgumentException iae) {
       throw new IllegalArgumentException(
           String.format("Unsupported substates in %s. Supported: %s", substatesString, Arrays.toString(
-              KafkaCruiseControlState.SubState.values())));
+              CruiseControlState.SubState.values())));
     }
 
     return Collections.unmodifiableSet(substates);

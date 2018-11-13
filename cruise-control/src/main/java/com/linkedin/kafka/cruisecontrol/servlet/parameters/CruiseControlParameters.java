@@ -24,5 +24,5 @@ public interface CruiseControlParameters {
   /**
    * @return True if requested response is in JSON, false otherwise.
    */
-  public boolean json();
+  boolean json();
 }

@@ -14,9 +14,12 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-public class KafkaStopProposalExecution extends AbstractCruiseControlResponse {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaStopProposalExecution.class);
+
+public class StopProposalExecutionResult extends AbstractCruiseControlResponse {
+  private static final Logger LOG = LoggerFactory.getLogger(StopProposalExecutionResult.class);
   private static final String MESSAGE = "message";
 
   @Override

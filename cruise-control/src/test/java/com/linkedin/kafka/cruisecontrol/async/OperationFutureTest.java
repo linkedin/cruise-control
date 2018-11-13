@@ -5,8 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaPauseSampling;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaResumeSampling;
+import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.ResumeSamplingResult;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Semaphore;
@@ -21,14 +21,14 @@ import static org.junit.Assert.assertFalse;
 
 
 public class OperationFutureTest {
-  private static CruiseControlResponse DEFAULT_RESULT = new KafkaPauseSampling();
+  private static CruiseControlResponse DEFAULT_RESULT = new PauseSamplingResult();
 
   @Test
   public void testGetCompleted() throws InterruptedException {
     OperationFuture future = new OperationFuture("testGetCompleted");
     TestThread t = new TestThread(future);
     t.start();
-    CruiseControlResponse expectedResponse = new KafkaResumeSampling();
+    CruiseControlResponse expectedResponse = new ResumeSamplingResult();
     future.complete(expectedResponse);
     t.join();
     assertTrue(future.isDone());
@@ -78,7 +78,7 @@ public class OperationFutureTest {
               this.wait();
             }
           }
-          return new KafkaResumeSampling();
+          return new ResumeSamplingResult();
         } catch (InterruptedException ie) {
           interrupted.set(true);
           throw ie;
@@ -93,7 +93,7 @@ public class OperationFutureTest {
     future.cancel(true);
     t.join();
     executionThread.join();
-    assertTrue(t.result() instanceof KafkaPauseSampling);
+    assertTrue(t.result() instanceof PauseSamplingResult);
     assertTrue(t.exception() instanceof CancellationException);
     assertTrue(future.isDone());
     assertTrue(future.isCancelled());

@@ -8,7 +8,7 @@ import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
 
 
-public abstract class KafkaOptimizationParameters extends AbstractCruiseControlParameters {
+public abstract class KafkaOptimizationParameters extends AbstractParameters {
   protected boolean _allowCapacityEstimation;
   protected boolean _isVerbose;
 

@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaOptimizationResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -47,16 +47,16 @@ class RebalanceRunnable extends OperationRunnable {
   }
 
   @Override
-  protected KafkaOptimizationResult getResult() throws Exception {
-    return new KafkaOptimizationResult(_kafkaCruiseControl.rebalance(_goals,
-                                                                     _dryRun,
-                                                                     _modelCompletenessRequirements,
-                                                                     _future.operationProgress(),
-                                                                     _allowCapacityEstimation,
-                                                                     _concurrentPartitionMovements,
-                                                                     _concurrentLeaderMovements,
-                                                                     _skipHardGoalCheck,
-                                                                     _excludedTopics,
-                                                                     _request));
+  protected OptimizationResult getResult() throws Exception {
+    return new OptimizationResult(_kafkaCruiseControl.rebalance(_goals,
+                                                                _dryRun,
+                                                                _modelCompletenessRequirements,
+                                                                _future.operationProgress(),
+                                                                _allowCapacityEstimation,
+                                                                _concurrentPartitionMovements,
+                                                                _concurrentLeaderMovements,
+                                                                _skipHardGoalCheck,
+                                                                _excludedTopics,
+                                                                _request));
   }
 }

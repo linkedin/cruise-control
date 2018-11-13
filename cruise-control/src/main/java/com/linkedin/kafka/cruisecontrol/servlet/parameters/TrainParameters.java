@@ -9,7 +9,10 @@ import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
 
 
-public class TrainParameters extends AbstractCruiseControlParameters {
+/**
+ * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#TRAIN}
+ */
+public class TrainParameters extends AbstractParameters {
   private Long _startMs;
   private Long _endMs;
 

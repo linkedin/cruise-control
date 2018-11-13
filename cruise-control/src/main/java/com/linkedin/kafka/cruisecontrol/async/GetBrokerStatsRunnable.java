@@ -5,14 +5,13 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 
 
 /**
- * The async runnable to get the {@link com.linkedin.kafka.cruisecontrol.model.ClusterModel.BrokerStats} for the cluster
- * model.
+ * The async runnable to get the {@link BrokerStats} for the cluster model.
  *
  * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)
@@ -32,7 +31,7 @@ class GetBrokerStatsRunnable extends OperationRunnable {
   }
 
   @Override
-  protected ClusterModel.BrokerStats getResult() throws Exception {
+  protected BrokerStats getResult() throws Exception {
     return _kafkaCruiseControl.clusterModel(_time,
                                             _modelCompletenessRequirements,
                                             _future.operationProgress(),

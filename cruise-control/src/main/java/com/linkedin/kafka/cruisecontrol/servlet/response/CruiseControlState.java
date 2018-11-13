@@ -26,9 +26,12 @@ import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-public class KafkaCruiseControlState extends AbstractCruiseControlResponse {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlState.class);
+
+public class CruiseControlState extends AbstractCruiseControlResponse {
+  private static final Logger LOG = LoggerFactory.getLogger(CruiseControlState.class);
   private static final String PARTITION_MOVEMENTS = "partition movements";
   private static final String LEADERSHIP_MOVEMENTS = "leadership movements";
   private final ExecutorState _executorState;
@@ -37,11 +40,11 @@ public class KafkaCruiseControlState extends AbstractCruiseControlResponse {
   private final AnomalyDetectorState _anomalyDetectorState;
   private final UserTaskManager _userTaskManager;
 
-  public KafkaCruiseControlState(ExecutorState executionState,
-                                 LoadMonitorState monitorState,
-                                 AnalyzerState analyzerState,
-                                 AnomalyDetectorState anomalyDetectorState,
-                                 UserTaskManager userTaskManager) {
+  public CruiseControlState(ExecutorState executionState,
+                            LoadMonitorState monitorState,
+                            AnalyzerState analyzerState,
+                            AnomalyDetectorState anomalyDetectorState,
+                            UserTaskManager userTaskManager) {
     _executorState = executionState;
     _monitorState = monitorState;
     _analyzerState = analyzerState;

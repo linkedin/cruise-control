@@ -8,7 +8,10 @@ import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
 
 
-public class KafkaClusterStateParameters extends AbstractCruiseControlParameters {
+/**
+ * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#KAFKA_CLUSTER_STATE}
+ */
+public class KafkaClusterStateParameters extends AbstractParameters {
   private boolean _isVerbose;
 
   public KafkaClusterStateParameters(HttpServletRequest request) {

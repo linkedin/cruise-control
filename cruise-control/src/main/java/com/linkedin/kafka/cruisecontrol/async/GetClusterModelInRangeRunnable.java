@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaPartitionLoadState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.PartitionLoadState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
 /**
@@ -24,19 +24,19 @@ class GetClusterModelInRangeRunnable extends OperationRunnable {
   }
 
   @Override
-  protected KafkaPartitionLoadState getResult() throws Exception {
+  protected PartitionLoadState getResult() throws Exception {
     ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(_parameters.startMs(),
                                                                  _parameters.endMs(),
                                                                  _parameters.minValidPartitionRatio(),
                                                                  _future.operationProgress(),
                                                                  _parameters.allowCapacityEstimation());
     int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
-    return new KafkaPartitionLoadState(clusterModel.replicasSortedByUtilization(_parameters.resource()),
-                                       _parameters.wantMaxLoad(),
-                                       _parameters.entries(),
-                                       _parameters.partitionUpperBoundary(),
-                                       _parameters.partitionLowerBoundary(),
-                                       _parameters.topic(),
-                                       topicNameLength);
+    return new PartitionLoadState(clusterModel.replicasSortedByUtilization(_parameters.resource()),
+                                  _parameters.wantMaxLoad(),
+                                  _parameters.entries(),
+                                  _parameters.partitionUpperBoundary(),
+                                  _parameters.partitionLowerBoundary(),
+                                  _parameters.topic(),
+                                  topicNameLength);
   }
 }

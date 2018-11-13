@@ -14,9 +14,12 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-public class KafkaResumeSampling extends AbstractCruiseControlResponse {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaResumeSampling.class);
+
+public class ResumeSamplingResult extends AbstractCruiseControlResponse {
+  private static final Logger LOG = LoggerFactory.getLogger(ResumeSamplingResult.class);
   private static final String MESSAGE = "message";
 
   @Override

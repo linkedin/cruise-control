@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -83,12 +83,12 @@ public class KafkaCruiseControlUtils {
    * Check if the ClusterAndGeneration needs to be refreshed to retrieve the requested substates.
    *
    * @param substates Substates for which the need for refreshing the ClusterAndGeneration will be evaluated.
-   * @return True if substates contain {@link KafkaCruiseControlState.SubState#ANALYZER} or
-   * {@link KafkaCruiseControlState.SubState#MONITOR}, false otherwise.
+   * @return True if substates contain {@link CruiseControlState.SubState#ANALYZER} or
+   * {@link CruiseControlState.SubState#MONITOR}, false otherwise.
    */
-  public static boolean shouldRefreshClusterAndGeneration(Set<KafkaCruiseControlState.SubState> substates) {
+  public static boolean shouldRefreshClusterAndGeneration(Set<CruiseControlState.SubState> substates) {
     return substates.stream()
-                    .anyMatch(substate -> substate == KafkaCruiseControlState.SubState.ANALYZER
-                                          || substate == KafkaCruiseControlState.SubState.MONITOR);
+                    .anyMatch(substate -> substate == CruiseControlState.SubState.ANALYZER
+                                          || substate == CruiseControlState.SubState.MONITOR);
   }
 }

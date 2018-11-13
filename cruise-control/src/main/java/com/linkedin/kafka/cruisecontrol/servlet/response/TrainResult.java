@@ -15,14 +15,17 @@ import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-public class KafkaBootstrapResult extends AbstractCruiseControlResponse {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaBootstrapResult.class);
+
+public class TrainResult extends AbstractCruiseControlResponse {
+  private static final Logger LOG = LoggerFactory.getLogger(TrainResult.class);
   private static final String MESSAGE = "message";
 
   @Override
   protected String getJSONString(CruiseControlParameters parameters) {
-    String message = String.format("Bootstrap started. Check status through the %s endpoint", EndPoint.STATE);
+    String message = String.format("Load model training started. Check status through the %s endpoint", EndPoint.STATE);
     Map<String, Object> jsonResponse = new HashMap<>();
     jsonResponse.put(VERSION, JSON_VERSION);
     jsonResponse.put(MESSAGE, message);
@@ -32,7 +35,7 @@ public class KafkaBootstrapResult extends AbstractCruiseControlResponse {
   @Override
   protected void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
     try {
-      out.write(String.format("Bootstrap started. Check status through the %s endpoint", EndPoint.STATE)
+      out.write(String.format("Load model training started. Check status through the %s endpoint", EndPoint.STATE)
                       .getBytes(StandardCharsets.UTF_8));
     } catch (IOException e) {
       LOG.error("Failed to write output stream.", e);

@@ -5,8 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaPauseSampling;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaResumeSampling;
+import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.ResumeSamplingResult;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -19,7 +19,12 @@ import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 
 public class SessionManagerTest {
@@ -106,11 +111,11 @@ public class SessionManagerTest {
       // Create the first future.
       OperationFuture firstFuture = sessionManager.getAndCreateSessionIfNotExist(request, () -> future1, 0);
       assertSame(firstFuture, future1);
-      future1.complete(new KafkaPauseSampling());
+      future1.complete(new PauseSamplingResult());
       // create the second future.
       OperationFuture secondFuture = sessionManager.getAndCreateSessionIfNotExist(request, () -> future2, 1);
       assertSame(secondFuture, future2);
-      future2.complete(new KafkaResumeSampling());
+      future2.complete(new ResumeSamplingResult());
     }
   }
 

@@ -10,7 +10,10 @@ import java.util.UUID;
 import javax.servlet.http.HttpServletRequest;
 
 
-public class UserTasksParameters extends AbstractCruiseControlParameters {
+/**
+ * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#USER_TASKS}
+ */
+public class UserTasksParameters extends AbstractParameters {
   private Set<UUID> _userTaskIds;
 
 

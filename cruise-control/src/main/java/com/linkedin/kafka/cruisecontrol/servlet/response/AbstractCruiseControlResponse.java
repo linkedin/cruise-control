@@ -10,14 +10,11 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import javax.servlet.http.HttpServletResponse;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.setResponseCode;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.setResponseCode;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 
 
 public abstract class AbstractCruiseControlResponse implements CruiseControlResponse {
-  protected static final int JSON_VERSION = 1;
-  protected static final String VERSION = "version";
-
   /**
    * Return a valid JSON encoded String
    *

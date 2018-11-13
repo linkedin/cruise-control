@@ -4,14 +4,17 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import java.io.UnsupportedEncodingException;
 import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
 
 
-public class CruiseControlStateParameters extends AbstractCruiseControlParameters {
-  private Set<KafkaCruiseControlState.SubState> _substates;
+/**
+ * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#STATE}
+ */
+public class CruiseControlStateParameters extends AbstractParameters {
+  private Set<CruiseControlState.SubState> _substates;
   private boolean _isVerbose;
   private boolean _isSuperVerbose;
 
@@ -27,11 +30,11 @@ public class CruiseControlStateParameters extends AbstractCruiseControlParameter
     _isSuperVerbose = ParameterUtils.isSuperVerbose(_request);
   }
 
-  public Set<KafkaCruiseControlState.SubState> substates() {
+  public Set<CruiseControlState.SubState> substates() {
     return _substates;
   }
 
-  public void setSubstates(Set<KafkaCruiseControlState.SubState> substates) {
+  public void setSubstates(Set<CruiseControlState.SubState> substates) {
     _substates = substates;
   }
 

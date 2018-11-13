@@ -11,7 +11,10 @@ import java.util.regex.Pattern;
 import javax.servlet.http.HttpServletRequest;
 
 
-public class PartitionLoadParameters extends AbstractCruiseControlParameters {
+/**
+ * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#PARTITION_LOAD}
+ */
+public class PartitionLoadParameters extends AbstractParameters {
   private Resource _resource;
   private long _startMs;
   private long _endMs;

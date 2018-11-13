@@ -29,7 +29,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState.SubState.EXECUTOR;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
 
 /**

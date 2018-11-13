@@ -15,14 +15,18 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.handleParameterParseException;
 
 
-public abstract class AbstractCruiseControlParameters implements CruiseControlParameters {
-  private static final Logger LOG = LoggerFactory.getLogger(AbstractCruiseControlParameters.class);
+/**
+ * An abstract class for Cruise Control parameters. This class will be extended to crete custom parameters for different
+ * endpoints.
+ */
+public abstract class AbstractParameters implements CruiseControlParameters {
+  private static final Logger LOG = LoggerFactory.getLogger(AbstractParameters.class);
   protected final HttpServletRequest _request;
   // Common to all parameters, expected to be populated via initParameters.
   protected boolean _json = false;
   protected EndPoint _endPoint = null;
 
-  public AbstractCruiseControlParameters(HttpServletRequest request) {
+  public AbstractParameters(HttpServletRequest request) {
     _request = request;
   }
 
@@ -46,6 +50,7 @@ public abstract class AbstractCruiseControlParameters implements CruiseControlPa
     }
   }
 
+  @Override
   public boolean json() {
     return _json;
   }

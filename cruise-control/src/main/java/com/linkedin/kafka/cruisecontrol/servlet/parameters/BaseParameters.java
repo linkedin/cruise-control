@@ -8,9 +8,12 @@ import javax.servlet.http.HttpServletRequest;
 
 
 /**
- * A concrete class for endpoints with base parameters.
+ * A concrete class for endpoints with base parameters -- e.g.
+ * {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#PAUSE_SAMPLING},
+ * {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#RESUME_SAMPLING},
+ * {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#STOP_PROPOSAL_EXECUTION}
  */
-public class BaseParameters extends AbstractCruiseControlParameters {
+public class BaseParameters extends AbstractParameters {
   public BaseParameters(HttpServletRequest request) {
     super(request);
   }

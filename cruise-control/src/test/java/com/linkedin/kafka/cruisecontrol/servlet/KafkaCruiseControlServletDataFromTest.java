@@ -5,8 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.GoalBasedOptimizationParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
@@ -107,7 +108,7 @@ public class KafkaCruiseControlServletDataFromTest {
     EasyMock.expect(request.getRemoteAddr()).andReturn("localhost").anyTimes();
     response.setHeader(EasyMock.anyString(), EasyMock.anyString());
     EasyMock.expect(session.getLastAccessedTime()).andReturn(Long.MAX_VALUE);
-    KafkaCruiseControlState kccState = getState(_numReadyGoals, _totalGoals, _numValidWindows);
+    CruiseControlState kccState = getState(_numReadyGoals, _totalGoals, _numValidWindows);
     OperationFuture kccStateFuture = new OperationFuture("test");
     kccStateFuture.complete(kccState);
     EasyMock.expect(mockKCC.state(EasyMock.anyObject(), EasyMock.anyObject()))
@@ -118,7 +119,7 @@ public class KafkaCruiseControlServletDataFromTest {
 
     KafkaCruiseControlServlet servlet =
         new KafkaCruiseControlServlet(mockKCC, 10, 100, new MetricRegistry());
-    KafkaCruiseControlServlet.GoalsAndRequirements goalsAndRequirements =
+    GoalBasedOptimizationParameters.GoalsAndRequirements goalsAndRequirements =
         servlet.getGoalsAndRequirements(request,
                                         response,
                                         Collections.emptyList(),
@@ -142,7 +143,7 @@ public class KafkaCruiseControlServletDataFromTest {
   /**
    * Generate the KCC state.
    */
-  private KafkaCruiseControlState getState(int numReadyGoals, int totalGoals, int numValidWindows) {
+  private CruiseControlState getState(int numReadyGoals, int totalGoals, int numValidWindows) {
     ExecutorState executorState = ExecutorState.noTaskInProgress();
     LoadMonitorState loadMonitorState = LoadMonitorState.running(numValidWindows, new TreeMap<>(),
                                                                  1, 10,
@@ -157,7 +158,7 @@ public class KafkaCruiseControlServletDataFromTest {
     }
     AnalyzerState analyzerState = new AnalyzerState(true, goalReadiness);
     AnomalyDetectorState anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()), 10);
-    return new KafkaCruiseControlState(executorState, loadMonitorState, analyzerState, anomalyDetectorState, null);
+    return new CruiseControlState(executorState, loadMonitorState, analyzerState, anomalyDetectorState, null);
   }
 
   /**

@@ -31,8 +31,9 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
+import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -51,7 +52,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState.SubState.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.*;
 
 
 /**
@@ -364,7 +365,7 @@ public class KafkaCruiseControl {
   /**
    * Get the broker load stats from the cache. null will be returned if their is no cached broker load stats.
    */
-  public ClusterModel.BrokerStats cachedBrokerLoadStats(ClusterLoadParameters parameters) {
+  public BrokerStats cachedBrokerLoadStats(ClusterLoadParameters parameters) {
     return _loadMonitor.cachedBrokerLoadStats(parameters.allowCapacityEstimation());
   }
 
@@ -589,25 +590,25 @@ public class KafkaCruiseControl {
   /**
    * Get the state with selected substates for Kafka Cruise Control.
    */
-  public KafkaCruiseControlState state(OperationProgress operationProgress,
-                                       Set<KafkaCruiseControlState.SubState> substates,
-                                       UserTaskManager userTaskManager) {
+  public CruiseControlState state(OperationProgress operationProgress,
+                                  Set<CruiseControlState.SubState> substates,
+                                  UserTaskManager userTaskManager) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = null;
     // In case no substate is specified, return all substates.
     substates = !substates.isEmpty() ? substates
-                                     : new HashSet<>(Arrays.asList(KafkaCruiseControlState.SubState.values()));
+                                     : new HashSet<>(Arrays.asList(CruiseControlState.SubState.values()));
 
     if (KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration(substates)) {
       clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     }
 
-    return new KafkaCruiseControlState(substates.contains(EXECUTOR) ? _executor.state()
-                                                                    : null,
+    return new CruiseControlState(substates.contains(EXECUTOR) ? _executor.state()
+                                                               : null,
                                        substates.contains(MONITOR) ? _loadMonitor.state(operationProgress, clusterAndGeneration)
                                                                    : null,
                                        substates.contains(ANALYZER) ? _goalOptimizer.state(clusterAndGeneration)
                                                                     : null,
-                                       substates.contains(ANOMALY_DETECTOR) ? _anomalyDetector.anomalyDetectorState()
+                                  substates.contains(ANOMALY_DETECTOR) ? _anomalyDetector.anomalyDetectorState()
                                                                             : null, userTaskManager);
   }
 

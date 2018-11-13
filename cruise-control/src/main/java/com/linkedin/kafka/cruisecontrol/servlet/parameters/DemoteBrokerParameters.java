@@ -9,6 +9,9 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 
 
+/**
+ * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#DEMOTE_BROKER}
+ */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   private boolean _dryRun;
   private List<Integer> _brokerIds;

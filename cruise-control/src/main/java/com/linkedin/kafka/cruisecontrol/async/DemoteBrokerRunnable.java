@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaOptimizationResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collection;
 import javax.servlet.http.HttpServletRequest;
 
@@ -35,12 +35,12 @@ public class DemoteBrokerRunnable extends OperationRunnable {
   }
 
   @Override
-  protected KafkaOptimizationResult getResult() throws Exception {
-    return new KafkaOptimizationResult(_kafkaCruiseControl.demoteBrokers(_brokerIds,
-                                                                         _dryRun,
-                                                                         _future.operationProgress(),
-                                                                         _allowCapacityEstimation,
-                                                                         _concurrentLeaderMovements,
-                                                                         _request));
+  protected OptimizationResult getResult() throws Exception {
+    return new OptimizationResult(_kafkaCruiseControl.demoteBrokers(_brokerIds,
+                                                                    _dryRun,
+                                                                    _future.operationProgress(),
+                                                                    _allowCapacityEstimation,
+                                                                    _concurrentLeaderMovements,
+                                                                    _request));
   }
 }

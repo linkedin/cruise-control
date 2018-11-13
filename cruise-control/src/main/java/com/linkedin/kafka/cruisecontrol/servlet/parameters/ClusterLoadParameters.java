@@ -9,7 +9,10 @@ import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
 
 
-public class ClusterLoadParameters extends AbstractCruiseControlParameters {
+/**
+ * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#LOAD}
+ */
+public class ClusterLoadParameters extends AbstractParameters {
   private long _time;
   private ModelCompletenessRequirements _requirements;
   private boolean _allowCapacityEstimation;

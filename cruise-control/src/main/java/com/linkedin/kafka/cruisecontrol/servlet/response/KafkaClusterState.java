@@ -29,6 +29,9 @@ import org.apache.kafka.common.PartitionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
+
 
 public class KafkaClusterState extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterState.class);

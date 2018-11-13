@@ -9,7 +9,10 @@ import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
 
 
-public class BootstrapParameters extends AbstractCruiseControlParameters {
+/**
+ * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#BOOTSTRAP}
+ */
+public class BootstrapParameters extends AbstractParameters {
   private Long _startMs;
   private Long _endMs;
   private boolean _clearMetrics;

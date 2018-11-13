@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaOptimizationResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
@@ -38,7 +38,7 @@ class GetOptimizationProposalsRunnable extends OperationRunnable {
   }
 
   @Override
-  protected KafkaOptimizationResult getResult() throws Exception {
+  protected OptimizationResult getResult() throws Exception {
     GoalOptimizer.OptimizerResult optimizerResult;
     if (_goals != null || _excludedTopics != null) {
       optimizerResult = _kafkaCruiseControl.getOptimizationProposals(_goals,
@@ -50,6 +50,6 @@ class GetOptimizationProposalsRunnable extends OperationRunnable {
     } else {
       optimizerResult = _kafkaCruiseControl.getOptimizationProposals(_future.operationProgress(), _allowCapacityEstimation);
     }
-    return new KafkaOptimizationResult(optimizerResult);
+    return new OptimizationResult(optimizerResult);
   }
 }

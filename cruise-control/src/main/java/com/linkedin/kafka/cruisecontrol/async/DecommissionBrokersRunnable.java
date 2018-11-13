@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaOptimizationResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collection;
 import java.util.List;
@@ -53,11 +53,11 @@ class DecommissionBrokersRunnable extends OperationRunnable {
   }
 
   @Override
-  protected KafkaOptimizationResult getResult() throws Exception {
-    return new KafkaOptimizationResult(_kafkaCruiseControl.decommissionBrokers(_brokerIds, _dryRun, _throttleRemovedBrokers, _goals,
-                                                                               _modelCompletenessRequirements, _future.operationProgress(),
-                                                                               _allowCapacityEstimation, _concurrentPartitionMovements,
-                                                                               _concurrentLeaderMovements, _skipHardGoalCheck, _excludedTopics,
-                                                                               _request));
+  protected OptimizationResult getResult() throws Exception {
+    return new OptimizationResult(_kafkaCruiseControl.decommissionBrokers(_brokerIds, _dryRun, _throttleRemovedBrokers, _goals,
+                                                                          _modelCompletenessRequirements, _future.operationProgress(),
+                                                                          _allowCapacityEstimation, _concurrentPartitionMovements,
+                                                                          _concurrentLeaderMovements, _skipHardGoalCheck, _excludedTopics,
+                                                                          _request));
   }
 }

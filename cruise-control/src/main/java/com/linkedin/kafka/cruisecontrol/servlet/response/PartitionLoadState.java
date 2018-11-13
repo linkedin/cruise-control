@@ -21,9 +21,12 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-public class KafkaPartitionLoadState extends AbstractCruiseControlResponse {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaPartitionLoadState.class);
+
+public class PartitionLoadState extends AbstractCruiseControlResponse {
+  private static final Logger LOG = LoggerFactory.getLogger(PartitionLoadState.class);
   private final List<Partition> _sortedPartitions;
   private final boolean _wantMaxLoad;
   private final int _entries;
@@ -38,13 +41,13 @@ public class KafkaPartitionLoadState extends AbstractCruiseControlResponse {
   private static final String MSG_IN = "msg_in";
   private static final String RECORDS = "records";
 
-  public KafkaPartitionLoadState(List<Partition> sortedPartitions,
-                                 boolean wantMaxLoad,
-                                 int entries,
-                                 int partitionUpperBoundary,
-                                 int partitionLowerBoundary,
-                                 Pattern topic,
-                                 int topicNameLength) {
+  public PartitionLoadState(List<Partition> sortedPartitions,
+                            boolean wantMaxLoad,
+                            int entries,
+                            int partitionUpperBoundary,
+                            int partitionLowerBoundary,
+                            Pattern topic,
+                            int topicNameLength) {
     _sortedPartitions = sortedPartitions;
     _wantMaxLoad = wantMaxLoad;
     _entries = entries;

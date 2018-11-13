@@ -41,7 +41,7 @@ import javax.servlet.http.HttpServletRequest;
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(OperationProgress, boolean)}</li>
- * <li>{@link KafkaCruiseControl#state(OperationProgress, Set, com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager)}</li>
+ * <li>{@link KafkaCruiseControl#state(OperationProgress, Set, UserTaskManager)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress,
  * boolean, boolean, java.util.regex.Pattern)}</li>
  * <li>{@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress,
@@ -67,7 +67,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#state(OperationProgress, Set, com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager)
+   * @see KafkaCruiseControl#state(OperationProgress, Set, UserTaskManager)
    */
   public OperationFuture state(CruiseControlStateParameters parameters,
                                UserTaskManager userTaskManager) {

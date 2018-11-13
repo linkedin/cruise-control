@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaCruiseControlState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult;
@@ -73,8 +73,8 @@ public class AnomalyDetectorTest {
 
     // The following state are used to test the delayed check when executor is busy.
     EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-            .andReturn(new KafkaCruiseControlState(ExecutorState.noTaskInProgress(), null, null,
-                                                   null, null));
+            .andReturn(new CruiseControlState(ExecutorState.noTaskInProgress(), null, null,
+                                              null, null));
 
     EasyMock.replay(mockAnomalyNotifier);
     EasyMock.replay(mockBrokerFailureDetector);
@@ -141,8 +141,8 @@ public class AnomalyDetectorTest {
 
     // The following state are used to test the delayed check when executor is busy.
     EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-            .andReturn(new KafkaCruiseControlState(ExecutorState.noTaskInProgress(), null, null,
-                                                   null, null));
+            .andReturn(new CruiseControlState(ExecutorState.noTaskInProgress(), null, null,
+                                              null, null));
     EasyMock.expect(mockKafkaCruiseControl.rebalance(EasyMock.eq(Collections.emptyList()),
                                                      EasyMock.eq(false),
                                                      EasyMock.eq(null),
@@ -218,7 +218,7 @@ public class AnomalyDetectorTest {
 
     // The following state are used to test the delayed check when executor is busy.
     EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject(), EasyMock.anyObject(), EasyMock.anyObject()))
-            .andReturn(new KafkaCruiseControlState(
+            .andReturn(new CruiseControlState(
                 ExecutorState.replicaMovementInProgress(1,
                                                         Collections.emptySet(),
                                                         Collections.emptySet(),

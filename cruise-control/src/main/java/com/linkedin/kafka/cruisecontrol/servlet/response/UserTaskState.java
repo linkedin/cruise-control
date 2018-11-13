@@ -26,9 +26,12 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-public class KafkaUserTaskState extends AbstractCruiseControlResponse {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaUserTaskState.class);
+
+public class UserTaskState extends AbstractCruiseControlResponse {
+  private static final Logger LOG = LoggerFactory.getLogger(UserTaskState.class);
   private static final String DATA_FORMAT = "YYYY-MM-dd_hh:mm:ss z";
   private static final String TIME_ZONE = "UTC";
   private static final String ACTIVE_TASK_LABEL_VALUE = "Active";
@@ -42,8 +45,8 @@ public class KafkaUserTaskState extends AbstractCruiseControlResponse {
   private final List<UserTaskManager.UserTaskInfo> _activeUserTasks;
   private final List<UserTaskManager.UserTaskInfo> _completedUserTasks;
 
-  public KafkaUserTaskState(List<UserTaskManager.UserTaskInfo> activeUserTasks,
-                            List<UserTaskManager.UserTaskInfo> completedUserTasks) {
+  public UserTaskState(List<UserTaskManager.UserTaskInfo> activeUserTasks,
+                       List<UserTaskManager.UserTaskInfo> completedUserTasks) {
     _activeUserTasks = activeUserTasks;
     _completedUserTasks = completedUserTasks;
   }

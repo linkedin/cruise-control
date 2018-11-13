@@ -26,9 +26,12 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-public class KafkaOptimizationResult extends AbstractCruiseControlResponse {
-  private static final Logger LOG = LoggerFactory.getLogger(KafkaOptimizationResult.class);
+
+public class OptimizationResult extends AbstractCruiseControlResponse {
+  private static final Logger LOG = LoggerFactory.getLogger(OptimizationResult.class);
   private final GoalOptimizer.OptimizerResult _optimizerResult;
   private static final String SUMMARY = "summary";
   private static final String PROPOSALS = "proposals";
@@ -42,7 +45,7 @@ public class KafkaOptimizationResult extends AbstractCruiseControlResponse {
   private static final String FIXED = "FIXED";
   private static final String NO_ACTION = "NO-ACTION";
 
-  public KafkaOptimizationResult(GoalOptimizer.OptimizerResult optimizerResult) {
+  public OptimizationResult(GoalOptimizer.OptimizerResult optimizerResult) {
     _optimizerResult = optimizerResult;
   }
 
