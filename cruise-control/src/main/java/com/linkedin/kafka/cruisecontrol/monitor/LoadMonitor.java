@@ -94,6 +94,7 @@ public class LoadMonitor {
 
   private volatile ModelGeneration _cachedBrokerLoadGeneration;
   private volatile BrokerStats _cachedBrokerLoadStats;
+  private volatile Boolean _awaitExecution;
 
   /**
    * Construct a load monitor.
@@ -332,6 +333,7 @@ public class LoadMonitor {
    */
   public void pauseMetricSampling() {
     _loadMonitorTaskRunner.pauseSampling();
+    _loadMonitorTaskRunner.setAwaitExecution(true);
   }
 
   /**
@@ -339,8 +341,8 @@ public class LoadMonitor {
    */
   public void resumeMetricSampling() {
     _loadMonitorTaskRunner.resumeSampling();
+    _loadMonitorTaskRunner.setAwaitExecution(false);
   }
-
   /**
    * Acquire the semaphore for the cluster model generation.
    * @param operationProgress the progress for the job.

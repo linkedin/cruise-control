@@ -253,6 +253,8 @@ public class MetricFetcherManager {
         LOG.warn("Sampling scheduler thread is interrupted when waiting for sampling to finish.", e);
       } catch (ExecutionException e) {
         LOG.error("Sampling scheduler received Execution exception when waiting for sampling to finish", e);
+      } catch (TimeoutException e) {
+        LOG.error("Sampling scheduler received Timeout exception when waiting for sampling to finish", e);
       } catch (Exception e) {
         LOG.error("Sampling scheduler received Unknown exception when waiting for sampling to finish", e);
       }
