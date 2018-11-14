@@ -25,7 +25,6 @@ import java.util.Set;
 import java.util.StringJoiner;
 
 import com.linkedin.kafka.cruisecontrol.model.Replica;
-import java.util.stream.Collectors;
 import org.apache.kafka.common.utils.SystemTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -157,12 +156,8 @@ class OptimizationVerifier {
 
   private static boolean verifyGoalViolations(GoalOptimizer.OptimizerResult optimizerResult) {
     // Check if there are still goals violated after the optimization.
-    Set<String> violatedGoals = optimizerResult.violatedGoalsAfterOptimization()
-                                               .stream()
-                                               .map(Goal::name)
-                                               .collect(Collectors.toSet());
-    if (!violatedGoals.isEmpty()) {
-      LOG.error("Failed to optimize goal {}", violatedGoals);
+    if (!optimizerResult.violatedGoalsAfterOptimization().isEmpty()) {
+      LOG.error("Failed to optimize goal {}", optimizerResult.violatedGoalsAfterOptimization());
       System.out.println(optimizerResult.clusterModelStats().toString());
       return false;
     } else {
@@ -212,13 +207,15 @@ class OptimizationVerifier {
   private static boolean verifyRegression(GoalOptimizer.OptimizerResult optimizerResult,
                                           ClusterModelStats preOptimizationStats) {
     // Check whether test has failed for rebalance: fails if rebalance caused a worse goal state after rebalance.
-    Map<Goal, ClusterModelStats> clusterStatsByPriority = optimizerResult.statsByGoalPriority();
+    Map<String, ClusterModelStats> statsByGoalName = optimizerResult.statsByGoalName();
+    Map<String, Goal.ClusterModelStatsComparator> clusterModelStatsComparatorByGoalName
+        = optimizerResult.clusterModelStatsComparatorByGoalName();
     ClusterModelStats preStats = preOptimizationStats;
-    for (Map.Entry<Goal, ClusterModelStats> entry : clusterStatsByPriority.entrySet()) {
-      Goal.ClusterModelStatsComparator comparator = entry.getKey().clusterModelStatsComparator();
+    for (Map.Entry<String, ClusterModelStats> entry : statsByGoalName.entrySet()) {
+      Goal.ClusterModelStatsComparator comparator = clusterModelStatsComparatorByGoalName.get(entry.getKey());
       boolean success = comparator.compare(entry.getValue(), preStats) >= 0;
       if (!success) {
-        LOG.error("Failed goal comparison " + entry.getKey().name() + ". " + comparator.explainLastComparison());
+        LOG.error("Failed goal comparison " + entry.getKey() + ". " + comparator.explainLastComparison());
         return false;
       }
       preStats = entry.getValue();

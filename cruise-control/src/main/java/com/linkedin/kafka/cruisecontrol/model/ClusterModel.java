@@ -151,7 +151,7 @@ public class ClusterModel implements Serializable {
    * Get leader broker ids for each partition.
    */
   public Map<TopicPartition, Integer> getLeaderDistribution() {
-    Map<TopicPartition, Integer> leaders = new HashMap<>();
+    Map<TopicPartition, Integer> leaders = new HashMap<>(_partitionsByTopicPartition.size());
     for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
       leaders.put(entry.getKey(), entry.getValue().leader().broker().id());
     }

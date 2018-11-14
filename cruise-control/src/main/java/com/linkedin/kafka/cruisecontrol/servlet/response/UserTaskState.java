@@ -8,13 +8,9 @@ import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -23,15 +19,12 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.UUID;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
 
 public class UserTaskState extends AbstractCruiseControlResponse {
-  private static final Logger LOG = LoggerFactory.getLogger(UserTaskState.class);
   private static final String DATA_FORMAT = "YYYY-MM-dd_hh:mm:ss z";
   private static final String TIME_ZONE = "UTC";
   private static final String ACTIVE_TASK_LABEL_VALUE = "Active";
@@ -51,16 +44,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     _completedUserTasks = completedUserTasks;
   }
 
-  public List<UserTaskManager.UserTaskInfo> activeUserTasks() {
-    return Collections.unmodifiableList(_activeUserTasks);
-  }
-
-  public List<UserTaskManager.UserTaskInfo> completedUserTasks() {
-    return Collections.unmodifiableList(_completedUserTasks);
-  }
-
-  @Override
-  public String getJSONString(CruiseControlParameters parameters) {
+  private String getJSONString(CruiseControlParameters parameters) {
     List<Map<String, Object>> jsonUserTaskList = new ArrayList<>();
 
     Set<UUID> requestedUserTaskIds = ((UserTasksParameters) parameters).userTaskIds();
@@ -96,8 +80,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     }
   }
 
-  @Override
-  public void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
+  private String getPlaintext(CruiseControlParameters parameters) {
     Set<UUID> requestedUserTaskIds = ((UserTasksParameters) parameters).userTaskIds();
     StringBuilder sb = new StringBuilder();
     int padding = 2;
@@ -161,10 +144,15 @@ public class UserTaskState extends AbstractCruiseControlResponse {
       }
     }
 
-    try {
-      out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
-    } catch (IOException e) {
-      LOG.error("Failed to write output stream.", e);
-    }
+    return sb.toString();
+  }
+
+  @Override
+  protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
+    // Cache relevant response.
+    _cachedResponse = parameters.json() ? getJSONString(parameters) : getPlaintext(parameters);
+    // Discard irrelevant response.
+    _activeUserTasks.clear();
+    _completedUserTasks.clear();
   }
 }
