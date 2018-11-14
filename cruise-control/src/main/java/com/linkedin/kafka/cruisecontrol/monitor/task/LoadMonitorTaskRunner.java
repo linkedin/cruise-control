@@ -45,6 +45,7 @@ public class LoadMonitorTaskRunner {
 
   private AtomicReference<LoadMonitorTaskRunnerState> _state;
   private volatile double _bootstrapProgress;
+  private volatile Boolean _awaitExecution;
 
   public enum LoadMonitorTaskRunnerState {
     NOT_STARTED, RUNNING, PAUSED, SAMPLING, BOOTSTRAPPING, TRAINING, LOADING
@@ -109,6 +110,7 @@ public class LoadMonitorTaskRunner {
 
     _state = new AtomicReference<>(NOT_STARTED);
     _bootstrapProgress = -1.0;
+    _awaitExecution = false;
   }
 
   /**
@@ -277,6 +279,16 @@ public class LoadMonitorTaskRunner {
     }
   }
 
+  /**
+   * Allow tasks to know if executor wishes to stop sampling b/c it wants to execute
+   */
+  public Boolean awaitingExecution() {
+    return _awaitExecution;
+  }
+
+  public void setAwaitExecution(Boolean state) {
+    _awaitExecution = state;
+  }
 
   boolean compareAndSetState(LoadMonitorTaskRunnerState expectedState, LoadMonitorTaskRunnerState newState) {
     return _state.compareAndSet(expectedState, newState);
