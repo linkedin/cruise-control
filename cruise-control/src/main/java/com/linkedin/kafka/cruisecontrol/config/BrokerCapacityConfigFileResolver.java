@@ -102,7 +102,7 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
       reader = new JsonReader(new InputStreamReader(new FileInputStream(capacityConfigFile), StandardCharsets.UTF_8));
       Gson gson = new Gson();
       Set<BrokerCapacity> brokerCapacities = ((BrokerCapacities) gson.fromJson(reader, BrokerCapacities.class)).brokerCapacities;
-      _capacitiesForBrokers = new HashMap<>();
+      _capacitiesForBrokers = new HashMap<>(brokerCapacities.size());
       for (BrokerCapacity bc : brokerCapacities) {
         boolean isDefault = bc.brokerId == DEFAULT_CAPACITY_BROKER_ID;
         BrokerCapacityInfo brokerCapacityInfo =

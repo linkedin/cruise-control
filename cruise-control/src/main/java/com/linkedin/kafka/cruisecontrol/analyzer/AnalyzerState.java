@@ -48,7 +48,7 @@ public class AnalyzerState {
    * to encode into JSON
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
-    Map<String, Object> analyzerState = new HashMap<>();
+    Map<String, Object> analyzerState = new HashMap<>(verbose ? 3 : 2);
     Set<String> readyGoalNames = new HashSet<>();
     for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
       if (entry.getValue()) {
@@ -80,6 +80,6 @@ public class AnalyzerState {
         readyGoalNames.add(entry.getKey().getClass().getSimpleName());
       }
     }
-    return String.format("{isProposalReady: %s, ReadyGoals: %s}", _isProposalReady, readyGoalNames);
+    return String.format("{%s: %s, %s: %s}", IS_PROPOSAL_READY, _isProposalReady, READY_GOALS, readyGoalNames);
   }
 }

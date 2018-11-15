@@ -173,8 +173,9 @@ public class ClusterModelStats {
     // List of all statistics AVG, MAX, MIN, STD
     Map<String, Object> allStatMap = new HashMap<>(cachedStatistic.size());
     for (Statistic stat : cachedStatistic) {
-      Map<String, Object> resourceMap = new HashMap<>();
-      for (Resource resource : Resource.cachedValues()) {
+      List<Resource> cachedResources = Resource.cachedValues();
+      Map<String, Object> resourceMap = new HashMap<>(cachedResources.size() + 3);
+      for (Resource resource : cachedResources) {
         resourceMap.put(resource.resource(), resourceUtilizationStats().get(stat).get(resource));
       }
       resourceMap.put(AnalyzerUtils.POTENTIAL_NW_OUT, potentialNwOutUtilizationStats().get(stat));
@@ -182,7 +183,7 @@ public class ClusterModelStats {
       resourceMap.put(AnalyzerUtils.TOPIC_REPLICAS, topicReplicaStats().get(stat));
       allStatMap.put(stat.stat(), resourceMap);
     }
-    statMap.put("metadata", basicMap);
+    statMap.put(AnalyzerUtils.METADATA, basicMap);
     statMap.put(AnalyzerUtils.STATISTICS, allStatMap);
     return statMap;
   }

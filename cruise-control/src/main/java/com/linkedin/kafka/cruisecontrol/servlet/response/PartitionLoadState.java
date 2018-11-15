@@ -51,7 +51,7 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
     _topicNameLength = topicNameLength;
   }
 
-  private String getPlaintext(CruiseControlParameters parameters) {
+  private String getPlaintext() {
     StringBuilder sb = new StringBuilder();
     sb.append(String.format("%" + _topicNameLength + "s%10s%30s%20s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
                             "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)", "MSG_IN (#/s)"));
@@ -82,13 +82,13 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    _cachedResponse = parameters.json() ? getJSONString(parameters) : getPlaintext(parameters);
+    _cachedResponse = parameters.json() ? getJSONString() : getPlaintext();
     // Discard irrelevant response.
     _sortedPartitions.clear();
     _topic = null;
   }
 
-  private String getJSONString(CruiseControlParameters parameters) {
+  private String getJSONString() {
     Map<String, Object> partitionMap = new HashMap<>();
     List<Object> partitionList = new ArrayList<>();
     partitionMap.put(VERSION, JSON_VERSION);

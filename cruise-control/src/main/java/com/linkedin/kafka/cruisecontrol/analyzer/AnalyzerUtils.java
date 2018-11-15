@@ -38,6 +38,7 @@ public class AnalyzerUtils {
   public static final String BROKERS = "brokers";
   public static final String REPLICAS = "replicas";
   public static final String TOPICS = "topics";
+  public static final String METADATA = "metadata";
   public static final String POTENTIAL_NW_OUT = "potentialNwOut";
   public static final String TOPIC_REPLICAS = "topicReplicas";
   public static final String STATISTICS = "statistics";

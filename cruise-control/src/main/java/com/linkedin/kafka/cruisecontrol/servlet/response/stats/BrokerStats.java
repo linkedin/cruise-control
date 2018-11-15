@@ -57,7 +57,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     return _brokerStats;
   }
 
-  private String getJSONString(CruiseControlParameters parameters) {
+  private String getJSONString() {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure();
     jsonStructure.put(VERSION, JSON_VERSION);
@@ -95,7 +95,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    _cachedResponse = parameters.json() ? getJSONString(parameters) : toString();
+    _cachedResponse = parameters.json() ? getJSONString() : toString();
     // Discard irrelevant response.
     _brokerStats.clear();
     _hostStats.clear();

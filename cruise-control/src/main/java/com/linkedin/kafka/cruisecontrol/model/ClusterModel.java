@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.model;
 
-import com.google.gson.Gson;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -33,8 +32,6 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.kafka.common.TopicPartition;
-
-import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
 
 /**
@@ -683,7 +680,7 @@ public class ClusterModel implements Serializable {
     }
 
     // Keep track of the replication factor per topic.
-    Integer replicationFactor = Math.max(_replicationFactorByTopic.get(tp.topic()), partition.followers().size() + 1);
+    int replicationFactor = Math.max(_replicationFactorByTopic.get(tp.topic()), partition.followers().size() + 1);
     _replicationFactorByTopic.put(tp.topic(), replicationFactor);
 
     // Increment the maximum replication factor if the number of replicas of the partition is larger than the
@@ -744,14 +741,14 @@ public class ClusterModel implements Serializable {
     List<Broker> sortedTargetBrokersUnderCapacityLimit = healthyBrokersUnderThreshold(resource, utilizationThreshold);
 
     sortedTargetBrokersUnderCapacityLimit.sort((o1, o2) -> {
-      Double expectedBrokerLoad1 = o1.load().expectedUtilizationFor(resource);
-      Double expectedBrokerLoad2 = o2.load().expectedUtilizationFor(resource);
+      double expectedBrokerLoad1 = o1.load().expectedUtilizationFor(resource);
+      double expectedBrokerLoad2 = o2.load().expectedUtilizationFor(resource);
       // For host resource we first compare host util then look at the broker util -- even if a resource is a
       // host-resource, but not broker-resource.
       int hostComparison = 0;
       if (resource.isHostResource()) {
-        Double expectedHostLoad1 = resource.isHostResource() ? o1.host().load().expectedUtilizationFor(resource) : 0.0;
-        Double expectedHostLoad2 = resource.isHostResource() ? o2.host().load().expectedUtilizationFor(resource) : 0.0;
+        double expectedHostLoad1 = o1.host().load().expectedUtilizationFor(resource);
+        double expectedHostLoad2 = o2.host().load().expectedUtilizationFor(resource);
         hostComparison = Double.compare(expectedHostLoad1, expectedHostLoad2);
       }
       return hostComparison == 0 ? Double.compare(expectedBrokerLoad1, expectedBrokerLoad2) : hostComparison;
@@ -827,8 +824,7 @@ public class ClusterModel implements Serializable {
    * @return a list of partitions sorted by utilization of the given resource.
    */
   public List<Partition> replicasSortedByUtilization(Resource resource) {
-    List<Partition> partitionList = new ArrayList<>();
-    partitionList.addAll(_partitionsByTopicPartition.values());
+    List<Partition> partitionList = new ArrayList<>(_partitionsByTopicPartition.values());
     partitionList.sort((o1, o2) -> Double.compare(o2.leader().load().expectedUtilizationFor(resource),
                                                   o1.leader().load().expectedUtilizationFor(resource)));
     return Collections.unmodifiableList(partitionList);
@@ -936,7 +932,7 @@ public class ClusterModel implements Serializable {
         Resource resource = entry.getKey();
         double sumOfHostsUtil = entry.getValue();
         sumOfRackUtilizationByResource.putIfAbsent(resource, 0.0);
-        Double rackUtilization = rack.load().expectedUtilizationFor(resource);
+        double rackUtilization = rack.load().expectedUtilizationFor(resource);
         if (AnalyzerUtils.compare(rackUtilization, sumOfHostsUtil, resource) != 0) {
           throw new IllegalArgumentException(prologueErrorMsg + " Rack utilization for " + resource + " is different "
                                              + "from the total host utilization in rack" + rack.id()
@@ -987,43 +983,6 @@ public class ClusterModel implements Serializable {
         }
       }
     }
-  }
-
-  /*
-   * Return an object that can be further used
-   * to encode into JSON
-   */
-  public List<Map<String, Object>> getJsonStructure() {
-    List<Map<String, Object>> finalClusterStats = new ArrayList<>();
-
-    for (Broker broker : brokers()) {
-      double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
-
-      Map<String, Object> hostEntry = new HashMap<>();
-      hostEntry.put("Host", broker.host().name());
-      hostEntry.put("Broker", broker.id());
-      hostEntry.put("BrokerState", broker.getState());
-      hostEntry.put("DiskMB", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.DISK)));
-      hostEntry.put("CpuPct", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.CPU)));
-      hostEntry.put("LeaderNwInRate", AnalyzerUtils.nanToZero(leaderBytesInRate));
-      hostEntry.put("FollowerNwInRate", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate));
-      hostEntry.put("NnwOutRate", AnalyzerUtils.nanToZero(broker.load().expectedUtilizationFor(Resource.NW_OUT)));
-      hostEntry.put("PnwOutRate", AnalyzerUtils.nanToZero(potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT)));
-      hostEntry.put("Replicas", broker.replicas().size());
-      hostEntry.put("LeaderReplicas", broker.leaderReplicas().size());
-
-      finalClusterStats.add(hostEntry);
-    }
-
-    return finalClusterStats;
-  }
-
-  /**
-   * Get broker level stats in JSON format.
-   */
-  public String brokerStatsJSON() {
-    Gson gson = new Gson();
-    return gson.toJson(getJsonStructure());
   }
 
   /**
@@ -1103,33 +1062,6 @@ public class ClusterModel implements Serializable {
       brokerIndex++;
     }
     return utilization;
-  }
-
-  /**
-   * Return a valid JSON encoded string
-   *
-   * @param version JSON version
-   */
-  public String getJSONString(int version) {
-    Gson gson = new Gson();
-    Map<String, Object> jsonStructure = getJsonStructure2();
-    jsonStructure.put(VERSION, version);
-    return gson.toJson(jsonStructure);
-  }
-
-  /**
-   * Return an object that can be further used
-   * to encode into JSON (version2 thats used in writeTo)
-   */
-  public Map<String, Object> getJsonStructure2() {
-    Map<String, Object> clusterMap = new HashMap<>();
-    clusterMap.put("maxPartitionReplicationFactor", _maxReplicationFactor);
-    List<Map<String, Object>> racks = new ArrayList<>();
-    for (Rack rack : _racksById.values()) {
-      racks.add(rack.getJsonStructure());
-    }
-    clusterMap.put("racks", racks);
-    return clusterMap;
   }
 
   public void writeTo(OutputStream out) throws IOException {
