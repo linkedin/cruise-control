@@ -81,8 +81,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   public void configure(Map<String, ?> configs) {
     Properties producerProps = CruiseControlMetricsReporterConfig.parseProducerConfigs(configs);
     if (!producerProps.containsKey(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)) {
-      String port = (String) configs.get("port");
-      String bootstrapServers = "localhost:" + (port == null ? "9092" : port);
+      Object port = configs.get("port");
+      String bootstrapServers = "localhost:" + (port == null ? "9092" : String.valueOf(port));
       producerProps.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
       LOG.info("Using default value of {} for {}", bootstrapServers,
                CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
