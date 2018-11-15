@@ -8,8 +8,11 @@ import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
+import java.util.Map;
+import org.apache.kafka.common.annotation.InterfaceStability;
 
 
+@InterfaceStability.Evolving
 public interface AnomalyNotifier extends CruiseControlConfigurable {
 
   /**
@@ -38,4 +41,20 @@ public interface AnomalyNotifier extends CruiseControlConfigurable {
    * perform a delayed check.
    */
   AnomalyNotificationResult onMetricAnomaly(KafkaMetricAnomaly metricAnomaly);
+
+  /**
+   * Check whether the self healing is enabled for different anomaly types.
+   *
+   * @return A map from anomaly type to whether the self healing is enabled for that anomaly type or not.
+   */
+  Map<AnomalyType, Boolean> selfHealingEnabled();
+
+  /**
+   * Enable or disable self healing for the given anomaly type.
+   *
+   * @param anomalyType Type of anomaly for which to enable or disable self healing.
+   * @param isSelfHealingEnabled True if self healing is enabled, false otherwise.
+   * @return The old value of self healing for the given anomaly type.
+   */
+  boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled);
 }

@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
 import java.util.TreeSet;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigDef;
@@ -133,9 +134,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "maintain.";
 
   /**
-   * <code>broker.metrics.windows.ms</code>
+   * <code>broker.metrics.window.ms</code>
    */
-  public static final String BROKER_METRICS_WINDOW_MS_CONFIG = "broker.metrics.windows.ms";
+  public static final String BROKER_METRICS_WINDOW_MS_CONFIG = "broker.metrics.window.ms";
   private static final String BROKER_METRICS_WINDOW_MS_DOC = "The size of the window in milliseconds to aggregate the"
       + " Kafka broker metrics.";
 
@@ -177,6 +178,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public static final String NUM_METRIC_FETCHERS_CONFIG = "num.metric.fetchers";
   private static final String NUM_METRIC_FETCHERS_DOC = "The number of metric fetchers to fetch from the Kafka cluster.";
+
+  /**
+   * <code>num.cached.recent.anomaly.states</code>
+   */
+  public static final String NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG = "num.cached.recent.anomaly.states";
+  public static final String NUM_CACHED_RECENT_ANOMALY_STATES_DOC = "The number of recent anomaly states cached for "
+      + "different anomaly types presented via the anomaly substate response of the state endpoint.";
 
   /**
    * <code>metric.sampler.class</code>
@@ -517,6 +525,27 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "that persist the metric samples that have already been aggregated into Kafka Cruise Control. Later on the "
       + "persisted samples can be reloaded from the sample store to Kafka Cruise Control.";
 
+  /**
+   * <code>completed.user.task.retention.time.ms</code>
+   */
+  public static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG = "completed.user.task.retention.time.ms";
+  private static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to store the"
+      + " response and access details of a completed user task.";
+
+  /**
+   * <code>max.cached.completed.user.tasks</code>
+   */
+  public static final String MAX_CACHED_COMPLETED_USER_TASKS_CONFIG = "max.cached.completed.user.tasks";
+  private static final String MAX_CACHED_COMPLETED_USER_TASKS_DOC = "The maximum number of completed user tasks for "
+      + "which the response and access details will be cached.";
+
+  /**
+   * <code>max.active.user.tasks</code>
+   */
+  public static final String MAX_ACTIVE_USER_TASKS_CONFIG = "max.active.user.tasks";
+  private static final String MAX_ACTIVE_USER_TASKS_DOC = "The maximum number of user tasks for concurrently running in "
+       + "async endpoints across all users.";
+
   static {
     CONFIG = new ConfigDef()
         .define(BOOTSTRAP_SERVERS_CONFIG, ConfigDef.Type.LIST, ConfigDef.Importance.HIGH,
@@ -578,6 +607,24 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.HIGH,
                 BROKER_METRICS_WINDOW_MS_DOC)
+        .define(COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                TimeUnit.HOURS.toMillis(6),
+                atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC)
+        .define(MAX_CACHED_COMPLETED_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                100,
+                atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                MAX_CACHED_COMPLETED_USER_TASKS_DOC)
+        .define(MAX_ACTIVE_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                5,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                MAX_ACTIVE_USER_TASKS_DOC)
         .define(NUM_BROKER_METRICS_WINDOWS_CONFIG,
                 ConfigDef.Type.INT,
                 5,
@@ -612,6 +659,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 1,
                 ConfigDef.Importance.HIGH,
                 NUM_METRIC_FETCHERS_DOC)
+        .define(NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG,
+            ConfigDef.Type.INT,
+            10,
+            between(1, 100),
+            ConfigDef.Importance.LOW,
+            NUM_CACHED_RECENT_ANOMALY_STATES_DOC)
         .define(METRIC_SAMPLER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS,
                 CruiseControlMetricsReporterSampler.class.getName(),
@@ -824,8 +877,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 HARD_GOALS_DOC)
         .define(DEFAULT_GOALS_CONFIG,
                 ConfigDef.Type.LIST,
-                "",
-                ConfigDef.Importance.MEDIUM,
+                ConfigDef.Importance.HIGH,
                 DEFAULT_GOALS_DOC)
         .define(ANOMALY_NOTIFIER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS,
@@ -917,15 +969,27 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
-   * Sanity check for case insensitive goal names.
+   * Sanity check for
+   * (1) {@link KafkaCruiseControlConfig#GOALS_CONFIG} is non-empty.
+   * (2) Case insensitive goal names.
+   * (3) {@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} is non-empty.
    */
   private void sanityCheckGoalNames() {
     List<String> goalNames = getList(KafkaCruiseControlConfig.GOALS_CONFIG);
+    // Ensure that goals is non-empty.
+    if (goalNames.isEmpty()) {
+      throw new ConfigException("Attempt to configure goals configuration with an empty list of goals.");
+    }
+
     Set<String> caseInsensitiveGoalNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     for (String goalName: goalNames) {
       if (!caseInsensitiveGoalNames.add(goalName.replaceAll(".*\\.", ""))) {
         throw new ConfigException("Attempt to configure goals with case sensitive names.");
       }
+    }
+    // Ensure that default goals is non-empty.
+    if (getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG).isEmpty()) {
+      throw new ConfigException("Attempt to configure default goals configuration with an empty list of goals.");
     }
   }
 

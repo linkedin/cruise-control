@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -31,8 +32,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -57,7 +56,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunne
  */
 public class GoalOptimizer implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalOptimizer.class);
-  private final SortedMap<Integer, Goal> _goalsByPriority;
+  private final List<Goal> _goalsByPriority;
   private final BalancingConstraint _balancingConstraint;
   private final Pattern _defaultExcludedTopics;
   private final LoadMonitor _loadMonitor;
@@ -68,7 +67,7 @@ public class GoalOptimizer implements Runnable {
   private final ExecutorService _proposalPrecomputingExecutor;
   private final AtomicBoolean _progressUpdateLock;
   private final OperationProgress _proposalPrecomputingProgress;
-  private final List<SortedMap<Integer, Goal>> _goalByPriorityForPrecomputing;
+  private final List<List<Goal>> _goalByPriorityForPrecomputing;
   private final Object _cacheLock;
   private final AtomicInteger _threadsWaitingForCache;
   private volatile OptimizerResult _bestProposal;
@@ -89,7 +88,7 @@ public class GoalOptimizer implements Runnable {
                        Time time,
                        MetricRegistry dropwizardMetricRegistry) {
     _goalsByPriority = AnalyzerUtils.getGoalMapByPriority(config);
-    _defaultModelCompletenessRequirements = MonitorUtils.combineLoadRequirementOptions(_goalsByPriority.values());
+    _defaultModelCompletenessRequirements = MonitorUtils.combineLoadRequirementOptions(_goalsByPriority);
     _requirementsWithAvailableValidWindows = new ModelCompletenessRequirements(
         1,
         _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage(),
@@ -132,8 +131,8 @@ public class GoalOptimizer implements Runnable {
 
     // Get all permutations of the last numberOfGoalsToComputePermutations goals.
     int toIndex = _goalsByPriority.size() - numberOfGoalsToComputePermutations;
-    List<Goal> commonPrefix = new ArrayList<>(_goalsByPriority.values()).subList(0, toIndex);
-    List<Goal> suffixToPermute = new ArrayList<>(_goalsByPriority.values()).subList(toIndex, _goalsByPriority.size());
+    List<Goal> commonPrefix = _goalsByPriority.subList(0, toIndex);
+    List<Goal> suffixToPermute = _goalsByPriority.subList(toIndex, _goalsByPriority.size());
 
     for (List<Goal> shuffledSuffix: AnalyzerUtils.getPermutations(suffixToPermute)) {
       List<Goal> shuffledGoalList = new ArrayList<>(commonPrefix);
@@ -142,14 +141,12 @@ public class GoalOptimizer implements Runnable {
     }
 
     // Guarantee that one thread is working on the original goal priority.
-    addGoalsForPrecomputing(new ArrayList<>(_goalsByPriority.values()));
+    _goalByPriorityForPrecomputing.add(new ArrayList<>(_goalsByPriority));
     // Add the remaining goal priorities.
     addShuffledGoalsForPrecomputing(shuffledGoals);
   }
 
   private void addShuffledGoalsForPrecomputing(Set<List<Goal>> shuffledGoals) {
-    List<Goal> originalGoals = new ArrayList<>(_goalsByPriority.values());
-
     // Add the others
     int numShuffledGoalsToGenerate = _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1;
     for (List<Goal> shuffledGoalList : shuffledGoals) {
@@ -159,30 +156,21 @@ public class GoalOptimizer implements Runnable {
       boolean isOriginalOrder = true;
       for (int i = 0; i < shuffledGoalList.size(); i++) {
         String shuffledGoal = shuffledGoalList.get(i).name();
-        if (!shuffledGoal.equals(originalGoals.get(i).name())) {
+        if (!shuffledGoal.equals(_goalsByPriority.get(i).name())) {
           isOriginalOrder = false;
           break;
         }
       }
       if (!isOriginalOrder) {
-        addGoalsForPrecomputing(shuffledGoalList);
+        _goalByPriorityForPrecomputing.add(new ArrayList<>(shuffledGoalList));
       }
     }
-  }
-
-  private void addGoalsForPrecomputing(List<Goal> goals) {
-    SortedMap<Integer, Goal> shuffledGoalByPriority = new TreeMap<>();
-    int j = 0;
-    for (Goal goal : goals) {
-      shuffledGoalByPriority.put(j++, goal);
-    }
-    _goalByPriorityForPrecomputing.add(shuffledGoalByPriority);
   }
 
   /**
    * Package private for unit test.
    */
-  List<SortedMap<Integer, Goal>> goalByPriorityForPrecomputing() {
+  List<List<Goal>> goalByPriorityForPrecomputing() {
     return _goalByPriorityForPrecomputing;
   }
 
@@ -298,7 +286,7 @@ public class GoalOptimizer implements Runnable {
    */
   public AnalyzerState state(MetadataClient.ClusterAndGeneration clusterAndGeneration) {
     Map<Goal, Boolean> goalReadiness = new LinkedHashMap<>(_goalsByPriority.size());
-    for (Goal goal : _goalsByPriority.values()) {
+    for (Goal goal : _goalsByPriority) {
       goalReadiness.put(goal, _loadMonitor.meetCompletenessRequirements(clusterAndGeneration,
                                                                         goal.clusterModelCompletenessRequirements()));
     }
@@ -335,6 +323,7 @@ public class GoalOptimizer implements Runnable {
         // Explicitly allow capacity estimation to exit the loop upon computing best proposals.
         while (!validCachedProposal()) {
           try {
+            operationProgress.clear();
             // Prevent multiple thread submit from computing task together.
             int numWaitingThread = _threadsWaitingForCache.getAndIncrement();
             if (_numPrecomputingThreads > 0) {
@@ -383,10 +372,10 @@ public class GoalOptimizer implements Runnable {
   /**
    * Provides optimization using {@link #_defaultExcludedTopics}.
    *
-   * See {@link #optimizations(ClusterModel, Map, OperationProgress, Pattern)}.
+   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern)}.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
-                                       Map<Integer, Goal> goalsByPriority,
+                                       List<Goal> goalsByPriority,
                                        OperationProgress operationProgress)
       throws KafkaCruiseControlException {
     return optimizations(clusterModel, goalsByPriority, operationProgress, null);
@@ -408,7 +397,7 @@ public class GoalOptimizer implements Runnable {
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
-                                       Map<Integer, Goal> goalsByPriority,
+                                       List<Goal> goalsByPriority,
                                        OperationProgress operationProgress,
                                        Pattern requestedExcludedTopics)
       throws KafkaCruiseControlException {
@@ -422,7 +411,7 @@ public class GoalOptimizer implements Runnable {
     }
 
     LOG.trace("Cluster before optimization is {}", clusterModel);
-    ClusterModel.BrokerStats brokerStatsBeforeOptimization = clusterModel.brokerStats();
+    BrokerStats brokerStatsBeforeOptimization = clusterModel.brokerStats();
     Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, Integer> initLeaderDistribution = clusterModel.getLeaderDistribution();
     boolean isSelfHealing = !clusterModel.selfHealingEligibleReplicas().isEmpty();
@@ -437,10 +426,9 @@ public class GoalOptimizer implements Runnable {
     Map<TopicPartition, Integer> preOptimizedLeaderDistribution = null;
     Set<String> excludedTopics = excludedTopics(clusterModel, requestedExcludedTopics);
     LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-    for (Map.Entry<Integer, Goal> entry : goalsByPriority.entrySet()) {
+    for (Goal goal : goalsByPriority) {
       preOptimizedReplicaDistribution = preOptimizedReplicaDistribution == null ? initReplicaDistribution : clusterModel.getReplicaDistribution();
       preOptimizedLeaderDistribution = preOptimizedLeaderDistribution == null ? initLeaderDistribution : clusterModel.getLeaderDistribution();
-      Goal goal = entry.getValue();
       OptimizationForGoal step = new OptimizationForGoal(goal.name());
       operationProgress.addStep(step);
       LOG.debug("Optimizing goal {}", goal.name());
@@ -513,7 +501,7 @@ public class GoalOptimizer implements Runnable {
         _bestProposal = result;
       } else {
         boolean shouldUpdate = true;
-        for (Goal goal: _goalsByPriority.values()) {
+        for (Goal goal: _goalsByPriority) {
           shouldUpdate = shouldUpdate
                          && goal.clusterModelStatsComparator().compare(result.clusterModelStats(), _bestProposal
               .clusterModelStats()) >= 0;
@@ -547,8 +535,8 @@ public class GoalOptimizer implements Runnable {
     private final Set<ExecutionProposal> _optimizationProposals;
     private final Set<Goal> _violatedGoalsBeforeOptimization;
     private final Set<Goal> _violatedGoalsAfterOptimization;
-    private final ClusterModel.BrokerStats _brokerStatsBeforeOptimization;
-    private final ClusterModel.BrokerStats _brokerStatsAfterOptimization;
+    private final BrokerStats _brokerStatsBeforeOptimization;
+    private final BrokerStats _brokerStatsAfterOptimization;
     private final ModelGeneration _modelGeneration;
     private final ClusterModelStats _clusterModelStats;
     private final Map<Integer, String> _capacityEstimationInfoByBrokerId;
@@ -558,8 +546,8 @@ public class GoalOptimizer implements Runnable {
                     Set<Goal> violatedGoalsBeforeOptimization,
                     Set<Goal> violatedGoalsAfterOptimization,
                     Set<ExecutionProposal> optimizationProposals,
-                    ClusterModel.BrokerStats brokerStatsBeforeOptimization,
-                    ClusterModel.BrokerStats brokerStatsAfterOptimization,
+                    BrokerStats brokerStatsBeforeOptimization,
+                    BrokerStats brokerStatsAfterOptimization,
                     ModelGeneration modelGeneration,
                     ClusterModelStats clusterModelStats,
                     Map<Integer, String> capacityEstimationInfoByBrokerId,
@@ -600,11 +588,11 @@ public class GoalOptimizer implements Runnable {
       return _clusterModelStats;
     }
 
-    public ClusterModel.BrokerStats brokerStatsBeforeOptimization() {
+    public BrokerStats brokerStatsBeforeOptimization() {
       return _brokerStatsBeforeOptimization;
     }
 
-    public ClusterModel.BrokerStats brokerStatsAfterOptimization() {
+    public BrokerStats brokerStatsAfterOptimization() {
       return _brokerStatsAfterOptimization;
     }
 
@@ -662,10 +650,10 @@ public class GoalOptimizer implements Runnable {
    * A class that precomputes the proposal candidates and find the best proposal.
    */
   private class ProposalCandidateComputer implements Runnable {
-    private final TreeMap<Integer, Goal> _goalByPriority;
+    private final List<Goal> _goalByPriority;
 
-    ProposalCandidateComputer(Map<Integer, Goal> goalByPriority) {
-      _goalByPriority = new TreeMap<>(goalByPriority);
+    ProposalCandidateComputer(List<Goal> goalByPriority) {
+      _goalByPriority = new ArrayList<>(goalByPriority);
     }
 
     @Override

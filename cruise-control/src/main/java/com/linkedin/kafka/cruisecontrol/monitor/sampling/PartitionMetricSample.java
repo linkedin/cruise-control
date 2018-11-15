@@ -23,7 +23,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMet
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.PRODUCE_RATE;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.REPLICATION_BYTES_IN_RATE;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.REPLICATION_BYTES_OUT_RATE;
-import static java.nio.charset.StandardCharsets.*;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 
 /**

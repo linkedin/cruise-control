@@ -5,6 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
@@ -17,36 +19,37 @@ import java.util.regex.Pattern;
  * {@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean, Pattern)}
  */
-class GetOptimizationProposalsRunnable extends OperationRunnable<GoalOptimizer.OptimizerResult> {
+class GetOptimizationProposalsRunnable extends OperationRunnable {
   private final List<String> _goals;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
   private final Pattern _excludedTopics;
 
   GetOptimizationProposalsRunnable(KafkaCruiseControl kafkaCruiseControl,
-                                   OperationFuture<GoalOptimizer.OptimizerResult> future,
+                                   OperationFuture future,
                                    List<String> goals,
                                    ModelCompletenessRequirements modelCompletenessRequirements,
-                                   boolean allowCapacityEstimation,
-                                   Pattern excludedTopics) {
+                                   ProposalsParameters parameters) {
     super(kafkaCruiseControl, future);
     _goals = goals;
     _modelCompletenessRequirements = modelCompletenessRequirements;
-    _allowCapacityEstimation = allowCapacityEstimation;
-    _excludedTopics = excludedTopics;
+    _allowCapacityEstimation = parameters.allowCapacityEstimation();
+    _excludedTopics = parameters.excludedTopics();
   }
 
   @Override
-  protected GoalOptimizer.OptimizerResult getResult() throws Exception {
+  protected OptimizationResult getResult() throws Exception {
+    GoalOptimizer.OptimizerResult optimizerResult;
     if (_goals != null || _excludedTopics != null) {
-      return _kafkaCruiseControl.getOptimizationProposals(_goals,
-                                                          _modelCompletenessRequirements,
-                                                          _future.operationProgress(),
-                                                          _allowCapacityEstimation,
-                                                          true,
-                                                          _excludedTopics);
+      optimizerResult = _kafkaCruiseControl.getOptimizationProposals(_goals,
+                                                                     _modelCompletenessRequirements,
+                                                                     _future.operationProgress(),
+                                                                     _allowCapacityEstimation,
+                                                                     true,
+                                                                     _excludedTopics);
     } else {
-      return _kafkaCruiseControl.getOptimizationProposals(_future.operationProgress(), _allowCapacityEstimation);
+      optimizerResult = _kafkaCruiseControl.getOptimizationProposals(_future.operationProgress(), _allowCapacityEstimation);
     }
+    return new OptimizationResult(optimizerResult);
   }
 }

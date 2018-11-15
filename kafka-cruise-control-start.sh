@@ -48,13 +48,13 @@ do
   fi
 done
 
-if [ -z CLASSPATH ]; then
+if [ -z "$CLASSPATH" ]; then
   CLASSPATH="$base_dir/cruise-control/build/libs/*"
 else
   CLASSPATH="$CLASSPATH:$base_dir/cruise-control/build/libs/*"
 fi
 
-if [ -z CLASSPATH ]; then
+if [ -z "$CLASSPATH" ]; then
   CLASSPATH="$base_dir/cruise-control-metrics-reporter/build/libs/*"
 else
   CLASSPATH="$CLASSPATH:$base_dir/cruise-control-metrics-reporter/build/libs/*"

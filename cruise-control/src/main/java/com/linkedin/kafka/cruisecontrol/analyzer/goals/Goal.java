@@ -67,21 +67,6 @@ public interface Goal extends CruiseControlConfigurable {
       throws KafkaCruiseControlException;
 
   /**
-   * @deprecated
-   * Please use {@link #actionAcceptance(BalancingAction, ClusterModel)} instead.
-   *
-   * Check whether given action is acceptable by this goal in the given state of the cluster. An action is
-   * acceptable by a goal if it satisfies requirements of the goal.
-   * It is assumed that the given action does not involve replicas regarding excluded topics.
-   *
-   * @param action Action to be checked for acceptance.
-   * @param clusterModel State of the cluster before application of the action.
-   * @return True if action is acceptable by this goal, false otherwise.
-   */
-  @Deprecated
-  boolean isActionAcceptable(BalancingAction action, ClusterModel clusterModel);
-
-  /**
    * Check whether the given action is acceptable by this goal in the given state of the cluster. An action is
    * (1) accepted by a goal if it satisfies requirements of the goal, or (2) rejected by a goal if it violates its
    * requirements. The return value indicates whether the action is accepted or why it is rejected.

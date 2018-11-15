@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
+import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -27,12 +28,14 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import java.util.SortedMap;
 import java.util.TreeMap;
-import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.kafka.common.TopicPartition;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
+
 
 /**
  * A class that holds the information of the cluster, including topology, liveness and load for racks, brokers and
@@ -131,13 +134,12 @@ public class ClusterModel implements Serializable {
    * @return The replica distribution of leader and follower replicas in the cluster at the point of call.
    */
   public Map<TopicPartition, List<Integer>> getReplicaDistribution() {
-    Map<TopicPartition, List<Integer>> replicaDistribution = new HashMap<>();
+    Map<TopicPartition, List<Integer>> replicaDistribution = new HashMap<>(_partitionsByTopicPartition.size());
 
     for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
       TopicPartition tp = entry.getKey();
       Partition partition = entry.getValue();
-      List<Integer> brokerIds = new ArrayList<>();
-      partition.replicas().forEach(r -> brokerIds.add(r.broker().id()));
+      List<Integer> brokerIds = partition.replicas().stream().map(r -> r.broker().id()).collect(Collectors.toList());
       // Add distribution of replicas in the partition.
       replicaDistribution.put(tp, brokerIds);
     }
@@ -1021,8 +1023,7 @@ public class ClusterModel implements Serializable {
    */
   public String brokerStatsJSON() {
     Gson gson = new Gson();
-    String json = gson.toJson(getJsonStructure());
-    return json;
+    return gson.toJson(getJsonStructure());
   }
 
   /**
@@ -1045,254 +1046,6 @@ public class ClusterModel implements Serializable {
                                        _capacityEstimationInfoByBrokerId.get(broker.id()) != null);
     });
     return brokerStats;
-  }
-
-  /**
-   * Get broker level stats in human readable format.
-   */
-  public static class BrokerStats {
-    private final List<SingleBrokerStats> _brokerStats = new ArrayList<>();
-    private int _hostFieldLength = 0;
-    private SortedMap<String, BasicStats> _hostStats = new ConcurrentSkipListMap<>();
-
-    private void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
-                                      double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                                      int numReplicas, int numLeaders, boolean isEstimated) {
-
-      SingleBrokerStats singleBrokerStats =
-          new SingleBrokerStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                                potentialBytesOutRate, numReplicas, numLeaders, isEstimated);
-      _brokerStats.add(singleBrokerStats);
-      _hostFieldLength = Math.max(_hostFieldLength, host.length());
-      _hostStats.computeIfAbsent(host, h -> new BasicStats(0.0, 0.0, 0.0, 0.0,
-                                                           0.0, 0.0, 0, 0))
-                .addBasicStats(singleBrokerStats.basicStats());
-    }
-
-    /**
-     * Get the broker level load stats.
-     */
-    public List<SingleBrokerStats> stats() {
-      return _brokerStats;
-    }
-
-    /**
-     * Return a valid JSON encoded string
-     *
-     * @param version JSON version
-     */
-    public String getJSONString(int version) {
-      Gson gson = new Gson();
-      Map<String, Object> jsonStructure = getJsonStructure();
-      jsonStructure.put("version", version);
-      return gson.toJson(jsonStructure);
-    }
-
-    /**
-     * Return an object that can be further used
-     * to encode into JSON
-     */
-    public Map<String, Object> getJsonStructure() {
-      List<Map<String, Object>> hostStats = new ArrayList<>();
-
-      // host level statistics
-      for (Map.Entry<String, BasicStats> entry : _hostStats.entrySet()) {
-        BasicStats stats = entry.getValue();
-        Map<String, Object> hostEntry = entry.getValue().getJSONStructure();
-        hostEntry.put("Host", entry.getKey());
-        hostStats.add(hostEntry);
-      }
-
-      // broker level statistics
-      List<Map<String, Object>> brokerStats = new ArrayList<>();
-      for (SingleBrokerStats stats : _brokerStats) {
-        Map<String, Object> brokerEntry = stats.getJSONStructure();
-        brokerStats.add(brokerEntry);
-      }
-
-      // consolidated
-      Map<String, Object> stats = new HashMap<>();
-      stats.put("hosts", hostStats);
-      stats.put("brokers", brokerStats);
-      return stats;
-    }
-
-    @Override
-    public String toString() {
-      StringBuilder sb = new StringBuilder();
-      // put host stats.
-      sb.append(String.format("%n%" + _hostFieldLength + "s%20s%15s%25s%25s%20s%20s%20s%n",
-                              "HOST", "DISK(MB)", "CPU(%)", "LEADER_NW_IN(KB/s)",
-                              "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
-      for (Map.Entry<String, BasicStats> entry : _hostStats.entrySet()) {
-        BasicStats stats = entry.getValue();
-        sb.append(String.format("%" + _hostFieldLength + "s,%19.3f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
-                                entry.getKey(),
-                                stats.diskUtil(),
-                                stats.cpuUtil(),
-                                stats.leaderBytesInRate(),
-                                stats.followerBytesInRate(),
-                                stats.bytesOutRate(),
-                                stats.potentialBytesOutRate(),
-                                stats.numLeaders(),
-                                stats.numReplicas()));
-      }
-
-      // put broker stats.
-      sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%20s%15s%25s%25s%20s%20s%20s%n",
-                              "HOST", "BROKER", "DISK(MB)", "CPU(%)", "LEADER_NW_IN(KB/s)",
-                              "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
-      for (SingleBrokerStats stats : _brokerStats) {
-        sb.append(String.format("%" + _hostFieldLength + "s,%14d,%19.3f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
-                                stats.host(),
-                                stats.id(),
-                                stats.basicStats().diskUtil(),
-                                stats.basicStats().cpuUtil(),
-                                stats.basicStats().leaderBytesInRate(),
-                                stats.basicStats().followerBytesInRate(),
-                                stats.basicStats().bytesOutRate(),
-                                stats.basicStats().potentialBytesOutRate(),
-                                stats.basicStats().numLeaders(),
-                                stats.basicStats().numReplicas()));
-      }
-
-      return sb.toString();
-    }
-  }
-
-  public static class SingleBrokerStats {
-    private final String _host;
-    private final int _id;
-    private final Broker.State _state;
-    final BasicStats _basicStats;
-    private final boolean _isEstimated;
-
-    private SingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
-                              double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                              int numReplicas, int numLeaders, boolean isEstimated) {
-      _host = host;
-      _id = id;
-      _state = state;
-      _basicStats = new BasicStats(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                                   potentialBytesOutRate, numReplicas, numLeaders);
-      _isEstimated = isEstimated;
-    }
-
-    public String host() {
-      return _host;
-    }
-
-    public Broker.State state() {
-      return _state;
-    }
-
-    public int id() {
-      return _id;
-    }
-
-    private BasicStats basicStats() {
-      return _basicStats;
-    }
-
-    public boolean isEstimated() {
-      return _isEstimated;
-    }
-
-    /*
-    * Return an object that can be further used
-    * to encode into JSON
-    */
-    public Map<String, Object> getJSONStructure() {
-      Map<String, Object> entry = _basicStats.getJSONStructure();
-      entry.put("Host", _host);
-      entry.put("Broker", _id);
-      entry.put("BrokerState", _state);
-      return entry;
-    }
-  }
-
-  private static class BasicStats {
-    private double _diskUtil;
-    private double _cpuUtil;
-    private double _leaderBytesInRate;
-    private double _followerBytesInRate;
-    private double _bytesOutRate;
-    private double _potentialBytesOutRate;
-    private int _numReplicas;
-    private int _numLeaders;
-
-    private BasicStats(double diskUtil, double cpuUtil, double leaderBytesInRate,
-                       double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                       int numReplicas, int numLeaders) {
-      _diskUtil = diskUtil < 0.0 ? 0.0 : diskUtil;
-      _cpuUtil = cpuUtil < 0.0 ? 0.0 : cpuUtil;
-      _leaderBytesInRate = leaderBytesInRate < 0.0 ? 0.0 : leaderBytesInRate;
-      _followerBytesInRate = followerBytesInRate < 0.0 ? 0.0 : followerBytesInRate;
-      _bytesOutRate = bytesOutRate < 0.0 ? 0.0 : bytesOutRate;
-      _potentialBytesOutRate =  potentialBytesOutRate < 0.0 ? 0.0 : potentialBytesOutRate;
-      _numReplicas = numReplicas < 1 ? 0 : numReplicas;
-      _numLeaders =  numLeaders < 1 ? 0 : numLeaders;
-    }
-
-    double diskUtil() {
-      return _diskUtil;
-    }
-
-    double cpuUtil() {
-      return _cpuUtil;
-    }
-
-    double leaderBytesInRate() {
-      return _leaderBytesInRate;
-    }
-
-    double followerBytesInRate() {
-      return _followerBytesInRate;
-    }
-
-    double bytesOutRate() {
-      return _bytesOutRate;
-    }
-
-    double potentialBytesOutRate() {
-      return _potentialBytesOutRate;
-    }
-
-    int numReplicas() {
-      return _numReplicas;
-    }
-
-    int numLeaders() {
-      return _numLeaders;
-    }
-
-    void addBasicStats(BasicStats basicStats) {
-      _diskUtil += basicStats.diskUtil();
-      _cpuUtil += basicStats.cpuUtil();
-      _leaderBytesInRate += basicStats.leaderBytesInRate();
-      _followerBytesInRate += basicStats.followerBytesInRate();
-      _bytesOutRate += basicStats.bytesOutRate();
-      _potentialBytesOutRate  += basicStats.potentialBytesOutRate();
-      _numReplicas += basicStats.numReplicas();
-      _numLeaders += basicStats.numLeaders();
-    }
-
-    /*
-    * Return an object that can be further used
-    * to encode into JSON
-    */
-    public Map<String, Object> getJSONStructure() {
-      Map<String, Object> entry = new HashMap<>();
-      entry.put("DiskMB", diskUtil());
-      entry.put("CpuPct", cpuUtil());
-      entry.put("LeaderNwInRate", leaderBytesInRate());
-      entry.put("FollowerNwInRate", followerBytesInRate());
-      entry.put("NnwOutRate", bytesOutRate());
-      entry.put("PnwOutRate", potentialBytesOutRate());
-      entry.put("Replicas", numReplicas());
-      entry.put("Leaders", numLeaders());
-      return entry;
-    }
   }
 
   /**
@@ -1360,7 +1113,7 @@ public class ClusterModel implements Serializable {
   public String getJSONString(int version) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure2();
-    jsonStructure.put("version", version);
+    jsonStructure.put(VERSION, version);
     return gson.toJson(jsonStructure);
   }
 

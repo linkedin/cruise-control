@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.async;
 
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import java.lang.reflect.Field;
 import java.util.concurrent.CompletableFuture;
@@ -12,9 +13,8 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * The future to support async operations in KafkaCruiseControl
- * @param <T> the return type.
  */
-public class OperationFuture<T> extends CompletableFuture<T> {
+public class OperationFuture extends CompletableFuture<CruiseControlResponse> {
   // The url encoded request url
   private final String _operation;
   private final OperationProgress _operationProgress;
@@ -43,7 +43,7 @@ public class OperationFuture<T> extends CompletableFuture<T> {
   }
 
   @Override
-  public T get() throws InterruptedException, ExecutionException {
+  public CruiseControlResponse get() throws InterruptedException, ExecutionException {
     try {
       return super.get();
     } catch (Throwable t) {
