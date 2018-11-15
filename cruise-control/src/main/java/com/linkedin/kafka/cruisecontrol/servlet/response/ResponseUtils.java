@@ -54,7 +54,7 @@ public class ResponseUtils {
   public static void returnProgress(HttpServletResponse response, List<OperationFuture> futures, boolean json) throws IOException {
     String responseMsg;
     if (json) {
-      Map<String, Object> respMap = new HashMap<>();
+      Map<String, Object> respMap = new HashMap<>(2);
       respMap.put(VERSION, JSON_VERSION);
       List<Object> progress = new ArrayList<>(futures.size());
       for (OperationFuture future: futures) {

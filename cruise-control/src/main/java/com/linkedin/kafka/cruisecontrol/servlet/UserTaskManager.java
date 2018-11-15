@@ -138,7 +138,7 @@ public class UserTaskManager implements Closeable {
    * Create the UserTaskInfo reference if it doesn't exist.
    *
    * This method creates references {@link UserTaskInfo} and maps it to {@link HttpSession} from httpServletRequest. The
-   * {@link HttpSession} is also used to fetch {@link OperationFuture} of UserTask that is already in progress. If the
+   * {@link HttpSession} is also used to fetch {@link OperationFuture} for the in-progress/completed UserTask. If the
    * UserTaskID is passed in the httpServletRequest header then that takes precedence over {@link HttpSession} to fetch
    * the {@link OperationFuture} for the UserTask.
    *
@@ -146,12 +146,12 @@ public class UserTaskManager implements Closeable {
    * @param httpServletResponse the HttpServletResponse that contains the UserTaskId in the HttpServletResponse header.
    * @param operation An asynchronous operations that returns {@link OperationFuture}.
    * @param step The index of the step that has to be added or fetched.
-   * @return The {@link OperationFuture} for the provided asynchronous operation.
+   * @return The list of {@link OperationFuture} for the linked UserTask.
    */
   public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest,
-                                                    HttpServletResponse httpServletResponse,
-                                                    Supplier<OperationFuture> operation,
-                                                    int step) {
+                                                   HttpServletResponse httpServletResponse,
+                                                   Supplier<OperationFuture> operation,
+                                                   int step) {
     UUID userTaskId = getUserTaskId(httpServletRequest);
     List<OperationFuture> operationFutures = getFuturesByUserTaskId(userTaskId, httpServletRequest);
 
