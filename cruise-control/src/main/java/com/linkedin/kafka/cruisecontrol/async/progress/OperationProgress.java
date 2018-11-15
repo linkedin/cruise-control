@@ -69,7 +69,7 @@ public class OperationProgress {
    * Clear the progress.
    */
   public synchronized void clear() {
-    ensureMutable();
+    this._mutable = true;
     _steps.clear();
     _startTimes.clear();
   }
