@@ -365,7 +365,7 @@ public class ParameterUtils {
     substatesString = substatesParam == null ? new HashSet<>() : new HashSet<>(Arrays.asList(substatesParam.split(",")));
     substatesString.removeIf(String::isEmpty);
 
-    Set<CruiseControlState.SubState> substates = new HashSet<>();
+    Set<CruiseControlState.SubState> substates = new HashSet<>(substatesString.size());
     try {
       for (String substateString : substatesString) {
         substates.add(CruiseControlState.SubState.valueOf(substateString.toUpperCase()));

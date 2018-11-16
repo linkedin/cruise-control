@@ -35,6 +35,13 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
  * A util class for Analyzer.
  */
 public class AnalyzerUtils {
+  public static final String BROKERS = "brokers";
+  public static final String REPLICAS = "replicas";
+  public static final String TOPICS = "topics";
+  public static final String METADATA = "metadata";
+  public static final String POTENTIAL_NW_OUT = "potentialNwOut";
+  public static final String TOPIC_REPLICAS = "topicReplicas";
+  public static final String STATISTICS = "statistics";
   public final static double EPSILON = 1E-5;
 
   private AnalyzerUtils() {
@@ -137,32 +144,31 @@ public class AnalyzerUtils {
   public static Map<String, Object> getJsonStructure(ClusterModelStats clusterModelStats) {
     Map<String, Object> clusterStatsMap = new HashMap<>();
 
-    clusterStatsMap.put("brokers", clusterModelStats.numBrokers());
-    clusterStatsMap.put("replicas", clusterModelStats.numReplicasInCluster());
-    clusterStatsMap.put("topics", clusterModelStats.numTopics());
+    clusterStatsMap.put(BROKERS, clusterModelStats.numBrokers());
+    clusterStatsMap.put(REPLICAS, clusterModelStats.numReplicasInCluster());
+    clusterStatsMap.put(TOPICS, clusterModelStats.numTopics());
 
     Map<Statistic, Map<Resource, Double>> resourceUtilizationStats = clusterModelStats.resourceUtilizationStats();
     Map<Statistic, Double> nwOutUtilizationStats = clusterModelStats.potentialNwOutUtilizationStats();
     Map<Statistic, Number> replicaStats = clusterModelStats.replicaStats();
     Map<Statistic, Number> topicReplicaStats = clusterModelStats.topicReplicaStats();
 
-    Map<String, Object> statisticMap = new HashMap<>();
-
-    for (Statistic stat : Statistic.values()) {
-      Map<String, Double> resourceMap = new HashMap<>();
-
-      for (Resource resource : Resource.cachedValues()) {
+    List<Statistic> cachedStatistic = Statistic.cachedValues();
+    Map<String, Object> statisticMap = new HashMap<>(cachedStatistic.size());
+    for (Statistic stat : cachedStatistic) {
+      List<Resource> cachedResources = Resource.cachedValues();
+      Map<String, Double> resourceMap = new HashMap<>(cachedResources.size() + 3);
+      for (Resource resource : cachedResources) {
         resourceMap.put(resource.resource(), resourceUtilizationStats.get(stat).get(resource));
       }
-
-      resourceMap.put("potentialNwOut", nwOutUtilizationStats.get(stat));
-      resourceMap.put("replicas", replicaStats.get(stat).doubleValue());
-      resourceMap.put("topicReplicas",  topicReplicaStats.get(stat).doubleValue());
+      resourceMap.put(POTENTIAL_NW_OUT, nwOutUtilizationStats.get(stat));
+      resourceMap.put(REPLICAS, replicaStats.get(stat).doubleValue());
+      resourceMap.put(TOPIC_REPLICAS,  topicReplicaStats.get(stat).doubleValue());
 
       statisticMap.put(stat.stat(), resourceMap);
     }
 
-    clusterStatsMap.put("statistics", statisticMap);
+    clusterStatsMap.put(STATISTICS, statisticMap);
 
     return clusterStatsMap;
   }

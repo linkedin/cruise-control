@@ -107,7 +107,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     }
     loadMonitorTaskRunner.start(true);
 
-    Set<TopicPartition> partitionsToSample = new HashSet<>();
+    Set<TopicPartition> partitionsToSample = new HashSet<>(NUM_TOPICS * NUM_PARTITIONS);
     for (int i = 0; i < NUM_TOPICS; i++) {
       for (int j = 0; j < NUM_PARTITIONS; j++) {
         partitionsToSample.add(new TopicPartition("topic-" + i, j));
@@ -210,8 +210,8 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
         _exceptionsLeft--;
         throw new MetricSamplingException("Error");
       }
-      Set<PartitionMetricSample> partitionMetricSamples = new HashSet<>();
-      for (TopicPartition tp: assignedPartitions) {
+      Set<PartitionMetricSample> partitionMetricSamples = new HashSet<>(assignedPartitions.size());
+      for (TopicPartition tp : assignedPartitions) {
         PartitionMetricSample sample = new PartitionMetricSample(cluster.partition(tp).leader().id(), tp);
         long now = TIME.milliseconds();
         for (Resource resource : Resource.cachedValues()) {

@@ -12,6 +12,14 @@ import javax.servlet.http.HttpServletResponse;
 public interface CruiseControlResponse {
 
   /**
+   * Based on the given parameters, keep the relevant response to be returned to the user and discard the remaining.
+   * Calls to this method intend to alleviate the potential memory pressure of response. Noop if called multiple times.
+   *
+   * @param parameters Parameters of the HTTP request of user.
+   */
+  void discardIrrelevantResponse(CruiseControlParameters parameters);
+
+  /**
    * Write success response with the given parameters to the provided HTTP response.
    *
    * @param parameters Parameters of the HTTP request of user.

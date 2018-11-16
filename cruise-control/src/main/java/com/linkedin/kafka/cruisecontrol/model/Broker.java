@@ -30,6 +30,9 @@ import org.apache.kafka.common.TopicPartition;
  * created as part of a rack structure.
  */
 public class Broker implements Serializable, Comparable<Broker> {
+  private static final String BROKER_ID = "brokerid";
+  private static final String BROKER_STATE = "brokerstate";
+  private static final String REPLICAS = "replicas";
 
   public enum State {
     ALIVE, DEAD, NEW, DEMOTED
@@ -454,10 +457,10 @@ public class Broker implements Serializable, Comparable<Broker> {
     for (Replica replica : _replicas) {
       replicaList.add(replica.getJsonStructureForLoad());
     }
-    Map<String, Object> brokerMap = new HashMap<>();
-    brokerMap.put("brokerid", _id);
-    brokerMap.put("brokerstate", _state);
-    brokerMap.put("replicas", replicaList);
+    Map<String, Object> brokerMap = new HashMap<>(3);
+    brokerMap.put(BROKER_ID, _id);
+    brokerMap.put(BROKER_STATE, _state);
+    brokerMap.put(REPLICAS, replicaList);
     return brokerMap;
   }
 

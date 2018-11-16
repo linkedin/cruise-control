@@ -494,10 +494,10 @@ public class LoadMonitorTest {
     Node node0 = new Node(0, "localhost", 100, "rack0");
     Node node1 = new Node(1, "localhost", 100, "rack1");
     Node[] nodes = {node0, node1};
-    Set<Node> allNodes = new HashSet<>();
+    Set<Node> allNodes = new HashSet<>(2);
     allNodes.add(node0);
     allNodes.add(node1);
-    Set<PartitionInfo> parts = new HashSet<>();
+    Set<PartitionInfo> parts = new HashSet<>(partitions.size());
     for (TopicPartition tp : partitions) {
       parts.add(new PartitionInfo(tp.topic(), tp.partition(), node0, nodes, nodes));
     }
