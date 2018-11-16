@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
@@ -15,9 +14,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerP
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaOptimizationParameters;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,7 +28,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 
 public class OptimizationResult extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(OptimizationResult.class);
-  private final GoalOptimizer.OptimizerResult _optimizerResult;
   private static final String SUMMARY = "summary";
   private static final String PROPOSALS = "proposals";
   private static final String GOAL = "goal";
@@ -44,6 +39,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   private static final String VIOLATED = "VIOLATED";
   private static final String FIXED = "FIXED";
   private static final String NO_ACTION = "NO-ACTION";
+  private GoalOptimizer.OptimizerResult _optimizerResult;
 
   public OptimizationResult(GoalOptimizer.OptimizerResult optimizerResult) {
     _optimizerResult = optimizerResult;
@@ -53,52 +49,55 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     return _optimizerResult;
   }
 
-  @Override
-  public void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
-    try {
-      EndPoint endPoint = parameters.endPoint();
-      String pretext;
-      switch (endPoint) {
-        case ADD_BROKER:
-          pretext = String.format("%n%nCluster load after adding broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
-          break;
-        case REMOVE_BROKER:
-          pretext = String.format("%n%nCluster load after removing broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
-          break;
-        case PROPOSALS:
-          pretext = String.format("%n%nOptimized load:%n");
-          break;
-        case REBALANCE:
-          pretext = String.format("%n%nCluster load after rebalance:%n");
-          break;
-        case DEMOTE_BROKER:
-          pretext = String.format("%n%nCluster load after demoting broker %s:%n", ((DemoteBrokerParameters) parameters).brokerIds());
-          break;
-        default:
-          LOG.error("Unrecognized endpoint.");
-          return;
-      }
+  private String getPlaintext(CruiseControlParameters parameters) {
+    StringBuilder sb = new StringBuilder();
 
-      boolean isVerbose = ((KafkaOptimizationParameters) parameters).isVerbose();
-      if (isVerbose) {
-        out.write(_optimizerResult.goalProposals().toString().getBytes(StandardCharsets.UTF_8));
-      }
-
-      writeProposalSummary(out);
-      if (isVerbose) {
-        out.write(String.format("%n%nCurrent load:%n%s", _optimizerResult.brokerStatsBeforeOptimization().toString())
-                        .getBytes(StandardCharsets.UTF_8));
-      }
-
-      out.write(pretext.getBytes(StandardCharsets.UTF_8));
-      out.write(_optimizerResult.brokerStatsAfterOptimization().toString().getBytes(StandardCharsets.UTF_8));
-    } catch (IOException e) {
-      LOG.error("Failed to write output stream.", e);
+    EndPoint endPoint = parameters.endPoint();
+    String pretext;
+    switch (endPoint) {
+      case ADD_BROKER:
+        pretext = String.format("%n%nCluster load after adding broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
+        break;
+      case REMOVE_BROKER:
+        pretext = String.format("%n%nCluster load after removing broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
+        break;
+      case PROPOSALS:
+        pretext = String.format("%n%nOptimized load:%n");
+        break;
+      case REBALANCE:
+        pretext = String.format("%n%nCluster load after rebalance:%n");
+        break;
+      case DEMOTE_BROKER:
+        pretext = String.format("%n%nCluster load after demoting broker %s:%n", ((DemoteBrokerParameters) parameters).brokerIds());
+        break;
+      default:
+        LOG.error("Unrecognized endpoint.");
+        return "Unrecognized endpoint.";
     }
+
+    boolean isVerbose = ((KafkaOptimizationParameters) parameters).isVerbose();
+    if (isVerbose) {
+      sb.append(_optimizerResult.goalProposals().toString());
+    }
+
+    writeProposalSummary(sb);
+    if (isVerbose) {
+      sb.append(String.format("%n%nCurrent load:%n%s", _optimizerResult.brokerStatsBeforeOptimization().toString()));
+    }
+
+    sb.append(String.format("%s%s", pretext, _optimizerResult.brokerStatsAfterOptimization().toString()));
+    return sb.toString();
   }
 
   @Override
-  public String getJSONString(CruiseControlParameters parameters) {
+  protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
+    // Cache relevant response.
+    _cachedResponse = parameters.json() ? getJSONString(parameters) : getPlaintext(parameters);
+    // Discard irrelevant response.
+    _optimizerResult = null;
+  }
+
+  private String getJSONString(CruiseControlParameters parameters) {
     Map<String, Object> optimizationResult = new HashMap<>();
     if (((KafkaOptimizationParameters) parameters).isVerbose()) {
       optimizationResult.put(PROPOSALS, _optimizerResult.goalProposals().stream()
@@ -108,11 +107,11 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
 
     optimizationResult.put(SUMMARY, _optimizerResult.getProposalSummaryForJson());
     List<Map<String, Object>> goalSummary = new ArrayList<>();
-    for (Map.Entry<Goal, ClusterModelStats> entry : _optimizerResult.statsByGoalPriority().entrySet()) {
-      Goal goal = entry.getKey();
+    for (Map.Entry<String, ClusterModelStats> entry : _optimizerResult.statsByGoalName().entrySet()) {
+      String goalName = entry.getKey();
       Map<String, Object> goalMap = new HashMap<>();
-      goalMap.put(GOAL, goal.name());
-      goalMap.put(STATUS, goalResultDescription(goal));
+      goalMap.put(GOAL, goalName);
+      goalMap.put(STATUS, goalResultDescription(goalName));
       goalMap.put(CLUSTER_MODEL_STATS, entry.getValue().getJsonStructure());
       goalSummary.add(goalMap);
     }
@@ -124,19 +123,17 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     return gson.toJson(optimizationResult);
   }
 
-  private void writeProposalSummary(OutputStream out) throws IOException {
-    StringBuilder sb = new StringBuilder();
+  private void writeProposalSummary(StringBuilder sb) {
     sb.append(_optimizerResult.getProposalSummary());
-    for (Map.Entry<Goal, ClusterModelStats> entry : _optimizerResult.statsByGoalPriority().entrySet()) {
-      Goal goal = entry.getKey();
-      sb.append(String.format("%n%nStats for goal %s(%s):%n", goal.name(), goalResultDescription(goal)));
+    for (Map.Entry<String, ClusterModelStats> entry : _optimizerResult.statsByGoalName().entrySet()) {
+      String goalName = entry.getKey();
+      sb.append(String.format("%n%nStats for goal %s(%s):%n", goalName, goalResultDescription(goalName)));
       sb.append(entry.getValue().toString());
     }
-    out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
   }
 
-  private String goalResultDescription(Goal goal) {
-    return _optimizerResult.violatedGoalsBeforeOptimization().contains(goal) ?
-           _optimizerResult.violatedGoalsAfterOptimization().contains(goal) ? VIOLATED : FIXED : NO_ACTION;
+  private String goalResultDescription(String goalName) {
+    return _optimizerResult.violatedGoalsBeforeOptimization().contains(goalName) ?
+           _optimizerResult.violatedGoalsAfterOptimization().contains(goalName) ? VIOLATED : FIXED : NO_ACTION;
   }
 }

@@ -118,8 +118,6 @@ public class GoalOptimizer implements Runnable {
   }
 
   private void populateGoalByPriorityForPrecomputing() {
-    Set<List<Goal>> shuffledGoals = new HashSet<>();
-
     // Calculate the number of goals to compute the permutations.
     int numberOfGoalsToComputePermutations = 0;
     int numShuffledGoalsToGenerate = _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1;
@@ -134,7 +132,9 @@ public class GoalOptimizer implements Runnable {
     List<Goal> commonPrefix = _goalsByPriority.subList(0, toIndex);
     List<Goal> suffixToPermute = _goalsByPriority.subList(toIndex, _goalsByPriority.size());
 
-    for (List<Goal> shuffledSuffix: AnalyzerUtils.getPermutations(suffixToPermute)) {
+    Set<List<Goal>> permutations = AnalyzerUtils.getPermutations(suffixToPermute);
+    Set<List<Goal>> shuffledGoals = new HashSet<>(permutations.size());
+    for (List<Goal> shuffledSuffix : permutations) {
       List<Goal> shuffledGoalList = new ArrayList<>(commonPrefix);
       shuffledGoalList.addAll(shuffledSuffix);
       shuffledGoals.add(shuffledGoalList);
@@ -418,10 +418,10 @@ public class GoalOptimizer implements Runnable {
 
     // Set of balancing proposals that will be applied to the given cluster state to satisfy goals (leadership
     // transfer AFTER partition transfer.)
-    Set<Goal> optimizedGoals = new HashSet<>();
-    Set<Goal> violatedGoalsBeforeOptimization = new HashSet<>();
-    Set<Goal> violatedGoalsAfterOptimization = new HashSet<>();
-    Map<Goal, ClusterModelStats> statsByGoalPriority = new LinkedHashMap<>();
+    Set<Goal> optimizedGoals = new HashSet<>(goalsByPriority.size());
+    Set<String> violatedGoalNamesBeforeOptimization = new HashSet<>();
+    Set<String> violatedGoalNamesAfterOptimization = new HashSet<>();
+    Map<Goal, ClusterModelStats> statsByGoalPriority = new LinkedHashMap<>(goalsByPriority.size());
     Map<TopicPartition, List<Integer>> preOptimizedReplicaDistribution = null;
     Map<TopicPartition, Integer> preOptimizedLeaderDistribution = null;
     Set<String> excludedTopics = excludedTopics(clusterModel, requestedExcludedTopics);
@@ -440,10 +440,10 @@ public class GoalOptimizer implements Runnable {
                                                                    preOptimizedLeaderDistribution,
                                                                    clusterModel);
       if (!goalProposals.isEmpty() || !succeeded) {
-        violatedGoalsBeforeOptimization.add(goal);
+        violatedGoalNamesBeforeOptimization.add(goal.name());
       }
       if (!succeeded) {
-        violatedGoalsAfterOptimization.add(goal);
+        violatedGoalNamesAfterOptimization.add(goal.name());
       }
       logProgress(isSelfHealing, goal.name(), optimizedGoals.size(), goalProposals);
       step.done();
@@ -458,8 +458,8 @@ public class GoalOptimizer implements Runnable {
 
     Set<ExecutionProposal> proposals = AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
     return new OptimizerResult(statsByGoalPriority,
-                               violatedGoalsBeforeOptimization,
-                               violatedGoalsAfterOptimization,
+                               violatedGoalNamesBeforeOptimization,
+                               violatedGoalNamesAfterOptimization,
                                proposals,
                                brokerStatsBeforeOptimization,
                                clusterModel.brokerStats(),
@@ -531,10 +531,11 @@ public class GoalOptimizer implements Runnable {
    * optimization proposals.
    */
   public static class OptimizerResult {
-    private final Map<Goal, ClusterModelStats> _statsByGoalPriority;
+    private final Map<String, Goal.ClusterModelStatsComparator> _clusterModelStatsComparatorByGoalName;
+    private final Map<String, ClusterModelStats> _statsByGoalName;
     private final Set<ExecutionProposal> _optimizationProposals;
-    private final Set<Goal> _violatedGoalsBeforeOptimization;
-    private final Set<Goal> _violatedGoalsAfterOptimization;
+    private final Set<String> _violatedGoalNamesBeforeOptimization;
+    private final Set<String> _violatedGoalNamesAfterOptimization;
     private final BrokerStats _brokerStatsBeforeOptimization;
     private final BrokerStats _brokerStatsAfterOptimization;
     private final ModelGeneration _modelGeneration;
@@ -543,8 +544,8 @@ public class GoalOptimizer implements Runnable {
     private final Set<String> _excludedTopics;
 
     OptimizerResult(Map<Goal, ClusterModelStats> statsByGoalPriority,
-                    Set<Goal> violatedGoalsBeforeOptimization,
-                    Set<Goal> violatedGoalsAfterOptimization,
+                    Set<String> violatedGoalNamesBeforeOptimization,
+                    Set<String> violatedGoalNamesAfterOptimization,
                     Set<ExecutionProposal> optimizationProposals,
                     BrokerStats brokerStatsBeforeOptimization,
                     BrokerStats brokerStatsAfterOptimization,
@@ -552,9 +553,17 @@ public class GoalOptimizer implements Runnable {
                     ClusterModelStats clusterModelStats,
                     Map<Integer, String> capacityEstimationInfoByBrokerId,
                     Set<String> excludedTopics) {
-      _statsByGoalPriority = statsByGoalPriority;
-      _violatedGoalsBeforeOptimization = violatedGoalsBeforeOptimization;
-      _violatedGoalsAfterOptimization = violatedGoalsAfterOptimization;
+      _clusterModelStatsComparatorByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
+      _statsByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
+      for (Map.Entry<Goal, ClusterModelStats> entry : statsByGoalPriority.entrySet()) {
+        String goalName = entry.getKey().name();
+        Goal.ClusterModelStatsComparator comparator = entry.getKey().clusterModelStatsComparator();
+        _clusterModelStatsComparatorByGoalName.put(goalName, comparator);
+        _statsByGoalName.put(goalName, entry.getValue());
+      }
+
+      _violatedGoalNamesBeforeOptimization = violatedGoalNamesBeforeOptimization;
+      _violatedGoalNamesAfterOptimization = violatedGoalNamesAfterOptimization;
       _optimizationProposals = optimizationProposals;
       _brokerStatsBeforeOptimization = brokerStatsBeforeOptimization;
       _brokerStatsAfterOptimization = brokerStatsAfterOptimization;
@@ -564,20 +573,24 @@ public class GoalOptimizer implements Runnable {
       _excludedTopics = excludedTopics;
     }
 
-    public Map<Goal, ClusterModelStats> statsByGoalPriority() {
-      return _statsByGoalPriority;
+    public Map<String, Goal.ClusterModelStatsComparator> clusterModelStatsComparatorByGoalName() {
+      return _clusterModelStatsComparatorByGoalName;
+    }
+
+    public Map<String, ClusterModelStats> statsByGoalName() {
+      return _statsByGoalName;
     }
 
     public Set<ExecutionProposal> goalProposals() {
       return _optimizationProposals;
     }
 
-    public Set<Goal> violatedGoalsBeforeOptimization() {
-      return _violatedGoalsBeforeOptimization;
+    public Set<String> violatedGoalsBeforeOptimization() {
+      return _violatedGoalNamesBeforeOptimization;
     }
 
-    public Set<Goal> violatedGoalsAfterOptimization() {
-      return _violatedGoalsAfterOptimization;
+    public Set<String> violatedGoalsAfterOptimization() {
+      return _violatedGoalNamesAfterOptimization;
     }
 
     public ModelGeneration modelGeneration() {

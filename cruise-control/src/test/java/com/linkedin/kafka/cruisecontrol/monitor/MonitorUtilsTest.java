@@ -38,8 +38,7 @@ public class MonitorUtilsTest {
     PartitionInfo t0p1 = new PartitionInfo(topic0, 1, node1, nodesWithOrder1, nodesWithOrder2);
     PartitionInfo t1p0 = new PartitionInfo(topic1, 0, node2, nodesWithOrder1, nodesWithOrder2);
     PartitionInfo t1p1 = new PartitionInfo(topic1, 1, node0, nodesWithOrder1, nodesWithOrder2);
-    Set<PartitionInfo> partitions1 = new HashSet<>();
-    partitions1.addAll(Arrays.asList(t0p0, t0p1, t1p0, t1p1));
+    Set<PartitionInfo> partitions1 = new HashSet<>(Arrays.asList(t0p0, t0p1, t1p0, t1p1));
     Cluster cluster1 = new Cluster("cluster", Arrays.asList(node0, node1, node2), partitions1,
                                    Collections.emptySet(), Collections.emptySet());
 

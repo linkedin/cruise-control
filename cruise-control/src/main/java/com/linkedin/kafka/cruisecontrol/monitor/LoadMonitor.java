@@ -545,8 +545,9 @@ public class LoadMonitor {
    * @return all the available broker level metrics. Null is returned if nothing is available.
    */
   public MetricSampleAggregationResult<String, BrokerEntity> brokerMetrics() {
-    Set<BrokerEntity> brokerEntities = new HashSet<>();
-    for (Node node : _metadataClient.cluster().nodes()) {
+    List<Node> nodes = _metadataClient.cluster().nodes();
+    Set<BrokerEntity> brokerEntities = new HashSet<>(nodes.size());
+    for (Node node : nodes) {
       brokerEntities.add(new BrokerEntity(node.host(), node.id()));
     }
     return _brokerMetricSampleAggregator.aggregate(brokerEntities);

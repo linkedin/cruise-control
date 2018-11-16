@@ -18,6 +18,14 @@ import java.util.HashMap;
  * The state for the analyzer.
  */
 public class AnalyzerState {
+  private static final String IS_PROPOSAL_READY = "isProposalReady";
+  private static final String READY_GOALS = "readyGoals";
+  private static final String STATUS = "status";
+  private static final String READY = "ready";
+  private static final String NOT_READY = "notReady";
+  private static final String NAME = "name";
+  private static final String MODEL_COMPLETE_REQUIREMENT = "modelCompleteRequirement";
+  private static final String GOAL_READINESS = "goalReadiness";
   private final boolean _isProposalReady;
   private final Map<Goal, Boolean> _readyGoals;
 
@@ -40,30 +48,26 @@ public class AnalyzerState {
    * to encode into JSON
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
-    Map<String, Object> analyzerState = new HashMap<>();
+    Map<String, Object> analyzerState = new HashMap<>(verbose ? 3 : 2);
     Set<String> readyGoalNames = new HashSet<>();
     for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
       if (entry.getValue()) {
         readyGoalNames.add(entry.getKey().name());
       }
     }
-    analyzerState.put("isProposalReady", _isProposalReady);
-    analyzerState.put("readyGoals", readyGoalNames);
+    analyzerState.put(IS_PROPOSAL_READY, _isProposalReady);
+    analyzerState.put(READY_GOALS, readyGoalNames);
     if (verbose) {
       List<Object> goalReadinessList = new ArrayList<>(_readyGoals.size());
       for (Map.Entry<Goal, Boolean> entry : _readyGoals.entrySet()) {
         Goal goal = entry.getKey();
         Map<String, Object> goalReadinessRecord = new HashMap<>(3);
-        goalReadinessRecord.put("name", goal.getClass().getSimpleName());
-        goalReadinessRecord.put("modelCompleteRequirement", goal.clusterModelCompletenessRequirements().getJsonStructure());
-        if (entry.getValue()) {
-          goalReadinessRecord.put("status", "Ready");
-        } else {
-          goalReadinessRecord.put("status", "NotReady");
-        }
+        goalReadinessRecord.put(NAME, goal.getClass().getSimpleName());
+        goalReadinessRecord.put(MODEL_COMPLETE_REQUIREMENT, goal.clusterModelCompletenessRequirements().getJsonStructure());
+        goalReadinessRecord.put(STATUS, entry.getValue() ? READY : NOT_READY);
         goalReadinessList.add(goalReadinessRecord);
       }
-      analyzerState.put("goalReadiness", goalReadinessList);
+      analyzerState.put(GOAL_READINESS, goalReadinessList);
     }
     return analyzerState;
   }
@@ -76,6 +80,6 @@ public class AnalyzerState {
         readyGoalNames.add(entry.getKey().getClass().getSimpleName());
       }
     }
-    return String.format("{isProposalReady: %s, ReadyGoals: %s}", _isProposalReady, readyGoalNames);
+    return String.format("{%s: %s, %s: %s}", IS_PROPOSAL_READY, _isProposalReady, READY_GOALS, readyGoalNames);
   }
 }
