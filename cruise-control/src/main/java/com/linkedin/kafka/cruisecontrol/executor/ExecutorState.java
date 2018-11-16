@@ -333,33 +333,31 @@ public class ExecutorState {
   }
 
   public void writeOutputStream(OutputStream out, UserTaskManager userTaskManager) throws IOException {
+    out.write(getPlaintext(userTaskManager).getBytes(StandardCharsets.UTF_8));
+  }
+
+  public String getPlaintext(UserTaskManager userTaskManager) {
     switch (_state) {
       case NO_TASK_IN_PROGRESS:
-        out.write(String.format("{state: %s}", _state).getBytes(StandardCharsets.UTF_8));
-        break;
+        return String.format("{state: %s}", _state);
       case STARTING_EXECUTION:
-        out.write(String.format("{state: %s, %s: %s}", _state, TRIGGERED_USER_TASK_ID, triggeredUserTaskId(userTaskManager))
-                        .getBytes(StandardCharsets.UTF_8));
-        break;
+        return String.format("{state: %s, %s: %s}", _state, TRIGGERED_USER_TASK_ID, triggeredUserTaskId(userTaskManager));
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
-        out.write(String.format("{state: %s, finished/total leadership movements: %d/%d, "
-                                + "maximum concurrent leadership movements: %d, %s: %s}", _state, _numFinishedLeadershipMovements,
-                                numTotalLeadershipMovements(), _maximumConcurrentLeaderMovements, TRIGGERED_USER_TASK_ID,
-                                triggeredUserTaskId(userTaskManager)).getBytes(StandardCharsets.UTF_8));
-        break;
+        return String.format("{state: %s, finished/total leadership movements: %d/%d, "
+                             + "maximum concurrent leadership movements: %d, %s: %s}", _state, _numFinishedLeadershipMovements,
+                             numTotalLeadershipMovements(), _maximumConcurrentLeaderMovements, TRIGGERED_USER_TASK_ID,
+                             triggeredUserTaskId(userTaskManager));
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
       case STOPPING_EXECUTION:
-        out.write(String.format("{state: %s, in-progress/aborting partitions: %d/%d, completed/total bytes(MB): %d/%d, "
-                                + "finished/aborted/dead/total partitions: %d/%d/%d/%d, finished leadership movements: %d/%d, "
-                                + "maximum concurrent leadership/per-broker partition movements: %d/%d, %s: %s}",
-                                _state, _inProgressPartitionMovements.size(), _abortingPartitionMovements.size(),
-                                _finishedDataMovementInMB, totalDataToMoveInMB(), _numFinishedPartitionMovements,
-                                _abortedPartitionMovements.size(), _deadPartitionMovements.size(),
-                                numTotalPartitionMovements(), _numFinishedLeadershipMovements, numTotalLeadershipMovements(),
-                                _maximumConcurrentLeaderMovements, _maximumConcurrentPartitionMovementsPerBroker,
-                                TRIGGERED_USER_TASK_ID, triggeredUserTaskId(userTaskManager))
-                        .getBytes(StandardCharsets.UTF_8));
-        break;
+        return String.format("{state: %s, in-progress/aborting partitions: %d/%d, completed/total bytes(MB): %d/%d, "
+                             + "finished/aborted/dead/total partitions: %d/%d/%d/%d, finished leadership movements: %d/%d, "
+                             + "maximum concurrent leadership/per-broker partition movements: %d/%d, %s: %s}",
+                             _state, _inProgressPartitionMovements.size(), _abortingPartitionMovements.size(),
+                             _finishedDataMovementInMB, totalDataToMoveInMB(), _numFinishedPartitionMovements,
+                             _abortedPartitionMovements.size(), _deadPartitionMovements.size(),
+                             numTotalPartitionMovements(), _numFinishedLeadershipMovements, numTotalLeadershipMovements(),
+                             _maximumConcurrentLeaderMovements, _maximumConcurrentPartitionMovementsPerBroker,
+                             TRIGGERED_USER_TASK_ID, triggeredUserTaskId(userTaskManager));
       default:
         throw new IllegalStateException("This should never happen");
     }

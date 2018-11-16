@@ -15,33 +15,32 @@ import static javax.servlet.http.HttpServletResponse.SC_OK;
 
 
 public abstract class AbstractCruiseControlResponse implements CruiseControlResponse {
-  /**
-   * Return a valid JSON encoded String
-   *
-   * @param parameters Parameters of the requested execution.
-   * @return a valid JSON encoded String
-   */
-  protected abstract String getJSONString(CruiseControlParameters parameters);
-  /**
-   * Write the Cruise Control response to the given output stream.
-   *
-   * @param out Output stream to write the Cruise Control response.
-   * @param parameters Parameters of the requested execution.
-   */
-  protected abstract void writeOutputStream(OutputStream out, CruiseControlParameters parameters);
+  protected String _cachedResponse;
+
+  public AbstractCruiseControlResponse() {
+    _cachedResponse = null;
+  }
+
+  protected abstract void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters);
 
   @Override
   public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException {
     OutputStream out = response.getOutputStream();
     boolean json = parameters.json();
     setResponseCode(response, SC_OK, json);
-    if (json) {
-      String jsonString = getJSONString(parameters);
-      response.setContentLength(jsonString.length());
-      out.write(jsonString.getBytes(StandardCharsets.UTF_8));
-    } else {
-      writeOutputStream(out, parameters);
-    }
+    discardIrrelevantResponse(parameters);
+    response.setContentLength(_cachedResponse.length());
+    out.write(_cachedResponse.getBytes(StandardCharsets.UTF_8));
     out.flush();
+  }
+
+  @Override
+  public void discardIrrelevantResponse(CruiseControlParameters parameters) {
+    if (_cachedResponse == null) {
+      discardIrrelevantAndCacheRelevant(parameters);
+      if (_cachedResponse == null) {
+        throw new IllegalStateException("Failed to cache the relevant response.");
+      }
+    }
   }
 }

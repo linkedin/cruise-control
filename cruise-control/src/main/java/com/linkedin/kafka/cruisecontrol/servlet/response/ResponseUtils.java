@@ -23,6 +23,7 @@ import static javax.servlet.http.HttpServletResponse.SC_OK;
 public class ResponseUtils {
   public static final int JSON_VERSION = 1;
   public static final String VERSION = "version";
+  public static final String MESSAGE = "message";
   private static final String PROGRESS = "progress";
   private static final String STACK_TRACE = "stackTrace";
   private static final String ERROR_MESSAGE = "errorMessage";
@@ -36,6 +37,13 @@ public class ResponseUtils {
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     response.setHeader("Access-Control-Allow-Origin", "*");
     response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
+  }
+
+  static String getBaseJSONString(String message) {
+    Map<String, Object> jsonResponse = new HashMap<>(2);
+    jsonResponse.put(VERSION, JSON_VERSION);
+    jsonResponse.put(MESSAGE, message);
+    return new Gson().toJson(jsonResponse);
   }
 
   private static void writeResponseToOutputStream(HttpServletResponse response, int responseCode, boolean json, String responseMsg)

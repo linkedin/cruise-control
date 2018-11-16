@@ -18,6 +18,11 @@ import org.apache.kafka.common.TopicPartition;
  * The execution proposal corresponding to a particular partition.
  */
 public class ExecutionProposal {
+  private static final String TOPIC_PARTITION = "topicPartition";
+  private static final String OLD_LEADER = "oldLeader";
+  private static final String OLD_REPLICAS = "oldReplicas";
+  private static final String NEW_REPLICAS = "newReplicas";
+
   private final TopicPartition _tp;
   private final long _partitionSize;
   private final int _oldLeader;
@@ -195,8 +200,7 @@ public class ExecutionProposal {
       throw new IllegalArgumentException("The new replica list " + _newReplicas + " cannot be empty.");
     }
     // Verify duplicates
-    Set<Integer> checkSet = new HashSet<>();
-    checkSet.addAll(_newReplicas);
+    Set<Integer> checkSet = new HashSet<>(_newReplicas);
     if (checkSet.size() != _newReplicas.size()) {
       throw new IllegalArgumentException("The new replicas list " + _newReplicas + " has duplicate replica.");
     }
@@ -207,11 +211,11 @@ public class ExecutionProposal {
    * to encode into JSON
    */
   public Map<String, Object> getJsonStructure() {
-    Map<String, Object> proposalMap = new HashMap<>();
-    proposalMap.put("topicPartition", _tp);
-    proposalMap.put("oldLeader", _oldLeader);
-    proposalMap.put("oldReplicas", _oldReplicas);
-    proposalMap.put("newReplicas", _newReplicas);
+    Map<String, Object> proposalMap = new HashMap<>(4);
+    proposalMap.put(TOPIC_PARTITION, _tp);
+    proposalMap.put(OLD_LEADER, _oldLeader);
+    proposalMap.put(OLD_REPLICAS, _oldReplicas);
+    proposalMap.put(NEW_REPLICAS, _newReplicas);
     return proposalMap;
   }
 

@@ -8,17 +8,12 @@ import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AbstractCruiseControlResponse;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
@@ -28,7 +23,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
  * Get broker level stats in human readable format.
  */
 public class BrokerStats extends AbstractCruiseControlResponse {
-  private static final Logger LOG = LoggerFactory.getLogger(BrokerStats.class);
   private static final String HOST = "Host";
   private static final String HOSTS = "hosts";
   private static final String BROKERS = "brokers";
@@ -63,8 +57,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     return _brokerStats;
   }
 
-  @Override
-  public String getJSONString(CruiseControlParameters parameters) {
+  private String getJSONString() {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure();
     jsonStructure.put(VERSION, JSON_VERSION);
@@ -100,12 +93,12 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   }
 
   @Override
-  public void writeOutputStream(OutputStream out, CruiseControlParameters parameters) {
-    try {
-      out.write(toString().getBytes(StandardCharsets.UTF_8));
-    } catch (IOException e) {
-      LOG.error("Failed to write output stream.", e);
-    }
+  protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
+    // Cache relevant response.
+    _cachedResponse = parameters.json() ? getJSONString() : toString();
+    // Discard irrelevant response.
+    _brokerStats.clear();
+    _hostStats.clear();
   }
 
   @Override

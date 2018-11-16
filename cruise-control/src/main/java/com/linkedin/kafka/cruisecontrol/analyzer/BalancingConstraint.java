@@ -35,9 +35,9 @@ public class BalancingConstraint {
    */
   public BalancingConstraint(KafkaCruiseControlConfig config) {
     _resources = Collections.unmodifiableList(Arrays.asList(Resource.DISK, Resource.NW_IN, Resource.NW_OUT, Resource.CPU));
-    _resourceBalancePercentage = new HashMap<>();
-    _capacityThreshold = new HashMap<>();
-    _lowUtilizationThreshold = new HashMap<>();
+    _resourceBalancePercentage = new HashMap<>(_resources.size());
+    _capacityThreshold = new HashMap<>(_resources.size());
+    _lowUtilizationThreshold = new HashMap<>(_resources.size());
 
     // Set default values for balance percentages.
     _resourceBalancePercentage.put(Resource.DISK, config.getDouble(KafkaCruiseControlConfig.DISK_BALANCE_THRESHOLD_CONFIG));
