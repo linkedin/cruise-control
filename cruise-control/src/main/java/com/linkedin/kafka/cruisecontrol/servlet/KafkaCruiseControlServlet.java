@@ -579,12 +579,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                           Supplier<OperationFuture> supplier)
       throws ExecutionException, InterruptedException, IOException {
     int step = _asyncOperationStep.get();
-    OperationFuture future = _userTaskManager.getOrCreateUserTask(request, response, supplier, step);
+    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, supplier, step);
     _asyncOperationStep.set(step + 1);
     try {
-      return future.get(_maxBlockMs, TimeUnit.MILLISECONDS);
+      return futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);
     } catch (TimeoutException te) {
-      returnProgress(response, future, wantJSON(request));
+      returnProgress(response, futures, wantJSON(request));
       return null;
     }
   }
