@@ -317,12 +317,14 @@ public class KafkaCruiseControl {
    * operation. If there is another broker failure, the leader may be moved to the demoted broker again
    * by Kafka controller.
    *
-   * @param brokerIds the broker ids to move off.
-   * @param dryRun whether it is a dry run or not
-   * @param operationProgress the progress of the job to report.
+   * @param brokerIds The broker ids to move off.
+   * @param dryRun Whether it is a dry run or not.
+   * @param operationProgress The progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param skipUnderReplicatedPartition Whether move leader replica off the broker if the partition is under replicated.
+   * @param skipReorderReplica Whether move the follower replica on the broker to the end of the partition's assigned replica list.
    * @param uuid UUID of the execution.
    * @return the optimization result.
    */
@@ -331,9 +333,13 @@ public class KafkaCruiseControl {
                                                      OperationProgress operationProgress,
                                                      boolean allowCapacityEstimation,
                                                      Integer concurrentLeaderMovements,
+                                                     boolean skipUnderReplicatedPartition,
+                                                     boolean skipReorderReplica,
                                                      String uuid)
       throws KafkaCruiseControlException {
-    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(skipUnderReplicatedPartition,
+                                                                       skipReorderReplica,
+                                                                       _loadMonitor.kafkaCluster());
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       sanityCheckBrokerPresence(brokerIds);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),

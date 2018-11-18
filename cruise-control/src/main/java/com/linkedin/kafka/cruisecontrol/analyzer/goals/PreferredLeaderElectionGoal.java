@@ -17,6 +17,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,6 +31,22 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
  */
 public class PreferredLeaderElectionGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(PreferredLeaderElectionGoal.class);
+  private boolean _skipUnderReplicatedPartition;
+  private boolean _skipReorderReplica;
+  private Cluster _kafkaCluster;
+
+  public PreferredLeaderElectionGoal() {
+    this(false, false, null);
+  }
+
+  public PreferredLeaderElectionGoal(
+      boolean skipUnderReplicatedPartition,
+      boolean skipReorderReplica,
+      Cluster kafkaCluster) {
+    _skipReorderReplica = skipReorderReplica;
+    _skipUnderReplicatedPartition = skipUnderReplicatedPartition;
+    _kafkaCluster = kafkaCluster;
+  }
 
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
@@ -38,10 +56,20 @@ public class PreferredLeaderElectionGoal implements Goal {
     Set<TopicPartition> partitionsToMove = new HashSet<>();
     for (Broker b : clusterModel.demotedBrokers()) {
       for (Replica r : b.replicas()) {
-        Partition p = clusterModel.partition(r.topicPartition());
-        p.moveReplicaToEnd(r);
+        // There are two scenarios where replica swap operation is skipped:
+        // 1.the replica on the to-be-demoted broker is not leader replica and skip_reorder_replica parameter is set in request.
+        // 2.the replica on the to-be-demoted broker is leader replica, the partition is currently under replicated and
+        // skip_under_replicated_partition parameter is set in request.
+        if (!(_skipUnderReplicatedPartition && r.isLeader() && isPartitionUnderReplicated(r))
+          && !(_skipReorderReplica && !r.isLeader())) {
+          Partition p = clusterModel.partition(r.topicPartition());
+          p.moveReplicaToEnd(r);
+        }
       }
-      b.leaderReplicas().forEach(r -> partitionsToMove.add(r.topicPartition()));
+      // If the leader replica's partition is currently under replicated and skip_under_replicated_partition parameter is
+      // set in request, skip leadership change operation.
+      b.leaderReplicas().stream().filter(r -> !(_skipUnderReplicatedPartition && isPartitionUnderReplicated(r)))
+       .forEach(r -> partitionsToMove.add(r.topicPartition()));
     }
     // Ignore the excluded topics because this goal does not move partitions.
     for (List<Partition> partitions : clusterModel.getPartitionsByTopic().values()) {
@@ -65,6 +93,11 @@ public class PreferredLeaderElectionGoal implements Goal {
       }
     }
     return true;
+  }
+
+  private boolean isPartitionUnderReplicated(Replica r) {
+    PartitionInfo partitionInfo = _kafkaCluster.partition(r.topicPartition());
+    return partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
   }
 
   @Override

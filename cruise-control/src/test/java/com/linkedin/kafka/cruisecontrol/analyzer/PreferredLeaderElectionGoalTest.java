@@ -50,7 +50,7 @@ public class PreferredLeaderElectionGoalTest {
   public void testOptimize() throws KafkaCruiseControlException {
     ClusterModel clusterModel = createClusterModel();
 
-    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
@@ -76,7 +76,7 @@ public class PreferredLeaderElectionGoalTest {
       b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
     });
 
-    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {

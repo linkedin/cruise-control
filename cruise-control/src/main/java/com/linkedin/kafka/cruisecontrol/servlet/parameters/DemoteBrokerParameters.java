@@ -16,6 +16,8 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   private boolean _dryRun;
   private List<Integer> _brokerIds;
   private Integer _concurrentLeaderMovements;
+  private boolean _skipUnderReplicatedPartition;
+  private boolean _skipReorderReplica;
 
   public DemoteBrokerParameters(HttpServletRequest request) {
     super(request);
@@ -28,6 +30,8 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     _dryRun = ParameterUtils.getDryRun(_request);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
+    _skipUnderReplicatedPartition = ParameterUtils.skipUnderReplicatedPartition(_request);
+    _skipReorderReplica = ParameterUtils.skipReorderReplica(_request);
   }
 
   public boolean dryRun() {
@@ -40,5 +44,13 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
 
   public Integer concurrentLeaderMovements() {
     return _concurrentLeaderMovements;
+  }
+
+  public boolean skipUnderReplicatedPartition() {
+    return _skipUnderReplicatedPartition;
+  }
+
+  public boolean skipReorderReplica() {
+    return _skipReorderReplica;
   }
 }
