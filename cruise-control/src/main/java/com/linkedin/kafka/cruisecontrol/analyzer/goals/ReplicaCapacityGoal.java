@@ -142,7 +142,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
     }
 
     // Sanity check: total replicas in the cluster cannot be more than the allowed replicas in the cluster.
-    long maxReplicasInCluster = _balancingConstraint.maxReplicasPerBroker() * clusterModel.healthyBrokers().size();
+    long maxReplicasInCluster = _balancingConstraint.maxReplicasPerBroker() * clusterModel.aliveBrokers().size();
     if (totalReplicasInCluster > maxReplicasInCluster) {
       throw new OptimizationFailureException(String.format("Total replicas in cluster: %d exceeds the maximum allowed "
           + "replicas in cluster: %d.", totalReplicasInCluster, maxReplicasInCluster));
@@ -243,7 +243,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   /**
    * Get a list of replica capacity eligible brokers for the given replica in the given cluster.
    *
-   * A healthy destination broker is eligible for a given replica if
+   * A alive destination broker is eligible for a given replica if
    * (1) the broker contains less than allowed maximum number of replicas, or
    * (2) If the the self healing mode is true.
    *
@@ -259,7 +259,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
 
     int sourceBrokerId = replica.broker().id();
 
-    for (Broker broker : clusterModel.healthyBrokers()) {
+    for (Broker broker : clusterModel.aliveBrokers()) {
       if ((_isSelfHealingMode || broker.replicas().size() < _balancingConstraint.maxReplicasPerBroker())
           && broker.id() != sourceBrokerId) {
         eligibleBrokers.add(new BrokerReplicaCount(broker));

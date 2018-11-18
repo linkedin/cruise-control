@@ -511,7 +511,7 @@ public class KafkaCruiseControl {
         modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     // There are a few cases that we cannot use the cached best proposals:
     // 1. When users dynamically specified goals or excluded topics.
-    // 2. When provided requirements contains a weaker requirement than what is used by the cached proposal.
+    // 2. When provided requirements contain a weaker requirement than what is used by the cached proposal.
     ModelCompletenessRequirements requirementsForCache = _goalOptimizer.modelCompletenessRequirementsForPrecomputing();
     boolean hasWeakerRequirement =
         requirementsForCache.minMonitoredPartitionsPercentage() > modelCompletenessRequirements.minMonitoredPartitionsPercentage()

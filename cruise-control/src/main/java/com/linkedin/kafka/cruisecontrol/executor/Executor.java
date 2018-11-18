@@ -55,14 +55,14 @@ public class Executor {
   private final MetadataClient _metadataClient;
   private final long _statusCheckingIntervalMs;
   private final ExecutorService _proposalExecutor;
-  private final static int ZK_SESSION_TIMEOUT = 30000;
-  private final static int ZK_CONNECTION_TIMEOUT = 30000;
-  private final static boolean IS_ZK_SECURITY_ENABLED = false;
-  private final static long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
+  private static final int ZK_SESSION_TIMEOUT = 30000;
+  private static final int ZK_CONNECTION_TIMEOUT = 30000;
+  private static final boolean IS_ZK_SECURITY_ENABLED = false;
+  private static final long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000;
   private ZkUtils _zkUtils;
 
-  private final static long METADATA_REFRESH_BACKOFF = 100L;
-  private final static long METADATA_EXPIRY_MS = Long.MAX_VALUE;
+  private static final long METADATA_REFRESH_BACKOFF = 100L;
+  private static final long METADATA_EXPIRY_MS = Long.MAX_VALUE;
 
   // Some state for external service to query
   private final AtomicBoolean _stopRequested;
@@ -631,7 +631,7 @@ public class Executor {
      *              still alive.
      * 3. DEAD: when any replica in the new replica list is dead. Or when a leader action times out.
      *
-     * Currently KafkaController does not support updates on the partitions that is being reassigned. (KAFKA-6034)
+     * Currently KafkaController does not support updates on the partitions that is being reassigned. (KAFKA-6304)
      * Therefore once a proposals is written to ZK, we cannot revoke it. So the actual behavior we are using is to
      * set the task state to:
      * 1. IN_PROGRESS: when the execution is stopped by the users. i.e. do nothing but let the task finish normally.

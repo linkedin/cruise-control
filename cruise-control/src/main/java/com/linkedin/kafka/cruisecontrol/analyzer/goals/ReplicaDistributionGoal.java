@@ -60,7 +60,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   private final Set<Integer> _brokerIdsAboveBalanceUpperLimit;
   private final Set<Integer> _brokerIdsUnderBalanceLowerLimit;
   private final Map<Integer, BrokerAndSortedReplicas> _brokerAndReplicasMap;
-  private double _avgReplicasOnHealthyBroker;
+  private double _avgReplicasOnAliveBroker;
   private double _balanceUpperLimit;
   private double _balanceLowerLimit;
 
@@ -91,14 +91,14 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    * @return The replica balance upper threshold in percent.
    */
   private double balanceUpperLimit() {
-    return _avgReplicasOnHealthyBroker * (1 + balancePercentageWithMargin());
+    return _avgReplicasOnAliveBroker * (1 + balancePercentageWithMargin());
   }
 
   /**
    * @return The replica balance lower threshold in percent.
    */
   private double balanceLowerLimit() {
-    return _avgReplicasOnHealthyBroker * Math.max(0, (1 - balancePercentageWithMargin()));
+    return _avgReplicasOnAliveBroker * Math.max(0, (1 - balancePercentageWithMargin()));
   }
 
   /**
@@ -178,9 +178,9 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
-    // Initialize the average replicas on a healthy broker.
+    // Initialize the average replicas on an alive broker.
     int numReplicasInCluster = clusterModel.getReplicaDistribution().values().stream().mapToInt(List::size).sum();
-    _avgReplicasOnHealthyBroker = (numReplicasInCluster / (double) clusterModel.healthyBrokers().size());
+    _avgReplicasOnAliveBroker = (numReplicasInCluster / (double) clusterModel.aliveBrokers().size());
 
     // Log a warning if all replicas are excluded.
     if (clusterModel.topics().equals(excludedTopics)) {
@@ -256,7 +256,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
             "Self healing failed to move the replica away from decommissioned brokers.");
       }
       _selfHealingDeadBrokersOnly = true;
-      LOG.warn("Omitting resource balance limit to relocate remaining replicas from dead brokers to healthy ones.");
+      LOG.warn("Omitting resource balance limit to relocate remaining replicas from dead brokers.");
       return;
     }
     // No dead broker contains replica.
@@ -323,8 +323,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(Comparator.comparingInt((Broker b) -> b.replicas().size()).thenComparingInt(Broker::id));
 
-    candidateBrokers.addAll(_selfHealingDeadBrokersOnly ? clusterModel.healthyBrokers() : clusterModel
-        .healthyBrokers()
+    candidateBrokers.addAll(_selfHealingDeadBrokersOnly ? clusterModel.aliveBrokers() : clusterModel
+        .aliveBrokers()
         .stream()
         .filter(b -> b.replicas().size() < _balanceUpperLimit)
         .collect(Collectors.toSet()));
@@ -370,9 +370,9 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       return result == 0 ? Integer.compare(b1.id(), b2.id()) : result;
     });
 
-    for (Broker healthyBroker : clusterModel.healthyBrokers()) {
-      if (healthyBroker.replicas().size() > _balanceLowerLimit) {
-        eligibleBrokers.add(healthyBroker);
+    for (Broker aliveBroker : clusterModel.aliveBrokers()) {
+      if (aliveBroker.replicas().size() > _balanceLowerLimit) {
+        eligibleBrokers.add(aliveBroker);
       }
     }
 

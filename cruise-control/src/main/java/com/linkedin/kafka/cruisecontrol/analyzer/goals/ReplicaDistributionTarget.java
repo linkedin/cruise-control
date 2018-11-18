@@ -51,11 +51,11 @@ class ReplicaDistributionTarget {
    *
    * @param numReplicasToBalance The number of replicas to balance. In case replicas to be balanced are for specific
    *                             topic, this number indicates the number of replicas of this topic in the cluster.
-   * @param healthyBrokers       Healthy brokers in the cluster -- i.e. brokers that are not dead.
+   * @param aliveBrokers       Alive brokers in the cluster -- i.e. brokers that are not dead.
    */
-  ReplicaDistributionTarget(int numReplicasToBalance, Set<Broker> healthyBrokers) {
-    _minNumReplicasPerBroker = numReplicasToBalance / healthyBrokers.size();
-    _warmBrokerCredits = numReplicasToBalance % healthyBrokers.size();
+  ReplicaDistributionTarget(int numReplicasToBalance, Set<Broker> aliveBrokers) {
+    _minNumReplicasPerBroker = numReplicasToBalance / aliveBrokers.size();
+    _warmBrokerCredits = numReplicasToBalance % aliveBrokers.size();
     _requiredNumReplicasByBrokerId = new HashMap<>();
     _secondaryEligibleBrokerIds = new HashSet<>();
     _consumedWarmBrokerCredits = 0;
@@ -69,7 +69,7 @@ class ReplicaDistributionTarget {
   }
 
   /**
-   * Move replicas residing in the given cluster and given healthy source broker having given set of topic partitions
+   * Move replicas residing in the given cluster and given alive source broker having given set of topic partitions
    * to eligible brokers. Replica movements are guaranteed not to violate the requirements of optimized goals.
    *
    * @param clusterModel           The state of the cluster.
@@ -108,7 +108,7 @@ class ReplicaDistributionTarget {
   }
 
   /**
-   * Move given self healing eligible replica residing in the given cluster in a dead or healthy broker to an eligible
+   * Move given self healing eligible replica residing in the given cluster in a dead or alive broker to an eligible
    * broker. Replica movements are guaranteed not to violate the requirements of optimized goals.
    *
    * @param clusterModel     The state of the cluster.
@@ -219,7 +219,7 @@ class ReplicaDistributionTarget {
     // Get eligible brokers to receive this replica.
     for (int brokerId : replicaToMove.broker().isAlive()
                         ? sortedCandidateBrokerIds()
-                        : clusterModel.healthyBrokers().stream().map(Broker::id).collect(Collectors.toList())) {
+                        : clusterModel.aliveBrokers().stream().map(Broker::id).collect(Collectors.toList())) {
       // filter out the broker that is not eligible.
       if (!isEligibleForReplica(clusterModel, replicaToMove, brokerId)) {
         continue;

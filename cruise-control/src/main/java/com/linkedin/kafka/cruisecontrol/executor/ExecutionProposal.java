@@ -38,7 +38,7 @@ public class ExecutionProposal {
    * @param tp the topic partition of this execution proposal
    * @param partitionSize the size of the partition.
    * @param oldLeader the old leader of the partition to determine if leader movement is needed.
-   * @param oldReplicas the old replicas for rollback. (Rollback is not supported until KAFKA-6034)
+   * @param oldReplicas the old replicas for rollback. (Rollback is not supported until KAFKA-6304)
    * @param newReplicas the new replicas of the partition in this order.
    */
   public ExecutionProposal(TopicPartition tp,
