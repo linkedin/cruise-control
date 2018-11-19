@@ -146,7 +146,7 @@ public abstract class CapacityGoal extends AbstractGoal {
 
   /**
    * Sanity checks: Existing total load on cluster is less than the limiting capacity
-   * determined by the total capacity of healthy cluster multiplied by the capacity threshold.
+   * determined by the total capacity of alive cluster multiplied by the capacity threshold.
    *
    * @param clusterModel The state of the cluster.
    * @param excludedTopics The topics that should be excluded from the optimization proposals.
@@ -297,9 +297,9 @@ public abstract class CapacityGoal extends AbstractGoal {
 
     // If leader movement did not work, move replicas.
     if (isUtilizationOverLimit) {
-      // Get sorted healthy brokers under host and/or broker capacity limit (depending on the current resource).
-      List<Broker> sortedHealthyBrokersUnderCapacityLimit =
-          clusterModel.sortedHealthyBrokersUnderThreshold(currentResource, capacityThreshold);
+      // Get sorted alive brokers under host and/or broker capacity limit (depending on the current resource).
+      List<Broker> sortedAliveBrokersUnderCapacityLimit =
+          clusterModel.sortedAliveBrokersUnderThreshold(currentResource, capacityThreshold);
 
       // Move replicas that are sorted in descending order of preference to relocate (preference is based on
       // utilization) until the source broker utilization gets under the capacity limit. If the capacity limit cannot
@@ -310,10 +310,10 @@ public abstract class CapacityGoal extends AbstractGoal {
         }
         // Unless the target broker would go over the host- and/or broker-level capacity,
         // the movement will be successful.
-        Broker b = maybeApplyBalancingAction(clusterModel, replica, sortedHealthyBrokersUnderCapacityLimit,
+        Broker b = maybeApplyBalancingAction(clusterModel, replica, sortedAliveBrokersUnderCapacityLimit,
                                              ActionType.REPLICA_MOVEMENT, optimizedGoals);
         if (b == null) {
-          LOG.debug("Failed to move replica {} to any broker in {}", replica, sortedHealthyBrokersUnderCapacityLimit);
+          LOG.debug("Failed to move replica {} to any broker in {}", replica, sortedAliveBrokersUnderCapacityLimit);
         }
         // If capacity limit was not satisfied before, check if it is satisfied now.
         isUtilizationOverLimit =
@@ -390,7 +390,7 @@ public abstract class CapacityGoal extends AbstractGoal {
    */
   private boolean isMovementAcceptableForCapacity(Replica sourceReplica, Broker destinationBroker) {
     // The action is unacceptable if the movement of replica or leadership makes the utilization of the destination
-    // broker (or destination host for a host-resource) go out of healthy capacity for the given resource.
+    // broker (or destination host for a host-resource) go out of alive capacity for the given resource.
     double replicaUtilization = sourceReplica.load().expectedUtilizationFor(resource());
     return isUtilizationUnderLimitAfterAddingLoad(destinationBroker, replicaUtilization);
   }

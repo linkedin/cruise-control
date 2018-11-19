@@ -136,7 +136,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                                     String topic,
                                     int numTopicReplicasOnBroker1,
                                     int numTopicReplicasOnBroker2) {
-    double avgTopicReplicas = ((double) clusterModel.numTopicReplicas(topic)) / clusterModel.healthyBrokers().size();
+    double avgTopicReplicas = ((double) clusterModel.numTopicReplicas(topic)) / clusterModel.aliveBrokers().size();
     return Math.pow(numTopicReplicasOnBroker1 - avgTopicReplicas, 2) + Math.pow(numTopicReplicasOnBroker2 - avgTopicReplicas, 2);
   }
 
@@ -221,7 +221,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
     _replicaDistributionTargetByTopic = new HashMap<>();
 
-    Set<Broker> brokers = clusterModel.healthyBrokers();
+    Set<Broker> brokers = clusterModel.aliveBrokers();
     // Populate a map of replica distribution target by each non-excluded topic in the cluster.
     for (String topic : _topicsToRebalance) {
       ReplicaDistributionTarget replicaDistributionTarget =

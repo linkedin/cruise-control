@@ -82,7 +82,7 @@ public class PreferredLeaderElectionGoal implements Goal {
 
       @Override
       public String explainLastComparison() {
-        return "This goals do not care about stats.";
+        return String.format("Comparison for the %s is irrelevant.", name());
       }
     };
   }

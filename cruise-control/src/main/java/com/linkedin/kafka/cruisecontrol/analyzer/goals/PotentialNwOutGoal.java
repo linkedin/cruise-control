@@ -264,7 +264,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
     }
     // Get candidate brokers
     Set<Broker> candidateBrokers = _selfHealingDeadBrokersOnly ?
-        clusterModel.healthyBrokers() : brokersUnderEstimatedMaxPossibleNwOut(clusterModel);
+        clusterModel.aliveBrokers() : brokersUnderEstimatedMaxPossibleNwOut(clusterModel);
     // Attempt to move replicas to eligible brokers until either the estimated max possible network out
     // limit requirement is satisfied for the broker or all replicas are checked.
     SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());
@@ -318,10 +318,10 @@ public class PotentialNwOutGoal extends AbstractGoal {
     Set<Broker> brokersUnderEstimatedMaxPossibleNwOut = new HashSet<>();
     double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);
 
-    for (Broker healthyBroker : clusterModel.healthyBrokers()) {
-      double capacityLimit = healthyBroker.capacityFor(Resource.NW_OUT) * capacityThreshold;
-      if (clusterModel.potentialLeadershipLoadFor(healthyBroker.id()).expectedUtilizationFor(Resource.NW_OUT) < capacityLimit) {
-        brokersUnderEstimatedMaxPossibleNwOut.add(healthyBroker);
+    for (Broker aliveBroker : clusterModel.aliveBrokers()) {
+      double capacityLimit = aliveBroker.capacityFor(Resource.NW_OUT) * capacityThreshold;
+      if (clusterModel.potentialLeadershipLoadFor(aliveBroker.id()).expectedUtilizationFor(Resource.NW_OUT) < capacityLimit) {
+        brokersUnderEstimatedMaxPossibleNwOut.add(aliveBroker);
       }
     }
     return brokersUnderEstimatedMaxPossibleNwOut;
