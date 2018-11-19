@@ -558,7 +558,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 CommonClientConfigs.RECEIVE_BUFFER_DOC)
         .define(RECONNECT_BACKOFF_MS_CONFIG, ConfigDef.Type.LONG, 50L, atLeast(0L), ConfigDef.Importance.LOW,
                 CommonClientConfigs.RECONNECT_BACKOFF_MS_DOC)
-        .define(METADATA_MAX_AGE_CONFIG, ConfigDef.Type.LONG, 50 * 1000, atLeast(0), ConfigDef.Importance.LOW,
+        .define(METADATA_MAX_AGE_CONFIG, ConfigDef.Type.LONG, 55 * 1000, atLeast(0), ConfigDef.Importance.LOW,
                 METADATA_MAX_AGE_DOC)
         .define(CONNECTIONS_MAX_IDLE_MS_CONFIG,
                 ConfigDef.Type.LONG,
@@ -994,18 +994,20 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
-   * Sanity check for
-   * (1) {@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} should be no longer than
+   * Sanity check to ensure that {@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} is not longer than
+   * {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
+   *
+   * Sampling process involves a potential metadata update if the current metadata is stale. The configuration
+   * {@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} indicates the timeout of such a metadata update. Hence,
+   * this subprocess of the sampling process cannot be set with a timeout larger than the total sampling timeout of
    * {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
    */
   private void sanityCheckSamplingPeriod() {
-    long samplingPeriod = getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
-    long metadataTimeout = getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
-    // In SamplingTask, if task execution is longer than sampling period, and TimeoutExecution is thrown. Therefore it's
-    // not necessary to wait for longer than sampling period for timeout.
-    if (metadataTimeout >  samplingPeriod) {
-      throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeout +
-          "] to be longer than sampling period [" + samplingPeriod + "].");
+    long samplingPeriodMs = getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
+    long metadataTimeoutMs = getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
+    if (metadataTimeoutMs >  samplingPeriodMs) {
+      throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs +
+          "] to be longer than sampling period [" + samplingPeriodMs + "].");
     }
   }
   public KafkaCruiseControlConfig(Map<?, ?> originals) {

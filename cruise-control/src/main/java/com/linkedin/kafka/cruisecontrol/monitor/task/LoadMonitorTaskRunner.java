@@ -45,7 +45,7 @@ public class LoadMonitorTaskRunner {
 
   private AtomicReference<LoadMonitorTaskRunnerState> _state;
   private volatile double _bootstrapProgress;
-  private volatile Boolean _awaitExecution;
+  private volatile boolean _awaitExecution;
 
   public enum LoadMonitorTaskRunnerState {
     NOT_STARTED, RUNNING, PAUSED, SAMPLING, BOOTSTRAPPING, TRAINING, LOADING
@@ -264,19 +264,21 @@ public class LoadMonitorTaskRunner {
   /**
    * Pause the scheduled sampling tasks..
    */
-  public void pauseSampling() {
+  public synchronized void pauseSampling() {
     if (_state.get() != PAUSED && !_state.compareAndSet(RUNNING, PAUSED)) {
       throw new IllegalStateException("Cannot pause the load monitor because it is in " + _state.get() + " state.");
     }
+    _awaitExecution = true;
   }
 
   /**
    * Resume the scheduled sampling tasks.
    */
-  public void resumeSampling() {
+  public synchronized void resumeSampling() {
     if (_state.get() != RUNNING && !_state.compareAndSet(PAUSED, RUNNING)) {
       throw new IllegalStateException("Cannot resume the load monitor because it is in " + _state.get() + " state");
     }
+    _awaitExecution = false;
   }
 
   /**
@@ -284,10 +286,6 @@ public class LoadMonitorTaskRunner {
    */
   public Boolean awaitingExecution() {
     return _awaitExecution;
-  }
-
-  public void setAwaitExecution(Boolean state) {
-    _awaitExecution = state;
   }
 
   boolean compareAndSetState(LoadMonitorTaskRunnerState expectedState, LoadMonitorTaskRunnerState newState) {
