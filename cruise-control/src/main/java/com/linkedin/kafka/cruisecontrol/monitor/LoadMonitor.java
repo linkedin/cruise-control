@@ -340,6 +340,7 @@ public class LoadMonitor {
   public void resumeMetricSampling() {
     _loadMonitorTaskRunner.resumeSampling();
   }
+
   /**
    * Acquire the semaphore for the cluster model generation.
    * @param operationProgress the progress for the job.
