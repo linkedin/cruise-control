@@ -557,7 +557,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       return futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);
     } catch (TimeoutException te) {
-      returnProgress(response, future, wantJSON(request), _config);
+      returnProgress(response, futures, wantJSON(request), _config);
       return null;
     }
   }

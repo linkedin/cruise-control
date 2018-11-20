@@ -75,7 +75,11 @@ public class ResponseUtils {
     out.flush();
   }
 
-  public static void returnProgress(HttpServletResponse response, List<OperationFuture> futures, boolean json, KafkaCruiseControlConfig config) throws IOException {
+  public static void returnProgress(HttpServletResponse response,
+                                    List<OperationFuture> futures,
+                                    boolean json,
+                                    KafkaCruiseControlConfig config)
+      throws IOException {
     String responseMsg;
     if (json) {
       Map<String, Object> respMap = new HashMap<>(2);
