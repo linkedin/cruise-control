@@ -167,7 +167,7 @@ class OptimizationVerifier {
 
   private static boolean verifyDeadBrokers(ClusterModel clusterModel) {
     Set<Broker> deadBrokers = clusterModel.brokers();
-    deadBrokers.removeAll(clusterModel.healthyBrokers());
+    deadBrokers.removeAll(clusterModel.aliveBrokers());
     for (Broker deadBroker : deadBrokers) {
       if (deadBroker.replicas().size() > 0) {
         LOG.error("Failed to move {} replicas on dead broker {} to other brokers.", deadBroker.replicas().size(),
@@ -179,7 +179,7 @@ class OptimizationVerifier {
   }
 
   private static boolean verifyNewBrokers(ClusterModel clusterModel, BalancingConstraint constraint) {
-    for (Broker broker : clusterModel.healthyBrokers()) {
+    for (Broker broker : clusterModel.aliveBrokers()) {
       if (!broker.isNew()) {
         for (Replica replica : broker.replicas()) {
           if (replica.originalBroker() != broker) {

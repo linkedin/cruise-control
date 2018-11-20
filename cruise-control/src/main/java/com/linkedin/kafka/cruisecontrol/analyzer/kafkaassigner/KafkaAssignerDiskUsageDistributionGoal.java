@@ -99,7 +99,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
 
     // create a sorted set for all the brokers.
     SortedSet<BrokerAndSortedReplicas> allBrokers = new TreeSet<>(brokerComparator);
-    clusterModel.healthyBrokers().forEach(b -> allBrokers.add(new BrokerAndSortedReplicas(b, replicaComparator)));
+    clusterModel.aliveBrokers().forEach(b -> allBrokers.add(new BrokerAndSortedReplicas(b, replicaComparator)));
 
     boolean improved;
     int numIterations = 0;
@@ -135,7 +135,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     // Check if any broker is out of the allowed usage range.
     Set<Broker> brokersAboveUpperThreshold = new HashSet<>();
     Set<Broker> brokersUnderLowerThreshold = new HashSet<>();
-    for (Broker broker : clusterModel.healthyBrokers()) {
+    for (Broker broker : clusterModel.aliveBrokers()) {
       double diskUsage = diskUsage(broker);
       if (diskUsage < lowerThreshold) {
         brokersUnderLowerThreshold.add(broker);
@@ -161,7 +161,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   /**
    * Optimize the broker if the disk usage of the broker is not within the required range.
    *
-   * @param allBrokers a sorted set of all the healthy brokers in the cluster.
+   * @param allBrokers a sorted set of all the alive brokers in the cluster.
    * @param toOptimize the broker to optimize
    * @param clusterModel the cluster model
    * @param meanDiskUsage the average disk usage of the cluster

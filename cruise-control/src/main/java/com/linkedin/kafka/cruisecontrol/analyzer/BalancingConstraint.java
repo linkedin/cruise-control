@@ -44,7 +44,7 @@ public class BalancingConstraint {
     _resourceBalancePercentage.put(Resource.CPU, config.getDouble(KafkaCruiseControlConfig.CPU_BALANCE_THRESHOLD_CONFIG));
     _resourceBalancePercentage.put(Resource.NW_IN, config.getDouble(KafkaCruiseControlConfig.NETWORK_INBOUND_BALANCE_THRESHOLD_CONFIG));
     _resourceBalancePercentage.put(Resource.NW_OUT, config.getDouble(KafkaCruiseControlConfig.NETWORK_OUTBOUND_BALANCE_THRESHOLD_CONFIG));
-    // Set default values for healthy resource capacity threshold.
+    // Set default values for alive resource capacity threshold.
     _capacityThreshold.put(Resource.DISK, config.getDouble(KafkaCruiseControlConfig.DISK_CAPACITY_THRESHOLD_CONFIG));
     _capacityThreshold.put(Resource.CPU, config.getDouble(KafkaCruiseControlConfig.CPU_CAPACITY_THRESHOLD_CONFIG));
     _capacityThreshold.put(Resource.NW_IN, config.getDouble(KafkaCruiseControlConfig.NETWORK_INBOUND_CAPACITY_THRESHOLD_CONFIG));
@@ -157,7 +157,7 @@ public class BalancingConstraint {
   }
 
   /**
-   * Set healthy resource capacity threshold for the given resource.
+   * Set alive resource capacity threshold for the given resource.
    *
    * @param resource          Resource for which the capacity threshold will be set.
    * @param capacityThreshold Capacity threshold for the given resource.
@@ -170,9 +170,9 @@ public class BalancingConstraint {
   }
 
   /**
-   * Set healthy resource capacity threshold for all resources.
+   * Set alive resource capacity threshold for all resources.
    *
-   * @param capacityThreshold Common capacity threshold for all resources in healthy brokers.
+   * @param capacityThreshold Common capacity threshold for all resources in alive brokers.
    */
   void setCapacityThreshold(double capacityThreshold) {
     for (Resource resource : _resources) {

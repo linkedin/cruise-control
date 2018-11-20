@@ -10,12 +10,11 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.regex.Pattern;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
  * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern, HttpServletRequest)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern, String)}
  */
 class RebalanceRunnable extends OperationRunnable {
   private final List<String> _goals;
@@ -26,14 +25,14 @@ class RebalanceRunnable extends OperationRunnable {
   private final Integer _concurrentLeaderMovements;
   private final boolean _skipHardGoalCheck;
   private final Pattern _excludedTopics;
-  private final HttpServletRequest _request;
+  private final String _uuid;
 
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture future,
                     List<String> goals,
                     ModelCompletenessRequirements modelCompletenessRequirements,
                     RebalanceParameters parameters,
-                    HttpServletRequest request) {
+                    String uuid) {
     super(kafkaCruiseControl, future);
     _goals = goals;
     _dryRun = parameters.dryRun();
@@ -43,7 +42,7 @@ class RebalanceRunnable extends OperationRunnable {
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
-    _request = request;
+    _uuid = uuid;
   }
 
   @Override
@@ -57,6 +56,6 @@ class RebalanceRunnable extends OperationRunnable {
                                                                 _concurrentLeaderMovements,
                                                                 _skipHardGoalCheck,
                                                                 _excludedTopics,
-                                                                _request));
+                                                                _uuid));
   }
 }

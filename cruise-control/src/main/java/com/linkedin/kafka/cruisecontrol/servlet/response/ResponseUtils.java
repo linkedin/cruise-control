@@ -11,7 +11,9 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpServletResponse;
 
@@ -26,6 +28,8 @@ public class ResponseUtils {
   public static final String VERSION = "version";
   public static final String MESSAGE = "message";
   private static final String PROGRESS = "progress";
+  private static final String OPERATION = "operation";
+  private static final String OPERATION_PROGRESS = "operationProgress";
   private static final String STACK_TRACE = "stackTrace";
   private static final String ERROR_MESSAGE = "errorMessage";
 
@@ -71,21 +75,27 @@ public class ResponseUtils {
     out.flush();
   }
 
-  public static void returnProgress(HttpServletResponse response,
-                                    OperationFuture future,
-                                    boolean json,
-                                    KafkaCruiseControlConfig config
-                                    )
-      throws IOException {
+  public static void returnProgress(HttpServletResponse response, List<OperationFuture> futures, boolean json, KafkaCruiseControlConfig config) throws IOException {
     String responseMsg;
     if (json) {
-      Map<String, Object> respMap = new HashMap<>();
+      Map<String, Object> respMap = new HashMap<>(2);
       respMap.put(VERSION, JSON_VERSION);
-      respMap.put(PROGRESS, future.getJsonArray());
+      List<Object> progress = new ArrayList<>(futures.size());
+      for (OperationFuture future: futures) {
+        Map<String, Object> operationProgress = new HashMap<>(2);
+        operationProgress.put(OPERATION, future.operation());
+        operationProgress.put(OPERATION_PROGRESS, future.getJsonArray());
+        progress.add(operationProgress);
+      }
+      respMap.put(PROGRESS, progress);
       Gson gson = new GsonBuilder().serializeNulls().serializeSpecialFloatingPointValues().create();
       responseMsg = gson.toJson(respMap);
     } else {
-      responseMsg = future.progressString();
+      StringBuilder sb = new StringBuilder();
+      for (OperationFuture operationFuture: futures) {
+        sb.append(String.format("%s:%n%s", operationFuture.operation(), operationFuture.progressString()));
+      }
+      responseMsg = sb.toString();
     }
     writeResponseToOutputStream(response, SC_OK, json, responseMsg, config);
   }

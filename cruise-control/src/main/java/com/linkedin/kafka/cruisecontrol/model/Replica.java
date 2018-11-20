@@ -38,8 +38,8 @@ public class Replica implements Serializable, Comparable<Replica> {
    * A constructor for a replica.
    *
    * @param tp Topic partition information of the replica.
-   * @param broker         The broker of the replica.
-   * @param isLeader       A flag to represent whether the replica is the isLeader or not.
+   * @param broker The broker of the replica.
+   * @param isLeader A flag to represent whether the replica is the isLeader or not.
    */
   Replica(TopicPartition tp, Broker broker, boolean isLeader) {
     _tp = tp;

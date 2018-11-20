@@ -2,14 +2,14 @@
  * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol.common;
+package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
-import com.linkedin.kafka.cruisecontrol.model.Broker;
-import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 
 import java.util.ArrayList;

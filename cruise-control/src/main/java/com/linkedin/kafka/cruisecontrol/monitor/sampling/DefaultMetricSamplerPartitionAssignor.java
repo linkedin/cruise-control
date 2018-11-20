@@ -26,7 +26,7 @@ import java.util.Set;
  */
 public class DefaultMetricSamplerPartitionAssignor implements MetricSamplerPartitionAssignor {
 
-  private final static Logger LOG = LoggerFactory.getLogger(DefaultMetricSamplerPartitionAssignor.class);
+  private static final Logger LOG = LoggerFactory.getLogger(DefaultMetricSamplerPartitionAssignor.class);
 
   @Override
   public void configure(Map<String, ?> configs) {

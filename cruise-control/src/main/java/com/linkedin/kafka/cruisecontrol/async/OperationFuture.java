@@ -22,7 +22,7 @@ public class OperationFuture extends CompletableFuture<CruiseControlResponse> {
   private long _finishTimeNs;
 
   public OperationFuture(String operation) {
-    _operation = "'" + operation + "'";
+    _operation = operation;
     _operationProgress = new OperationProgress();
     _finishTimeNs = -1;
   }
