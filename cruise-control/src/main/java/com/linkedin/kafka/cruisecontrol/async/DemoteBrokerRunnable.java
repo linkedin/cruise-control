@@ -8,30 +8,29 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collection;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
  * The async runnable for {@link KafkaCruiseControl#demoteBrokers(Collection, boolean,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, HttpServletRequest)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, String)}
  */
 public class DemoteBrokerRunnable extends OperationRunnable {
   private final Collection<Integer> _brokerIds;
   private final boolean _dryRun;
   private final boolean _allowCapacityEstimation;
   private final Integer _concurrentLeaderMovements;
-  private final HttpServletRequest _request;
+  private final String _uuid;
 
   DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                        OperationFuture future,
-                       HttpServletRequest request,
+                       String uuid,
                        DemoteBrokerParameters parameters) {
     super(kafkaCruiseControl, future);
     _brokerIds = parameters.brokerIds();
     _dryRun = parameters.dryRun();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
-    _request = request;
+    _uuid = uuid;
   }
 
   @Override
@@ -41,6 +40,6 @@ public class DemoteBrokerRunnable extends OperationRunnable {
                                                                     _future.operationProgress(),
                                                                     _allowCapacityEstimation,
                                                                     _concurrentLeaderMovements,
-                                                                    _request));
+                                                                    _uuid));
   }
 }

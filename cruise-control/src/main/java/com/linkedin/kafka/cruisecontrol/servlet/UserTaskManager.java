@@ -26,7 +26,7 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -144,13 +144,13 @@ public class UserTaskManager implements Closeable {
    *
    * @param httpServletRequest the HttpServletRequest to create the UserTaskInfo reference.
    * @param httpServletResponse the HttpServletResponse that contains the UserTaskId in the HttpServletResponse header.
-   * @param operation An asynchronous operations that returns {@link OperationFuture}.
+   * @param function A function that takes a UUID and returns {@link OperationFuture}.
    * @param step The index of the step that has to be added or fetched.
    * @return The list of {@link OperationFuture} for the linked UserTask.
    */
   public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest,
                                                    HttpServletResponse httpServletResponse,
-                                                   Supplier<OperationFuture> operation,
+                                                   Function<String, OperationFuture> function,
                                                    int step) {
     UUID userTaskId = getUserTaskId(httpServletRequest);
     List<OperationFuture> operationFutures = getFuturesByUserTaskId(userTaskId, httpServletRequest);
@@ -162,7 +162,7 @@ public class UserTaskManager implements Closeable {
         return operationFutures;
       } else if (step == operationFutures.size()) {
         LOG.info("Add a new future to existing UserTask {}", userTaskId);
-        return insertFuturesByUserTaskId(userTaskId, operation, httpServletRequest);
+        return insertFuturesByUserTaskId(userTaskId, function, httpServletRequest);
       } else {
         throw new IllegalArgumentException(
             String.format("There are %d steps in the session. Cannot add step %d.", operationFutures.size(), step));
@@ -183,7 +183,7 @@ public class UserTaskManager implements Closeable {
       SessionKey sessionKey = new SessionKey(httpServletRequest);
       userTaskId = _uuidGenerator.randomUUID();
       LOG.info("Create a new UserTask {} with SessionKey {}", userTaskId, sessionKey);
-      operationFutures = insertFuturesByUserTaskId(userTaskId, operation, httpServletRequest);
+      operationFutures = insertFuturesByUserTaskId(userTaskId, function, httpServletRequest);
 
       synchronized (_sessionToUserTaskIdMap) {
         _sessionToUserTaskIdMap.put(sessionKey, userTaskId);
@@ -303,7 +303,7 @@ public class UserTaskManager implements Closeable {
   }
 
   private synchronized List<OperationFuture> insertFuturesByUserTaskId(UUID userTaskId,
-                                                                       Supplier<OperationFuture> operation,
+                                                                       Function<String, OperationFuture> operation,
                                                                        HttpServletRequest httpServletRequest) {
     if (_completedUserTaskIdToFuturesMap.containsKey(userTaskId)) {
       // Before add new operation to task, first recycle the task from completed task list.
@@ -311,13 +311,13 @@ public class UserTaskManager implements Closeable {
       LOG.info("UserTask {} is recycled from complete task list and added back to active tasks list", userTaskId);
     }
     if (_activeUserTaskIdToFuturesMap.containsKey(userTaskId)) {
-      _activeUserTaskIdToFuturesMap.get(userTaskId).futures().add(operation.get());
+      _activeUserTaskIdToFuturesMap.get(userTaskId).futures().add(operation.apply(userTaskId.toString()));
     } else {
       if (_activeUserTaskIdToFuturesMap.size() >= _maxActiveUserTasks) {
         throw new RuntimeException("There are already " + _activeUserTaskIdToFuturesMap.size() + " active user tasks, which has reached the servlet capacity.");
       }
       UserTaskInfo userTaskInfo =
-          new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operation.get())),
+          new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString()))),
                            _time.milliseconds(), userTaskId);
       _activeUserTaskIdToFuturesMap.put(userTaskId, userTaskInfo);
     }
