@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -23,10 +24,13 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.*;
 
 
 public class PreferredLeaderElectionGoalTest {
@@ -46,11 +50,14 @@ public class PreferredLeaderElectionGoalTest {
   private static final TopicPartition T2P1 = new TopicPartition(TOPIC2, 1);
   private static final TopicPartition T2P2 = new TopicPartition(TOPIC2, 2);
 
+  private static final int NUM_RACKS = 4;
+
   @Test
   public void testOptimize() throws KafkaCruiseControlException {
     ClusterModel clusterModel = createClusterModel();
+    Cluster cluster = createCluster(false);
 
-    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, cluster);
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
@@ -67,6 +74,7 @@ public class PreferredLeaderElectionGoalTest {
   @Test
   public void testOptimizeWithDemotedBrokers() throws KafkaCruiseControlException {
     ClusterModel clusterModel = createClusterModel();
+    Cluster cluster = createCluster(false);
     clusterModel.setBrokerState(0, Broker.State.DEMOTED);
 
     Set<TopicPartition> leaderPartitionsOnDemotedBroker = new HashSet<>();
@@ -76,7 +84,7 @@ public class PreferredLeaderElectionGoalTest {
       b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
     });
 
-    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, cluster);
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
@@ -101,12 +109,74 @@ public class PreferredLeaderElectionGoalTest {
     }
   }
 
+  @Test
+  public void testOptimizeWithDemotedBrokersAndSkipUrpDemotion() throws KafkaCruiseControlException {
+    ClusterModel clusterModel = createClusterModel();
+    Cluster cluster = createCluster(true);
+    clusterModel.setBrokerState(1, Broker.State.DEMOTED);
+
+    Map<TopicPartition, Integer> leaderDistributionBeforeBrokerDemotion = new HashMap<>();
+    clusterModel.brokers().forEach(b -> {
+      b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
+    });
+
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(true, false, cluster);
+    goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
+
+    for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
+      for (int p = 0; p < 3; p++) {
+        TopicPartition tp = new TopicPartition(t, p);
+        int oldLeaderBroker = leaderDistributionBeforeBrokerDemotion.get(tp);
+        // All the demotion operation should be skipped since all the partitions are currently under replicated.
+        assertEquals("Tp " + tp, oldLeaderBroker, clusterModel.partition(tp).leader().broker().id());
+      }
+    }
+  }
+
+  @Test
+  public void testOptimizeWithDemotedBrokersAndExcludeFollowerDemotion() throws KafkaCruiseControlException {
+    ClusterModel clusterModel = createClusterModel();
+    Cluster cluster = createCluster(false);
+    clusterModel.setBrokerState(2, Broker.State.DEMOTED);
+
+    Set<TopicPartition> leaderPartitionsOnDemotedBroker = new HashSet<>();
+    Map<TopicPartition, List<Replica>> originalReplicaListByTopicPartition = new HashMap<>();
+    for (Replica r: clusterModel.broker(2).replicas()) {
+      TopicPartition tp = r.topicPartition();
+      if (r.isLeader()) {
+        leaderPartitionsOnDemotedBroker.add(tp);
+      } else {
+        originalReplicaListByTopicPartition.put(tp, clusterModel.partition(tp).replicas());
+      }
+    }
+
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, true, cluster);
+    goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
+
+    for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
+      for (int p = 0; p < 3; p++) {
+        TopicPartition tp = new TopicPartition(t, p);
+        if (leaderPartitionsOnDemotedBroker.contains(tp)) {
+          List<Replica> replicas = clusterModel.partition(tp).replicas();
+          // Only the first replica should be leader.
+          assertSame(clusterModel.partition(tp).leader(), replicas.get(0));
+          // The demoted replica should be in the last position.
+          assertEquals(2, replicas.get(replicas.size() - 1).broker().id());
+        } else if (originalReplicaListByTopicPartition.containsKey(tp)) {
+          List<Replica> replicas = clusterModel.partition(tp).replicas();
+          List<Replica> originalReplicas = originalReplicaListByTopicPartition.get(tp);
+          // For partitions whose follower replicas are on the demote broker, swap operation should be skipped.
+          assertEquals(replicas, originalReplicas);
+        }
+      }
+    }
+  }
+
   private ClusterModel createClusterModel() {
 
-    final int numRacks = 4;
     ClusterModel clusterModel = new ClusterModel(new ModelGeneration(0, 0),
                                                  1.0);
-    for (int i = 0; i < numRacks; i++) {
+    for (int i = 0; i < NUM_RACKS; i++) {
       clusterModel.createRack("r" + i);
     }
     BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY);
@@ -114,7 +184,7 @@ public class PreferredLeaderElectionGoalTest {
     for (; i < 2; i++) {
       clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo);
     }
-    for (int j = 1; j < numRacks; j++, i++) {
+    for (int j = 1; j < NUM_RACKS; j++, i++) {
       clusterModel.createBroker("r" + j, "h" + i, i, commonBrokerCapacityInfo);
     }
 
@@ -169,4 +239,48 @@ public class PreferredLeaderElectionGoalTest {
                                 Collections.singletonList(1L));
   }
 
+  private Cluster createCluster(boolean isURP) {
+    Node [] nodes = new Node [NUM_RACKS + 1];
+    for (int i = 0; i < NUM_RACKS + 1; i++) {
+      nodes[i] = new Node(i, "h" + i, 100);
+    }
+    List<PartitionInfo> partitions = new ArrayList<>(9);
+    partitions.add(new PartitionInfo(T0P0.topic(), T0P0.partition(), nodes[0],
+                   isURP ? new Node[]{nodes[0], nodes[4]} : new Node[]{nodes[0], nodes[4], nodes[3]},
+                   new Node[]{nodes[0], nodes[4], nodes[3]}));
+
+    partitions.add(new PartitionInfo(T0P1.topic(), T0P1.partition(), nodes[1],
+                   isURP ? new Node[]{nodes[1], nodes[2]} : new Node[]{nodes[1], nodes[2], nodes[4]},
+                   new Node[]{nodes[1], nodes[2], nodes[4]}));
+
+    partitions.add(new PartitionInfo(T0P2.topic(), T0P2.partition(), nodes[2],
+                   isURP ? new Node[]{nodes[2], nodes[0]} : new Node[]{nodes[2], nodes[0], nodes[3]},
+                   new Node[]{nodes[2], nodes[0], nodes[3]}));
+
+    partitions.add(new PartitionInfo(T1P0.topic(), T1P0.partition(), nodes[1],
+                   isURP ? new Node[]{nodes[1], nodes[3]} : new Node[]{nodes[1], nodes[3], nodes[2]},
+                   new Node[]{nodes[1], nodes[3], nodes[2]}));
+
+    partitions.add(new PartitionInfo(T1P1.topic(), T1P1.partition(), nodes[3],
+                   isURP ? new Node[]{nodes[3], nodes[4]} : new Node[]{nodes[3], nodes[4], nodes[0]},
+                   new Node[]{nodes[3], nodes[4], nodes[0]}));
+
+    partitions.add(new PartitionInfo(T1P2.topic(), T1P2.partition(), nodes[4],
+                   isURP ? new Node[]{nodes[4], nodes[2]} : new Node[]{nodes[4], nodes[2], nodes[0]},
+                   new Node[]{nodes[4], nodes[2], nodes[0]}));
+
+    partitions.add(new PartitionInfo(T2P0.topic(), T2P0.partition(), nodes[4],
+                   isURP ? new Node[]{nodes[4], nodes[2]} : new Node[]{nodes[4], nodes[2], nodes[1]},
+                   new Node[]{nodes[4], nodes[2], nodes[1]}));
+
+    partitions.add(new PartitionInfo(T2P1.topic(), T2P1.partition(), nodes[3],
+                   isURP ? new Node[]{nodes[3], nodes[0]} : new Node[]{nodes[3], nodes[0], nodes[2]},
+                   new Node[]{nodes[3], nodes[0], nodes[2]}));
+
+    partitions.add(new PartitionInfo(T2P2.topic(), T2P2.partition(), nodes[4],
+                   isURP ? new Node[]{nodes[4], nodes[1]} : new Node[]{nodes[4], nodes[1], nodes[3]},
+                   new Node[]{nodes[4], nodes[1], nodes[3]}));
+
+    return new Cluster("id", Arrays.asList(nodes), partitions, Collections.emptySet(), Collections.emptySet());
+  }
 }

@@ -307,7 +307,9 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Demote given brokers by migrating the leaders from them to other brokers.
+   * Demote given brokers by making all the replicas on these brokers the least preferred replicas for leadership election
+   * within their corresponding partitions and then triggering a preferred leader election on the partitions to migrate
+   * the leader replicas off the brokers.
    *
    * The result of the broker demotion is not guaranteed to be able to move all the leaders away from the
    * given brokers. The operation is with best effort. There are various possibilities that some leaders
@@ -323,8 +325,8 @@ public class KafkaCruiseControl {
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @param skipUnderReplicatedPartition Whether move leader replica off the broker if the partition is under replicated.
-   * @param skipReorderReplica Whether move the follower replica on the broker to the end of the partition's assigned replica list.
+   * @param skipUrpDemotion Whether operate on partitions which are currently under replicated.
+   * @param excludeFollowerDemotion Whether operate on the partitions which only have follower replicas on the brokers.
    * @param uuid UUID of the execution.
    * @return the optimization result.
    */
@@ -333,12 +335,12 @@ public class KafkaCruiseControl {
                                                      OperationProgress operationProgress,
                                                      boolean allowCapacityEstimation,
                                                      Integer concurrentLeaderMovements,
-                                                     boolean skipUnderReplicatedPartition,
-                                                     boolean skipReorderReplica,
+                                                     boolean skipUrpDemotion,
+                                                     boolean excludeFollowerDemotion,
                                                      String uuid)
       throws KafkaCruiseControlException {
-    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(skipUnderReplicatedPartition,
-                                                                       skipReorderReplica,
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(skipUrpDemotion,
+                                                                       excludeFollowerDemotion,
                                                                        _loadMonitor.kafkaCluster());
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       sanityCheckBrokerPresence(brokerIds);

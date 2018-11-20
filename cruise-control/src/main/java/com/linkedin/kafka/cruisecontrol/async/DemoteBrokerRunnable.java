@@ -19,8 +19,8 @@ public class DemoteBrokerRunnable extends OperationRunnable {
   private final boolean _dryRun;
   private final boolean _allowCapacityEstimation;
   private final Integer _concurrentLeaderMovements;
-  private final boolean _skipUnderReplicatedPartition;
-  private final boolean _skipReorderReplica;
+  private final boolean _skipUrpDemotion;
+  private final boolean _excludeFollowerDemotion;
   private final String _uuid;
 
   DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -32,9 +32,9 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _dryRun = parameters.dryRun();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    _skipUrpDemotion = parameters.skipUrpDemotion();
+    _excludeFollowerDemotion = parameters.excludeFollowerDemotion();
     _uuid = uuid;
-    _skipUnderReplicatedPartition = parameters.skipUnderReplicatedPartition();
-    _skipReorderReplica = parameters.skipReorderReplica();
   }
 
   @Override
@@ -44,8 +44,8 @@ public class DemoteBrokerRunnable extends OperationRunnable {
                                                                     _future.operationProgress(),
                                                                     _allowCapacityEstimation,
                                                                     _concurrentLeaderMovements,
-                                                                    _skipUnderReplicatedPartition,
-                                                                    _skipReorderReplica,
+                                                                    _skipUrpDemotion,
+                                                                    _excludeFollowerDemotion,
                                                                     _uuid));
   }
 }
