@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
@@ -114,6 +115,19 @@ public class Broker implements Serializable, Comparable<Broker> {
       return _brokerCapacity[resource.id()];
     }
     return -1.0;
+  }
+
+  /**
+   * Get broker capacity for all resources
+   * @return If broker is alive, an array of the capacity of the requested resources,  an array of -1.0 otherwise.
+   */
+  public double[] capacityForAll() {
+    if (isAlive()) {
+      return Arrays.copyOf(_brokerCapacity, _brokerCapacity.length);
+    }
+    double[] resources = new double[_brokerCapacity.length];
+    Arrays.fill(resources, -1.0);
+    return resources;
   }
 
   /**

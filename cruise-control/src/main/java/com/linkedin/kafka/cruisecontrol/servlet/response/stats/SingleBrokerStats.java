@@ -20,12 +20,12 @@ public class SingleBrokerStats {
 
   SingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                     double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate, int numReplicas,
-                    int numLeaders, boolean isEstimated) {
+                    int numLeaders, boolean isEstimated, double[] capacity) {
     _host = host;
     _id = id;
     _state = state;
     _basicStats = new BasicStats(diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                                 potentialBytesOutRate, numReplicas, numLeaders);
+                                 potentialBytesOutRate, numReplicas, numLeaders, capacity);
     _isEstimated = isEstimated;
   }
 

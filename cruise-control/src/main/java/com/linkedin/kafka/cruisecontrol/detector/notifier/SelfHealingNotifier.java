@@ -21,22 +21,27 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateStr
 /**
  * This class implements a logic of self-healing when anomaly is detected.
  *
+ * <ul>
  * <li>The goal violations will trigger an immediate fix.</li>
  * <li>The metric anomalies will trigger an immediate fix.</li>
  * <li>The broker failures are handled in the following way:
- *   <ol><li>If a broker disappears from a cluster at timestamp <b>T</b>, the detector will start down counting.</li>
- *   <li>If the broker did not re-join the cluster within broker.failure.detection.threshold.ms since <b>T</b>,
+ *   <ol>
+ *     <li>If a broker disappears from a cluster at timestamp <b>T</b>, the detector will start down counting.</li>
+ *     <li>If the broker did not re-join the cluster within broker.failure.detection.threshold.ms since <b>T</b>,
  *      the broker will be defined as dead and an alert will be triggered.</li>
- *   <li>If the broker did not re-join the cluster within broker.failure.self.healing.threshold.ms since <b>T</b>, an auto
+ *     <li>If the broker did not re-join the cluster within broker.failure.self.healing.threshold.ms since <b>T</b>, an auto
  *      remediation will be performed.</li>
  *   </ol>
  * </li>
+ * </ul>
  *
+ * <ul>
  * <li>{@link #SELF_HEALING_ENABLED_CONFIG}: Enable self healing for all anomaly detectors, unless the particular
  * anomaly detector is explicitly disabled.</li>
  * <li>{@link #SELF_HEALING_BROKER_FAILURE_ENABLED_CONFIG}: Enable self healing for broker failure detector.</li>
  * <li>{@link #SELF_HEALING_GOAL_VIOLATION_ENABLED_CONFIG}: Enable self healing for goal violation detector.</li>
  * <li>{@link #SELF_HEALING_METRIC_ANOMALY_ENABLED_CONFIG}: Enable self healing for metric anomaly detector.</li>
+ * </ul>
  */
 public class SelfHealingNotifier implements AnomalyNotifier {
   public static final String BROKER_FAILURE_ALERT_THRESHOLD_MS_CONFIG = "broker.failure.alert.threshold.ms";
