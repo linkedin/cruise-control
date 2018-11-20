@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -31,12 +32,22 @@ public class ResponseUtils {
   private ResponseUtils() {
   }
 
-  static void setResponseCode(HttpServletResponse response, int code, boolean json) {
+  static void setResponseCode(HttpServletResponse response, int code, boolean json, KafkaCruiseControlConfig config) {
     response.setStatus(code);
     response.setContentType(json ? "application/json" : "text/plain");
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
-    response.setHeader("Access-Control-Allow-Origin", "*");
-    response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
+    boolean corsEnabled = config == null ? false : config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
+    if (corsEnabled) {
+      /*
+      response.setHeader("Access-Control-Allow-Origin", "*");
+      response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
+      response.setHeader("Access-Control-Expose-Headers", "User-Task-ID");
+      */
+      // These headers are exposed to the browser
+      response.setHeader("Access-Control-Expose-Headers",
+            config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
+
+    }
   }
 
   static String getBaseJSONString(String message) {
@@ -46,16 +57,26 @@ public class ResponseUtils {
     return new Gson().toJson(jsonResponse);
   }
 
-  private static void writeResponseToOutputStream(HttpServletResponse response, int responseCode, boolean json, String responseMsg)
+  private static void writeResponseToOutputStream(HttpServletResponse response,
+                                                  int responseCode,
+                                                  boolean json,
+                                                  String responseMsg,
+                                                  KafkaCruiseControlConfig config
+                                                  )
       throws IOException {
     OutputStream out = response.getOutputStream();
-    setResponseCode(response, responseCode, json);
+    setResponseCode(response, responseCode, json, config);
     response.setContentLength(responseMsg.length());
     out.write(responseMsg.getBytes(StandardCharsets.UTF_8));
     out.flush();
   }
 
-  public static void returnProgress(HttpServletResponse response, OperationFuture future, boolean json) throws IOException {
+  public static void returnProgress(HttpServletResponse response,
+                                    OperationFuture future,
+                                    boolean json,
+                                    KafkaCruiseControlConfig config
+                                    )
+      throws IOException {
     String responseMsg;
     if (json) {
       Map<String, Object> respMap = new HashMap<>();
@@ -66,14 +87,15 @@ public class ResponseUtils {
     } else {
       responseMsg = future.progressString();
     }
-    writeResponseToOutputStream(response, SC_OK, json, responseMsg);
+    writeResponseToOutputStream(response, SC_OK, json, responseMsg, config);
   }
 
   public static void writeErrorResponse(HttpServletResponse response,
                                         String stackTrace,
                                         String errorMessage,
                                         int responseCode,
-                                        boolean json)
+                                        boolean json
+                                        )
       throws IOException {
     String responseMsg;
     if (json) {
@@ -86,6 +108,6 @@ public class ResponseUtils {
     } else {
       responseMsg = errorMessage == null ? "" : errorMessage;
     }
-    writeResponseToOutputStream(response, responseCode, json, responseMsg);
+    writeResponseToOutputStream(response, responseCode, json, responseMsg, null);
   }
 }
