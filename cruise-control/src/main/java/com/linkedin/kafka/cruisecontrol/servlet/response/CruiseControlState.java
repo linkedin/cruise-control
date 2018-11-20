@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitorState;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
-import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
 import java.util.HashMap;
@@ -32,18 +31,15 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
   private LoadMonitorState _monitorState;
   private AnalyzerState _analyzerState;
   private AnomalyDetectorState _anomalyDetectorState;
-  private UserTaskManager _userTaskManager;
 
   public CruiseControlState(ExecutorState executionState,
                             LoadMonitorState monitorState,
                             AnalyzerState analyzerState,
-                            AnomalyDetectorState anomalyDetectorState,
-                            UserTaskManager userTaskManager) {
+                            AnomalyDetectorState anomalyDetectorState) {
     _executorState = executionState;
     _monitorState = monitorState;
     _analyzerState = analyzerState;
     _anomalyDetectorState = anomalyDetectorState;
-    _userTaskManager = userTaskManager;
   }
 
   public ExecutorState executorState() {
@@ -79,7 +75,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
       cruiseControlState.put("MonitorState", _monitorState.getJsonStructure(verbose));
     }
     if (_executorState != null) {
-      cruiseControlState.put("ExecutorState", _executorState.getJsonStructure(verbose, _userTaskManager));
+      cruiseControlState.put("ExecutorState", _executorState.getJsonStructure(verbose));
     }
     if (_analyzerState != null) {
       cruiseControlState.put("AnalyzerState", _analyzerState.getJsonStructure(verbose));
@@ -171,7 +167,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
 
     StringBuilder sb = new StringBuilder();
     sb.append(_monitorState != null ? String.format("MonitorState: %s%n", _monitorState) : "");
-    sb.append(_executorState == null ? "" : String.format("ExecutorState: %s%n", _executorState.getPlaintext(_userTaskManager)));
+    sb.append(_executorState == null ? "" : String.format("ExecutorState: %s%n", _executorState.getPlaintext()));
     sb.append(_analyzerState != null ? String.format("AnalyzerState: %s%n", _analyzerState) : "");
     sb.append(_anomalyDetectorState != null ? String.format("AnomalyDetectorState: %s%n", _anomalyDetectorState) : "");
 
@@ -196,7 +192,6 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     _monitorState = null;
     _analyzerState = null;
     _anomalyDetectorState = null;
-    _userTaskManager = null;
   }
 
   public enum SubState {

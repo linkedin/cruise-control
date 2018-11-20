@@ -111,7 +111,7 @@ public class KafkaCruiseControlServletDataFromTest {
     CruiseControlState kccState = getState(_numReadyGoals, _totalGoals, _numValidWindows);
     OperationFuture kccStateFuture = new OperationFuture("test");
     kccStateFuture.complete(kccState);
-    EasyMock.expect(mockKCC.state(EasyMock.anyObject(), EasyMock.anyObject()))
+    EasyMock.expect(mockKCC.state(EasyMock.anyObject()))
             .andReturn(kccStateFuture).anyTimes();
     EasyMock.expect(mockKCC.config()).andReturn(
         new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties())).anyTimes();
@@ -158,7 +158,7 @@ public class KafkaCruiseControlServletDataFromTest {
     }
     AnalyzerState analyzerState = new AnalyzerState(true, goalReadiness);
     AnomalyDetectorState anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()), 10);
-    return new CruiseControlState(executorState, loadMonitorState, analyzerState, anomalyDetectorState, null);
+    return new CruiseControlState(executorState, loadMonitorState, analyzerState, anomalyDetectorState);
   }
 
   /**

@@ -172,7 +172,7 @@ public class AnomalyDetector {
           }
           // We schedule a delayed check if the executor is doing some work.
           ExecutorState.State executorState = _kafkaCruiseControl.state(
-              new OperationProgress(), Collections.singleton(EXECUTOR), null).executorState().state();
+              new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
           if (executorState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
             LOG.debug("Schedule delayed check for anomaly {} because executor is in {} state", anomaly, executorState);
             checkWithDelay(anomaly, _anomalyDetectionIntervalMs);

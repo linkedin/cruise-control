@@ -7,29 +7,24 @@ package com.linkedin.kafka.cruisecontrol.async;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
-import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.util.Set;
 
 
 /**
- * The async runnable for {@link KafkaCruiseControl#state(com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress,
- * Set, com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager)}
+ * The async runnable for {@link KafkaCruiseControl#state(com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, Set)}
  */
 class GetStateRunnable extends OperationRunnable {
   private final Set<CruiseControlState.SubState> _substates;
-  private final UserTaskManager _userTaskManager;
 
   GetStateRunnable(KafkaCruiseControl kafkaCruiseControl,
                    OperationFuture future,
-                   CruiseControlStateParameters parameters,
-                   UserTaskManager userTaskManager) {
+                   CruiseControlStateParameters parameters) {
     super(kafkaCruiseControl, future);
     _substates = parameters.substates();
-    _userTaskManager = userTaskManager;
   }
 
   @Override
   protected CruiseControlState getResult() {
-    return _kafkaCruiseControl.state(_future.operationProgress(), _substates, _userTaskManager);
+    return _kafkaCruiseControl.state(_future.operationProgress(), _substates);
   }
 }

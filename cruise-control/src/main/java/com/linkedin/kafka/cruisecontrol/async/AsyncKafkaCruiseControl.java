@@ -19,13 +19,11 @@ import com.linkedin.kafka.cruisecontrol.async.progress.Pending;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
@@ -35,20 +33,20 @@ import javax.servlet.http.HttpServletRequest;
  *
  * <ul>
  * <li>{@link KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
- * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, HttpServletRequest)}</li>
+ * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String)}</li>
  * <li>{@link KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
- * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, HttpServletRequest)}</li>
- * <li>{@link KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress, boolean, Integer, HttpServletRequest)}</li>
+ * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String)}</li>
+ * <li>{@link KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress, boolean, Integer, String)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(OperationProgress, boolean)}</li>
- * <li>{@link KafkaCruiseControl#state(OperationProgress, Set, UserTaskManager)}</li>
+ * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress,
  * boolean, boolean, java.util.regex.Pattern)}</li>
  * <li>{@link KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements, OperationProgress,
  * boolean, Integer, Integer, boolean, java.util.regex.Pattern, HttpServletRequest)}</li>
  * <li>{@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress,
- * boolean, Integer, Integer, boolean, java.util.regex.Pattern, HttpServletRequest)}</li>
+ * boolean, Integer, Integer, boolean, java.util.regex.Pattern, String)}</li>
  * </ul>
  *
  * The other operations are non-blocking by default.
@@ -70,56 +68,55 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#state(OperationProgress, Set, UserTaskManager)
+   * @see KafkaCruiseControl#state(OperationProgress, Set)
    */
-  public OperationFuture state(CruiseControlStateParameters parameters,
-                               UserTaskManager userTaskManager) {
+  public OperationFuture state(CruiseControlStateParameters parameters) {
     OperationFuture future = new OperationFuture("Get state");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new GetStateRunnable(this, future, parameters, userTaskManager));
+    _sessionExecutor.submit(new GetStateRunnable(this, future, parameters));
     return future;
   }
 
   /**
    * @see KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
-   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, HttpServletRequest)
+   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String)
    */
   public OperationFuture decommissionBrokers(List<String> goals,
                                              ModelCompletenessRequirements requirements,
                                              AddedOrRemovedBrokerParameters parameters,
-                                             HttpServletRequest request) {
+                                             String uuid) {
     OperationFuture future = new OperationFuture("Decommission brokers");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new DecommissionBrokersRunnable(this, future, goals, requirements, parameters, request));
+    _sessionExecutor.submit(new DecommissionBrokersRunnable(this, future, goals, requirements, parameters, uuid));
     return future;
   }
 
   /**
    * @see KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements, OperationProgress,
-   * boolean, Integer, Integer, boolean, java.util.regex.Pattern, HttpServletRequest)
+   * boolean, Integer, Integer, boolean, java.util.regex.Pattern, String)
    */
   public OperationFuture fixOfflineReplicas(List<String> goals,
                                             ModelCompletenessRequirements requirements,
                                             FixOfflineReplicasParameters parameters,
-                                            HttpServletRequest request) {
+                                            String uuid) {
     OperationFuture future = new OperationFuture("Fix offline replicas");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new FixOfflineReplicasRunnable(this, future, goals, requirements, parameters, request));
+    _sessionExecutor.submit(new FixOfflineReplicasRunnable(this, future, goals, requirements, parameters, uuid));
 
     return future;
   }
 
   /**
    * @see KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List, ModelCompletenessRequirements,
-   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, HttpServletRequest)
+   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String)
    */
   public OperationFuture addBrokers(List<String> goals,
                                     ModelCompletenessRequirements requirements,
                                     AddedOrRemovedBrokerParameters parameters,
-                                    HttpServletRequest request) {
+                                    String uuid) {
     OperationFuture future = new OperationFuture("Add brokers");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new AddBrokerRunnable(this, future, goals, requirements, parameters, request));
+    _sessionExecutor.submit(new AddBrokerRunnable(this, future, goals, requirements, parameters, uuid));
     return future;
   }
 
@@ -159,25 +156,25 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
 
   /**
    * @see KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress, boolean, Integer,
-   * Integer, boolean, java.util.regex.Pattern, HttpServletRequest)
+   * Integer, boolean, java.util.regex.Pattern, String)
    */
   public OperationFuture rebalance(List<String> goals,
                                    ModelCompletenessRequirements requirements,
                                    RebalanceParameters parameters,
-                                   HttpServletRequest request) {
+                                   String uuid) {
     OperationFuture future = new OperationFuture("Rebalance");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new RebalanceRunnable(this, future, goals, requirements, parameters, request));
+    _sessionExecutor.submit(new RebalanceRunnable(this, future, goals, requirements, parameters, uuid));
     return future;
   }
 
   /**
-   * @see KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress, boolean, Integer, HttpServletRequest)
+   * @see KafkaCruiseControl#demoteBrokers(Collection, boolean, OperationProgress, boolean, Integer, String)
    */
-  public OperationFuture demoteBrokers(HttpServletRequest request, DemoteBrokerParameters parameters) {
+  public OperationFuture demoteBrokers(String uuid, DemoteBrokerParameters parameters) {
     OperationFuture future = new OperationFuture("Demote");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new DemoteBrokerRunnable(this, future, request, parameters));
+    _sessionExecutor.submit(new DemoteBrokerRunnable(this, future, uuid, parameters));
     return future;
   }
 

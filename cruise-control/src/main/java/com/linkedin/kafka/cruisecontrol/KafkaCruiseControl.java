@@ -32,7 +32,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
-import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.util.Arrays;
 import java.util.Collection;
@@ -45,7 +44,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import javax.servlet.http.HttpServletRequest;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
@@ -150,7 +148,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
-   * @param request Request that triggered the execution, null if not a user request.
+   * @param uuid UUID of the execution.
    * @return The optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
@@ -166,7 +164,7 @@ public class KafkaCruiseControl {
                                                            Integer concurrentLeaderMovements,
                                                            boolean skipHardGoalCheck,
                                                            Pattern excludedTopics,
-                                                           HttpServletRequest request)
+                                                           String uuid)
       throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
@@ -185,7 +183,7 @@ public class KafkaCruiseControl {
                          isKafkaAssignerMode(goals),
                          concurrentPartitionMovements,
                          concurrentLeaderMovements,
-                         request);
+                         uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -209,7 +207,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
-   * @param request Request that triggered the execution, null if not a user request.
+   * @param uuid UUID of the execution.
    * @return the optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the process of fixing offline replicas.
@@ -223,7 +221,7 @@ public class KafkaCruiseControl {
                                                           Integer concurrentLeaderMovements,
                                                           boolean skipHardGoalCheck,
                                                           Pattern excludedTopics,
-                                                          HttpServletRequest request)
+                                                          String uuid)
       throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
@@ -242,7 +240,7 @@ public class KafkaCruiseControl {
                          false,
                          concurrentPartitionMovements,
                          concurrentLeaderMovements,
-                         request);
+                         uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -286,7 +284,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
-   * @param request Request that triggered the execution, null if not a user request.
+   * @param uuid UUID of the execution.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the broker addition.
    */
@@ -301,7 +299,7 @@ public class KafkaCruiseControl {
                                                   Integer concurrentLeaderMovements,
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics,
-                                                  HttpServletRequest request) throws KafkaCruiseControlException {
+                                                  String uuid) throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -321,7 +319,7 @@ public class KafkaCruiseControl {
                          isKafkaAssignerMode(goals),
                          concurrentPartitionMovements,
                          concurrentLeaderMovements,
-                         request);
+                         uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -344,7 +342,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
-   * @param request Request that triggered the execution, null if not a user request.
+   * @param uuid UUID of the execution.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
@@ -357,12 +355,12 @@ public class KafkaCruiseControl {
                                                  Integer concurrentLeaderMovements,
                                                  boolean skipHardGoalCheck,
                                                  Pattern excludedTopics,
-                                                 HttpServletRequest request) throws KafkaCruiseControlException {
+                                                 String uuid) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress,
                                                                     allowCapacityEstimation, skipHardGoalCheck, excludedTopics);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
-                       concurrentPartitionMovements, concurrentLeaderMovements, request);
+                       concurrentPartitionMovements, concurrentLeaderMovements, uuid);
     }
     return result;
   }
@@ -384,7 +382,7 @@ public class KafkaCruiseControl {
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @param request Request that triggered the execution, null if not a user request.
+   * @param uuid UUID of the execution.
    * @return the optimization result.
    */
   public GoalOptimizer.OptimizerResult demoteBrokers(Collection<Integer> brokerIds,
@@ -392,7 +390,7 @@ public class KafkaCruiseControl {
                                                      OperationProgress operationProgress,
                                                      boolean allowCapacityEstimation,
                                                      Integer concurrentLeaderMovements,
-                                                     HttpServletRequest request)
+                                                     String uuid)
       throws KafkaCruiseControlException {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal();
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
@@ -411,7 +409,7 @@ public class KafkaCruiseControl {
         int concurrentSwaps = concurrentLeaderMovements != null
                               ? concurrentLeaderMovements
                               : _config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
-        executeProposals(result.goalProposals(), brokerIds, false, concurrentSwaps, concurrentLeaderMovements, request);
+        executeProposals(result.goalProposals(), brokerIds, false, concurrentSwaps, concurrentLeaderMovements, uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -626,18 +624,18 @@ public class KafkaCruiseControl {
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @param request Request that triggered the execution, null if not a user request.
+   * @param uuid UUID of the execution.
    */
   private void executeProposals(Collection<ExecutionProposal> proposals,
                                 Collection<Integer> unthrottledBrokers,
                                 boolean isKafkaAssignerMode,
                                 Integer concurrentPartitionMovements,
                                 Integer concurrentLeaderMovements,
-                                HttpServletRequest request) {
+                                String uuid) {
     // Set the execution mode, add execution proposals, and start execution.
     _executor.setExecutionMode(isKafkaAssignerMode);
     _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor, concurrentPartitionMovements,
-                               concurrentLeaderMovements, request);
+                               concurrentLeaderMovements, uuid);
   }
 
   /**
@@ -651,8 +649,7 @@ public class KafkaCruiseControl {
    * Get the state with selected substates for Kafka Cruise Control.
    */
   public CruiseControlState state(OperationProgress operationProgress,
-                                  Set<CruiseControlState.SubState> substates,
-                                  UserTaskManager userTaskManager) {
+                                  Set<CruiseControlState.SubState> substates) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = null;
     // In case no substate is specified, return all substates.
     substates = !substates.isEmpty() ? substates
@@ -662,14 +659,10 @@ public class KafkaCruiseControl {
       clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     }
 
-    return new CruiseControlState(substates.contains(EXECUTOR) ? _executor.state()
-                                                               : null,
-                                       substates.contains(MONITOR) ? _loadMonitor.state(operationProgress, clusterAndGeneration)
-                                                                   : null,
-                                       substates.contains(ANALYZER) ? _goalOptimizer.state(clusterAndGeneration)
-                                                                    : null,
-                                  substates.contains(ANOMALY_DETECTOR) ? _anomalyDetector.anomalyDetectorState()
-                                                                            : null, userTaskManager);
+    return new CruiseControlState(substates.contains(EXECUTOR) ? _executor.state() : null,
+                                  substates.contains(MONITOR) ? _loadMonitor.state(operationProgress, clusterAndGeneration) : null,
+                                  substates.contains(ANALYZER) ? _goalOptimizer.state(clusterAndGeneration) : null,
+                                  substates.contains(ANOMALY_DETECTOR) ? _anomalyDetector.anomalyDetectorState() : null);
   }
 
   /**

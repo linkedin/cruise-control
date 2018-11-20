@@ -45,7 +45,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Supplier;
+import java.util.function.Function;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -356,7 +356,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } else {
       // Get the broker stats asynchronously.
       CruiseControlResponse nonCachedBrokerStats =
-          getAndMaybeReturnProgress(request, response, () -> _asyncKafkaCruiseControl.getBrokerStats(parameters));
+          getAndMaybeReturnProgress(request, response, uuid -> _asyncKafkaCruiseControl.getBrokerStats(parameters));
       if (nonCachedBrokerStats == null) {
         return false;
       }
@@ -373,7 +373,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     // Get cluster model asynchronously.
     CruiseControlResponse kafkaPartitionLoadState = getAndMaybeReturnProgress(request, response,
-                                                                              () -> _asyncKafkaCruiseControl.partitionLoadState(parameters));
+                                                                              uuid -> _asyncKafkaCruiseControl.partitionLoadState(parameters));
     if (kafkaPartitionLoadState == null) {
       return false;
     }
@@ -397,9 +397,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     // Get the optimization result asynchronously.
     CruiseControlResponse optimizationResult = getAndMaybeReturnProgress(
-        request, response, () -> _asyncKafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(),
-                                                                                   goalsAndRequirements.requirements(),
-                                                                                   parameters));
+        request, response, uuid -> _asyncKafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(),
+                                                                                     goalsAndRequirements.requirements(),
+                                                                                     parameters));
     if (optimizationResult == null) {
       return false;
     }
@@ -426,7 +426,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
 
     CruiseControlResponse state = getAndMaybeReturnProgress(request, response,
-                                                            () -> _asyncKafkaCruiseControl.state(parameters, _userTaskManager));
+                                                            uuid -> _asyncKafkaCruiseControl.state(parameters));
     if (state == null) {
       return false;
     }
@@ -468,25 +468,25 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       case ADD_BROKER:
         optimizationResult =
             getAndMaybeReturnProgress(request, response,
-                                      () -> _asyncKafkaCruiseControl.addBrokers(goalsAndRequirements.goals(),
-                                                                                goalsAndRequirements.requirements(),
-                                                                                (AddedOrRemovedBrokerParameters) parameters,
-                                                                                request));
+                                      uuid -> _asyncKafkaCruiseControl.addBrokers(goalsAndRequirements.goals(),
+                                                                                  goalsAndRequirements.requirements(),
+                                                                                  (AddedOrRemovedBrokerParameters) parameters,
+                                                                                  uuid));
         break;
       case REMOVE_BROKER:
         optimizationResult =
             getAndMaybeReturnProgress(request, response,
-                                      () -> _asyncKafkaCruiseControl.decommissionBrokers(goalsAndRequirements.goals(),
-                                                                                         goalsAndRequirements.requirements(),
-                                                                                         (AddedOrRemovedBrokerParameters) parameters,
-                                                                                         request));
+                                      uuid -> _asyncKafkaCruiseControl.decommissionBrokers(goalsAndRequirements.goals(),
+                                                                                           goalsAndRequirements.requirements(),
+                                                                                           (AddedOrRemovedBrokerParameters) parameters,
+                                                                                           uuid));
         break;
       case FIX_OFFLINE_REPLICAS:
         optimizationResult = getAndMaybeReturnProgress(request, response,
-                                                       () -> _asyncKafkaCruiseControl.fixOfflineReplicas(goalsAndRequirements.goals(),
-                                                                                                         goalsAndRequirements.requirements(),
-                                                                                                         (FixOfflineReplicasParameters) parameters,
-                                                                                                         request));
+                                                       uuid -> _asyncKafkaCruiseControl.fixOfflineReplicas(goalsAndRequirements.goals(),
+                                                                                                           goalsAndRequirements.requirements(),
+                                                                                                           (FixOfflineReplicasParameters) parameters,
+                                                                                                           uuid));
         break;
       default:
         // Should never reach here.
@@ -514,10 +514,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     CruiseControlResponse optimizationResult =
         getAndMaybeReturnProgress(request, response,
-                                  () -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
-                                                                           goalsAndRequirements.requirements(),
-                                                                           parameters,
-                                                                           request));
+                                  uuid -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
+                                                                             goalsAndRequirements.requirements(),
+                                                                             parameters,
+                                                                             uuid));
     if (optimizationResult == null) {
       return false;
     }
@@ -535,7 +535,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
     // Get proposals asynchronously.
     CruiseControlResponse optimizationResult =
-        getAndMaybeReturnProgress(request, response, () -> _asyncKafkaCruiseControl.demoteBrokers(request, parameters));
+        getAndMaybeReturnProgress(request, response, uuid -> _asyncKafkaCruiseControl.demoteBrokers(uuid, parameters));
     if (optimizationResult == null) {
       return false;
     }
@@ -576,10 +576,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private CruiseControlResponse getAndMaybeReturnProgress(HttpServletRequest request,
                                                           HttpServletResponse response,
-                                                          Supplier<OperationFuture> supplier)
+                                                          Function<String, OperationFuture> function)
       throws ExecutionException, InterruptedException, IOException {
     int step = _asyncOperationStep.get();
-    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, supplier, step);
+    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, function, step);
     _asyncOperationStep.set(step + 1);
     try {
       return futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);
@@ -605,7 +605,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                         CruiseControlState.SubState.MONITOR)));
 
     CruiseControlResponse state = getAndMaybeReturnProgress(request, response,
-                                                            () -> _asyncKafkaCruiseControl.state(parameters, _userTaskManager));
+                                                            uuid -> _asyncKafkaCruiseControl.state(parameters));
     if (state == null) {
       return null;
     }
