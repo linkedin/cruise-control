@@ -72,7 +72,7 @@ public class ReplicaSortFunctionFactory {
 
   /**
    * This priority function can be used together with {@link SortedReplicas#reverselySortedReplicas()}
-   * to provide sorted replicas in descending order of score and prioritize the immigrants replicas.
+   * to provide sorted replicas in descending order of score and prioritize the immigrant replicas.
    *
    * @return a priority function that de-prioritize the immigrants replicas
    */

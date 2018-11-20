@@ -130,7 +130,7 @@ public class Rack implements Serializable {
    * brokers in the rack for the requested resource.
    *
    * @param resource Resource for which capacity will be provided.
-   * @return Healthy rack capacity of the resource.
+   * @return Alive rack capacity of the resource.
    */
   public double capacityFor(Resource resource) {
     return _rackCapacity[resource.id()];
@@ -244,8 +244,8 @@ public class Rack implements Serializable {
   /**
    * Create a broker under this rack, and get the created broker.
    *
-   * @param brokerId       Id of the broker to be created.
-   * @param hostName           The hostName of the broker
+   * @param brokerId Id of the broker to be created.
+   * @param hostName The hostName of the broker
    * @param brokerCapacity Capacity of the created broker.
    * @return Created broker.
    */

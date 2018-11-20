@@ -258,7 +258,7 @@ public class DeterministicCluster {
    *
    * @param numRacks                Number of racks in ToR architecture.
    * @param orderedRackIdsOfBrokers Specifies the rack id for each broker.
-   * @param brokerCapacity          Healthy broker capacity.
+   * @param brokerCapacity          Alive broker capacity.
    * @return Cluster with the specified number of racks and broker distribution.
    */
   public static ClusterModel getHomogeneousDeterministicCluster(int numRacks,

@@ -22,7 +22,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
-import com.linkedin.kafka.cruisecontrol.common.RandomCluster;
+import com.linkedin.kafka.cruisecontrol.model.RandomCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
@@ -54,7 +54,7 @@ import static org.junit.Assert.assertTrue;
 public class RandomGoalTest {
   private static final Logger LOG = LoggerFactory.getLogger(RandomGoalTest.class);
 
-  private final static Random RANDOM = new Random(34534534);
+  private static final Random RANDOM = new Random(34534534);
 
   /**
    * Populate parameters for the {@link OptimizationVerifier}. All brokers are alive.

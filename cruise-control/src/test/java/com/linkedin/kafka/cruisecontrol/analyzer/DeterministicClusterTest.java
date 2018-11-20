@@ -205,7 +205,7 @@ public class DeterministicClusterTest {
       assertTrue("Deterministic Cluster Test failed to improve the existing state.",
           OptimizationVerifier.executeGoalsFor(_balancingConstraint, _cluster, _goalNameByPriority, _verifications));
     } catch (OptimizationFailureException optimizationFailureException) {
-      // This exception is thrown if rebalance fails due to healthy brokers having insufficient capacity.
+      // This exception is thrown if rebalance fails due to alive brokers having insufficient capacity.
       if (!optimizationFailureException.getMessage().contains("Insufficient healthy cluster capacity for resource")) {
         throw optimizationFailureException;
       }

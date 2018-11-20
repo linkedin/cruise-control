@@ -85,7 +85,7 @@ public class Broker implements Serializable, Comparable<Broker> {
     return _host;
   }
 
-  public State getState() {
+  public State state() {
     return _state;
   }
 

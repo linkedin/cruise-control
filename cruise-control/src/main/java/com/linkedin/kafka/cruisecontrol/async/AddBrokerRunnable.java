@@ -11,13 +11,12 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collection;
 import java.util.List;
 import java.util.regex.Pattern;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
  * The async runnable for {@link KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List,
  * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer,
- * Integer, boolean, Pattern, HttpServletRequest)}
+ * Integer, boolean, Pattern, String)}
  */
 class AddBrokerRunnable extends OperationRunnable {
   private final Collection<Integer> _brokerIds;
@@ -30,14 +29,14 @@ class AddBrokerRunnable extends OperationRunnable {
   private final Integer _concurrentLeaderMovements;
   private final boolean _skipHardGoalCheck;
   private final Pattern _excludedTopics;
-  private final HttpServletRequest _request;
+  private final String _uuid;
 
   AddBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture future,
                     List<String> goals,
                     ModelCompletenessRequirements modelCompletenessRequirements,
                     AddedOrRemovedBrokerParameters parameters,
-                    HttpServletRequest request) {
+                    String uuid) {
     super(kafkaCruiseControl, future);
     _brokerIds = parameters.brokerIds();
     _dryRun = parameters.dryRun();
@@ -49,7 +48,7 @@ class AddBrokerRunnable extends OperationRunnable {
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
-    _request = request;
+    _uuid = uuid;
   }
 
   @Override
@@ -58,6 +57,6 @@ class AddBrokerRunnable extends OperationRunnable {
                                                                  _modelCompletenessRequirements, _future.operationProgress(),
                                                                  _allowCapacityEstimation, _concurrentPartitionMovements,
                                                                  _concurrentLeaderMovements, _skipHardGoalCheck, _excludedTopics,
-                                                                 _request));
+                                                                 _uuid));
   }
 }

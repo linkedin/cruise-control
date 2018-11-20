@@ -101,8 +101,8 @@ public abstract class AbstractGoal implements Goal {
   public abstract String name();
 
   /**
-   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if its topic
-   * is in the excluded topics set and its broker is still alive.
+   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if (1) its topic
+   * is in the excluded topics set and (2) its broker is still alive.
    * @param replica the replica to check.
    * @param excludedTopics the excluded topics set.
    * @return true if the replica should be excluded, false otherwise.

@@ -68,7 +68,7 @@ import java.util.Set;
  */
 public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigResolver {
   public static final String CAPACITY_CONFIG_FILE = "capacity.config.file";
-  private static final int DEFAULT_CAPACITY_BROKER_ID = -1;
+  public static final int DEFAULT_CAPACITY_BROKER_ID = -1;
   private static Map<Integer, BrokerCapacityInfo> _capacitiesForBrokers;
 
   @Override

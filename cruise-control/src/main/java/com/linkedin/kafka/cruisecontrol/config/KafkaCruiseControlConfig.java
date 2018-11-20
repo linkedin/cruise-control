@@ -472,7 +472,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public static final String ANOMALY_NOTIFIER_CLASS_CONFIG = "anomaly.notifier.class";
   private static final String ANOMALY_NOTIFIER_CLASS_DOC = "The notifier class to trigger an alert when an "
-      + "anomaly is violated. The anomaly could be either a goal violation or a broker failure.";
+      + "anomaly is violated. The anomaly could be either a goal violation, broker failure, or metric anomaly.";
 
   /**
    * <code>anomaly.detection.interval.ms</code>

@@ -74,20 +74,20 @@ public class MetadataClient {
   /**
    * Refresh the metadata. The method is synchronized because the network client is not thread safe.
    */
-  public synchronized ClusterAndGeneration refreshMetadata(long timeout) {
+  public synchronized ClusterAndGeneration refreshMetadata(long timeoutMs) {
     // Do not update metadata if the metadata has just been refreshed.
     if (_time.milliseconds() >= _metadata.lastSuccessfulUpdate() + _metadataTTL) {
       // Cruise Control always fetch metadata for all the topics.
       _metadata.needMetadataForAllTopics(true);
       int version = _metadata.requestUpdate();
-      long remaining = timeout;
+      long remainingMs = timeoutMs;
       Cluster beforeUpdate = _metadata.fetch();
       boolean isMetadataUpdated = _metadata.version() > version;
-      while (!isMetadataUpdated && remaining > 0) {
+      while (!isMetadataUpdated && remainingMs > 0) {
         _metadata.requestUpdate();
-        long start = _time.milliseconds();
-        _networkClient.poll(remaining, start);
-        remaining -= (_time.milliseconds() - start);
+        long startMs = _time.milliseconds();
+        _networkClient.poll(remainingMs, startMs);
+        remainingMs -= (_time.milliseconds() - startMs);
         isMetadataUpdated = _metadata.version() > version;
       }
       if (isMetadataUpdated) {
@@ -97,7 +97,7 @@ public class MetadataClient {
         }
       } else {
         LOG.warn("Failed to update metadata in {}ms. Using old metadata with version {} and last successful update {}.",
-                 timeout, _metadata.version(), _metadata.lastSuccessfulUpdate());
+                 timeoutMs, _metadata.version(), _metadata.lastSuccessfulUpdate());
       }
     }
     return new ClusterAndGeneration(_metadata.fetch(), _metadataGeneration.get());

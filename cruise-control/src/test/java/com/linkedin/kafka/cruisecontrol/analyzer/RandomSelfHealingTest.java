@@ -22,7 +22,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDisk
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.ClusterProperty;
-import com.linkedin.kafka.cruisecontrol.common.RandomCluster;
+import com.linkedin.kafka.cruisecontrol.model.RandomCluster;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
@@ -53,7 +53,7 @@ public class RandomSelfHealingTest {
   private static final Logger LOG = LoggerFactory.getLogger(RandomSelfHealingTest.class);
 
   /**
-   * Populate parameters for the {@link OptimizationVerifier}. All brokers are alive.
+   * Populate parameters for the {@link OptimizationVerifier}.
    *
    * @return Parameters for the {@link OptimizationVerifier}.
    */
@@ -170,6 +170,7 @@ public class RandomSelfHealingTest {
    * @param balancingConstraint Balancing constraint.
    * @param excludedTopics Excluded topics.
    * @param verifications the verifications to make.
+   * @param leaderInFirstPosition Leader of each partition is in the first position or not.
    */
   public RandomSelfHealingTest(int testId,
                                Map<ClusterProperty, Number> modifiedProperties,

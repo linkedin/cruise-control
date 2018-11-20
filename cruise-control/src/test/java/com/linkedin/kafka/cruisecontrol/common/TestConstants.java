@@ -10,12 +10,12 @@ import java.util.Map;
 
 
 public class TestConstants {
-  static final long SEED_BASE = 3140;
-  static final long REPLICATION_SEED = 5234;
-  static final long LEADER_SEED = 72033;
-  static final long REPLICA_ASSIGNMENT_SEED = 1240;
-  static final long TOPIC_POPULARITY_SEED = 7234;
-  static final Map<Resource, Long> UTILIZATION_SEED_BY_RESOURCE;
+  public static final long SEED_BASE = 3140;
+  public static final long REPLICATION_SEED = 5234;
+  public static final long LEADER_SEED = 72033;
+  public static final long REPLICA_ASSIGNMENT_SEED = 1240;
+  public static final long TOPIC_POPULARITY_SEED = 7234;
+  public static final Map<Resource, Long> UTILIZATION_SEED_BY_RESOURCE;
   static {
     Map<Resource, Long> utilizationSeedByResource = new HashMap<>();
     utilizationSeedByResource.put(Resource.CPU, 100000L);
@@ -44,9 +44,9 @@ public class TestConstants {
     UNIFORM, LINEAR, EXPONENTIAL
   }
 
-  private final static int NUM_SNAPSHOTS = 2;
+  private static final int NUM_SNAPSHOTS = 2;
   // Cluster properties to be used as a base. Any changes specified in modified properties will be applied to this.
-  public final static Map<ClusterProperty, Number> BASE_PROPERTIES;
+  public static final Map<ClusterProperty, Number> BASE_PROPERTIES;
 
   static {
     Map<ClusterProperty, Number> properties = new HashMap<>();
@@ -66,7 +66,7 @@ public class TestConstants {
   }
 
   // Broker capacity (homogeneous cluster is assumed).
-  public final static Map<Resource, Double> BROKER_CAPACITY;
+  public static final Map<Resource, Double> BROKER_CAPACITY;
 
   static {
     Map<Resource, Double> capacity = new HashMap<>();

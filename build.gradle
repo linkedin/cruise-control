@@ -322,6 +322,6 @@ task distributeBuild(type: com.linkedin.gradle.build.DistributeTask) {
 
 //wrapper generation task
 task wrapper(type: Wrapper) {
-  gradleVersion = '4.6'
+  gradleVersion = '4.8'
   distributionType = Wrapper.DistributionType.ALL
 }

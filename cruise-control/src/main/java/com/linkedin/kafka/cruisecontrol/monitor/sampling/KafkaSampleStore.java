@@ -101,10 +101,10 @@ public class KafkaSampleStore implements SampleStore {
   protected String _partitionMetricSampleStoreTopic;
   protected String _brokerMetricSampleStoreTopic;
   protected Integer _sampleStoreTopicReplicationFactor;
-  protected Integer _partitionSampleStoreTopicPartitionCount;
-  protected Integer _brokerSampleStoreTopicPartitionCount;
-  protected Long _minPartitionSampleStoreTopicRetentionTimeMs;
-  protected Long _minBrokerSampleStoreTopicRetentionTimeMs;
+  protected int _partitionSampleStoreTopicPartitionCount;
+  protected int _brokerSampleStoreTopicPartitionCount;
+  protected long _minPartitionSampleStoreTopicRetentionTimeMs;
+  protected long _minBrokerSampleStoreTopicRetentionTimeMs;
   protected volatile double _loadingProgress;
   protected Producer<byte[], byte[]> _producer;
   protected volatile boolean _shutdown = false;
@@ -211,9 +211,11 @@ public class KafkaSampleStore implements SampleStore {
       brokerSampleRetentionMs = Math.max(_minBrokerSampleStoreTopicRetentionTimeMs, brokerSampleRetentionMs);
 
       int numberOfBrokersInCluster = zkUtils.getAllBrokersInCluster().size();
-      if (numberOfBrokersInCluster == 0) {
-        throw new IllegalStateException(String.format("Kafka cluster has no alive brokers. (zookeeper.connect = %s",
-                                                      config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
+      if (numberOfBrokersInCluster <= 1) {
+        throw new IllegalStateException(
+            String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d, zookeeper.connect=%s)",
+                          numberOfBrokersInCluster, config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
+
       }
       int replicationFactor = _sampleStoreTopicReplicationFactor == null ? Math.min(DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR,
                               numberOfBrokersInCluster) : _sampleStoreTopicReplicationFactor;
