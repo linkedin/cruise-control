@@ -564,7 +564,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 CommonClientConfigs.RECEIVE_BUFFER_DOC)
         .define(RECONNECT_BACKOFF_MS_CONFIG, ConfigDef.Type.LONG, 50L, atLeast(0L), ConfigDef.Importance.LOW,
                 CommonClientConfigs.RECONNECT_BACKOFF_MS_DOC)
-        .define(METADATA_MAX_AGE_CONFIG, ConfigDef.Type.LONG, 5 * 60 * 1000, atLeast(0), ConfigDef.Importance.LOW,
+        .define(METADATA_MAX_AGE_CONFIG, ConfigDef.Type.LONG, 55 * 1000, atLeast(0), ConfigDef.Importance.LOW,
                 METADATA_MAX_AGE_DOC)
         .define(CONNECTIONS_MAX_IDLE_MS_CONFIG,
                 ConfigDef.Type.LONG,
@@ -1004,13 +1004,33 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     }
   }
 
+  /**
+   * Sanity check to ensure that {@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} is not longer than
+   * {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
+   *
+   * Sampling process involves a potential metadata update if the current metadata is stale. The configuration
+   * {@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} indicates the timeout of such a metadata update. Hence,
+   * this subprocess of the sampling process cannot be set with a timeout larger than the total sampling timeout of
+   * {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
+   */
+  private void sanityCheckSamplingPeriod() {
+    long samplingPeriodMs = getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
+    long metadataTimeoutMs = getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
+    if (metadataTimeoutMs >  samplingPeriodMs) {
+      throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs +
+          "] to be longer than sampling period [" + samplingPeriodMs + "].");
+    }
+  }
+
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
     super(CONFIG, originals);
     sanityCheckGoalNames();
+    sanityCheckSamplingPeriod();
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
     sanityCheckGoalNames();
+    sanityCheckSamplingPeriod();
   }
 }
