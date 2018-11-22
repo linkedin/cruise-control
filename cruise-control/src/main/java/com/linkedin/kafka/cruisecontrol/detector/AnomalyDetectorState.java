@@ -20,7 +20,7 @@ import java.util.stream.Collectors;
 
 
 public class AnomalyDetectorState {
-  private static final String DATA_FORMAT = "YYYY-MM-dd_hh:mm:ss z";
+  private static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   private static final String TIME_ZONE = "UTC";
   private static final String DETECTION_MS = "detectionMs";
   private static final String DETECTION_DATE = "detectionDate";
