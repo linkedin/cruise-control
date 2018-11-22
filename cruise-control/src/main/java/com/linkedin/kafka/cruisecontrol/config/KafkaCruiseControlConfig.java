@@ -1010,6 +1010,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
           "] to be longer than sampling period [" + samplingPeriodMs + "].");
     }
   }
+
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
     super(CONFIG, originals);
     sanityCheckGoalNames();
