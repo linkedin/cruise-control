@@ -70,6 +70,8 @@ public class ParameterUtils {
   private static final String SKIP_HARD_GOAL_CHECK_PARAM = "skip_hard_goal_check";
   private static final String EXCLUDED_TOPICS_PARAM = "excluded_topics";
   private static final String USER_TASK_IDS_PARAM = "user_task_ids";
+  private static final String SKIP_URP_DEMOTION_PARAM = "skip_urp_demotion";
+  private static final String EXCLUDE_FOLLOWER_DEMOTION_PARAM = "exclude_follower_demotion";
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
@@ -155,6 +157,8 @@ public class ParameterUtils {
     demoteBroker.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     demoteBroker.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     demoteBroker.add(VERBOSE_PARAM);
+    demoteBroker.add(SKIP_URP_DEMOTION_PARAM);
+    demoteBroker.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
@@ -493,6 +497,14 @@ public class ParameterUtils {
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
     return getMode(request) || getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
+  }
+
+  static boolean skipUrpDemotion(HttpServletRequest request) {
+    return getBooleanParam(request, SKIP_URP_DEMOTION_PARAM, false);
+  }
+
+  static boolean excludeFollowerDemotion(HttpServletRequest request) {
+    return getBooleanParam(request, EXCLUDE_FOLLOWER_DEMOTION_PARAM, false);
   }
 
   public enum DataFrom {
