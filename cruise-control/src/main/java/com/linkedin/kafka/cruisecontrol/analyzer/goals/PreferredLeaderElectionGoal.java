@@ -43,7 +43,7 @@ public class PreferredLeaderElectionGoal implements Goal {
                                      boolean excludeFollowerDemotion,
                                      Cluster kafkaCluster) {
     if (skipUrpDemotion && kafkaCluster == null) {
-      throw  new IllegalArgumentException("Cluster information is not provided.");
+      throw new IllegalArgumentException("Cluster information is not provided.");
     }
     _skipUrpDemotion = skipUrpDemotion;
     _excludeFollowerDemotion = excludeFollowerDemotion;

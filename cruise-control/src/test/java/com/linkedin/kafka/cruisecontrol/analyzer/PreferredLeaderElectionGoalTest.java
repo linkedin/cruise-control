@@ -144,7 +144,7 @@ public class PreferredLeaderElectionGoalTest {
         if (originalReplicaDistribution.get(tp).contains(2)) {
           if (originalLeaderDistribution.get(tp) == 2) {
             List<Integer> replicas = optimizedReplicaDistribution.get(tp);
-            assertEquals("Tp " + tp, 2, (int) replicas.get(replicas.size() - 1));
+            assertEquals("Tp " + tp, 2, replicas.get(replicas.size() - 1).intValue());
           } else {
             assertEquals("Tp " + tp, originalReplicaDistribution.get(tp), optimizedReplicaDistribution.get(tp));
           }
@@ -171,7 +171,7 @@ public class PreferredLeaderElectionGoalTest {
         TopicPartition tp = new TopicPartition(t, p);
         if (originalLeaderDistribution.get(tp) == 0 && t.equals(TOPIC0)) {
           List<Integer> replicas = optimizedReplicaDistribution.get(tp);
-          assertEquals("Tp " + tp, 0, (int) replicas.get(replicas.size() - 1));
+          assertEquals("Tp " + tp, 0, replicas.get(replicas.size() - 1).intValue());
         } else {
           assertEquals("Tp " + tp, originalLeaderDistribution.get(tp), optimizedLeaderDistribution.get(tp));
         }
