@@ -30,7 +30,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 
 public class PreferredLeaderElectionGoalTest {
@@ -53,11 +53,10 @@ public class PreferredLeaderElectionGoalTest {
   private static final int NUM_RACKS = 4;
 
   @Test
-  public void testOptimize() throws KafkaCruiseControlException {
-    ClusterModel clusterModel = createClusterModel();
-    Cluster cluster = createCluster(false);
+  public void testOptimizeWithoutDemotedBrokers() throws KafkaCruiseControlException {
+    ClusterModel clusterModel = createClusterModel(true)._clusterModel;
 
-    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, cluster);
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
@@ -73,8 +72,7 @@ public class PreferredLeaderElectionGoalTest {
 
   @Test
   public void testOptimizeWithDemotedBrokers() throws KafkaCruiseControlException {
-    ClusterModel clusterModel = createClusterModel();
-    Cluster cluster = createCluster(false);
+    ClusterModel clusterModel = createClusterModel(true)._clusterModel;
     clusterModel.setBrokerState(0, Broker.State.DEMOTED);
 
     Set<TopicPartition> leaderPartitionsOnDemotedBroker = new HashSet<>();
@@ -84,7 +82,7 @@ public class PreferredLeaderElectionGoalTest {
       b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
     });
 
-    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, cluster);
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
@@ -111,68 +109,87 @@ public class PreferredLeaderElectionGoalTest {
 
   @Test
   public void testOptimizeWithDemotedBrokersAndSkipUrpDemotion() throws KafkaCruiseControlException {
-    ClusterModel clusterModel = createClusterModel();
-    Cluster cluster = createCluster(true);
+    ClusterModelAndInfo clusterModelAndInfo = createClusterModel(false);
+    ClusterModel clusterModel = clusterModelAndInfo._clusterModel;
+    Cluster cluster = clusterModelAndInfo._clusterInfo;
     clusterModel.setBrokerState(1, Broker.State.DEMOTED);
 
-    Map<TopicPartition, Integer> leaderDistributionBeforeBrokerDemotion = new HashMap<>();
-    clusterModel.brokers().forEach(b -> {
-      b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
-    });
-
+    Map<TopicPartition, List<Integer>> originalReplicaDistribution = clusterModel.getReplicaDistribution();
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(true, false, cluster);
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
 
-    for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
+    // Operation on under replicated partitions should be skipped.
+    for (String t : Arrays.asList(TOPIC1, TOPIC2)) {
       for (int p = 0; p < 3; p++) {
         TopicPartition tp = new TopicPartition(t, p);
-        int oldLeaderBroker = leaderDistributionBeforeBrokerDemotion.get(tp);
-        // All the demotion operation should be skipped since all the partitions are currently under replicated.
-        assertEquals("Tp " + tp, oldLeaderBroker, clusterModel.partition(tp).leader().broker().id());
+        assertEquals("Tp " + tp, originalReplicaDistribution.get(tp), clusterModel.getReplicaDistribution().get(tp));
       }
     }
   }
 
   @Test
   public void testOptimizeWithDemotedBrokersAndExcludeFollowerDemotion() throws KafkaCruiseControlException {
-    ClusterModel clusterModel = createClusterModel();
-    Cluster cluster = createCluster(false);
+    ClusterModel clusterModel = createClusterModel(true)._clusterModel;
     clusterModel.setBrokerState(2, Broker.State.DEMOTED);
 
-    Set<TopicPartition> leaderPartitionsOnDemotedBroker = new HashSet<>();
-    Map<TopicPartition, List<Replica>> originalReplicaListByTopicPartition = new HashMap<>();
-    for (Replica r: clusterModel.broker(2).replicas()) {
-      TopicPartition tp = r.topicPartition();
-      if (r.isLeader()) {
-        leaderPartitionsOnDemotedBroker.add(tp);
-      } else {
-        originalReplicaListByTopicPartition.put(tp, clusterModel.partition(tp).replicas());
-      }
-    }
-
-    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, true, cluster);
+    Map<TopicPartition, Integer> originalLeaderDistribution = clusterModel.getLeaderDistribution();
+    Map<TopicPartition, List<Integer>> originalReplicaDistribution = clusterModel.getReplicaDistribution();
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, true, null);
     goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
+    Map<TopicPartition, List<Integer>> optimizedReplicaDistribution = clusterModel.getReplicaDistribution();
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
       for (int p = 0; p < 3; p++) {
         TopicPartition tp = new TopicPartition(t, p);
-        if (leaderPartitionsOnDemotedBroker.contains(tp)) {
-          List<Replica> replicas = clusterModel.partition(tp).replicas();
-          // Only the first replica should be leader.
-          assertSame(clusterModel.partition(tp).leader(), replicas.get(0));
-          // The demoted replica should be in the last position.
-          assertEquals(2, replicas.get(replicas.size() - 1).broker().id());
-        } else if (originalReplicaListByTopicPartition.containsKey(tp)) {
-          List<Replica> replicas = clusterModel.partition(tp).replicas();
-          List<Replica> originalReplicas = originalReplicaListByTopicPartition.get(tp);
-          // For partitions whose follower replicas are on the demote broker, swap operation should be skipped.
-          assertEquals(replicas, originalReplicas);
+        if (originalReplicaDistribution.get(tp).contains(2)) {
+          if (originalLeaderDistribution.get(tp) == 2) {
+            List<Integer> replicas = optimizedReplicaDistribution.get(tp);
+            assertEquals("Tp " + tp, 2, (int) replicas.get(replicas.size() - 1));
+          } else {
+            assertEquals("Tp " + tp, originalReplicaDistribution.get(tp), optimizedReplicaDistribution.get(tp));
+          }
         }
       }
     }
   }
 
-  private ClusterModel createClusterModel() {
+  @Test
+  public void testOptimizeWithDemotedBrokersAndSkipUrpDemotionAndExcludeFollowerDemotion() throws KafkaCruiseControlException {
+    ClusterModelAndInfo clusterModelAndInfo = createClusterModel(false);
+    ClusterModel clusterModel = clusterModelAndInfo._clusterModel;
+    Cluster cluster = clusterModelAndInfo._clusterInfo;
+    clusterModel.setBrokerState(0, Broker.State.DEMOTED);
+
+    Map<TopicPartition, Integer> originalLeaderDistribution = clusterModel.getLeaderDistribution();
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(true, true, cluster);
+    goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
+    Map<TopicPartition, Integer> optimizedLeaderDistribution = clusterModel.getLeaderDistribution();
+    Map<TopicPartition, List<Integer>> optimizedReplicaDistribution = clusterModel.getReplicaDistribution();
+
+    for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
+      for (int p = 0; p < 3; p++) {
+        TopicPartition tp = new TopicPartition(t, p);
+        if (originalLeaderDistribution.get(tp) == 0 && t.equals(TOPIC0)) {
+          List<Integer> replicas = optimizedReplicaDistribution.get(tp);
+          assertEquals("Tp " + tp, 0, (int) replicas.get(replicas.size() - 1));
+        } else {
+          assertEquals("Tp " + tp, originalLeaderDistribution.get(tp), optimizedLeaderDistribution.get(tp));
+        }
+      }
+    }
+  }
+
+  static private class ClusterModelAndInfo {
+    ClusterModel _clusterModel;
+    Cluster _clusterInfo;
+
+    ClusterModelAndInfo(ClusterModel clusterModel, Cluster clusterInfo) {
+      _clusterInfo = clusterInfo;
+      _clusterModel = clusterModel;
+    }
+  }
+
+  private ClusterModelAndInfo createClusterModel(boolean skipClusterInfoGeneration) {
 
     ClusterModel clusterModel = new ClusterModel(new ModelGeneration(0, 0),
                                                  1.0);
@@ -218,7 +235,44 @@ public class PreferredLeaderElectionGoalTest {
     createReplicaAndSetLoad(clusterModel, "r2", 3, T2P1, 2, true);
     createReplicaAndSetLoad(clusterModel, "r3", 4, T2P2, 2, true);
 
-    return clusterModel;
+    Cluster cluster = null;
+    if (!skipClusterInfoGeneration) {
+      Node [] nodes = new Node [NUM_RACKS + 1];
+      for (i = 0; i < NUM_RACKS + 1; i++) {
+        nodes[i] = new Node(i, "h" + i, 100);
+      }
+      List<PartitionInfo> partitions = new ArrayList<>(9);
+      // Make topic1 and topic2's partitions under replicated.
+      partitions.add(new PartitionInfo(T0P0.topic(), T0P0.partition(), nodes[0], new Node[]{nodes[0], nodes[4], nodes[3]},
+                     new Node[]{nodes[0], nodes[4], nodes[3]}));
+
+      partitions.add(new PartitionInfo(T0P1.topic(), T0P1.partition(), nodes[1], new Node[]{nodes[1], nodes[2], nodes[4]},
+                     new Node[]{nodes[1], nodes[2], nodes[4]}));
+
+      partitions.add(new PartitionInfo(T0P2.topic(), T0P2.partition(), nodes[2], new Node[]{nodes[2], nodes[0], nodes[3]},
+                     new Node[]{nodes[2], nodes[0], nodes[3]}));
+
+      partitions.add(new PartitionInfo(T1P0.topic(), T1P0.partition(), nodes[1], new Node[]{nodes[1], nodes[3]},
+                     new Node[]{nodes[1], nodes[3], nodes[2]}));
+
+      partitions.add(new PartitionInfo(T1P1.topic(), T1P1.partition(), nodes[3], new Node[]{nodes[3], nodes[4]},
+                     new Node[]{nodes[3], nodes[4], nodes[0]}));
+
+      partitions.add(new PartitionInfo(T1P2.topic(), T1P2.partition(), nodes[4], new Node[]{nodes[4], nodes[2]},
+                     new Node[]{nodes[4], nodes[2], nodes[0]}));
+
+      partitions.add(new PartitionInfo(T2P0.topic(), T2P0.partition(), nodes[4], new Node[]{nodes[4], nodes[2]},
+                     new Node[]{nodes[4], nodes[2], nodes[1]}));
+
+      partitions.add(new PartitionInfo(T2P1.topic(), T2P1.partition(), nodes[3], new Node[]{nodes[3], nodes[0]},
+                     new Node[]{nodes[3], nodes[0], nodes[2]}));
+
+      partitions.add(new PartitionInfo(T2P2.topic(), T2P2.partition(), nodes[4], new Node[]{nodes[4], nodes[1]},
+                     new Node[]{nodes[4], nodes[1], nodes[3]}));
+
+      cluster = new Cluster("id", Arrays.asList(nodes), partitions, Collections.emptySet(), Collections.emptySet());
+    }
+    return new ClusterModelAndInfo(clusterModel, cluster);
   }
 
   private void createReplicaAndSetLoad(ClusterModel clusterModel,
@@ -237,50 +291,5 @@ public class PreferredLeaderElectionGoalTest {
     });
     clusterModel.setReplicaLoad(rack, brokerId, tp, new AggregatedMetricValues(metricValuesByResource),
                                 Collections.singletonList(1L));
-  }
-
-  private Cluster createCluster(boolean isURP) {
-    Node [] nodes = new Node [NUM_RACKS + 1];
-    for (int i = 0; i < NUM_RACKS + 1; i++) {
-      nodes[i] = new Node(i, "h" + i, 100);
-    }
-    List<PartitionInfo> partitions = new ArrayList<>(9);
-    partitions.add(new PartitionInfo(T0P0.topic(), T0P0.partition(), nodes[0],
-                   isURP ? new Node[]{nodes[0], nodes[4]} : new Node[]{nodes[0], nodes[4], nodes[3]},
-                   new Node[]{nodes[0], nodes[4], nodes[3]}));
-
-    partitions.add(new PartitionInfo(T0P1.topic(), T0P1.partition(), nodes[1],
-                   isURP ? new Node[]{nodes[1], nodes[2]} : new Node[]{nodes[1], nodes[2], nodes[4]},
-                   new Node[]{nodes[1], nodes[2], nodes[4]}));
-
-    partitions.add(new PartitionInfo(T0P2.topic(), T0P2.partition(), nodes[2],
-                   isURP ? new Node[]{nodes[2], nodes[0]} : new Node[]{nodes[2], nodes[0], nodes[3]},
-                   new Node[]{nodes[2], nodes[0], nodes[3]}));
-
-    partitions.add(new PartitionInfo(T1P0.topic(), T1P0.partition(), nodes[1],
-                   isURP ? new Node[]{nodes[1], nodes[3]} : new Node[]{nodes[1], nodes[3], nodes[2]},
-                   new Node[]{nodes[1], nodes[3], nodes[2]}));
-
-    partitions.add(new PartitionInfo(T1P1.topic(), T1P1.partition(), nodes[3],
-                   isURP ? new Node[]{nodes[3], nodes[4]} : new Node[]{nodes[3], nodes[4], nodes[0]},
-                   new Node[]{nodes[3], nodes[4], nodes[0]}));
-
-    partitions.add(new PartitionInfo(T1P2.topic(), T1P2.partition(), nodes[4],
-                   isURP ? new Node[]{nodes[4], nodes[2]} : new Node[]{nodes[4], nodes[2], nodes[0]},
-                   new Node[]{nodes[4], nodes[2], nodes[0]}));
-
-    partitions.add(new PartitionInfo(T2P0.topic(), T2P0.partition(), nodes[4],
-                   isURP ? new Node[]{nodes[4], nodes[2]} : new Node[]{nodes[4], nodes[2], nodes[1]},
-                   new Node[]{nodes[4], nodes[2], nodes[1]}));
-
-    partitions.add(new PartitionInfo(T2P1.topic(), T2P1.partition(), nodes[3],
-                   isURP ? new Node[]{nodes[3], nodes[0]} : new Node[]{nodes[3], nodes[0], nodes[2]},
-                   new Node[]{nodes[3], nodes[0], nodes[2]}));
-
-    partitions.add(new PartitionInfo(T2P2.topic(), T2P2.partition(), nodes[4],
-                   isURP ? new Node[]{nodes[4], nodes[1]} : new Node[]{nodes[4], nodes[1], nodes[3]},
-                   new Node[]{nodes[4], nodes[1], nodes[3]}));
-
-    return new Cluster("id", Arrays.asList(nodes), partitions, Collections.emptySet(), Collections.emptySet());
   }
 }

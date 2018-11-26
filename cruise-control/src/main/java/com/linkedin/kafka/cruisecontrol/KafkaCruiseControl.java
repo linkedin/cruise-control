@@ -319,7 +319,7 @@ public class KafkaCruiseControl {
    * operation. If there is another broker failure, the leader may be moved to the demoted broker again
    * by Kafka controller.
    *
-   * @param brokerIds The broker ids to move off.
+   * @param brokerIds The id of brokers to be demoted.
    * @param dryRun Whether it is a dry run or not.
    * @param operationProgress The progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
@@ -341,7 +341,7 @@ public class KafkaCruiseControl {
       throws KafkaCruiseControlException {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(skipUrpDemotion,
                                                                        excludeFollowerDemotion,
-                                                                       _loadMonitor.kafkaCluster());
+                                                                       skipUrpDemotion ? _loadMonitor.kafkaCluster() : null);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       sanityCheckBrokerPresence(brokerIds);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
