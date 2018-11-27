@@ -43,7 +43,7 @@ class SamplingTask implements Runnable {
 
   public void run() {
     long now = _time.milliseconds();
-    if (_loadMonitorTaskRunner.compareAndSetState(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING,
+    if (!_loadMonitorTaskRunner.awaitingPauseSampling() && _loadMonitorTaskRunner.compareAndSetState(LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.RUNNING,
                                                   LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.SAMPLING)) {
       long samplingPeriodEndMs = now;
       try {

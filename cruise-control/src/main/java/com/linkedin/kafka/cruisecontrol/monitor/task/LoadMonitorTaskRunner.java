@@ -45,6 +45,7 @@ public class LoadMonitorTaskRunner {
 
   private AtomicReference<LoadMonitorTaskRunnerState> _state;
   private volatile double _bootstrapProgress;
+  private volatile boolean _awaitingPauseSampling;
 
   public enum LoadMonitorTaskRunnerState {
     NOT_STARTED, RUNNING, PAUSED, SAMPLING, BOOTSTRAPPING, TRAINING, LOADING
@@ -109,6 +110,7 @@ public class LoadMonitorTaskRunner {
 
     _state = new AtomicReference<>(NOT_STARTED);
     _bootstrapProgress = -1.0;
+    _awaitingPauseSampling = false;
   }
 
   /**
@@ -262,9 +264,12 @@ public class LoadMonitorTaskRunner {
   /**
    * Pause the scheduled sampling tasks..
    */
-  public void pauseSampling() {
+  public synchronized void pauseSampling() {
     if (_state.get() != PAUSED && !_state.compareAndSet(RUNNING, PAUSED)) {
+      _awaitingPauseSampling = true;
       throw new IllegalStateException("Cannot pause the load monitor because it is in " + _state.get() + " state.");
+    } else {
+      _awaitingPauseSampling = false;
     }
   }
 
@@ -277,6 +282,12 @@ public class LoadMonitorTaskRunner {
     }
   }
 
+  /**
+   * Allow tasks to know if another thread, e.g. executor, is waiting on sampling to pause.
+   */
+  public boolean awaitingPauseSampling() {
+    return _awaitingPauseSampling;
+  }
 
   boolean compareAndSetState(LoadMonitorTaskRunnerState expectedState, LoadMonitorTaskRunnerState newState) {
     return _state.compareAndSet(expectedState, newState);

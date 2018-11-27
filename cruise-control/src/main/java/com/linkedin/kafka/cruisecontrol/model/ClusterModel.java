@@ -829,7 +829,7 @@ public class ClusterModel implements Serializable {
     List<Partition> partitionList = new ArrayList<>(_partitionsByTopicPartition.values());
     partitionList.sort((o1, o2) -> Double.compare(o2.leader().load().expectedUtilizationFor(resource),
                                                   o1.leader().load().expectedUtilizationFor(resource)));
-    return Collections.unmodifiableList(partitionList);
+    return partitionList;
   }
 
   /**

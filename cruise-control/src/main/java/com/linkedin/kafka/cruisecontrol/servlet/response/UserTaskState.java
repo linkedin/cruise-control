@@ -25,7 +25,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 
 
 public class UserTaskState extends AbstractCruiseControlResponse {
-  private static final String DATA_FORMAT = "YYYY-MM-dd_hh:mm:ss z";
+  private static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   private static final String TIME_ZONE = "UTC";
   private static final String ACTIVE_TASK_LABEL_VALUE = "Active";
   private static final String COMPLETED_TASK_LABEL_VALUE = "Completed";
