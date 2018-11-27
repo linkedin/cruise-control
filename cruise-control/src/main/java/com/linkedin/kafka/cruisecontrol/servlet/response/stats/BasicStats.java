@@ -4,8 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
-import com.linkedin.kafka.cruisecontrol.common.Resource;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -28,11 +26,11 @@ class BasicStats {
   private double _potentialBytesOutRate;
   private int _numReplicas;
   private int _numLeaders;
-  private double[] _brokerCapacity;
+  private double _diskCapacity;
 
   BasicStats(double diskUtil, double cpuUtil, double leaderBytesInRate,
              double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-             int numReplicas, int numLeaders, double[] brokerCapacity) {
+             int numReplicas, int numLeaders, double diskCapacity) {
     _diskUtil = diskUtil < 0.0 ? 0.0 : diskUtil;
     // Convert cpu util b/c full utilization should look like 100% instead of 1
     _cpuUtil = cpuUtil < 0.0 ? 0.0 : 100 * cpuUtil;
@@ -42,13 +40,7 @@ class BasicStats {
     _potentialBytesOutRate =  potentialBytesOutRate < 0.0 ? 0.0 : potentialBytesOutRate;
     _numReplicas = numReplicas < 1 ? 0 : numReplicas;
     _numLeaders =  numLeaders < 1 ? 0 : numLeaders;
-    if (brokerCapacity == null) {
-      _brokerCapacity = new double[Resource.values().length];
-      Arrays.fill(_brokerCapacity, 0.0);
-    } else {
-      _brokerCapacity = brokerCapacity;
-    }
-
+    _diskCapacity = diskCapacity < 0.0 ? 0.0 : diskCapacity;
   }
 
   double diskUtil() {
@@ -58,9 +50,8 @@ class BasicStats {
   // Return -1 if total disk space is invalid. Since unit is in percent, will return the digits without
   // percent sign. e.g. return 99.9 for 99.9%
   double diskUtilPct() {
-    double totalDiskMB = _brokerCapacity[Resource.DISK.id()];
-    if (totalDiskMB > 0) {
-      return 100 * _diskUtil / totalDiskMB;
+    if (_diskCapacity > 0) {
+      return 100 * _diskUtil / _diskCapacity;
     }
     return -1.0;
   }
@@ -93,8 +84,8 @@ class BasicStats {
     return _numLeaders;
   }
 
-  double[] getBrokerCapacity() {
-    return _brokerCapacity;
+  double getDiskCapacity() {
+    return _diskCapacity;
   }
 
   void addBasicStats(BasicStats basicStats) {
@@ -106,15 +97,7 @@ class BasicStats {
     _potentialBytesOutRate  += basicStats.potentialBytesOutRate();
     _numReplicas += basicStats.numReplicas();
     _numLeaders += basicStats.numLeaders();
-    addBrokerCapacity(basicStats.getBrokerCapacity());
-  }
-
-  void addBrokerCapacity(double[] capacity) {
-    for (int i = 0; i < capacity.length; i++) {
-      if (capacity[i] > 0) {
-        _brokerCapacity[i] += capacity[i];
-      }
-    }
+    _diskCapacity += basicStats.getDiskCapacity();
   }
 
   /*
@@ -122,7 +105,7 @@ class BasicStats {
    * to encode into JSON
    */
   public Map<String, Object> getJSONStructure() {
-    Map<String, Object> entry = new HashMap<>(8);
+    Map<String, Object> entry = new HashMap<>(9);
     entry.put(DISK_MB, diskUtil());
     entry.put(DISK_PCT, diskUtilPct());
     entry.put(CPU_PCT, cpuUtil());

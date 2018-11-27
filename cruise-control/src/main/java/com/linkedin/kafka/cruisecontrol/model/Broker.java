@@ -119,7 +119,7 @@ public class Broker implements Serializable, Comparable<Broker> {
 
   /**
    * Get broker capacity for all resources
-   * @return If broker is alive, an array of the capacity of the requested resources,  an array of -1.0 otherwise.
+   * @return If broker is alive, an array of the capacity of the requested resources, an array of -1.0 otherwise.
    */
   public double[] capacityForAll() {
     if (isAlive()) {

@@ -38,7 +38,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
 
   public void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                                    double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                                   int numReplicas, int numLeaders, boolean isEstimated, double[] capacity) {
+                                   int numReplicas, int numLeaders, boolean isEstimated, double capacity) {
 
     SingleBrokerStats singleBrokerStats =
         new SingleBrokerStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
@@ -46,7 +46,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     _brokerStats.add(singleBrokerStats);
     _hostFieldLength = Math.max(_hostFieldLength, host.length());
     _hostStats.computeIfAbsent(host, h -> new BasicStats(0.0, 0.0, 0.0, 0.0,
-                                                         0.0, 0.0, 0, 0, null))
+                                                         0.0, 0.0, 0, 0, 0.0))
               .addBasicStats(singleBrokerStats.basicStats());
   }
 
