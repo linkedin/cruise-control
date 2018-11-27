@@ -50,10 +50,7 @@ class BasicStats {
   // Return -1 if total disk space is invalid. Since unit is in percent, will return the digits without
   // percent sign. e.g. return 99.9 for 99.9%
   double diskUtilPct() {
-    if (_diskCapacity > 0) {
-      return 100 * _diskUtil / _diskCapacity;
-    }
-    return -1.0;
+    return _diskCapacity > 0 ? 100 * _diskUtil / _diskCapacity : -1.0;
   }
 
   double cpuUtil() {
@@ -84,7 +81,7 @@ class BasicStats {
     return _numLeaders;
   }
 
-  double getDiskCapacity() {
+  double diskCapacity() {
     return _diskCapacity;
   }
 
@@ -97,7 +94,7 @@ class BasicStats {
     _potentialBytesOutRate  += basicStats.potentialBytesOutRate();
     _numReplicas += basicStats.numReplicas();
     _numLeaders += basicStats.numLeaders();
-    _diskCapacity += basicStats.getDiskCapacity();
+    _diskCapacity += basicStats.diskCapacity();
   }
 
   /*
