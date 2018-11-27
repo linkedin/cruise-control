@@ -42,11 +42,6 @@ public class ResponseUtils {
     response.setCharacterEncoding(StandardCharsets.UTF_8.name());
     boolean corsEnabled = config == null ? false : config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
     if (corsEnabled) {
-      /*
-      response.setHeader("Access-Control-Allow-Origin", "*");
-      response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
-      response.setHeader("Access-Control-Expose-Headers", "User-Task-ID");
-      */
       // These headers are exposed to the browser
       response.setHeader("Access-Control-Expose-Headers",
             config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
@@ -101,6 +96,9 @@ public class ResponseUtils {
       }
       responseMsg = sb.toString();
     }
+    // We need the Task ID CORS header as part of the response
+    // in case the server supports CORS so that web-ui can read this
+    // task-id and query for future progress.
     writeResponseToOutputStream(response, SC_OK, json, responseMsg, config);
   }
 
@@ -122,6 +120,8 @@ public class ResponseUtils {
     } else {
       responseMsg = errorMessage == null ? "" : errorMessage;
     }
+    // We don't need to send the CORS Task ID header as part of this
+    // error response
     writeResponseToOutputStream(response, responseCode, json, responseMsg, null);
   }
 }

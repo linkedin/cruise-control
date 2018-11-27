@@ -563,7 +563,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>webserver.http.cors.enabled</code>
    */
   public static final String WEBSERVER_HTTP_CORS_ENABLED_CONFIG = "webserver.http.cors.enabled";
-  private static final String WEBSERVER_HTTP_CORS_ENABLED_DOC = "CORS enablement flag. 1 enables, 0 disables support.";
+  private static final String WEBSERVER_HTTP_CORS_ENABLED_DOC = "CORS enablement flag. true if enabled, false otherwise";
 
   /**
    * <code>webserver.http.cors.origin</code>
@@ -593,7 +593,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>webserver.ui.diskpath</code>
    */
   public static final String WEBSERVER_UI_DISKPATH = "webserver.ui.diskpath";
-  private static final String WEBSERVER_UI_DISKPATH_DOC = "Location where the cruise control frontend is deployed";
+  private static final String WEBSERVER_UI_DISKPATH_DOC = "Location where the Cruise Control frontend is deployed";
 
   /**
    * <code>webserver.ui.urlprefix</code>
@@ -669,7 +669,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 WEBSERVER_ACCESSLOG_ENABLED_DOC)
         .define(WEBSERVER_ACCESSLOG_PATH, ConfigDef.Type.STRING, "access.log", ConfigDef.Importance.LOW,
                 WEBSERVER_ACCESSLOG_PATH_DOC)
-        .define(WEBSERVER_ACCESSLOG_RETENTION_DAYS, ConfigDef.Type.INT, 7, ConfigDef.Importance.LOW,
+        .define(WEBSERVER_ACCESSLOG_RETENTION_DAYS, ConfigDef.Type.INT, 7, atLeast(0), ConfigDef.Importance.LOW,
                 WEBSERVER_ACCESSLOG_RETENTION_DAYS_DOC)
         .define(BOOTSTRAP_SERVERS_CONFIG, ConfigDef.Type.LIST, ConfigDef.Importance.HIGH,
                 CommonClientConfigs.BOOTSTRAP_SERVERS_DOC)

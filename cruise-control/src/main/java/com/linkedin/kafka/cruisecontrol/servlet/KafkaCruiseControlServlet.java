@@ -75,7 +75,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private final Map<EndPoint, Meter> _requestMeter = new HashMap<>();
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer = new HashMap<>();
   private final boolean _corsEnabled;
-  private final boolean _enableAccessLog;
 
   public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                    long maxBlockMs,
@@ -84,7 +83,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                    KafkaCruiseControlConfig kafkaCruiseControlConfig) {
     _config = kafkaCruiseControlConfig;
     _corsEnabled = _config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
-    _enableAccessLog = _config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_ACCESSLOG_ENABLED);
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
     KafkaCruiseControlConfig config = asynckafkaCruiseControl.config();
     _userTaskManager = new UserTaskManager(sessionExpiryMs, config.getInt(KafkaCruiseControlConfig.MAX_ACTIVE_USER_TASKS_CONFIG),
@@ -120,7 +118,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       response.setHeader("Access-Control-Allow-Origin",
           _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
       // This is required only as part of pre-flight response
-      // response.setHeader("Access-Control-Request-Method",
       response.setHeader("Access-Control-Request-Method",
           _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ALLOWMETHODS_CONFIG));
     }

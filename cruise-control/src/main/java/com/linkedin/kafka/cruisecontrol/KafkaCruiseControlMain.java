@@ -26,20 +26,6 @@ public class KafkaCruiseControlMain {
   private static final String METRIC_DOMAIN = "kafka.cruisecontrol";
   // Default API protocol exposed by the webserver
   private static final String DEFAULT_API_PROTOCOL = "http";
-  // IP Address on which the service is made available by default
-  // private static final String DEFAULT_BIND_ADDRESS = "127.0.0.1";
-  // Port Number on which the service listens by default
-  // private static final int DEFAULT_BIND_PORT = 9090;
-  // API Prefix (from server root) under which all resources are made available
-  // private static final String DEFAULT_API_PATH_PREFIX = "/kafkacruisecontrol/*";
-  // Place where the Admin UI contents are made available
-  // private static final String DEFAULT_WEBUI_DIR = "./cruise-control-ui/dist/";
-  // Default URL for Admin UI
-  // private static final String DEFAULT_WEBUI_PATH_PREFIX = "/*";
-  // Default maximum blocking time for async endpoints.
-  // private static final long DEFAULT_MAX_BLOCK_MS = 10000L;
-  // Default session expiration time for async endpoints.
-  // private static final long DEFAULT_SESSION_EXPIRY_MS = 60000L;
 
   private KafkaCruiseControlMain() {
 
@@ -99,8 +85,6 @@ public class KafkaCruiseControlMain {
       requestLog.setAppend(true);
       requestLog.setExtended(false);
       requestLog.setPreferProxiedForAddress(true);
-      // requestLog.setLogCookies(true);
-      // requestLog.setLogTimeZone("GMT");
       server.setRequestLog(requestLog);
     }
 
