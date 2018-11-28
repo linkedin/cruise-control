@@ -13,6 +13,15 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#PARTITION_LOAD}
+ *
+ * <pre>
+ * Get the partition load sorted by the utilization of a given resource and filtered by given topic regular expression
+ *    and partition number/range
+ *    GET /kafkacruisecontrol/partition_load?resource=[RESOURCE]&amp;start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
+ *    &amp;entries=[number-of-entries-to-show]&amp;topic=[topic]&amp;partition=[partition/start_partition-end_partition]
+ *    &amp;min_valid_partition_ratio=[min_valid_partition_ratio]&amp;allow_capacity_estimation=[true/false]
+ *    &amp;max_load=[true/false]&amp;json=[true/false]
+ * </pre>
  */
 public class PartitionLoadParameters extends AbstractParameters {
   private Resource _resource;

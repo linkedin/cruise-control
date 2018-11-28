@@ -9,6 +9,26 @@ import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 
 
+/**
+ * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#ADD_BROKER} and
+ * {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#REMOVE_BROKER}.
+ *
+ * <pre>
+ * 1. Decommission a broker
+ *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]
+ *    &amp;throttle_removed_broker=[true/false]&amp;goals=[goal1,goal2...]&amp;allow_capacity_estimation=[true/false]
+ *    &amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
+ *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
+ *    &amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]
+ *
+ * 2. Add a broker
+ *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]
+ *    &amp;throttle_added_broker=[true/false]&amp;goals=[goal1,goal2...]&amp;allow_capacity_estimation=[true/false]
+ *    &amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
+ *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
+ *    &amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]
+ * </pre>
+ */
 public class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParameters {
   private List<Integer> _brokerIds;
   private Integer _concurrentPartitionMovements;

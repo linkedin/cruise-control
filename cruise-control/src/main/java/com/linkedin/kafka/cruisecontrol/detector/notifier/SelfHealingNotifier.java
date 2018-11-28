@@ -89,7 +89,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   }
 
   @Override
-  public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
+  public synchronized boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
     Boolean oldValue = _selfHealingEnabled.put(anomalyType, isSelfHealingEnabled);
     return oldValue != null && oldValue;
   }

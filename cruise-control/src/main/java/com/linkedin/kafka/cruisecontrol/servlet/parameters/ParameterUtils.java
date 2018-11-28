@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
@@ -72,6 +73,8 @@ public class ParameterUtils {
   private static final String USER_TASK_IDS_PARAM = "user_task_ids";
   private static final String SKIP_URP_DEMOTION_PARAM = "skip_urp_demotion";
   private static final String EXCLUDE_FOLLOWER_DEMOTION_PARAM = "exclude_follower_demotion";
+  private static final String DISABLE_SELF_HEALING_FOR_PARAM = "disable_self_healing_for";
+  private static final String ENABLE_SELF_HEALING_FOR_PARAM = "enable_self_healing_for";
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
@@ -188,6 +191,8 @@ public class ParameterUtils {
 
     Set<String> admin = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     admin.add(JSON_PARAM);
+    admin.add(DISABLE_SELF_HEALING_FOR_PARAM);
+    admin.add(ENABLE_SELF_HEALING_FOR_PARAM);
 
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
@@ -364,9 +369,9 @@ public class ParameterUtils {
    * Empty parameter means all substates are requested.
    */
   static Set<CruiseControlState.SubState> substates(HttpServletRequest request) throws UnsupportedEncodingException {
-    Set<String> substatesString;
     String substatesParam = urlDecode(request.getParameter(SUBSTATES_PARAM));
-    substatesString = substatesParam == null ? new HashSet<>() : new HashSet<>(Arrays.asList(substatesParam.split(",")));
+    Set<String> substatesString = substatesParam == null ? new HashSet<>(0)
+                                                         : new HashSet<>(Arrays.asList(substatesParam.split(",")));
     substatesString.removeIf(String::isEmpty);
 
     Set<CruiseControlState.SubState> substates = new HashSet<>(substatesString.size());
@@ -375,12 +380,54 @@ public class ParameterUtils {
         substates.add(CruiseControlState.SubState.valueOf(substateString.toUpperCase()));
       }
     } catch (IllegalArgumentException iae) {
-      throw new IllegalArgumentException(
-          String.format("Unsupported substates in %s. Supported: %s", substatesString, Arrays.toString(
-              CruiseControlState.SubState.values())));
+      throw new IllegalArgumentException(String.format("Unsupported substates in %s. Supported: %s",
+                                                       substatesString, CruiseControlState.SubState.cachedValues()));
     }
 
     return Collections.unmodifiableSet(substates);
+  }
+
+  private static Set<AnomalyType> anomalyTypes(HttpServletRequest request, boolean isEnable) throws UnsupportedEncodingException {
+    String selfHealingForParam = urlDecode(request.getParameter(isEnable ? ENABLE_SELF_HEALING_FOR_PARAM : DISABLE_SELF_HEALING_FOR_PARAM));
+    Set<String> selfHealingForString = selfHealingForParam == null ? new HashSet<>(0)
+                                                                   : new HashSet<>(Arrays.asList(selfHealingForParam.split(",")));
+    selfHealingForString.removeIf(String::isEmpty);
+
+    Set<AnomalyType> anomalyTypes = new HashSet<>(selfHealingForString.size());
+    try {
+      for (String shfString : selfHealingForString) {
+        anomalyTypes.add(AnomalyType.valueOf(shfString.toUpperCase()));
+      }
+    } catch (IllegalArgumentException iae) {
+      throw new IllegalArgumentException(String.format("Unsupported anomaly types in %s. Supported: %s",
+                                                       selfHealingForString, AnomalyType.cachedValues()));
+    }
+
+    return Collections.unmodifiableSet(anomalyTypes);
+  }
+
+  /**
+   * Get self healing types for {@link #ENABLE_SELF_HEALING_FOR_PARAM} and {@link #DISABLE_SELF_HEALING_FOR_PARAM}.
+   *
+   * Sanity check ensures that the same anomaly is not specified in both configs at the same request.
+   */
+  static Map<Boolean, Set<AnomalyType>> selfHealingFor(HttpServletRequest request) throws UnsupportedEncodingException {
+    Set<AnomalyType> enableSelfHealingFor = anomalyTypes(request, true);
+    Set<AnomalyType> disableSelfHealingFor = anomalyTypes(request, false);
+
+    // Sanity check: Ensure that the same anomaly is not specified in both configs at the same request.
+    Set<AnomalyType> intersection = new HashSet<>(enableSelfHealingFor);
+    intersection.retainAll(disableSelfHealingFor);
+    if (!intersection.isEmpty()) {
+      throw new IllegalArgumentException(String.format("The same anomaly cannot be specified in both disable and"
+                                                       + "enable parameters. Intersection: %s", intersection));
+    }
+
+    Map<Boolean, Set<AnomalyType>> selfHealingFor = new HashMap<>(2);
+    selfHealingFor.put(true, enableSelfHealingFor);
+    selfHealingFor.put(false, disableSelfHealingFor);
+
+    return selfHealingFor;
   }
 
   static String urlDecode(String s) throws UnsupportedEncodingException {
