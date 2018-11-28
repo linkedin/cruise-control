@@ -17,6 +17,7 @@ import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.eclipse.jetty.servlet.DefaultServlet;
 import java.net.InetSocketAddress;
+import org.eclipse.jetty.server.NCSARequestLog;
 
 /**
  * The main class to run Kafka Cruise Control.
@@ -25,20 +26,6 @@ public class KafkaCruiseControlMain {
   private static final String METRIC_DOMAIN = "kafka.cruisecontrol";
   // Default API protocol exposed by the webserver
   private static final String DEFAULT_API_PROTOCOL = "http";
-  // IP Address on which the service is made available by default
-  private static final String DEFAULT_BIND_ADDRESS = "127.0.0.1";
-  // Port Number on which the service listens by default
-  private static final int DEFAULT_BIND_PORT = 9090;
-  // API Prefix (from server root) under which all resources are made available
-  private static final String DEFAULT_API_PATH_PREFIX = "/kafkacruisecontrol/*";
-  // Place where the Admin UI contents are made available
-  private static final String DEFAULT_WEBUI_DIR = "./cruise-control-ui/dist/";
-  // Default URL for Admin UI
-  private static final String DEFAULT_WEBUI_PATH_PREFIX = "/*";
-  // Default maximum blocking time for async endpoints.
-  private static final long DEFAULT_MAX_BLOCK_MS = 10000L;
-  // Default session expiration time for async endpoints.
-  private static final long DEFAULT_SESSION_EXPIRY_MS = 60000L;
 
   private KafkaCruiseControlMain() {
 
@@ -56,7 +43,10 @@ public class KafkaCruiseControlMain {
       props.load(propStream);
     }
 
-    int port = DEFAULT_BIND_PORT;
+    // Get the configuration for Cruise Control
+    KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
+
+    int port = config.getInt(KafkaCruiseControlConfig.WEBSERVER_HTTP_PORT_CONFIG);
     if (args.length > 1) {
       try {
         port = Integer.parseInt(args[1]);
@@ -68,7 +58,8 @@ public class KafkaCruiseControlMain {
     String protocol = DEFAULT_API_PROTOCOL;
 
     // For security reasons listen on the loopback address by default
-    String hostname = DEFAULT_BIND_ADDRESS;
+    // Give preference to cmd-line bind address
+    String hostname = config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_ADDRESS_CONFIG);
     if (args.length > 2) {
       hostname = args[2];
     }
@@ -77,29 +68,49 @@ public class KafkaCruiseControlMain {
     JmxReporter jmxReporter = JmxReporter.forRegistry(dropwizardMetricsRegistry).inDomain(METRIC_DOMAIN).build();
     jmxReporter.start();
 
-    AsyncKafkaCruiseControl kafkaCruiseControl = new AsyncKafkaCruiseControl(new KafkaCruiseControlConfig(props),
+    AsyncKafkaCruiseControl kafkaCruiseControl = new AsyncKafkaCruiseControl(config,
                                                                              dropwizardMetricsRegistry);
 
     // Listen on a specific host & port combination
     Server server = new Server(new InetSocketAddress(hostname, port));
 
+    // Setup Built-in Logger
+    boolean accessLogEnabled = config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_ACCESSLOG_ENABLED);
+    if (accessLogEnabled) {
+      String accessLogPath = config.getString(KafkaCruiseControlConfig.WEBSERVER_ACCESSLOG_PATH);
+      int accessLogRetention = config.getInt(KafkaCruiseControlConfig.WEBSERVER_ACCESSLOG_RETENTION_DAYS);
+      NCSARequestLog requestLog = new NCSARequestLog(accessLogPath);
+      requestLog.setRetainDays(accessLogRetention);
+      requestLog.setLogLatency(true);
+      requestLog.setAppend(true);
+      requestLog.setExtended(false);
+      requestLog.setPreferProxiedForAddress(true);
+      server.setRequestLog(requestLog);
+    }
+
     // Define context for servlet
+    String sessionPath = config.getString(KafkaCruiseControlConfig.WEBSERVER_SESSION_PATH);
     ServletContextHandler context = new ServletContextHandler(ServletContextHandler.SESSIONS);
-    context.setContextPath("/");
+    context.setContextPath(sessionPath);
     server.setHandler(context);
 
     // Placeholder for any static content
+    String webuiDir = config.getString(KafkaCruiseControlConfig.WEBSERVER_UI_DISKPATH);
+    String webuiPathPrefix = config.getString(KafkaCruiseControlConfig.WEBSERVER_UI_URLPREFIX);
     DefaultServlet defaultServlet = new DefaultServlet();
     ServletHolder holderWebapp = new ServletHolder("default", defaultServlet);
-    holderWebapp.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed", "false");
-    holderWebapp.setInitParameter("resourceBase", DEFAULT_WEBUI_DIR);
-    context.addServlet(holderWebapp, DEFAULT_WEBUI_PATH_PREFIX);
+    // holderWebapp.setInitParameter("org.eclipse.jetty.servlet.Default.dirAllowed", "false");
+    holderWebapp.setInitParameter("resourceBase", webuiDir);
+    context.addServlet(holderWebapp, webuiPathPrefix);
 
     // Kafka Cruise Control servlet data
+    long maxBlockMs = config.getLong(KafkaCruiseControlConfig.WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS);
+    long sessionExpiryMs = config.getLong(KafkaCruiseControlConfig.WEBSERVER_SESSION_EXPIRY_MS);
+    String apiUrlPrefix = config.getString(KafkaCruiseControlConfig.WEBSERVER_API_URLPREFIX);
     KafkaCruiseControlServlet kafkaCruiseControlServlet =
-        new KafkaCruiseControlServlet(kafkaCruiseControl, DEFAULT_MAX_BLOCK_MS, DEFAULT_SESSION_EXPIRY_MS, dropwizardMetricsRegistry);
+        new KafkaCruiseControlServlet(kafkaCruiseControl, maxBlockMs, sessionExpiryMs, dropwizardMetricsRegistry, config);
     ServletHolder servletHolder = new ServletHolder(kafkaCruiseControlServlet);
-    context.addServlet(servletHolder, DEFAULT_API_PATH_PREFIX);
+    context.addServlet(servletHolder, apiUrlPrefix);
 
     Runtime.getRuntime().addShutdownHook(new Thread() {
       @Override
@@ -110,8 +121,16 @@ public class KafkaCruiseControlMain {
     });
     kafkaCruiseControl.startUp();
     server.start();
-    System.out.println("Application directory: " + System.getProperty("user.dir"));
-    System.out.println("Kafka Cruise Control started on " + protocol + "://" + hostname + ":" + port);
+    boolean corsEnabled = config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
+    System.out.println(">> ********************************************* <<");
+    System.out.println(">> Application directory            : " + System.getProperty("user.dir"));
+    System.out.println(">> REST API available on            : " + apiUrlPrefix);
+    System.out.println(">> Web UI available on              : " + webuiPathPrefix);
+    System.out.println(">> Web UI Directory                 : " + webuiDir);
+    System.out.println(">> Cookie prefix path               : " + sessionPath);
+    System.out.println(">> Kafka Cruise Control started on  : " + protocol + "://" + hostname + ":" + port);
+    System.out.println(">> CORS Enabled ?                   : " + corsEnabled);
+    System.out.println(">> ********************************************* <<");
   }
 
   private static void printErrorMessageAndDie() {
