@@ -67,18 +67,22 @@ import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
  */
 public class KafkaCruiseControlServlet extends HttpServlet {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlServlet.class);
-  private static final Logger ACCESS_LOG = LoggerFactory.getLogger("CruiseControlPublicAccessLogger");
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
+  private final KafkaCruiseControlConfig _config;
   private final UserTaskManager _userTaskManager;
   private final long _maxBlockMs;
   private final ThreadLocal<Integer> _asyncOperationStep;
   private final Map<EndPoint, Meter> _requestMeter = new HashMap<>();
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer = new HashMap<>();
+  private final boolean _corsEnabled;
 
   public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl,
                                    long maxBlockMs,
                                    long sessionExpiryMs,
-                                   MetricRegistry dropwizardMetricRegistry) {
+                                   MetricRegistry dropwizardMetricRegistry,
+                                   KafkaCruiseControlConfig kafkaCruiseControlConfig) {
+    _config = kafkaCruiseControlConfig;
+    _corsEnabled = _config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
     KafkaCruiseControlConfig config = asynckafkaCruiseControl.config();
     _userTaskManager = new UserTaskManager(sessionExpiryMs, config.getInt(KafkaCruiseControlConfig.MAX_ACTIVE_USER_TASKS_CONFIG),
@@ -110,8 +114,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   protected void doOptions(HttpServletRequest request, HttpServletResponse response) {
     response.setStatus(SC_OK);
-    response.setHeader("Access-Control-Allow-Origin", "*");
-    response.setHeader("Access-Control-Request-Method", "OPTIONS, GET, POST");
+    if (_corsEnabled) {
+      response.setHeader("Access-Control-Allow-Origin",
+          _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
+      // This is required only as part of pre-flight response
+      response.setHeader("Access-Control-Request-Method",
+          _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ALLOWMETHODS_CONFIG));
+    }
   }
 
   /**
@@ -159,9 +168,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()),
-                    urlEncode(request.getRequestURL().toString()),
-                    getClientIpAddress(request));
     try {
       _asyncOperationStep.set(0);
       EndPoint endPoint = getValidEndpoint(request, response);
@@ -259,9 +265,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    */
   @Override
   protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    ACCESS_LOG.info("Received {}, {} from {}", urlEncode(request.toString()),
-                    urlEncode(request.getRequestURL().toString()),
-                    getClientIpAddress(request));
     try {
       _asyncOperationStep.set(0);
       EndPoint endPoint = getValidEndpoint(request, response);
@@ -551,7 +554,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       return futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);
     } catch (TimeoutException te) {
-      returnProgress(response, futures, wantJSON(request));
+      returnProgress(response, futures, wantJSON(request), _config);
       return null;
     }
   }

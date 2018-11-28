@@ -27,7 +27,7 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
   public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException {
     OutputStream out = response.getOutputStream();
     boolean json = parameters.json();
-    setResponseCode(response, SC_OK, json);
+    setResponseCode(response, SC_OK, json, null);
     discardIrrelevantResponse(parameters);
     response.setContentLength(_cachedResponse.length());
     out.write(_cachedResponse.getBytes(StandardCharsets.UTF_8));

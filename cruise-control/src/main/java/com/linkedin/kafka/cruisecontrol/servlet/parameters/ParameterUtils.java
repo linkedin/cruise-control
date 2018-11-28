@@ -210,7 +210,6 @@ public class ParameterUtils {
   }
 
   private ParameterUtils() {
-
   }
 
   public static EndPoint endPoint(HttpServletRequest request) {

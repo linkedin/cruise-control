@@ -118,7 +118,7 @@ public class KafkaCruiseControlServletDataFromTest {
     EasyMock.replay(mockKCC, request, response, session);
 
     KafkaCruiseControlServlet servlet =
-        new KafkaCruiseControlServlet(mockKCC, 10, 100, new MetricRegistry());
+        new KafkaCruiseControlServlet(mockKCC, 10, 100, new MetricRegistry(), mockKCC.config());
     GoalBasedOptimizationParameters.GoalsAndRequirements goalsAndRequirements =
         servlet.getGoalsAndRequirements(request,
                                         response,

@@ -26,6 +26,7 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  * The util class for Kafka Cruise Control servlet.
  */
 public class KafkaCruiseControlServletUtils {
+  // FIXME: Read this from a configuration
   public static final String REQUEST_URI = "/KAFKACRUISECONTROL/";
 
   private KafkaCruiseControlServletUtils() {
