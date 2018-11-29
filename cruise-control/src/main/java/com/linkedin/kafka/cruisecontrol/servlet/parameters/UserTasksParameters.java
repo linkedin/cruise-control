@@ -12,6 +12,10 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#USER_TASKS}
+ *
+ * <pre>
+ *    GET /kafkacruisecontrol/user_tasks?json=[true/false]
+ * </pre>
  */
 public class UserTasksParameters extends AbstractParameters {
   private Set<UUID> _userTaskIds;

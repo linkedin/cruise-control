@@ -11,6 +11,16 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#BOOTSTRAP}
+ *
+ * <pre>
+ * 1. RANGE MODE:
+ *    GET /kafkacruisecontrol/bootstrap?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]&amp;clearmetrics=[true/false]
+ *    &amp;json=[true/false]
+ * 2. SINCE MODE:
+ *    GET /kafkacruisecontrol/bootstrap?start=[START_TIMESTAMP]&amp;clearmetrics=[true/false]&amp;json=[true/false]
+ * 3. RECENT MODE:
+ *    GET /kafkacruisecontrol/bootstrap?clearmetrics=[true/false]&amp;json=[true/false]
+ * </pre>
  */
 public class BootstrapParameters extends AbstractParameters {
   private Long _startMs;

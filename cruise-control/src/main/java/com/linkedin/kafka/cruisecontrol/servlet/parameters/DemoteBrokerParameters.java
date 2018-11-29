@@ -11,6 +11,13 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#DEMOTE_BROKER}
+ *
+ * <pre>
+ * Demote a broker
+ *    POST /kafkacruisecontrol/demote_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]
+ *    &amp;concurrent_leader_movements=[true/false]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
+ *    &amp;skip_urp_demotion=[true/false]&amp;exclude_follower_demotion=[true/false]&amp;verbose=[true/false]
+ * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   private boolean _dryRun;

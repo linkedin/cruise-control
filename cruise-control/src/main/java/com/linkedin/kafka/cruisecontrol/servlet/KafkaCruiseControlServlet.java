@@ -8,6 +8,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
@@ -126,43 +127,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   /**
    * The GET requests can do the following:
    *
-   * NOTE: ADD json=true to the query parameters to get 200/OK response in JSON format.
-   *
    * <pre>
-   * 1. Bootstrap the load monitor
-   *    RANGE MODE:
-   *      GET /kafkacruisecontrol/bootstrap?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
-   *    SINCE MODE:
-   *      GET /kafkacruisecontrol/bootstrap?start=[START_TIMESTAMP]
-   *    RECENT MODE:
-   *      GET /kafkacruisecontrol/bootstrap
-   *
-   * 2. Train the Kafka Cruise Control linear regression model. The trained model will only be used if
-   *    use.linear.regression.model is set to true.
-   *    GET /kafkacruisecontrol/train?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
-   *
-   * 3. Get the cluster load
-   *    GET /kafkacruisecontrol/load?time=[TIMESTAMP]
-   *
-   * 4. Get the partition load sorted by the utilization of a given resource and filtered by given topic regular expression
-   *    and partition number/range
-   *    GET /kafkacruisecontrol/partition_load?resource=[RESOURCE]&amp;start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
-   *    &amp;topic=[topic]&amp;partition=[partition/start_partition-end_partition]
-   *
-   * 5. Get an optimization proposal
-   *    GET /kafkacruisecontrol/proposals?verbose=[ENABLE_VERBOSE]&amp;ignore_proposal_cache=[true/false]
-   *    &amp;goals=[goal1,goal2...]&amp;data_from=[valid_windows/valid_partitions]&amp;excluded_topics=[pattern]
-   *    &amp;use_ready_default_goals=[true/false]
-   *
-   * 6. query the state of Kafka Cruise Control
-   *    GET /kafkacruisecontrol/state
-   *
-   * 7. query the Kafka cluster state
-   *    GET /kafkacruisecontrol/kafka_cluster_state
-   *
-   * 8. query to get active user tasks
-   *    GET /kafkacruisecontrol/user_tasks
-   *
+   * 1. Bootstrap the load monitor (See {@link BootstrapParameters}).
+   * 2. Train the Kafka Cruise Control linear regression model (See {@link TrainParameters}).
+   * 3. Get the cluster load (See {@link ClusterLoadParameters}).
+   * 4. Get the partition load (See {@link PartitionLoadParameters}).
+   * 5. Get an optimization proposal (See {@link ProposalsParameters}).
+   * 6. Get the state of Cruise Control (See {@link CruiseControlStateParameters}).
+   * 7. Get the Kafka cluster state (See {@link KafkaClusterStateParameters}).
+   * 8. Get active user tasks (See {@link UserTasksParameters}).
    * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
    * </pre>
    */
@@ -229,38 +202,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * The POST method allows user to perform the following actions:
    *
    * <pre>
-   * 1. Decommission a broker.
-   *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]&amp;throttle_removed_broker=[true/false]&amp;goals=[goal1,goal2...]
-   *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
-   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]
-   *
-   * 2. Add a broker
-   *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]&amp;throttle_added_broker=[true/false]&amp;goals=[goal1,goal2...]
-   *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]
-   *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]
-   *
-   * 3. Trigger a workload balance.
-   *    POST /kafkacruisecontrol/rebalance?dryRun=[true/false]&amp;force=[true/false]&amp;goals=[goal1,goal2...]&amp;allow_capacity_estimation=[true/false]
-   *    &amp;concurrent_partition_movements_per_broker=[true/false]&amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]
-   *    &amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]
-   *
-   * 4. Stop the proposal execution.
-   *    POST /kafkacruisecontrol/stop_proposal_execution?json=[true/false]
-   *
-   * 5. Pause metrics sampling. (RUNNING -&gt; PAUSED).
-   *    POST /kafkacruisecontrol/pause_sampling?json=[true/false]
-   *
-   * 6. Resume metrics sampling. (PAUSED -&gt; RUNNING).
-   *    POST /kafkacruisecontrol/resume_sampling?json=[true/false]
-   *
-   * 7. Demote a broker
-   *    POST /kafkacruisecontrol/demote_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]&amp;concurrent_leader_movements=[true/false]
-   *    &amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]&amp;excluded_topics=[pattern]
-   *
-   * 8. Admin.
-   *    POST /kafkacruisecontrol/admin?json=[true/false]
-   *
-   * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
+   * 1. Decommission a broker (See {@link AddedOrRemovedBrokerParameters}).
+   * 2. Add a broker (See {@link AddedOrRemovedBrokerParameters}).
+   * 3. Trigger a workload balance (See {@link RebalanceParameters}).
+   * 4. Stop the proposal execution (See {@link BaseParameters}).
+   * 5. Pause metrics sampling (See {@link BaseParameters}).
+   * 6. Resume metrics sampling (See {@link BaseParameters}).
+   * 7. Demote a broker (See {@link DemoteBrokerParameters}).
+   * 8. Admin operations on Cruise Control (See {@link AdminParameters}).
    * </pre>
    */
   @Override
@@ -294,6 +243,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             break;
           case DEMOTE_BROKER:
             demoteBroker(request, response);
+            break;
+          case ADMIN:
+            admin(request, response);
             break;
           default:
             throw new UserRequestException("Invalid URL for POST");
@@ -522,6 +474,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     _asyncKafkaCruiseControl.stopProposalExecution();
     new StopProposalExecutionResult().writeSuccessResponse(parameters, response);
+  }
+
+  private void admin(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    AdminParameters parameters = new AdminParameters(request);
+    if (parameters.parseParameters(response)) {
+      // Failed to parse parameters.
+      return;
+    }
+
+    CruiseControlResponse adminResult = _asyncKafkaCruiseControl.handleAdminRequest(parameters);
+    adminResult.writeSuccessResponse(parameters, response);
   }
 
   private void pauseSampling(HttpServletRequest request, HttpServletResponse response) throws IOException {

@@ -154,6 +154,20 @@ public class AnomalyDetector {
   }
 
   /**
+   * (1) Enable or disable self healing for the given anomaly type and (2) update the cached anomaly detector state.
+   *
+   * @param anomalyType Type of anomaly for which to enable or disable self healing.
+   * @param isSelfHealingEnabled True if self healing is enabled, false otherwise.
+   * @return The old value of self healing for the given anomaly type.
+   */
+  public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
+    boolean oldSelfHealingEnabled = _anomalyNotifier.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
+    _anomalyDetectorState.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
+
+    return oldSelfHealingEnabled;
+  }
+
+  /**
    * A class that handles all the anomalies.
    */
   class AnomalyHandlerTask implements Runnable {

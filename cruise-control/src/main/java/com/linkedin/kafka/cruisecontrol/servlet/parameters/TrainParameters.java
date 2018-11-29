@@ -11,6 +11,13 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#TRAIN}
+ *
+ * <pre>
+ * Train the Kafka Cruise Control linear regression model. The trained model will only be used if
+ * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#USE_LINEAR_REGRESSION_MODEL_CONFIG} is true.
+ *
+ *    GET /kafkacruisecontrol/train?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]&amp;json=[true/false]
+ * </pre>
  */
 public class TrainParameters extends AbstractParameters {
   private Long _startMs;

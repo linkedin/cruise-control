@@ -13,6 +13,8 @@ import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitorState;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,6 +29,10 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 public class CruiseControlState extends AbstractCruiseControlResponse {
   private static final String PARTITION_MOVEMENTS = "partition movements";
   private static final String LEADERSHIP_MOVEMENTS = "leadership movements";
+  private static final String MONITOR_STATE = "MonitorState";
+  private static final String EXECUTOR_STATE = "ExecutorState";
+  private static final String ANALYZER_STATE = "AnalyzerState";
+  private static final String ANOMALY_DETECTOR_STATE = "AnomalyDetectorState";
   private ExecutorState _executorState;
   private LoadMonitorState _monitorState;
   private AnalyzerState _analyzerState;
@@ -72,16 +78,16 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
   public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> cruiseControlState = new HashMap<>();
     if (_monitorState != null) {
-      cruiseControlState.put("MonitorState", _monitorState.getJsonStructure(verbose));
+      cruiseControlState.put(MONITOR_STATE, _monitorState.getJsonStructure(verbose));
     }
     if (_executorState != null) {
-      cruiseControlState.put("ExecutorState", _executorState.getJsonStructure(verbose));
+      cruiseControlState.put(EXECUTOR_STATE, _executorState.getJsonStructure(verbose));
     }
     if (_analyzerState != null) {
-      cruiseControlState.put("AnalyzerState", _analyzerState.getJsonStructure(verbose));
+      cruiseControlState.put(ANALYZER_STATE, _analyzerState.getJsonStructure(verbose));
     }
     if (_anomalyDetectorState != null) {
-      cruiseControlState.put("AnomalyDetectorState", _anomalyDetectorState.getJsonStructure());
+      cruiseControlState.put(ANOMALY_DETECTOR_STATE, _anomalyDetectorState.getJsonStructure());
     }
 
     return cruiseControlState;
@@ -195,6 +201,16 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
   }
 
   public enum SubState {
-    ANALYZER, MONITOR, EXECUTOR, ANOMALY_DETECTOR
+    ANALYZER, MONITOR, EXECUTOR, ANOMALY_DETECTOR;
+
+    private static final List<SubState> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+
+    /**
+     * Use this instead of values() because values() creates a new array each time.
+     * @return enumerated values in the same order as values()
+     */
+    public static List<SubState> cachedValues() {
+      return CACHED_VALUES;
+    }
   }
 }
