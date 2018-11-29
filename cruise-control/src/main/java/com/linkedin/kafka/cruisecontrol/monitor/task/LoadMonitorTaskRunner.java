@@ -285,7 +285,7 @@ public class LoadMonitorTaskRunner {
    *
    * @param reason The reason for resuming metric sampling.
    */
-  public void resumeSampling(String reason) {
+  public synchronized void resumeSampling(String reason) {
     if (_state.get() != RUNNING && !_state.compareAndSet(PAUSED, RUNNING)) {
       throw new IllegalStateException("Cannot resume the load monitor because it is in " + _state.get() + " state");
     }

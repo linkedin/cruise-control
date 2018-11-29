@@ -207,8 +207,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 2. Add a broker (See {@link AddedOrRemovedBrokerParameters}).
    * 3. Trigger a workload balance (See {@link RebalanceParameters}).
    * 4. Stop the proposal execution (See {@link BaseParameters}).
-   * 5. Pause metrics sampling (See {@link BaseParameters}).
-   * 6. Resume metrics sampling (See {@link BaseParameters}).
+   * 5. Pause metrics sampling (See {@link PauseResumeParameters}).
+   * 6. Resume metrics sampling (See {@link PauseResumeParameters}).
    * 7. Demote a broker (See {@link DemoteBrokerParameters}).
    * 8. Admin operations on Cruise Control (See {@link AdminParameters}).
    * </pre>
