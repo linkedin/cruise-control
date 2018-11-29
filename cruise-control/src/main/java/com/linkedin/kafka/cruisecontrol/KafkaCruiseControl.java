@@ -482,7 +482,7 @@ public class KafkaCruiseControl {
    * @param parameters Admin parameters
    * @return Admin response.
    */
-  public AdminResult handleAdminRequest(AdminParameters parameters) {
+  public synchronized AdminResult handleAdminRequest(AdminParameters parameters) {
     Set<AnomalyType> disableSelfHealingFor = parameters.disableSelfHealingFor();
     Set<AnomalyType> enableSelfHealingFor = parameters.enableSelfHealingFor();
 
