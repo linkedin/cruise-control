@@ -161,7 +161,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
                                         Map<Integer, Integer> outOfSyncCountByBrokerId,
                                         Map<Integer, Integer> replicaCountByBrokerId,
                                         Map<Integer, Integer> offlineReplicaCountByBrokerId) {
-    // Gather the broker states.
+    // Part-1: Gather the states of brokers with replicas.
     for (String topic : _kafkaCluster.topics()) {
       for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
         if (partitionInfo.leader() == null) {
@@ -181,6 +181,16 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
         outOfSyncReplicas.forEach(brokerId -> outOfSyncCountByBrokerId.merge(brokerId, 1, Integer::sum));
         offlineReplicas.forEach(brokerId -> offlineReplicaCountByBrokerId.merge(brokerId, 1, Integer::sum));
         replicas.forEach(brokerId -> replicaCountByBrokerId.merge(brokerId, 1, Integer::sum));
+      }
+    }
+    // Part-2: Gather the states of brokers without replicas.
+    for (Node node : _kafkaCluster.nodes()) {
+      int nodeId = node.id();
+      if (replicaCountByBrokerId.get(nodeId) == null) {
+        offlineReplicaCountByBrokerId.put(nodeId, 0);
+        replicaCountByBrokerId.put(nodeId, 0);
+        outOfSyncCountByBrokerId.put(nodeId, 0);
+        leaderCountByBrokerId.put(nodeId, 0);
       }
     }
   }
@@ -349,7 +359,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
                              replicaCountByBrokerId,
                              offlineReplicaCountByBrokerId);
 
-    String initMessage = "Brokers with replicas:";
+    String initMessage = "Brokers:";
     sb.append(String.format("%s%n%20s%20s%20s%20s%20s%n", initMessage, "BROKER", "LEADER(S)", "REPLICAS", "OUT-OF-SYNC", "OFFLINE"));
 
     for (Integer brokerId : replicaCountByBrokerId.keySet()) {
