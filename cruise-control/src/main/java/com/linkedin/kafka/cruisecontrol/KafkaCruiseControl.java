@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
@@ -27,15 +28,18 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -526,6 +530,37 @@ public class KafkaCruiseControl {
    */
   public void pauseLoadMonitorActivity() {
     _loadMonitor.pauseMetricSampling();
+  }
+
+  /**
+   * Handle the admin requests:
+   * <ul>
+   * <li>Enable/disable the specified anomaly detectors.</li>
+   * </ul>
+   *
+   * @param parameters Admin parameters
+   * @return Admin response.
+   */
+  public synchronized AdminResult handleAdminRequest(AdminParameters parameters) {
+    Set<AnomalyType> disableSelfHealingFor = parameters.disableSelfHealingFor();
+    Set<AnomalyType> enableSelfHealingFor = parameters.enableSelfHealingFor();
+
+    Map<AnomalyType, Boolean> selfHealingBefore = new HashMap<>(disableSelfHealingFor.size() + enableSelfHealingFor.size());
+    Map<AnomalyType, Boolean> selfHealingAfter = new HashMap<>(disableSelfHealingFor.size() + enableSelfHealingFor.size());
+
+    for (AnomalyType anomalyType : disableSelfHealingFor) {
+      selfHealingBefore.put(anomalyType, _anomalyDetector.setSelfHealingFor(anomalyType, false));
+      _anomalyDetector.anomalyDetectorState().setSelfHealingFor(anomalyType, false);
+      selfHealingAfter.put(anomalyType, false);
+    }
+
+    for (AnomalyType anomalyType : enableSelfHealingFor) {
+      selfHealingBefore.put(anomalyType, _anomalyDetector.setSelfHealingFor(anomalyType, true));
+      _anomalyDetector.anomalyDetectorState().setSelfHealingFor(anomalyType, true);
+      selfHealingAfter.put(anomalyType, true);
+    }
+
+    return new AdminResult(selfHealingBefore, selfHealingAfter);
   }
 
   /**

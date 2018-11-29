@@ -11,6 +11,11 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#LOAD}
+ *
+ * <pre>
+ * Get the cluster load
+ *    GET /kafkacruisecontrol/load?time=[TIMESTAMP]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
+ * </pre>
  */
 public class ClusterLoadParameters extends AbstractParameters {
   private long _time;

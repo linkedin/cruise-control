@@ -10,6 +10,14 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#REBALANCE}
+ *
+ * <pre>
+ * Trigger a workload balance.
+ *    POST /kafkacruisecontrol/rebalance?dryRun=[true/false]&amp;goals=[goal1,goal2...]
+ *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]
+ *    &amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]
+ *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]
+ * </pre>
  */
 public class RebalanceParameters extends GoalBasedOptimizationParameters {
   private boolean _dryRun;

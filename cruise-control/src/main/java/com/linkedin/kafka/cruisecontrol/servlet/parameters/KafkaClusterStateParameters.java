@@ -10,6 +10,10 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#KAFKA_CLUSTER_STATE}
+ *
+ * <pre>
+ *    GET /kafkacruisecontrol/kafka_cluster_state?verbose=[true/false]&amp;json=[true/false]
+ * </pre>
  */
 public class KafkaClusterStateParameters extends AbstractParameters {
   private boolean _isVerbose;

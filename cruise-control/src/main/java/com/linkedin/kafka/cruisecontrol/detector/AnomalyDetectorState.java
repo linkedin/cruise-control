@@ -56,8 +56,13 @@ public class AnomalyDetectorState {
     _recentAnomaliesByType.get(anomalyType).put(System.currentTimeMillis(), anomaly);
   }
 
-  public Map<AnomalyType, Boolean> selfHealingEnabled() {
+  public synchronized Map<AnomalyType, Boolean> selfHealingEnabled() {
     return Collections.unmodifiableMap(_selfHealingEnabled);
+  }
+
+  public synchronized boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
+    Boolean oldValue = _selfHealingEnabled.put(anomalyType, isSelfHealingEnabled);
+    return oldValue != null && oldValue;
   }
 
   private static String getDateFormat(long timeMs) {

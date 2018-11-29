@@ -12,6 +12,11 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#STATE}
+ *
+ * <pre>
+ *    GET /kafkacruisecontrol/state?verbose=[true/false]&amp;substates=[SUBSTATES]&amp;super_verbose=[true/false]
+ *    &amp;verbose=[true/false]&amp;json=[true/false]
+ * </pre>
  */
 public class CruiseControlStateParameters extends AbstractParameters {
   private Set<CruiseControlState.SubState> _substates;
