@@ -9,8 +9,6 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * A concrete class for endpoints with base parameters -- e.g.
- * {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#PAUSE_SAMPLING},
- * {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#RESUME_SAMPLING},
  * {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#STOP_PROPOSAL_EXECUTION}
  *
  * <pre>

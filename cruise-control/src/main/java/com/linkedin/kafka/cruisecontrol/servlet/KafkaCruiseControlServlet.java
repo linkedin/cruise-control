@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.GoalBasedOptimization
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BaseParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
@@ -481,22 +482,22 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private void pauseSampling(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    BaseParameters parameters = new BaseParameters(request);
+    PauseResumeParameters parameters = new PauseResumeParameters(request);
     if (parameters.parseParameters(response)) {
       // Failed to parse parameters.
       return;
     }
-    _asyncKafkaCruiseControl.pauseLoadMonitorActivity();
+    _asyncKafkaCruiseControl.pauseLoadMonitorActivity(parameters);
     new PauseSamplingResult().writeSuccessResponse(parameters, response);
   }
 
   private void resumeSampling(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    BaseParameters parameters = new BaseParameters(request);
+    PauseResumeParameters parameters = new PauseResumeParameters(request);
     if (parameters.parseParameters(response)) {
       // Failed to parse parameters.
       return;
     }
-    _asyncKafkaCruiseControl.resumeLoadMonitorActivity();
+    _asyncKafkaCruiseControl.resumeLoadMonitorActivity(parameters);
     new ResumeSamplingResult().writeSuccessResponse(parameters, response);
   }
 

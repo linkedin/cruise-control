@@ -16,14 +16,18 @@ import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -41,6 +45,8 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  * The util class for Kafka Cruise Control parameters.
  */
 public class ParameterUtils {
+  private static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
+  private static final String TIME_ZONE = "UTC";
   private static final String JSON_PARAM = "json";
   private static final String START_MS_PARAM = "start";
   private static final String END_MS_PARAM = "end";
@@ -51,6 +57,7 @@ public class ParameterUtils {
   private static final String VERBOSE_PARAM = "verbose";
   private static final String SUPER_VERBOSE_PARAM = "super_verbose";
   private static final String RESOURCE_PARAM = "resource";
+  private static final String REASON = "reason";
   private static final String DATA_FROM_PARAM = "data_from";
   private static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
   private static final String MAX_LOAD_PARAM = "max_load";
@@ -358,10 +365,17 @@ public class ParameterUtils {
 
   static String resourceString(HttpServletRequest request) {
     String resourceString = request.getParameter(RESOURCE_PARAM);
-    if (resourceString == null) {
-      resourceString = DEFAULT_PARTITION_LOAD_RESOURCE;
-    }
-    return resourceString;
+    return resourceString == null ? DEFAULT_PARTITION_LOAD_RESOURCE : resourceString;
+  }
+
+  static String reason(HttpServletRequest request) {
+    String reason = request.getParameter(REASON);
+    Date date = new Date(System.currentTimeMillis());
+    DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
+    formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
+    String dateFormatted = formatter.format(date);
+
+    return String.format("%s (Date: %s)", reason == null ? "No reason provided" : reason, dateFormatted);
   }
 
   /**

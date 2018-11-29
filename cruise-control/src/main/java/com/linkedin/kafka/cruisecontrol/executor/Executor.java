@@ -323,7 +323,7 @@ public class Executor {
         while (true) {
           try {
             // Ensure that the temporary states in the load monitor are explicitly handled -- e.g. SAMPLING.
-            _loadMonitor.pauseMetricSampling();
+            _loadMonitor.pauseMetricSampling("Paused-By-Cruise-Control-Before-Starting-Execution");
             break;
           } catch (IllegalStateException e) {
             Thread.sleep(_statusCheckingIntervalMs);
@@ -360,7 +360,7 @@ public class Executor {
       } catch (Throwable t) {
         LOG.error("Executor got exception during execution", t);
       } finally {
-        _loadMonitor.resumeMetricSampling();
+        _loadMonitor.resumeMetricSampling("Resumed-By-Cruise-Control-After-Completed-Execution");
         _executionTaskManager.clear();
         _uuid = null;
         _state = ExecutorState.State.NO_TASK_IN_PROGRESS;

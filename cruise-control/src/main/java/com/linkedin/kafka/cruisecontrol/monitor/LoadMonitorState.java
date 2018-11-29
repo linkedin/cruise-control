@@ -16,7 +16,19 @@ import org.apache.kafka.common.TopicPartition;
 import java.util.HashMap;
 
 public class LoadMonitorState {
-
+  private static final String STATE = "state";
+  private static final String REASON_OF_LATEST_PAUSE_OR_RESUME = "reasonOfLatestPauseOrResume";
+  private static final String TRAINED = "trained";
+  private static final String TRAINING_PCT = "trainingPct";
+  private static final String NUM_MONITORED_WINDOWS = "numMonitoredWindows";
+  private static final String MONITORED_WINDOWS = "monitoredWindows";
+  private static final String NUM_VALID_PARTITIONS = "numValidPartitions";
+  private static final String NUM_TOTAL_PARTITIONS = "numTotalPartitions";
+  private static final String MONITORING_COVERAGE_PCT = "monitoringCoveragePct";
+  private static final String NUM_FLAWED_PARTITIONS = "numFlawedPartitions";
+  private static final String BOOTSTRAP_PROGRESS_PCT = "bootstrapProgressPct";
+  private static final String LOADING_PROGRESS_PCT = "loadingProgressPct";
+  private static final String ERROR = "error";
   private final LoadMonitorTaskRunnerState _loadMonitorTaskRunnerState;
   private final int _numValidWindows;
   private final SortedMap<Long, Float> _monitoredWindows;
@@ -25,6 +37,27 @@ public class LoadMonitorState {
   private final int _totalNumPartitions;
   private final double _bootstrapProgress;
   private final double _loadingProgress;
+  private final String _reasonOfLatestPauseOrResume;
+
+  private LoadMonitorState(LoadMonitorTaskRunnerState state,
+                           int numValidWindows,
+                           SortedMap<Long, Float> monitoredWindows,
+                           int numValidMonitoredPartitions,
+                           int totalNumPartitions,
+                           Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations,
+                           double bootstrapProgress,
+                           double loadingProgress,
+                           String reasonOfLatestPauseOrResume) {
+    _loadMonitorTaskRunnerState = state;
+    _numValidWindows = numValidWindows;
+    _monitoredWindows = monitoredWindows;
+    _numValidMonitoredPartitions = numValidMonitoredPartitions;
+    _sampleExtrapolations = sampleExtrapolations;
+    _totalNumPartitions = totalNumPartitions;
+    _bootstrapProgress = bootstrapProgress;
+    _loadingProgress = loadingProgress;
+    _reasonOfLatestPauseOrResume = reasonOfLatestPauseOrResume;
+  }
 
   private LoadMonitorState(LoadMonitorTaskRunnerState state,
                            int numValidWindows,
@@ -34,14 +67,8 @@ public class LoadMonitorState {
                            Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations,
                            double bootstrapProgress,
                            double loadingProgress) {
-    _loadMonitorTaskRunnerState = state;
-    _numValidWindows = numValidWindows;
-    _monitoredWindows = monitoredWindows;
-    _numValidMonitoredPartitions = numValidMonitoredPartitions;
-    _sampleExtrapolations = sampleExtrapolations;
-    _totalNumPartitions = totalNumPartitions;
-    _bootstrapProgress = bootstrapProgress;
-    _loadingProgress = loadingProgress;
+    this(state, numValidWindows, monitoredWindows, numValidMonitoredPartitions, totalNumPartitions, sampleExtrapolations,
+         bootstrapProgress, loadingProgress, null);
   }
 
   public static LoadMonitorState notStarted() {
@@ -52,7 +79,8 @@ public class LoadMonitorState {
                                          SortedMap<Long, Float> partitionCoverageByWindows,
                                          int numValidMonitoredTopics,
                                          int totalNumPartitions,
-                                         Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations) {
+                                         Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations,
+                                         String reasonOfLatestPauseOrResume) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.RUNNING,
                                 numValidSnapshotWindows,
                                 partitionCoverageByWindows,
@@ -60,14 +88,16 @@ public class LoadMonitorState {
                                 totalNumPartitions,
                                 sampleExtrapolations,
                                 -1.0,
-                                -1.0);
+                                -1.0,
+                                reasonOfLatestPauseOrResume);
   }
 
   public static LoadMonitorState paused(int numValidSnapshotWindows,
                                         SortedMap<Long, Float> monitoredSnapshotWindows,
                                         int numValidMonitoredTopics,
                                         int totalNumPartitions,
-                                        Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations) {
+                                        Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations,
+                                        String reasonOfLatestPauseOrResume) {
     return new LoadMonitorState(LoadMonitorTaskRunnerState.PAUSED,
                                 numValidSnapshotWindows,
                                 monitoredSnapshotWindows,
@@ -75,7 +105,8 @@ public class LoadMonitorState {
                                 totalNumPartitions,
                                 sampleExtrapolations,
                                 -1.0,
-                                -1.0);
+                                -1.0,
+                                reasonOfLatestPauseOrResume);
   }
 
   public static LoadMonitorState sampling(int numValidSnapshotWindows,
@@ -139,18 +170,27 @@ public class LoadMonitorState {
                                 loadingProgress);
   }
 
+  private void setCommonJsonGenericAttributeCollection(boolean verbose, Map<String, Object> loadMonitorState) {
+    loadMonitorState.put(STATE, _loadMonitorTaskRunnerState);
+    loadMonitorState.put(TRAINED, ModelParameters.trainingCompleted());
+    loadMonitorState.put(TRAINING_PCT, ModelParameters.trainingCompleted()
+                                       ? 100.0 : (ModelParameters.modelCoefficientTrainingCompleteness() * 100));
+    loadMonitorState.put(NUM_MONITORED_WINDOWS, _monitoredWindows.size());
+    if (verbose) {
+      loadMonitorState.put(MONITORED_WINDOWS, _monitoredWindows);
+    }
+    loadMonitorState.put(NUM_VALID_PARTITIONS, _numValidMonitoredPartitions);
+    loadMonitorState.put(NUM_TOTAL_PARTITIONS, _totalNumPartitions);
+    loadMonitorState.put(MONITORING_COVERAGE_PCT, nanToZero(validPartitionsRatio() * 100));
+    loadMonitorState.put(NUM_FLAWED_PARTITIONS, _sampleExtrapolations.size());
+  }
+
   /*
    * Return an object that can be further used
    * to encode into JSON
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
     Map<String, Object> loadMonitorState = new HashMap<>();
-    double trainingPct = 0.0;
-    if (ModelParameters.trainingCompleted()) {
-      trainingPct = 100.0;
-    } else {
-      trainingPct = ModelParameters.modelCoefficientTrainingCompleteness() * 100;
-    }
     // generic attribute collection
     switch (_loadMonitorTaskRunnerState) {
       case RUNNING:
@@ -159,17 +199,7 @@ public class LoadMonitorState {
       case BOOTSTRAPPING:
       case TRAINING:
       case LOADING:
-        loadMonitorState.put("state", _loadMonitorTaskRunnerState);
-        loadMonitorState.put("trained", ModelParameters.trainingCompleted());
-        loadMonitorState.put("trainingPct", trainingPct);
-        loadMonitorState.put("numMonitoredWindows", _monitoredWindows.size());
-        if (verbose) {
-          loadMonitorState.put("monitoredWindows", _monitoredWindows);
-        }
-        loadMonitorState.put("numValidPartitions", _numValidMonitoredPartitions);
-        loadMonitorState.put("numTotalPartitions", _totalNumPartitions);
-        loadMonitorState.put("monitoringCoveragePct", nanToZero(validPartitionsRatio() * 100));
-        loadMonitorState.put("numFlawedPartitions", _sampleExtrapolations.size());
+        setCommonJsonGenericAttributeCollection(verbose, loadMonitorState);
         break;
       default:
         break;
@@ -177,19 +207,21 @@ public class LoadMonitorState {
     // specific attribute collection
     switch (_loadMonitorTaskRunnerState) {
       case RUNNING:
-      case SAMPLING:
       case PAUSED:
+        loadMonitorState.put(REASON_OF_LATEST_PAUSE_OR_RESUME, _reasonOfLatestPauseOrResume == null ? "N/A" : _reasonOfLatestPauseOrResume);
+        break;
+      case SAMPLING:
       case TRAINING:
         break;
       case BOOTSTRAPPING:
-        loadMonitorState.put("bootstrapProgressPct", nanToZero(_bootstrapProgress * 100));
+        loadMonitorState.put(BOOTSTRAP_PROGRESS_PCT, nanToZero(_bootstrapProgress * 100));
         break;
       case LOADING:
-        loadMonitorState.put("loadingProgressPct", nanToZero(_loadingProgress * 100));
+        loadMonitorState.put(LOADING_PROGRESS_PCT, nanToZero(_loadingProgress * 100));
         break;
       default:
-        loadMonitorState.put("state", _loadMonitorTaskRunnerState);
-        loadMonitorState.put("error", "ILLEGAL_STATE_EXCEPTION");
+        loadMonitorState.put(STATE, _loadMonitorTaskRunnerState);
+        loadMonitorState.put(ERROR, "ILLEGAL_STATE_EXCEPTION");
         break;
     }
     return loadMonitorState;
@@ -200,19 +232,15 @@ public class LoadMonitorState {
    * round it to zero when Java Math sees a NaN
    */
   public static double nanToZero(double v) {
-      if (Double.isNaN(v)) {
-          return 0.0;
-      } else {
-          return v;
-      }
+      return Double.isNaN(v) ? 0.0 : v;
   }
 
 
   @Override
   public String toString() {
     String trained = ModelParameters.trainingCompleted()
-        ? "(TRAINED)" : String.format("(%.3f%% trained)",
-                                      ModelParameters.modelCoefficientTrainingCompleteness() * 100);
+                     ? "(TRAINED)"
+                     : String.format("(%.3f%% trained)", ModelParameters.modelCoefficientTrainingCompleteness() * 100);
     float validPartitionPercent = (float) _numValidMonitoredPartitions / _totalNumPartitions;
     float validWindowPercent = (float) _numValidWindows / _monitoredWindows.size();
     switch (_loadMonitorTaskRunnerState) {
@@ -220,8 +248,14 @@ public class LoadMonitorState {
         return String.format("{state: %s}", _loadMonitorTaskRunnerState);
 
       case RUNNING:
-      case SAMPLING:
       case PAUSED:
+        return String.format("{state: %s%s, NumValidWindows: (%d/%d) (%.3f%%), NumValidPartitions: %d/%d (%.3f%%), flawedPartitions: %d%s}",
+                             _loadMonitorTaskRunnerState, trained, _numValidWindows,
+                             _monitoredWindows.size(), validWindowPercent * 100,
+                             _numValidMonitoredPartitions, _totalNumPartitions, validPartitionPercent * 100,
+                             _sampleExtrapolations.size(), _reasonOfLatestPauseOrResume == null
+                                                           ? "" : String.format(", reasonOfPauseOrResume: %s", _reasonOfLatestPauseOrResume));
+      case SAMPLING:
         return String.format("{state: %s%s, NumValidWindows: (%d/%d) (%.3f%%), NumValidPartitions: %d/%d (%.3f%%), flawedPartitions: %d}",
                              _loadMonitorTaskRunnerState, trained, _numValidWindows,
                              _monitoredWindows.size(), validWindowPercent * 100,
