@@ -200,6 +200,8 @@ public class RackAwareGoal extends AbstractGoal {
     ensureRackAware(clusterModel, excludedTopics);
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
+    // Sanity check: No replica should be move to broker which used to host the replica of same partition on its broken disk.
+    AnalyzerUtils.ensureReplicasMoveOffBrokerWithBrokenDisk(clusterModel);
     finish();
   }
 

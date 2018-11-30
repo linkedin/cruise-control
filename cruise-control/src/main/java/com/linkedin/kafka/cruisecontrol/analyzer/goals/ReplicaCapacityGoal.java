@@ -179,6 +179,8 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
+    // Sanity check: No replica should be move to broker which used to host the replica of same partition on its broken disk.
+    AnalyzerUtils.ensureReplicasMoveOffBrokerWithBrokenDisk(clusterModel);
 
     if (!_isSelfHealingMode) {
       // One pass in non-self-healing mode is sufficient to satisfy or alert impossibility of this goal.

@@ -257,6 +257,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       LOG.warn("Omitting resource balance limit to relocate remaining replicas from dead brokers/disks.");
       return;
     }
+    // Sanity check: No replica should be move to broker which used to host the replica of same partition on its broken disk.
+    AnalyzerUtils.ensureReplicasMoveOffBrokerWithBrokenDisk(clusterModel);
     finish();
   }
 
