@@ -268,6 +268,11 @@ public class ClusterModel implements Serializable {
         _aliveBrokers.add(broker);
         _deadBrokers.remove(broker);
         _brokersWithBadDisks.add(broker);
+        // Due to the limitation of Kafka JBOD support, if a partition has replica on a broker's broken disk, then we cannot
+        // move the other replicas of this partition to this broker.
+        for (Replica replica : broker.currentOfflineReplicas()) {
+          _partitionsByTopicPartition.get(replica.topicPartition()).addIneligibleBroker(broker);
+        }
         break;
       default:
         throw new IllegalArgumentException("Illegal broker state " + newState + " is provided.");

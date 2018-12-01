@@ -188,6 +188,8 @@ public abstract class CapacityGoal extends AbstractGoal {
     ensureUtilizationUnderCapacity(clusterModel);
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
+    // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
+    AnalyzerUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel);
     finish();
     clusterModel.untrackSortedReplicas(sortName());
     clusterModel.untrackSortedReplicas(sortNameByLeader());

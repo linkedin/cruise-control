@@ -22,6 +22,8 @@ public class Partition implements Serializable {
   private final TopicPartition _tp;
   private final List<Replica> _replicas;
   private Replica _leader;
+  // Set of brokers which are unable to host replica of this partition.
+  private final Set<Broker> _ineligibleBrokers;
 
   /**
    * Constructor for Partition class.
@@ -32,6 +34,7 @@ public class Partition implements Serializable {
     _tp = tp;
     _replicas = new ArrayList<>();
     _leader = null;
+    _ineligibleBrokers = new HashSet<>();
   }
 
   /**
@@ -256,5 +259,23 @@ public class Partition implements Serializable {
       }
     }
     return partition.append("</Partition>%n").toString();
+  }
+
+  /**
+   * Record the broker which is unable to host the replica of the partition.
+   *
+   * @param ineligibleBroker The ineligible broker.
+   */
+  public void addIneligibleBroker(Broker ineligibleBroker) {
+    _ineligibleBrokers.add(ineligibleBroker);
+  }
+
+  /**
+   * Check if the broker is eligible to host the replica of the partition.
+   *
+   * @param candidateBroker The candidate broker.
+   */
+  public boolean canAssignReplicaToBroker(Broker candidateBroker) {
+    return !_ineligibleBrokers.contains(candidateBroker);
   }
 }

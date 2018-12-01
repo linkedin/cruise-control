@@ -206,7 +206,7 @@ public abstract class AbstractGoal implements Goal {
       // 1. The goal requirements are not violated if this action is applied to the given cluster state.
       // 2. The movement is acceptable by the previously optimized goals.
 
-      if (!legitMove(replica, broker, action)) {
+      if (!legitMove(replica, broker, clusterModel, action)) {
         LOG.trace("Replica move is not legit for {}.", proposal);
         continue;
       }
@@ -262,12 +262,12 @@ public abstract class AbstractGoal implements Goal {
       // 1. The swap from destination to source is legit.
       // 2. The goal requirements are not violated if this action is applied to the given cluster state.
       // 3. The movement is acceptable by the previously optimized goals.
-      if (!legitMove(sourceReplica, destinationBroker, ActionType.REPLICA_MOVEMENT)) {
+      if (!legitMove(sourceReplica, destinationBroker, clusterModel, ActionType.REPLICA_MOVEMENT)) {
         LOG.trace("Swap from source to destination is not legit for {}.", swapProposal);
         return null;
       }
 
-      if (!legitMove(destinationReplica, sourceReplica.broker(), ActionType.REPLICA_MOVEMENT)) {
+      if (!legitMove(destinationReplica, sourceReplica.broker(), clusterModel, ActionType.REPLICA_MOVEMENT)) {
         LOG.trace("Swap from destination to source is not legit for {}.", swapProposal);
         continue;
       }
@@ -294,9 +294,10 @@ public abstract class AbstractGoal implements Goal {
     return null;
   }
 
-  private boolean legitMove(Replica replica, Broker destBroker, ActionType actionType) {
-    if (actionType == ActionType.REPLICA_MOVEMENT && destBroker.replica(replica.topicPartition()) == null
-        && !(replica.isOriginalOffline() && replica.originalBroker().id() == destBroker.id())) {
+  private boolean legitMove(Replica replica, Broker destBroker, ClusterModel clusterModel, ActionType actionType) {
+    if (actionType == ActionType.REPLICA_MOVEMENT
+        && clusterModel.partition(replica.topicPartition()).canAssignReplicaToBroker(destBroker)
+        && destBroker.replica(replica.topicPartition()) == null) {
       return true;
     } else if (actionType == ActionType.LEADERSHIP_MOVEMENT && replica.isLeader()
         && destBroker.replica(replica.topicPartition()) != null) {
