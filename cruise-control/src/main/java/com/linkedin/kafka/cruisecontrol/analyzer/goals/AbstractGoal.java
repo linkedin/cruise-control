@@ -296,7 +296,6 @@ public abstract class AbstractGoal implements Goal {
 
   private boolean legitMove(Replica replica, Broker destBroker, ClusterModel clusterModel, ActionType actionType) {
     if (actionType == ActionType.REPLICA_MOVEMENT
-        && destBroker.isAlive()
         && clusterModel.partition(replica.topicPartition()).canAssignReplicaToBroker(destBroker)
         && destBroker.replica(replica.topicPartition()) == null) {
       return true;

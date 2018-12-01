@@ -23,7 +23,7 @@ public class Partition implements Serializable {
   private final List<Replica> _replicas;
   private Replica _leader;
   // Set of brokers which are unable to host replica of this partition.
-  private Set<Broker> _ineligibleBrokers;
+  private final Set<Broker> _ineligibleBrokers;
 
   /**
    * Constructor for Partition class.

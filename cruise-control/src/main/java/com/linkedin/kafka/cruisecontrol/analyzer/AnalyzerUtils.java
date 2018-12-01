@@ -129,9 +129,8 @@ public class AnalyzerUtils {
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       if (replica.isCurrentOffline()) {
         throw new OptimizationFailureException(String.format(
-                  "Self healing failed to move the replica %s away from %s broker %d for goal. There are still "
-                  + "%d replicas on the broker.", replica, replica.broker().state(), replica.broker().id(),
-                  replica.broker().replicas().size()));
+              "Self healing failed to move the replica %s away from %s broker %d for goal. There are still %d replicas on "
+              + "the broker.", replica, replica.broker().state(), replica.broker().id(), replica.broker().replicas().size()));
       }
     }
   }
@@ -142,13 +141,13 @@ public class AnalyzerUtils {
    * @throws OptimizationFailureException when there are replicas hosted by broker with broken disk which belongs to the
    * same partition as the replica used to be hosted on broken disks
    */
-  public static void ensureReplicasMoveOffBrokerWithBrokenDisk(ClusterModel clusterModel) throws OptimizationFailureException {
+  public static void ensureReplicasMoveOffBrokersWithBadDisks(ClusterModel clusterModel) throws OptimizationFailureException {
     for (Broker broker : clusterModel.brokersWithBadDisks()) {
       for (Replica replica : broker.replicas()) {
         if (!clusterModel.partition(replica.topicPartition()).canAssignReplicaToBroker(broker)) {
           throw new OptimizationFailureException(String.format(
-                    "replica of topic partition %s is moved to broker %d for goal. The broker used to host replica of this "
-                    + "partition on its broken disk.", replica.topicPartition(), replica.broker().id()));
+                "A replica of partition %s has been moved back to broker %d for a goal. This broker used to host a replica "
+                + "of this partition on its broken disk.", clusterModel.partition(replica.topicPartition()), replica.broker().id()));
         }
       }
     }
