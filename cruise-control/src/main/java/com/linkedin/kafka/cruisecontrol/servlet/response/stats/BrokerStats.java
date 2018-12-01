@@ -29,6 +29,8 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   private final List<SingleBrokerStats> _brokerStats;
   private final SortedMap<String, BasicStats> _hostStats;
   private int _hostFieldLength;
+  private String _cachedPlainTextResponse;
+  private String _cachedJSONResponse;
 
   public BrokerStats() {
     _brokerStats = new ArrayList<>();
@@ -95,10 +97,22 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    _cachedResponse = parameters.json() ? getJSONString() : toString();
+    _cachedJSONResponse = getJSONString();
+    _cachedPlainTextResponse = toString();
     // Discard irrelevant response.
     _brokerStats.clear();
     _hostStats.clear();
+  }
+
+  @Override
+  public void discardIrrelevantResponse(CruiseControlParameters parameters) {
+    if (_cachedJSONResponse == null || _cachedPlainTextResponse == null) {
+      discardIrrelevantAndCacheRelevant(parameters);
+      if (_cachedJSONResponse == null || _cachedPlainTextResponse == null) {
+        throw new IllegalStateException("Failed to cache the relevant response.");
+      }
+    }
+    _cachedResponse = parameters.json() ? _cachedJSONResponse : _cachedPlainTextResponse;
   }
 
   @Override
