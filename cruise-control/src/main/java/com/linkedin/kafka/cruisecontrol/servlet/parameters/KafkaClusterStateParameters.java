@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletRequest;
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#KAFKA_CLUSTER_STATE}
  *
  * <pre>
+ * Retrieve the kafka cluster state.
  *    GET /kafkacruisecontrol/kafka_cluster_state?verbose=[true/false]&amp;json=[true/false]
  * </pre>
  */

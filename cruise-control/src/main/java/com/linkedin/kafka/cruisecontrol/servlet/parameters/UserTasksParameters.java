@@ -14,7 +14,8 @@ import javax.servlet.http.HttpServletRequest;
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#USER_TASKS}
  *
  * <pre>
- *    GET /kafkacruisecontrol/user_tasks?json=[true/false]
+ * Retrieve the recent user tasks.
+ *    GET /kafkacruisecontrol/user_tasks?json=[true/false]&amp;user_task_ids=[USER-TASK-IDS]
  * </pre>
  */
 public class UserTasksParameters extends AbstractParameters {
