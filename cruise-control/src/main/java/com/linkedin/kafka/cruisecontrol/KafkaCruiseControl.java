@@ -373,6 +373,8 @@ public class KafkaCruiseControl {
 
   /**
    * Get the broker load stats from the cache. null will be returned if their is no cached broker load stats.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @return The cached broker load statistics.
    */
   public BrokerStats cachedBrokerLoadStats(boolean allowCapacityEstimation) {
     return _loadMonitor.cachedBrokerLoadStats(allowCapacityEstimation);

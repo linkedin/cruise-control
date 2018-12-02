@@ -29,8 +29,8 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   private final List<SingleBrokerStats> _brokerStats;
   private final SortedMap<String, BasicStats> _hostStats;
   private int _hostFieldLength;
-  private String _cachedPlainTextResponse;
-  private String _cachedJSONResponse;
+  private String _cachedPlainTextResponse = null;
+  private String _cachedJSONResponse = null;
 
   public BrokerStats() {
     _brokerStats = new ArrayList<>();
