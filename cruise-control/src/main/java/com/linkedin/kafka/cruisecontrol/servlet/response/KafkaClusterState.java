@@ -308,25 +308,31 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   private void populateKafkaBrokerLogDirState(Map<Integer, Set<String>> onlineLogDirsByBrokerId,
                                               Map<Integer, Set<String>> offlineLogDirsByBrokerId,
                                               Set<Integer> brokers)
-      throws ExecutionException, InterruptedException, TimeoutException {
+      throws ExecutionException, InterruptedException {
     Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId = describeLogDirs(brokers, _adminClientConfigs).values();
 
     for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
       onlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
       offlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
 
-      entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((key, value) -> {
-        if (value.error == Errors.NONE) {
-          onlineLogDirsByBrokerId.get(entry.getKey()).add(key);
-        } else {
-          offlineLogDirsByBrokerId.get(entry.getKey()).add(key);
-        }
-      });
+      try {
+        entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((key, value) -> {
+          if (value.error == Errors.NONE) {
+            onlineLogDirsByBrokerId.get(entry.getKey()).add(key);
+          } else {
+            offlineLogDirsByBrokerId.get(entry.getKey()).add(key);
+          }
+        });
+      } catch (TimeoutException te) {
+        LOG.error("Getting log dir information for broker {} timed out.", entry.getKey());
+        onlineLogDirsByBrokerId.get(entry.getKey()).add("timeout");
+        offlineLogDirsByBrokerId.get(entry.getKey()).add("timeout");
+      }
     }
   }
 
   private void writeKafkaBrokerLogDirState(StringBuilder sb, Set<Integer> brokers)
-      throws ExecutionException, InterruptedException, TimeoutException {
+      throws ExecutionException, InterruptedException {
     Map<Integer, Set<String>> onlineLogDirsByBrokerId = new HashMap<>(brokers.size());
     Map<Integer, Set<String>> offlineLogDirsByBrokerId = new HashMap<>(brokers.size());
     populateKafkaBrokerLogDirState(onlineLogDirsByBrokerId, offlineLogDirsByBrokerId, brokers);
@@ -348,7 +354,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     }
   }
 
-  private void writeBrokerSummary(StringBuilder sb) throws ExecutionException, InterruptedException, TimeoutException {
+  private void writeBrokerSummary(StringBuilder sb) throws ExecutionException, InterruptedException {
     SortedMap<Integer, Integer> leaderCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> outOfSyncCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> replicaCountByBrokerId = new TreeMap<>();
@@ -425,7 +431,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
       writeBrokerSummary(sb);
       // Partition summary.
       writePartitionSummary(sb, parameters);
-    } catch (TimeoutException | InterruptedException | ExecutionException e) {
+    } catch (InterruptedException | ExecutionException e) {
       LOG.error("Failed to populate broker logDir state.", e);
     }
 
