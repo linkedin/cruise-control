@@ -69,7 +69,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   }
 
   /**
-   * Return an object that can be further used to encode into JSON
+   * Return an object that can be further be used to encode into JSON
    */
   public Map<String, Object> getJsonStructure() {
     List<Map<String, Object>> hostStats = new ArrayList<>(_hostStats.size());
