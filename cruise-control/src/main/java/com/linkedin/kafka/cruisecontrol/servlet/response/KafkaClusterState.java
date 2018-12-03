@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParamete
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -309,8 +310,17 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
                                               Map<Integer, Set<String>> offlineLogDirsByBrokerId,
                                               Set<Integer> brokers)
       throws ExecutionException, InterruptedException {
-    Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId = describeLogDirs(brokers, _adminClientConfigs).values();
+    // If the broker does not show up in latest metadata, the broker is dead.
+    Set<Integer> aliveBrokers = new HashSet<>(brokers.size());
+    _kafkaCluster.nodes().forEach(node -> aliveBrokers.add(node.id()));
+    for (Integer broker: brokers) {
+      if (!aliveBrokers.contains(broker)) {
+        onlineLogDirsByBrokerId.put(broker, Collections.singleton("broker_dead"));
+        offlineLogDirsByBrokerId.put(broker, Collections.singleton("broker_dead"));
+      }
+    }
 
+    Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId = describeLogDirs(aliveBrokers, _adminClientConfigs).values();
     for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
       onlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
       offlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
@@ -325,8 +335,8 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
         });
       } catch (TimeoutException te) {
         LOG.error("Getting log dir information for broker {} timed out.", entry.getKey());
-        onlineLogDirsByBrokerId.get(entry.getKey()).add("timeout");
-        offlineLogDirsByBrokerId.get(entry.getKey()).add("timeout");
+        onlineLogDirsByBrokerId.get(entry.getKey()).add("timed_out");
+        offlineLogDirsByBrokerId.get(entry.getKey()).add("timed_out");
       }
     }
   }
