@@ -35,7 +35,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
-import com.linkedin.kafka.cruisecontrol.servlet.response.stats.SingleBrokerStats;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -490,15 +489,9 @@ public class LoadMonitor {
     synchronized (this) {
       if (_cachedBrokerLoadGeneration != null
           && clusterGeneration == _cachedBrokerLoadGeneration.clusterGeneration()
-          && _partitionMetricSampleAggregator.generation() == _cachedBrokerLoadGeneration.loadGeneration()) {
-        if (!allowCapacityEstimation) {
-          // Ensure that there is no capacity estimation in the cached model.
-          for (SingleBrokerStats singleBrokerStats : _cachedBrokerLoadStats.stats()) {
-            if (singleBrokerStats.isEstimated()) {
-              return null;
-            }
-          }
-        }
+          && _partitionMetricSampleAggregator.generation() == _cachedBrokerLoadGeneration.loadGeneration()
+          && _cachedBrokerLoadStats != null
+          && (allowCapacityEstimation || !_cachedBrokerLoadStats.isBrokerStatsEstimated())) {
         return _cachedBrokerLoadStats;
       }
     }

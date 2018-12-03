@@ -29,13 +29,17 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   private final List<SingleBrokerStats> _brokerStats;
   private final SortedMap<String, BasicStats> _hostStats;
   private int _hostFieldLength;
-  private String _cachedPlainTextResponse = null;
-  private String _cachedJSONResponse = null;
+  private String _cachedPlainTextResponse;
+  private String _cachedJSONResponse;
+  private boolean _isBrokerStatsEstimated;
 
   public BrokerStats() {
     _brokerStats = new ArrayList<>();
     _hostStats = new ConcurrentSkipListMap<>();
     _hostFieldLength = 0;
+    _cachedPlainTextResponse = null;
+    _cachedJSONResponse = null;
+    _isBrokerStatsEstimated = false;
   }
 
   public void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
@@ -50,13 +54,11 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     _hostStats.computeIfAbsent(host, h -> new BasicStats(0.0, 0.0, 0.0, 0.0,
                                                          0.0, 0.0, 0, 0, 0.0))
               .addBasicStats(singleBrokerStats.basicStats());
+    _isBrokerStatsEstimated = _isBrokerStatsEstimated || isEstimated;
   }
 
-  /**
-   * Get the broker level load stats.
-   */
-  public List<SingleBrokerStats> stats() {
-    return _brokerStats;
+  public boolean isBrokerStatsEstimated() {
+    return _isBrokerStatsEstimated;
   }
 
   private String getJSONString() {
@@ -67,8 +69,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   }
 
   /**
-   * Return an object that can be further used
-   * to encode into JSON
+   * Return an object that can be further used to encode into JSON
    */
   public Map<String, Object> getJsonStructure() {
     List<Map<String, Object>> hostStats = new ArrayList<>(_hostStats.size());
