@@ -32,7 +32,7 @@ public class ModelGeneration implements Serializable {
 
   @Override
   public boolean equals(Object o) {
-    if (o == null || !(o instanceof ModelGeneration)) {
+    if (!(o instanceof ModelGeneration)) {
       return false;
     }
 
