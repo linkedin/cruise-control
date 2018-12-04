@@ -492,11 +492,10 @@ public class LoadMonitor {
       brokerLoadGeneration = _cachedBrokerLoadGeneration;
     }
     if (brokerLoadGeneration != null
-        && brokerStats != null
         && (allowCapacityEstimation || !brokerStats.isBrokerStatsEstimated())
         && _partitionMetricSampleAggregator.generation() == brokerLoadGeneration.loadGeneration()) {
       if (brokerLoadGeneration.clusterGeneration() == _metadataClient.refreshMetadata().generation()) {
-        return _cachedBrokerLoadStats;
+        return brokerStats;
       }
     }
     return null;
