@@ -300,19 +300,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return true;
     }
 
-    CruiseControlResponse cachedBrokerStats = _asyncKafkaCruiseControl.cachedBrokerLoadStats(parameters);
-    if (cachedBrokerStats != null) {
-      // Get the cached broker stats.
-      cachedBrokerStats.writeSuccessResponse(parameters, response);
-    } else {
-      // Get the broker stats asynchronously.
-      CruiseControlResponse nonCachedBrokerStats =
-          getAndMaybeReturnProgress(request, response, uuid -> _asyncKafkaCruiseControl.getBrokerStats(parameters));
-      if (nonCachedBrokerStats == null) {
-        return false;
-      }
-      nonCachedBrokerStats.writeSuccessResponse(parameters, response);
+    CruiseControlResponse brokerStats = getAndMaybeReturnProgress(request, response,
+                                                                  uuid -> _asyncKafkaCruiseControl.getBrokerStats(parameters));
+    if (brokerStats == null) {
+      return false;
     }
+    brokerStats.writeSuccessResponse(parameters, response);
     return true;
   }
 

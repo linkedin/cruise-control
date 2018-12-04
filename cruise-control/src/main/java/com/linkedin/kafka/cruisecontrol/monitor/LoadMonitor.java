@@ -36,7 +36,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
-import com.linkedin.kafka.cruisecontrol.servlet.response.stats.SingleBrokerStats;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -503,23 +502,20 @@ public class LoadMonitor {
 
   /**
    * Get the cached load.
-   * @return the cached load, null if the load
+   * @return the cached load, null if the load is stale or does not meet requirement.
    */
   public BrokerStats cachedBrokerLoadStats(boolean allowCapacityEstimation) {
-    int clusterGeneration = _metadataClient.refreshMetadata().generation();
+    BrokerStats brokerStats;
+    ModelGeneration brokerLoadGeneration;
     synchronized (this) {
-      if (_cachedBrokerLoadGeneration != null
-          && clusterGeneration == _cachedBrokerLoadGeneration.clusterGeneration()
-          && _partitionMetricSampleAggregator.generation() == _cachedBrokerLoadGeneration.loadGeneration()) {
-        if (!allowCapacityEstimation) {
-          // Ensure that there is no capacity estimation in the cached model.
-          for (SingleBrokerStats singleBrokerStats : _cachedBrokerLoadStats.stats()) {
-            if (singleBrokerStats.isEstimated()) {
-              return null;
-            }
-          }
-        }
-        return _cachedBrokerLoadStats;
+      brokerStats = _cachedBrokerLoadStats;
+      brokerLoadGeneration = _cachedBrokerLoadGeneration;
+    }
+    if (brokerLoadGeneration != null
+        && (allowCapacityEstimation || !brokerStats.isBrokerStatsEstimated())
+        && _partitionMetricSampleAggregator.generation() == brokerLoadGeneration.loadGeneration()) {
+      if (brokerLoadGeneration.clusterGeneration() == _metadataClient.refreshMetadata().generation()) {
+        return brokerStats;
       }
     }
     return null;
