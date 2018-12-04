@@ -30,7 +30,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
@@ -374,9 +373,11 @@ public class KafkaCruiseControl {
 
   /**
    * Get the broker load stats from the cache. null will be returned if their is no cached broker load stats.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @return The cached broker load statistics.
    */
-  public BrokerStats cachedBrokerLoadStats(ClusterLoadParameters parameters) {
-    return _loadMonitor.cachedBrokerLoadStats(parameters.allowCapacityEstimation());
+  public BrokerStats cachedBrokerLoadStats(boolean allowCapacityEstimation) {
+    return _loadMonitor.cachedBrokerLoadStats(allowCapacityEstimation);
   }
 
   /**
