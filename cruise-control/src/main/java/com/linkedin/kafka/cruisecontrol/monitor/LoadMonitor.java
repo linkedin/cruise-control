@@ -502,21 +502,14 @@ public class LoadMonitor {
 
   /**
    * Get the cached load.
-   * @return the cached load, null if the load is stale or does not meet requirement.
+   * @return The cached load, or null if (1) load or metadata is stale or (2) cached load violates capacity requirements.
    */
-  public BrokerStats cachedBrokerLoadStats(boolean allowCapacityEstimation) {
-    BrokerStats brokerStats;
-    ModelGeneration brokerLoadGeneration;
-    synchronized (this) {
-      brokerStats = _cachedBrokerLoadStats;
-      brokerLoadGeneration = _cachedBrokerLoadGeneration;
-    }
-    if (brokerLoadGeneration != null
-        && (allowCapacityEstimation || !brokerStats.isBrokerStatsEstimated())
-        && _partitionMetricSampleAggregator.generation() == brokerLoadGeneration.loadGeneration()) {
-      if (brokerLoadGeneration.clusterGeneration() == _metadataClient.refreshMetadata().generation()) {
-        return brokerStats;
-      }
+  public synchronized BrokerStats cachedBrokerLoadStats(boolean allowCapacityEstimation) {
+    if (_cachedBrokerLoadGeneration != null
+        && (allowCapacityEstimation || !_cachedBrokerLoadStats.isBrokerStatsEstimated())
+        && _partitionMetricSampleAggregator.generation() == _cachedBrokerLoadGeneration.loadGeneration()
+        && _metadataClient.refreshMetadata().generation() == _cachedBrokerLoadGeneration.clusterGeneration()) {
+      return _cachedBrokerLoadStats;
     }
     return null;
   }
