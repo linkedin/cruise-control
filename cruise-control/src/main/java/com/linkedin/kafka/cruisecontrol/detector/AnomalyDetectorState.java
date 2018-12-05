@@ -8,7 +8,6 @@ import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
-import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -57,7 +56,7 @@ public class AnomalyDetectorState {
   }
 
   public synchronized Map<AnomalyType, Boolean> selfHealingEnabled() {
-    return Collections.unmodifiableMap(_selfHealingEnabled);
+    return _selfHealingEnabled;
   }
 
   public synchronized boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
