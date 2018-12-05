@@ -35,6 +35,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
+import java.io.InputStream;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -42,6 +43,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -72,6 +74,21 @@ public class KafkaCruiseControl {
   private final AnomalyDetector _anomalyDetector;
   private final Time _time;
 
+  private static final String VERSION;
+  private static final String COMMIT_ID;
+
+  // Referenced similar method to get software version in Kafka code.
+  static {
+    Properties props = new Properties();
+    try (InputStream resourceStream = KafkaCruiseControl.class.getResourceAsStream("/cruise-control/cruise-control-version.properties")) {
+      props.load(resourceStream);
+    } catch (Exception e) {
+      LOG.warn("Error while loading cruise-control-version.properties :" + e.getMessage());
+    }
+    VERSION = props.getProperty("version", "unknown").trim();
+    COMMIT_ID = props.getProperty("commitId", "unknown").trim();
+    LOG.info("COMMIT INFO: " + VERSION + "---" + COMMIT_ID);
+  }
   /**
    * Construct the Cruise Control
    *
@@ -654,6 +671,20 @@ public class KafkaCruiseControl {
    */
   public KafkaClusterState kafkaClusterState() {
     return new KafkaClusterState(_loadMonitor.kafkaCluster());
+  }
+
+  /**
+   * Get the Kafka Cruise Control Version
+   */
+  public static String cruiseControlVersion() {
+    return VERSION;
+  }
+
+  /**
+   * Get the Kafka Cruise Control's current code's commit id
+   */
+  public static String cruiseControlCommitId() {
+    return COMMIT_ID;
   }
 
   /**
