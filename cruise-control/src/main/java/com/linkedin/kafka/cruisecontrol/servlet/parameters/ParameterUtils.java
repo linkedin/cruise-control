@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
+import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
@@ -30,6 +31,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.xml.ws.Endpoint;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
@@ -74,6 +76,9 @@ public class ParameterUtils {
   private static final String SKIP_HARD_GOAL_CHECK_PARAM = "skip_hard_goal_check";
   private static final String EXCLUDED_TOPICS_PARAM = "excluded_topics";
   private static final String USER_TASK_IDS_PARAM = "user_task_ids";
+  private static final String CLIENT_IDS_PARAM = "client_ids";
+  private static final String ENDPOINTS_PARAM = "endpoints";
+  private static final String TYPE_PARAM = "types";
   private static final String SKIP_URP_DEMOTION_PARAM = "skip_urp_demotion";
   private static final String EXCLUDE_FOLLOWER_DEMOTION_PARAM = "exclude_follower_demotion";
   private static final String DISABLE_SELF_HEALING_FOR_PARAM = "disable_self_healing_for";
@@ -559,6 +564,54 @@ public class ParameterUtils {
     return userTaskIdsString == null ? Collections.emptySet()
                                      : Arrays.stream(userTaskIdsString.split(",")).map(UUID::fromString)
                                              .collect(Collectors.toSet());
+  }
+
+  /**
+   * Default: An empty set.
+   */
+  static Set<String> userTaskClientIds(HttpServletRequest request) throws UnsupportedEncodingException {
+    String clientIdsString = urlDecode(request.getParameter(CLIENT_IDS_PARAM));
+    Set<String> parsedClientIds = clientIdsString == null ? new HashSet<>(0)
+        : new HashSet<>(Arrays.asList(clientIdsString.split(",")));
+    parsedClientIds.removeIf(String::isEmpty);
+    // May need to validate clientIds
+    return Collections.unmodifiableSet(parsedClientIds);
+  }
+
+  /**
+   * Default: An empty set.
+   */
+  static Set<EndPoint> userTaskEndPoints(HttpServletRequest request) throws UnsupportedEncodingException {
+    String endPointsString = urlDecode(request.getParameter(ENDPOINTS_PARAM));
+    Set<String> parsedEndPoints = endPointsString == null ? new HashSet<>(0)
+        : new HashSet<>(Arrays.asList(endPointsString.split(",")));
+    parsedEndPoints.removeIf(String::isEmpty);
+
+    Set<EndPoint> endPoints = new HashSet<>();
+    for (EndPoint endPoint : EndPoint.cachedValues()) {
+      if (parsedEndPoints.contains(endPoint.toString())) {
+        endPoints.add(endPoint);
+      }
+    }
+    return Collections.unmodifiableSet(endPoints);
+  }
+
+  /**
+   * Default: An empty set.
+   */
+  static Set<UserTaskManager.TaskState> userTaskState(HttpServletRequest request) throws UnsupportedEncodingException {
+    String taskStatesString = urlDecode(request.getParameter(TYPE_PARAM));
+    Set<String> parsedTaskStates = taskStatesString == null ? new HashSet<>(0)
+        : new HashSet<>(Arrays.asList(taskStatesString.split(",")));
+    parsedTaskStates.removeIf(String::isEmpty);
+
+    Set<UserTaskManager.TaskState> taskStates = new HashSet<>();
+    for (UserTaskManager.TaskState state : UserTaskManager.TaskState.cachedValues()) {
+      if (parsedTaskStates.contains(state.toString())) {
+        taskStates.add(state);
+      }
+    }
+    return Collections.unmodifiableSet(taskStates);
   }
 
   /**

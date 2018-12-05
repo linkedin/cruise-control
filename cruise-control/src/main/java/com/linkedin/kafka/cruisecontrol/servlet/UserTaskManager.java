@@ -54,6 +54,7 @@ public class UserTaskManager implements Closeable {
   private final Map<SessionKey, UUID> _sessionToUserTaskIdMap;
   private final Map<UUID, UserTaskInfo> _activeUserTaskIdToFuturesMap;
   private final Map<UUID, UserTaskInfo> _completedUserTaskIdToFuturesMap;
+  private final Map<TaskState, Map<UUID, UserTaskInfo>> _allUserTaskIdToFutureMap;
   private final long _sessionExpiryMs;
   private final long _maxActiveUserTasks;
   private final Time _time;
@@ -77,6 +78,10 @@ public class UserTaskManager implements Closeable {
         return this.size() > maxCachedCompletedUserTasks;
       }
     };
+    _allUserTaskIdToFutureMap = new HashMap<>(2);
+    _allUserTaskIdToFutureMap.put(TaskState.ACTIVE, _activeUserTaskIdToFuturesMap);
+    _allUserTaskIdToFutureMap.put(TaskState.COMPLETED, _completedUserTaskIdToFuturesMap);
+
     _sessionExpiryMs = sessionExpiryMs;
     _maxActiveUserTasks = maxActiveUserTasks;
     _completedUserTaskRetentionTimeMs = completedUserTaskRetentionTimeMs;
@@ -108,6 +113,10 @@ public class UserTaskManager implements Closeable {
         return this.size() > maxCachedCompletedUserTasks;
       }
     };
+    _allUserTaskIdToFutureMap = new HashMap<>(2);
+    _allUserTaskIdToFutureMap.put(TaskState.ACTIVE, _activeUserTaskIdToFuturesMap);
+    _allUserTaskIdToFutureMap.put(TaskState.COMPLETED, _completedUserTaskIdToFuturesMap);
+
     _sessionExpiryMs = sessionExpiryMs;
     _maxActiveUserTasks = maxActiveUserTasks;
     _completedUserTaskRetentionTimeMs = completedUserTaskRetentionTimeMs;
@@ -267,6 +276,7 @@ public class UserTaskManager implements Closeable {
       if (isActiveUserTasksDone(entry.getKey())) {
         LOG.info("UserTask {} is complete and removed from active tasks list", entry.getKey());
         _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
+        entry.getValue().setNextState(TaskState.COMPLETED);
         _completedUserTaskIdToFuturesMap.put(entry.getKey(), entry.getValue());
         iter.remove();
       }
@@ -320,7 +330,7 @@ public class UserTaskManager implements Closeable {
       }
       UserTaskInfo userTaskInfo =
           new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString()))),
-                           _time.milliseconds(), userTaskId);
+                           _time.milliseconds(), userTaskId, TaskState.ACTIVE);
       _activeUserTaskIdToFuturesMap.put(userTaskId, userTaskInfo);
     }
     return _activeUserTaskIdToFuturesMap.get(userTaskId).futures();
@@ -332,6 +342,14 @@ public class UserTaskManager implements Closeable {
 
   public synchronized List<UserTaskInfo> getCompletedUserTasks() {
     return new ArrayList<>(_completedUserTaskIdToFuturesMap.values());
+  }
+
+  public synchronized Map<TaskState, List<UserTaskInfo>> getAllUserTasks() {
+    Map<TaskState, List<UserTaskInfo>> result = new HashMap<>(_allUserTaskIdToFutureMap.size());
+    for (TaskState state : _allUserTaskIdToFutureMap.keySet()) {
+      result.put(state, new ArrayList<>(_allUserTaskIdToFutureMap.get(state).values()));
+    }
+    return result;
   }
 
   @Override
@@ -427,14 +445,15 @@ public class UserTaskManager implements Closeable {
     private final UUID _userTaskId;
     private final Map<String, String[]> _queryParams;
     private final EndPoint _endPoint;
+    private TaskState _state;
 
     public UserTaskInfo(HttpServletRequest httpServletRequest,
                         List<OperationFuture> futures,
                         long startMs,
-                        UUID userTaskId) {
+                        UUID userTaskId, TaskState state) {
       this(futures, httpServletRequestToString(httpServletRequest),
            KafkaCruiseControlServletUtils.getClientIpAddress(httpServletRequest), startMs, userTaskId,
-           httpServletRequest.getParameterMap(), ParameterUtils.endPoint(httpServletRequest));
+           httpServletRequest.getParameterMap(), ParameterUtils.endPoint(httpServletRequest), state);
     }
 
     public UserTaskInfo(List<OperationFuture> futures,
@@ -443,7 +462,7 @@ public class UserTaskManager implements Closeable {
                         long startMs,
                         UUID userTaskId,
                         Map<String, String[]> queryParams,
-                        EndPoint endPoint) {
+                        EndPoint endPoint, TaskState state) {
       _futures = futures;
       _requestUrl = requestUrl;
       _clientIdentity = clientIdentity;
@@ -451,6 +470,7 @@ public class UserTaskManager implements Closeable {
       _userTaskId = userTaskId;
       _queryParams = queryParams;
       _endPoint = endPoint;
+      _state = state;
     }
 
     public List<OperationFuture> futures() {
@@ -485,6 +505,9 @@ public class UserTaskManager implements Closeable {
       return _futures.get(_futures.size() - 1).finishTimeNs() - TimeUnit.MILLISECONDS.toNanos(_startMs);
     }
 
+    public TaskState state() {
+      return _state;
+    }
     public String requestWithParams() {
       StringBuilder sb = new StringBuilder(_requestUrl);
       String queryParamDelimiter = "?";
@@ -497,6 +520,10 @@ public class UserTaskManager implements Closeable {
         }
       }
       return  sb.toString();
+    }
+
+    public void setNextState(TaskState nextState) {
+      _state = nextState;
     }
   }
 
@@ -513,6 +540,38 @@ public class UserTaskManager implements Closeable {
       } catch (Throwable t) {
         LOG.warn("Received exception when trying to expire sessions.", t);
       }
+    }
+  }
+
+  /**
+   * Possible state of tasks. We currently accept Active and Completed, in the future we could also add Cancelled.
+   */
+  public enum TaskState {
+    ACTIVE(0, "Active"),
+    COMPLETED(1, "Completed");
+
+    private int _id;
+    private String _type;
+    TaskState(int id, String type) {
+      _id = id;
+      _type = type;
+    }
+
+    public int id() {
+      return _id;
+    }
+
+    public String type() {
+      return _type;
+    }
+    private static final List<TaskState> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+
+    /**
+     * Use this instead of values() because values() creates a new array each time.
+     * @return enumerated values in the same order as values()
+     */
+    public static List<TaskState> cachedValues() {
+      return CACHED_VALUES;
     }
   }
 }

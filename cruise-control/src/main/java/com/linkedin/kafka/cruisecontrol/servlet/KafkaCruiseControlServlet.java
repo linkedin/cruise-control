@@ -566,9 +566,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       // Failed to parse parameters.
       return;
     }
-
     UserTaskState userTaskState = new UserTaskState(_userTaskManager.getActiveUserTasks(),
                                                     _userTaskManager.getCompletedUserTasks());
+//    UserTaskState userTaskState = new UserTaskState(_userTaskManager.getAllUserTasks());
     userTaskState.writeSuccessResponse(parameters, response);
   }
 }
