@@ -16,12 +16,15 @@ import javax.servlet.http.HttpServletRequest;
  *
  * <pre>
  *    POST /kafkacruisecontrol/admin?json=[true/false]&amp;disable_self_healing_for=[Set-of-{@link AnomalyType}]
- *    &amp;enable_self_healing_for=[Set-of-{@link AnomalyType}]
+ *    &amp;enable_self_healing_for=[Set-of-{@link AnomalyType}]&amp;concurrent_partition_movements_per_broker=[true/false]
+ *    &amp;concurrent_leader_movements=[true/false]
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
   private Set<AnomalyType> _disableSelfHealingFor;
   private Set<AnomalyType> _enableSelfHealingFor;
+  private Integer _concurrentPartitionMovements;
+  private Integer _concurrentLeaderMovements;
 
   public AdminParameters(HttpServletRequest request) {
     super(request);
@@ -33,6 +36,8 @@ public class AdminParameters extends AbstractParameters {
     Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_request);
     _enableSelfHealingFor = selfHealingFor.get(true);
     _disableSelfHealingFor = selfHealingFor.get(false);
+    _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
   }
 
   public Set<AnomalyType> disableSelfHealingFor() {
@@ -41,5 +46,13 @@ public class AdminParameters extends AbstractParameters {
 
   public Set<AnomalyType> enableSelfHealingFor() {
     return _enableSelfHealingFor;
+  }
+
+  public Integer concurrentPartitionMovements() {
+    return _concurrentPartitionMovements;
+  }
+
+  public Integer concurrentLeaderMovements() {
+    return _concurrentLeaderMovements;
   }
 }

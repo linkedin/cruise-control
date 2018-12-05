@@ -99,16 +99,22 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Dynamically set the partition movement concurrency per broker and the leadership movement concurrency.
+   * Dynamically set the partition movement concurrency per broker.
    *
    * @param requestedPartitionMovementConcurrency The maximum number of concurrent partition movements per broker
    *                                              (if null, use {@link #_defaultPartitionMovementConcurrency}).
+   */
+  public synchronized void setRequestedPartitionMovementConcurrency(Integer requestedPartitionMovementConcurrency) {
+    _requestedPartitionMovementConcurrency = requestedPartitionMovementConcurrency;
+  }
+
+  /**
+   * Dynamically set the leadership movement concurrency.
+   *
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
    *                                               (if null, {@link #_defaultLeadershipMovementConcurrency}).
    */
-  public synchronized void setRequestedMovementConcurrency(Integer requestedPartitionMovementConcurrency,
-                                                           Integer requestedLeadershipMovementConcurrency) {
-    _requestedPartitionMovementConcurrency = requestedPartitionMovementConcurrency;
+  public synchronized void setRequestedLeadershipMovementConcurrency(Integer requestedLeadershipMovementConcurrency) {
     _requestedLeadershipMovementConcurrency = requestedLeadershipMovementConcurrency;
   }
 

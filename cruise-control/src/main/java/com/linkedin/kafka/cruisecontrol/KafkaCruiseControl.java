@@ -477,6 +477,8 @@ public class KafkaCruiseControl {
   /**
    * Handle the admin requests:
    * <ul>
+   * <li>Dynamically change the partition and leadership concurrency of an ongoing execution. Has no effect if Executor
+   * is in {@link com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State#NO_TASK_IN_PROGRESS} state.</li>
    * <li>Enable/disable the specified anomaly detectors.</li>
    * </ul>
    *
@@ -484,6 +486,18 @@ public class KafkaCruiseControl {
    * @return Admin response.
    */
   public synchronized AdminResult handleAdminRequest(AdminParameters parameters) {
+    // 1.1. Change partition concurrency.
+    Integer concurrentPartitionMovements = parameters.concurrentPartitionMovements();
+    if (concurrentPartitionMovements != null) {
+      _executor.setRequestedPartitionMovementConcurrency(concurrentPartitionMovements);
+    }
+    // 1.2. Change leadership concurrency.
+    Integer concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    if (concurrentLeaderMovements != null) {
+      _executor.setRequestedLeadershipMovementConcurrency(concurrentLeaderMovements);
+    }
+
+    // 2. Enable/disable the specified anomaly detectors
     Set<AnomalyType> disableSelfHealingFor = parameters.disableSelfHealingFor();
     Set<AnomalyType> enableSelfHealingFor = parameters.enableSelfHealingFor();
 
