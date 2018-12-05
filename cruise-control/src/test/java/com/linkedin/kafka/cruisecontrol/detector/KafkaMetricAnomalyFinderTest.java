@@ -63,7 +63,7 @@ public class KafkaMetricAnomalyFinderTest {
     List<Long> expectedWindow = new ArrayList<>();
     expectedWindow.add(21L);
 
-    assertEquals(34, anomaly.metricId().intValue());
+    assertEquals(55, anomaly.metricId().intValue());
     assertEquals(_brokerEntity, anomaly.entity());
     assertEquals(expectedWindow, anomaly.windows());
   }
@@ -80,7 +80,7 @@ public class KafkaMetricAnomalyFinderTest {
 
   /**
    * Windows: numValues, numValues - 1, ..., 2, 1
-   * metric id : only 34
+   * metric id : only 55
    * metric values: [numValues, numValues - 1, ..., 1.0]
    */
   private ValuesAndExtrapolations createHistoryValuesAndExtrapolations(int numValues) {
@@ -91,7 +91,7 @@ public class KafkaMetricAnomalyFinderTest {
       values[i] = numValues - i;
     }
     historicalMetricValues.add(values);
-    valuesByMetricId.put(34, historicalMetricValues);
+    valuesByMetricId.put(55, historicalMetricValues);
 
     AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(valuesByMetricId);
     ValuesAndExtrapolations historyValuesAndExtrapolations = new ValuesAndExtrapolations(aggregatedMetricValues, null);
@@ -117,7 +117,7 @@ public class KafkaMetricAnomalyFinderTest {
 
   /**
    * Windows: window
-   * metric id : only 34
+   * metric id : only 55
    * metric values: [value]
    */
   private ValuesAndExtrapolations createCurrentValuesAndExtrapolations(long window, double value) {
@@ -125,7 +125,7 @@ public class KafkaMetricAnomalyFinderTest {
     MetricValues currentMetricValues = new MetricValues(1);
     double[] values = new double[] {value};
     currentMetricValues.add(values);
-    valuesByMetricId.put(34, currentMetricValues);
+    valuesByMetricId.put(55, currentMetricValues);
 
     AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(valuesByMetricId);
     ValuesAndExtrapolations currentValuesAndExtrapolations = new ValuesAndExtrapolations(aggregatedMetricValues, null);
@@ -155,9 +155,9 @@ public class KafkaMetricAnomalyFinderTest {
     props.setProperty(METRIC_ANOMALY_UPPER_MARGIN_CONFIG, "0.5");
     props.setProperty(METRIC_ANOMALY_LOWER_MARGIN_CONFIG, "0.2");
     props.setProperty(CruiseControlConfig.METRIC_ANOMALY_FINDER_METRICS_CONFIG,
-                      "BROKER_PRODUCE_LOCAL_TIME_MS_MAX,BROKER_PRODUCE_LOCAL_TIME_MS_MEAN,BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX,"
-                      + "BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN,BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX,"
-                      + "BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN,BROKER_LOG_FLUSH_TIME_MS_MAX,BROKER_LOG_FLUSH_TIME_MS_MEAN");
+                      "BROKER_PRODUCE_LOCAL_TIME_MS_50TH,BROKER_PRODUCE_LOCAL_TIME_MS_999TH,BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_50TH,"
+                      + "BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_999TH,BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_50TH,"
+                      + "BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH,BROKER_LOG_FLUSH_TIME_MS_50TH,BROKER_LOG_FLUSH_TIME_MS_999TH");
 
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
 

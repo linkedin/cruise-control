@@ -57,6 +57,8 @@ public class MetricsUtils {
   // Attribute
   static final String ATTRIBUTE_MEAN = "Mean";
   static final String ATTRIBUTE_MAX = "Max";
+  static final String ATTRIBUTE_50TH_PERCENTILE = "50thPercentile";
+  static final String ATTRIBUTE_999TH_PERCENTILE = "999thPercentile";
 
   // Name Set.
   private static final Set<String> INTERESTED_NETWORK_METRIC_NAMES =
@@ -276,6 +278,10 @@ public class MetricsUtils {
                 return new BrokerMetric(RawMetricType.BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MAX, now, brokerId, value);
               case ATTRIBUTE_MEAN:
                 return new BrokerMetric(RawMetricType.BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MEAN, now, brokerId, value);
+              case ATTRIBUTE_50TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_50TH, now, brokerId, value);
+              case ATTRIBUTE_999TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_999TH, now, brokerId, value);
               default:
                 return null;
             }
@@ -285,6 +291,10 @@ public class MetricsUtils {
                 return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MAX, now, brokerId, value);
               case ATTRIBUTE_MEAN:
                 return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN, now, brokerId, value);
+              case ATTRIBUTE_50TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_50TH, now, brokerId, value);
+              case ATTRIBUTE_999TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_999TH, now, brokerId, value);
               default:
                 return null;
             }
@@ -294,6 +304,10 @@ public class MetricsUtils {
                 return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MAX, now, brokerId, value);
               case ATTRIBUTE_MEAN:
                 return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_MEAN, now, brokerId, value);
+              case ATTRIBUTE_50TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_50TH, now, brokerId, value);
+              case ATTRIBUTE_999TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_999TH, now, brokerId, value);
               default:
                 return null;
             }
@@ -308,6 +322,10 @@ public class MetricsUtils {
                 return new BrokerMetric(RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_MAX, now, brokerId, value);
               case ATTRIBUTE_MEAN:
                 return new BrokerMetric(RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_MEAN, now, brokerId, value);
+              case ATTRIBUTE_50TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_50TH, now, brokerId, value);
+              case ATTRIBUTE_999TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_PRODUCE_LOCAL_TIME_MS_999TH, now, brokerId, value);
               default:
                 return null;
             }
@@ -317,6 +335,10 @@ public class MetricsUtils {
                 return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX, now, brokerId, value);
               case ATTRIBUTE_MEAN:
                 return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MEAN, now, brokerId, value);
+              case ATTRIBUTE_50TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_50TH, now, brokerId, value);
+              case ATTRIBUTE_999TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_999TH, now, brokerId, value);
               default:
                 return null;
             }
@@ -326,6 +348,10 @@ public class MetricsUtils {
                 return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MAX, now, brokerId, value);
               case ATTRIBUTE_MEAN:
                 return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN, now, brokerId, value);
+              case ATTRIBUTE_50TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_50TH, now, brokerId, value);
+              case ATTRIBUTE_999TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH, now, brokerId, value);
               default:
                 return null;
             }
@@ -340,6 +366,10 @@ public class MetricsUtils {
                 return new BrokerMetric(RawMetricType.BROKER_PRODUCE_TOTAL_TIME_MS_MAX, now, brokerId, value);
               case ATTRIBUTE_MEAN:
                 return new BrokerMetric(RawMetricType.BROKER_PRODUCE_TOTAL_TIME_MS_MEAN, now, brokerId, value);
+              case ATTRIBUTE_50TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_PRODUCE_TOTAL_TIME_MS_50TH, now, brokerId, value);
+              case ATTRIBUTE_999TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_PRODUCE_TOTAL_TIME_MS_999TH, now, brokerId, value);
               default:
                 return null;
             }
@@ -349,6 +379,10 @@ public class MetricsUtils {
                 return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MAX, now, brokerId, value);
               case ATTRIBUTE_MEAN:
                 return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_MEAN, now, brokerId, value);
+              case ATTRIBUTE_50TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_50TH, now, brokerId, value);
+              case ATTRIBUTE_999TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_999TH, now, brokerId, value);
               default:
                 return null;
             }
@@ -358,6 +392,10 @@ public class MetricsUtils {
                 return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MAX, now, brokerId, value);
               case ATTRIBUTE_MEAN:
                 return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_MEAN, now, brokerId, value);
+              case ATTRIBUTE_50TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_50TH, now, brokerId, value);
+              case ATTRIBUTE_999TH_PERCENTILE:
+                return new BrokerMetric(RawMetricType.BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_999TH, now, brokerId, value);
               default:
                 return null;
             }
@@ -376,6 +414,10 @@ public class MetricsUtils {
               return new BrokerMetric(RawMetricType.BROKER_LOG_FLUSH_TIME_MS_MAX, now, brokerId, value);
             case ATTRIBUTE_MEAN:
               return new BrokerMetric(RawMetricType.BROKER_LOG_FLUSH_TIME_MS_MEAN, now, brokerId, value);
+            case ATTRIBUTE_50TH_PERCENTILE:
+              return new BrokerMetric(RawMetricType.BROKER_LOG_FLUSH_TIME_MS_50TH, now, brokerId, value);
+            case ATTRIBUTE_999TH_PERCENTILE:
+              return new BrokerMetric(RawMetricType.BROKER_LOG_FLUSH_TIME_MS_999TH, now, brokerId, value);
             default:
               return null;
           }

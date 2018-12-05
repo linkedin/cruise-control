@@ -133,7 +133,27 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
                                                                        (int) BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_MEAN.id(),
                                                                        (int) BROKER_LOG_FLUSH_RATE.id(),
                                                                        (int) BROKER_LOG_FLUSH_TIME_MS_MAX.id(),
-                                                                       (int) BROKER_LOG_FLUSH_TIME_MS_MEAN.id()));
+                                                                       (int) BROKER_LOG_FLUSH_TIME_MS_MEAN.id(),
+                                                                       (int) BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_50TH.id(),
+                                                                       (int) BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_999TH.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_50TH.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_REQUEST_QUEUE_TIME_MS_999TH.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_50TH.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_REQUEST_QUEUE_TIME_MS_999TH.id(),
+                                                                       (int) BROKER_PRODUCE_TOTAL_TIME_MS_50TH.id(),
+                                                                       (int) BROKER_PRODUCE_TOTAL_TIME_MS_999TH.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_50TH.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_TOTAL_TIME_MS_999TH.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_50TH.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_TOTAL_TIME_MS_999TH.id(),
+                                                                       (int) BROKER_PRODUCE_LOCAL_TIME_MS_50TH.id(),
+                                                                       (int) BROKER_PRODUCE_LOCAL_TIME_MS_999TH.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_50TH.id(),
+                                                                       (int) BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_999TH.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_50TH.id(),
+                                                                       (int) BROKER_FOLLOWER_FETCH_LOCAL_TIME_MS_999TH.id(),
+                                                                       (int) BROKER_LOG_FLUSH_TIME_MS_50TH.id(),
+                                                                       (int) BROKER_LOG_FLUSH_TIME_MS_999TH.id()));
     Set<Integer> metricTypes = new HashSet<>();
     ConsumerRecords<String, CruiseControlMetric> records;
     while (metricTypes.size() < expectedMetricTypes.size() && System.currentTimeMillis() < startMs + 15000) {
