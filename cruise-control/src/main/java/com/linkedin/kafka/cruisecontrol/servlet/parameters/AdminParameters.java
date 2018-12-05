@@ -16,8 +16,8 @@ import javax.servlet.http.HttpServletRequest;
  *
  * <pre>
  *    POST /kafkacruisecontrol/admin?json=[true/false]&amp;disable_self_healing_for=[Set-of-{@link AnomalyType}]
- *    &amp;enable_self_healing_for=[Set-of-{@link AnomalyType}]&amp;concurrent_partition_movements_per_broker=[true/false]
- *    &amp;concurrent_leader_movements=[true/false]
+ *    &amp;enable_self_healing_for=[Set-of-{@link AnomalyType}]&amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]
+ *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
