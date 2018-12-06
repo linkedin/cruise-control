@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
@@ -26,6 +25,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import kafka.admin.AdminUtils;
 import kafka.admin.BrokerMetadata;
 import kafka.admin.RackAwareMode;
+import kafka.common.TopicAndPartition;
 import kafka.log.LogConfig;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -237,13 +237,12 @@ public class KafkaSampleStore implements SampleStore {
    * @param topicMetadata Topic metadata stored in Zookeeper.
    * @param replicationFactor The replication factor to set for the topic.
    * @param topic The topic to apply the change.
-   * @param props The properties to set for the topic.
    */
-  private void increaseTopicReplicationFactor(ZkUtils zkUtils,
-                                              MetadataResponse.TopicMetadata topicMetadata,
-                                              int replicationFactor,
-                                              String topic,
-                                              Properties props) {
+  private void maybeIncreaseTopicReplicationFactor(ZkUtils zkUtils,
+                                                   MetadataResponse.TopicMetadata topicMetadata,
+                                                   int replicationFactor,
+                                                   String topic) {
+    ensureTopicNotUnderPartitionReassignment(zkUtils, topic);
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
     Map<Integer, String> rackByBroker = new HashMap<>();
     for (BrokerMetadata bm :
@@ -259,35 +258,45 @@ public class KafkaSampleStore implements SampleStore {
                                  + " since there are only " + brokersByRack.size() + " racks in the cluster.");
     }
 
-    scala.collection.mutable.Map<Object, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
+    scala.collection.mutable.Map<TopicAndPartition, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
     List<String> racks = new ArrayList<>(brokersByRack.keySet());
     int [] cursors = new int[racks.size()];
     int rackCursor = 0;
     for (MetadataResponse.PartitionMetadata pm : topicMetadata.partitionMetadata()) {
-      List<Object> newAssignedReplica = new ArrayList<>();
-      Set<String> currentOccupiedRack = new HashSet<>();
-      // Make sure the current replicas are in new replica list.
-      pm.replicas().forEach(node -> {
-        newAssignedReplica.add(node.id());
-        currentOccupiedRack.add(rackByBroker.get(node.id()));
-      });
-      // Add new replica to partition in rack-aware(if rack info is available), round-robin way.
-      while (newAssignedReplica.size() < replicationFactor) {
-        if (!currentOccupiedRack.contains(racks.get(rackCursor))) {
-          String rack = racks.get(rackCursor);
-          int cursor = cursors[rackCursor];
-          newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
-          cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+      if (pm.replicas().size() < replicationFactor) {
+        List<Object> newAssignedReplica = new ArrayList<>();
+        Set<String> currentOccupiedRack = new HashSet<>();
+        // Make sure the current replicas are in new replica list.
+        pm.replicas().forEach(node -> {
+          newAssignedReplica.add(node.id());
+          currentOccupiedRack.add(rackByBroker.get(node.id()));
+        });
+        // Add new replica to partition in rack-aware(if rack info is available), round-robin way.
+        while (newAssignedReplica.size() < replicationFactor) {
+          if (!currentOccupiedRack.contains(racks.get(rackCursor))) {
+            String rack = racks.get(rackCursor);
+            int cursor = cursors[rackCursor];
+            newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
+            cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+          }
+          rackCursor = (rackCursor + 1) % racks.size();
         }
-        rackCursor = (rackCursor + 1) % racks.size();
+        newReplicaAssignment.put(new TopicAndPartition(topic, pm.partition()),
+                                 JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
       }
-      newReplicaAssignment.put(pm.partition(), JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
     }
-    AdminUtils.createOrUpdateTopicPartitionAssignmentPathInZK(zkUtils, topic, newReplicaAssignment, props, true);
-    LOG.info("The replication factor of Kafka topic " + topic + " has increased to " + replicationFactor + ".");
+    if (newReplicaAssignment.nonEmpty()) {
+      zkUtils.updatePartitionReassignmentData(newReplicaAssignment);
+      LOG.info("The replication factor of Kafka topic " + topic + " has increased to " + replicationFactor + ".");
+    }
   }
 
-  private void ensureTopicCreated(ZkUtils zkUtils, Set<String> allTopics, String topic, long retentionMs, int replicationFactor, int partitionCount) {
+  private void ensureTopicCreated(ZkUtils zkUtils,
+                                  Set<String> allTopics,
+                                  String topic,
+                                  long retentionMs,
+                                  int replicationFactor,
+                                  int partitionCount) {
     Properties props = new Properties();
     props.setProperty(LogConfig.RetentionMsProp(), Long.toString(retentionMs));
     props.setProperty(LogConfig.CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
@@ -295,19 +304,11 @@ public class KafkaSampleStore implements SampleStore {
       AdminUtils.createTopic(zkUtils, topic, partitionCount, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
     } else {
       try {
-        ensureTopicNotUnderPartitionReassignment(zkUtils, topic);
         AdminUtils.changeTopicConfig(zkUtils, topic, props);
-        MetadataResponse.TopicMetadata topicMetadata =
-            AdminUtils.fetchTopicMetadataFromZk(JavaConversions.asScalaSet(Collections.singleton(topic)), zkUtils,
-                ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
-        OptionalInt currentReplicationFactor =
-            topicMetadata.partitionMetadata().stream().mapToInt(pm -> pm.replicas().size()).min();
-        if (!currentReplicationFactor.isPresent()) {
-          throw new IllegalStateException("Kafka topic " + topic + " has no partition (Metadata: " + topicMetadata + ").");
-        }
-        if (replicationFactor > currentReplicationFactor.getAsInt()) {
-          increaseTopicReplicationFactor(zkUtils, topicMetadata, replicationFactor, topic, props);
-        }
+        MetadataResponse.TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(JavaConversions.asScalaSet(Collections.singleton(topic)),
+                                                       zkUtils,
+                                                       ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
+        maybeIncreaseTopicReplicationFactor(zkUtils, topicMetadata, replicationFactor, topic);
         if (partitionCount > topicMetadata.partitionMetadata().size()) {
           AdminUtils.addPartitions(zkUtils, topic, partitionCount, "", true, RackAwareMode.Safe$.MODULE$);
           LOG.info("Kafka topic " + topic + " now has " + partitionCount + " partitions.");
