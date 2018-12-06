@@ -54,8 +54,9 @@ import scala.Option;
 import scala.collection.JavaConversions;
 import scala.collection.JavaConverters;
 import scala.collection.Seq;
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicNotUnderPartitionReassignment;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureNoPartitionUnderPartitionReassignment;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicNotUnderPartitionReassignment;
 
 /**
  * The sample store that implements the {@link SampleStore}. It stores the partition metric samples and broker metric
@@ -233,6 +234,7 @@ public class KafkaSampleStore implements SampleStore {
    * Increase the replication factor of a Kafka topic through adding new replicas in a rack-aware, round-robin way.
    * If Zookeeper does not have rack information about brokers, then rack-aware property is not guaranteed.
    * In this case it is only guaranteed that new replicas are added to brokers which do not currently host the partition.
+   *
    * @param zkUtils ZkUtils class to use to increase replication factor.
    * @param topicMetadata Topic metadata stored in Zookeeper.
    * @param replicationFactor The replication factor to set for the topic.
@@ -242,7 +244,10 @@ public class KafkaSampleStore implements SampleStore {
                                                    MetadataResponse.TopicMetadata topicMetadata,
                                                    int replicationFactor,
                                                    String topic) {
-    ensureTopicNotUnderPartitionReassignment(zkUtils, topic);
+    if (!ensureNoPartitionUnderPartitionReassignment(zkUtils)) {
+      LOG.info("There are ongoing partition reassignments, skip checking topic {}'s replication factor.", topic);
+      return;
+    }
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
     Map<Integer, String> rackByBroker = new HashMap<>();
     for (BrokerMetadata bm :
@@ -291,6 +296,28 @@ public class KafkaSampleStore implements SampleStore {
     }
   }
 
+  /**
+   * Add new partitions to the Kafka topic.
+   *
+   * @param zkUtils ZkUtils class to use to increase replication factor.
+   * @param topic The topic to apply the change.
+   * @param topicMetadata Topic metadata stored in Zookeeper.
+   * @param partitionCount The target partition count of the topic.
+   */
+  private void maybeIncreaseTopicPartitionCount(ZkUtils zkUtils,
+                                                String topic,
+                                                MetadataResponse.TopicMetadata topicMetadata,
+                                                int partitionCount) {
+    if (partitionCount > topicMetadata.partitionMetadata().size()) {
+      if (!ensureTopicNotUnderPartitionReassignment(zkUtils, topic)) {
+        LOG.info("There are ongoing partition reassignments for topic {}, skip checking topic's partition count.", topic);
+        return;
+      }
+      AdminUtils.addPartitions(zkUtils, topic, partitionCount, "", true, RackAwareMode.Safe$.MODULE$);
+      LOG.info("Kafka topic " + topic + " now has " + partitionCount + " partitions.");
+    }
+  }
+
   private void ensureTopicCreated(ZkUtils zkUtils,
                                   Set<String> allTopics,
                                   String topic,
@@ -309,12 +336,9 @@ public class KafkaSampleStore implements SampleStore {
                                                        zkUtils,
                                                        ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
         maybeIncreaseTopicReplicationFactor(zkUtils, topicMetadata, replicationFactor, topic);
-        if (partitionCount > topicMetadata.partitionMetadata().size()) {
-          AdminUtils.addPartitions(zkUtils, topic, partitionCount, "", true, RackAwareMode.Safe$.MODULE$);
-          LOG.info("Kafka topic " + topic + " now has " + partitionCount + " partitions.");
-        }
+        maybeIncreaseTopicPartitionCount(zkUtils, topic, topicMetadata, partitionCount);
       }  catch (RuntimeException re) {
-        LOG.error("Skip updating topic " +  topic + "configuration due to failure:" + re.getMessage() + ".");
+        LOG.error("Skip updating topic " +  topic + " configuration due to failure:" + re.getMessage() + ".");
       }
     }
   }
