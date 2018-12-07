@@ -16,18 +16,14 @@ import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -35,8 +31,10 @@ import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
@@ -45,8 +43,6 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  * The util class for Kafka Cruise Control parameters.
  */
 public class ParameterUtils {
-  private static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
-  private static final String TIME_ZONE = "UTC";
   private static final String JSON_PARAM = "json";
   private static final String START_MS_PARAM = "start";
   private static final String END_MS_PARAM = "end";
@@ -370,12 +366,8 @@ public class ParameterUtils {
 
   static String reason(HttpServletRequest request) {
     String reason = request.getParameter(REASON);
-    Date date = new Date(System.currentTimeMillis());
-    DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
-    formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
-    String dateFormatted = formatter.format(date);
-
-    return String.format("%s (Date: %s)", reason == null ? "No reason provided" : reason, dateFormatted);
+    String ip = getClientIpAddress(request);
+    return String.format("%s (Client: %s, Date: %s)", reason == null ? "No reason provided" : reason, ip, currentUtcDate());
   }
 
   /**

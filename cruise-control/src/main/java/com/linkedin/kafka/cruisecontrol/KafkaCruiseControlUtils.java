@@ -10,6 +10,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Map;
 import java.util.Set;
+import java.util.TimeZone;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.common.config.ConfigException;
 
@@ -18,9 +19,18 @@ import org.apache.kafka.common.config.ConfigException;
  * Util class for convenience.
  */
 public class KafkaCruiseControlUtils {
+  public static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
+  public static final String TIME_ZONE = "UTC";
 
   private KafkaCruiseControlUtils() {
 
+  }
+
+  public static String currentUtcDate() {
+    Date date = new Date(System.currentTimeMillis());
+    DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
+    formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
+    return formatter.format(date);
   }
 
   /**
