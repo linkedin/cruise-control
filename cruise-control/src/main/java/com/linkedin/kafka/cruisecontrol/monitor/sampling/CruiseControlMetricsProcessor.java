@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.PartitionMetric;
@@ -69,7 +70,7 @@ public class CruiseControlMetricsProcessor {
    */
   MetricSampler.Samples process(Cluster cluster,
                                 Collection<TopicPartition> partitionsDotNotHandled,
-                                MetricSampler.SamplingMode samplingMode) {
+                                MetricSampler.SamplingMode samplingMode) throws UnknownVersionException {
     Map<Integer, Map<String, Integer>> leaderDistributionStats = leaderDistributionStats(cluster);
     // Theoretically we should not move forward at all if a broker reported a different all topic bytes in from all
     // its resident replicas. However, it is not clear how often this would happen yet. At this point we still
@@ -141,12 +142,12 @@ public class CruiseControlMetricsProcessor {
   /**
    * Add the broker metric samples to the provided set.
    *
-   * @param cluster the Kafka cluster
-   * @param brokerMetricSamples the set to add the broker samples to.
-   * @return the number of skipped brokers.
+   * @param cluster The Kafka cluster
+   * @param brokerMetricSamples The set to add the broker samples to.
+   * @return The number of skipped brokers.
    */
   private int addBrokerMetricSamples(Cluster cluster,
-                                     Set<BrokerMetricSample> brokerMetricSamples) {
+                                     Set<BrokerMetricSample> brokerMetricSamples) throws UnknownVersionException {
     int skippedBroker = 0;
     MetricDef brokerMetricDef = KafkaMetricDef.brokerMetricDef();
     for (Node node : cluster.nodes()) {
@@ -155,30 +156,32 @@ public class CruiseControlMetricsProcessor {
         LOG.warn("Skip generating broker metric sample for broker {} because all broker metrics are missing.", node.id());
         continue;
       } else if (!brokerLoad.allBrokerMetricsAvailable()) {
-        if (brokerLoad.missingBrokerMetrics().size() == 0) {
+        if (brokerLoad.missingBrokerMetricsInMinSupportedVersion().size() == 0) {
           LOG.warn("Skip generating broker metric sample for broker {} because there are not enough topic metrics to "
                   + "generate broker metrics.", node.id());
         } else {
-          LOG.warn("Skip generating broker metric sample for broker {} because the following metrics are missing {}.",
-              node.id(), brokerLoad.missingBrokerMetrics());
+          LOG.warn("Skip generating broker metric sample for broker {} because the following required metrics are missing {}.",
+              node.id(), brokerLoad.missingBrokerMetricsInMinSupportedVersion());
         }
         continue;
       }
 
       boolean validSample = true;
-      BrokerMetricSample brokerMetricSample = new BrokerMetricSample(node.host(), node.id());
-      for (RawMetricType rawBrokerMetricType : RawMetricType.brokerMetricTypes()) {
-        // We require the broker to report all the metric types. Otherwise we skip the broker.
-        if (!brokerLoad.brokerMetricAvailable(rawBrokerMetricType)) {
-          skippedBroker++;
-          validSample = false;
-          LOG.warn("Skip generating broker metric sample for broker {} because it does not have %s metrics or "
-                        + "the metrics are inconsistent.", node.id(), rawBrokerMetricType);
-          break;
-        } else {
-          MetricInfo metricInfo = brokerMetricDef.metricInfo(KafkaMetricDef.forRawMetricType(rawBrokerMetricType).name());
-          double metricValue = brokerLoad.brokerMetric(rawBrokerMetricType);
-          brokerMetricSample.record(metricInfo, metricValue);
+      BrokerMetricSample brokerMetricSample = new BrokerMetricSample(node.host(), node.id(), brokerLoad._brokerSampleDeserializationVersion);
+      for (Map.Entry<Byte, List<RawMetricType>> entry : RawMetricType.brokerMetricTypesDiffByVersion().entrySet()) {
+        for (RawMetricType rawBrokerMetricType : entry.getValue()) {
+          // We require the broker to report all the metric types (including nullable values). Otherwise we skip the broker.
+          if (!brokerLoad.brokerMetricAvailable(rawBrokerMetricType)) {
+            skippedBroker++;
+            validSample = false;
+            LOG.warn("Skip generating broker metric sample for broker {} because it does not have {} metrics (serde "
+                     + "version {}) or the metrics are inconsistent.", node.id(), rawBrokerMetricType, entry.getKey());
+            break;
+          } else {
+            MetricInfo metricInfo = brokerMetricDef.metricInfo(KafkaMetricDef.forRawMetricType(rawBrokerMetricType).name());
+            double metricValue = brokerLoad.brokerMetric(rawBrokerMetricType);
+            brokerMetricSample.record(metricInfo, metricValue);
+          }
         }
       }
 
@@ -302,7 +305,7 @@ public class CruiseControlMetricsProcessor {
     // However, because the partition size will always be reported, when we see partition size was reported for
     // a topic but the topic level IO metrics are not reported, we assume there was no traffic to the topic.
     private final Set<String> _dotHandledTopicsWithPartitionSizeReported = new HashSet<>();
-    private final Set<RawMetricType> _missingBrokerMetrics = new HashSet<>();
+    private final Set<RawMetricType> _missingBrokerMetricsInMinSupportedVersion = new HashSet<>();
 
     private static final Map<RawMetricType, RawMetricType> METRIC_TYPES_TO_SUM = new HashMap<>();
     static {
@@ -316,6 +319,8 @@ public class CruiseControlMetricsProcessor {
     }
 
     private boolean _brokerMetricsAvailable = false;
+    // Set to the latest possible deserialization version based on the sampled data.
+    private byte _brokerSampleDeserializationVersion = -1;
 
     private void recordMetric(CruiseControlMetric ccm) {
       RawMetricType rawMetricType = ccm.rawMetricType();
@@ -360,8 +365,8 @@ public class CruiseControlMetricsProcessor {
       return rawMetricsHolder != null && rawMetricsHolder.metricValue(rawMetricType) != null;
     }
 
-    private Set<RawMetricType> missingBrokerMetrics() {
-      return _missingBrokerMetrics;
+    private Set<RawMetricType> missingBrokerMetricsInMinSupportedVersion() {
+      return _missingBrokerMetricsInMinSupportedVersion;
     }
 
     private double brokerMetric(RawMetricType rawMetricType) {
@@ -428,8 +433,8 @@ public class CruiseControlMetricsProcessor {
      * to false.
      *
      * @param cluster The Kafka cluster.
-     * @param brokerId the broker id to prepare metrics for.
-     * @param time the last sample time.
+     * @param brokerId The broker id to prepare metrics for.
+     * @param time The last sample time.
      */
     private void prepareBrokerMetrics(Cluster cluster, int brokerId, long time) {
       boolean enoughTopicPartitionMetrics = enoughTopicPartitionMetrics(cluster, brokerId);
@@ -449,19 +454,63 @@ public class CruiseControlMetricsProcessor {
         }
       }
       // Check if all the broker raw metrics are available.
-      for (RawMetricType rawBrokerMetricType : RawMetricType.brokerMetricTypes()) {
-        if (_brokerMetrics.metricValue(rawBrokerMetricType) == null) {
-          if (allowMissingBrokerMetric(cluster, brokerId, rawBrokerMetricType)) {
-            // If the metric is allowed to be missing, we simply use 0 as the value.
-            _brokerMetrics.setRawMetricValue(rawBrokerMetricType, 0.0, time);
-          } else {
-            _missingBrokerMetrics.add(rawBrokerMetricType);
-          }
-        }
-      }
+      maybeSetBrokerRawMetrics(cluster, brokerId, time);
+
       // A broker metric is only available if it has enough valid topic metrics and it has reported
       // replication bytes in/out metrics.
-      _brokerMetricsAvailable = enoughTopicPartitionMetrics && _missingBrokerMetrics.isEmpty();
+      _brokerMetricsAvailable = enoughTopicPartitionMetrics && _missingBrokerMetricsInMinSupportedVersion.isEmpty();
+    }
+
+    /**
+     * Use the latest supported version for which the raw broker metrics are available.
+     *
+     * 1) If broker metrics are incomplete for the {@link BrokerMetricSample#MIN_SUPPORTED_VERSION}, then broker metrics
+     * are insufficient to create a broker sample.
+     * 2) If broker metrics are complete in a version-X but not in (version-X + 1), then use version-X.
+     *
+     * {@link #_missingBrokerMetricsInMinSupportedVersion} is relevant only for {@link BrokerMetricSample#MIN_SUPPORTED_VERSION}.
+     *
+     * @param cluster The Kafka cluster.
+     * @param brokerId The broker id to prepare metrics for.
+     * @param time The last sample time.
+     */
+    private void maybeSetBrokerRawMetrics(Cluster cluster, int brokerId, long time) {
+      for (byte v = BrokerMetricSample.MIN_SUPPORTED_VERSION; v <= BrokerMetricSample.LATEST_SUPPORTED_VERSION; v++) {
+        Set<RawMetricType> missingBrokerMetrics = new HashSet<>();
+        for (RawMetricType rawBrokerMetricType : RawMetricType.brokerMetricTypesDiffForVersion(v)) {
+          if (_brokerMetrics.metricValue(rawBrokerMetricType) == null) {
+            if (allowMissingBrokerMetric(cluster, brokerId, rawBrokerMetricType)) {
+              // If the metric is allowed to be missing, we simply use 0 as the value.
+              _brokerMetrics.setRawMetricValue(rawBrokerMetricType, 0.0, time);
+            } else {
+              missingBrokerMetrics.add(rawBrokerMetricType);
+            }
+          }
+        }
+
+        if (!missingBrokerMetrics.isEmpty()) {
+          if (_brokerSampleDeserializationVersion == -1) {
+            _missingBrokerMetricsInMinSupportedVersion.addAll(missingBrokerMetrics);
+          }
+          break;
+        } else {
+          // Set supported deserialization version so far.
+          _brokerSampleDeserializationVersion = v;
+        }
+      }
+      // Set nullable broker metrics for missing metrics if a valid deserialization exists with an old version.
+      setNullableBrokerMetrics();
+    }
+
+    private void setNullableBrokerMetrics() {
+      if (_brokerSampleDeserializationVersion != -1) {
+        Set<RawMetricType> nullableBrokerMetrics = new HashSet<>();
+        for (byte v = (byte) (_brokerSampleDeserializationVersion + 1); v <= BrokerMetricSample.LATEST_SUPPORTED_VERSION; v++) {
+          Set<RawMetricType> nullableMetrics = new HashSet<>(RawMetricType.brokerMetricTypesDiffForVersion(v));
+          nullableBrokerMetrics.addAll(nullableMetrics);
+        }
+        nullableBrokerMetrics.forEach(nullableMetric -> _brokerMetrics.setRawMetricValue(nullableMetric, 0.0, 0L));
+      }
     }
 
     /**

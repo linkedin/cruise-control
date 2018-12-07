@@ -19,15 +19,35 @@ import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMet
  * The class hosting all the broker level metrics in {@link KafkaMetricDef}.
  */
 public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
-  private static final byte CURRENT_VERSION = 5;
+  static final byte MIN_SUPPORTED_VERSION = 4;
+  static final byte LATEST_SUPPORTED_VERSION = 5;
+  private final byte _deserializationVersion;
 
-  public BrokerMetricSample(String host, Integer brokerId) {
+  /**
+   * Create a broker metric sample with the given host name, broker id, and version to be used in deserialization.
+   *
+   * @param host Host name.
+   * @param brokerId Broker Id.
+   * @param deserializationVersion Version used in serialization that shows the latest version that a deserializer should use.
+   */
+  public BrokerMetricSample(String host, Integer brokerId, byte deserializationVersion) throws UnknownVersionException {
     super(new BrokerEntity(host, brokerId));
     if (host != null && host.length() >= Short.MAX_VALUE) {
       throw new IllegalArgumentException(String.format("The length of host name %s is %d, which is longer than "
                                                            + "the max allowed length of %d", host, host.length(),
                                                        Short.MAX_VALUE));
     }
+
+    if (deserializationVersion < MIN_SUPPORTED_VERSION || deserializationVersion > LATEST_SUPPORTED_VERSION) {
+      throw new UnknownVersionException("Unsupported serialization version: " + deserializationVersion + " (Latest: " +
+                                        LATEST_SUPPORTED_VERSION + ", Minimum: " + MIN_SUPPORTED_VERSION + ")");
+    }
+
+    _deserializationVersion = deserializationVersion;
+  }
+
+  public byte deserializationVersion() {
+    return _deserializationVersion;
   }
 
   public int brokerId() {
@@ -35,7 +55,8 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
   }
 
   /**
-   * Serialize the partition metric sample using the following protocol
+   * Serialize the partition metric sample using the {@link #LATEST_SUPPORTED_VERSION} protocol. The version field
+   * indicates the version that a deserializer should use.
    *
    * 1 byte - version
    * 4 bytes - broker ID
@@ -103,7 +124,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
   public byte[] toBytes() {
     byte[] hostBytes = (entity().group() != null ? entity().group() : "UNKNOWN").getBytes(StandardCharsets.UTF_8);
     ByteBuffer buffer = ByteBuffer.allocate(457 + hostBytes.length);
-    buffer.put(CURRENT_VERSION);
+    buffer.put(_deserializationVersion);
     buffer.putInt(entity().brokerId());
     buffer.putShort((short) hostBytes.length);
     buffer.put(hostBytes);
@@ -176,26 +197,15 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
   public static BrokerMetricSample fromBytes(byte[] bytes) throws UnknownVersionException {
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     byte version = buffer.get();
-    if (version > CURRENT_VERSION) {
-      throw new UnknownVersionException("The model broker metric sample version " + version + " is higher than the current"
-          + "version " + CURRENT_VERSION);
-    }
 
     switch (version) {
-      case 0:
-        return readV0(buffer);
-      case 1:
-        return readV1(buffer);
-      case 2:
-        return readV2(buffer);
-      case 3:
-        return readV3(buffer);
       case 4:
         return readV4(buffer);
       case 5:
         return readV5(buffer);
       default:
-        throw new IllegalStateException("Should never be here");
+        throw new UnknownVersionException("Unsupported deserialization version: " + version + " (Latest: " +
+                                          LATEST_SUPPORTED_VERSION + ", Minimum: " + MIN_SUPPORTED_VERSION + ")");
     }
   }
 
@@ -223,47 +233,14 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     return _valuesByMetricId.get(KafkaMetricDef.brokerMetricDef().metricInfo(kafkaMetricDef.name()).id());
   }
 
-  private static BrokerMetricSample readV0(ByteBuffer buffer) {
-    MetricDef metricDef = KafkaMetricDef.brokerMetricDef();
-    BrokerMetricSample brokerMetricSample = new BrokerMetricSample("UNKNOWN", -1);
-    brokerMetricSample.record(metricDef.metricInfo(CPU_USAGE.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(LEADER_BYTES_IN.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(LEADER_BYTES_OUT.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(REPLICATION_BYTES_OUT_RATE.name()), buffer.getDouble());
-    return brokerMetricSample;
-  }
-
-  private static BrokerMetricSample readV1(ByteBuffer buffer) {
-    MetricDef metricDef = KafkaMetricDef.brokerMetricDef();
-    int brokerId = buffer.getInt();
-    BrokerMetricSample brokerMetricSample = new BrokerMetricSample("UNKNOWN", brokerId);
-    brokerMetricSample.record(metricDef.metricInfo(CPU_USAGE.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(LEADER_BYTES_IN.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(LEADER_BYTES_OUT.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(REPLICATION_BYTES_IN_RATE.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(REPLICATION_BYTES_OUT_RATE.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(MESSAGE_IN_RATE.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(BROKER_PRODUCE_REQUEST_RATE.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(BROKER_CONSUMER_FETCH_REQUEST_RATE.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(BROKER_FOLLOWER_FETCH_REQUEST_RATE.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(DISK_USAGE.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(PRODUCE_RATE.name()), buffer.getDouble());
-    brokerMetricSample.record(metricDef.metricInfo(FETCH_RATE.name()), buffer.getDouble());
-    long sampleTime = buffer.getLong();
-    if (sampleTime >= 0) {
-      brokerMetricSample.close(sampleTime);
-    }
-    return brokerMetricSample;
-  }
-
   /**
-   * Populate the given broker metric sample with v2 buffer deserialization and return the sample time.
+   * Populate the given broker metric sample with v4 buffer deserialization and return the sample time.
    *
    * @param buffer Buffer to deserialize.
    * @param brokerMetricSample Broker metric sample to populate.
    * @return Sample time.
    */
-  private static long populateV2BrokerMetricSample(ByteBuffer buffer, BrokerMetricSample brokerMetricSample) {
+  private static long populateV4BrokerMetricSample(ByteBuffer buffer, BrokerMetricSample brokerMetricSample) {
     MetricDef metricDef = KafkaMetricDef.brokerMetricDef();
 
     brokerMetricSample.record(metricDef.metricInfo(CPU_USAGE.name()), buffer.getDouble());
@@ -279,31 +256,7 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     brokerMetricSample.record(metricDef.metricInfo(DISK_USAGE.name()), buffer.getDouble());
     brokerMetricSample.record(metricDef.metricInfo(PRODUCE_RATE.name()), buffer.getDouble());
     brokerMetricSample.record(metricDef.metricInfo(FETCH_RATE.name()), buffer.getDouble());
-    return buffer.getLong();
-  }
-
-  private static BrokerMetricSample readV2(ByteBuffer buffer) {
-    int brokerId = buffer.getInt();
-    BrokerMetricSample brokerMetricSample = new BrokerMetricSample("UNKNOWN", brokerId);
-
-    long sampleTime = populateV2BrokerMetricSample(buffer, brokerMetricSample);
-    if (sampleTime >= 0) {
-      brokerMetricSample.close(sampleTime);
-    }
-    return brokerMetricSample;
-  }
-
-  /**
-   * Populate the given broker metric sample with v3 buffer deserialization and return the sample time.
-   *
-   * @param buffer Buffer to deserialize.
-   * @param brokerMetricSample Broker metric sample to populate.
-   * @return Sample time.
-   */
-  private static long populateV3BrokerMetricSample(ByteBuffer buffer, BrokerMetricSample brokerMetricSample) {
-    MetricDef metricDef = KafkaMetricDef.brokerMetricDef();
-    long sampleTime = populateV2BrokerMetricSample(buffer, brokerMetricSample);
-    // Metrics added from v2 -> v3.
+    long sampleTime = buffer.getLong();
     brokerMetricSample.record(metricDef.metricInfo(BROKER_REQUEST_QUEUE_SIZE.name()), buffer.getInt());
     brokerMetricSample.record(metricDef.metricInfo(BROKER_RESPONSE_QUEUE_SIZE.name()), buffer.getInt());
     brokerMetricSample.record(metricDef.metricInfo(BROKER_PRODUCE_REQUEST_QUEUE_TIME_MS_MAX.name()), buffer.getDouble());
@@ -331,36 +284,13 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     return sampleTime;
   }
 
-  private static BrokerMetricSample readV3(ByteBuffer buffer) {
-    int brokerId = buffer.getInt();
-    BrokerMetricSample brokerMetricSample = new BrokerMetricSample("UNKNOWN", brokerId);
-
-    long sampleTime = populateV3BrokerMetricSample(buffer, brokerMetricSample);
-    if (sampleTime >= 0) {
-      brokerMetricSample.close(sampleTime);
-    }
-    return brokerMetricSample;
-  }
-
-  /**
-   * Populate the given broker metric sample with v4 buffer deserialization and return the sample time.
-   *
-   * @param buffer Buffer to deserialize.
-   * @param brokerMetricSample Broker metric sample to populate.
-   * @return Sample time.
-   */
-  private static long populateV4BrokerMetricSample(ByteBuffer buffer, BrokerMetricSample brokerMetricSample) {
-    // No new metrics have been added from v3 -> v4.
-    return populateV3BrokerMetricSample(buffer, brokerMetricSample);
-  }
-
-  private static BrokerMetricSample readV4(ByteBuffer buffer) {
+  private static BrokerMetricSample readV4(ByteBuffer buffer) throws UnknownVersionException {
     int brokerId = buffer.getInt();
     int hostLength = buffer.getShort();
     byte[] hostBytes = new byte[hostLength];
     buffer.get(hostBytes);
     String host = new String(hostBytes, StandardCharsets.UTF_8);
-    BrokerMetricSample brokerMetricSample = new BrokerMetricSample(host, brokerId);
+    BrokerMetricSample brokerMetricSample = new BrokerMetricSample(host, brokerId, (byte) 4);
 
     long sampleTime = populateV4BrokerMetricSample(buffer, brokerMetricSample);
     if (sampleTime >= 0) {
@@ -405,13 +335,13 @@ public class BrokerMetricSample extends MetricSample<String, BrokerEntity> {
     return sampleTime;
   }
 
-  private static BrokerMetricSample readV5(ByteBuffer buffer) {
+  private static BrokerMetricSample readV5(ByteBuffer buffer) throws UnknownVersionException {
     int brokerId = buffer.getInt();
     int hostLength = buffer.getShort();
     byte[] hostBytes = new byte[hostLength];
     buffer.get(hostBytes);
     String host = new String(hostBytes, StandardCharsets.UTF_8);
-    BrokerMetricSample brokerMetricSample = new BrokerMetricSample(host, brokerId);
+    BrokerMetricSample brokerMetricSample = new BrokerMetricSample(host, brokerId, (byte) 5);
 
     long sampleTime = populateV5BrokerMetricSample(buffer, brokerMetricSample);
 
