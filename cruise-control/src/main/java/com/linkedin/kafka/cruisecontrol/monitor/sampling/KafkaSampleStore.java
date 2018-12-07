@@ -245,7 +245,7 @@ public class KafkaSampleStore implements SampleStore {
                                                    int replicationFactor,
                                                    String topic) {
     if (!ensureNoPartitionUnderPartitionReassignment(zkUtils)) {
-      LOG.info("There are ongoing partition reassignments, skip checking topic {}'s replication factor.", topic);
+      LOG.warn("There are ongoing partition reassignments, skip checking replication factor of topic {}.", topic);
       return;
     }
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
@@ -310,7 +310,7 @@ public class KafkaSampleStore implements SampleStore {
                                                 int partitionCount) {
     if (partitionCount > topicMetadata.partitionMetadata().size()) {
       if (!ensureTopicNotUnderPartitionReassignment(zkUtils, topic)) {
-        LOG.info("There are ongoing partition reassignments for topic {}, skip checking topic's partition count.", topic);
+        LOG.warn("There are ongoing partition reassignments for topic {}, skip checking its partition count.", topic);
         return;
       }
       AdminUtils.addPartitions(zkUtils, topic, partitionCount, "", true, RackAwareMode.Safe$.MODULE$);
