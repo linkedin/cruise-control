@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.IOException;
@@ -65,6 +66,8 @@ public class ResponseUtils {
       throws IOException {
     OutputStream out = response.getOutputStream();
     setResponseCode(response, responseCode, json, config);
+    response.addHeader("Cruise-Control-Version", KafkaCruiseControl.cruiseControlVersion());
+    response.addHeader("Cruise-Control-Commit_Id", KafkaCruiseControl.cruiseControlCommitId());
     response.setContentLength(responseMsg.length());
     out.write(responseMsg.getBytes(StandardCharsets.UTF_8));
     out.flush();
