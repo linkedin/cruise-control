@@ -486,15 +486,18 @@ public class KafkaCruiseControl {
    * @return Admin response.
    */
   public synchronized AdminResult handleAdminRequest(AdminParameters parameters) {
+    String ongoingConcurrencyChangeRequest = "";
     // 1.1. Change partition concurrency.
     Integer concurrentPartitionMovements = parameters.concurrentPartitionMovements();
     if (concurrentPartitionMovements != null) {
       _executor.setRequestedPartitionMovementConcurrency(concurrentPartitionMovements);
+      ongoingConcurrencyChangeRequest += String.format("Partition movement concurrency is set to %d%n", concurrentPartitionMovements);
     }
     // 1.2. Change leadership concurrency.
     Integer concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     if (concurrentLeaderMovements != null) {
       _executor.setRequestedLeadershipMovementConcurrency(concurrentLeaderMovements);
+      ongoingConcurrencyChangeRequest += String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements);
     }
 
     // 2. Enable/disable the specified anomaly detectors
@@ -516,7 +519,9 @@ public class KafkaCruiseControl {
       selfHealingAfter.put(anomalyType, true);
     }
 
-    return new AdminResult(selfHealingBefore, selfHealingAfter);
+    return new AdminResult(selfHealingBefore,
+                           selfHealingAfter,
+                           ongoingConcurrencyChangeRequest.isEmpty() ? null : ongoingConcurrencyChangeRequest);
   }
 
   /**
