@@ -31,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import java.util.Collection;
 import java.util.List;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.ABORTED;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.ABORTING;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.DEAD;
@@ -342,7 +343,7 @@ public class Executor {
         while (true) {
           try {
             // Ensure that the temporary states in the load monitor are explicitly handled -- e.g. SAMPLING.
-            _loadMonitor.pauseMetricSampling();
+            _loadMonitor.pauseMetricSampling(String.format("Paused-By-Cruise-Control-Before-Starting-Execution (Date: %s)", currentUtcDate()));
             break;
           } catch (IllegalStateException e) {
             Thread.sleep(_statusCheckingIntervalMs);
@@ -379,7 +380,7 @@ public class Executor {
       } catch (Throwable t) {
         LOG.error("Executor got exception during execution", t);
       } finally {
-        _loadMonitor.resumeMetricSampling();
+        _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
         _executionTaskManager.clear();
         _uuid = null;
         _state = ExecutorState.State.NO_TASK_IN_PROGRESS;

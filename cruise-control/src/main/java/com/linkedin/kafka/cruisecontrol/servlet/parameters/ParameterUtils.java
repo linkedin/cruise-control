@@ -31,8 +31,10 @@ import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
@@ -51,6 +53,7 @@ public class ParameterUtils {
   private static final String VERBOSE_PARAM = "verbose";
   private static final String SUPER_VERBOSE_PARAM = "super_verbose";
   private static final String RESOURCE_PARAM = "resource";
+  private static final String REASON = "reason";
   private static final String DATA_FROM_PARAM = "data_from";
   private static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
   private static final String MAX_LOAD_PARAM = "max_load";
@@ -360,10 +363,13 @@ public class ParameterUtils {
 
   static String resourceString(HttpServletRequest request) {
     String resourceString = request.getParameter(RESOURCE_PARAM);
-    if (resourceString == null) {
-      resourceString = DEFAULT_PARTITION_LOAD_RESOURCE;
-    }
-    return resourceString;
+    return resourceString == null ? DEFAULT_PARTITION_LOAD_RESOURCE : resourceString;
+  }
+
+  static String reason(HttpServletRequest request) {
+    String reason = request.getParameter(REASON);
+    String ip = getClientIpAddress(request);
+    return String.format("%s (Client: %s, Date: %s)", reason == null ? "No reason provided" : reason, ip, currentUtcDate());
   }
 
   /**

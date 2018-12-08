@@ -47,7 +47,7 @@ public class KafkaCruiseControlServletUtils {
       "REMOTE_ADDR"
   };
 
-  static String getClientIpAddress(HttpServletRequest request) {
+  public static String getClientIpAddress(HttpServletRequest request) {
     for (String header : HEADERS_TO_TRY) {
       String ip = request.getHeader(header);
       if (ip != null && ip.length() != 0 && !"unknown".equalsIgnoreCase(ip)) {

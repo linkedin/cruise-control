@@ -147,7 +147,8 @@ public class KafkaCruiseControlServletDataFromTest {
     ExecutorState executorState = ExecutorState.noTaskInProgress();
     LoadMonitorState loadMonitorState = LoadMonitorState.running(numValidWindows, new TreeMap<>(),
                                                                  1, 10,
-                                                                 Collections.emptyMap());
+                                                                 Collections.emptyMap(),
+                                                                 null);
     Map<Goal, Boolean> goalReadiness = new HashMap<>();
     int i = 0;
     for (; i < numReadyGoals; i++) {
