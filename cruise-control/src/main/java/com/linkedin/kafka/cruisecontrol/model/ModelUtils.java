@@ -112,6 +112,6 @@ public class ModelUtils {
   public static TopicPartition partitionHandleDotInTopicName(TopicPartition tp) {
     // In the reported metrics, the "." in the topic name will be replaced by "_".
     return !tp.topic().contains(".") ? tp :
-           new TopicPartition(ModelUtils.replaceDotsWithUnderscores(tp.topic()), tp.partition());
+           new TopicPartition(replaceDotsWithUnderscores(tp.topic()), tp.partition());
   }
 }
