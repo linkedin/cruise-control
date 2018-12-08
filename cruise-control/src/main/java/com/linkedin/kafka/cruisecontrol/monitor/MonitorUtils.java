@@ -144,7 +144,13 @@ public class MonitorUtils {
     return totalNumPartitions;
   }
 
-  public static void ensureTopicNotUnderPartitionReassignment(KafkaZkClient kafkaZkClient, String topic) {
+  /**
+   * Check whether the topic has partitions undergoing partition reassignment and wait for the reassignments to finish.
+   *
+   * @param kafkaZkClient the KafkaZkClient class used to check ongoing partition reassignments.
+   * @return Whether there are no ongoing partition reassignments.
+   */
+  public static boolean ensureTopicNotUnderPartitionReassignment(KafkaZkClient kafkaZkClient, String topic) {
     int attempt = 0;
     while (JavaConversions.asJavaCollection(kafkaZkClient.getPartitionReassignment().keys()).stream()
                           .anyMatch(tp -> tp.topic().equals(topic))) {
@@ -154,8 +160,30 @@ public class MonitorUtils {
         // Let it go.
       }
       if (++attempt == 10) {
-        throw new IllegalStateException("Kafka topic " + topic + " has ongoing partition reassignment task.");
+        return false;
       }
     }
+    return true;
+  }
+
+  /**
+   * Check whether there are ongoing partition reassignments and wait for the reassignments to finish.
+   *
+   * @param kafkaZkClient the KafkaZkClient class used to check ongoing partition reassignments.
+   * @return Whether there are no ongoing partition reassignments.
+   */
+  public static boolean ensureNoPartitionUnderPartitionReassignment(KafkaZkClient kafkaZkClient) {
+    int attempt = 0;
+    while (kafkaZkClient.getPartitionReassignment().size() > 0) {
+      try {
+        sleep(1000 << attempt);
+      } catch (InterruptedException e) {
+        // Let it go.
+      }
+      if (++attempt == 10) {
+        return false;
+      }
+    }
+    return true;
   }
 }

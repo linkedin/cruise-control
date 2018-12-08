@@ -15,7 +15,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalInt;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
@@ -57,8 +56,9 @@ import scala.Tuple2;
 import scala.collection.JavaConversions;
 import scala.collection.JavaConverters;
 import scala.collection.Seq;
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicNotUnderPartitionReassignment;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureNoPartitionUnderPartitionReassignment;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicNotUnderPartitionReassignment;
 
 /**
  * The sample store that implements the {@link SampleStore}. It stores the partition metric samples and broker metric
@@ -221,9 +221,8 @@ public class KafkaSampleStore implements SampleStore {
 
       int numberOfBrokersInCluster = kafkaZkClient.getAllBrokersInCluster().size();
       if (numberOfBrokersInCluster <= 1) {
-        throw new IllegalStateException(
-            String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d, zookeeper.connect=%s)",
-                          numberOfBrokersInCluster, config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
+        throw new IllegalStateException(String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d, zookeeper.connect=%s)",
+                                        numberOfBrokersInCluster, config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
       }
       int replicationFactor = _sampleStoreTopicReplicationFactor == null ? Math.min(DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR,
                               numberOfBrokersInCluster) : _sampleStoreTopicReplicationFactor;
@@ -242,6 +241,7 @@ public class KafkaSampleStore implements SampleStore {
    * Increase the replication factor of a Kafka topic through adding new replicas in a rack-aware, round-robin way.
    * If Zookeeper does not have rack information about brokers, then rack-aware property is not guaranteed.
    * In this case it is only guaranteed that new replicas are added to hosts which do not currently host the partition.
+   *
    * @param kafkaZkClient KafkaZkClient class to use to increase replication factor.
    * @param adminClient AdminClient class to use to increase replication factor.
    * @param topicDescription The description of the topic ot apply the change.
@@ -249,11 +249,15 @@ public class KafkaSampleStore implements SampleStore {
    * @param topic The topic to apply the change.
    */
   @SuppressWarnings("unchecked")
-  private void increaseTopicReplicationFactor(KafkaZkClient kafkaZkClient,
-                                              AdminClient adminClient,
-                                              TopicDescription topicDescription,
-                                              int replicationFactor,
-                                              String topic) {
+  private void maybeIncreaseTopicReplicationFactor(KafkaZkClient kafkaZkClient,
+                                                   AdminClient adminClient,
+                                                   TopicDescription topicDescription,
+                                                   int replicationFactor,
+                                                   String topic) {
+    if (!ensureNoPartitionUnderPartitionReassignment(kafkaZkClient)) {
+      LOG.warn("There are ongoing partition reassignments, skip checking replication factor of topic {}.", topic);
+      return;
+    }
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
     Map<Integer, String> rackByBroker = new HashMap<>();
     Collection<Node> nodes;
@@ -280,38 +284,70 @@ public class KafkaSampleStore implements SampleStore {
     int [] cursors = new int[racks.size()];
     int rackCursor = 0;
     for (TopicPartitionInfo tp : topicDescription.partitions()) {
-      List<Object> newAssignedReplica = new ArrayList<>();
-      Set<String> currentOccupiedRack = new HashSet<>();
-      // Make sure the current replicas are in new replica list.
-      tp.replicas().forEach(node -> {
-        newAssignedReplica.add(node.id());
-        currentOccupiedRack.add(rackByBroker.get(node.id()));
-      });
-      // Add new replica to partition in rack-aware(if rack info is available), round-robin way.
-      while (newAssignedReplica.size() < replicationFactor) {
-        if (!currentOccupiedRack.contains(racks.get(rackCursor))) {
-          String rack = racks.get(rackCursor);
-          int cursor = cursors[rackCursor];
-          newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
-          cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+      if (tp.replicas().size() < replicationFactor) {
+        List<Object> newAssignedReplica = new ArrayList<>();
+        Set<String> currentOccupiedRack = new HashSet<>();
+        // Make sure the current replicas are in new replica list.
+        tp.replicas().forEach(node -> {
+          newAssignedReplica.add(node.id());
+          currentOccupiedRack.add(rackByBroker.get(node.id()));
+        });
+        // Add new replica to partition in rack-aware(if rack info is available), round-robin way.
+        while (newAssignedReplica.size() < replicationFactor) {
+          if (!currentOccupiedRack.contains(racks.get(rackCursor))) {
+            String rack = racks.get(rackCursor);
+            int cursor = cursors[rackCursor];
+            newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
+            cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+          }
+          rackCursor = (rackCursor + 1) % racks.size();
         }
-        rackCursor = (rackCursor + 1) % racks.size();
+        newReplicaAssignment.put(new TopicPartition(topic, tp.partition()),
+                                 JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
       }
-      newReplicaAssignment.put(new TopicPartition(topic, tp.partition()),
-                               JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
     }
-    Seq<Tuple2<TopicPartition, Seq<Object>>> newReplicaAssignmentSeq = JavaConverters.asScalaBufferConverter(newReplicaAssignment.entrySet()
-                                                                                     .stream()
-                                                                                     .map(e -> Tuple2.apply(e.getKey(), e.getValue()))
-                                                                                     .collect(Collectors.toList()))
-                                                                                     .asScala()
-                                                                                     .toSeq();
-    kafkaZkClient.createPartitionReassignment((scala.collection.immutable.Map<TopicPartition, Seq<Object>>)
-                                              scala.collection.immutable.Map$.MODULE$.apply(newReplicaAssignmentSeq));
-    LOG.info("The replication factor of Kafka topic " + topic + " has increased to " + replicationFactor + ".");
+    if (!newReplicaAssignment.isEmpty()) {
+      Seq<Tuple2<TopicPartition, Seq<Object>>> newReplicaAssignmentSeq = JavaConverters.asScalaBufferConverter(
+                                                                         newReplicaAssignment.entrySet().stream()
+                                                                         .map(e -> Tuple2.apply(e.getKey(), e.getValue()))
+                                                                         .collect(Collectors.toList())).asScala().toSeq();
+      kafkaZkClient.createPartitionReassignment((scala.collection.immutable.Map<TopicPartition, Seq<Object>>)
+                                                scala.collection.immutable.Map$.MODULE$.apply(newReplicaAssignmentSeq));
+      LOG.info("The replication factor of Kafka topic " + topic + " has increased to " + replicationFactor + ".");
+    }
   }
 
+  /**
+   * Add new partitions to the Kafka topic.
+   *
+   * @param kafkaZkClient KafkaZkClient class to use to add new partitions.
+   * @param adminZkClient AdminZkClient class to use to add new partitions.
+   * @param topic The topic to apply the change.
+   * @param topicDescription The description of the topic ot apply the change.
+   * @param partitionCount The target partition count of the topic.
+   */
   @SuppressWarnings("unchecked")
+  private void maybeIncreaseTopicPartitionCount(KafkaZkClient kafkaZkClient,
+                                                AdminZkClient adminZkClient,
+                                                String topic,
+                                                TopicDescription topicDescription,
+                                                int partitionCount) {
+    if (partitionCount > topicDescription.partitions().size()) {
+      if (!ensureTopicNotUnderPartitionReassignment(kafkaZkClient, topic)) {
+        LOG.warn("There are ongoing partition reassignments for topic {}, skip checking its partition count.", topic);
+        return;
+      }
+      scala.collection.mutable.Map<Object, Seq<Object>> existingAssignment = new scala.collection.mutable.HashMap<>();
+      JavaConversions.asJavaIterable(kafkaZkClient.getReplicaAssignmentForTopics((scala.collection.immutable.Set<String>)
+                     scala.collection.immutable.Set$.MODULE$.apply(
+                     JavaConverters.asScalaBufferConverter(Collections.singletonList(topic)).asScala().toSeq())))
+                     .forEach(e -> existingAssignment.put(e._1.partition(), e._2));
+      adminZkClient.addPartitions(topic, existingAssignment, adminZkClient.getBrokerMetadatas(RackAwareMode.Safe$.MODULE$, null),
+                                  partitionCount, null, false);
+      LOG.info("Kafka topic " + topic + " now has " + partitionCount + " partitions.");
+    }
+  }
+
   private void ensureTopicCreated(KafkaZkClient kafkaZkClient,
                                   AdminZkClient adminZkClient,
                                   AdminClient adminClient,
@@ -327,31 +363,15 @@ public class KafkaSampleStore implements SampleStore {
       adminZkClient.createTopic(topic, partitionCount, replicationFactor, props, RackAwareMode.Safe$.MODULE$);
     } else {
       try {
-        ensureTopicNotUnderPartitionReassignment(kafkaZkClient, topic);
         adminZkClient.changeTopicConfig(topic, props);
         TopicDescription topicDescription;
         try {
           topicDescription = adminClient.describeTopics(Collections.singleton(topic)).values().get(topic).get();
         } catch (InterruptedException | ExecutionException e) {
-         throw new RuntimeException(e.getMessage());
+          throw new RuntimeException(e.getMessage());
         }
-        OptionalInt currentReplicationFactor = topicDescription.partitions().stream().mapToInt(pm -> pm.replicas().size()).min();
-        if (!currentReplicationFactor.isPresent()) {
-          throw new IllegalStateException("Kafka topic " + topic + " has no partition (Metadata: " + topicDescription + ").");
-        }
-        if (replicationFactor > currentReplicationFactor.getAsInt()) {
-          increaseTopicReplicationFactor(kafkaZkClient, adminClient, topicDescription, replicationFactor, topic);
-        }
-        if (partitionCount > topicDescription.partitions().size()) {
-          scala.collection.mutable.Map<Object, Seq<Object>> existingAssignment = new scala.collection.mutable.HashMap<>();
-          JavaConversions.asJavaIterable(kafkaZkClient.getReplicaAssignmentForTopics((scala.collection.immutable.Set<String>)
-                         scala.collection.immutable.Set$.MODULE$.apply(
-                         JavaConverters.asScalaBufferConverter(Collections.singletonList(topic)).asScala().toSeq())))
-                         .forEach(e -> existingAssignment.put(e._1.partition(), e._2));
-          adminZkClient.addPartitions(topic, existingAssignment, adminZkClient.getBrokerMetadatas(RackAwareMode.Safe$.MODULE$, null),
-                                      partitionCount, null, false);
-          LOG.info("Kafka topic " + topic + " now has " + partitionCount + " partitions.");
-        }
+        maybeIncreaseTopicReplicationFactor(kafkaZkClient, adminClient, topicDescription, replicationFactor, topic);
+        maybeIncreaseTopicPartitionCount(kafkaZkClient, adminZkClient, topic, topicDescription, partitionCount);
       }  catch (RuntimeException re) {
         LOG.error("Skip updating topic " +  topic + "configuration due to failure:" + re.getMessage() + ".");
       }
