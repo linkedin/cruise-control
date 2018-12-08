@@ -185,12 +185,31 @@ public class Executor {
     }
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
     _executionTaskManager.addExecutionProposals(proposals, unthrottledBrokers, _metadataClient.refreshMetadata().cluster());
-    _executionTaskManager.setRequestedMovementConcurrency(requestedPartitionMovementConcurrency, requestedLeadershipMovementConcurrency);
+    setRequestedPartitionMovementConcurrency(requestedPartitionMovementConcurrency);
+    setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     if (uuid == null) {
       LOG.info("Executing a request triggered by an anomaly detector.");
     }
     _uuid = uuid;
     startExecution(loadMonitor);
+  }
+
+  /**
+   * Dynamically set the partition movement concurrency per broker.
+   *
+   * @param requestedPartitionMovementConcurrency The maximum number of concurrent partition movements per broker.
+   */
+  public void setRequestedPartitionMovementConcurrency(Integer requestedPartitionMovementConcurrency) {
+    _executionTaskManager.setRequestedPartitionMovementConcurrency(requestedPartitionMovementConcurrency);
+  }
+
+  /**
+   * Dynamically set the leadership movement concurrency.
+   *
+   * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements.
+   */
+  public void setRequestedLeadershipMovementConcurrency(Integer requestedLeadershipMovementConcurrency) {
+    _executionTaskManager.setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
   }
 
   /**

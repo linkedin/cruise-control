@@ -536,6 +536,8 @@ public class KafkaCruiseControl {
   /**
    * Handle the admin requests:
    * <ul>
+   * <li>Dynamically change the partition and leadership concurrency of an ongoing execution. Has no effect if Executor
+   * is in {@link com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State#NO_TASK_IN_PROGRESS} state.</li>
    * <li>Enable/disable the specified anomaly detectors.</li>
    * </ul>
    *
@@ -543,6 +545,21 @@ public class KafkaCruiseControl {
    * @return Admin response.
    */
   public synchronized AdminResult handleAdminRequest(AdminParameters parameters) {
+    String ongoingConcurrencyChangeRequest = "";
+    // 1.1. Change partition concurrency.
+    Integer concurrentPartitionMovements = parameters.concurrentPartitionMovements();
+    if (concurrentPartitionMovements != null) {
+      _executor.setRequestedPartitionMovementConcurrency(concurrentPartitionMovements);
+      ongoingConcurrencyChangeRequest += String.format("Partition movement concurrency is set to %d%n", concurrentPartitionMovements);
+    }
+    // 1.2. Change leadership concurrency.
+    Integer concurrentLeaderMovements = parameters.concurrentLeaderMovements();
+    if (concurrentLeaderMovements != null) {
+      _executor.setRequestedLeadershipMovementConcurrency(concurrentLeaderMovements);
+      ongoingConcurrencyChangeRequest += String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements);
+    }
+
+    // 2. Enable/disable the specified anomaly detectors
     Set<AnomalyType> disableSelfHealingFor = parameters.disableSelfHealingFor();
     Set<AnomalyType> enableSelfHealingFor = parameters.enableSelfHealingFor();
 
@@ -561,7 +578,9 @@ public class KafkaCruiseControl {
       selfHealingAfter.put(anomalyType, true);
     }
 
-    return new AdminResult(selfHealingBefore, selfHealingAfter);
+    return new AdminResult(selfHealingBefore,
+                           selfHealingAfter,
+                           ongoingConcurrencyChangeRequest.isEmpty() ? null : ongoingConcurrencyChangeRequest);
   }
 
   /**

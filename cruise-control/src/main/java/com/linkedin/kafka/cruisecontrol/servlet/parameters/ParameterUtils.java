@@ -198,6 +198,8 @@ public class ParameterUtils {
     admin.add(JSON_PARAM);
     admin.add(DISABLE_SELF_HEALING_FOR_PARAM);
     admin.add(ENABLE_SELF_HEALING_FOR_PARAM);
+    admin.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    admin.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
 
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
