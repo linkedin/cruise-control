@@ -36,6 +36,8 @@ project.ext {
       url "https://github.com/linkedin/cruise-control"
     }
   }
+  buildVersionFileName = "cruise-control-version.properties"
+  commitId = project.hasProperty('commitId') ? commitId : null
 }
 
 
@@ -247,6 +249,49 @@ project(':cruise-control') {
 
   compileScala.doLast {
     tasks.copyDependantLibs.execute()
+  }
+
+  task determineCommitId {
+    def takeFromHash = 40
+    if (commitId) {
+      commitId = commitId.take(takeFromHash)
+    } else if (file("$rootDir/.git/HEAD").exists()) {
+      def headRef = file("$rootDir/.git/HEAD").text
+      if (headRef.contains('ref: ')) {
+        headRef = headRef.replaceAll('ref: ', '').trim()
+        if (file("$rootDir/.git/$headRef").exists()) {
+          commitId = file("$rootDir/.git/$headRef").text.trim().take(takeFromHash)
+        }
+      } else {
+        commitId = headRef.trim().take(takeFromHash)
+      }
+    } else {
+      commitId = "unknown"
+    }
+  }
+
+  // Referenced similar method for getting software version in Kafka code.
+  task createVersionFile(dependsOn: determineCommitId) {
+    ext.receiptFile = file("$buildDir/cruise-control/$buildVersionFileName")
+    outputs.file receiptFile
+    outputs.upToDateWhen { false }
+    doLast {
+      def data = [
+          commitId: commitId,
+          version: version,
+      ]
+
+      receiptFile.parentFile.mkdirs()
+      def content = data.entrySet().collect { "$it.key=$it.value" }.sort().join("\n")
+      receiptFile.setText(content, "ISO-8859-1")
+    }
+  }
+
+  jar {
+    dependsOn createVersionFile
+    from("$buildDir") {
+      include "cruise-control/$buildVersionFileName"
+    }
   }
 }
 

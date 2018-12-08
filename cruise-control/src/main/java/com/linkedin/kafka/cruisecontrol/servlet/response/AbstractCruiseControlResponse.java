@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.io.IOException;
 import java.io.OutputStream;
@@ -28,6 +29,8 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
     OutputStream out = response.getOutputStream();
     boolean json = parameters.json();
     setResponseCode(response, SC_OK, json, null);
+    response.addHeader("Cruise-Control-Version", KafkaCruiseControl.cruiseControlVersion());
+    response.addHeader("Cruise-Control-Commit_Id", KafkaCruiseControl.cruiseControlCommitId());
     discardIrrelevantResponse(parameters);
     response.setContentLength(_cachedResponse.length());
     out.write(_cachedResponse.getBytes(StandardCharsets.UTF_8));
