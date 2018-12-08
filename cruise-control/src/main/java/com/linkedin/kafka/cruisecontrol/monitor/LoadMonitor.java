@@ -240,7 +240,8 @@ public class LoadMonitor {
                                         validPartitionRatio,
                                         numValidPartitions,
                                         totalNumPartitions,
-                                        extrapolations);
+                                        extrapolations,
+                                        _loadMonitorTaskRunner.reasonOfLatestPauseOrResume());
       case SAMPLING:
         return LoadMonitorState.sampling(numValidSnapshotWindows,
                                          validPartitionRatio,
@@ -252,7 +253,8 @@ public class LoadMonitor {
                                        validPartitionRatio,
                                        numValidPartitions,
                                        totalNumPartitions,
-                                       extrapolations);
+                                       extrapolations,
+                                       _loadMonitorTaskRunner.reasonOfLatestPauseOrResume());
       case BOOTSTRAPPING:
         double bootstrapProgress = _loadMonitorTaskRunner.bootStrapProgress();
         // Handle the race between querying the state and getting the progress.
@@ -342,16 +344,20 @@ public class LoadMonitor {
   /**
    * Pause all the activities of the load monitor. The load monitor can only be paused when it is in
    * RUNNING state.
+   *
+   * @param reason The reason for pausing metric sampling.
    */
-  public void pauseMetricSampling() {
-    _loadMonitorTaskRunner.pauseSampling();
+  public void pauseMetricSampling(String reason) {
+    _loadMonitorTaskRunner.pauseSampling(reason);
   }
 
   /**
    * Resume the activities of the load monitor.
+   *
+   * @param reason The reason for resuming metric sampling.
    */
-  public void resumeMetricSampling() {
-    _loadMonitorTaskRunner.resumeSampling();
+  public void resumeMetricSampling(String reason) {
+    _loadMonitorTaskRunner.resumeSampling(reason);
   }
 
   /**

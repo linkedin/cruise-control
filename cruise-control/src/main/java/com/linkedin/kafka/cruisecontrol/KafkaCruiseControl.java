@@ -30,6 +30,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
@@ -528,9 +529,11 @@ public class KafkaCruiseControl {
 
   /**
    * Pause all the activities of the load monitor. Load monitor can only be paused if it is in RUNNING state.
+   *
+   * @param parameters Pause Parameters.
    */
-  public void pauseLoadMonitorActivity() {
-    _loadMonitor.pauseMetricSampling();
+  public void pauseLoadMonitorActivity(PauseResumeParameters parameters) {
+    _loadMonitor.pauseMetricSampling(parameters.reason());
   }
 
   /**
@@ -585,9 +588,11 @@ public class KafkaCruiseControl {
 
   /**
    * Resume all the activities of the load monitor.
+   *
+   * @param parameters Resume Parameters.
    */
-  public void resumeLoadMonitorActivity() {
-    _loadMonitor.resumeMetricSampling();
+  public void resumeLoadMonitorActivity(PauseResumeParameters parameters) {
+    _loadMonitor.resumeMetricSampling(parameters.reason());
   }
 
   /**

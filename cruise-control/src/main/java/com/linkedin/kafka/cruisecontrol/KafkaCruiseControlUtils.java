@@ -18,6 +18,8 @@ import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
+import java.util.TimeZone;
+import kafka.utils.ZkUtils;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
@@ -32,9 +34,18 @@ public class KafkaCruiseControlUtils {
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
   public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
+  public static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
+  public static final String TIME_ZONE = "UTC";
 
   private KafkaCruiseControlUtils() {
 
+  }
+
+  public static String currentUtcDate() {
+    Date date = new Date(System.currentTimeMillis());
+    DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
+    formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
+    return formatter.format(date);
   }
 
   /**
