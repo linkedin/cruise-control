@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import org.apache.kafka.common.TopicPartition;
 
 
 /**
@@ -86,5 +87,31 @@ public class ModelUtils {
         ModelParameters.getCoefficient(LinearRegressionModelParameters.ModelCoefficient.LEADER_BYTES_OUT);
     return leaderBytesInCoefficient * leaderPartitionBytesInRate
         + leaderBytesOutCoefficient * leaderPartitionBytesOutRate;
+  }
+
+
+  /**
+   * Removes any dots that potentially exist in the given string. This method useful for making topic names reported by
+   * Kafka metadata consistent with the topic names reported by the metrics reporter.
+   *
+   * Note that the reported metrics implicitly replaces the "." in topic names with "_".
+   *
+   * @param stringWithDots String that may contain dots.
+   * @return String whose dots have been removed from the given string.
+   */
+  public static String replaceDotsWithUnderscores(String stringWithDots) {
+    return !stringWithDots.contains(".") ? stringWithDots : stringWithDots.replace('.', '_');
+  }
+
+  /**
+   * Removes any dots that potentially exist in the given parameter.
+   *
+   * @param tp TopicPartition that may contain dots.
+   * @return TopicPartition whose dots have been removed from the given topic name.
+   */
+  public static TopicPartition partitionHandleDotInTopicName(TopicPartition tp) {
+    // In the reported metrics, the "." in the topic name will be replaced by "_".
+    return !tp.topic().contains(".") ? tp :
+           new TopicPartition(replaceDotsWithUnderscores(tp.topic()), tp.partition());
   }
 }
