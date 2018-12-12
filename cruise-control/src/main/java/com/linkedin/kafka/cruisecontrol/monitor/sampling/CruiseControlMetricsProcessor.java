@@ -155,7 +155,7 @@ public class CruiseControlMetricsProcessor {
       if (brokerLoad == null) {
         LOG.warn("Skip generating broker metric sample for broker {} because all broker metrics are missing.", node.id());
         continue;
-      } else if (!brokerLoad.allBrokerMetricsAvailable()) {
+      } else if (!brokerLoad.minRequiredBrokerMetricsAvailable()) {
         if (brokerLoad.missingBrokerMetricsInMinSupportedVersion().size() == 0) {
           LOG.warn("Skip generating broker metric sample for broker {} because there are not enough topic metrics to "
                   + "generate broker metrics.", node.id());
@@ -168,7 +168,7 @@ public class CruiseControlMetricsProcessor {
 
       boolean validSample = true;
       BrokerMetricSample brokerMetricSample = new BrokerMetricSample(node.host(), node.id(), brokerLoad._brokerSampleDeserializationVersion);
-      for (Map.Entry<Byte, List<RawMetricType>> entry : RawMetricType.brokerMetricTypesDiffByVersion().entrySet()) {
+      for (Map.Entry<Byte, Set<RawMetricType>> entry : RawMetricType.brokerMetricTypesDiffByVersion().entrySet()) {
         for (RawMetricType rawBrokerMetricType : entry.getValue()) {
           // We require the broker to report all the metric types (including nullable values). Otherwise we skip the broker.
           if (!brokerLoad.brokerMetricAvailable(rawBrokerMetricType)) {
@@ -318,7 +318,7 @@ public class CruiseControlMetricsProcessor {
       METRIC_TYPES_TO_SUM.put(TOPIC_MESSAGES_IN_PER_SEC, ALL_TOPIC_MESSAGES_IN_PER_SEC);
     }
 
-    private boolean _brokerMetricsAvailable = false;
+    private boolean _minRequiredBrokerMetricsAvailable = false;
     // Set to the latest possible deserialization version based on the sampled data.
     private byte _brokerSampleDeserializationVersion = -1;
 
@@ -352,8 +352,8 @@ public class CruiseControlMetricsProcessor {
       return _dotHandledTopicsWithPartitionSizeReported.contains(dotHandledTopic);
     }
 
-    private boolean allBrokerMetricsAvailable() {
-      return _brokerMetricsAvailable;
+    private boolean minRequiredBrokerMetricsAvailable() {
+      return _minRequiredBrokerMetricsAvailable;
     }
 
     private boolean brokerMetricAvailable(RawMetricType rawMetricType) {
@@ -429,8 +429,8 @@ public class CruiseControlMetricsProcessor {
      * </ul>
      *
      * We use the cluster metadata to check if the reported topic level metrics are complete. If the reported topic
-     * level metrics are not complete, we ignore the broker metric sample by setting the _brokerMetricsAvailable flag
-     * to false.
+     * level metrics are not complete, we ignore the broker metric sample by setting the _minRequiredBrokerMetricsAvailable
+     * flag to false.
      *
      * @param cluster The Kafka cluster.
      * @param brokerId The broker id to prepare metrics for.
@@ -458,7 +458,7 @@ public class CruiseControlMetricsProcessor {
 
       // A broker metric is only available if it has enough valid topic metrics and it has reported
       // replication bytes in/out metrics.
-      _brokerMetricsAvailable = enoughTopicPartitionMetrics && _missingBrokerMetricsInMinSupportedVersion.isEmpty();
+      _minRequiredBrokerMetricsAvailable = enoughTopicPartitionMetrics && _missingBrokerMetricsInMinSupportedVersion.isEmpty();
     }
 
     /**
@@ -500,6 +500,10 @@ public class CruiseControlMetricsProcessor {
       }
       // Set nullable broker metrics for missing metrics if a valid deserialization exists with an old version.
       setNullableBrokerMetrics();
+    }
+
+    public byte brokerSampleDeserializationVersion() {
+      return _brokerSampleDeserializationVersion;
     }
 
     private void setNullableBrokerMetrics() {

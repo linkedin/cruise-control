@@ -6,8 +6,10 @@ package com.linkedin.kafka.cruisecontrol.metricsreporter.metric;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
@@ -93,7 +95,7 @@ public enum RawMetricType {
   BROKER_LOG_FLUSH_TIME_MS_999TH(BROKER, (byte) 62, (byte) 5);
 
   private static final List<RawMetricType> CACHED_VALUES = Arrays.asList(RawMetricType.values());
-  private static final SortedMap<Byte, List<RawMetricType>> BROKER_METRIC_TYPES_DIFF_BY_VERSION = buildBrokerMetricTypesDiffByVersion();
+  private static final SortedMap<Byte, Set<RawMetricType>> BROKER_METRIC_TYPES_DIFF_BY_VERSION = buildBrokerMetricTypesDiffByVersion();
   private static final List<RawMetricType> TOPIC_METRIC_TYPES = buildMetricTypeList(TOPIC);
   private static final List<RawMetricType> PARTITION_METRIC_TYPES = buildMetricTypeList(PARTITION);
   private final byte _id;
@@ -126,11 +128,11 @@ public enum RawMetricType {
     return CACHED_VALUES;
   }
 
-  public static Map<Byte, List<RawMetricType>> brokerMetricTypesDiffByVersion() {
+  public static Map<Byte, Set<RawMetricType>> brokerMetricTypesDiffByVersion() {
     return BROKER_METRIC_TYPES_DIFF_BY_VERSION;
   }
 
-  public static List<RawMetricType> brokerMetricTypesDiffForVersion(byte version) {
+  public static Set<RawMetricType> brokerMetricTypesDiffForVersion(byte version) {
     return BROKER_METRIC_TYPES_DIFF_BY_VERSION.get(version);
   }
 
@@ -154,11 +156,11 @@ public enum RawMetricType {
     BROKER, TOPIC, PARTITION
   }
 
-  private static SortedMap<Byte, List<RawMetricType>> buildBrokerMetricTypesDiffByVersion() {
-    SortedMap<Byte, List<RawMetricType>> buildBrokerMetricTypesDiffByVersion = new TreeMap<>();
+  private static SortedMap<Byte, Set<RawMetricType>> buildBrokerMetricTypesDiffByVersion() {
+    SortedMap<Byte, Set<RawMetricType>> buildBrokerMetricTypesDiffByVersion = new TreeMap<>();
     for (RawMetricType type : RawMetricType.values()) {
       if (type.metricScope() == BROKER) {
-        buildBrokerMetricTypesDiffByVersion.computeIfAbsent(type.supportedVersionSince(), t -> new ArrayList<>()).add(type);
+        buildBrokerMetricTypesDiffByVersion.computeIfAbsent(type.supportedVersionSince(), t -> new HashSet<>()).add(type);
       }
     }
 
