@@ -30,7 +30,8 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * The class that hosts all the metric samples for a partition.
  */
 public class PartitionMetricSample extends MetricSample<String, PartitionEntity> {
-  private static final byte CURRENT_VERSION = 1;
+  static final byte MIN_SUPPORTED_VERSION = 0;
+  static final byte LATEST_SUPPORTED_VERSION = 1;
 
   private final int _brokerId;
 
@@ -68,7 +69,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
     byte[] topicStringBytes = entity().group().getBytes(UTF_8);
     // Allocate memory:
     ByteBuffer buffer = ByteBuffer.allocate(89 + topicStringBytes.length);
-    buffer.put(CURRENT_VERSION);
+    buffer.put(LATEST_SUPPORTED_VERSION);
     buffer.putInt(_brokerId);
     buffer.putDouble(_valuesByMetricId.get(metricDef.metricInfo(CPU_USAGE.name()).id()));
     buffer.putDouble(_valuesByMetricId.get(metricDef.metricInfo(DISK_USAGE.name()).id()));
@@ -89,17 +90,14 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
     ByteBuffer buffer = ByteBuffer.wrap(bytes);
     // Not used at this point.
     byte version = buffer.get();
-    if (version > CURRENT_VERSION) {
-      throw new UnknownVersionException("Metric sample version " + version +
-          " is higher than current version " + CURRENT_VERSION);
-    }
     switch (version) {
       case 0:
         return readV0(buffer);
       case 1:
         return readV1(buffer);
       default:
-        throw new IllegalStateException("Should never be here.");
+        throw new UnknownVersionException("Unsupported deserialization version: " + version + " (Latest: " +
+                                          LATEST_SUPPORTED_VERSION + ", Minimum: " + MIN_SUPPORTED_VERSION + ")");
     }
   }
 
