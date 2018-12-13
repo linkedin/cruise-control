@@ -31,6 +31,14 @@ public class GoalViolations extends KafkaAnomaly {
     _allowCapacityEstimation = allowCapacityEstimation;
   }
 
+  /**
+   * Add detected goal violation.
+   *
+   * @param priority The priority of the goal.
+   * @param goalName The name of the goal.
+   * @param executionProposals Proposals to execute for fixing the detected anomaly. Empty set indicates goal violations
+   *                           due to optimization failures.
+   */
   public void addViolation(int priority, String goalName, Set<ExecutionProposal> executionProposals) {
     _goalViolations.add(new Violation(priority, goalName, executionProposals));
   }

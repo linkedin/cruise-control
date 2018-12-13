@@ -12,11 +12,13 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -169,14 +171,24 @@ public class GoalViolationDetector implements Runnable {
     }
     Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, Integer> initLeaderDistribution = clusterModel.getLeaderDistribution();
-    goal.optimize(clusterModel, new HashSet<>(), excludedTopics(clusterModel));
-    Set<ExecutionProposal> proposals =
-        AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
+    try {
+      goal.optimize(clusterModel, new HashSet<>(), excludedTopics(clusterModel));
+    } catch (OptimizationFailureException ofe) {
+      // An OptimizationFailureException indicates (1) a hard goal violation that cannot be fixed typically due to
+      // lack of physical hardware (e.g. insufficient number of racks to satisfy rack awareness, insufficient number
+      // of brokers to satisfy Replica Capacity Goal, or insufficient number of resources to satisfy resource
+      // capacity goals), or (2) a failure to move offline replicas away from dead brokers/disks.
+      goalViolations.addViolation(priority, goal.name(), Collections.emptySet());
+      return true;
+    }
+    Set<ExecutionProposal> proposals = AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
     LOG.trace("{} generated {} proposals", goal.name(), proposals.size());
     if (!proposals.isEmpty()) {
+      // A goal violation that can be optimized by applying the generated proposals.
       goalViolations.addViolation(priority, goal.name(), proposals);
       return true;
     } else {
+      // The goal is already satisfied.
       return false;
     }
   }
