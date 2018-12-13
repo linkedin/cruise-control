@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
+import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.BrokerMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
@@ -50,7 +51,7 @@ public class CruiseControlMetricsProcessorTest {
   private final Time _time = new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
 
   @Test
-  public void testBasic() {
+  public void testBasic() throws UnknownVersionException {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor();
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     metrics.forEach(processor::addMetric);
@@ -89,7 +90,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testMissingBrokerCpuUtilization() {
+  public void testMissingBrokerCpuUtilization() throws UnknownVersionException {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor();
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     for (CruiseControlMetric metric : metrics) {
@@ -106,7 +107,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testMissingOtherBrokerMetrics() {
+  public void testMissingOtherBrokerMetrics() throws UnknownVersionException {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor();
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     for (CruiseControlMetric metric : metrics) {
@@ -123,7 +124,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testMissingPartitionSizeMetric() {
+  public void testMissingPartitionSizeMetric() throws UnknownVersionException {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor();
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     for (CruiseControlMetric metric : metrics) {
@@ -145,7 +146,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testMissingTopicBytesInMetric() {
+  public void testMissingTopicBytesInMetric() throws UnknownVersionException {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor();
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     Set<RawMetricType> metricTypeToExclude = new HashSet<>(Arrays.asList(TOPIC_BYTES_IN,
@@ -188,7 +189,7 @@ public class CruiseControlMetricsProcessorTest {
     Set<CruiseControlMetric> metrics = new HashSet<>();
 
     int i = 0;
-    for (RawMetricType rawMetricType : RawMetricType.brokerMetricTypes()) {
+    for (RawMetricType rawMetricType : RawMetricType.brokerMetricTypesDiffForVersion(BrokerMetricSample.MIN_SUPPORTED_VERSION)) {
       switch (rawMetricType) {
         case ALL_TOPIC_BYTES_IN:
           metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0, 820.0 * BYTES_IN_KB));

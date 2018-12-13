@@ -8,6 +8,7 @@ import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import java.util.Collection;
@@ -127,6 +128,9 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
       } else {
         return new Samples(Collections.emptySet(), Collections.emptySet());
       }
+    } catch (UnknownVersionException e) {
+      LOG.error("Unrecognized serde version detected during metric sampling.", e);
+      return new Samples(Collections.emptySet(), Collections.emptySet());
     } finally {
       METRICS_PROCESSOR.clear();
     }
