@@ -258,7 +258,17 @@ public class AnomalyDetector {
      * @return true if fixable, false otherwise.
      */
     private boolean isFixable(Anomaly anomaly) {
-      String skipMsg = (anomaly instanceof GoalViolations) ? "goal violation fix" : "broker failure fix";
+      String skipMsg;
+      if (anomaly instanceof GoalViolations) {
+        skipMsg = "goal violation fix";
+      } else if (anomaly instanceof BrokerFailures) {
+        skipMsg = "broker failure fix";
+      } else if (anomaly instanceof KafkaMetricAnomaly) {
+        skipMsg = "metric anomaly fix";
+      } else {
+        throw new IllegalArgumentException("Unrecognized anomaly.");
+      }
+
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
 
       // Fixing anomalies is possible only when (1) the state is not in and unavailable state ( e.g. loading or
