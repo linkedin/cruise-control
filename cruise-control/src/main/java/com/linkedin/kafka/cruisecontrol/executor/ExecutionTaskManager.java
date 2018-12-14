@@ -74,17 +74,19 @@ public class ExecutionTaskManager {
    *                                            be overwritten by user parameter upon post request.
    * @param defaultLeadershipMovementConcurrency The maximum number of concurrent leadership movements per batch. It can
    *                                             be overwritten by user parameter upon post request.
+   * @param defaultExecutionStrategy The strategy used to determine the execution order of partition movement tasks.
    * @param dropwizardMetricRegistry The metric registry.
    * @param time The time object to get the time.
    */
   public ExecutionTaskManager(int defaultPartitionMovementConcurrency,
                               int defaultLeadershipMovementConcurrency,
+                              String defaultExecutionStrategy,
                               MetricRegistry dropwizardMetricRegistry,
                               Time time) {
     _inProgressReplicaMovementsByBrokerId = new HashMap<>();
     _inProgressPartitions = new HashSet<>();
     _executionTaskTracker = new ExecutionTaskTracker();
-    _executionTaskPlanner = new ExecutionTaskPlanner();
+    _executionTaskPlanner = new ExecutionTaskPlanner(defaultExecutionStrategy);
     _defaultPartitionMovementConcurrency = defaultPartitionMovementConcurrency;
     _defaultLeadershipMovementConcurrency = defaultLeadershipMovementConcurrency;
     _brokersToSkipConcurrencyCheck = new HashSet<>();
