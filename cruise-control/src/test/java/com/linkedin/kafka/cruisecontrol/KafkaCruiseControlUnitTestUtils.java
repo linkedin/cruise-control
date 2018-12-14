@@ -42,6 +42,7 @@ public class KafkaCruiseControlUnitTestUtils {
     props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG, "2");
     props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_BROKER_METRICS_WINDOW_CONFIG, "2");
     props.setProperty(KafkaCruiseControlConfig.COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG, Long.toString(TimeUnit.HOURS.toMillis(6)));
+    props.setProperty(KafkaCruiseControlConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(TimeUnit.HOURS.toMillis(24)));
     props.setProperty(
         KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG,
         "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"
