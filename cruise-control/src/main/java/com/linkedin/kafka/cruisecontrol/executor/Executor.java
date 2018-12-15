@@ -379,14 +379,22 @@ public class Executor {
         LOG.error("Executor got exception during execution", t);
       } finally {
         _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
-        _executionTaskManager.clear();
-        _uuid = null;
-        _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
-        // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
-        _executorState = ExecutorState.noTaskInProgress();
-        _hasOngoingExecution = false;
-        _stopRequested.set(false);
+        // Clear completed execution.
+        clearCompletedExecution();
       }
+    }
+
+    private void clearCompletedExecution() {
+      _executionTaskManager.clear();
+      _uuid = null;
+      _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
+      // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
+      _executorState = ExecutorState.noTaskInProgress();
+      _hasOngoingExecution = false;
+      _stopRequested.set(false);
+      _numFinishedPartitionMovements = 0;
+      _numFinishedLeadershipMovements = 0;
+      _finishedDataMovementInMB = 0L;
     }
 
     private void updateOngoingExecutionState() {
