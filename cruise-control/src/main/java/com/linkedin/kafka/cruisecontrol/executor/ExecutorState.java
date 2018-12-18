@@ -408,6 +408,7 @@ public class ExecutorState {
         break;
       default:
         execState.put(ERROR, "ILLEGAL_STATE_EXCEPTION");
+        execState.remove(RECENTLY_DEMOTED_BROKERS);
         break;
     }
 

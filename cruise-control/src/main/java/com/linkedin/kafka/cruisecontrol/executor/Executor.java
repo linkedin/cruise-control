@@ -176,7 +176,7 @@ public class Executor {
                                       (Gauge<Integer>) this::numExecutionStartedInNonKafkaAssignerMode);
   }
 
-  private synchronized void removeExpiredDemotionHistory() {
+  private void removeExpiredDemotionHistory() {
     LOG.debug("Remove expired demotion history");
     _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> (entry.getValue() + _demotionHistoryRetentionTimeMs
                                                                      < _time.milliseconds()));
