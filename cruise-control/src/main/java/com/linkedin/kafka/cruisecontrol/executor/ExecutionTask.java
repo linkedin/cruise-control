@@ -39,6 +39,10 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
  * </pre>
  */
 public class ExecutionTask implements Comparable<ExecutionTask> {
+  private static final String EXECUTION_ID = "executionId";
+  private static final String TYPE = "type";
+  private static final String STATE = "state";
+  private static final String PROPOSAL = "proposal";
   private static final Map<State, Set<State>> VALID_TRANSFER = new HashMap<>();
   private final TaskType _type;
   private final long _executionId;
@@ -191,10 +195,10 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> executionStatsMap = new HashMap<>();
-    executionStatsMap.put("executionId", _executionId);
-    executionStatsMap.put("type", _type);
-    executionStatsMap.put("state", _state);
-    executionStatsMap.put("proposal", _proposal.getJsonStructure());
+    executionStatsMap.put(EXECUTION_ID, _executionId);
+    executionStatsMap.put(TYPE, _type);
+    executionStatsMap.put(STATE, _state);
+    executionStatsMap.put(PROPOSAL, _proposal.getJsonStructure());
     return executionStatsMap;
   }
 

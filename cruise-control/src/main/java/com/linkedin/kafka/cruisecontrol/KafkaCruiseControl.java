@@ -107,7 +107,8 @@ public class KafkaCruiseControl {
     _goalOptimizerExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry);
-    _executor = new Executor(config, _time, dropwizardMetricRegistry);
+    long demotionHistoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
+    _executor = new Executor(config, _time, dropwizardMetricRegistry, demotionHistoryRetentionTimeMs);
     _anomalyDetector = new AnomalyDetector(config, _loadMonitor, this, _time, dropwizardMetricRegistry);
   }
 
@@ -433,12 +434,7 @@ public class KafkaCruiseControl {
                                    goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName())),
                                    operationProgress, allowCapacityEstimation, null);
       if (!dryRun) {
-        // (1) Kafka Assigner mode is irrelevant for demoting. (2) Ensure that replica swaps within partitions, which are
-        // prerequisites for broker demotion and does not trigger data move, are throttled by concurrentLeaderMovements.
-        int concurrentSwaps = concurrentLeaderMovements != null
-                              ? concurrentLeaderMovements
-                              : _config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
-        executeProposals(result.goalProposals(), brokerIds, false, concurrentSwaps, concurrentLeaderMovements, uuid);
+        executeDemotion(result.goalProposals(), brokerIds, concurrentLeaderMovements, uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -701,7 +697,7 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Execute the given balancing proposals.
+   * Execute the given balancing proposals for non-demote operations.
    * @param proposals the given balancing proposals
    * @param unthrottledBrokers Brokers for which the rate of replica movements from/to will not be throttled.
    * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
@@ -721,6 +717,29 @@ public class KafkaCruiseControl {
     _executor.setExecutionMode(isKafkaAssignerMode);
     _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor, concurrentPartitionMovements,
                                concurrentLeaderMovements, uuid);
+  }
+
+  /**
+   * Execute the given balancing proposals for demote operations.
+   * @param proposals The given balancing proposals
+   * @param demotedBrokers Brokers to be demoted.
+   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   *                                  (if null, use num.concurrent.leader.movements).
+   * @param uuid UUID of the execution.
+   */
+  private void executeDemotion(Collection<ExecutionProposal> proposals,
+                               Collection<Integer> demotedBrokers,
+                               Integer concurrentLeaderMovements,
+                               String uuid) {
+    // (1) Kafka Assigner mode is irrelevant for demoting. (2) Ensure that replica swaps within partitions, which are
+    // prerequisites for broker demotion and does not trigger data move, are throttled by concurrentLeaderMovements.
+    int concurrentSwaps = concurrentLeaderMovements != null
+                          ? concurrentLeaderMovements
+                          : _config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
+
+    // Set the execution mode, add execution proposals, and start execution.
+    _executor.setExecutionMode(false);
+    _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements, uuid);
   }
 
   /**

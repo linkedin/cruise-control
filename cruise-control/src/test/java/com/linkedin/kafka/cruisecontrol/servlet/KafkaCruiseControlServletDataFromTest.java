@@ -144,7 +144,7 @@ public class KafkaCruiseControlServletDataFromTest {
    * Generate the KCC state.
    */
   private CruiseControlState getState(int numReadyGoals, int totalGoals, int numValidWindows) {
-    ExecutorState executorState = ExecutorState.noTaskInProgress();
+    ExecutorState executorState = ExecutorState.noTaskInProgress(null);
     LoadMonitorState loadMonitorState = LoadMonitorState.running(numValidWindows, new TreeMap<>(),
                                                                  1, 10,
                                                                  Collections.emptyMap(),
