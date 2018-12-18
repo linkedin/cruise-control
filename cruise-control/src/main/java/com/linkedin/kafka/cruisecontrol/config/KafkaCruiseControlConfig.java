@@ -533,6 +533,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + " response and access details of a completed user task.";
 
   /**
+   * <code>demotion.history.retention.time.ms</code>
+   */
+  public static final String DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG = "demotion.history.retention.time.ms";
+  private static final String DEMOTION_HISTORY_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to retain the"
+      + " demotion history of brokers.";
+
+  /**
    * <code>max.cached.completed.user.tasks</code>
    */
   public static final String MAX_CACHED_COMPLETED_USER_TASKS_CONFIG = "max.cached.completed.user.tasks";
@@ -736,6 +743,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC)
+        .define(DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                TimeUnit.HOURS.toMillis(24),
+                atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                DEMOTION_HISTORY_RETENTION_TIME_MS_DOC)
         .define(MAX_CACHED_COMPLETED_USER_TASKS_CONFIG,
                 ConfigDef.Type.INT,
                 100,

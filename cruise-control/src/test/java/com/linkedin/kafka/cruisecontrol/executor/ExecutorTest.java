@@ -172,7 +172,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     EasyMock.replay(mockMetadataClient);
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
-    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient);
+    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, 86400000L);
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
@@ -224,7 +224,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
                                          Collection<ExecutionProposal> proposalsToExecute,
                                          Collection<ExecutionProposal> proposalsToCheck) {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
-    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry());
+    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), 86400000L);
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), EasyMock.mock(LoadMonitor.class), null, null, null);
 
