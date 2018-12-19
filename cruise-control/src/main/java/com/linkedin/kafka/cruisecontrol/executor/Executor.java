@@ -618,13 +618,11 @@ public class Executor {
       List<ExecutionTask> finishedTasks = new ArrayList<>();
       do {
         // If there is no finished tasks, we need to check if anything is blocked.
-        if (finishedTasks.isEmpty()) {
-          maybeReexecuteTasks();
-          try {
-            Thread.sleep(_statusCheckingIntervalMs);
-          } catch (InterruptedException e) {
-            // let it go
-          }
+        maybeReexecuteTasks();
+        try {
+          Thread.sleep(_statusCheckingIntervalMs);
+        } catch (InterruptedException e) {
+          // let it go
         }
 
         Cluster cluster = _metadataClient.refreshMetadata().cluster();
@@ -663,7 +661,7 @@ public class Executor {
           }
         }
         updateOngoingExecutionState();
-      } while (!_executionTaskManager.inExecutionTasks().isEmpty() && finishedTasks.size() == 0);
+      } while (!_executionTaskManager.inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
       // Some tasks have finished, remove them from in progress task map.
       LOG.info("Completed tasks: {}", finishedTasks);
     }
@@ -789,7 +787,7 @@ public class Executor {
     private void maybeReexecuteTasks() {
       List<ExecutionTask> replicaActionsToReexecute =
           new ArrayList<>(_executionTaskManager.inExecutionTasks(ExecutionTask.TaskType.REPLICA_ACTION));
-      if (!replicaActionsToReexecute.isEmpty() && ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
+      if (replicaActionsToReexecute.size() > ExecutorUtils.partitionsBeingReassigned(_zkUtils).size()) {
         LOG.info("Reexecuting tasks {}", replicaActionsToReexecute);
         ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, replicaActionsToReexecute);
       }
