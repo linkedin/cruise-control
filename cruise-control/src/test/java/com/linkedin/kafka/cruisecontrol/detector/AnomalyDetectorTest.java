@@ -143,7 +143,7 @@ public class AnomalyDetectorTest {
     EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject(), EasyMock.anyObject()))
             .andReturn(new CruiseControlState(ExecutorState.noTaskInProgress(), null, null,
                                               null));
-    EasyMock.expect(mockKafkaCruiseControl.rebalance(EasyMock.eq(Collections.emptyList()),
+    EasyMock.expect(mockKafkaCruiseControl.rebalance(EasyMock.eq(Collections.singletonList("RackAwareGoal")),
                                                      EasyMock.eq(false),
                                                      EasyMock.eq(null),
                                                      EasyMock.anyObject(OperationProgress.class),
@@ -170,7 +170,9 @@ public class AnomalyDetectorTest {
 
     try {
       anomalyDetector.startDetection();
-      anomalies.add(new GoalViolations(mockKafkaCruiseControl, true));
+      GoalViolations violations = new GoalViolations(mockKafkaCruiseControl, true);
+      violations.addViolation("RackAwareGoal", true);
+      anomalies.add(violations);
       while (!anomalies.isEmpty()) {
         // Just wait for the anomalies to be drained.
       }

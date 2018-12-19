@@ -15,7 +15,6 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
-import java.util.stream.Collectors;
 
 
 public class AnomalyDetectorState {
@@ -76,8 +75,7 @@ public class AnomalyDetectorState {
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
     for (Map.Entry<Long, Anomaly> entry: goalViolationsByTime.entrySet()) {
       GoalViolations goalViolations = (GoalViolations) entry.getValue();
-      Set<String> violatedGoals = goalViolations.violations().stream().map(GoalViolations.Violation::goalName)
-                                                .collect(Collectors.toSet());
+      Set<String> violatedGoals = goalViolations.violations();
       Map<String, Object> anomalyDetails = new HashMap<>(2);
       anomalyDetails.put(useDateFormat ? DETECTION_DATE : DETECTION_MS,
           useDateFormat ? getDateFormat(entry.getKey()) : entry.getKey());
