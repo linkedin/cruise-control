@@ -12,6 +12,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
 import kafka.utils.ZkUtils;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
 
 
@@ -100,5 +103,16 @@ public class KafkaCruiseControlUtils {
     return substates.stream()
                     .anyMatch(substate -> substate == CruiseControlState.SubState.ANALYZER
                                           || substate == CruiseControlState.SubState.MONITOR);
+  }
+
+  /**
+   * Check if the partition is currently under replicated.
+   * @param cluster The current cluster state.
+   * @param tp The topic partition to check.
+   * @return True if the partition is currently under replicated.
+   */
+  public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) {
+    PartitionInfo partitionInfo = cluster.partition(tp);
+    return partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
   }
 }

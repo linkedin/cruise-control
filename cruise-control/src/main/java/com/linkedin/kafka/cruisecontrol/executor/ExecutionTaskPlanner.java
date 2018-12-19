@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
-import com.linkedin.kafka.cruisecontrol.executor.strategy.ExecutionTaskStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -36,11 +36,10 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.L
  * <li>Proposals of partition movements are tracked by broker and execution Id.
  * </ul>
  * <p>
- * This class tracks the execution proposals for each broker using a Map(id -&gt; List[proposals])
- * The proposal is tracked both under source broker and
- * destination broker's plan.
- * Once a proposal is fulfilled, the proposal will be removed based on its execution ID from both
- * source broker and destination broker's execution plan.
+ * This class tracks the execution proposals for each broker using a sorted Set. The proposal's position in this set
+ * represents its execution order and is determined by the {@link ExecutionTaskPlanner#_replicaMovementTaskStrategy}.
+ * The proposal is tracked both under source broker and destination broker's plan.
+ * Once a proposal is fulfilled, the proposal will be removed from both source broker and destination broker's execution plan.
  * <p>
  * This class is not thread safe.
  */
@@ -51,18 +50,24 @@ public class ExecutionTaskPlanner {
   private final Set<ExecutionTask> _remainingReplicaMovements;
   private final Map<Long, ExecutionTask> _remainingLeadershipMovements;
   private long _executionId;
-  private final ExecutionTaskStrategy _defaultExecutionStrategy;
+  private ReplicaMovementStrategy _replicaMovementTaskStrategy;
 
-  public ExecutionTaskPlanner(String defaultExecutionStrategy) {
+  public ExecutionTaskPlanner(List<String> replicaMovementStrategies) {
     _executionId = 0L;
     _partMoveTaskByBrokerId = new HashMap<>();
     _remainingReplicaMovements = new TreeSet<>();
     _remainingDataToMove = 0L;
     _remainingLeadershipMovements = new HashMap<>();
-    try {
-      _defaultExecutionStrategy = (ExecutionTaskStrategy) Class.forName(defaultExecutionStrategy).newInstance();
-    } catch (Exception e) {
-      throw new IllegalStateException("Default execution strategy " + defaultExecutionStrategy + " is undefined.");
+    for (String replicaMovementStrategy : replicaMovementStrategies) {
+      try {
+        if (_replicaMovementTaskStrategy == null) {
+          _replicaMovementTaskStrategy = (ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance();
+        } else {
+          _replicaMovementTaskStrategy = _replicaMovementTaskStrategy.chain((ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance());
+        }
+      } catch (Exception e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 
@@ -78,9 +83,18 @@ public class ExecutionTaskPlanner {
    */
   public void addExecutionProposals(Collection<ExecutionProposal> proposals, Cluster cluster) {
     LOG.trace("Cluster state before adding proposals: {}.", cluster);
+    maybeAddReplicaMovementTasks(proposals, cluster);
+    maybeAddLeaderChangeTasks(proposals, cluster);
+  }
+
+  /**
+   * For each proposal, create a replica action task if there is a need for moving replica(s) to reach expected final proposal state.
+   *
+   * @param proposals Execution proposals.
+   * @param cluster Kafka cluster state.
+   */
+  private void maybeAddReplicaMovementTasks(Collection<ExecutionProposal> proposals, Cluster cluster) {
     for (ExecutionProposal proposal : proposals) {
-      // Get the execution Id for this proposal;
-      // 1) Create a replica action task if there is a need for moving replica(s) to reach expected final proposal state.
       TopicPartition tp = proposal.topicPartition();
       PartitionInfo partitionInfo = cluster.partition(tp);
       if (partitionInfo == null) {
@@ -94,10 +108,20 @@ public class ExecutionTaskPlanner {
         _remainingDataToMove += proposal.dataToMoveInMB();
         LOG.trace("Added action {} as replica proposal {}", replicaActionExecutionId, proposal);
       }
+    }
+    _partMoveTaskByBrokerId = _replicaMovementTaskStrategy.applyStrategy(_remainingReplicaMovements, cluster);
+  }
 
-      // 2) Create a leader action task if there is a need for moving the leadership to reach expected final proposal state.
+  /**
+   * For each proposal, create a leader action task if there is a need for moving the leadership to reach expected final proposal state.
+   *
+   * @param proposals Execution proposals.
+   * @param cluster Kafka cluster state.
+   */
+  private void maybeAddLeaderChangeTasks(Collection<ExecutionProposal> proposals, Cluster cluster) {
+    for (ExecutionProposal proposal : proposals) {
       if (proposal.hasLeaderAction()) {
-        Node currentLeader = cluster.leaderFor(tp);
+        Node currentLeader = cluster.leaderFor(proposal.topicPartition());
         if (currentLeader != null && currentLeader.id() != proposal.newLeader()) {
           // Get the execution Id for the leader action proposal execution;
           long leaderActionExecutionId = _executionId++;
@@ -107,7 +131,6 @@ public class ExecutionTaskPlanner {
         }
       }
     }
-    _partMoveTaskByBrokerId = _defaultExecutionStrategy.applyStrategy(_remainingReplicaMovements, cluster);
   }
 
   /**

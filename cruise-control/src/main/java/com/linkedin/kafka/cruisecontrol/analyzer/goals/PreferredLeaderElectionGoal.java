@@ -18,11 +18,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
-import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.isPartitionUnderReplicated;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 
 
@@ -61,7 +61,7 @@ public class PreferredLeaderElectionGoal implements Goal {
         // There are two scenarios where replica swap operation is skipped:
         // 1.the replica is not leader replica and _excludeFollowerDemotion is true.
         // 2.the replica's partition is currently under replicated and _skipUrpDemotion is true.
-        if (!(_skipUrpDemotion && isPartitionUnderReplicated(r.topicPartition()))
+        if (!(_skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, r.topicPartition()))
             && !(_excludeFollowerDemotion && !r.isLeader())) {
           Partition p = clusterModel.partition(r.topicPartition());
           p.moveReplicaToEnd(r);
@@ -69,7 +69,7 @@ public class PreferredLeaderElectionGoal implements Goal {
       }
       // If the leader replica's partition is currently under replicated and _skipUrpDemotion is true, skip leadership
       // change operation.
-      b.leaderReplicas().stream().filter(r -> !(_skipUrpDemotion && isPartitionUnderReplicated(r.topicPartition())))
+      b.leaderReplicas().stream().filter(r -> !(_skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, r.topicPartition())))
        .forEach(r -> partitionsToMove.add(r.topicPartition()));
     }
     // Ignore the excluded topics because this goal does not move partitions.
@@ -94,11 +94,6 @@ public class PreferredLeaderElectionGoal implements Goal {
       }
     }
     return true;
-  }
-
-  private boolean isPartitionUnderReplicated(TopicPartition tp) {
-    PartitionInfo partitionInfo = _kafkaCluster.partition(tp);
-    return partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
   }
 
   @Override

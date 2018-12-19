@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseExecutionTaskStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -43,8 +43,8 @@ public class ExecutionTaskManagerTest {
   public void testStateChangeSequences() {
     TopicPartition tp = new TopicPartition("topic", 0);
     ExecutionTaskManager taskManager = new ExecutionTaskManager(1, 1,
-                                                                BaseExecutionTaskStrategy.class.getName(), new MetricRegistry(),
-                                                                new SystemTime());
+                                                                Collections.singletonList(BaseReplicaMovementStrategy.class.getName()),
+                                                                new MetricRegistry(), new SystemTime());
 
     List<List<ExecutionTask.State>> testSequences = new ArrayList<>();
     // Completed successfully.

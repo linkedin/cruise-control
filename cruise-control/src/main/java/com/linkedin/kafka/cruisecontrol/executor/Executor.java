@@ -122,7 +122,7 @@ public class Executor {
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
                                  config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
-                                 config.getString(KafkaCruiseControlConfig.EXECUTION_TASK_STRATEGY_CONFIG),
+                                 config.getList(KafkaCruiseControlConfig.REPLICA_MOVEMENT_STRATEGIES_CONFIG),
                                  dropwizardMetricRegistry,
                                  time);
     _metadataClient = metadataClient != null

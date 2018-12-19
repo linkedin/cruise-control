@@ -21,7 +21,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
-import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseExecutionTaskStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
@@ -442,9 +442,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   /**
    * <code>execution.task.strategy</code>
    */
-  public static final String EXECUTION_TASK_STRATEGY_CONFIG = "execution.task.strategy";
-  private static final String EXECUTION_TASK_STRATEGY_DOC = "The strategy used to determine execution order for generated partition"
-      + "movement tasks.";
+  public static final String REPLICA_MOVEMENT_STRATEGIES_CONFIG = "replica.movement.strategies";
+  private static final String REPLICA_MOVEMENT_STRATEGIES_DOC = "A list of strategy used to determine execution order for "
+      + "generated partition movement tasks.";
 
   /**
    * <code>execution.progress.check.interval.ms</code>
@@ -970,11 +970,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.MEDIUM,
                 NUM_CONCURRENT_LEADER_MOVEMENTS_DOC)
-        .define(EXECUTION_TASK_STRATEGY_CONFIG,
-                ConfigDef.Type.STRING,
-                BaseExecutionTaskStrategy.class.getName(),
+        .define(REPLICA_MOVEMENT_STRATEGIES_CONFIG,
+                ConfigDef.Type.LIST,
+                BaseReplicaMovementStrategy.class.getName(),
                 ConfigDef.Importance.MEDIUM,
-                EXECUTION_TASK_STRATEGY_DOC)
+                REPLICA_MOVEMENT_STRATEGIES_DOC)
         .define(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 10000L,
