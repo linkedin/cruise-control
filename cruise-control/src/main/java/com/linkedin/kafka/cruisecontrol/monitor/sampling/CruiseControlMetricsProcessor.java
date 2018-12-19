@@ -553,6 +553,8 @@ public class CruiseControlMetricsProcessor {
         case BROKER_LOG_FLUSH_TIME_MS_MAX:
         case BROKER_LOG_FLUSH_TIME_MS_50TH:
         case BROKER_LOG_FLUSH_TIME_MS_999TH:
+        case BROKER_PRODUCE_REQUEST_RATE:
+        case BROKER_CONSUMER_FETCH_REQUEST_RATE:
           return true;
         default:
           return false;
