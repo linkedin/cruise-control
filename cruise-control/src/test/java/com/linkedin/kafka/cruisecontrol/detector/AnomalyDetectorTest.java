@@ -143,7 +143,7 @@ public class AnomalyDetectorTest {
     EasyMock.expect(mockKafkaCruiseControl.state(EasyMock.anyObject(), EasyMock.anyObject()))
             .andReturn(new CruiseControlState(ExecutorState.noTaskInProgress(), null, null,
                                               null));
-    EasyMock.expect(mockKafkaCruiseControl.rebalance(EasyMock.eq(Collections.singletonList("RackAwareGoal")),
+    EasyMock.expect(mockKafkaCruiseControl.rebalance(EasyMock.eq(Collections.emptyList()),
                                                      EasyMock.eq(false),
                                                      EasyMock.eq(null),
                                                      EasyMock.anyObject(OperationProgress.class),

@@ -8,11 +8,11 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,13 +24,15 @@ public class GoalViolations extends KafkaAnomaly {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
   private final KafkaCruiseControl _kafkaCruiseControl;
   // The priority order of goals is maintained here.
-  private final List<String> _fixableViolatedGoals = new ArrayList<>();
-  private final List<String> _unfixableViolatedGoals = new ArrayList<>();
+  private final List<String> _fixableViolatedGoals;
+  private final List<String> _unfixableViolatedGoals;
   private final boolean _allowCapacityEstimation;
 
   public GoalViolations(KafkaCruiseControl kafkaCruiseControl, boolean allowCapacityEstimation) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _allowCapacityEstimation = allowCapacityEstimation;
+    _fixableViolatedGoals = new ArrayList<>();
+    _unfixableViolatedGoals = new ArrayList<>();
   }
 
   /**
@@ -51,27 +53,37 @@ public class GoalViolations extends KafkaAnomaly {
    * Get all the goal violations.
    */
   public Set<String> violations() {
-    return Stream.concat(_fixableViolatedGoals.stream(), _unfixableViolatedGoals.stream()).collect(Collectors.toSet());
+    Set<String> allViolatedGoals = new HashSet<>(_unfixableViolatedGoals);
+    allViolatedGoals.addAll(_fixableViolatedGoals);
+    return allViolatedGoals;
   }
 
   @Override
   public void fix() throws KafkaCruiseControlException {
-    // Fix the fixable goal violations with rebalance operation.
-    if (!_fixableViolatedGoals.isEmpty()) {
+    if (_unfixableViolatedGoals.isEmpty()) {
       try {
-        _kafkaCruiseControl.rebalance(_fixableViolatedGoals, false, null, new OperationProgress(), _allowCapacityEstimation,
+        // Fix the fixable goal violations with rebalance operation.
+        _kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation,
                                       null, null, false, null, null);
       } catch (IllegalStateException e) {
         LOG.warn("Got exception when trying to fix the cluster for violated goals {} " + e.getMessage(), _fixableViolatedGoals);
       }
+    } else {
+      LOG.info("Skip fixing goal violations due to unfixable goal violations {} detected.", _unfixableViolatedGoals);
     }
   }
 
   @Override
   public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("{unfixable goal violations: {");
     StringJoiner joiner = new StringJoiner(",");
-    _fixableViolatedGoals.forEach(joiner::add);
     _unfixableViolatedGoals.forEach(joiner::add);
-    return "{" + joiner.toString() + "}";
+    sb.append(joiner.toString());
+    sb.append("}, fixable goal violations: {");
+    joiner = new StringJoiner(",");
+    _fixableViolatedGoals.forEach(joiner::add);
+    sb.append("}}");
+    return sb.toString();
   }
 }
