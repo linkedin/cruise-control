@@ -568,7 +568,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
     UserTaskState userTaskState = new UserTaskState(_userTaskManager.getActiveUserTasks(),
                                                     _userTaskManager.getCompletedUserTasks());
-//    UserTaskState userTaskState = new UserTaskState(_userTaskManager.getAllUserTasks());
     userTaskState.writeSuccessResponse(parameters, response);
   }
 }

@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -259,17 +258,6 @@ public class UserTaskManagerTest {
       return;
     }
     Assert.fail("Don't expect to be here!");
-  }
-
-  /**
-   * Test
-   *
-   */
-  @Test
-  public void testUserTasksParameters() {
-    UserTaskManager userTaskManager = new UserTaskManager(1000, 5,
-        TimeUnit.HOURS.toMillis(6), 100, new MockTime());
-    ParameterUtils.
   }
 
   private HttpServletRequest prepareRequest(HttpSession session, String userTaskId) {

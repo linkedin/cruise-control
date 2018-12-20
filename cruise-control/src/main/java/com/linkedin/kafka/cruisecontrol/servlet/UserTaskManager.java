@@ -276,8 +276,7 @@ public class UserTaskManager implements Closeable {
       if (isActiveUserTasksDone(entry.getKey())) {
         LOG.info("UserTask {} is complete and removed from active tasks list", entry.getKey());
         _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
-        entry.getValue().setNextState(TaskState.COMPLETED);
-        _completedUserTaskIdToFuturesMap.put(entry.getKey(), entry.getValue());
+        _completedUserTaskIdToFuturesMap.put(entry.getKey(), entry.getValue().setNextState(TaskState.COMPLETED));
         iter.remove();
       }
     }
@@ -319,7 +318,7 @@ public class UserTaskManager implements Closeable {
                                                                        HttpServletRequest httpServletRequest) {
     if (_completedUserTaskIdToFuturesMap.containsKey(userTaskId)) {
       // Before add new operation to task, first recycle the task from completed task list.
-      _activeUserTaskIdToFuturesMap.put(userTaskId, _completedUserTaskIdToFuturesMap.remove(userTaskId));
+      _activeUserTaskIdToFuturesMap.put(userTaskId, _completedUserTaskIdToFuturesMap.remove(userTaskId).setNextState(TaskState.ACTIVE));
       LOG.info("UserTask {} is recycled from complete task list and added back to active tasks list", userTaskId);
     }
     if (_activeUserTaskIdToFuturesMap.containsKey(userTaskId)) {
@@ -346,10 +345,19 @@ public class UserTaskManager implements Closeable {
 
   public synchronized Map<TaskState, List<UserTaskInfo>> getAllUserTasks() {
     Map<TaskState, List<UserTaskInfo>> result = new HashMap<>(_allUserTaskIdToFutureMap.size());
-    for (TaskState state : _allUserTaskIdToFutureMap.keySet()) {
-      result.put(state, new ArrayList<>(_allUserTaskIdToFutureMap.get(state).values()));
+    for (Map.Entry<TaskState, Map<UUID, UserTaskInfo>> entry: _allUserTaskIdToFutureMap.entrySet()) {
+      result.put(entry.getKey(), new ArrayList<>(entry.getValue().values()));
     }
     return result;
+  }
+
+  // Package private method used for updating UserTaskInfo's state in unit test
+  void updateTaskState() {
+    try {
+      checkActiveUserTasks();
+    } catch (Throwable t) {
+      LOG.warn("Received exception when trying to expire sessions.", t);
+    }
   }
 
   @Override
@@ -522,8 +530,9 @@ public class UserTaskManager implements Closeable {
       return  sb.toString();
     }
 
-    public void setNextState(TaskState nextState) {
+    public UserTaskInfo setNextState(TaskState nextState) {
       _state = nextState;
+      return this;
     }
   }
 

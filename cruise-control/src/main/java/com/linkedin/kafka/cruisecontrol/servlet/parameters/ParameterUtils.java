@@ -31,7 +31,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.xml.ws.Endpoint;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
@@ -87,6 +86,15 @@ public class ParameterUtils {
   private static final String EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM = "exclude_recently_removed_brokers";
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
+
+  public static final String[] PARAMS_TO_GET = {
+      CLIENT_IDS_PARAM,
+      ENDPOINTS_PARAM,
+      TYPE_PARAM,
+      USER_TASK_IDS_PARAM,
+      ENTRIES_PARAM
+  };
+
   static {
     Map<EndPoint, Set<String>> validParamNames = new HashMap<>();
 
@@ -497,7 +505,7 @@ public class ParameterUtils {
     return Collections.unmodifiableList(goals);
   }
 
-  static int entries(HttpServletRequest request) {
+  public static int entries(HttpServletRequest request) {
     String entriesString = request.getParameter(ENTRIES_PARAM);
     return entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
   }
@@ -559,7 +567,7 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
     String userTaskIdsString = urlDecode(request.getParameter(USER_TASK_IDS_PARAM));
     return userTaskIdsString == null ? Collections.emptySet()
                                      : Arrays.stream(userTaskIdsString.split(",")).map(UUID::fromString)
@@ -569,7 +577,7 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  static Set<String> userTaskClientIds(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<String> userTaskClientIds(HttpServletRequest request) throws UnsupportedEncodingException {
     String clientIdsString = urlDecode(request.getParameter(CLIENT_IDS_PARAM));
     Set<String> parsedClientIds = clientIdsString == null ? new HashSet<>(0)
         : new HashSet<>(Arrays.asList(clientIdsString.split(",")));
@@ -581,7 +589,7 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  static Set<EndPoint> userTaskEndPoints(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<EndPoint> userTaskEndPoints(HttpServletRequest request) throws UnsupportedEncodingException {
     String endPointsString = urlDecode(request.getParameter(ENDPOINTS_PARAM));
     Set<String> parsedEndPoints = endPointsString == null ? new HashSet<>(0)
         : new HashSet<>(Arrays.asList(endPointsString.split(",")));
@@ -599,7 +607,7 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  static Set<UserTaskManager.TaskState> userTaskState(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<UserTaskManager.TaskState> userTaskState(HttpServletRequest request) throws UnsupportedEncodingException {
     String taskStatesString = urlDecode(request.getParameter(TYPE_PARAM));
     Set<String> parsedTaskStates = taskStatesString == null ? new HashSet<>(0)
         : new HashSet<>(Arrays.asList(taskStatesString.split(",")));
