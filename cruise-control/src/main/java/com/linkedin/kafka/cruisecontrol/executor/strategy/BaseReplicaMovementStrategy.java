@@ -10,7 +10,7 @@ import org.apache.kafka.common.Cluster;
 
 
 /**
- * The basic replica movement strategy which determines the tasks' execution order based on their task id.
+ * The basic replica movement strategy, which determines the tasks' execution order based on their task id.
  */
 public class BaseReplicaMovementStrategy extends AbstractReplicaMovementStrategy {
 

@@ -66,7 +66,7 @@ public class ExecutionTaskPlanner {
           _replicaMovementTaskStrategy = _replicaMovementTaskStrategy.chain((ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance());
         }
       } catch (Exception e) {
-        throw new RuntimeException(e);
+        throw new RuntimeException("Error occurred while setting up the replica movement strategy: " + replicaMovementStrategy + ".", e);
       }
     }
   }

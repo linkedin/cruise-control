@@ -5,8 +5,8 @@
 package com.linkedin.kafka.cruisecontrol.executor.strategy;
 
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
-import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
 import org.apache.kafka.common.Cluster;
 
@@ -20,7 +20,7 @@ public interface ReplicaMovementStrategy {
    * @param cluster The current cluster state.
    * @return Ordered set of tasks to be executed for each broker.
    */
-  Map<Integer, SortedSet<ExecutionTask>> applyStrategy(Collection<ExecutionTask> replicaMovementTasks, Cluster cluster);
+  Map<Integer, SortedSet<ExecutionTask>> applyStrategy(Set<ExecutionTask> replicaMovementTasks, Cluster cluster);
 
   /**
    * Chain with another replica movement strategy to create a composite strategy.The returned strategy should use a combined rule

@@ -6,10 +6,10 @@ package com.linkedin.kafka.cruisecontrol.executor.strategy;
 
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
-import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 import org.apache.kafka.common.Cluster;
@@ -45,18 +45,14 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
 
         return (task1, task2) -> {
           int compareResult1 = comparator1.compare(task1, task2);
-          int compareResult2 = comparator2.compare(task1, task2);
-          if (compareResult1 == 0) {
-            return compareResult2;
-          }
-          return compareResult1;
+          return compareResult1 == 0 ? comparator2.compare(task1, task2) : compareResult1;
         };
       }
     };
   }
 
   @Override
-  public Map<Integer, SortedSet<ExecutionTask>> applyStrategy(Collection<ExecutionTask> replicaMovementTasks, Cluster cluster) {
+  public Map<Integer, SortedSet<ExecutionTask>> applyStrategy(Set<ExecutionTask> replicaMovementTasks, Cluster cluster) {
     Map<Integer, SortedSet<ExecutionTask>> tasksByBrokerId = new HashMap<>();
 
     for (ExecutionTask task : replicaMovementTasks) {

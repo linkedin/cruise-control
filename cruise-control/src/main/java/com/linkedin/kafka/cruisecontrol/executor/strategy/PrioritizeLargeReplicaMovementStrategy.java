@@ -9,7 +9,7 @@ import java.util.Comparator;
 import org.apache.kafka.common.Cluster;
 
 /**
- * The strategy which tries to first move replicas of larger size partitions.
+ * The strategy, which tries to first move replicas of larger size partitions.
  */
 public class PrioritizeLargeReplicaMovementStrategy extends AbstractReplicaMovementStrategy {
 

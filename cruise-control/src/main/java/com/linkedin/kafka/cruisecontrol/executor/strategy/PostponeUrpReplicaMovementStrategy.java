@@ -11,7 +11,7 @@ import org.apache.kafka.common.Cluster;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.isPartitionUnderReplicated;
 
 /**
- * The strategy which tries to first move replicas of partitions which currently are not under replicated.
+ * The strategy, which tries to first move replicas of partitions which currently are not under replicated.
  */
 public class PostponeUrpReplicaMovementStrategy extends AbstractReplicaMovementStrategy {
 

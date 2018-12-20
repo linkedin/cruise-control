@@ -443,7 +443,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>execution.task.strategy</code>
    */
   public static final String REPLICA_MOVEMENT_STRATEGIES_CONFIG = "replica.movement.strategies";
-  private static final String REPLICA_MOVEMENT_STRATEGIES_DOC = "A list of strategy used to determine execution order for "
+  private static final String REPLICA_MOVEMENT_STRATEGIES_DOC = "A list of strategies used to determine execution order for "
       + "generated partition movement tasks.";
 
   /**
@@ -1147,15 +1147,27 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     }
   }
 
+  /**
+   * Sanity check to ensure that {@link KafkaCruiseControlConfig#REPLICA_MOVEMENT_STRATEGIES_CONFIG} is non-empty.
+   */
+  private void sanityCheckReplicaMovementStrategies() {
+    // Ensure that replica movement strategies is non-empty.
+    if (getList(KafkaCruiseControlConfig.REPLICA_MOVEMENT_STRATEGIES_CONFIG).isEmpty()) {
+      throw new ConfigException("Attempt to configure replica movement strategies configuration with an empty list of strategies.");
+    }
+  }
+
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
     super(CONFIG, originals);
     sanityCheckGoalNames();
     sanityCheckSamplingPeriod();
+    sanityCheckReplicaMovementStrategies();
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
     sanityCheckGoalNames();
     sanityCheckSamplingPeriod();
+    sanityCheckReplicaMovementStrategies();
   }
 }
