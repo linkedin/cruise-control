@@ -21,6 +21,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.AbstractReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
@@ -1148,12 +1149,37 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
-   * Sanity check to ensure that {@link KafkaCruiseControlConfig#REPLICA_MOVEMENT_STRATEGIES_CONFIG} is non-empty.
+   * Sanity check for
+   * (1) {@link KafkaCruiseControlConfig#REPLICA_MOVEMENT_STRATEGIES_CONFIG} is non-empty.
+   * (2) If any strategy extends from {@link com.linkedin.kafka.cruisecontrol.executor.strategy.AbstractReplicaMovementStrategy},
+   *     then all the strategies should extend from this abstract class.
    */
   private void sanityCheckReplicaMovementStrategies() {
+    List<String> strategyNames = getList(KafkaCruiseControlConfig.REPLICA_MOVEMENT_STRATEGIES_CONFIG);
     // Ensure that replica movement strategies is non-empty.
-    if (getList(KafkaCruiseControlConfig.REPLICA_MOVEMENT_STRATEGIES_CONFIG).isEmpty()) {
+    if (strategyNames.isEmpty()) {
       throw new ConfigException("Attempt to configure replica movement strategies configuration with an empty list of strategies.");
+    }
+    boolean anyStrategyExtendsFromAbstractReplicaMovementStrategy = strategyNames.stream().anyMatch(s -> {
+      try {
+        return AbstractReplicaMovementStrategy.class.isAssignableFrom(Class.forName(s));
+      } catch (ClassNotFoundException e) {
+        throw new ConfigException("Attempt to configure replica movement strategies configuration with unsupported strategy " + s + ".");
+      }
+    });
+    // Ensure all the strategies extend from AbstractReplicaMovementStrategy.
+    if (anyStrategyExtendsFromAbstractReplicaMovementStrategy) {
+      if (!strategyNames.stream().allMatch(s -> {
+        try {
+          return AbstractReplicaMovementStrategy.class.isAssignableFrom(Class.forName(s));
+        } catch (ClassNotFoundException e) {
+          throw new ConfigException(
+              "Attempt to configure replica movement strategies configuration with unsupported strategy " + s + ".");
+        }
+      })) {
+        throw new ConfigException(
+            "Attempt to configure replica movement strategies configuration with inconsistent strategies " + strategyNames + ".");
+      }
     }
   }
 

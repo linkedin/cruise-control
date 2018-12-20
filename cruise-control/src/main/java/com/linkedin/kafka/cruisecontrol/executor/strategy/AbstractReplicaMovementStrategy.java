@@ -32,10 +32,6 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
 
   @Override
   public ReplicaMovementStrategy chain(ReplicaMovementStrategy strategy) {
-    if (!(strategy instanceof AbstractReplicaMovementStrategy)) {
-      throw new IllegalArgumentException("Replica movement strategy " + this.getClass().getSimpleName() + " is unable to chain with "
-                                         + strategy.getClass().getSimpleName() + ".");
-    }
     AbstractReplicaMovementStrategy current = this;
     return new AbstractReplicaMovementStrategy() {
       @Override
