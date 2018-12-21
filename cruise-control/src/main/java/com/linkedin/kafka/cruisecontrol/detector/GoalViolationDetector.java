@@ -98,40 +98,55 @@ public class GoalViolationDetector implements Runnable {
       return;
     }
 
-    GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation);
-    boolean newModelNeeded = true;
-    long now = _time.milliseconds();
-    ClusterModel clusterModel = null;
-    for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
-      Goal goal = entry.getValue();
-      if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
-        LOG.debug("Detecting if {} is violated.", entry.getValue().name());
-        // Because the model generation could be slow, We only get new cluster model if needed.
-        if (newModelNeeded) {
-          try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(new OperationProgress())) {
-            clusterModel = _loadMonitor.clusterModel(now, goal.clusterModelCompletenessRequirements(), new OperationProgress());
+    AutoCloseable clusterModelSemaphore = null;
+    try {
+      GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation);
+      long now = _time.milliseconds();
+      boolean newModelNeeded = true;
+      ClusterModel clusterModel = null;
+      for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
+        Goal goal = entry.getValue();
+        if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
+          LOG.debug("Detecting if {} is violated.", entry.getValue().name());
+          // Because the model generation could be slow, We only get new cluster model if needed.
+          if (newModelNeeded) {
+            if (clusterModelSemaphore != null) {
+              clusterModelSemaphore.close();
+            }
+            clusterModelSemaphore = _loadMonitor.acquireForModelGeneration(new OperationProgress());
+            // Make cluster model null before generating a new cluster model so the current one can be GCed.
+            clusterModel = null;
+            clusterModel = _loadMonitor.clusterModel(now,
+                                                     goal.clusterModelCompletenessRequirements(),
+                                                     new OperationProgress());
+            KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation,
+                                                             clusterModel.capacityEstimationInfoByBrokerId());
             _lastCheckedModelGeneration = clusterModel.generation();
-          } catch (NotEnoughValidWindowsException nevwe) {
-            LOG.debug("Skipping goal violation detection because there are not enough valid windows.");
-            return;
-          } catch (Exception e) {
-            LOG.error("Skipping goal violation detection because of unexpected exception when generating cluster model.", e);
-            return;
           }
-        }
-        try {
           newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations);
-        } catch (KafkaCruiseControlException kcce) {
-          LOG.warn("Goal violation detector received exception.", kcce);
+        } else {
+          LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
         }
-      } else {
-        LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
       }
+      if (!goalViolations.violations().isEmpty()) {
+        _anomalies.add(goalViolations);
+      }
+    } catch (NotEnoughValidWindowsException nevwe) {
+      LOG.debug("Skipping goal violation detection because there are not enough valid windows.");
+    } catch (KafkaCruiseControlException kcce) {
+      LOG.warn("Goal violation detector received exception", kcce);
+    } catch (Exception e) {
+      LOG.error("Unexpected exception", e);
+    } finally {
+      if (clusterModelSemaphore != null) {
+        try {
+          clusterModelSemaphore.close();
+        } catch (Exception e) {
+          LOG.error("Received exception when closing auto closable semaphore", e);
+        }
+      }
+      LOG.debug("Goal violation detection finished.");
     }
-    if (!goalViolations.violations().isEmpty()) {
-      _anomalies.add(goalViolations);
-    }
-    LOG.debug("Goal violation detection finished.");
   }
 
   private Set<String> excludedTopics(ClusterModel clusterModel) {

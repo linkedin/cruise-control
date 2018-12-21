@@ -8,10 +8,12 @@ import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
@@ -22,7 +24,8 @@ public class AnomalyDetectorState {
   private static final String TIME_ZONE = "UTC";
   private static final String DETECTION_MS = "detectionMs";
   private static final String DETECTION_DATE = "detectionDate";
-  private static final String VIOLATED_GOALS = "violatedGoals";
+  private static final String FIXABLE_VIOLATED_GOALS = "fixableViolatedGoals";
+  private static final String UNFIXABLE_VIOLATED_GOALS = "unfixableViolatedGoals";
   private static final String FAILED_BROKERS_BY_TIME_MS = "failedBrokersByTimeMs";
   private static final String DESCRIPTION = "description";
   private static final String SELF_HEALING_ENABLED = "selfHealingEnabled";
@@ -75,11 +78,12 @@ public class AnomalyDetectorState {
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
     for (Map.Entry<Long, Anomaly> entry: goalViolationsByTime.entrySet()) {
       GoalViolations goalViolations = (GoalViolations) entry.getValue();
-      Set<String> violatedGoals = goalViolations.violations();
+      Map<Boolean, List<String>> violatedGoals = goalViolations.violations();
       Map<String, Object> anomalyDetails = new HashMap<>(2);
       anomalyDetails.put(useDateFormat ? DETECTION_DATE : DETECTION_MS,
           useDateFormat ? getDateFormat(entry.getKey()) : entry.getKey());
-      anomalyDetails.put(VIOLATED_GOALS, violatedGoals);
+      anomalyDetails.put(FIXABLE_VIOLATED_GOALS, violatedGoals.getOrDefault(true, Collections.emptyList()));
+      anomalyDetails.put(UNFIXABLE_VIOLATED_GOALS, violatedGoals.getOrDefault(false, Collections.emptyList()));
       recentAnomalies.add(anomalyDetails);
     }
     return recentAnomalies;

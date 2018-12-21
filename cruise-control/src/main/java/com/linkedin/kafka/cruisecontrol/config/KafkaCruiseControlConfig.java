@@ -1096,6 +1096,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * (1) {@link KafkaCruiseControlConfig#GOALS_CONFIG} is non-empty.
    * (2) Case insensitive goal names.
    * (3) {@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} is non-empty.
+   * (4) {@link KafkaCruiseControlConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of {@link KafkaCruiseControlConfig#GOALS_CONFIG}.
    */
   private void sanityCheckGoalNames() {
     List<String> goalNames = getList(KafkaCruiseControlConfig.GOALS_CONFIG);
@@ -1113,6 +1114,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     // Ensure that default goals is non-empty.
     if (getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG).isEmpty()) {
       throw new ConfigException("Attempt to configure default goals configuration with an empty list of goals.");
+    }
+
+    // Ensure that goals used for anomaly detection are supported goals.
+    List<String> anomalyDetectionGoalNames = getList(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG);
+    if (anomalyDetectionGoalNames.stream().anyMatch(g -> !goalNames.contains(g))) {
+      throw new ConfigException("Attempt to configure anomaly detection goals with unsupported goals.");
     }
   }
 
