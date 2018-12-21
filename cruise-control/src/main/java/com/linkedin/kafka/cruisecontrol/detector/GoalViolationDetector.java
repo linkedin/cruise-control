@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
+import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -15,7 +16,6 @@ import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
-import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.HashMap;
@@ -98,41 +98,40 @@ public class GoalViolationDetector implements Runnable {
       return;
     }
 
-    List<Goal> readyGoals =  _goals.values().stream()
-                                   .filter(goal -> _loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements()))
-                                   .collect(Collectors.toList());
-    if (!readyGoals.isEmpty()) {
-      LOG.debug("Detecting if ready goals {} out of {} are violated.", readyGoals, _goals.values());
-      GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation);
-      ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(0, 0, false);
-      for (Goal goal : readyGoals) {
-        requirements = requirements.stronger(goal.clusterModelCompletenessRequirements());
-      }
-      ClusterModel clusterModel;
-      try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(new OperationProgress())) {
-        clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
-                                                 requirements,
-                                                 new OperationProgress());
-        _lastCheckedModelGeneration = clusterModel.generation();
-      }  catch (Exception e) {
-        LOG.error("Unexpected exception when generating cluster model.", e);
-        return;
-      }
-
-      for (Goal goal : readyGoals) {
-        try {
-          optimizeForGoal(clusterModel, goal, goalViolations);
-        } catch (KafkaCruiseControlException kcce) {
-          LOG.warn("Goal violation detector received exception", kcce);
+    GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation);
+    boolean newModelNeeded = true;
+    long now = _time.milliseconds();
+    ClusterModel clusterModel = null;
+    for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
+      Goal goal = entry.getValue();
+      if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
+        LOG.debug("Detecting if {} is violated.", entry.getValue().name());
+        // Because the model generation could be slow, We only get new cluster model if needed.
+        if (newModelNeeded) {
+          try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(new OperationProgress())) {
+            clusterModel = _loadMonitor.clusterModel(now, goal.clusterModelCompletenessRequirements(), new OperationProgress());
+            _lastCheckedModelGeneration = clusterModel.generation();
+          } catch (NotEnoughValidWindowsException nevwe) {
+            LOG.debug("Skipping goal violation detection because there are not enough valid windows.");
+            return;
+          } catch (Exception e) {
+            LOG.error("Skipping goal violation detection because of unexpected exception when generating cluster model.", e);
+            return;
+          }
         }
+        try {
+          newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations);
+        } catch (KafkaCruiseControlException kcce) {
+          LOG.warn("Goal violation detector received exception.", kcce);
+        }
+      } else {
+        LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
       }
-      if (!goalViolations.violations().isEmpty()) {
-        _anomalies.add(goalViolations);
-      }
-      LOG.debug("Goal violation detection finished.");
-    } else {
-      LOG.debug("Skipping violation detection, because completeness requirement is not met for any goal in {}.", _goals.values());
     }
+    if (!goalViolations.violations().isEmpty()) {
+      _anomalies.add(goalViolations);
+    }
+    LOG.debug("Goal violation detection finished.");
   }
 
   private Set<String> excludedTopics(ClusterModel clusterModel) {
@@ -142,13 +141,13 @@ public class GoalViolationDetector implements Runnable {
         .collect(Collectors.toSet());
   }
 
-  private void optimizeForGoal(ClusterModel clusterModel,
+  private boolean optimizeForGoal(ClusterModel clusterModel,
                                   Goal goal,
                                   GoalViolations goalViolations)
       throws KafkaCruiseControlException {
     if (clusterModel.topics().isEmpty()) {
       LOG.info("Skipping goal violation detection because the cluster model does not have any topic.");
-      return;
+      return false;
     }
     Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, Integer> initLeaderDistribution = clusterModel.getLeaderDistribution();
@@ -160,13 +159,17 @@ public class GoalViolationDetector implements Runnable {
       // of brokers to satisfy Replica Capacity Goal, or insufficient number of resources to satisfy resource
       // capacity goals), or (2) a failure to move offline replicas away from dead brokers/disks.
       goalViolations.addViolation(goal.name(), false);
-      return;
+      return true;
     }
     Set<ExecutionProposal> proposals = AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
     LOG.trace("{} generated {} proposals", goal.name(), proposals.size());
     if (!proposals.isEmpty()) {
       // A goal violation that can be optimized by applying the generated proposals.
       goalViolations.addViolation(goal.name(), true);
+      return true;
+    } else {
+      // The goal is already satisfied.
+      return false;
     }
   }
 }
