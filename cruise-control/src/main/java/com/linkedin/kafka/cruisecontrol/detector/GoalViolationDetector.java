@@ -105,21 +105,21 @@ public class GoalViolationDetector implements Runnable {
       LOG.debug("Detecting if ready goals {} out of {} are violated.", readyGoals, _goals.values());
       GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation);
       ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(0, 0, false);
-      for (Goal goal: readyGoals) {
+      for (Goal goal : readyGoals) {
         requirements = requirements.stronger(goal.clusterModelCompletenessRequirements());
       }
       ClusterModel clusterModel;
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(new OperationProgress())) {
         clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
-            requirements,
-            new OperationProgress());
+                                                 requirements,
+                                                 new OperationProgress());
         _lastCheckedModelGeneration = clusterModel.generation();
       }  catch (Exception e) {
         LOG.error("Unexpected exception when generating cluster model.", e);
         return;
       }
 
-      for (Goal goal: readyGoals) {
+      for (Goal goal : readyGoals) {
         try {
           optimizeForGoal(clusterModel, goal, goalViolations);
         } catch (KafkaCruiseControlException kcce) {
@@ -130,6 +130,8 @@ public class GoalViolationDetector implements Runnable {
         _anomalies.add(goalViolations);
       }
       LOG.debug("Goal violation detection finished.");
+    } else {
+      LOG.debug("Skipping violation detection, because completeness requirement is not met for any goal in {}.", _goals.values());
     }
   }
 
