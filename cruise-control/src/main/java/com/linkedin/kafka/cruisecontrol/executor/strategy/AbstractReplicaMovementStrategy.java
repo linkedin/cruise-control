@@ -21,15 +21,6 @@ import org.apache.kafka.common.Cluster;
  */
 public abstract class AbstractReplicaMovementStrategy implements ReplicaMovementStrategy {
 
-  /**
-   * Generate a comparator for replica movement task which incorporate the strategy to apply. The "smaller" task will have
-   * higher execution priority.
-   *
-   * @param cluster The current cluster state.
-   * @return The comparator of task.
-   */
-  public abstract Comparator<ExecutionTask> taskComparator(Cluster cluster);
-
   @Override
   public ReplicaMovementStrategy chain(ReplicaMovementStrategy strategy) {
     AbstractReplicaMovementStrategy current = this;
@@ -37,7 +28,7 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
       @Override
       public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
         Comparator<ExecutionTask> comparator1 = current.taskComparator(cluster);
-        Comparator<ExecutionTask> comparator2 = ((AbstractReplicaMovementStrategy) strategy).taskComparator(cluster);
+        Comparator<ExecutionTask> comparator2 = strategy.taskComparator(cluster);
 
         return (task1, task2) -> {
           int compareResult1 = comparator1.compare(task1, task2);

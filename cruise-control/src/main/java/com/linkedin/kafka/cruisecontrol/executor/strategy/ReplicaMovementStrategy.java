@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor.strategy;
 
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
+import java.util.Comparator;
 import java.util.Map;
 import java.util.Set;
 import java.util.SortedSet;
@@ -30,4 +31,13 @@ public interface ReplicaMovementStrategy {
    * @return the composite replica movement strategy.
    */
   ReplicaMovementStrategy chain(ReplicaMovementStrategy strategy);
+
+  /**
+   * Generate a comparator for replica movement task which incorporate the strategy to apply. The "smaller" task will have
+   * higher execution priority.
+   *
+   * @param cluster The current cluster state.
+   * @return The comparator of task.
+   */
+  Comparator<ExecutionTask> taskComparator(Cluster cluster);
 }
