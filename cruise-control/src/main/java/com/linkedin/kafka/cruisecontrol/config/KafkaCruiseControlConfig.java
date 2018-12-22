@@ -1021,18 +1021,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 new StringJoiner(",")
                     .add(RackAwareGoal.class.getName())
                     .add(ReplicaCapacityGoal.class.getName())
-                    .add(DiskCapacityGoal.class.getName())
-                    .add(NetworkInboundCapacityGoal.class.getName())
-                    .add(NetworkOutboundCapacityGoal.class.getName())
-                    .add(CpuCapacityGoal.class.getName())
-                    .add(ReplicaDistributionGoal.class.getName())
-                    .add(PotentialNwOutGoal.class.getName())
-                    .add(DiskUsageDistributionGoal.class.getName())
-                    .add(NetworkInboundUsageDistributionGoal.class.getName())
-                    .add(NetworkOutboundUsageDistributionGoal.class.getName())
-                    .add(CpuUsageDistributionGoal.class.getName())
-                    .add(LeaderBytesInDistributionGoal.class.getName())
-                    .add(TopicReplicaDistributionGoal.class.getName()).toString(),
+                    .add(DiskCapacityGoal.class.getName()).toString(),
                 ConfigDef.Importance.MEDIUM,
                 ANOMALY_DETECTION_GOALS_DOC)
         .define(FAILED_BROKERS_ZK_PATH_CONFIG,
