@@ -59,20 +59,25 @@ public class ExecutionTaskPlanner {
     _remainingReplicaMovements = new TreeSet<>();
     _remainingDataToMove = 0L;
     _remainingLeadershipMovements = new HashMap<>();
-    for (String replicaMovementStrategy : replicaMovementStrategies) {
-      try {
-        if (_replicaMovementTaskStrategy == null) {
-          _replicaMovementTaskStrategy = (ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance();
-        } else {
-          _replicaMovementTaskStrategy = _replicaMovementTaskStrategy.chain((ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance());
+    if (replicaMovementStrategies == null || replicaMovementStrategies.isEmpty()) {
+      _replicaMovementTaskStrategy = new BaseReplicaMovementStrategy();
+    } else {
+      for (String replicaMovementStrategy : replicaMovementStrategies) {
+        try {
+          if (_replicaMovementTaskStrategy == null) {
+            _replicaMovementTaskStrategy = (ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance();
+          } else {
+            _replicaMovementTaskStrategy = _replicaMovementTaskStrategy.chain(
+                (ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance());
+          }
+        } catch (Exception e) {
+          throw new RuntimeException("Error occurred while setting up the replica movement strategy: " + replicaMovementStrategy + ".", e);
         }
-      } catch (Exception e) {
-        throw new RuntimeException("Error occurred while setting up the replica movement strategy: " + replicaMovementStrategy + ".", e);
       }
+      // Chain the custom strategies with BaseReplicaMovementStrategy in the end to handle the scenario that provided custom strategy is unable
+      // to determine the order of two tasks. BaseReplicaMovementStrategy makes the task with smaller execution id to get executed first.
+      _replicaMovementTaskStrategy = _replicaMovementTaskStrategy.chain(new BaseReplicaMovementStrategy());
     }
-    // Chain the custom strategies with BaseReplicaMovementStrategy in the end to handle the scenario that provided custom strategy is unable
-    // to determine the order of two tasks. BaseReplicaMovementStrategy makes the task with smaller execution id to get executed first.
-    _replicaMovementTaskStrategy = _replicaMovementTaskStrategy.chain(new BaseReplicaMovementStrategy());
   }
 
   /**

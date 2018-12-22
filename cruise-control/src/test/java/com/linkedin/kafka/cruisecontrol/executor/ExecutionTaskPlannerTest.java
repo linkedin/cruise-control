@@ -64,7 +64,7 @@ public class ExecutionTaskPlannerTest {
     proposals.add(leaderMovement2);
     proposals.add(leaderMovement3);
     proposals.add(leaderMovement4);
-    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(Collections.singletonList(BaseReplicaMovementStrategy.class.getName()));
+    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(Collections.emptyList());
 
     Set<PartitionInfo> partitions = new HashSet<>();
 
@@ -117,9 +117,8 @@ public class ExecutionTaskPlannerTest {
     proposals.add(partitionMovement3);
     proposals.add(partitionMovement4);
     // Test different execution strategies.
-    ExecutionTaskPlanner basePlanner = new ExecutionTaskPlanner(Collections.singletonList(BaseReplicaMovementStrategy.class.getName()));
-    ExecutionTaskPlanner postponeUrpPlanner = new ExecutionTaskPlanner(Arrays.asList(PostponeUrpReplicaMovementStrategy.class.getName(),
-                                                                                     BaseReplicaMovementStrategy.class.getName()));
+    ExecutionTaskPlanner basePlanner = new ExecutionTaskPlanner(null);
+    ExecutionTaskPlanner postponeUrpPlanner = new ExecutionTaskPlanner(Collections.singletonList(PostponeUrpReplicaMovementStrategy.class.getName()));
     ExecutionTaskPlanner prioritizeLargeMovementPlanner = new ExecutionTaskPlanner(Arrays.asList(PrioritizeLargeReplicaMovementStrategy.class.getName(),
                                                                                                  BaseReplicaMovementStrategy.class.getName()));
     ExecutionTaskPlanner prioritizeSmallMovementPlanner = new ExecutionTaskPlanner(Arrays.asList(PrioritizeSmallReplicaMovementStrategy.class.getName(),
@@ -212,7 +211,7 @@ public class ExecutionTaskPlannerTest {
     List<ExecutionProposal> proposals = new ArrayList<>();
     proposals.add(leaderMovement1);
     proposals.add(partitionMovement1);
-    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(Collections.singletonList(BaseReplicaMovementStrategy.class.getName()));
+    ExecutionTaskPlanner planner = new ExecutionTaskPlanner(Collections.emptyList());
 
     Set<PartitionInfo> partitions = new HashSet<>();
 

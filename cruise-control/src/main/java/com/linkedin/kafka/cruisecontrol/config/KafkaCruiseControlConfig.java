@@ -1147,28 +1147,15 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     }
   }
 
-  /**
-   * Sanity check to ensure that {@link KafkaCruiseControlConfig#REPLICA_MOVEMENT_STRATEGIES_CONFIG} is non-empty.
-   */
-  private void sanityCheckReplicaMovementStrategies() {
-    List<String> strategyNames = getList(KafkaCruiseControlConfig.REPLICA_MOVEMENT_STRATEGIES_CONFIG);
-    // Ensure that replica movement strategies is non-empty.
-    if (strategyNames.isEmpty()) {
-      throw new ConfigException("Attempt to configure replica movement strategies configuration with an empty list of strategies.");
-    }
-  }
-
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
     super(CONFIG, originals);
     sanityCheckGoalNames();
     sanityCheckSamplingPeriod();
-    sanityCheckReplicaMovementStrategies();
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
     sanityCheckGoalNames();
     sanityCheckSamplingPeriod();
-    sanityCheckReplicaMovementStrategies();
   }
 }
