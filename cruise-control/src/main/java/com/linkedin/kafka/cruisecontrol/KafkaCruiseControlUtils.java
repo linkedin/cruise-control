@@ -1,5 +1,7 @@
 /*
  * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ *//*
+ * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol;
@@ -19,6 +21,9 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
 import java.util.TimeZone;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
@@ -120,8 +125,8 @@ public class KafkaCruiseControlUtils {
    */
   public static boolean shouldRefreshClusterAndGeneration(Set<CruiseControlState.SubState> substates) {
     return substates.stream()
-                    .anyMatch(substate -> substate == CruiseControlState.SubState.ANALYZER
-                                          || substate == CruiseControlState.SubState.MONITOR);
+        .anyMatch(substate -> substate == CruiseControlState.SubState.ANALYZER
+            || substate == CruiseControlState.SubState.MONITOR);
   }
 
   /**
@@ -134,7 +139,7 @@ public class KafkaCruiseControlUtils {
    */
   public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
     return KafkaZkClient.apply(connectString, false, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
-                               new SystemTime(), metricGroup, metricType);
+        new SystemTime(), metricGroup, metricType);
   }
 
   /**
@@ -187,9 +192,9 @@ public class KafkaCruiseControlUtils {
     // Add bootstrap server.
     List<String> bootstrapServers = configs.getList(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG);
     String bootstrapServersString = bootstrapServers.toString()
-                                                    .replace(" ", "")
-                                                    .replace("[", "")
-                                                    .replace("]", "");
+        .replace(" ", "")
+        .replace("[", "")
+        .replace("]", "");
     adminClientConfigs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServersString);
 
     // Add security protocol (if specified).
@@ -231,5 +236,16 @@ public class KafkaCruiseControlUtils {
     } catch (ConfigException ce) {
       // let it go.
     }
+  }
+
+  /**
+   * Check if the partition is currently under replicated.
+   * @param cluster The current cluster state.
+   * @param tp The topic partition to check.
+   * @return True if the partition is currently under replicated.
+   */
+  public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) {
+    PartitionInfo partitionInfo = cluster.partition(tp);
+    return partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
   }
 }
