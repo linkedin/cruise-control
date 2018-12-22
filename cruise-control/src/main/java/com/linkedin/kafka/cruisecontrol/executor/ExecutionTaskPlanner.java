@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -69,6 +70,9 @@ public class ExecutionTaskPlanner {
         throw new RuntimeException("Error occurred while setting up the replica movement strategy: " + replicaMovementStrategy + ".", e);
       }
     }
+    // Chain the custom strategies with BaseReplicaMovementStrategy in the end to handle the scenario that provided custom strategy is unable
+    // to determine the order of two tasks. BaseReplicaMovementStrategy makes the task with smaller execution id to get executed first.
+    _replicaMovementTaskStrategy = _replicaMovementTaskStrategy.chain(new BaseReplicaMovementStrategy());
   }
 
   /**
