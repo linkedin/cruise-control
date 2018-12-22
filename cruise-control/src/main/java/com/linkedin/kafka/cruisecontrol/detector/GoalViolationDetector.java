@@ -128,7 +128,7 @@ public class GoalViolationDetector implements Runnable {
           LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
         }
       }
-      if (!goalViolations.violations().isEmpty()) {
+      if (!goalViolations.violatedGoalsByFixability().isEmpty()) {
         _anomalies.add(goalViolations);
       }
     } catch (NotEnoughValidWindowsException nevwe) {

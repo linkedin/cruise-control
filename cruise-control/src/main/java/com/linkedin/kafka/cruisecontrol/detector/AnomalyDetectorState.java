@@ -78,12 +78,12 @@ public class AnomalyDetectorState {
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
     for (Map.Entry<Long, Anomaly> entry: goalViolationsByTime.entrySet()) {
       GoalViolations goalViolations = (GoalViolations) entry.getValue();
-      Map<Boolean, List<String>> violatedGoals = goalViolations.violations();
-      Map<String, Object> anomalyDetails = new HashMap<>(2);
+      Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
+      Map<String, Object> anomalyDetails = new HashMap<>(3);
       anomalyDetails.put(useDateFormat ? DETECTION_DATE : DETECTION_MS,
           useDateFormat ? getDateFormat(entry.getKey()) : entry.getKey());
-      anomalyDetails.put(FIXABLE_VIOLATED_GOALS, violatedGoals.getOrDefault(true, Collections.emptyList()));
-      anomalyDetails.put(UNFIXABLE_VIOLATED_GOALS, violatedGoals.getOrDefault(false, Collections.emptyList()));
+      anomalyDetails.put(FIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()));
+      anomalyDetails.put(UNFIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()));
       recentAnomalies.add(anomalyDetails);
     }
     return recentAnomalies;

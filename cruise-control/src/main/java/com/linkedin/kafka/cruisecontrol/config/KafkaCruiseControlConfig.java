@@ -1112,13 +1112,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       }
     }
     // Ensure that default goals is non-empty.
-    if (getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG).isEmpty()) {
+    List<String> defaultGoalNames = getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG);
+    if (defaultGoalNames.isEmpty()) {
       throw new ConfigException("Attempt to configure default goals configuration with an empty list of goals.");
     }
 
     // Ensure that goals used for anomaly detection are supported goals.
     List<String> anomalyDetectionGoalNames = getList(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG);
-    if (anomalyDetectionGoalNames.stream().anyMatch(g -> !goalNames.contains(g))) {
+    if (anomalyDetectionGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
       throw new ConfigException("Attempt to configure anomaly detection goals with unsupported goals.");
     }
   }
