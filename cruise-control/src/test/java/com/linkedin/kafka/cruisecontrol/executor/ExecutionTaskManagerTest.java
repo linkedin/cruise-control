@@ -41,7 +41,8 @@ public class ExecutionTaskManagerTest {
   @Test
   public void testStateChangeSequences() {
     TopicPartition tp = new TopicPartition("topic", 0);
-    ExecutionTaskManager taskManager = new ExecutionTaskManager(1, 1, new MetricRegistry(), new SystemTime());
+    ExecutionTaskManager taskManager = new ExecutionTaskManager(1, 1,
+                                                                null, new MetricRegistry(), new SystemTime());
 
     List<List<ExecutionTask.State>> testSequences = new ArrayList<>();
     // Completed successfully.

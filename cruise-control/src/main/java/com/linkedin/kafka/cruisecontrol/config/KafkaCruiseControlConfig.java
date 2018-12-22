@@ -21,6 +21,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
@@ -437,6 +438,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String NUM_CONCURRENT_LEADER_MOVEMENTS_DOC = "The maximum number of leader " +
       "movements the executor will take as one batch. This is mainly because the ZNode has a 1 MB size upper limit. And it " +
       "will also reduce the controller burden.";
+
+  /**
+   * <code>execution.task.strategy</code>
+   */
+  public static final String REPLICA_MOVEMENT_STRATEGIES_CONFIG = "replica.movement.strategies";
+  private static final String REPLICA_MOVEMENT_STRATEGIES_DOC = "A list of strategies used to determine execution order for "
+      + "generated partition movement tasks.";
 
   /**
    * <code>execution.progress.check.interval.ms</code>
@@ -975,6 +983,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.MEDIUM,
                 NUM_CONCURRENT_LEADER_MOVEMENTS_DOC)
+        .define(REPLICA_MOVEMENT_STRATEGIES_CONFIG,
+                ConfigDef.Type.LIST,
+                BaseReplicaMovementStrategy.class.getName(),
+                ConfigDef.Importance.MEDIUM,
+                REPLICA_MOVEMENT_STRATEGIES_DOC)
         .define(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 10000L,
