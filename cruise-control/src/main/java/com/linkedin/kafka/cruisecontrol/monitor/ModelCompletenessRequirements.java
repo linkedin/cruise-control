@@ -31,6 +31,9 @@ import java.util.Map;
  *
  */
 public class ModelCompletenessRequirements {
+  private static final String REQUIRED_NUM_SNAPSHOTS = "requiredNumSnapshots";
+  private static final String MIN_MONITORED_PARTITION_PERCENTAGE = "minMonitoredPartitionsPercentage";
+  private static final String INCLUDE_ALL_TOPICS = "includeAllTopics";
   private final int _minRequiredNumWindows;
   private final double _minMonitoredPartitionsPercentage;
   private final boolean _includeAllTopics;
@@ -109,9 +112,9 @@ public class ModelCompletenessRequirements {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> requirements = new HashMap<>();
-    requirements.put("requiredNumSnapshots", _minRequiredNumWindows);
-    requirements.put("minMonitoredPartitionsPercentage", _minMonitoredPartitionsPercentage);
-    requirements.put("includeAllTopics", _includeAllTopics);
+    requirements.put(REQUIRED_NUM_SNAPSHOTS, _minRequiredNumWindows);
+    requirements.put(MIN_MONITORED_PARTITION_PERCENTAGE, _minMonitoredPartitionsPercentage);
+    requirements.put(INCLUDE_ALL_TOPICS, _includeAllTopics);
     return requirements;
   }
 

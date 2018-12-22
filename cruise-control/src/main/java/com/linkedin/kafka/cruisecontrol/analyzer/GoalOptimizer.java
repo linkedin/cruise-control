@@ -56,6 +56,12 @@ import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunne
  * A class for optimizing goals in the given order of priority.
  */
 public class GoalOptimizer implements Runnable {
+  private static final String NUM_REPLICA_MOVEMENTS = "numReplicaMovements";
+  private static final String DATA_TO_MOVE_MB = "dataToMoveMB";
+  private static final String NUM_LEADER_MOVEMENTS = "numLeaderMovements";
+  private static final String RECENT_WINDOWS = "recentWindows";
+  private static final String MONITORED_PARTITIONS_PERCENTAGE = "monitoredPartitionsPercentage";
+  private static final String EXCLUDED_TOPICS = "excludedTopics";
   private static final Logger LOG = LoggerFactory.getLogger(GoalOptimizer.class);
   private final List<Goal> _goalsByPriority;
   private final BalancingConstraint _balancingConstraint;
@@ -665,12 +671,12 @@ public class GoalOptimizer implements Runnable {
     public Map<String, Object> getProposalSummaryForJson() {
       List<Number> moveStats = getMovementStats();
       Map<String, Object> ret = new HashMap<>();
-      ret.put("numReplicaMovements", moveStats.get(0).intValue());
-      ret.put("dataToMoveMB", moveStats.get(1).longValue());
-      ret.put("numLeaderMovements", moveStats.get(2).intValue());
-      ret.put("recentWindows", _clusterModelStats.numSnapshotWindows());
-      ret.put("monitoredPartitionsPercentage", _clusterModelStats.monitoredPartitionsPercentage() * 100.0);
-      ret.put("excludedTopics", _excludedTopics);
+      ret.put(NUM_REPLICA_MOVEMENTS, moveStats.get(0).intValue());
+      ret.put(DATA_TO_MOVE_MB, moveStats.get(1).longValue());
+      ret.put(NUM_LEADER_MOVEMENTS, moveStats.get(2).intValue());
+      ret.put(RECENT_WINDOWS, _clusterModelStats.numSnapshotWindows());
+      ret.put(MONITORED_PARTITIONS_PERCENTAGE, _clusterModelStats.monitoredPartitionsPercentage() * 100.0);
+      ret.put(EXCLUDED_TOPICS, _excludedTopics);
       return ret;
     }
   }
