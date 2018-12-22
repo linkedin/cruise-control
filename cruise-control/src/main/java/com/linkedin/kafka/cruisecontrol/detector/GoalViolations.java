@@ -7,11 +7,11 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.StringJoiner;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,73 +23,59 @@ import org.slf4j.LoggerFactory;
 public class GoalViolations extends KafkaAnomaly {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
   private final KafkaCruiseControl _kafkaCruiseControl;
-  private final List<Violation> _goalViolations = new ArrayList<>();
+  // The priority order of goals is maintained here.
+  private final Map<Boolean, List<String>> _violatedGoalsByFixability;
   private final boolean _allowCapacityEstimation;
 
   public GoalViolations(KafkaCruiseControl kafkaCruiseControl, boolean allowCapacityEstimation) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _allowCapacityEstimation = allowCapacityEstimation;
+    _violatedGoalsByFixability = new HashMap<>();
   }
 
   /**
    * Add detected goal violation.
    *
-   * @param priority The priority of the goal.
    * @param goalName The name of the goal.
-   * @param executionProposals Proposals to execute for fixing the detected anomaly. Empty set indicates goal violations
-   *                           due to optimization failures.
+   * @param fixable Whether the violated goal is fixable or not.
    */
-  public void addViolation(int priority, String goalName, Set<ExecutionProposal> executionProposals) {
-    _goalViolations.add(new Violation(priority, goalName, executionProposals));
+  public void addViolation(String goalName, boolean fixable) {
+    _violatedGoalsByFixability.computeIfAbsent(fixable, k -> new ArrayList<>()).add(goalName);
   }
 
   /**
    * Get all the goal violations.
    */
-  public List<Violation> violations() {
-    return _goalViolations;
+  public Map<Boolean, List<String>> violatedGoalsByFixability() {
+    return _violatedGoalsByFixability;
   }
 
   @Override
   public void fix() throws KafkaCruiseControlException {
-    // Fix the violations using a rebalance.
-    try {
-      _kafkaCruiseControl.rebalance(
-          Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation,
-          null, null, false, null, null);
-    } catch (IllegalStateException e) {
-      LOG.warn("Got exception when trying to fix the cluster. " + e.getMessage());
-    }
-  }
-
-  public static class Violation {
-    private final int _priority;
-    private final String _goalName;
-    private final Set<ExecutionProposal> _executionProposals;
-
-    public Violation(int priority, String goalName, Set<ExecutionProposal> executionProposals) {
-      _priority = priority;
-      _goalName = goalName;
-      _executionProposals = executionProposals;
-    }
-
-    public int priority() {
-      return _priority;
-    }
-
-    public String goalName() {
-      return _goalName;
-    }
-
-    public Set<ExecutionProposal> executionProposals() {
-      return _executionProposals;
+    if (_violatedGoalsByFixability.get(false) == null) {
+      try {
+        // Fix the fixable goal violations with rebalance operation.
+        _kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation,
+                                      null, null, false, null, null);
+      } catch (IllegalStateException e) {
+        LOG.warn("Got exception when trying to fix the cluster for violated goals {}: {}", _violatedGoalsByFixability.get(true), e.getMessage());
+      }
+    } else {
+      LOG.info("Skip fixing goal violations due to unfixable goal violations {} detected.", _violatedGoalsByFixability.get(false));
     }
   }
 
   @Override
   public String toString() {
+    StringBuilder sb = new StringBuilder();
+    sb.append("{unfixable goal violations: {");
     StringJoiner joiner = new StringJoiner(",");
-    _goalViolations.forEach(v -> joiner.add(v.goalName()));
-    return "{" + joiner.toString() + "}";
+    _violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()).forEach(joiner::add);
+    sb.append(joiner.toString());
+    sb.append("}, fixable goal violations: {");
+    joiner = new StringJoiner(",");
+    _violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()).forEach(joiner::add);
+    sb.append("}}");
+    return sb.toString();
   }
 }
