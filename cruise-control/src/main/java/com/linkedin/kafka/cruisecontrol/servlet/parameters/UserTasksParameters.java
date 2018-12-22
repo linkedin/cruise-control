@@ -34,10 +34,10 @@ public class UserTasksParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _userTaskIds = ParameterUtils.userTaskIds(_request);
-    _clientIds = ParameterUtils.userTaskClientIds(_request);
-    _endPoints = ParameterUtils.userTaskEndPoints(_request);
-    _taskStates = ParameterUtils.userTaskState(_request);
+    _userTaskIds = ParameterUtils.taskIds(_request);
+    _clientIds = ParameterUtils.clientIds(_request);
+    _endPoints = ParameterUtils.endPoints(_request);
+    _taskStates = ParameterUtils.types(_request);
     _entries = ParameterUtils.entries(_request);
   }
 
@@ -57,7 +57,7 @@ public class UserTasksParameters extends AbstractParameters {
     return _taskStates;
   }
 
-  public int listLength() {
+  public int entries() {
     return _entries;
   }
 }

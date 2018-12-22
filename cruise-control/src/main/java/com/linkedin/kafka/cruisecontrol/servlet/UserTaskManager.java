@@ -52,8 +52,8 @@ public class UserTaskManager implements Closeable {
 
   private static final Logger LOG = LoggerFactory.getLogger(UserTaskManager.class);
   private final Map<SessionKey, UUID> _sessionToUserTaskIdMap;
-  private final Map<UUID, UserTaskInfo> _activeUserTaskIdToFuturesMap;
-  private final Map<UUID, UserTaskInfo> _completedUserTaskIdToFuturesMap;
+//  private final Map<UUID, UserTaskInfo> _activeUserTaskIdToFuturesMap;
+//  private final Map<UUID, UserTaskInfo> _completedUserTaskIdToFuturesMap;
   private final Map<TaskState, Map<UUID, UserTaskInfo>> _allUserTaskIdToFutureMap;
   private final long _sessionExpiryMs;
   private final long _maxActiveUserTasks;
@@ -71,16 +71,16 @@ public class UserTaskManager implements Closeable {
                          MetricRegistry dropwizardMetricRegistry,
                          Map<EndPoint, Timer> successfulRequestExecutionTimer) {
     _sessionToUserTaskIdMap = new HashMap<>();
-    _activeUserTaskIdToFuturesMap = new LinkedHashMap<>();
-    _completedUserTaskIdToFuturesMap = new LinkedHashMap<UUID, UserTaskInfo>() {
+    Map<UUID, UserTaskInfo> activeUserTaskIdToFuturesMap = new LinkedHashMap<>();
+    Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap = new LinkedHashMap<UUID, UserTaskInfo>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<UUID, UserTaskInfo> eldest) {
         return this.size() > maxCachedCompletedUserTasks;
       }
     };
     _allUserTaskIdToFutureMap = new HashMap<>(2);
-    _allUserTaskIdToFutureMap.put(TaskState.ACTIVE, _activeUserTaskIdToFuturesMap);
-    _allUserTaskIdToFutureMap.put(TaskState.COMPLETED, _completedUserTaskIdToFuturesMap);
+    _allUserTaskIdToFutureMap.put(TaskState.ACTIVE, activeUserTaskIdToFuturesMap);
+    _allUserTaskIdToFutureMap.put(TaskState.COMPLETED, completedUserTaskIdToFuturesMap);
 
     _sessionExpiryMs = sessionExpiryMs;
     _maxActiveUserTasks = maxActiveUserTasks;
@@ -94,7 +94,7 @@ public class UserTaskManager implements Closeable {
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-sessions"),
                                       (Gauge<Integer>) _sessionToUserTaskIdMap::size);
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-user-tasks"),
-                                      (Gauge<Integer>) _activeUserTaskIdToFuturesMap::size);
+                                      (Gauge<Integer>) _allUserTaskIdToFutureMap.get(TaskState.ACTIVE)::size);
     _successfulRequestExecutionTimer = successfulRequestExecutionTimer;
   }
 
@@ -106,16 +106,16 @@ public class UserTaskManager implements Closeable {
                   Time time,
                   UUIDGenerator uuidGenerator) {
     _sessionToUserTaskIdMap = new HashMap<>();
-    _activeUserTaskIdToFuturesMap = new LinkedHashMap<>();
-    _completedUserTaskIdToFuturesMap = new LinkedHashMap<UUID, UserTaskInfo>() {
+    Map<UUID, UserTaskInfo> activeUserTaskIdToFuturesMap = new LinkedHashMap<>();
+    Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap = new LinkedHashMap<UUID, UserTaskInfo>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<UUID, UserTaskInfo> eldest) {
         return this.size() > maxCachedCompletedUserTasks;
       }
     };
     _allUserTaskIdToFutureMap = new HashMap<>(2);
-    _allUserTaskIdToFutureMap.put(TaskState.ACTIVE, _activeUserTaskIdToFuturesMap);
-    _allUserTaskIdToFutureMap.put(TaskState.COMPLETED, _completedUserTaskIdToFuturesMap);
+    _allUserTaskIdToFutureMap.put(TaskState.ACTIVE, activeUserTaskIdToFuturesMap);
+    _allUserTaskIdToFutureMap.put(TaskState.COMPLETED, completedUserTaskIdToFuturesMap);
 
     _sessionExpiryMs = sessionExpiryMs;
     _maxActiveUserTasks = maxActiveUserTasks;
@@ -260,7 +260,7 @@ public class UserTaskManager implements Closeable {
   }
 
   private synchronized boolean isActiveUserTasksDone(UUID userTaskId) {
-    UserTaskInfo userTaskInfo = _activeUserTaskIdToFuturesMap.get(userTaskId);
+    UserTaskInfo userTaskInfo = _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).get(userTaskId);
     if (userTaskInfo == null || userTaskInfo.futures().isEmpty()) {
       return true;
     }
@@ -269,14 +269,14 @@ public class UserTaskManager implements Closeable {
     return futures.get(futures.size() - 1).isDone();
   }
 
-  private synchronized void checkActiveUserTasks() {
-    Iterator<Map.Entry<UUID, UserTaskInfo>> iter = _activeUserTaskIdToFuturesMap.entrySet().iterator();
+   synchronized void checkActiveUserTasks() {
+    Iterator<Map.Entry<UUID, UserTaskInfo>> iter = _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).entrySet().iterator();
     while (iter.hasNext()) {
       Map.Entry<UUID, UserTaskInfo> entry = iter.next();
       if (isActiveUserTasksDone(entry.getKey())) {
         LOG.info("UserTask {} is complete and removed from active tasks list", entry.getKey());
         _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
-        _completedUserTaskIdToFuturesMap.put(entry.getKey(), entry.getValue().setNextState(TaskState.COMPLETED));
+        _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED));
         iter.remove();
       }
     }
@@ -284,7 +284,7 @@ public class UserTaskManager implements Closeable {
 
   private synchronized void removeOldUserTasks() {
     LOG.debug("Remove old user tasks");
-    _completedUserTaskIdToFuturesMap.entrySet().removeIf(entry -> (entry.getValue().startMs()
+    _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).entrySet().removeIf(entry -> (entry.getValue().startMs()
                                                                    + _completedUserTaskRetentionTimeMs < _time.milliseconds()));
   }
 
@@ -294,16 +294,16 @@ public class UserTaskManager implements Closeable {
     }
 
     String requestUrl = httpServletRequestToString(httpServletRequest);
-    if (_completedUserTaskIdToFuturesMap.containsKey(userTaskId)) {
-      UserTaskInfo userTaskInfo = _completedUserTaskIdToFuturesMap.get(userTaskId);
+    if (_allUserTaskIdToFutureMap.get(TaskState.COMPLETED).containsKey(userTaskId)) {
+      UserTaskInfo userTaskInfo = _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).get(userTaskId);
       if (userTaskInfo.requestUrl().equals(requestUrl)
           && hasTheSameHttpParameter(userTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
         return userTaskInfo.futures();
       }
     }
 
-    if (_activeUserTaskIdToFuturesMap.containsKey(userTaskId)) {
-      UserTaskInfo userTaskInfo = _activeUserTaskIdToFuturesMap.get(userTaskId);
+    if (_allUserTaskIdToFutureMap.get(TaskState.ACTIVE).containsKey(userTaskId)) {
+      UserTaskInfo userTaskInfo = _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).get(userTaskId);
       if (userTaskInfo.requestUrl().equals(requestUrl)
           && hasTheSameHttpParameter(userTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
         return userTaskInfo.futures();
@@ -316,55 +316,40 @@ public class UserTaskManager implements Closeable {
   private synchronized List<OperationFuture> insertFuturesByUserTaskId(UUID userTaskId,
                                                                        Function<String, OperationFuture> operation,
                                                                        HttpServletRequest httpServletRequest) {
-    if (_completedUserTaskIdToFuturesMap.containsKey(userTaskId)) {
+    if (_allUserTaskIdToFutureMap.get(TaskState.COMPLETED).containsKey(userTaskId)) {
       // Before add new operation to task, first recycle the task from completed task list.
-      _activeUserTaskIdToFuturesMap.put(userTaskId, _completedUserTaskIdToFuturesMap.remove(userTaskId).setNextState(TaskState.ACTIVE));
+      _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).put(userTaskId, _allUserTaskIdToFutureMap.get(TaskState.COMPLETED)
+          .remove(userTaskId).setState(TaskState.ACTIVE));
       LOG.info("UserTask {} is recycled from complete task list and added back to active tasks list", userTaskId);
     }
-    if (_activeUserTaskIdToFuturesMap.containsKey(userTaskId)) {
-      _activeUserTaskIdToFuturesMap.get(userTaskId).futures().add(operation.apply(userTaskId.toString()));
+    if (_allUserTaskIdToFutureMap.get(TaskState.ACTIVE).containsKey(userTaskId)) {
+      _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).get(userTaskId).futures().add(operation.apply(userTaskId.toString()));
     } else {
-      if (_activeUserTaskIdToFuturesMap.size() >= _maxActiveUserTasks) {
-        throw new RuntimeException("There are already " + _activeUserTaskIdToFuturesMap.size() + " active user tasks, which has reached the servlet capacity.");
+      if (_allUserTaskIdToFutureMap.get(TaskState.ACTIVE).size() >= _maxActiveUserTasks) {
+        throw new RuntimeException("There are already " + _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).size() +
+            " active user tasks, which has reached the servlet capacity.");
       }
       UserTaskInfo userTaskInfo =
           new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString()))),
                            _time.milliseconds(), userTaskId, TaskState.ACTIVE);
-      _activeUserTaskIdToFuturesMap.put(userTaskId, userTaskInfo);
+      _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).put(userTaskId, userTaskInfo);
     }
-    return _activeUserTaskIdToFuturesMap.get(userTaskId).futures();
+    return _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).get(userTaskId).futures();
   }
 
   public synchronized List<UserTaskInfo> getActiveUserTasks() {
-    return new ArrayList<>(_activeUserTaskIdToFuturesMap.values());
+    return new ArrayList<>(_allUserTaskIdToFutureMap.get(TaskState.ACTIVE).values());
   }
 
   public synchronized List<UserTaskInfo> getCompletedUserTasks() {
-    return new ArrayList<>(_completedUserTaskIdToFuturesMap.values());
-  }
-
-  public synchronized Map<TaskState, List<UserTaskInfo>> getAllUserTasks() {
-    Map<TaskState, List<UserTaskInfo>> result = new HashMap<>(_allUserTaskIdToFutureMap.size());
-    for (Map.Entry<TaskState, Map<UUID, UserTaskInfo>> entry: _allUserTaskIdToFutureMap.entrySet()) {
-      result.put(entry.getKey(), new ArrayList<>(entry.getValue().values()));
-    }
-    return result;
-  }
-
-  // Package private method used for updating UserTaskInfo's state in unit test
-  void updateTaskState() {
-    try {
-      checkActiveUserTasks();
-    } catch (Throwable t) {
-      LOG.warn("Received exception when trying to expire sessions.", t);
-    }
+    return new ArrayList<>(_allUserTaskIdToFutureMap.get(TaskState.COMPLETED).values());
   }
 
   @Override
   public String toString() {
     return "UserTaskManager{_sessionToUserTaskIdMap=" + _sessionToUserTaskIdMap
-           + ", _activeUserTaskIdToFuturesMap=" + _activeUserTaskIdToFuturesMap + ", _completedUserTaskIdToFuturesMap="
-           + _completedUserTaskIdToFuturesMap + '}';
+           + ", _activeUserTaskIdToFuturesMap=" + _allUserTaskIdToFutureMap.get(TaskState.ACTIVE) + ", _completedUserTaskIdToFuturesMap="
+           + _allUserTaskIdToFutureMap.get(TaskState.COMPLETED) + '}';
   }
 
   @Override
@@ -458,7 +443,8 @@ public class UserTaskManager implements Closeable {
     public UserTaskInfo(HttpServletRequest httpServletRequest,
                         List<OperationFuture> futures,
                         long startMs,
-                        UUID userTaskId, TaskState state) {
+                        UUID userTaskId,
+                        TaskState state) {
       this(futures, httpServletRequestToString(httpServletRequest),
            KafkaCruiseControlServletUtils.getClientIpAddress(httpServletRequest), startMs, userTaskId,
            httpServletRequest.getParameterMap(), ParameterUtils.endPoint(httpServletRequest), state);
@@ -470,7 +456,8 @@ public class UserTaskManager implements Closeable {
                         long startMs,
                         UUID userTaskId,
                         Map<String, String[]> queryParams,
-                        EndPoint endPoint, TaskState state) {
+                        EndPoint endPoint,
+                        TaskState state) {
       _futures = futures;
       _requestUrl = requestUrl;
       _clientIdentity = clientIdentity;
@@ -530,7 +517,7 @@ public class UserTaskManager implements Closeable {
       return  sb.toString();
     }
 
-    public UserTaskInfo setNextState(TaskState nextState) {
+    public UserTaskInfo setState(TaskState nextState) {
       _state = nextState;
       return this;
     }
@@ -556,18 +543,12 @@ public class UserTaskManager implements Closeable {
    * Possible state of tasks. We currently accept Active and Completed, in the future we could also add Cancelled.
    */
   public enum TaskState {
-    ACTIVE(0, "Active"),
-    COMPLETED(1, "Completed");
+    ACTIVE("Active"),
+    COMPLETED("Completed");
 
-    private int _id;
     private String _type;
-    TaskState(int id, String type) {
-      _id = id;
+    TaskState(String type) {
       _type = type;
-    }
-
-    public int id() {
-      return _id;
     }
 
     public String type() {

@@ -77,7 +77,7 @@ public class ParameterUtils {
   private static final String USER_TASK_IDS_PARAM = "user_task_ids";
   private static final String CLIENT_IDS_PARAM = "client_ids";
   private static final String ENDPOINTS_PARAM = "endpoints";
-  private static final String TYPE_PARAM = "types";
+  private static final String TYPES_PARAM = "types";
   private static final String SKIP_URP_DEMOTION_PARAM = "skip_urp_demotion";
   private static final String EXCLUDE_FOLLOWER_DEMOTION_PARAM = "exclude_follower_demotion";
   private static final String DISABLE_SELF_HEALING_FOR_PARAM = "disable_self_healing_for";
@@ -90,7 +90,7 @@ public class ParameterUtils {
   public static final String[] PARAMS_TO_GET = {
       CLIENT_IDS_PARAM,
       ENDPOINTS_PARAM,
-      TYPE_PARAM,
+      TYPES_PARAM,
       USER_TASK_IDS_PARAM,
       ENTRIES_PARAM
   };
@@ -567,20 +567,20 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  public static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<UUID> taskIds(HttpServletRequest request) throws UnsupportedEncodingException {
     String userTaskIdsString = urlDecode(request.getParameter(USER_TASK_IDS_PARAM));
     return userTaskIdsString == null ? Collections.emptySet()
-                                     : Arrays.stream(userTaskIdsString.split(",")).map(UUID::fromString)
-                                             .collect(Collectors.toSet());
+                                                : Arrays.stream(userTaskIdsString.split(",")).map(UUID::fromString)
+                                                    .collect(Collectors.toSet());
   }
 
   /**
    * Default: An empty set.
    */
-  public static Set<String> userTaskClientIds(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<String> clientIds(HttpServletRequest request) throws UnsupportedEncodingException {
     String clientIdsString = urlDecode(request.getParameter(CLIENT_IDS_PARAM));
     Set<String> parsedClientIds = clientIdsString == null ? new HashSet<>(0)
-        : new HashSet<>(Arrays.asList(clientIdsString.split(",")));
+                                                : new HashSet<>(Arrays.asList(clientIdsString.split(",")));
     parsedClientIds.removeIf(String::isEmpty);
     // May need to validate clientIds
     return Collections.unmodifiableSet(parsedClientIds);
@@ -589,10 +589,10 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  public static Set<EndPoint> userTaskEndPoints(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<EndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
     String endPointsString = urlDecode(request.getParameter(ENDPOINTS_PARAM));
     Set<String> parsedEndPoints = endPointsString == null ? new HashSet<>(0)
-        : new HashSet<>(Arrays.asList(endPointsString.split(",")));
+                                                : new HashSet<>(Arrays.asList(endPointsString.split(",")));
     parsedEndPoints.removeIf(String::isEmpty);
 
     Set<EndPoint> endPoints = new HashSet<>();
@@ -607,10 +607,10 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  public static Set<UserTaskManager.TaskState> userTaskState(HttpServletRequest request) throws UnsupportedEncodingException {
-    String taskStatesString = urlDecode(request.getParameter(TYPE_PARAM));
+  public static Set<UserTaskManager.TaskState> types(HttpServletRequest request) throws UnsupportedEncodingException {
+    String taskStatesString = urlDecode(request.getParameter(TYPES_PARAM));
     Set<String> parsedTaskStates = taskStatesString == null ? new HashSet<>(0)
-        : new HashSet<>(Arrays.asList(taskStatesString.split(",")));
+                                                : new HashSet<>(Arrays.asList(taskStatesString.split(",")));
     parsedTaskStates.removeIf(String::isEmpty);
 
     Set<UserTaskManager.TaskState> taskStates = new HashSet<>();
