@@ -1053,18 +1053,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 new StringJoiner(",")
                     .add(RackAwareGoal.class.getName())
                     .add(ReplicaCapacityGoal.class.getName())
-                    .add(DiskCapacityGoal.class.getName())
-                    .add(NetworkInboundCapacityGoal.class.getName())
-                    .add(NetworkOutboundCapacityGoal.class.getName())
-                    .add(CpuCapacityGoal.class.getName())
-                    .add(ReplicaDistributionGoal.class.getName())
-                    .add(PotentialNwOutGoal.class.getName())
-                    .add(DiskUsageDistributionGoal.class.getName())
-                    .add(NetworkInboundUsageDistributionGoal.class.getName())
-                    .add(NetworkOutboundUsageDistributionGoal.class.getName())
-                    .add(CpuUsageDistributionGoal.class.getName())
-                    .add(LeaderBytesInDistributionGoal.class.getName())
-                    .add(TopicReplicaDistributionGoal.class.getName()).toString(),
+                    .add(DiskCapacityGoal.class.getName()).toString(),
                 ConfigDef.Importance.MEDIUM,
                 ANOMALY_DETECTION_GOALS_DOC)
         .define(FAILED_BROKERS_ZK_PATH_CONFIG,
@@ -1133,6 +1122,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * (1) {@link KafkaCruiseControlConfig#GOALS_CONFIG} is non-empty.
    * (2) Case insensitive goal names.
    * (3) {@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} is non-empty.
+   * (4) {@link KafkaCruiseControlConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of {@link KafkaCruiseControlConfig#GOALS_CONFIG}.
    */
   private void sanityCheckGoalNames() {
     List<String> goalNames = getList(KafkaCruiseControlConfig.GOALS_CONFIG);
@@ -1148,8 +1138,15 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       }
     }
     // Ensure that default goals is non-empty.
-    if (getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG).isEmpty()) {
+    List<String> defaultGoalNames = getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG);
+    if (defaultGoalNames.isEmpty()) {
       throw new ConfigException("Attempt to configure default goals configuration with an empty list of goals.");
+    }
+
+    // Ensure that goals used for anomaly detection are supported goals.
+    List<String> anomalyDetectionGoalNames = getList(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG);
+    if (anomalyDetectionGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
+      throw new ConfigException("Attempt to configure anomaly detection goals with unsupported goals.");
     }
   }
 

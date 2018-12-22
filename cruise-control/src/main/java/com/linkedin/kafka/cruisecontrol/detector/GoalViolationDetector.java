@@ -18,7 +18,6 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -87,22 +86,22 @@ public class GoalViolationDetector implements Runnable {
 
   @Override
   public void run() {
-    long now = _time.milliseconds();
     if (_loadMonitor.clusterModelGeneration().equals(_lastCheckedModelGeneration)) {
       LOG.debug("Skipping goal violation detection because the model generation hasn't changed. Current model generation {}",
                 _loadMonitor.clusterModelGeneration());
       return;
     }
 
+    LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
+    if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
+      LOG.info("Skipping goal violation detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
+      return;
+    }
+
     AutoCloseable clusterModelSemaphore = null;
     try {
-      LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
-      if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
-        LOG.info("Skipping goal violation detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
-        return;
-      }
-
       GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation);
+      long now = _time.milliseconds();
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
@@ -122,17 +121,14 @@ public class GoalViolationDetector implements Runnable {
                                                      new OperationProgress());
             KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation,
                                                              clusterModel.capacityEstimationInfoByBrokerId());
+            _lastCheckedModelGeneration = clusterModel.generation();
           }
-          int priority = entry.getKey();
-          newModelNeeded = optimizeForGoal(clusterModel, priority, goal, goalViolations);
+          newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations);
         } else {
           LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
         }
       }
-      if (clusterModel != null) {
-        _lastCheckedModelGeneration = clusterModel.generation();
-      }
-      if (!goalViolations.violations().isEmpty()) {
+      if (!goalViolations.violatedGoalsByFixability().isEmpty()) {
         _anomalies.add(goalViolations);
       }
     } catch (NotEnoughValidWindowsException nevwe) {
@@ -161,7 +157,6 @@ public class GoalViolationDetector implements Runnable {
   }
 
   private boolean optimizeForGoal(ClusterModel clusterModel,
-                                  int priority,
                                   Goal goal,
                                   GoalViolations goalViolations)
       throws KafkaCruiseControlException {
@@ -178,14 +173,14 @@ public class GoalViolationDetector implements Runnable {
       // lack of physical hardware (e.g. insufficient number of racks to satisfy rack awareness, insufficient number
       // of brokers to satisfy Replica Capacity Goal, or insufficient number of resources to satisfy resource
       // capacity goals), or (2) a failure to move offline replicas away from dead brokers/disks.
-      goalViolations.addViolation(priority, goal.name(), Collections.emptySet());
+      goalViolations.addViolation(goal.name(), false);
       return true;
     }
     Set<ExecutionProposal> proposals = AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
     LOG.trace("{} generated {} proposals", goal.name(), proposals.size());
     if (!proposals.isEmpty()) {
       // A goal violation that can be optimized by applying the generated proposals.
-      goalViolations.addViolation(priority, goal.name(), proposals);
+      goalViolations.addViolation(goal.name(), true);
       return true;
     } else {
       // The goal is already satisfied.
