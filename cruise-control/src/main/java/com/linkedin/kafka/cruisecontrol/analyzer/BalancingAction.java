@@ -14,6 +14,11 @@ import java.util.Map;
  * Represents the load balancing operation over a replica for Kafka Load GoalOptimizer.
  */
 public class BalancingAction {
+  private static final String TOPIC_PARTITION = "topicPartition";
+  private static final String SOURCE_BROKER_ID = "sourceBrokerId";
+  private static final String DESTINATION_BROKER_ID = "destinationBrokerId";
+  private static final String DESTINATION_TOPIC_PARTITION = "destinationTopicPartition";
+  private static final String ACTION_TYPE = "actionType";
   private final TopicPartition _tp;
   private final Integer _sourceBrokerId;
   private final Integer _destinationBrokerId;
@@ -151,11 +156,11 @@ public class BalancingAction {
    */
   public Map<String, Object> getJsonStructure() {
     Map<String, Object> proposalMap = new HashMap<>();
-    proposalMap.put("topicPartition", _tp);
-    proposalMap.put("sourceBrokerId", _sourceBrokerId);
-    proposalMap.put("destinationBrokerId", _destinationBrokerId);
-    proposalMap.put("destinationTopicPartition", _destinationTp);
-    proposalMap.put("actionType", _actionType);
+    proposalMap.put(TOPIC_PARTITION, _tp);
+    proposalMap.put(SOURCE_BROKER_ID, _sourceBrokerId);
+    proposalMap.put(DESTINATION_BROKER_ID, _destinationBrokerId);
+    proposalMap.put(DESTINATION_TOPIC_PARTITION, _destinationTp);
+    proposalMap.put(ACTION_TYPE, _actionType);
     return proposalMap;
   }
 
