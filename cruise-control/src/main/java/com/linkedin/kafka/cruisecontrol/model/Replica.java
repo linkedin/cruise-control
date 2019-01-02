@@ -25,6 +25,11 @@ import org.apache.kafka.common.TopicPartition;
  * object is created as part of a broker structure.
  */
 public class Replica implements Serializable, Comparable<Replica> {
+  private static final String IS_LEADER = "isLeader";
+  private static final String BROKER_ID = "brokerid";
+  private static final String TOPIC = "topic";
+  private static final String PARTITION = "partition";
+  private static final String LOAD = "load";
   // Two static final variables for comparison purpose.
   public static final Replica MIN_REPLICA = new Replica(null, null, false);
   public static final Replica MAX_REPLICA = new Replica(null, null, false);
@@ -272,31 +277,13 @@ public class Replica implements Serializable, Comparable<Replica> {
    * Return an object that can be further used
    * to encode into JSON
    */
-  public Map<String, Object> getJsonStructure() {
-    Map<String, Object> replicaMap = new HashMap<>();
-    replicaMap.put("isLeader", _isLeader);
-    replicaMap.put("broker", _broker.id());
-    replicaMap.put("topic", _tp.topic());
-    replicaMap.put("partition", _tp.partition());
-    replicaMap.put("isOriginalOffline", isOriginalOffline());
-    replicaMap.put("isCurrentOffline", isCurrentOffline());
-    replicaMap.put("originalBroker", _originalBroker == null ? -1 : _originalBroker.id());
-    return replicaMap;
-  }
-
-  /*
-   * Return an object that can be further used
-   * to encode into JSON (version 2 used in load)
-   */
   public Map<String, Object> getJsonStructureForLoad() {
     Map<String, Object> replicaMap = new HashMap<>();
-    replicaMap.put("isLeader", _isLeader);
-    replicaMap.put("brokerid", _broker.id());
-    replicaMap.put("topic", _tp.topic());
-    replicaMap.put("partition", _tp.partition());
-    replicaMap.put("isOriginalOffline", isOriginalOffline());
-    replicaMap.put("isCurrentOffline", isCurrentOffline());
-    replicaMap.put("load", _load.getJsonStructure());
+    replicaMap.put(IS_LEADER, _isLeader);
+    replicaMap.put(BROKER_ID, _broker.id());
+    replicaMap.put(TOPIC, _tp.topic());
+    replicaMap.put(PARTITION, _tp.partition());
+    replicaMap.put(LOAD, _load.getJsonStructure());
     return replicaMap;
   }
 

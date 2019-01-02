@@ -19,6 +19,10 @@ import javax.servlet.http.HttpSession;
  * report the progress to the users.
  */
 public class OperationProgress {
+  private static final String STEP = "step";
+  private static final String DESCRIPTION = "description";
+  private static final String TIME_IN_MS = "time-in-ms";
+  private static final String COMPLETION_PERCENTAGE = "completionPercentage";
   private boolean _mutable = true;
   private List<OperationStep> _steps = new ArrayList<>();
   private List<Long> _startTimes = new ArrayList<>();
@@ -92,10 +96,10 @@ public class OperationProgress {
       OperationStep step = _steps.get(i);
       long time = (i == _steps.size() - 1 ? System.currentTimeMillis() : _startTimes.get(i + 1)) - _startTimes.get(i);
       Map<String, Object> stepProgressMap = new HashMap<>();
-      stepProgressMap.put("step", step.name());
-      stepProgressMap.put("description", step.description());
-      stepProgressMap.put("time-in-ms", time);
-      stepProgressMap.put("completionPercentage", step.completionPercentage() * 100.0);
+      stepProgressMap.put(STEP, step.name());
+      stepProgressMap.put(DESCRIPTION, step.description());
+      stepProgressMap.put(TIME_IN_MS, time);
+      stepProgressMap.put(COMPLETION_PERCENTAGE, step.completionPercentage() * 100.0);
       progressArray[i] = stepProgressMap;
     }
     return progressArray;

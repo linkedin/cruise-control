@@ -30,6 +30,7 @@ import static java.lang.Math.max;
  * windows.
  */
 public class Load implements Serializable {
+  private static final String METRIC_VALUES = "MetricValues";
   // load by their time.
   private List<Long> _windows;
   private final AggregatedMetricValues _metricValues;
@@ -296,7 +297,7 @@ public class Load implements Serializable {
         metricValueList.add(metricValuesMap);
       }
     }
-    loadMap.put("MetricValues", metricValueList);
+    loadMap.put(METRIC_VALUES, metricValueList);
     return loadMap;
   }
 

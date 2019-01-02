@@ -43,6 +43,7 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static kafka.log.LogConfig.CleanupPolicyProp;
 
 
 /**
@@ -469,7 +470,7 @@ public class LoadMonitorTest {
     props.put(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG,
               Integer.toString(MIN_SAMPLES_PER_WINDOW));
     props.put(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
-    props.put("cleanup.policy", DEFAULT_CLEANUP_POLICY);
+    props.put(CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
     props.put(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
     LoadMonitor loadMonitor = new LoadMonitor(config, mockMetadataClient, _time, new MetricRegistry(), METRIC_DEF);
