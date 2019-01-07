@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
@@ -70,10 +71,24 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     _selfHealingEnabled = new HashMap<>(AnomalyType.cachedValues().size());
   }
 
+  private static boolean hasUnfixableGoals(GoalViolations goalViolations) {
+    List<String> unfixableGoals = goalViolations.violatedGoalsByFixability().get(false);
+    return unfixableGoals != null && !unfixableGoals.isEmpty();
+  }
+
   @Override
   public AnomalyNotificationResult onGoalViolation(GoalViolations goalViolations) {
     alert(goalViolations, _selfHealingEnabled.get(AnomalyType.GOAL_VIOLATION), System.currentTimeMillis(), AnomalyType.GOAL_VIOLATION);
-    return _selfHealingEnabled.get(AnomalyType.GOAL_VIOLATION) ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
+
+    if (_selfHealingEnabled.get(AnomalyType.GOAL_VIOLATION)) {
+      if (!hasUnfixableGoals(goalViolations)) {
+        return AnomalyNotificationResult.fix();
+      }
+      // If there are unfixable goals, do not self heal even when it is enabled and selfHealing goals include the unfixable goal.
+      LOG.warn("Skip self healing due to unfixable goals: {}", goalViolations.violatedGoalsByFixability().get(false));
+    }
+
+    return AnomalyNotificationResult.ignore();
   }
 
   @Override
