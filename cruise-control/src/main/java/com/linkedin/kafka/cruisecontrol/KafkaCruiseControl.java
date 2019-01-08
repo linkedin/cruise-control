@@ -108,7 +108,8 @@ public class KafkaCruiseControl {
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry);
     long demotionHistoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
-    _executor = new Executor(config, _time, dropwizardMetricRegistry, demotionHistoryRetentionTimeMs);
+    long removalHistoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
+    _executor = new Executor(config, _time, dropwizardMetricRegistry, demotionHistoryRetentionTimeMs, removalHistoryRetentionTimeMs);
     _anomalyDetector = new AnomalyDetector(config, _loadMonitor, this, _time, dropwizardMetricRegistry);
   }
 
@@ -199,12 +200,8 @@ public class KafkaCruiseControl {
       GoalOptimizer.OptimizerResult result =
           getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
       if (!dryRun) {
-        executeProposals(result.goalProposals(),
-                         throttleDecommissionedBroker ? Collections.emptyList() : brokerIds,
-                         isKafkaAssignerMode(goals),
-                         concurrentPartitionMovements,
-                         concurrentLeaderMovements,
-                         uuid);
+        executeRemoval(result.goalProposals(), throttleDecommissionedBroker, brokerIds, isKafkaAssignerMode(goals),
+                       concurrentPartitionMovements, concurrentLeaderMovements, uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -637,7 +634,7 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Execute the given balancing proposals for non-demote operations.
+   * Execute the given balancing proposals for non-(demote/remove) operations.
    * @param proposals the given balancing proposals
    * @param unthrottledBrokers Brokers for which the rate of replica movements from/to will not be throttled.
    * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
@@ -655,8 +652,33 @@ public class KafkaCruiseControl {
                                 String uuid) {
     // Set the execution mode, add execution proposals, and start execution.
     _executor.setExecutionMode(isKafkaAssignerMode);
-    _executor.executeProposals(proposals, unthrottledBrokers, _loadMonitor, concurrentPartitionMovements,
+    _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentPartitionMovements,
                                concurrentLeaderMovements, uuid);
+  }
+
+  /**
+   * Execute the given balancing proposals for remove operations.
+   * @param proposals the given balancing proposals
+   * @param throttleDecommissionedBroker Whether throttle the brokers that are being decommissioned.
+   * @param removedBrokers Brokers to be removed, null if no brokers has been removed.
+   * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
+   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
+   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   *                                  (if null, use num.concurrent.leader.movements).
+   * @param uuid UUID of the execution.
+   */
+  private void executeRemoval(Collection<ExecutionProposal> proposals,
+                              boolean throttleDecommissionedBroker,
+                              Collection<Integer> removedBrokers,
+                              boolean isKafkaAssignerMode,
+                              Integer concurrentPartitionMovements,
+                              Integer concurrentLeaderMovements,
+                              String uuid) {
+    // Set the execution mode, add execution proposals, and start execution.
+    _executor.setExecutionMode(isKafkaAssignerMode);
+    _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptyList() : removedBrokers,
+                               removedBrokers, _loadMonitor, concurrentPartitionMovements, concurrentLeaderMovements, uuid);
   }
 
   /**

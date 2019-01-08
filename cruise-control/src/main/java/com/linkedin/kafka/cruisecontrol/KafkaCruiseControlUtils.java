@@ -22,6 +22,9 @@ import org.apache.kafka.common.config.ConfigException;
  * Util class for convenience.
  */
 public class KafkaCruiseControlUtils {
+  public static final int ZK_SESSION_TIMEOUT = 30000;
+  public static final int ZK_CONNECTION_TIMEOUT = 30000;
+  public static final boolean IS_ZK_SECURITY_ENABLED = false;
   public static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String TIME_ZONE = "UTC";
 
@@ -56,6 +59,10 @@ public class KafkaCruiseControlUtils {
       throw new ConfigException(String.format("Configuration %s must be provided.", configName));
     }
     return value;
+  }
+
+  public static ZkUtils createZkUtils(String zkConnect) {
+    return ZkUtils.apply(zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
   }
 
   public static void closeZkUtilsWithTimeout(ZkUtils zkUtils, long timeoutMs) {

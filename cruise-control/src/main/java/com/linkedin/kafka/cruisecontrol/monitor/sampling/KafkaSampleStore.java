@@ -87,6 +87,7 @@ public class KafkaSampleStore implements SampleStore {
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
   private static final long SAMPLE_POLL_TIMEOUT = 1000L;
+  private static final long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000L;
 
   protected static final int DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final int DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;
@@ -195,7 +196,8 @@ public class KafkaSampleStore implements SampleStore {
   }
 
   private void ensureTopicsCreated(Map<String, ?> config) {
-    ZkUtils zkUtils = createZkUtils(config);
+    String zkConnect = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect);
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
       long partitionSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
@@ -226,7 +228,7 @@ public class KafkaSampleStore implements SampleStore {
       ensureTopicCreated(zkUtils, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor, _brokerSampleStoreTopicPartitionCount);
     } finally {
-      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, 10000);
+      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
     }
   }
 
@@ -341,11 +343,6 @@ public class KafkaSampleStore implements SampleStore {
         LOG.error("Skip updating topic " +  topic + " configuration due to failure:" + re.getMessage() + ".");
       }
     }
-  }
-
-  private ZkUtils createZkUtils(Map<String, ?> config) {
-    String zkConnect = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    return ZkUtils.apply(zkConnect, 30000, 30000, false);
   }
 
   @Override

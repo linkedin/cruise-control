@@ -5,7 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -42,6 +42,7 @@ import static org.junit.Assert.fail;
 
 
 public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
+  private static final long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000L;
   private static final String TOPIC_0 = "testPartitionMovement0";
   private static final String TOPIC_1 = "testPartitionMovement1";
   private static final String TOPIC_2 = "testPartitionMovement2";
@@ -70,7 +71,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   @Test
   public void testBasicBalanceMovement() throws InterruptedException {
-    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
     int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
@@ -86,12 +87,16 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
                               Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
     Collection<ExecutionProposal> proposals = Arrays.asList(proposal0, proposal1);
-    executeAndVerifyProposals(zkUtils, proposals, proposals);
+    try {
+      executeAndVerifyProposals(zkUtils, proposals, proposals);
+    } finally {
+      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
+    }
   }
 
   @Test
   public void testMoveNonExistingPartition() throws InterruptedException {
-    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
     int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
@@ -116,12 +121,16 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
     Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1, proposal2, proposal3);
     Collection<ExecutionProposal> proposalsToCheck = Arrays.asList(proposal0, proposal1);
-    executeAndVerifyProposals(zkUtils, proposalsToExecute, proposalsToCheck);
+    try {
+      executeAndVerifyProposals(zkUtils, proposalsToExecute, proposalsToCheck);
+    } finally {
+      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
+    }
   }
 
   @Test
   public void testBrokerDiesWhenMovePartitions() throws Exception {
-    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
     int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
@@ -138,12 +147,16 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
                               Arrays.asList(initialLeader1 == 0 ? 1 : 0, initialLeader1));
 
     Collection<ExecutionProposal> proposalsToExecute = Arrays.asList(proposal0, proposal1);
-    executeAndVerifyProposals(zkUtils, proposalsToExecute, Collections.emptyList());
+    try {
+      executeAndVerifyProposals(zkUtils, proposalsToExecute, Collections.emptyList());
 
-    // We are not doing the rollback.
-    assertEquals(Collections.singletonList(initialLeader0 == 0 ? 1 : 0),
-                 ExecutorUtils.newAssignmentForPartition(zkUtils, TP0));
-    assertEquals(initialLeader0, zkUtils.getLeaderForPartition(TOPIC_1, PARTITION).get());
+      // We are not doing the rollback.
+      assertEquals(Collections.singletonList(initialLeader0 == 0 ? 1 : 0),
+                   ExecutorUtils.newAssignmentForPartition(zkUtils, TP0));
+      assertEquals(initialLeader0, zkUtils.getLeaderForPartition(TOPIC_1, PARTITION).get());
+    } finally {
+      KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
+    }
   }
 
   @Test
@@ -172,10 +185,11 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     EasyMock.replay(mockMetadataClient);
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
-    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, 86400000L);
+    Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, 86400000L, 43200000L);
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
+                              null,
                               EasyMock.mock(LoadMonitor.class),
                               null,
                               null,
@@ -224,9 +238,9 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
                                          Collection<ExecutionProposal> proposalsToExecute,
                                          Collection<ExecutionProposal> proposalsToCheck) {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
-    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), 86400000L);
+    Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), 86400000L, 43200000L);
     executor.setExecutionMode(false);
-    executor.executeProposals(proposalsToExecute, Collections.emptySet(), EasyMock.mock(LoadMonitor.class), null, null, null);
+    executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, EasyMock.mock(LoadMonitor.class), null, null, null);
 
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
     for (ExecutionProposal proposal : proposalsToCheck) {
