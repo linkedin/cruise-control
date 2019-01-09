@@ -116,5 +116,12 @@ public class KafkaCruiseControlUtils {
   public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) {
     PartitionInfo partitionInfo = cluster.partition(tp);
     return partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
+}
+
+  public static String getDateFormatted(long startMs) {
+    Date date = new Date(startMs);
+    DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
+    formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
+    return formatter.format(date);
   }
 }

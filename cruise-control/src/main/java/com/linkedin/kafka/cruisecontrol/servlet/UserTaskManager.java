@@ -52,8 +52,6 @@ public class UserTaskManager implements Closeable {
 
   private static final Logger LOG = LoggerFactory.getLogger(UserTaskManager.class);
   private final Map<SessionKey, UUID> _sessionToUserTaskIdMap;
-//  private final Map<UUID, UserTaskInfo> _activeUserTaskIdToFuturesMap;
-//  private final Map<UUID, UserTaskInfo> _completedUserTaskIdToFuturesMap;
   private final Map<TaskState, Map<UUID, UserTaskInfo>> _allUserTaskIdToFutureMap;
   private final long _sessionExpiryMs;
   private final long _maxActiveUserTasks;
@@ -503,6 +501,7 @@ public class UserTaskManager implements Closeable {
     public TaskState state() {
       return _state;
     }
+
     public String requestWithParams() {
       StringBuilder sb = new StringBuilder(_requestUrl);
       String queryParamDelimiter = "?";
@@ -540,7 +539,8 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Possible state of tasks. We currently accept Active and Completed, in the future we could also add Cancelled.
+   * Possible state of tasks. We currently accept {@link TaskState#ACTIVE} and {@link TaskState#COMPLETED}, in the
+   * future we could also add {@link TaskState#CANCELLED}.
    */
   public enum TaskState {
     ACTIVE("Active"),

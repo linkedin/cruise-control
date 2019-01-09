@@ -10,7 +10,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -50,6 +49,14 @@ public class KafkaCruiseControlServletEndpointTest {
   private static HttpServletResponse _mockHttpServletResponse;
   private static UserTaskManager _userTaskManager;
 
+  private static final String[] PARAMS_TO_GET = {
+      ParameterUtils.CLIENT_IDS_PARAM,
+      ParameterUtils.ENDPOINTS_PARAM,
+      ParameterUtils.TYPES_PARAM,
+      ParameterUtils.USER_TASK_IDS_PARAM,
+      ParameterUtils.ENTRIES_PARAM
+  };
+
   static {
     DIFF_PARAM.put("param", new String[]{"true"});
 
@@ -67,8 +74,7 @@ public class KafkaCruiseControlServletEndpointTest {
 
   private static class MockResult implements CruiseControlResponse {
     public void discardIrrelevantResponse(CruiseControlParameters parameters) { }
-    public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException {
-    }
+    public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) { }
   }
 
   private static Object[] inputRequestParams(UUID userTaskId, String clientId, String endPoint, Map<String, String[]> params,
@@ -112,13 +118,13 @@ public class KafkaCruiseControlServletEndpointTest {
 
   // Create 5 User Tasks. Note the 5th and 6th one have same user task id, thus count as 1.
   private void populateUserTaskManager(HttpServletResponse mockHttpServletResponse, UserTaskManager userTaskManager) {
-    Collection<Object[]> allParams = new ArrayList<>();
+    List<Object[]> allParams = new ArrayList<>();
     for (Object[] initInfo : _initializeServletRequestsOutput) {
       allParams.add(inputCreateTaskParams((HttpServletRequest) initInfo[0], 0, 0));
     }
     // for the 6th getOrCreateUserTask() call, we set step to 1 and get the 2nd future
-    ((ArrayList<Object[]>) allParams).get(5)[1] = 1;
-    ((ArrayList<Object[]>) allParams).get(5)[2] = 1;
+    allParams.get(5)[1] = 1;
+    allParams.get(5)[2] = 1;
 
     for (Object[] params : allParams) {
       OperationFuture future = userTaskManager.getOrCreateUserTask((HttpServletRequest) params[0], mockHttpServletResponse, FUTURE_CREATOR,
@@ -128,7 +134,7 @@ public class KafkaCruiseControlServletEndpointTest {
   }
 
   @Test
-  public void testUserTaskParameters() throws Exception, UnsupportedEncodingException {
+  public void testUserTaskParameters() throws UnsupportedEncodingException {
 
     // Set up all mocked requests,  UserTaskManager, and start mocked objects.
     initializeServletRequests(_mockHttpSession, _mockUUIDGenerator);
@@ -249,7 +255,7 @@ public class KafkaCruiseControlServletEndpointTest {
       EasyMock.expect(request.getHeader(headerName)).andReturn(clientId).anyTimes();
     }
 
-    for (String param : ParameterUtils.PARAMS_TO_GET) {
+    for (String param : PARAMS_TO_GET) {
       String result = null;
       // Assume all parameters stored in first array entry
       if (params.get(param) != null) {

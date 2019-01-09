@@ -5,20 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -85,8 +82,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   private void addJSONTask(List<Map<String, Object>> jsonUserTaskList,
                            UserTaskManager.UserTaskInfo userTaskInfo) {
     Map<String, Object> jsonObjectMap = new HashMap<>();
-    String status = "";
-    status = getStatus(userTaskInfo);
+    String status = getStatus(userTaskInfo);
     jsonObjectMap.put(USER_TASK_ID, userTaskInfo.userTaskId().toString());
     jsonObjectMap.put(REQUEST_URL, userTaskInfo.requestWithParams());
     jsonObjectMap.put(CLIENT_ID, userTaskInfo.clientIdentity());
@@ -156,10 +152,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
         clientAddressLabelSize =
             clientAddressLabelSize < userTaskInfo.clientIdentity().length() ? userTaskInfo.clientIdentity().length()
                                                                             : clientAddressLabelSize;
-        Date date = new Date(userTaskInfo.startMs());
-        DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
-        formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
-        String dateFormatted = formatter.format(date);
+        String dateFormatted = KafkaCruiseControlUtils.getDateFormatted(userTaskInfo.startMs());
         startMsLabelSize = startMsLabelSize < dateFormatted.length() ? dateFormatted.length() : startMsLabelSize;
         requestURLLabelSize =
             requestURLLabelSize < userTaskInfo.requestWithParams().length() ? userTaskInfo.requestWithParams()
@@ -183,10 +176,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     sb.append(String.format(formattingStringBuilder.toString(), "USER TASK ID", "CLIENT ADDRESS", "START TIME", "STATUS",
                             "REQUEST URL")); // header
     for (UserTaskManager.UserTaskInfo userTaskInfo : prepareResultList(parameters)) {
-      Date date = new Date(userTaskInfo.startMs());
-      DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
-      formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
-      String dateFormatted = formatter.format(date);
+      String dateFormatted = KafkaCruiseControlUtils.getDateFormatted(userTaskInfo.startMs());
       sb.append(String.format(formattingStringBuilder.toString(), userTaskInfo.userTaskId().toString(), userTaskInfo.clientIdentity(),
           dateFormatted, userTaskInfo.state(), userTaskInfo.requestWithParams())); // values
     }

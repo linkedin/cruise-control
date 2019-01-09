@@ -47,7 +47,7 @@ public class ParameterUtils {
   private static final String JSON_PARAM = "json";
   private static final String START_MS_PARAM = "start";
   private static final String END_MS_PARAM = "end";
-  private static final String ENTRIES_PARAM = "entries";
+  public static final String ENTRIES_PARAM = "entries";
   private static final String ALLOW_CAPACITY_ESTIMATION_PARAM = "allow_capacity_estimation";
   private static final String CLEAR_METRICS_PARAM = "clearmetrics";
   private static final String TIME_PARAM = "time";
@@ -74,10 +74,10 @@ public class ParameterUtils {
   private static final String MIN_VALID_PARTITION_RATIO_PARAM = "min_valid_partition_ratio";
   private static final String SKIP_HARD_GOAL_CHECK_PARAM = "skip_hard_goal_check";
   private static final String EXCLUDED_TOPICS_PARAM = "excluded_topics";
-  private static final String USER_TASK_IDS_PARAM = "user_task_ids";
-  private static final String CLIENT_IDS_PARAM = "client_ids";
-  private static final String ENDPOINTS_PARAM = "endpoints";
-  private static final String TYPES_PARAM = "types";
+  public static final String USER_TASK_IDS_PARAM = "user_task_ids";
+  public static final String CLIENT_IDS_PARAM = "client_ids";
+  public static final String ENDPOINTS_PARAM = "endpoints";
+  public static final String TYPES_PARAM = "types";
   private static final String SKIP_URP_DEMOTION_PARAM = "skip_urp_demotion";
   private static final String EXCLUDE_FOLLOWER_DEMOTION_PARAM = "exclude_follower_demotion";
   private static final String DISABLE_SELF_HEALING_FOR_PARAM = "disable_self_healing_for";
@@ -86,14 +86,6 @@ public class ParameterUtils {
   private static final String EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM = "exclude_recently_removed_brokers";
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
-
-  public static final String[] PARAMS_TO_GET = {
-      CLIENT_IDS_PARAM,
-      ENDPOINTS_PARAM,
-      TYPES_PARAM,
-      USER_TASK_IDS_PARAM,
-      ENTRIES_PARAM
-  };
 
   static {
     Map<EndPoint, Set<String>> validParamNames = new HashMap<>();
