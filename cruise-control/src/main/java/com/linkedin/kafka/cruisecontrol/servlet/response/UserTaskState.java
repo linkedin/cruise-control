@@ -152,7 +152,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
         clientAddressLabelSize =
             clientAddressLabelSize < userTaskInfo.clientIdentity().length() ? userTaskInfo.clientIdentity().length()
                                                                             : clientAddressLabelSize;
-        String dateFormatted = KafkaCruiseControlUtils.getDateFormatted(userTaskInfo.startMs());
+        String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATA_FORMAT, TIME_ZONE);
         startMsLabelSize = startMsLabelSize < dateFormatted.length() ? dateFormatted.length() : startMsLabelSize;
         requestURLLabelSize =
             requestURLLabelSize < userTaskInfo.requestWithParams().length() ? userTaskInfo.requestWithParams()
@@ -176,7 +176,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     sb.append(String.format(formattingStringBuilder.toString(), "USER TASK ID", "CLIENT ADDRESS", "START TIME", "STATUS",
                             "REQUEST URL")); // header
     for (UserTaskManager.UserTaskInfo userTaskInfo : prepareResultList(parameters)) {
-      String dateFormatted = KafkaCruiseControlUtils.getDateFormatted(userTaskInfo.startMs());
+      String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATA_FORMAT, TIME_ZONE);
       sb.append(String.format(formattingStringBuilder.toString(), userTaskInfo.userTaskId().toString(), userTaskInfo.clientIdentity(),
           dateFormatted, userTaskInfo.state(), userTaskInfo.requestWithParams())); // values
     }

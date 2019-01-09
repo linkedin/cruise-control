@@ -43,8 +43,15 @@ public class KafkaCruiseControlUtils {
    * Format the timestamp from long to a human readable string.
    */
   public static String toDateString(long time) {
-    DateFormat format = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-    return format.format(new Date(time));
+    return toDateString(time, "dd/MM/yyyy HH:mm:ss", "");
+  }
+
+  public static String toDateString(long time, String dateFormat, String timeZone) {
+    DateFormat formatter = new SimpleDateFormat(dateFormat);
+    if (!timeZone.isEmpty()) {
+      formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
+    }
+    return formatter.format(new Date(time));
   }
 
   /**
@@ -116,12 +123,5 @@ public class KafkaCruiseControlUtils {
   public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) {
     PartitionInfo partitionInfo = cluster.partition(tp);
     return partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
-}
-
-  public static String getDateFormatted(long startMs) {
-    Date date = new Date(startMs);
-    DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
-    formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
-    return formatter.format(date);
   }
 }
