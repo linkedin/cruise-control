@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
  * Unit test for SelfHealingNotifier.
  */
 public class SelfHealingNotifierTest {
+  private static final boolean EXCLUDE_RECENTLY_DEMOTED_BROKERS = true;
 
   @Test
   public void testOnBrokerFailure() {
@@ -41,7 +42,10 @@ public class SelfHealingNotifierTest {
     failedBrokers.put(1, failureTime1);
     failedBrokers.put(2, failureTime2);
     boolean allowCapacityEstimation = true;
-    AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl, failedBrokers, allowCapacityEstimation));
+    AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
+                                                                                          failedBrokers,
+                                                                                          allowCapacityEstimation,
+                                                                                          EXCLUDE_RECENTLY_DEMOTED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(SelfHealingNotifier.DEFAULT_ALERT_THRESHOLD_MS + failureTime1 - mockTime.milliseconds(),
                  result.delay());
@@ -49,7 +53,10 @@ public class SelfHealingNotifierTest {
 
     // Sleep to 1 ms before alert.
     mockTime.sleep(result.delay() - 1);
-    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl, failedBrokers, allowCapacityEstimation));
+    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
+                                                                failedBrokers,
+                                                                allowCapacityEstimation,
+                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
     assertFalse(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -57,7 +64,10 @@ public class SelfHealingNotifierTest {
     // Sleep 1 ms
     mockTime.sleep(1);
     anomalyNotifier.resetAlert(AnomalyType.BROKER_FAILURE);
-    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl, failedBrokers, allowCapacityEstimation));
+    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
+                                                                failedBrokers,
+                                                                allowCapacityEstimation,
+                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(SelfHealingNotifier.DEFAULT_AUTO_FIX_THRESHOLD_MS + failureTime1 - mockTime.milliseconds(),
                  result.delay());
@@ -66,7 +76,10 @@ public class SelfHealingNotifierTest {
     // Sleep to 1 ms before alert.
     mockTime.sleep(result.delay() - 1);
     anomalyNotifier.resetAlert(AnomalyType.BROKER_FAILURE);
-    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl, failedBrokers, allowCapacityEstimation));
+    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
+                                                                failedBrokers,
+                                                                allowCapacityEstimation,
+                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -75,7 +88,10 @@ public class SelfHealingNotifierTest {
     // Sleep 1 ms
     mockTime.sleep(1);
     anomalyNotifier.resetAlert(AnomalyType.BROKER_FAILURE);
-    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl, failedBrokers, allowCapacityEstimation));
+    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
+                                                                failedBrokers,
+                                                                allowCapacityEstimation,
+                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.FIX, result.action());
     assertEquals(-1L, result.delay());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -109,14 +125,14 @@ public class SelfHealingNotifierTest {
     mockTime.sleep(SelfHealingNotifier.DEFAULT_AUTO_FIX_THRESHOLD_MS + failureTime1);
     anomalyNotifier.resetAlert(AnomalyType.BROKER_FAILURE);
     AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(
-        new BrokerFailures(mockKafkaCruiseControl, failedBrokers, true));
+        new BrokerFailures(mockKafkaCruiseControl, failedBrokers, true, EXCLUDE_RECENTLY_DEMOTED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
     assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.BROKER_FAILURE));
 
     // (2) Goal Violation
     anomalyNotifier.resetAlert(AnomalyType.GOAL_VIOLATION);
-    result = anomalyNotifier.onGoalViolation(new GoalViolations(mockKafkaCruiseControl, true));
+    result = anomalyNotifier.onGoalViolation(new GoalViolations(mockKafkaCruiseControl, true, true));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.GOAL_VIOLATION));
     assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.GOAL_VIOLATION));

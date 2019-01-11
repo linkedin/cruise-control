@@ -91,12 +91,7 @@ public class KafkaCruiseControlUtils {
    * @return true if a contains at least one of the element in b. false otherwise;
    */
   public static boolean containsAny(Set<Integer> a, Set<Integer> b) {
-    for (int i : b) {
-      if (a.contains(i)) {
-        return true;
-      }
-    }
-    return false;
+    return b.stream().mapToInt(i -> i).anyMatch(a::contains);
   }
 
   /**

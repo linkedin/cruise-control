@@ -127,7 +127,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * Get all the leader replicas.
    */
   public Set<Replica> leaderReplicas() {
-    return _leaderReplicas;
+    return Collections.unmodifiableSet(_leaderReplicas);
   }
 
   /**

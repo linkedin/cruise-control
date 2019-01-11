@@ -172,6 +172,7 @@ public class KafkaCruiseControl {
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param uuid UUID of the execution.
+   * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @return The optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
@@ -187,7 +188,8 @@ public class KafkaCruiseControl {
                                                            Integer concurrentLeaderMovements,
                                                            boolean skipHardGoalCheck,
                                                            Pattern excludedTopics,
-                                                           String uuid)
+                                                           String uuid,
+                                                           boolean excludeRecentlyDemotedBrokers)
       throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
@@ -197,8 +199,12 @@ public class KafkaCruiseControl {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
-      GoalOptimizer.OptimizerResult result =
-          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
+      GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel,
+                                                                      goalsByPriority,
+                                                                      operationProgress,
+                                                                      allowCapacityEstimation,
+                                                                      excludedTopics,
+                                                                      excludeRecentlyDemotedBrokers);
       if (!dryRun) {
         executeRemoval(result.goalProposals(), throttleDecommissionedBroker, brokerIds, isKafkaAssignerMode(goals),
                        concurrentPartitionMovements, concurrentLeaderMovements, uuid);
@@ -246,6 +252,7 @@ public class KafkaCruiseControl {
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param uuid UUID of the execution.
+   * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the broker addition.
    */
@@ -260,7 +267,8 @@ public class KafkaCruiseControl {
                                                   Integer concurrentLeaderMovements,
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics,
-                                                  String uuid) throws KafkaCruiseControlException {
+                                                  String uuid,
+                                                  boolean excludeRecentlyDemotedBrokers) throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -271,8 +279,12 @@ public class KafkaCruiseControl {
                                                             modelCompletenessRequirements,
                                                             operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.NEW));
-      GoalOptimizer.OptimizerResult result =
-          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation, excludedTopics);
+      GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel,
+                                                                      goalsByPriority,
+                                                                      operationProgress,
+                                                                      allowCapacityEstimation,
+                                                                      excludedTopics,
+                                                                      excludeRecentlyDemotedBrokers);
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          throttleAddedBrokers ? Collections.emptyList() : brokerIds,
@@ -303,6 +315,7 @@ public class KafkaCruiseControl {
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param uuid UUID of the execution.
+   * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
@@ -315,9 +328,11 @@ public class KafkaCruiseControl {
                                                  Integer concurrentLeaderMovements,
                                                  boolean skipHardGoalCheck,
                                                  Pattern excludedTopics,
-                                                 String uuid) throws KafkaCruiseControlException {
+                                                 String uuid,
+                                                 boolean excludeRecentlyDemotedBrokers) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress,
-                                                                    allowCapacityEstimation, skipHardGoalCheck, excludedTopics);
+                                                                    allowCapacityEstimation, skipHardGoalCheck,
+                                                                    excludedTopics, excludeRecentlyDemotedBrokers);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
                        concurrentPartitionMovements, concurrentLeaderMovements, uuid);
@@ -347,6 +362,7 @@ public class KafkaCruiseControl {
    * @param skipUrpDemotion Whether operate on partitions which are currently under replicated.
    * @param excludeFollowerDemotion Whether operate on the partitions which only have follower replicas on the brokers.
    * @param uuid UUID of the execution.
+   * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @return the optimization result.
    */
   public GoalOptimizer.OptimizerResult demoteBrokers(Collection<Integer> brokerIds,
@@ -356,7 +372,8 @@ public class KafkaCruiseControl {
                                                      Integer concurrentLeaderMovements,
                                                      boolean skipUrpDemotion,
                                                      boolean excludeFollowerDemotion,
-                                                     String uuid)
+                                                     String uuid,
+                                                     boolean excludeRecentlyDemotedBrokers)
       throws KafkaCruiseControlException {
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(skipUrpDemotion,
                                                                        excludeFollowerDemotion,
@@ -367,10 +384,13 @@ public class KafkaCruiseControl {
                                                             goal.clusterModelCompletenessRequirements(),
                                                             operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEMOTED));
-      GoalOptimizer.OptimizerResult result =
-          getOptimizationProposals(clusterModel,
-                                   goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName())),
-                                   operationProgress, allowCapacityEstimation, null);
+      List<Goal> goalsByPriority = goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName()));
+      GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel,
+                                                                      goalsByPriority,
+                                                                      operationProgress,
+                                                                      allowCapacityEstimation,
+                                                                      null,
+                                                                      excludeRecentlyDemotedBrokers);
       if (!dryRun) {
         executeDemotion(result.goalProposals(), brokerIds, concurrentLeaderMovements, uuid);
       }
@@ -571,6 +591,7 @@ public class KafkaCruiseControl {
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
+   * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    */
@@ -579,7 +600,9 @@ public class KafkaCruiseControl {
                                                                 OperationProgress operationProgress,
                                                                 boolean allowCapacityEstimation,
                                                                 boolean skipHardGoalCheck,
-                                                                Pattern excludedTopics) throws KafkaCruiseControlException {
+                                                                Pattern excludedTopics,
+                                                                boolean excludeRecentlyDemotedBrokers)
+      throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
@@ -605,7 +628,8 @@ public class KafkaCruiseControl {
                                           goalsByPriority,
                                           operationProgress,
                                           allowCapacityEstimation,
-                                          excludedTopics);
+                                          excludedTopics,
+                                          excludeRecentlyDemotedBrokers);
       } catch (KafkaCruiseControlException kcce) {
         throw kcce;
       } catch (Exception e) {
@@ -621,11 +645,21 @@ public class KafkaCruiseControl {
                                                                  List<Goal> goalsByPriority,
                                                                  OperationProgress operationProgress,
                                                                  boolean allowCapacityEstimation,
-                                                                 Pattern requestedExcludedTopics)
+                                                                 Pattern requestedExcludedTopics,
+                                                                 boolean excludeRecentlyDemotedBrokers)
       throws KafkaCruiseControlException {
     sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
     synchronized (this) {
-      return _goalOptimizer.optimizations(clusterModel, goalsByPriority, operationProgress, requestedExcludedTopics);
+      Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers
+                                                  ? state(new OperationProgress(), Collections.singleton(EXECUTOR))
+                                                      .executorState().recentlyDemotedBrokers()
+                                                  : Collections.emptySet();
+
+      return _goalOptimizer.optimizations(clusterModel,
+                                          goalsByPriority,
+                                          operationProgress,
+                                          requestedExcludedTopics,
+                                          excludedBrokersForLeadership);
     }
   }
 

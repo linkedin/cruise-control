@@ -13,7 +13,6 @@ import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,8 +29,8 @@ public class CaseInsensitiveGoalConfigTest {
   @Rule
   public ExpectedException expected = ExpectedException.none();
 
-  @Parameters
-  public static Collection<Object[]> data() throws Exception {
+  @Parameterized.Parameters
+  public static Collection<Object[]> data() {
     Collection<Object[]> params = new ArrayList<>();
 
 
@@ -107,7 +106,7 @@ public class CaseInsensitiveGoalConfigTest {
   }
 
   @Test
-  public void test() throws Exception {
+  public void test() {
     LOG.debug("Testing case insensitive goal configuration: {}.", _properties.toString());
 
     if (_exceptionClass != null) {

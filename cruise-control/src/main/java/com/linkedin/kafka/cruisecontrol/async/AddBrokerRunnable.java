@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 /**
  * The async runnable for {@link KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List,
  * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer,
- * Integer, boolean, Pattern, String)}
+ * Integer, boolean, Pattern, String, boolean)}
  */
 class AddBrokerRunnable extends OperationRunnable {
   private final Collection<Integer> _brokerIds;
@@ -30,6 +30,7 @@ class AddBrokerRunnable extends OperationRunnable {
   private final boolean _skipHardGoalCheck;
   private final Pattern _excludedTopics;
   private final String _uuid;
+  private final boolean _excludeRecentlyDemotedBrokers;
 
   AddBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture future,
@@ -49,6 +50,7 @@ class AddBrokerRunnable extends OperationRunnable {
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
     _uuid = uuid;
+    _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
   }
 
   @Override
@@ -57,6 +59,6 @@ class AddBrokerRunnable extends OperationRunnable {
                                                                  _modelCompletenessRequirements, _future.operationProgress(),
                                                                  _allowCapacityEstimation, _concurrentPartitionMovements,
                                                                  _concurrentLeaderMovements, _skipHardGoalCheck, _excludedTopics,
-                                                                 _uuid));
+                                                                 _uuid, _excludeRecentlyDemotedBrokers));
   }
 }

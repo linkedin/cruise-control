@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
@@ -18,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -33,6 +35,8 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
+
 
 /**
  * This class will be scheduled to run periodically to check if the given goals are violated or not. An alert will be
@@ -40,6 +44,8 @@ import org.slf4j.LoggerFactory;
  */
 public class GoalViolationDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolationDetector.class);
+  // TODO: Make this configurable.
+  private static final boolean EXCLUDE_RECENTLY_DEMOTED_BROKERS = true;
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final LoadMonitor _loadMonitor;
   private final SortedMap<Integer, Goal> _goals;
@@ -100,7 +106,7 @@ public class GoalViolationDetector implements Runnable {
 
     AutoCloseable clusterModelSemaphore = null;
     try {
-      GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation);
+      GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation, EXCLUDE_RECENTLY_DEMOTED_BROKERS);
       long now = _time.milliseconds();
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
@@ -123,7 +129,12 @@ public class GoalViolationDetector implements Runnable {
                                                              clusterModel.capacityEstimationInfoByBrokerId());
             _lastCheckedModelGeneration = clusterModel.generation();
           }
-          newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations);
+          Set<Integer> excludedBrokersForLeadership = EXCLUDE_RECENTLY_DEMOTED_BROKERS
+                                                      ? _kafkaCruiseControl.state(new OperationProgress(), Collections.singleton(EXECUTOR))
+                                                                           .executorState().recentlyDemotedBrokers()
+                                                      : Collections.emptySet();
+
+          newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations, excludedBrokersForLeadership);
         } else {
           LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
         }
@@ -158,7 +169,8 @@ public class GoalViolationDetector implements Runnable {
 
   private boolean optimizeForGoal(ClusterModel clusterModel,
                                   Goal goal,
-                                  GoalViolations goalViolations)
+                                  GoalViolations goalViolations,
+                                  Set<Integer> excludedBrokersForLeadership)
       throws KafkaCruiseControlException {
     if (clusterModel.topics().isEmpty()) {
       LOG.info("Skipping goal violation detection because the cluster model does not have any topic.");
@@ -167,7 +179,7 @@ public class GoalViolationDetector implements Runnable {
     Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, Integer> initLeaderDistribution = clusterModel.getLeaderDistribution();
     try {
-      goal.optimize(clusterModel, new HashSet<>(), excludedTopics(clusterModel));
+      goal.optimize(clusterModel, new HashSet<>(), new OptimizationOptions(excludedTopics(clusterModel), excludedBrokersForLeadership));
     } catch (OptimizationFailureException ofe) {
       // An OptimizationFailureException indicates (1) a hard goal violation that cannot be fixed typically due to
       // lack of physical hardware (e.g. insufficient number of racks to satisfy rack awareness, insufficient number

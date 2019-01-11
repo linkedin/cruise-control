@@ -26,11 +26,13 @@ public class GoalViolations extends KafkaAnomaly {
   // The priority order of goals is maintained here.
   private final Map<Boolean, List<String>> _violatedGoalsByFixability;
   private final boolean _allowCapacityEstimation;
+  private final boolean _excludeRecentlyDemotedBrokers;
 
-  public GoalViolations(KafkaCruiseControl kafkaCruiseControl, boolean allowCapacityEstimation) {
+  public GoalViolations(KafkaCruiseControl kafkaCruiseControl, boolean allowCapacityEstimation, boolean excludeRecentlyDemotedBrokers) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _allowCapacityEstimation = allowCapacityEstimation;
     _violatedGoalsByFixability = new HashMap<>();
+    _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
   }
 
   /**
@@ -56,7 +58,8 @@ public class GoalViolations extends KafkaAnomaly {
       try {
         // Fix the fixable goal violations with rebalance operation.
         _kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation,
-                                      null, null, false, null, null);
+                                      null, null, false, null,
+                                      null, _excludeRecentlyDemotedBrokers);
       } catch (IllegalStateException e) {
         LOG.warn("Got exception when trying to fix the cluster for violated goals {}: {}", _violatedGoalsByFixability.get(true), e.getMessage());
       }

@@ -11,6 +11,7 @@ import javax.servlet.http.HttpServletRequest;
 public abstract class KafkaOptimizationParameters extends AbstractParameters {
   protected boolean _allowCapacityEstimation;
   protected boolean _isVerbose;
+  protected boolean _excludeRecentlyDemotedBrokers;
 
   KafkaOptimizationParameters(HttpServletRequest request) {
     super(request);
@@ -21,6 +22,7 @@ public abstract class KafkaOptimizationParameters extends AbstractParameters {
     super.initParameters();
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
     _isVerbose = ParameterUtils.isVerbose(_request);
+    _excludeRecentlyDemotedBrokers = ParameterUtils.excludeRecentlyDemotedBrokers(_request);
   }
 
   public boolean allowCapacityEstimation() {
@@ -29,5 +31,9 @@ public abstract class KafkaOptimizationParameters extends AbstractParameters {
 
   public boolean isVerbose() {
     return _isVerbose;
+  }
+
+  public boolean excludeRecentlyDemotedBrokers() {
+    return _excludeRecentlyDemotedBrokers;
   }
 }

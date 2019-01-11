@@ -6,6 +6,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
+import com.linkedin.kafka.cruisecontrol.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
@@ -36,6 +37,9 @@ import org.apache.kafka.common.annotation.InterfaceStability;
 @InterfaceStability.Evolving
 public interface Goal extends CruiseControlConfigurable {
   /**
+   * @deprecated
+   * Please use {@link #optimize(ClusterModel, Set, OptimizationOptions)} instead.
+   *
    * Optimize the given cluster model as needed for this goal.
    * <p>
    *   The method will be given a cluster model. The goal can try to optimize the cluster model by performing some
@@ -64,6 +68,37 @@ public interface Goal extends CruiseControlConfigurable {
    * @throws KafkaCruiseControlException
    */
   boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
+      throws KafkaCruiseControlException;
+
+  /**
+   * Optimize the given cluster model as needed for this goal.
+   * <p>
+   *   The method will be given a cluster model. The goal can try to optimize the cluster model by performing some
+   *   admin operations (e.g. move replicas or leadership of partitions).
+   * </p>
+   * <p>
+   *   During the optimization, the implementation should make sure that all the previously optimized goals
+   *   are still satisfied after this method completes its execution. The implementation can use
+   *   {@link #actionAcceptance(BalancingAction, ClusterModel)} to check whether an admin operation
+   *   is allowed by a previously optimized goal.
+   * </p>
+   * <p>
+   *   The implementation of a soft goal should return a boolean indicating whether the goal has been met
+   *   after the optimization or not.
+   * </p>
+   * <p>
+   *   The implementation of a hard goal should throw an {@link OptimizationFailureException} when the goal
+   *   cannot be met. This will then fail the entire optimization attempt.
+   * </p>
+   * @param clusterModel   The cluster model reflecting the current state of the cluster. It is a result of the
+   *                       optimization of the previously optimized goals.
+   * @param optimizedGoals Goals that have already been optimized. These goals cannot be violated.
+   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
+   * @return true if the goal is met after the optimization, false otherwise. Note that for hard goals,
+   * the implementation should just throw exceptions if the goal is not met.
+   * @throws KafkaCruiseControlException
+   */
+  boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions)
       throws KafkaCruiseControlException;
 
   /**

@@ -78,6 +78,7 @@ public class ParameterUtils {
   private static final String EXCLUDE_FOLLOWER_DEMOTION_PARAM = "exclude_follower_demotion";
   private static final String DISABLE_SELF_HEALING_FOR_PARAM = "disable_self_healing_for";
   private static final String ENABLE_SELF_HEALING_FOR_PARAM = "enable_self_healing_for";
+  private static final String EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM = "exclude_recently_demoted_brokers";
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
   static {
@@ -121,6 +122,7 @@ public class ParameterUtils {
     proposals.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     proposals.add(EXCLUDED_TOPICS_PARAM);
     proposals.add(USE_READY_DEFAULT_GOALS_PARAM);
+    proposals.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
 
     Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     state.add(VERBOSE_PARAM);
@@ -142,6 +144,7 @@ public class ParameterUtils {
     addOrRemoveBroker.add(EXCLUDED_TOPICS_PARAM);
     addOrRemoveBroker.add(USE_READY_DEFAULT_GOALS_PARAM);
     addOrRemoveBroker.add(VERBOSE_PARAM);
+    addOrRemoveBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
@@ -160,6 +163,7 @@ public class ParameterUtils {
     demoteBroker.add(VERBOSE_PARAM);
     demoteBroker.add(SKIP_URP_DEMOTION_PARAM);
     demoteBroker.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
+    demoteBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
@@ -174,6 +178,7 @@ public class ParameterUtils {
     rebalance.add(EXCLUDED_TOPICS_PARAM);
     rebalance.add(USE_READY_DEFAULT_GOALS_PARAM);
     rebalance.add(VERBOSE_PARAM);
+    rebalance.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
@@ -281,6 +286,19 @@ public class ParameterUtils {
 
   static boolean allowCapacityEstimation(HttpServletRequest request) {
     return getBooleanParam(request, ALLOW_CAPACITY_ESTIMATION_PARAM, true);
+  }
+
+  /**
+   * Default: false -- i.e. a recently demoted broker may receive leadership from the other brokers.
+   */
+  static boolean excludeRecentlyDemotedBrokers(HttpServletRequest request) {
+    boolean isKafkaAssignerMode = getMode(request);
+    boolean excludeRecentlyDemotedBrokers = getBooleanParam(request, EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM, false);
+    if (isKafkaAssignerMode && excludeRecentlyDemotedBrokers) {
+      throw new UserRequestException("Kafka assigner mode does not support excluding recently demoted brokers.");
+    }
+
+    return excludeRecentlyDemotedBrokers;
   }
 
   static boolean wantMaxLoad(HttpServletRequest request) {

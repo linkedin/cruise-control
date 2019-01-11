@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.cruisecontrol.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.GoalBasedOptimizationParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
@@ -171,8 +172,17 @@ public class KafkaCruiseControlServletDataFromTest {
       _id = id;
     }
 
+    /**
+     * @deprecated
+     * Please use {@link #optimize(ClusterModel, Set, OptimizationOptions)} instead.
+     */
     @Override
     public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics) {
+      return false;
+    }
+
+    @Override
+    public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions) {
       return false;
     }
 
