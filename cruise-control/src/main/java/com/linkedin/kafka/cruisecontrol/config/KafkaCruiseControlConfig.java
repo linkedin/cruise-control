@@ -554,6 +554,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + " demotion history of brokers.";
 
   /**
+   * <code>removal.history.retention.time.ms</code>
+   */
+  public static final String REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG = "removal.history.retention.time.ms";
+  private static final String REMOVAL_HISTORY_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to retain the"
+      + " removal history of brokers.";
+
+  /**
    * <code>max.cached.completed.user.tasks</code>
    */
   public static final String MAX_CACHED_COMPLETED_USER_TASKS_CONFIG = "max.cached.completed.user.tasks";
@@ -763,6 +770,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 DEMOTION_HISTORY_RETENTION_TIME_MS_DOC)
+        .define(REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG,
+            ConfigDef.Type.LONG,
+            TimeUnit.HOURS.toMillis(12),
+            atLeast(0),
+            ConfigDef.Importance.MEDIUM,
+            REMOVAL_HISTORY_RETENTION_TIME_MS_DOC)
         .define(MAX_CACHED_COMPLETED_USER_TASKS_CONFIG,
                 ConfigDef.Type.INT,
                 100,

@@ -89,6 +89,7 @@ public class KafkaSampleStore implements SampleStore {
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
   private static final long SAMPLE_POLL_TIMEOUT = 1000L;
+  private static final long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000L;
 
   protected static final int DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final int DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;

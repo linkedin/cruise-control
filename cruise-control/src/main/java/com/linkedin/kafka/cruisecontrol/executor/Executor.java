@@ -94,7 +94,9 @@ public class Executor {
   private static final String GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-non-"  + KAFKA_ASSIGNER_MODE;
   // TODO: Execution history is currently kept in memory, but ideally we should move it to a persistent store.
   private final long _demotionHistoryRetentionTimeMs;
+  private final long _removalHistoryRetentionTimeMs;
   private final ConcurrentMap<Integer, Long> _latestDemoteStartTimeMsByBrokerId;
+  private final ConcurrentMap<Integer, Long> _latestRemoveStartTimeMsByBrokerId;
   private final ScheduledExecutorService _executionHistoryScannerExecutor;
 
   /**
@@ -105,8 +107,9 @@ public class Executor {
   public Executor(KafkaCruiseControlConfig config,
                   Time time,
                   MetricRegistry dropwizardMetricRegistry,
-                  long demotionHistoryRetentionTimeMs) {
-    this(config, time, dropwizardMetricRegistry, null, demotionHistoryRetentionTimeMs);
+                  long demotionHistoryRetentionTimeMs,
+                  long removalHistoryRetentionTimeMs) {
+    this(config, time, dropwizardMetricRegistry, null, demotionHistoryRetentionTimeMs, removalHistoryRetentionTimeMs);
   }
 
   /**
@@ -119,7 +122,8 @@ public class Executor {
            Time time,
            MetricRegistry dropwizardMetricRegistry,
            MetadataClient metadataClient,
-           long demotionHistoryRetentionTimeMs) {
+           long demotionHistoryRetentionTimeMs,
+           long removalHistoryRetentionTimeMs) {
     String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     _numExecutionStopped = new AtomicInteger(0);
     _numExecutionStoppedByUser = new AtomicInteger(0);
@@ -147,11 +151,13 @@ public class Executor {
     _proposalExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));
     _latestDemoteStartTimeMsByBrokerId = new ConcurrentHashMap<>();
-    _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers());
+    _latestRemoveStartTimeMsByBrokerId = new ConcurrentHashMap<>();
+    _executorState = ExecutorState.noTaskInProgress(recentlyDemotedBrokers(), recentlyRemovedBrokers());
     _stopRequested = new AtomicBoolean(false);
     _hasOngoingExecution = false;
     _uuid = null;
     _demotionHistoryRetentionTimeMs = demotionHistoryRetentionTimeMs;
+    _removalHistoryRetentionTimeMs = removalHistoryRetentionTimeMs;
     _executionHistoryScannerExecutor = Executors.newSingleThreadScheduledExecutor(
         new KafkaCruiseControlThreadFactory("ExecutionHistoryScanner", true, null));
     _executionHistoryScannerExecutor.scheduleAtFixedRate(new ExecutionHistoryScanner(),
@@ -181,6 +187,12 @@ public class Executor {
                                                                      < _time.milliseconds()));
   }
 
+  private void removeExpiredRemovalHistory() {
+    LOG.debug("Remove expired broker removal history");
+    _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> (entry.getValue() + _removalHistoryRetentionTimeMs
+                                                                     < _time.milliseconds()));
+  }
+
   /**
    * A runnable class to remove expired execution history.
    */
@@ -189,6 +201,7 @@ public class Executor {
     public void run() {
       try {
         removeExpiredDemotionHistory();
+        removeExpiredRemovalHistory();
       } catch (Throwable t) {
         LOG.warn("Received exception when trying to expire execution history.", t);
       }
@@ -205,6 +218,15 @@ public class Executor {
   }
 
   /**
+   * Recently removed brokers are the ones for which a removal was started, regardless of how the process was completed.
+   *
+   * @return IDs of recently removed brokers -- i.e. removed within the last {@link #_removalHistoryRetentionTimeMs}.
+   */
+  public Set<Integer> recentlyRemovedBrokers() {
+    return Collections.unmodifiableSet(_latestRemoveStartTimeMsByBrokerId.keySet());
+  }
+
+  /**
    * Check whether the executor is executing a set of proposals.
    */
   public ExecutorState state() {
@@ -216,6 +238,7 @@ public class Executor {
    *
    * @param proposals Proposals to be executed.
    * @param unthrottledBrokers Brokers that are not throttled in terms of the number of in/out replica movements.
+   * @param removedBrokers Removed brokers, null if no brokers has been removed.
    * @param loadMonitor Load monitor.
    * @param requestedPartitionMovementConcurrency The maximum number of concurrent partition movements per broker
    *                                              (if null, use num.concurrent.partition.movements.per.broker).
@@ -225,13 +248,14 @@ public class Executor {
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
                                             Collection<Integer> unthrottledBrokers,
+                                            Collection<Integer> removedBrokers,
                                             LoadMonitor loadMonitor,
                                             Integer requestedPartitionMovementConcurrency,
                                             Integer requestedLeadershipMovementConcurrency,
                                             String uuid) {
     initProposalExecution(proposals, unthrottledBrokers, loadMonitor, requestedPartitionMovementConcurrency,
                           requestedLeadershipMovementConcurrency, uuid);
-    startExecution(loadMonitor, null);
+    startExecution(loadMonitor, null, removedBrokers);
   }
 
   private synchronized void initProposalExecution(Collection<ExecutionProposal> proposals,
@@ -275,7 +299,7 @@ public class Executor {
                                                   Integer requestedLeadershipMovementConcurrency,
                                                   String uuid) {
     initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, requestedLeadershipMovementConcurrency, uuid);
-    startExecution(loadMonitor, demotedBrokers);
+    startExecution(loadMonitor, demotedBrokers, null);
   }
 
   /**
@@ -326,8 +350,9 @@ public class Executor {
    *
    * @param loadMonitor Load monitor.
    * @param demotedBrokers Brokers to be demoted, null if no broker has been demoted.
+   * @param removedBrokers Brokers to be removed, null if no broker has been removed.
    */
-  private void startExecution(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers) {
+  private void startExecution(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers, Collection<Integer> removedBrokers) {
     if (!ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient).isEmpty()) {
       _executionTaskManager.clear();
       _uuid = null;
@@ -341,7 +366,7 @@ public class Executor {
     } else {
       _numExecutionStartedInNonKafkaAssignerMode.incrementAndGet();
     }
-    _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor, demotedBrokers));
+    _proposalExecutor.submit(new ProposalExecutionRunnable(loadMonitor, demotedBrokers, removedBrokers));
   }
 
   /**
@@ -404,8 +429,9 @@ public class Executor {
     private final LoadMonitor _loadMonitor;
     private ExecutorState.State _state;
     private Set<Integer> _recentlyDemotedBrokers;
+    private Set<Integer> _recentlyRemovedBrokers;
 
-    ProposalExecutionRunnable(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers) {
+    ProposalExecutionRunnable(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers, Collection<Integer> removedBrokers) {
       _loadMonitor = loadMonitor;
       _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
 
@@ -413,7 +439,12 @@ public class Executor {
         // Add/overwrite the latest demotion time of demoted brokers (if any).
         demotedBrokers.forEach(id -> _latestDemoteStartTimeMsByBrokerId.put(id, _time.milliseconds()));
       }
+      if (removedBrokers != null) {
+        // Add/overwrite the latest removal time of removed brokers (if any).
+        removedBrokers.forEach(id -> _latestRemoveStartTimeMsByBrokerId.put(id, _time.milliseconds()));
+      }
       _recentlyDemotedBrokers = recentlyDemotedBrokers();
+      _recentlyRemovedBrokers = recentlyRemovedBrokers();
     }
 
     public void run() {
@@ -427,7 +458,7 @@ public class Executor {
      */
     private void execute() {
       _state = ExecutorState.State.STARTING_EXECUTION;
-      _executorState = ExecutorState.executionStarted(_uuid, _recentlyDemotedBrokers);
+      _executorState = ExecutorState.executionStarted(_uuid, _recentlyDemotedBrokers, _recentlyRemovedBrokers);
       try {
         // Pause the metric sampling to avoid the loss of accuracy during execution.
         while (true) {
@@ -450,7 +481,9 @@ public class Executor {
                                                                    _finishedDataMovementInMB,
                                                                    _executionTaskManager.partitionMovementConcurrency(),
                                                                    _executionTaskManager.leadershipMovementConcurrency(),
-                                                                   _uuid, _recentlyDemotedBrokers);
+                                                                   _uuid,
+                                                                   _recentlyDemotedBrokers,
+                                                                   _recentlyRemovedBrokers);
           moveReplicas();
           updateOngoingExecutionState();
         }
@@ -462,7 +495,9 @@ public class Executor {
                                                                   _executionTaskManager.getExecutionTasksSummary(),
                                                                   _executionTaskManager.partitionMovementConcurrency(),
                                                                   _executionTaskManager.leadershipMovementConcurrency(),
-                                                                  _uuid, _recentlyDemotedBrokers);
+                                                                  _uuid,
+                                                                  _recentlyDemotedBrokers,
+                                                                  _recentlyRemovedBrokers);
           moveLeaderships();
           updateOngoingExecutionState();
         }
@@ -481,7 +516,7 @@ public class Executor {
       _uuid = null;
       _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
       // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
-      _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers);
+      _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers, _recentlyRemovedBrokers);
       _hasOngoingExecution = false;
       _stopRequested.set(false);
       _numFinishedPartitionMovements = 0;
@@ -497,7 +532,9 @@ public class Executor {
                                                                     _executionTaskManager.getExecutionTasksSummary(),
                                                                     _executionTaskManager.partitionMovementConcurrency(),
                                                                     _executionTaskManager.leadershipMovementConcurrency(),
-                                                                    _uuid, _recentlyDemotedBrokers);
+                                                                    _uuid,
+                                                                    _recentlyDemotedBrokers,
+                                                                    _recentlyRemovedBrokers);
             break;
           case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
             _executorState = ExecutorState.replicaMovementInProgress(_numFinishedPartitionMovements,
@@ -505,7 +542,9 @@ public class Executor {
                                                                      _finishedDataMovementInMB,
                                                                      _executionTaskManager.partitionMovementConcurrency(),
                                                                      _executionTaskManager.leadershipMovementConcurrency(),
-                                                                     _uuid, _recentlyDemotedBrokers);
+                                                                     _uuid,
+                                                                     _recentlyDemotedBrokers,
+                                                                     _recentlyRemovedBrokers);
             break;
           default:
             throw new IllegalStateException("Unexpected ongoing execution state " + _state);
@@ -518,7 +557,8 @@ public class Executor {
                                                 _finishedDataMovementInMB,
                                                 _executionTaskManager.partitionMovementConcurrency(),
                                                 _executionTaskManager.leadershipMovementConcurrency(), _uuid,
-                                                _recentlyDemotedBrokers);
+                                                _recentlyDemotedBrokers,
+                                                _recentlyRemovedBrokers);
       }
     }
 
