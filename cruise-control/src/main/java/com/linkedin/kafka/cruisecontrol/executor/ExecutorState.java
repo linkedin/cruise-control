@@ -17,6 +17,7 @@ public class ExecutorState {
   private static final String TRIGGERED_USER_TASK_ID = "triggeredUserTaskId";
   private static final String STATE = "state";
   private static final String RECENTLY_DEMOTED_BROKERS = "recentlyDemotedBrokers";
+  private static final String RECENTLY_REMOVED_BROKERS = "recentlyRemovedBrokers";
   private static final String PENDING_LEADERSHIP_MOVEMENT = "pendingLeadershipMovement";
   private static final String NUM_FINISHED_LEADERSHIP_MOVEMENTS = "numFinishedLeadershipMovements";
   private static final String NUM_TOTAL_LEADERSHIP_MOVEMENTS = "numTotalLeadershipMovements";
@@ -58,6 +59,7 @@ public class ExecutorState {
   private final int _maximumConcurrentLeaderMovements;
   private final String _uuid;
   private final Set<Integer> _recentlyDemotedBrokers;
+  private final Set<Integer> _recentlyRemovedBrokers;
 
   private ExecutorState(State state,
                         int numFinishedPartitionMovements,
@@ -66,7 +68,8 @@ public class ExecutorState {
                         long finishedDataMovementInMB,
                         int maximumConcurrentPartitionMovementsPerBroker,
                         int maximumConcurrentLeaderMovements,
-                        Set<Integer> recentlyDemotedBrokers) {
+                        Set<Integer> recentlyDemotedBrokers,
+                        Set<Integer> recentlyRemovedBrokers) {
     this(state,
          numFinishedPartitionMovements,
          numFinishedLeadershipMovements,
@@ -74,7 +77,9 @@ public class ExecutorState {
          finishedDataMovementInMB,
          maximumConcurrentPartitionMovementsPerBroker,
          maximumConcurrentLeaderMovements,
-         null, recentlyDemotedBrokers);
+         null,
+         recentlyDemotedBrokers,
+         recentlyRemovedBrokers);
   }
 
   private ExecutorState(State state,
@@ -85,7 +90,8 @@ public class ExecutorState {
                         int maximumConcurrentPartitionMovementsPerBroker,
                         int maximumConcurrentLeaderMovements,
                         String uuid,
-                        Set<Integer> recentlyDemotedBrokers) {
+                        Set<Integer> recentlyDemotedBrokers,
+                        Set<Integer> recentlyRemovedBrokers) {
     _state = state;
     _numFinishedPartitionMovements = numFinishedPartitionMovements;
     _numFinishedLeadershipMovements = numFinishedLeadershipMovements;
@@ -101,13 +107,15 @@ public class ExecutorState {
     _maximumConcurrentLeaderMovements = maximumConcurrentLeaderMovements;
     _uuid = uuid;
     _recentlyDemotedBrokers = recentlyDemotedBrokers;
+    _recentlyRemovedBrokers = recentlyRemovedBrokers;
   }
 
   /**
    * @param recentlyDemotedBrokers Recently demoted broker IDs.
+   * @param recentlyRemovedBrokers Recently removed broker IDs.
    * @return Executor state when no task is in progress.
    */
-  public static ExecutorState noTaskInProgress(Set<Integer> recentlyDemotedBrokers) {
+  public static ExecutorState noTaskInProgress(Set<Integer> recentlyDemotedBrokers, Set<Integer> recentlyRemovedBrokers) {
     return new ExecutorState(State.NO_TASK_IN_PROGRESS,
                              0,
                              0,
@@ -121,15 +129,19 @@ public class ExecutorState {
                              0L,
                              0,
                              0,
-                             recentlyDemotedBrokers);
+                             recentlyDemotedBrokers,
+                             recentlyRemovedBrokers);
   }
 
   /**
    * @param uuid UUID of the current execution.
    * @param recentlyDemotedBrokers Recently demoted broker IDs.
+   * @param recentlyRemovedBrokers Recently removed broker IDs.
    * @return Executor state when the execution has started.
    */
-  public static ExecutorState executionStarted(String uuid, Set<Integer> recentlyDemotedBrokers) {
+  public static ExecutorState executionStarted(String uuid,
+                                               Set<Integer> recentlyDemotedBrokers,
+                                               Set<Integer> recentlyRemovedBrokers) {
     return new ExecutorState(State.STARTING_EXECUTION,
                              0,
                              0,
@@ -144,7 +156,8 @@ public class ExecutorState {
                              0,
                              0,
                              uuid,
-                             recentlyDemotedBrokers);
+                             recentlyDemotedBrokers,
+                             recentlyRemovedBrokers);
   }
 
   /**
@@ -155,6 +168,7 @@ public class ExecutorState {
    * @param maximumConcurrentLeaderMovements Maximum concurrent leader movements.
    * @param uuid UUID of the current execution.
    * @param recentlyDemotedBrokers Recently demoted broker IDs.
+   * @param recentlyRemovedBrokers Recently removed broker IDs.
    * @return Executor state when replica movement is in progress.
    */
   public static ExecutorState replicaMovementInProgress(int finishedPartitionMovements,
@@ -163,11 +177,12 @@ public class ExecutorState {
                                                         int maximumConcurrentPartitionMovementsPerBroker,
                                                         int maximumConcurrentLeaderMovements,
                                                         String uuid,
-                                                        Set<Integer> recentlyDemotedBrokers) {
+                                                        Set<Integer> recentlyDemotedBrokers,
+                                                        Set<Integer> recentlyRemovedBrokers) {
     return new ExecutorState(State.REPLICA_MOVEMENT_TASK_IN_PROGRESS,
                              finishedPartitionMovements, 0, executionTasksSummary,
                              finishedDataMovementInMB, maximumConcurrentPartitionMovementsPerBroker,
-                             maximumConcurrentLeaderMovements, uuid, recentlyDemotedBrokers);
+                             maximumConcurrentLeaderMovements, uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
   }
 
   /**
@@ -183,6 +198,7 @@ public class ExecutorState {
    * @param maximumConcurrentLeaderMovements Maximum concurrent leader movements.
    * @param uuid UUID of the current execution.
    * @param recentlyDemotedBrokers Recently demoted broker IDs.
+   * @param recentlyRemovedBrokers Recently removed broker IDs.
    * @return Executor state when replica movement is in progress.
    */
   public static ExecutorState replicaMovementInProgress(int finishedPartitionMovements,
@@ -196,7 +212,8 @@ public class ExecutorState {
                                                         int maximumConcurrentPartitionMovementsPerBroker,
                                                         int maximumConcurrentLeaderMovements,
                                                         String uuid,
-                                                        Set<Integer> recentlyDemotedBrokers) {
+                                                        Set<Integer> recentlyDemotedBrokers,
+                                                        Set<Integer> recentlyRemovedBrokers) {
     return replicaMovementInProgress(finishedPartitionMovements,
                                      new ExecutionTaskManager.ExecutionTasksSummary(remainingPartitionMovements,
                                                                                     Collections.emptySet(),
@@ -209,7 +226,8 @@ public class ExecutorState {
                                      maximumConcurrentPartitionMovementsPerBroker,
                                      maximumConcurrentLeaderMovements,
                                      uuid,
-                                     recentlyDemotedBrokers);
+                                     recentlyDemotedBrokers,
+                                     recentlyRemovedBrokers);
   }
 
   /**
@@ -219,6 +237,7 @@ public class ExecutorState {
    * @param maximumConcurrentLeaderMovements Maximum concurrent leader movements.
    * @param uuid UUID of the current execution.
    * @param recentlyDemotedBrokers Recently demoted broker IDs.
+   * @param recentlyRemovedBrokers Recently removed broker IDs.
    * @return Executor state when leader movement is in progress.
    */
   public static ExecutorState leaderMovementInProgress(int finishedLeadershipMovements,
@@ -226,7 +245,8 @@ public class ExecutorState {
                                                        int maximumConcurrentPartitionMovementsPerBroker,
                                                        int maximumConcurrentLeaderMovements,
                                                        String uuid,
-                                                       Set<Integer> recentlyDemotedBrokers) {
+                                                       Set<Integer> recentlyDemotedBrokers,
+                                                       Set<Integer> recentlyRemovedBrokers) {
     return new ExecutorState(State.LEADER_MOVEMENT_TASK_IN_PROGRESS,
                              0,
                              finishedLeadershipMovements,
@@ -241,7 +261,8 @@ public class ExecutorState {
                              maximumConcurrentPartitionMovementsPerBroker,
                              maximumConcurrentLeaderMovements,
                              uuid,
-                             recentlyDemotedBrokers);
+                             recentlyDemotedBrokers,
+                             recentlyRemovedBrokers);
   }
 
   /**
@@ -253,6 +274,7 @@ public class ExecutorState {
    * @param maximumConcurrentLeaderMovements Maximum concurrent leader movements.
    * @param uuid UUID of the current execution.
    * @param recentlyDemotedBrokers Recently demoted broker IDs.
+   * @param recentlyRemovedBrokers Recently removed broker IDs.
    * @return Executor state when stopping the ongoing execution.
    */
   public static ExecutorState stopping(int finishedPartitionMovements,
@@ -262,7 +284,8 @@ public class ExecutorState {
                                        int maximumConcurrentPartitionMovementsPerBroker,
                                        int maximumConcurrentLeaderMovements,
                                        String uuid,
-                                       Set<Integer> recentlyDemotedBrokers) {
+                                       Set<Integer> recentlyDemotedBrokers,
+                                       Set<Integer> recentlyRemovedBrokers) {
     return new ExecutorState(State.STOPPING_EXECUTION,
                              finishedPartitionMovements,
                              finishedLeadershipMovements,
@@ -271,7 +294,8 @@ public class ExecutorState {
                              maximumConcurrentPartitionMovementsPerBroker,
                              maximumConcurrentLeaderMovements,
                              uuid,
-                             recentlyDemotedBrokers);
+                             recentlyDemotedBrokers,
+                             recentlyRemovedBrokers);
   }
 
   public State state() {
@@ -334,6 +358,10 @@ public class ExecutorState {
     return _recentlyDemotedBrokers;
   }
 
+  public Set<Integer> recentlyRemovedBrokers() {
+    return _recentlyRemovedBrokers;
+  }
+
   /*
    * Return an object that can be further used
    * to encode into JSON
@@ -343,6 +371,9 @@ public class ExecutorState {
     execState.put(STATE, _state);
     if (_recentlyDemotedBrokers != null && !_recentlyDemotedBrokers.isEmpty()) {
       execState.put(RECENTLY_DEMOTED_BROKERS, _recentlyDemotedBrokers);
+    }
+    if (_recentlyRemovedBrokers != null && !_recentlyRemovedBrokers.isEmpty()) {
+      execState.put(RECENTLY_REMOVED_BROKERS, _recentlyRemovedBrokers);
     }
     switch (_state) {
       case NO_TASK_IN_PROGRESS:
@@ -409,6 +440,7 @@ public class ExecutorState {
       default:
         execState.put(ERROR, "ILLEGAL_STATE_EXCEPTION");
         execState.remove(RECENTLY_DEMOTED_BROKERS);
+        execState.remove(RECENTLY_REMOVED_BROKERS);
         break;
     }
 
@@ -418,29 +450,32 @@ public class ExecutorState {
   public String getPlaintext() {
     String recentlyDemotedBrokers = (_recentlyDemotedBrokers != null && !_recentlyDemotedBrokers.isEmpty())
                                     ? String.format(", %s: %s", RECENTLY_DEMOTED_BROKERS, _recentlyDemotedBrokers) : "";
+    String recentlyRemovedBrokers = (_recentlyRemovedBrokers != null && !_recentlyRemovedBrokers.isEmpty())
+                                    ? String.format(", %s: %s", RECENTLY_REMOVED_BROKERS, _recentlyRemovedBrokers) : "";
 
     switch (_state) {
       case NO_TASK_IN_PROGRESS:
-        return String.format("{%s: %s%s}", STATE, _state, recentlyDemotedBrokers);
+        return String.format("{%s: %s%s%s}", STATE, _state, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case STARTING_EXECUTION:
-        return String.format("{%s: %s, %s: %s%s}", STATE, _state, TRIGGERED_USER_TASK_ID,
-                             _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid, recentlyDemotedBrokers);
+        return String.format("{%s: %s, %s: %s%s%s}", STATE, _state, TRIGGERED_USER_TASK_ID,
+                             _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         return String.format("{%s: %s, finished/total leadership movements: %d/%d, "
-                             + "maximum concurrent leadership movements: %d, %s: %s%s}", STATE, _state, _numFinishedLeadershipMovements,
+                             + "maximum concurrent leadership movements: %d, %s: %s%s%s}", STATE, _state, _numFinishedLeadershipMovements,
                              numTotalLeadershipMovements(), _maximumConcurrentLeaderMovements, TRIGGERED_USER_TASK_ID,
-                             _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid, recentlyDemotedBrokers);
+                             _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
       case STOPPING_EXECUTION:
         return String.format("{%s: %s, in-progress/aborting partitions: %d/%d, completed/total bytes(MB): %d/%d, "
                              + "finished/aborted/dead/total partitions: %d/%d/%d/%d, finished leadership movements: %d/%d, "
-                             + "maximum concurrent leadership/per-broker partition movements: %d/%d, %s: %s%s}",
+                             + "maximum concurrent leadership/per-broker partition movements: %d/%d, %s: %s%s%s}",
                              STATE, _state, _inProgressPartitionMovements.size(), _abortingPartitionMovements.size(),
                              _finishedDataMovementInMB, totalDataToMoveInMB(), _numFinishedPartitionMovements,
                              _abortedPartitionMovements.size(), _deadPartitionMovements.size(),
                              numTotalPartitionMovements(), _numFinishedLeadershipMovements, numTotalLeadershipMovements(),
                              _maximumConcurrentLeaderMovements, _maximumConcurrentPartitionMovementsPerBroker,
-                             TRIGGERED_USER_TASK_ID, _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid, recentlyDemotedBrokers);
+                             TRIGGERED_USER_TASK_ID, _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid,
+                             recentlyDemotedBrokers, recentlyRemovedBrokers);
       default:
         throw new IllegalStateException("This should never happen");
     }

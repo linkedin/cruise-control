@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.metricdef.MetricInfo;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
@@ -65,7 +66,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   @Before
   public void setUp() {
     super.setUp();
-    ZkUtils zkUtils = KafkaCruiseControlUnitTestUtils.zkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
     for (int i = 0; i < NUM_TOPICS; i++) {
       AdminUtils.createTopic(zkUtils, "topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
     }
