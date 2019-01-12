@@ -125,11 +125,11 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     // User LinkedList for better remove efficiency
     List<UserTaskManager.UserTaskInfo> tmpLinkedList = new LinkedList<>(userTasks);
     tmpLinkedList.stream()
-        .filter(checkInputFilter(requestedUserTaskIds).or(elem -> requestedUserTaskIds.contains(elem.userTaskId())))
-        .filter(checkInputFilter(requestedTaskStates).or(elem -> requestedTaskStates.contains(elem.state())))
-        .filter(checkInputFilter(requestedEndPoints).or(elem -> requestedEndPoints.contains(elem.endPoint())))
-        .filter(checkInputFilter(requestedClientIds).or(elem -> requestedClientIds.contains(elem.clientIdentity())))
-        .forEach(consumer);
+                 .filter(checkInputFilter(requestedUserTaskIds).or(elem -> requestedUserTaskIds.contains(elem.userTaskId())))
+                 .filter(checkInputFilter(requestedTaskStates).or(elem -> requestedTaskStates.contains(elem.state())))
+                 .filter(checkInputFilter(requestedEndPoints).or(elem -> requestedEndPoints.contains(elem.endPoint())))
+                 .filter(checkInputFilter(requestedClientIds).or(elem -> requestedClientIds.contains(elem.clientIdentity())))
+                 .forEach(consumer);
   }
 
   private String getPlaintext(CruiseControlParameters parameters) {
@@ -178,7 +178,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     for (UserTaskManager.UserTaskInfo userTaskInfo : prepareResultList(parameters)) {
       String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATA_FORMAT, TIME_ZONE);
       sb.append(String.format(formattingStringBuilder.toString(), userTaskInfo.userTaskId().toString(), userTaskInfo.clientIdentity(),
-          dateFormatted, userTaskInfo.state(), userTaskInfo.requestWithParams())); // values
+                              dateFormatted, userTaskInfo.state(), userTaskInfo.requestWithParams())); // values
     }
 
     return sb.toString();

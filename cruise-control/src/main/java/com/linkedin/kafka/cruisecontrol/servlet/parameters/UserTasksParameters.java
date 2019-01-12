@@ -21,10 +21,10 @@ import javax.servlet.http.HttpServletRequest;
  * </pre>
  */
 public class UserTasksParameters extends AbstractParameters {
-  private Set<UUID> _userTaskIds;
+  private Set<UUID> _taskIds;
   private Set<String> _clientIds;
   private Set<EndPoint> _endPoints;
-  private Set<UserTaskManager.TaskState> _taskStates;
+  private Set<UserTaskManager.TaskState> _types;
   private int _entries;
 
   public UserTasksParameters(HttpServletRequest request) {
@@ -34,15 +34,15 @@ public class UserTasksParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _userTaskIds = ParameterUtils.taskIds(_request);
+    _taskIds = ParameterUtils.taskIds(_request);
     _clientIds = ParameterUtils.clientIds(_request);
     _endPoints = ParameterUtils.endPoints(_request);
-    _taskStates = ParameterUtils.types(_request);
+    _types = ParameterUtils.types(_request);
     _entries = ParameterUtils.entries(_request);
   }
 
   public Set<UUID> userTaskIds() {
-    return _userTaskIds;
+    return _taskIds;
   }
 
   public Set<String> clientIds() {
@@ -54,7 +54,7 @@ public class UserTasksParameters extends AbstractParameters {
   }
 
   public Set<UserTaskManager.TaskState> taskStates() {
-    return _taskStates;
+    return _types;
   }
 
   public int entries() {

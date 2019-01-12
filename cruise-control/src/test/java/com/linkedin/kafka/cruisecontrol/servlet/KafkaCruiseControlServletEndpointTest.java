@@ -43,7 +43,6 @@ public class KafkaCruiseControlServletEndpointTest {
 
   private static Collection<Object[]> _initializeServletRequestsOutput = new ArrayList<>();
   private static Collection<Object[]> _populateUserTaskManagerOutput = new ArrayList<>();
-  private static Time _mockTime;
   private static UserTaskManager.UUIDGenerator _mockUUIDGenerator;
   private static HttpSession _mockHttpSession;
   private static HttpServletResponse _mockHttpServletResponse;
@@ -60,16 +59,16 @@ public class KafkaCruiseControlServletEndpointTest {
   static {
     DIFF_PARAM.put("param", new String[]{"true"});
 
-    _mockTime = new MockTime();
+    Time mockTime = new MockTime();
     _mockUUIDGenerator = EasyMock.mock(UserTaskManager.UUIDGenerator.class);
     _mockHttpSession = EasyMock.mock(HttpSession.class);
     _mockHttpServletResponse = EasyMock.mock(HttpServletResponse.class);
-    EasyMock.expect(_mockHttpSession.getLastAccessedTime()).andReturn(_mockTime.milliseconds()).anyTimes();
+    EasyMock.expect(_mockHttpSession.getLastAccessedTime()).andReturn(mockTime.milliseconds()).anyTimes();
     _mockHttpSession.invalidate();
     _mockHttpServletResponse.setHeader(EasyMock.anyString(), EasyMock.anyString());
     EasyMock.expectLastCall().anyTimes();
     _userTaskManager = new UserTaskManager(1000, 10, TimeUnit.HOURS.toMillis(6),
-        100, _mockTime, _mockUUIDGenerator);
+                                           100, mockTime, _mockUUIDGenerator);
   }
 
   private static class MockResult implements CruiseControlResponse {
@@ -77,8 +76,12 @@ public class KafkaCruiseControlServletEndpointTest {
     public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) { }
   }
 
-  private static Object[] inputRequestParams(UUID userTaskId, String clientId, String endPoint, Map<String, String[]> params,
-      boolean addToRequest, String methodType) {
+  private static Object[] inputRequestParams(UUID userTaskId,
+                                             String clientId,
+                                             String endPoint,
+                                             Map<String, String[]> params,
+                                             boolean addToRequest,
+                                             String methodType) {
     return new Object[]{userTaskId, clientId, endPoint, params, addToRequest, methodType};
   }
 
@@ -230,6 +233,7 @@ public class KafkaCruiseControlServletEndpointTest {
     return parameters;
   }
 
+  @SuppressWarnings("unchecked")
   private HttpServletRequest prepareTestRequest(HttpSession session, Object userTaskId, Object clientId, Object resource,
       Object params, UserTaskManager.UUIDGenerator mockUUIDGenerator, Object addToRequest, Object method) {
 

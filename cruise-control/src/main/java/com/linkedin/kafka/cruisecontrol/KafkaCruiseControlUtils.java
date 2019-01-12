@@ -26,6 +26,7 @@ public class KafkaCruiseControlUtils {
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
   public static final boolean IS_ZK_SECURITY_ENABLED = false;
   public static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
+  public static final String DATA_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";
 
   private KafkaCruiseControlUtils() {
@@ -43,9 +44,16 @@ public class KafkaCruiseControlUtils {
    * Format the timestamp from long to a human readable string.
    */
   public static String toDateString(long time) {
-    return toDateString(time, "dd/MM/yyyy HH:mm:ss", "");
+    return toDateString(time, DATA_FORMAT2, "");
   }
 
+  /**
+   * Format the timestamp from long to human readable string. Allow customization of date format and time zone.
+   * @param time time in milliseconds
+   * @param dateFormat see formats above
+   * @param timeZone will use default if timeZone is set to empty string
+   * @return string representation of date
+   */
   public static String toDateString(long time, String dateFormat, String timeZone) {
     DateFormat formatter = new SimpleDateFormat(dateFormat);
     if (!timeZone.isEmpty()) {
