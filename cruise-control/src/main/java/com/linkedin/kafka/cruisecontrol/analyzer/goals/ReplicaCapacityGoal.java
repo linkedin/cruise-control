@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -196,11 +197,11 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    *
    * @param clusterModel The cluster model.
    */
-  private void ensureReplicaCapacitySatisfied(ClusterModel clusterModel) {
+  private void ensureReplicaCapacitySatisfied(ClusterModel clusterModel) throws OptimizationFailureException {
     for (Broker broker : brokersToBalance(clusterModel)) {
       int numBrokerReplicas = broker.replicas().size();
       if (numBrokerReplicas > _balancingConstraint.maxReplicasPerBroker()) {
-        throw new IllegalStateException(String.format("Replicas in broker: %d exceeds the maximum allowed number of "
+        throw new OptimizationFailureException(String.format("Replicas in broker: %d exceeds the maximum allowed number of "
             + "replicas: %d.", numBrokerReplicas, _balancingConstraint.maxReplicasPerBroker()));
       }
     }
@@ -211,15 +212,16 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics)
+                                    OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     for (Replica replica : new TreeSet<>(broker.replicas())) {
       boolean isReplicaOffline = replica.isCurrentOffline();
       if (broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker() && !isReplicaOffline) {
@@ -235,7 +237,8 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       List<Broker> eligibleBrokers =
           eligibleBrokers(replica, clusterModel).stream().map(BrokerReplicaCount::broker).collect(Collectors.toList());
 
-      Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.REPLICA_MOVEMENT, optimizedGoals);
+      Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.REPLICA_MOVEMENT,
+                                           optimizedGoals, optimizationOptions);
       if (b == null) {
         if (!broker.isAlive()) {
           // If the replica resides in a dead broker, throw an exception!

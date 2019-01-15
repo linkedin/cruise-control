@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
@@ -48,7 +49,7 @@ import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
  * <li>Under: (the average number of replicas per broker) * (1 + replica count balance percentage)</li>
  * <li>Above: (the average number of replicas per broker) * Math.max(0, 1 - replica count balance percentage)</li>
  * </ul>
- * Also see: {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#REPLICA_COUNT_BALANCE_THRESHOLD_DOC}
+ * Also see: {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG}
  * and {@link #balancePercentageWithMargin()}.
  */
 public class ReplicaDistributionGoal extends AbstractGoal {
@@ -268,13 +269,13 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
+   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics) {
+                                    OptimizationOptions optimizationOptions) {
     LOG.debug("Rebalancing broker {} [limits] lower: {} upper: {}.", broker.id(), _balanceLowerLimit, _balanceUpperLimit);
     int numReplicas = broker.replicas().size();
     int numOfflineReplicas = broker.currentOfflineReplicas().size();
@@ -297,12 +298,12 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     }
 
     // Update broker ids over the balance limit for logging purposes.
-    if (requireLessReplicas && rebalanceByMovingReplicasOut(broker, clusterModel, optimizedGoals, excludedTopics)) {
+    if (requireLessReplicas && rebalanceByMovingReplicasOut(broker, clusterModel, optimizedGoals, optimizationOptions)) {
       _brokerIdsAboveBalanceUpperLimit.add(broker.id());
       LOG.debug("Failed to sufficiently decrease replica count in broker {} with replica movements. Replicas: {}.",
                 broker.id(), broker.replicas().size());
     }
-    if (requireMoreReplicas && rebalanceByMovingReplicasIn(broker, clusterModel, optimizedGoals, excludedTopics)) {
+    if (requireMoreReplicas && rebalanceByMovingReplicasIn(broker, clusterModel, optimizedGoals, optimizationOptions)) {
       _brokerIdsUnderBalanceLowerLimit.add(broker.id());
       LOG.debug("Failed to sufficiently increase replica count in broker {} with replica movements. Replicas: {}.",
                 broker.id(), broker.replicas().size());
@@ -316,7 +317,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   private boolean rebalanceByMovingReplicasOut(Broker broker,
                                                ClusterModel clusterModel,
                                                Set<Goal> optimizedGoals,
-                                               Set<String> excludedTopics) {
+                                               OptimizationOptions optimizationOptions) {
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(Comparator.comparingInt((Broker b) -> b.replicas().size()).thenComparingInt(Broker::id));
 
@@ -341,7 +343,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       }
 
       Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.REPLICA_MOVEMENT,
-                                           optimizedGoals);
+                                           optimizedGoals, optimizationOptions);
       // Only check if we successfully moved something.
       if (b != null) {
         // Update the global sorted broker set to reflect the replica movement.
@@ -367,7 +369,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   private boolean rebalanceByMovingReplicasIn(Broker aliveDestBroker,
                                               ClusterModel clusterModel,
                                               Set<Goal> optimizedGoals,
-                                              Set<String> excludedTopics) {
+                                              OptimizationOptions optimizationOptions) {
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
       // Brokers are sorted by (1) current offline replica count then (2) all replica count then (3) broker id.
       int resultByOfflineReplicas = Integer.compare(b2.currentOfflineReplicas().size(), b1.currentOfflineReplicas().size());
@@ -407,7 +410,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
         }
 
         Broker b = maybeApplyBalancingAction(clusterModel, replica, Collections.singletonList(aliveDestBroker),
-                                             ActionType.REPLICA_MOVEMENT, optimizedGoals);
+                                             ActionType.REPLICA_MOVEMENT, optimizedGoals, optimizationOptions);
         // Only need to check status if the action is taken. This will also handle the case that the source broker
         // has nothing to move in. In that case we will never reenqueue that source broker.
         if (b != null) {

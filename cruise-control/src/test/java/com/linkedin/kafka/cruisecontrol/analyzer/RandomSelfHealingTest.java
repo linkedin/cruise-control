@@ -40,7 +40,6 @@ import java.util.Set;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,7 +56,7 @@ public class RandomSelfHealingTest {
    *
    * @return Parameters for the {@link OptimizationVerifier}.
    */
-  @Parameters(name = "{1}-{0}")
+  @Parameterized.Parameters(name = "{1}-{0}")
   public static Collection<Object[]> data() {
     Collection<Object[]> p = new ArrayList<>();
 

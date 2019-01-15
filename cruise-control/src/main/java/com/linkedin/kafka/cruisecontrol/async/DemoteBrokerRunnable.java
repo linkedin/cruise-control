@@ -12,7 +12,7 @@ import java.util.Collection;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#demoteBrokers(Collection, boolean,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, boolean, boolean, String)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, boolean, boolean, String, boolean)}
  */
 public class DemoteBrokerRunnable extends OperationRunnable {
   private final Collection<Integer> _brokerIds;
@@ -22,6 +22,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
   private final boolean _skipUrpDemotion;
   private final boolean _excludeFollowerDemotion;
   private final String _uuid;
+  private final boolean _excludeRecentlyDemotedBrokers;
 
   DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                        OperationFuture future,
@@ -35,6 +36,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _skipUrpDemotion = parameters.skipUrpDemotion();
     _excludeFollowerDemotion = parameters.excludeFollowerDemotion();
     _uuid = uuid;
+    _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
   }
 
   @Override
@@ -46,6 +48,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
                                                                     _concurrentLeaderMovements,
                                                                     _skipUrpDemotion,
                                                                     _excludeFollowerDemotion,
-                                                                    _uuid));
+                                                                    _uuid,
+                                                                    _excludeRecentlyDemotedBrokers));
   }
 }

@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -173,13 +174,14 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics) {
+                                    OptimizationOptions optimizationOptions) {
 
     double balanceThreshold = balanceThreshold(clusterModel, broker.id());
     if (broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) < balanceThreshold) {
       return;
     }
 
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     List<Replica> leaderReplicasSortedByBytesIn = broker.replicas().stream()
         .filter(Replica::isLeader)
         .filter(r -> !shouldExclude(r, excludedTopics))
@@ -195,7 +197,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
           .sorted(Comparator.comparingDouble(a -> a.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)))
           .collect(Collectors.toList());
       maybeApplyBalancingAction(clusterModel, leaderReplica, eligibleBrokers, ActionType.LEADERSHIP_MOVEMENT,
-                                optimizedGoals);
+                                optimizedGoals, optimizationOptions);
       overThreshold = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN) > balanceThreshold;
     }
     if (overThreshold) {

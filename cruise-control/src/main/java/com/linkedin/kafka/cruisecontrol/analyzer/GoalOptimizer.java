@@ -122,7 +122,7 @@ public class GoalOptimizer implements Runnable {
     _bestProposal = null;
     _progressUpdateLock = new AtomicBoolean(false);
     // A new AtomicReference with null initial value.
-    _proposalGenerationException = new AtomicReference<Exception>();
+    _proposalGenerationException = new AtomicReference<>();
     _proposalPrecomputingProgress = new OperationProgress();
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
   }
@@ -387,15 +387,17 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
-   * Provides optimization using {@link #_defaultExcludedTopics}.
+   * Provides optimization
+   * (1) using {@link #_defaultExcludedTopics}, and
+   * (2) does not exclude any brokers for receiving leadership.
    *
-   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern)}.
+   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern, Set)}.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        List<Goal> goalsByPriority,
                                        OperationProgress operationProgress)
       throws KafkaCruiseControlException {
-    return optimizations(clusterModel, goalsByPriority, operationProgress, null);
+    return optimizations(clusterModel, goalsByPriority, operationProgress, null, Collections.emptySet());
   }
 
   /**
@@ -411,12 +413,14 @@ public class GoalOptimizer implements Runnable {
    * @param operationProgress to report the job progress.
    * @param requestedExcludedTopics Topics requested to be excluded from partition movement (if null,
    *                                use {@link #_defaultExcludedTopics})
+   * @param excludedBrokersForLeadership Brokers excluded from receiving leadership upon proposal generation.
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        List<Goal> goalsByPriority,
                                        OperationProgress operationProgress,
-                                       Pattern requestedExcludedTopics)
+                                       Pattern requestedExcludedTopics,
+                                       Set<Integer> excludedBrokersForLeadership)
       throws KafkaCruiseControlException {
     if (clusterModel == null) {
       throw new IllegalArgumentException("The cluster model cannot be null");
@@ -443,13 +447,14 @@ public class GoalOptimizer implements Runnable {
     Map<TopicPartition, Integer> preOptimizedLeaderDistribution = null;
     Set<String> excludedTopics = excludedTopics(clusterModel, requestedExcludedTopics);
     LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
+    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics, excludedBrokersForLeadership);
     for (Goal goal : goalsByPriority) {
       preOptimizedReplicaDistribution = preOptimizedReplicaDistribution == null ? initReplicaDistribution : clusterModel.getReplicaDistribution();
       preOptimizedLeaderDistribution = preOptimizedLeaderDistribution == null ? initLeaderDistribution : clusterModel.getLeaderDistribution();
       OptimizationForGoal step = new OptimizationForGoal(goal.name());
       operationProgress.addStep(step);
       LOG.debug("Optimizing goal {}", goal.name());
-      boolean succeeded = goal.optimize(clusterModel, optimizedGoals, excludedTopics);
+      boolean succeeded = goal.optimize(clusterModel, optimizedGoals, optimizationOptions);
       optimizedGoals.add(goal);
       statsByGoalPriority.put(goal, clusterModel.getClusterStats(_balancingConstraint));
 

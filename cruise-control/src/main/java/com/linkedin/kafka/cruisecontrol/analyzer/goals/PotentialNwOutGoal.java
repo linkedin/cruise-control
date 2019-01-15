@@ -6,6 +6,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -252,13 +253,13 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
+   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics) {
+                                    OptimizationOptions optimizationOptions) {
     double capacityThreshold = _balancingConstraint.capacityThreshold(Resource.NW_OUT);
     double capacityLimit = broker.capacityFor(Resource.NW_OUT) * capacityThreshold;
     boolean estimatedMaxPossibleNwOutOverLimit = !broker.replicas().isEmpty() &&
@@ -267,6 +268,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
       // Estimated max possible utilization in broker is under the limit and there is no offline replica on broker.
       return;
     }
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get candidate brokers
     Set<Broker> candidateBrokers = _fixOfflineReplicasOnly ?
                                    clusterModel.aliveBrokers() : brokersUnderEstimatedMaxPossibleNwOut(clusterModel);
@@ -285,7 +287,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
                                                       b1.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_OUT)));
       Broker destinationBroker =
           maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.REPLICA_MOVEMENT,
-                                    optimizedGoals);
+                                    optimizedGoals, optimizationOptions);
       if (destinationBroker != null) {
         int destinationBrokerId = destinationBroker.id();
         // Check if broker capacity limit is satisfied now.

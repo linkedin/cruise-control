@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSortedReplicas;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
@@ -85,7 +86,8 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   }
 
   @Override
-  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics) {
+  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions) {
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     double meanDiskUsage = clusterModel.load().expectedUtilizationFor(DISK) / clusterModel.capacityFor(DISK);
     double upperThreshold = meanDiskUsage * (1 + balancePercentageWithMargin());
     double lowerThreshold = meanDiskUsage * Math.max(0, (1 - balancePercentageWithMargin()));
@@ -119,6 +121,15 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     boolean succeeded = isOptimized(clusterModel, upperThreshold, lowerThreshold);
     LOG.debug("Finished optimization in {} iterations.", numIterations);
     return succeeded;
+  }
+
+  /**
+   * @deprecated
+   * Please use {@link #optimize(ClusterModel, Set, OptimizationOptions)} instead.
+   */
+  @Override
+  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics) {
+    return optimize(clusterModel, optimizedGoals, new OptimizationOptions(excludedTopics));
   }
 
   /**

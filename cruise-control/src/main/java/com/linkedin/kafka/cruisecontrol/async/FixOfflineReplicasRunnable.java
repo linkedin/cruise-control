@@ -14,7 +14,8 @@ import java.util.regex.Pattern;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern, String)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern, String,
+ * boolean)}
  */
 class FixOfflineReplicasRunnable extends OperationRunnable {
   private final boolean _dryRun;
@@ -26,6 +27,7 @@ class FixOfflineReplicasRunnable extends OperationRunnable {
   private final boolean _skipHardGoalCheck;
   private final Pattern _excludedTopics;
   private final String _uuid;
+  private final boolean _excludeRecentlyDemotedBrokers;
 
   FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
                              OperationFuture future,
@@ -43,6 +45,7 @@ class FixOfflineReplicasRunnable extends OperationRunnable {
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
     _uuid = uuid;
+    _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
   }
 
   @Override
@@ -50,6 +53,7 @@ class FixOfflineReplicasRunnable extends OperationRunnable {
     return new OptimizationResult(_kafkaCruiseControl.fixOfflineReplicas(_dryRun, _goals, _modelCompletenessRequirements,
                                                                          _future.operationProgress(), _allowCapacityEstimation,
                                                                          _concurrentPartitionMovements, _concurrentLeaderMovements,
-                                                                         _skipHardGoalCheck, _excludedTopics, _uuid));
+                                                                         _skipHardGoalCheck, _excludedTopics, _uuid,
+                                                                         _excludeRecentlyDemotedBrokers));
   }
 }

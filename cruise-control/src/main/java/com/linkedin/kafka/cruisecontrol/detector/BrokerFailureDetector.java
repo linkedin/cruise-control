@@ -35,10 +35,11 @@ import static java.util.stream.Collectors.toSet;
 
 /**
  * This class detects broker failures.
- *
  */
 public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
+  // TODO: Make this configurable.
+  private static final boolean EXCLUDE_RECENTLY_DEMOTED_BROKERS = true;
   private static final long MAX_METADATA_WAIT_MS = 60000L;
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
@@ -160,7 +161,7 @@ public class BrokerFailureDetector {
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
       Map<Integer, Long> failedBrokers = new HashMap<>(_failedBrokers);
-      _anomalies.add(new BrokerFailures(_kafkaCruiseControl, failedBrokers, _allowCapacityEstimation));
+      _anomalies.add(new BrokerFailures(_kafkaCruiseControl, failedBrokers, _allowCapacityEstimation, EXCLUDE_RECENTLY_DEMOTED_BROKERS));
     }
   }
 

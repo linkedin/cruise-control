@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
@@ -251,13 +252,16 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    *
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
+   * @param optimizationOptions Options to take into account during optimization.
    */
-  private void healCluster(ClusterModel clusterModel, Set<Goal> optimizedGoals) throws OptimizationFailureException {
+  private void healCluster(ClusterModel clusterModel,
+                           Set<Goal> optimizedGoals,
+                           OptimizationOptions optimizationOptions) throws OptimizationFailureException {
     // Move self healed replicas to eligible ones.
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       String topic = replica.topicPartition().topic();
       ReplicaDistributionTarget replicaDistributionTarget = _replicaDistributionTargetByTopic.get(topic);
-      replicaDistributionTarget.moveSelfHealingEligibleReplicaToEligibleBroker(clusterModel, replica, optimizedGoals);
+      replicaDistributionTarget.moveSelfHealingEligibleReplicaToEligibleBroker(clusterModel, replica, optimizedGoals, optimizationOptions);
     }
   }
 
@@ -267,15 +271,15 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
+   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics) throws OptimizationFailureException {
+                                    OptimizationOptions optimizationOptions) throws OptimizationFailureException {
     if (!clusterModel.selfHealingEligibleReplicas().isEmpty()) {
-      healCluster(clusterModel, optimizedGoals);
+      healCluster(clusterModel, optimizedGoals, optimizationOptions);
     } else {
       SortedSet<Replica> topicReplicasInBroker = new TreeSet<>(broker.replicasOfTopicInBroker(_currentRebalanceTopic));
       // Move local topic replicas to eligible brokers.
@@ -283,7 +287,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                                        .moveReplicasInSourceBrokerToEligibleBrokers(clusterModel,
                                                                                     topicReplicasInBroker,
                                                                                     optimizedGoals,
-                                                                                    excludedTopics);
+                                                                                    optimizationOptions);
     }
   }
 

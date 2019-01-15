@@ -39,7 +39,7 @@ public class AnomalyDetector {
   private static final String METRIC_REGISTRY_NAME = "AnomalyDetector";
   private static final int INIT_JITTER_BOUND = 10000;
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
-  private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null, Collections.emptyMap(), true);
+  private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null, Collections.emptyMap(), true, true);
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final AnomalyNotifier _anomalyNotifier;
   // Detectors

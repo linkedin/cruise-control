@@ -30,6 +30,7 @@ import org.apache.kafka.common.TopicPartition;
  * created as part of a rack structure.
  */
 public class Broker implements Serializable, Comparable<Broker> {
+  private static final double DEAD_BROKER_CAPACITY = -1.0;
   private static final String BROKER_ID = "brokerid";
   private static final String BROKER_STATE = "brokerstate";
   private static final String REPLICAS = "replicas";
@@ -145,7 +146,7 @@ public class Broker implements Serializable, Comparable<Broker> {
     if (isAlive()) {
       return _brokerCapacity[resource.id()];
     }
-    return -1.0;
+    return DEAD_BROKER_CAPACITY;
   }
 
   /**
@@ -212,7 +213,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * Get all the leader replicas.
    */
   public Set<Replica> leaderReplicas() {
-    return _leaderReplicas;
+    return Collections.unmodifiableSet(_leaderReplicas);
   }
 
   /**

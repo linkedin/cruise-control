@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
@@ -197,7 +198,7 @@ public abstract class CapacityGoal extends AbstractGoal {
 
   /**
    * Ensure that for the resource, the utilization is under the capacity of the host/broker-level.
-   * {@link Resource#_isBrokerResource} and {@link Resource#isHostResource()} determines the level of checks this
+   * {@link Resource#isBrokerResource()} and {@link Resource#isHostResource()} determines the level of checks this
    * function performs.
    * @param clusterModel Cluster model.
    */
@@ -247,13 +248,13 @@ public abstract class CapacityGoal extends AbstractGoal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
+   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
    */
   @Override
   protected void rebalanceForBroker(Broker broker,
                                     ClusterModel clusterModel,
                                     Set<Goal> optimizedGoals,
-                                    Set<String> excludedTopics)
+                                    OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     Resource currentResource = resource();
@@ -269,6 +270,7 @@ public abstract class CapacityGoal extends AbstractGoal {
       return;
     }
 
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // First try REBALANCE BY LEADERSHIP MOVEMENT:
     if (currentResource == Resource.NW_OUT || currentResource == Resource.CPU) {
       // Sort replicas by descending order of preference to relocate. Preference is based on resource cost.
@@ -286,7 +288,7 @@ public abstract class CapacityGoal extends AbstractGoal {
         List<Broker> eligibleBrokers = onlineFollowers.stream().map(Replica::broker).collect(Collectors.toList());
 
         Broker b = maybeApplyBalancingAction(clusterModel, leader, eligibleBrokers,
-                                             ActionType.LEADERSHIP_MOVEMENT, optimizedGoals);
+                                             ActionType.LEADERSHIP_MOVEMENT, optimizedGoals, optimizationOptions);
         if (b == null) {
           LOG.debug("Failed to move leader replica {} to any other brokers in {}", leader, eligibleBrokers);
         }
@@ -315,7 +317,7 @@ public abstract class CapacityGoal extends AbstractGoal {
         // Unless the target broker would go over the host- and/or broker-level capacity,
         // the movement will be successful.
         Broker b = maybeApplyBalancingAction(clusterModel, replica, sortedAliveBrokersUnderCapacityLimit,
-                                             ActionType.REPLICA_MOVEMENT, optimizedGoals);
+                                             ActionType.REPLICA_MOVEMENT, optimizedGoals, optimizationOptions);
         if (b == null) {
           LOG.debug("Failed to move replica {} to any broker in {}", replica, sortedAliveBrokersUnderCapacityLimit);
         }
