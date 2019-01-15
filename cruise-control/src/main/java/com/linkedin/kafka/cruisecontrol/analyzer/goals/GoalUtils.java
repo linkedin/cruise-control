@@ -5,15 +5,19 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
-import com.linkedin.kafka.cruisecontrol.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.CandidateBroker;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.SortedSet;
 import java.util.stream.Collectors;
 
 
@@ -21,6 +25,7 @@ import java.util.stream.Collectors;
  * A util class for goals.
  */
 public class GoalUtils {
+  private static final double DEAD_BROKER_UTILIZATION = 1.0;
 
   private GoalUtils() {
 
@@ -130,5 +135,63 @@ public class GoalUtils {
 
     return actionType == ActionType.LEADERSHIP_MOVEMENT && replica.isLeader()
            && destinationBroker.replica(replica.topicPartition()) != null;
+  }
+
+  /**
+   * Get eligible replicas among the given candidate replicas for the proposed swap operation of the source replica.
+   * Invariant: No replica is eligible if the destination is excluded for leadership and the source replica is the leader.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param sourceReplica Source replica for intended swap operation.
+   * @param cb Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
+   * @return Eligible replicas for swap.
+   */
+  static SortedSet<Replica> eligibleReplicasForSwap(ClusterModel clusterModel,
+                                                    Replica sourceReplica,
+                                                    CandidateBroker cb) {
+    if (cb.shouldExcludeForLeadership(sourceReplica)) {
+      return Collections.emptySortedSet();
+    }
+
+    // Candidate replicas from the same destination broker to swap in the order of attempts to swap.
+    SortedSet<Replica> candidateReplicasToSwapWith = cb.replicas();
+
+    // CASE#1: All candidate replicas are eligible if any of the following is true:
+    // (1) there are no new brokers in the cluster,
+    // (2) the given candidate set contains no replicas,
+    // (3) the intended swap is between replicas of new brokers,
+    // (4) the intended swap is between a replica on a new broker, which originally was in the destination broker, and
+    // any replica in the destination broker.
+    Broker sourceBroker = sourceReplica.broker();
+    Broker destinationBroker = candidateReplicasToSwapWith.isEmpty() ? null : candidateReplicasToSwapWith.first().broker();
+
+    if (clusterModel.newBrokers().isEmpty()
+        || destinationBroker == null
+        || (sourceBroker.isNew() && (destinationBroker.isNew() || sourceReplica.originalBroker() == destinationBroker))) {
+      return candidateReplicasToSwapWith;
+    }
+
+    // CASE#2: A subset of candidate replicas might be eligible if only the destination broker is a new broker and it
+    // contains replicas that were originally in the source broker.
+    if (destinationBroker.isNew()) {
+      candidateReplicasToSwapWith.removeIf(replica -> replica.originalBroker() != sourceBroker);
+      return candidateReplicasToSwapWith;
+    }
+
+    // CASE#3: No swap is possible between old brokers when there are new brokers in the cluster.
+    return Collections.emptySortedSet();
+  }
+
+  /**
+   * Get the utilization percentage of the broker for the given resource, or {@link #DEAD_BROKER_UTILIZATION} if the
+   * broker is dead.
+   *
+   * @param broker Broker for which the resource utilization percentage has been queried.
+   * @param resource Resource for the utilization percentage.
+   * @return Utilization percentage of the broker for the given resource.
+   */
+  public static double utilizationPercentage(Broker broker, Resource resource) {
+    double brokerCapacity = broker.capacityFor(resource);
+    return brokerCapacity > 0 ? broker.load().expectedUtilizationFor(resource) / brokerCapacity : DEAD_BROKER_UTILIZATION;
   }
 }

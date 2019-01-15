@@ -609,14 +609,14 @@ public class KafkaCruiseControl {
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     // There are a few cases that we cannot use the cached best proposals:
-    // 1. When users dynamically specified goals or excluded topics.
+    // 1. When users dynamically specified goals, excluded topics, or requested to exclude recently demoted brokers.
     // 2. When provided requirements contain a weaker requirement than what is used by the cached proposal.
     ModelCompletenessRequirements requirementsForCache = _goalOptimizer.modelCompletenessRequirementsForPrecomputing();
     boolean hasWeakerRequirement =
         requirementsForCache.minMonitoredPartitionsPercentage() > modelCompletenessRequirements.minMonitoredPartitionsPercentage()
         || requirementsForCache.minRequiredNumWindows() > modelCompletenessRequirements.minRequiredNumWindows()
         || (requirementsForCache.includeAllTopics() && !modelCompletenessRequirements.includeAllTopics());
-    if ((goals != null && !goals.isEmpty()) || hasWeakerRequirement || excludedTopics != null) {
+    if ((goals != null && !goals.isEmpty()) || hasWeakerRequirement || excludedTopics != null || excludeRecentlyDemotedBrokers) {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         // The cached proposals are computed with ignoreMinMonitoredPartitions = true. So if user provided a different
         // setting, we need to generate a new model.
@@ -651,7 +651,7 @@ public class KafkaCruiseControl {
     sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
     synchronized (this) {
       Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers
-                                                  ? state(new OperationProgress(), Collections.singleton(EXECUTOR))
+                                                  ? state(operationProgress, Collections.singleton(EXECUTOR))
                                                       .executorState().recentlyDemotedBrokers()
                                                   : Collections.emptySet();
 

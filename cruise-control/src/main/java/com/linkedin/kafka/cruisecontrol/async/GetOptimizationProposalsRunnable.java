@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.async;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
-import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -41,18 +40,12 @@ class GetOptimizationProposalsRunnable extends OperationRunnable {
 
   @Override
   protected OptimizationResult getResult() throws Exception {
-    GoalOptimizer.OptimizerResult optimizerResult;
-    if (_goals != null || _excludedTopics != null || _excludeRecentlyDemotedBrokers) {
-      optimizerResult = _kafkaCruiseControl.getOptimizationProposals(_goals,
-                                                                     _modelCompletenessRequirements,
-                                                                     _future.operationProgress(),
-                                                                     _allowCapacityEstimation,
-                                                                     true,
-                                                                     _excludedTopics,
-                                                                     _excludeRecentlyDemotedBrokers);
-    } else {
-      optimizerResult = _kafkaCruiseControl.getOptimizationProposals(_future.operationProgress(), _allowCapacityEstimation);
-    }
-    return new OptimizationResult(optimizerResult);
+    return new OptimizationResult(_kafkaCruiseControl.getOptimizationProposals(_goals,
+                                                                               _modelCompletenessRequirements,
+                                                                               _future.operationProgress(),
+                                                                               _allowCapacityEstimation,
+                                                                               true,
+                                                                               _excludedTopics,
+                                                                               _excludeRecentlyDemotedBrokers));
   }
 }

@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
-import com.linkedin.kafka.cruisecontrol.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;

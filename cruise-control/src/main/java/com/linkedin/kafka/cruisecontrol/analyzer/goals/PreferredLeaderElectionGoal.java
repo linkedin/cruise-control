@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
-import com.linkedin.kafka.cruisecontrol.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -71,6 +71,8 @@ public class PreferredLeaderElectionGoal implements Goal {
       b.leaderReplicas().stream().filter(r -> !(_skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, r.topicPartition())))
        .forEach(r -> partitionsToMove.add(r.topicPartition()));
     }
+    // Check whether this goal has relocated any leadership.
+    boolean relocatedLeadership = false;
     Set<Integer> excludedBrokersForLeadership = optimizationOptions.excludedBrokersForLeadership();
     // Ignore the excluded topics because this goal does not move partitions.
     for (List<Partition> partitions : clusterModel.getPartitionsByTopic().values()) {
@@ -90,6 +92,7 @@ public class PreferredLeaderElectionGoal implements Goal {
                 continue;
               }
               clusterModel.relocateLeadership(r.topicPartition(), p.leader().broker().id(), leaderCandidate.id());
+              relocatedLeadership = true;
             }
             if (clusterModel.demotedBrokers().contains(leaderCandidate)) {
               LOG.warn("The leader of partition {} has to be on a demoted broker {} because all the alive "
@@ -100,7 +103,8 @@ public class PreferredLeaderElectionGoal implements Goal {
         }
       }
     }
-    return true;
+    // Return true if at least one leadership has been relocated.
+    return relocatedLeadership;
   }
 
   /**

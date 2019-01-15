@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
-import com.linkedin.kafka.cruisecontrol.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -18,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistri
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
@@ -177,6 +177,17 @@ public class ExcludedBrokersForLeadershipTest {
     // for excluded brokers, Expected to look optimized)
     p.add(params(3, ReplicaDistributionGoal.class, excludeAllBrokers, null, unbalanced2(), deadBroker0, true));
 
+    // ============PreferredLeaderElectionGoal============
+    // Test: With single excluded broker, satisfiable cluster, no dead broker (No exception, No proposal for
+    // excluded broker, Expected to look optimized)
+    p.add(params(0, PreferredLeaderElectionGoal.class, noExclusion, null, unbalanced3(), noDeadBroker, true));
+    // Test: With single excluded broker, satisfiable cluster, one dead broker (No exception, No proposal for
+    // excluded broker, Expected to look optimized)
+    p.add(params(1, PreferredLeaderElectionGoal.class, excludeB1, null, unbalanced3(), noDeadBroker, false));
+    // Test: With all brokers excluded, balance not satisfiable, no dead brokers (No exception, No proposal
+    // for excluded brokers, Expected to look optimized)
+    p.add(params(2, PreferredLeaderElectionGoal.class, excludeAllBrokers, null, unbalanced3(), noDeadBroker, false));
+
     return p;
   }
 
@@ -283,7 +294,7 @@ public class ExcludedBrokersForLeadershipTest {
     TopicPartition pInfoT10 = new TopicPartition("T1", 0);
     TopicPartition pInfoT20 = new TopicPartition("T2", 0);
 
-    // Create replicas for topic: T1.
+    // Create replicas for topics.
     cluster.createReplica("0", 0, pInfoT10, 0, true);
     cluster.createReplica("0", 0, pInfoT20, 0, true);
 
@@ -309,7 +320,7 @@ public class ExcludedBrokersForLeadershipTest {
     TopicPartition pInfoT40 = new TopicPartition("T2", 1);
     TopicPartition pInfoT50 = new TopicPartition("T1", 2);
     TopicPartition pInfoT60 = new TopicPartition("T2", 2);
-    // Create replicas for topic: T1.
+    // Create replicas for topics.
     cluster.createReplica("0", 1, pInfoT30, 0, true);
     cluster.createReplica("0", 0, pInfoT40, 0, true);
     cluster.createReplica("0", 0, pInfoT50, 0, true);
@@ -326,6 +337,38 @@ public class ExcludedBrokersForLeadershipTest {
     cluster.setReplicaLoad("0", 0, pInfoT40, aggregatedMetricValues, Collections.singletonList(1L));
     cluster.setReplicaLoad("0", 0, pInfoT50, aggregatedMetricValues, Collections.singletonList(1L));
     cluster.setReplicaLoad("0", 0, pInfoT60, aggregatedMetricValues, Collections.singletonList(1L));
+    return cluster;
+  }
+
+  // two racks, three brokers, two partitions, one replica.
+  private static ClusterModel unbalanced3() {
+
+    List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
+    ClusterModel cluster = DeterministicCluster.getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
+        TestConstants.BROKER_CAPACITY);
+
+    // Create topic partition.
+    TopicPartition pInfoT10 = new TopicPartition("T1", 0);
+    TopicPartition pInfoT20 = new TopicPartition("T2", 0);
+
+    // Create replicas for topics -- leader is not in the first position!
+    cluster.createReplica("0", 1, pInfoT10, 0, false);
+    cluster.createReplica("0", 1, pInfoT20, 0, false);
+    cluster.createReplica("0", 0, pInfoT10, 1, true);
+    cluster.createReplica("0", 0, pInfoT20, 1, true);
+
+    AggregatedMetricValues aggregatedMetricValues =
+        KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(TestConstants.TYPICAL_CPU_CAPACITY / 2,
+            TestConstants.LARGE_BROKER_CAPACITY / 2,
+            TestConstants.MEDIUM_BROKER_CAPACITY / 2,
+            TestConstants.LARGE_BROKER_CAPACITY / 2);
+
+    // Create snapshots and push them to the cluster.
+    cluster.setReplicaLoad("0", 0, pInfoT10, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad("0", 0, pInfoT20, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad("0", 1, pInfoT10, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad("0", 1, pInfoT20, aggregatedMetricValues, Collections.singletonList(1L));
+
     return cluster;
   }
 }

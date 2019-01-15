@@ -5,12 +5,13 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
-import com.linkedin.kafka.cruisecontrol.OptimizationOptions;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.CandidateBroker;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -18,7 +19,6 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.SortedSet;
@@ -32,6 +32,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.legitMove;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.eligibleBrokers;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.eligibleReplicasForSwap;
 
 
 /**
@@ -249,18 +250,17 @@ public abstract class AbstractGoal implements Goal {
    *
    * @param clusterModel The state of the cluster.
    * @param sourceReplica Replica to be swapped with.
-   * @param candidateReplicasToSwapWith Candidate replicas from the same destination broker to swap in the order of
-   *                                    attempts to swap.
+   * @param cb Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
    * @param optimizedGoals Optimized goals.
    * @param optimizationOptions Options to take into account during optimization -- e.g. excluded brokers for replica move.
    * @return True the swapped in replica if succeeded, null otherwise.
    */
   Replica maybeApplySwapAction(ClusterModel clusterModel,
                                Replica sourceReplica,
-                               SortedSet<Replica> candidateReplicasToSwapWith,
+                               CandidateBroker cb,
                                Set<Goal> optimizedGoals,
                                OptimizationOptions optimizationOptions) {
-    SortedSet<Replica> eligibleReplicas = getEligibleReplicasForSwap(clusterModel, sourceReplica, candidateReplicasToSwapWith);
+    SortedSet<Replica> eligibleReplicas = eligibleReplicasForSwap(clusterModel, sourceReplica, cb);
     if (eligibleReplicas.isEmpty()) {
       return null;
     }
@@ -306,35 +306,6 @@ public abstract class AbstractGoal implements Goal {
       }
     }
     return null;
-  }
-
-  private SortedSet<Replica> getEligibleReplicasForSwap(ClusterModel clusterModel,
-                                                        Replica sourceReplica,
-                                                        SortedSet<Replica> candidateReplicasToSwapWith) {
-    // CASE#1: All candidate replicas are eligible if any of the following is true:
-    // (1) there are no new brokers in the cluster,
-    // (2) the given candidate set contains no replicas,
-    // (3) the intended swap is between replicas of new brokers,
-    // (4) the intended swap is between a replica on a new broker, which originally was in the destination broker, and
-    // any replica in the destination broker.
-    Broker sourceBroker = sourceReplica.broker();
-    Broker destinationBroker = candidateReplicasToSwapWith.isEmpty() ? null : candidateReplicasToSwapWith.first().broker();
-
-    if (clusterModel.newBrokers().isEmpty()
-        || destinationBroker == null
-        || (sourceBroker.isNew() && (destinationBroker.isNew() || sourceReplica.originalBroker() == destinationBroker))) {
-      return candidateReplicasToSwapWith;
-    }
-
-    // CASE#2: A subset of candidate replicas might be eligible if only the destination broker is a new broker and it
-    // contains replicas that were originally in the source broker.
-    if (destinationBroker.isNew()) {
-      candidateReplicasToSwapWith.removeIf(replica -> replica.originalBroker() != sourceBroker);
-      return candidateReplicasToSwapWith;
-    }
-
-    // CASE#3: No swap is possible between old brokers when there are new brokers in the cluster.
-    return Collections.emptySortedSet();
   }
 
   @Override
