@@ -340,7 +340,7 @@ public class ExcludedBrokersForLeadershipTest {
     return cluster;
   }
 
-  // two racks, three brokers, two partitions, two replica, leaders are in index-1 (not in index-0).
+  // two racks, three brokers, two partitions, two replicas, leaders are in index-1 (not in index-0).
   private static ClusterModel unbalanced3() {
 
     List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
