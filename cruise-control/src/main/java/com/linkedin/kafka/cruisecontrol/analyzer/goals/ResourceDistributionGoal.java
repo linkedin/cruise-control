@@ -521,7 +521,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         }
 
         // Try swapping the source with the candidate replicas. Get the swapped in replica if successful, null otherwise.
-        Replica swappedIn = maybeApplySwapAction(clusterModel, sourceReplica, cb, optimizedGoals, optimizationOptions);
+        Replica swappedIn = maybeApplySwapAction(clusterModel, sourceReplica, cb, optimizedGoals);
         if (swappedIn != null) {
           if (isLoadUnderBalanceUpperLimit(broker)) {
             // Successfully balanced this broker by swapping in.
@@ -634,7 +634,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           break;
         }
         // Try swapping the source with the candidate replicas. Get the swapped in replica if successful, null otherwise.
-        Replica swappedIn = maybeApplySwapAction(clusterModel, sourceReplica, cb, optimizedGoals, optimizationOptions);
+        Replica swappedIn = maybeApplySwapAction(clusterModel, sourceReplica, cb, optimizedGoals);
         if (swappedIn != null) {
           if (isLoadAboveBalanceLowerLimit(broker)) {
             // Successfully balanced this broker by swapping in.

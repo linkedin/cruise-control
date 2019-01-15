@@ -252,14 +252,12 @@ public abstract class AbstractGoal implements Goal {
    * @param sourceReplica Replica to be swapped with.
    * @param cb Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
    * @param optimizedGoals Optimized goals.
-   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded brokers for replica move.
    * @return True the swapped in replica if succeeded, null otherwise.
    */
   Replica maybeApplySwapAction(ClusterModel clusterModel,
                                Replica sourceReplica,
                                CandidateBroker cb,
-                               Set<Goal> optimizedGoals,
-                               OptimizationOptions optimizationOptions) {
+                               Set<Goal> optimizedGoals) {
     SortedSet<Replica> eligibleReplicas = eligibleReplicasForSwap(clusterModel, sourceReplica, cb);
     if (eligibleReplicas.isEmpty()) {
       return null;

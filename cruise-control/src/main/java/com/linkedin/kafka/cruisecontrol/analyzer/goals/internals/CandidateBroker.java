@@ -87,6 +87,7 @@ public class CandidateBroker implements Comparable<CandidateBroker> {
 
   @Override
   public String toString() {
-    return "CandidateBroker{" + _broker + " util: " + utilizationPercentage(_broker, _resource) + "}";
+    return String.format("CandidateBroker{%s util: %f resource: %s}",
+                         _broker, utilizationPercentage(_broker, _resource), _resource);
   }
 }

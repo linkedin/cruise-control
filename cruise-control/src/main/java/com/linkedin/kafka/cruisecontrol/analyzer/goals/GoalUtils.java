@@ -139,7 +139,7 @@ public class GoalUtils {
 
   /**
    * Get eligible replicas among the given candidate replicas for the proposed swap operation of the source replica.
-   * Invariant: No replica is eligible if the destination is excluded for leadership and the source replica is the leader.
+   * Invariant: No replica is eligible if the candidate broker is excluded for leadership and the source replica is the leader.
    *
    * @param clusterModel The state of the cluster.
    * @param sourceReplica Source replica for intended swap operation.
