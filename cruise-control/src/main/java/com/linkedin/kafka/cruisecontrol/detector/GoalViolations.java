@@ -64,7 +64,7 @@ public class GoalViolations extends KafkaAnomaly {
         // Fix the fixable goal violations with rebalance operation.
         _kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation,
                                       null, null, false, null,
-                                      null, _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
+                                      null, null, _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
       } catch (IllegalStateException e) {
         LOG.warn("Got exception when trying to fix the cluster for violated goals {}: {}", _violatedGoalsByFixability.get(true), e.getMessage());
       }

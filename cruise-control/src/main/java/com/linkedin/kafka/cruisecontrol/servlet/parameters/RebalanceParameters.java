@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import java.io.UnsupportedEncodingException;
+import java.util.List;
 import javax.servlet.http.HttpServletRequest;
 
 
@@ -25,6 +26,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   private Integer _concurrentPartitionMovements;
   private Integer _concurrentLeaderMovements;
   private boolean _skipHardGoalCheck;
+  private List<String> _replicaMovementStrategies;
 
   public RebalanceParameters(HttpServletRequest request) {
     super(request);
@@ -37,6 +39,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
     _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
+    _replicaMovementStrategies = ParameterUtils.getReplicaMovementStrategies(_request);
   }
 
   public boolean dryRun() {
@@ -53,5 +56,9 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
 
   public boolean skipHardGoalCheck() {
     return _skipHardGoalCheck;
+  }
+
+  public List<String> replicaMovementStrategies() {
+    return _replicaMovementStrategies;
   }
 }

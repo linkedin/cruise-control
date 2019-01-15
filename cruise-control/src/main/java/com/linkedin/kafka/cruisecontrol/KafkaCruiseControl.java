@@ -21,6 +21,8 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
@@ -172,6 +174,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
+   * @param replicaMovementStrategies The strategies used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
@@ -190,12 +193,14 @@ public class KafkaCruiseControl {
                                                            Integer concurrentLeaderMovements,
                                                            boolean skipHardGoalCheck,
                                                            Pattern excludedTopics,
+                                                           List<String> replicaMovementStrategies,
                                                            String uuid,
                                                            boolean excludeRecentlyDemotedBrokers,
                                                            boolean excludeRecentlyRemovedBrokers)
       throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
+    ReplicaMovementStrategy replicaMovementStrategy = getReplicaMovementStrategy(replicaMovementStrategies);
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
@@ -211,7 +216,7 @@ public class KafkaCruiseControl {
                                                                       excludeRecentlyRemovedBrokers);
       if (!dryRun) {
         executeRemoval(result.goalProposals(), throttleDecommissionedBroker, brokerIds, isKafkaAssignerMode(goals),
-                       concurrentPartitionMovements, concurrentLeaderMovements, uuid);
+                       concurrentPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -255,6 +260,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
+   * @param replicaMovementStrategies The strategies used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
@@ -272,11 +278,13 @@ public class KafkaCruiseControl {
                                                   Integer concurrentLeaderMovements,
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics,
+                                                  List<String> replicaMovementStrategies,
                                                   String uuid,
                                                   boolean excludeRecentlyDemotedBrokers,
                                                   boolean excludeRecentlyRemovedBrokers) throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
+    ReplicaMovementStrategy replicaMovementStrategy = getReplicaMovementStrategy(replicaMovementStrategies);
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
@@ -298,6 +306,7 @@ public class KafkaCruiseControl {
                          isKafkaAssignerMode(goals),
                          concurrentPartitionMovements,
                          concurrentLeaderMovements,
+                         replicaMovementStrategy,
                          uuid);
       }
       return result;
@@ -321,6 +330,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
+   * @param replicaMovementStrategies the strategies used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
@@ -336,16 +346,18 @@ public class KafkaCruiseControl {
                                                  Integer concurrentLeaderMovements,
                                                  boolean skipHardGoalCheck,
                                                  Pattern excludedTopics,
+                                                 List<String> replicaMovementStrategies,
                                                  String uuid,
                                                  boolean excludeRecentlyDemotedBrokers,
                                                  boolean excludeRecentlyRemovedBrokers) throws KafkaCruiseControlException {
+    ReplicaMovementStrategy replicaMovementStrategy = getReplicaMovementStrategy(replicaMovementStrategies);
     GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress,
                                                                     allowCapacityEstimation, skipHardGoalCheck,
                                                                     excludedTopics, excludeRecentlyDemotedBrokers,
                                                                     excludeRecentlyRemovedBrokers);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
-                       concurrentPartitionMovements, concurrentLeaderMovements, uuid);
+                       concurrentPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
     }
     return result;
   }
@@ -699,6 +711,7 @@ public class KafkaCruiseControl {
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    */
   private void executeProposals(Collection<ExecutionProposal> proposals,
@@ -706,11 +719,12 @@ public class KafkaCruiseControl {
                                 boolean isKafkaAssignerMode,
                                 Integer concurrentPartitionMovements,
                                 Integer concurrentLeaderMovements,
+                                ReplicaMovementStrategy replicaMovementStrategy,
                                 String uuid) {
     // Set the execution mode, add execution proposals, and start execution.
     _executor.setExecutionMode(isKafkaAssignerMode);
     _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentPartitionMovements,
-                               concurrentLeaderMovements, uuid);
+                               concurrentLeaderMovements, replicaMovementStrategy, uuid);
   }
 
   /**
@@ -723,6 +737,7 @@ public class KafkaCruiseControl {
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    */
   private void executeRemoval(Collection<ExecutionProposal> proposals,
@@ -731,11 +746,13 @@ public class KafkaCruiseControl {
                               boolean isKafkaAssignerMode,
                               Integer concurrentPartitionMovements,
                               Integer concurrentLeaderMovements,
+                              ReplicaMovementStrategy replicaMovementStrategy,
                               String uuid) {
     // Set the execution mode, add execution proposals, and start execution.
     _executor.setExecutionMode(isKafkaAssignerMode);
     _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptyList() : removedBrokers,
-                               removedBrokers, _loadMonitor, concurrentPartitionMovements, concurrentLeaderMovements, uuid);
+                               removedBrokers, _loadMonitor, concurrentPartitionMovements, concurrentLeaderMovements,
+                               replicaMovementStrategy, uuid);
   }
 
   /**
@@ -848,6 +865,30 @@ public class KafkaCruiseControl {
     Map<String, Goal> allGoals = AnalyzerUtils.getCaseInsensitiveGoalsByName(_config);
     sanityCheckNonExistingGoal(goals, allGoals);
     return goals.stream().map(allGoals::get).collect(Collectors.toList());
+  }
+
+  /**
+   * Get a composite replica movement strategy from a strategy list.
+   *
+   * @param strategies A list of replica movement strategies.
+   * @return A composite strategy generated by chaining all the strategies in the strategy list.
+   */
+  private ReplicaMovementStrategy getReplicaMovementStrategy(List<String> strategies) {
+    if (strategies == null || strategies.isEmpty()) {
+      return null;
+    }
+    Map<String, ReplicaMovementStrategy> allStrategies = AnalyzerUtils.getCaseInsensitiveReplicaMovementStrategiesByName(_config);
+    ReplicaMovementStrategy strategy = null;
+    for (String strategyName: strategies) {
+      if (allStrategies.containsKey(strategyName)) {
+        strategy = strategy == null ? allStrategies.get(strategyName) : strategy.chain(allStrategies.get(strategyName));
+      } else {
+        throw new IllegalArgumentException("Strategy " + strategyName + " is not supported. Supported: " + allStrategies.keySet());
+      }
+    }
+    // Chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned strategy can always
+    // determine the order of two tasks.
+    return strategy.chain(new BaseReplicaMovementStrategy());
   }
 
   /**

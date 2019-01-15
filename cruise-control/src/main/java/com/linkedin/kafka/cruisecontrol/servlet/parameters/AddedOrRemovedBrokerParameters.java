@@ -38,6 +38,7 @@ public class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParamet
   private boolean _dryRun;
   private boolean _throttleAddedOrRemovedBrokers;
   private boolean _skipHardGoalCheck;
+  private List<String> _replicaMovementStrategies;
 
   public AddedOrRemovedBrokerParameters(HttpServletRequest request) {
     super(request);
@@ -52,6 +53,7 @@ public class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParamet
     _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
+    _replicaMovementStrategies = ParameterUtils.getReplicaMovementStrategies(_request);
   }
 
   public List<Integer> brokerIds() {
@@ -76,5 +78,9 @@ public class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParamet
 
   public boolean skipHardGoalCheck() {
     return _skipHardGoalCheck;
+  }
+
+  public List<String> replicaMovementStrategies() {
+    return _replicaMovementStrategies;
   }
 }

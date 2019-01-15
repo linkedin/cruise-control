@@ -38,9 +38,10 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.L
  * </ul>
  * <p>
  * This class tracks the execution proposals for each broker using a sorted Set. The proposal's position in this set
- * represents its execution order and is determined by the {@link ExecutionTaskPlanner#_replicaMovementTaskStrategy}.
- * The proposal is tracked both under source broker and destination broker's plan.
- * Once a proposal is fulfilled, the proposal will be removed from both source broker and destination broker's execution plan.
+ * represents its execution order and is determined by the passed in ReplicaMovementStrategy or
+ * {@link ExecutionTaskPlanner#_defaultReplicaMovementTaskStrategy}. The proposal is tracked both under source broker and
+ * destination broker's plan. Once a proposal is fulfilled, the proposal will be removed from both source broker and destination
+ * broker's execution plan.
  * <p>
  * This class is not thread safe.
  */
@@ -51,23 +52,23 @@ public class ExecutionTaskPlanner {
   private final Set<ExecutionTask> _remainingReplicaMovements;
   private final Map<Long, ExecutionTask> _remainingLeadershipMovements;
   private long _executionId;
-  private ReplicaMovementStrategy _replicaMovementTaskStrategy;
+  private ReplicaMovementStrategy _defaultReplicaMovementTaskStrategy;
 
-  public ExecutionTaskPlanner(List<String> replicaMovementStrategies) {
+  public ExecutionTaskPlanner(List<String> defaultReplicaMovementStrategies) {
     _executionId = 0L;
     _partMoveTaskByBrokerId = new HashMap<>();
     _remainingReplicaMovements = new TreeSet<>();
     _remainingDataToMove = 0L;
     _remainingLeadershipMovements = new HashMap<>();
-    if (replicaMovementStrategies == null || replicaMovementStrategies.isEmpty()) {
-      _replicaMovementTaskStrategy = new BaseReplicaMovementStrategy();
+    if (defaultReplicaMovementStrategies == null || defaultReplicaMovementStrategies.isEmpty()) {
+      _defaultReplicaMovementTaskStrategy = new BaseReplicaMovementStrategy();
     } else {
-      for (String replicaMovementStrategy : replicaMovementStrategies) {
+      for (String replicaMovementStrategy : defaultReplicaMovementStrategies) {
         try {
-          if (_replicaMovementTaskStrategy == null) {
-            _replicaMovementTaskStrategy = (ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance();
+          if (_defaultReplicaMovementTaskStrategy == null) {
+            _defaultReplicaMovementTaskStrategy = (ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance();
           } else {
-            _replicaMovementTaskStrategy = _replicaMovementTaskStrategy.chain(
+            _defaultReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy.chain(
                 (ReplicaMovementStrategy) Class.forName(replicaMovementStrategy).newInstance());
           }
         } catch (Exception e) {
@@ -76,7 +77,7 @@ public class ExecutionTaskPlanner {
       }
       // Chain the custom strategies with BaseReplicaMovementStrategy in the end to handle the scenario that provided custom strategy is unable
       // to determine the order of two tasks. BaseReplicaMovementStrategy makes the task with smaller execution id to get executed first.
-      _replicaMovementTaskStrategy = _replicaMovementTaskStrategy.chain(new BaseReplicaMovementStrategy());
+      _defaultReplicaMovementTaskStrategy = _defaultReplicaMovementTaskStrategy.chain(new BaseReplicaMovementStrategy());
     }
   }
 
@@ -89,10 +90,12 @@ public class ExecutionTaskPlanner {
    *
    * @param proposals Execution proposals.
    * @param cluster Kafka cluster state.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    */
-  public void addExecutionProposals(Collection<ExecutionProposal> proposals, Cluster cluster) {
+  public void addExecutionProposals(Collection<ExecutionProposal> proposals, Cluster cluster,
+                                    ReplicaMovementStrategy replicaMovementStrategy) {
     LOG.trace("Cluster state before adding proposals: {}.", cluster);
-    maybeAddReplicaMovementTasks(proposals, cluster);
+    maybeAddReplicaMovementTasks(proposals, cluster, replicaMovementStrategy);
     maybeAddLeaderChangeTasks(proposals, cluster);
   }
 
@@ -101,8 +104,10 @@ public class ExecutionTaskPlanner {
    *
    * @param proposals Execution proposals.
    * @param cluster Kafka cluster state.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    */
-  private void maybeAddReplicaMovementTasks(Collection<ExecutionProposal> proposals, Cluster cluster) {
+  private void maybeAddReplicaMovementTasks(Collection<ExecutionProposal> proposals, Cluster cluster,
+                                            ReplicaMovementStrategy replicaMovementStrategy) {
     for (ExecutionProposal proposal : proposals) {
       TopicPartition tp = proposal.topicPartition();
       PartitionInfo partitionInfo = cluster.partition(tp);
@@ -118,7 +123,11 @@ public class ExecutionTaskPlanner {
         LOG.trace("Added action {} as replica proposal {}", replicaActionExecutionId, proposal);
       }
     }
-    _partMoveTaskByBrokerId = _replicaMovementTaskStrategy.applyStrategy(_remainingReplicaMovements, cluster);
+    if (replicaMovementStrategy == null) {
+      _partMoveTaskByBrokerId = _defaultReplicaMovementTaskStrategy.applyStrategy(_remainingReplicaMovements, cluster);
+    } else {
+      _partMoveTaskByBrokerId = replicaMovementStrategy.applyStrategy(_remainingReplicaMovements, cluster);
+    }
   }
 
   /**

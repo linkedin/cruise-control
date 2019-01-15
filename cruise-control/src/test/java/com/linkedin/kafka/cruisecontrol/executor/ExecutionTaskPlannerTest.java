@@ -93,7 +93,7 @@ public class ExecutionTaskPlannerTest {
                                           Collections.<String>emptySet(),
                                           Collections.<String>emptySet());
 
-    planner.addExecutionProposals(proposals, expectedCluster);
+    planner.addExecutionProposals(proposals, expectedCluster, null);
     List<ExecutionTask> leaderMovementTasks = planner.getLeadershipMovementTasks(2);
     assertEquals("2 of the leader movements should return in one batch", 2, leaderMovementTasks.size());
     assertEquals(4, leaderMovementTasks.get(0).executionId());
@@ -117,7 +117,7 @@ public class ExecutionTaskPlannerTest {
     proposals.add(partitionMovement4);
     // Test different execution strategies.
     ExecutionTaskPlanner basePlanner = new ExecutionTaskPlanner(null);
-    ExecutionTaskPlanner postponeUrpPlanner = new ExecutionTaskPlanner(Collections.singletonList(PostponeUrpReplicaMovementStrategy.class.getName()));
+    ExecutionTaskPlanner postponeUrpPlanner = new ExecutionTaskPlanner(null);
     ExecutionTaskPlanner prioritizeLargeMovementPlanner = new ExecutionTaskPlanner(Arrays.asList(PrioritizeLargeReplicaMovementStrategy.class.getName(),
                                                                                                  BaseReplicaMovementStrategy.class.getName()));
     ExecutionTaskPlanner prioritizeSmallMovementPlanner = new ExecutionTaskPlanner(Arrays.asList(PrioritizeSmallReplicaMovementStrategy.class.getName(),
@@ -156,25 +156,25 @@ public class ExecutionTaskPlannerTest {
     readyBrokers.put(1, 8);
     readyBrokers.put(2, 8);
     readyBrokers.put(3, 8);
-    basePlanner.addExecutionProposals(proposals, expectedCluster);
+    basePlanner.addExecutionProposals(proposals, expectedCluster, null);
     List<ExecutionTask> partitionMovementTasks = basePlanner.getReplicaMovementTasks(readyBrokers, Collections.emptySet());
     assertEquals("First task should be partitionMovement1", partitionMovement1, partitionMovementTasks.get(0).proposal());
     assertEquals("Second task should be partitionMovement3", partitionMovement3, partitionMovementTasks.get(1).proposal());
     assertEquals("Third task should be partitionMovement4", partitionMovement4, partitionMovementTasks.get(2).proposal());
 
-    postponeUrpPlanner.addExecutionProposals(proposals, expectedCluster);
+    postponeUrpPlanner.addExecutionProposals(proposals, expectedCluster, new PostponeUrpReplicaMovementStrategy());
     partitionMovementTasks = postponeUrpPlanner.getReplicaMovementTasks(readyBrokers, Collections.emptySet());
     assertEquals("First task should be partitionMovement4", partitionMovement4, partitionMovementTasks.get(0).proposal());
     assertEquals("Second task should be partitionMovement2", partitionMovement2, partitionMovementTasks.get(1).proposal());
     assertEquals("Third task should be partitionMovement1", partitionMovement1, partitionMovementTasks.get(2).proposal());
 
-    prioritizeLargeMovementPlanner.addExecutionProposals(proposals, expectedCluster);
+    prioritizeLargeMovementPlanner.addExecutionProposals(proposals, expectedCluster, null);
     partitionMovementTasks = prioritizeLargeMovementPlanner.getReplicaMovementTasks(readyBrokers, Collections.emptySet());
     assertEquals("First task should be partitionMovement1", partitionMovement1, partitionMovementTasks.get(0).proposal());
     assertEquals("Second task should be partitionMovement3", partitionMovement3, partitionMovementTasks.get(1).proposal());
     assertEquals("Third task should be partitionMovement4", partitionMovement4, partitionMovementTasks.get(2).proposal());
 
-    prioritizeSmallMovementPlanner.addExecutionProposals(proposals, expectedCluster);
+    prioritizeSmallMovementPlanner.addExecutionProposals(proposals, expectedCluster, null);
     partitionMovementTasks = prioritizeSmallMovementPlanner.getReplicaMovementTasks(readyBrokers, Collections.emptySet());
     assertEquals("First task should be partitionMovement4", partitionMovement4, partitionMovementTasks.get(0).proposal());
     assertEquals("Second task should be partitionMovement2", partitionMovement2, partitionMovementTasks.get(1).proposal());
@@ -230,7 +230,7 @@ public class ExecutionTaskPlannerTest {
                                           Collections.<String>emptySet(),
                                           Collections.<String>emptySet());
 
-    planner.addExecutionProposals(proposals, expectedCluster);
+    planner.addExecutionProposals(proposals, expectedCluster, null);
     assertEquals(4, planner.remainingDataToMoveInMB());
     assertEquals(2, planner.remainingLeadershipMovements().size());
     assertEquals(2, planner.remainingReplicaMovements().size());

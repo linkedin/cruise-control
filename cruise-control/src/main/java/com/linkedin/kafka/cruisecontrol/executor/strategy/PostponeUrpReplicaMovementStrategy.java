@@ -21,4 +21,12 @@ public class PostponeUrpReplicaMovementStrategy extends AbstractReplicaMovementS
                              (isPartitionUnderReplicated(cluster, task2.proposal().topicPartition()) ? 0 : 1) :
                              (isPartitionUnderReplicated(cluster, task2.proposal().topicPartition()) ? -1 : 0);
   }
+
+  /**
+   * Get the name of this strategy. Name of a strategy provides an identification for the strategy in human readable format.
+   */
+  @Override
+  public String name() {
+    return PostponeUrpReplicaMovementStrategy.class.getSimpleName();
+  }
 }

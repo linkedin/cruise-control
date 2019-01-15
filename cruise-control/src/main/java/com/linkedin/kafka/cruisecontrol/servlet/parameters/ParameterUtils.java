@@ -84,6 +84,7 @@ public class ParameterUtils {
   public static final String ENABLE_SELF_HEALING_FOR_PARAM = "enable_self_healing_for";
   public static final String EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM = "exclude_recently_demoted_brokers";
   public static final String EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM = "exclude_recently_removed_brokers";
+  public static final String REPLICA_MOVEMENT_STRATEGIES_PARAM = "replica_movement_strategies";
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
 
@@ -153,6 +154,7 @@ public class ParameterUtils {
     addOrRemoveBroker.add(VERBOSE_PARAM);
     addOrRemoveBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
     addOrRemoveBroker.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
+    addOrRemoveBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
@@ -188,6 +190,7 @@ public class ParameterUtils {
     rebalance.add(VERBOSE_PARAM);
     rebalance.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
     rebalance.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
+    rebalance.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
@@ -624,6 +627,17 @@ public class ParameterUtils {
       dataFrom = DataFrom.valueOf(dataFromString.toUpperCase());
     }
     return dataFrom;
+  }
+
+  /**
+   * Default: An empty list.
+   */
+  static List<String> getReplicaMovementStrategies(HttpServletRequest request) throws UnsupportedEncodingException {
+    List<String> strategies;
+    String goalsString = urlDecode(request.getParameter(REPLICA_MOVEMENT_STRATEGIES_PARAM));
+    strategies = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
+    strategies.removeIf(String::isEmpty);
+    return Collections.unmodifiableList(strategies);
   }
 
   /**

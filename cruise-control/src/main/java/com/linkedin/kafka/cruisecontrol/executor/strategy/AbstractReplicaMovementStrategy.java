@@ -45,6 +45,11 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
           return compareResult1 == 0 ? comparator2.compare(task1, task2) : compareResult1;
         };
       }
+
+      @Override
+      public String name() {
+        return current.name() + "And" + strategy.name();
+      }
     };
   }
 

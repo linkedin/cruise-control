@@ -18,4 +18,12 @@ public class BaseReplicaMovementStrategy extends AbstractReplicaMovementStrategy
   public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
     return (task1, task2) -> (int) (task1.executionId() - task2.executionId());
   }
+
+  /**
+   * Get the name of this strategy. Name of a strategy provides an identification for the strategy in human readable format.
+   */
+  @Override
+  public String name() {
+    return BaseReplicaMovementStrategy.class.getSimpleName();
+  }
 }

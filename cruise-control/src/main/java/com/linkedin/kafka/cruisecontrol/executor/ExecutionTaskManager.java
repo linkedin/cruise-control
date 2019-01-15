@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 
+import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -282,11 +283,13 @@ public class ExecutionTaskManager {
    * @param proposals the execution proposals to execute.
    * @param brokersToSkipConcurrencyCheck the brokers that does not need to be throttled when move the partitions.
    * @param cluster Cluster state.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    */
   public synchronized void addExecutionProposals(Collection<ExecutionProposal> proposals,
                                                  Collection<Integer> brokersToSkipConcurrencyCheck,
-                                                 Cluster cluster) {
-    _executionTaskPlanner.addExecutionProposals(proposals, cluster);
+                                                 Cluster cluster,
+                                                 ReplicaMovementStrategy replicaMovementStrategy) {
+    _executionTaskPlanner.addExecutionProposals(proposals, cluster, replicaMovementStrategy);
     for (ExecutionProposal p : proposals) {
       _inProgressReplicaMovementsByBrokerId.putIfAbsent(p.oldLeader(), 0);
       for (int broker : p.replicasToAdd()) {
