@@ -5,11 +5,13 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.CandidateBroker;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -17,10 +19,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
-
 import java.util.Map;
 import java.util.SortedSet;
 import org.slf4j.Logger;
@@ -31,6 +30,9 @@ import java.util.Set;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.BROKER_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.legitMove;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.eligibleBrokers;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.eligibleReplicasForSwap;
 
 
 /**
@@ -61,9 +63,20 @@ public abstract class AbstractGoal implements Goal {
     _minMonitoredPartitionPercentage = parsedConfig.getDouble(KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
   }
 
+  /**
+   * @deprecated
+   * Please use {@link #optimize(ClusterModel, Set, OptimizationOptions)} instead.
+   */
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
       throws OptimizationFailureException {
+    return optimize(clusterModel, optimizedGoals, new OptimizationOptions(excludedTopics));
+  }
+
+  @Override
+  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     _succeeded = true;
     LOG.debug("Starting optimization for {}.", name());
     // Initialize pre-optimized stats.
@@ -76,7 +89,7 @@ public abstract class AbstractGoal implements Goal {
 
     while (!_finished) {
       for (Broker broker : brokersToBalance(clusterModel)) {
-        rebalanceForBroker(broker, clusterModel, optimizedGoals, excludedTopics);
+        rebalanceForBroker(broker, clusterModel, optimizedGoals, optimizationOptions);
       }
       updateGoalState(clusterModel, excludedTopics);
     }
@@ -107,7 +120,7 @@ public abstract class AbstractGoal implements Goal {
    * @param excludedTopics the excluded topics set.
    * @return true if the replica should be excluded, false otherwise.
    */
-  protected boolean shouldExclude(Replica replica, Set<String> excludedTopics) {
+  protected static boolean shouldExclude(Replica replica, Set<String> excludedTopics) {
     return excludedTopics.contains(replica.topicPartition().topic()) && replica.originalBroker().isAlive();
   }
 
@@ -164,12 +177,12 @@ public abstract class AbstractGoal implements Goal {
    * @param broker         Broker to be balanced.
    * @param clusterModel   The state of the cluster.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
    */
   protected abstract void rebalanceForBroker(Broker broker,
                                              ClusterModel clusterModel,
                                              Set<Goal> optimizedGoals,
-                                             Set<String> excludedTopics)
+                                             OptimizationOptions optimizationOptions)
       throws OptimizationFailureException;
 
   /**
@@ -184,19 +197,21 @@ public abstract class AbstractGoal implements Goal {
    *                        of followers for leadership transfer.
    * @param action          Balancing action.
    * @param optimizedGoals  Optimized goals.
+   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded brokers for leadership.
    * @return Broker id of the destination if the movement attempt succeeds, null otherwise.
    */
   protected Broker maybeApplyBalancingAction(ClusterModel clusterModel,
                                              Replica replica,
                                              Collection<Broker> candidateBrokers,
                                              ActionType action,
-                                             Set<Goal> optimizedGoals) {
+                                             Set<Goal> optimizedGoals,
+                                             OptimizationOptions optimizationOptions) {
     // In self healing mode, allow a move only from dead to alive brokers.
     if (!clusterModel.deadBrokers().isEmpty() && replica.originalBroker().isAlive()) {
       //return null;
       LOG.trace("Applying {} to a replica in a healthy broker in self-healing mode.", action);
     }
-    Collection<Broker> eligibleBrokers = getEligibleBrokers(clusterModel, replica, candidateBrokers);
+    List<Broker> eligibleBrokers = eligibleBrokers(clusterModel, replica, candidateBrokers, action, optimizationOptions);
     for (Broker broker : eligibleBrokers) {
       BalancingAction proposal = new BalancingAction(replica.topicPartition(), replica.broker().id(), broker.id(), action);
       // A replica should be moved if:
@@ -235,16 +250,15 @@ public abstract class AbstractGoal implements Goal {
    *
    * @param clusterModel The state of the cluster.
    * @param sourceReplica Replica to be swapped with.
-   * @param candidateReplicasToSwapWith Candidate replicas from the same destination broker to swap in the order of
-   *                                    attempts to swap.
+   * @param cb Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
    * @param optimizedGoals Optimized goals.
    * @return True the swapped in replica if succeeded, null otherwise.
    */
   Replica maybeApplySwapAction(ClusterModel clusterModel,
                                Replica sourceReplica,
-                               SortedSet<Replica> candidateReplicasToSwapWith,
+                               CandidateBroker cb,
                                Set<Goal> optimizedGoals) {
-    SortedSet<Replica> eligibleReplicas = getEligibleReplicasForSwap(clusterModel, sourceReplica, candidateReplicasToSwapWith);
+    SortedSet<Replica> eligibleReplicas = eligibleReplicasForSwap(clusterModel, sourceReplica, cb);
     if (eligibleReplicas.isEmpty()) {
       return null;
     }
@@ -290,62 +304,6 @@ public abstract class AbstractGoal implements Goal {
       }
     }
     return null;
-  }
-
-  private boolean legitMove(Replica replica, Broker destBroker, ActionType actionType) {
-    if (actionType == ActionType.REPLICA_MOVEMENT && destBroker.replica(replica.topicPartition()) == null) {
-      return true;
-    } else if (actionType == ActionType.LEADERSHIP_MOVEMENT && replica.isLeader()
-        && destBroker.replica(replica.topicPartition()) != null) {
-      return true;
-    }
-    return false;
-  }
-
-  private SortedSet<Replica> getEligibleReplicasForSwap(ClusterModel clusterModel,
-                                                        Replica sourceReplica,
-                                                        SortedSet<Replica> candidateReplicasToSwapWith) {
-    // CASE#1: All candidate replicas are eligible if any of the following is true:
-    // (1) there are no new brokers in the cluster,
-    // (2) the given candidate set contains no replicas,
-    // (3) the intended swap is between replicas of new brokers,
-    // (4) the intended swap is between a replica on a new broker, which originally was in the destination broker, and
-    // any replica in the destination broker.
-    Broker sourceBroker = sourceReplica.broker();
-    Broker destinationBroker = candidateReplicasToSwapWith.isEmpty() ? null : candidateReplicasToSwapWith.first().broker();
-
-    if (clusterModel.newBrokers().isEmpty()
-        || destinationBroker == null
-        || (sourceBroker.isNew() && (destinationBroker.isNew() || sourceReplica.originalBroker() == destinationBroker))) {
-      return candidateReplicasToSwapWith;
-    }
-
-    // CASE#2: A subset of candidate replicas might be eligible if only the destination broker is a new broker and it
-    // contains replicas that were originally in the source broker.
-    if (destinationBroker.isNew()) {
-      candidateReplicasToSwapWith.removeIf(replica -> replica.originalBroker() != sourceBroker);
-      return candidateReplicasToSwapWith;
-    }
-
-    // CASE#3: No swap is possible between old brokers when there are new brokers in the cluster.
-    return Collections.emptySortedSet();
-  }
-
-  private Collection<Broker> getEligibleBrokers(ClusterModel clusterModel,
-                                                Replica replica,
-                                                Collection<Broker> candidateBrokers) {
-    if (clusterModel.newBrokers().isEmpty()) {
-      return candidateBrokers;
-    } else {
-      List<Broker> eligibleBrokers = new ArrayList<>();
-      // When there are new brokers, we should only allow the replicas to be moved to the new brokers.
-      candidateBrokers.forEach(b -> {
-        if (b.isNew() || b == replica.originalBroker()) {
-          eligibleBrokers.add(b);
-        }
-      });
-      return eligibleBrokers;
-    }
   }
 
   @Override

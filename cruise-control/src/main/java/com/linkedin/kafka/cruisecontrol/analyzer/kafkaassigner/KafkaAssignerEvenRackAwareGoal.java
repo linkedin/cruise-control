@@ -5,6 +5,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
@@ -94,17 +95,10 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     }
   }
 
-  /**
-   * Optimize the given cluster model as needed for this goal.
-   *
-   * @param clusterModel   The state of the cluster.
-   * @param optimizedGoals Goals that have already been optimized. These goals cannot be violated.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
-   * @return true if the goal is met after the optimization, throws an exceptions if the goal is not met.
-   */
   @Override
-  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
+  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions)
       throws KafkaCruiseControlException {
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     LOG.debug("Starting {} with excluded topics = {}", name(), excludedTopics);
 
     if (!optimizedGoals.isEmpty()) {
@@ -146,6 +140,16 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);
     ensureRackAware(clusterModel, excludedTopics);
     return true;
+  }
+
+  /**
+   * @deprecated
+   * Please use {@link #optimize(ClusterModel, Set, OptimizationOptions)} instead.
+   */
+  @Override
+  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
+      throws KafkaCruiseControlException {
+    return optimize(clusterModel, optimizedGoals, new OptimizationOptions(excludedTopics));
   }
 
   /**

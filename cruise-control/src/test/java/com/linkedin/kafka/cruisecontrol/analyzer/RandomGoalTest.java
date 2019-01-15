@@ -39,7 +39,6 @@ import java.util.Random;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameters;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +60,7 @@ public class RandomGoalTest {
    *
    * @return Parameters for the {@link OptimizationVerifier}.
    */
-  @Parameters
+  @Parameterized.Parameters
   public static Collection<Object[]> data() {
     int goalRepetition = 4;
     Collection<Object[]> p = new ArrayList<>();

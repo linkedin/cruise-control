@@ -57,7 +57,7 @@ public class PreferredLeaderElectionGoalTest {
     ClusterModel clusterModel = createClusterModel(true)._clusterModel;
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
-    goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
       for (int p = 0; p < 3; p++) {
@@ -83,7 +83,7 @@ public class PreferredLeaderElectionGoalTest {
     });
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
-    goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
       for (int p = 0; p < 3; p++) {
@@ -116,7 +116,7 @@ public class PreferredLeaderElectionGoalTest {
 
     Map<TopicPartition, List<Integer>> originalReplicaDistribution = clusterModel.getReplicaDistribution();
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(true, false, cluster);
-    goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
 
     // Operation on under replicated partitions should be skipped.
     for (String t : Arrays.asList(TOPIC1, TOPIC2)) {
@@ -135,7 +135,7 @@ public class PreferredLeaderElectionGoalTest {
     Map<TopicPartition, Integer> originalLeaderDistribution = clusterModel.getLeaderDistribution();
     Map<TopicPartition, List<Integer>> originalReplicaDistribution = clusterModel.getReplicaDistribution();
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, true, null);
-    goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
     Map<TopicPartition, List<Integer>> optimizedReplicaDistribution = clusterModel.getReplicaDistribution();
 
     for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
@@ -162,7 +162,7 @@ public class PreferredLeaderElectionGoalTest {
 
     Map<TopicPartition, Integer> originalLeaderDistribution = clusterModel.getLeaderDistribution();
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(true, true, cluster);
-    goal.optimize(clusterModel, Collections.emptySet(), Collections.emptySet());
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
     Map<TopicPartition, Integer> optimizedLeaderDistribution = clusterModel.getLeaderDistribution();
     Map<TopicPartition, List<Integer>> optimizedReplicaDistribution = clusterModel.getReplicaDistribution();
 

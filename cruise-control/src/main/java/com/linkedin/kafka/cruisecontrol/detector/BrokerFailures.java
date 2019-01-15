@@ -21,13 +21,16 @@ public class BrokerFailures extends KafkaAnomaly {
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final Map<Integer, Long> _failedBrokers;
   private final boolean _allowCapacityEstimation;
+  private final boolean _excludeRecentlyDemotedBrokers;
 
   public BrokerFailures(KafkaCruiseControl kafkaCruiseControl,
                         Map<Integer, Long> failedBrokers,
-                        boolean allowCapacityEstimation) {
+                        boolean allowCapacityEstimation,
+                        boolean excludeRecentlyDemotedBrokers) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _failedBrokers = failedBrokers;
     _allowCapacityEstimation = allowCapacityEstimation;
+    _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
   }
 
   /**
@@ -44,7 +47,7 @@ public class BrokerFailures extends KafkaAnomaly {
       _kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(), false, false,
                                              Collections.emptyList(), null, new OperationProgress(),
                                               _allowCapacityEstimation, null, null,
-                                              false, null, null);
+                                              false, null, null, _excludeRecentlyDemotedBrokers);
     }
   }
 
