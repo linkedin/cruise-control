@@ -35,7 +35,7 @@ import java.util.concurrent.Executors;
  * <li>{@link KafkaCruiseControl#addBrokers(java.util.Collection, boolean, boolean, List, ModelCompletenessRequirements,
  * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, List, String, boolean, boolean)}</li>
  * <li>{@link KafkaCruiseControl#demoteBrokers(java.util.Collection, boolean, OperationProgress, boolean, Integer, boolean,
- * boolean, String, boolean)}</li>
+ * boolean, List, String, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(OperationProgress, boolean)}</li>
@@ -152,7 +152,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
 
   /**
    * @see KafkaCruiseControl#demoteBrokers(java.util.Collection, boolean, OperationProgress, boolean, Integer, boolean,
-   * boolean, String, boolean)
+   * boolean, List, String, boolean)
    */
   public OperationFuture demoteBrokers(String uuid, DemoteBrokerParameters parameters) {
     OperationFuture future = new OperationFuture("Demote");

@@ -174,6 +174,7 @@ public class ParameterUtils {
     demoteBroker.add(SKIP_URP_DEMOTION_PARAM);
     demoteBroker.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
     demoteBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
+    addOrRemoveBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);

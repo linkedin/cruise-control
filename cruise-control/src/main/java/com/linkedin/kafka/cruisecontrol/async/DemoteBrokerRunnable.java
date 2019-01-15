@@ -8,11 +8,12 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collection;
+import java.util.List;
 
 
 /**
  * The async runnable for {@link KafkaCruiseControl#demoteBrokers(Collection, boolean,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, boolean, boolean, String, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, boolean, boolean, List, String, boolean)}
  */
 public class DemoteBrokerRunnable extends OperationRunnable {
   private final Collection<Integer> _brokerIds;
@@ -23,6 +24,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
   private final boolean _excludeFollowerDemotion;
   private final String _uuid;
   private final boolean _excludeRecentlyDemotedBrokers;
+  private final List<String> _replicaMovementStrategies;
 
   DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                        OperationFuture future,
@@ -35,6 +37,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _skipUrpDemotion = parameters.skipUrpDemotion();
     _excludeFollowerDemotion = parameters.excludeFollowerDemotion();
+    _replicaMovementStrategies = parameters.replicaMovementStrategies();
     _uuid = uuid;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
   }
@@ -48,6 +51,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
                                                                     _concurrentLeaderMovements,
                                                                     _skipUrpDemotion,
                                                                     _excludeFollowerDemotion,
+                                                                    _replicaMovementStrategies,
                                                                     _uuid,
                                                                     _excludeRecentlyDemotedBrokers));
   }

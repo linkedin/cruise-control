@@ -294,6 +294,7 @@ public class Executor {
    * @param concurrentSwaps The number of concurrent swap operations per broker.
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
    *                                               (if null, use num.concurrent.leader.movements).
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    */
   public synchronized void executeDemoteProposals(Collection<ExecutionProposal> proposals,
@@ -301,9 +302,10 @@ public class Executor {
                                                   LoadMonitor loadMonitor,
                                                   Integer concurrentSwaps,
                                                   Integer requestedLeadershipMovementConcurrency,
+                                                  ReplicaMovementStrategy replicaMovementStrategy,
                                                   String uuid) {
     initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, requestedLeadershipMovementConcurrency,
-                         null, uuid);
+                          replicaMovementStrategy, uuid);
     startExecution(loadMonitor, demotedBrokers, null);
   }
 

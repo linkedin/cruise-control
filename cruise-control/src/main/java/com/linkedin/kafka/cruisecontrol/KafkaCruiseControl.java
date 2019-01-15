@@ -383,6 +383,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipUrpDemotion Whether operate on partitions which are currently under replicated.
    * @param excludeFollowerDemotion Whether operate on the partitions which only have follower replicas on the brokers.
+   * @param replicaMovementStrategies the strategies used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @return the optimization result.
@@ -394,9 +395,11 @@ public class KafkaCruiseControl {
                                                      Integer concurrentLeaderMovements,
                                                      boolean skipUrpDemotion,
                                                      boolean excludeFollowerDemotion,
+                                                     List<String> replicaMovementStrategies,
                                                      String uuid,
                                                      boolean excludeRecentlyDemotedBrokers)
       throws KafkaCruiseControlException {
+    ReplicaMovementStrategy replicaMovementStrategy = getReplicaMovementStrategy(replicaMovementStrategies);
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(skipUrpDemotion,
                                                                        excludeFollowerDemotion,
                                                                        skipUrpDemotion ? _loadMonitor.kafkaCluster() : null);
@@ -415,7 +418,7 @@ public class KafkaCruiseControl {
                                                                       excludeRecentlyDemotedBrokers,
                                                                       false);
       if (!dryRun) {
-        executeDemotion(result.goalProposals(), brokerIds, concurrentLeaderMovements, uuid);
+        executeDemotion(result.goalProposals(), brokerIds, concurrentLeaderMovements, replicaMovementStrategy, uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -761,11 +764,13 @@ public class KafkaCruiseControl {
    * @param demotedBrokers Brokers to be demoted.
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    */
   private void executeDemotion(Collection<ExecutionProposal> proposals,
                                Collection<Integer> demotedBrokers,
                                Integer concurrentLeaderMovements,
+                               ReplicaMovementStrategy replicaMovementStrategy,
                                String uuid) {
     // (1) Kafka Assigner mode is irrelevant for demoting. (2) Ensure that replica swaps within partitions, which are
     // prerequisites for broker demotion and does not trigger data move, are throttled by concurrentLeaderMovements.
@@ -775,7 +780,8 @@ public class KafkaCruiseControl {
 
     // Set the execution mode, add execution proposals, and start execution.
     _executor.setExecutionMode(false);
-    _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements, uuid);
+    _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
+                                     replicaMovementStrategy, uuid);
   }
 
   /**
