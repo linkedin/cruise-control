@@ -127,15 +127,19 @@ public class LinearRegressionModelParameters {
           int error = estimatedCpu.intValue() - data.metricValue(CPU_USAGE).intValue();
           count = CPU_UTIL_ESTIMATION_ERROR_STATS.getOrDefault(error, 0);
           CPU_UTIL_ESTIMATION_ERROR_STATS.put(error, count + 1);
-          LOG.debug("CPU util estimation: actual: {}, estimated: {}, error: {}",
-                    data.metricValue(CPU_USAGE), estimatedCpu, estimatedCpu - data.metricValue(CPU_USAGE));
+          if (LOG.isDebugEnabled()) {
+            LOG.debug("CPU util estimation: actual: {}, estimated: {}, error: {}",
+                      data.metricValue(CPU_USAGE), estimatedCpu, estimatedCpu - data.metricValue(CPU_USAGE));
+          }
         }
       }
     }
   }
 
   public double modelCoefficientTrainingCompleteness() {
-    LOG.debug("Linear regression model training data indices: {}", INDICES);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Linear regression model training data indices: {}", INDICES);
+    }
     PriorityQueue<Integer> mostFilledBuckets =
         new PriorityQueue<>(MIN_CPU_UTIL_OBSERVATION_BUCKETS);
     for (AtomicInteger index : INDICES.values()) {

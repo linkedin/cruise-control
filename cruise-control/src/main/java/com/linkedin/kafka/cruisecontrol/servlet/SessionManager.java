@@ -194,8 +194,10 @@ public class SessionManager {
       Map.Entry<HttpSession, SessionInfo> entry = iter.next();
       HttpSession session = entry.getKey();
       SessionInfo info = entry.getValue();
-      LOG.trace("Session {} was last accessed at {}, age is {} ms", session, session.getLastAccessedTime(),
-                now - session.getLastAccessedTime());
+      if (LOG.isTraceEnabled()) {
+        LOG.trace("Session {} was last accessed at {}, age is {} ms", session, session.getLastAccessedTime(),
+                  now - session.getLastAccessedTime());
+      }
       if (now >= session.getLastAccessedTime() + _sessionExpiryMs) {
         LOG.info("Expiring session {}.", session);
         iter.remove();

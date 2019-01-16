@@ -172,7 +172,6 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
   }
 
   @Override
-  @SuppressWarnings("unchecked")
   public void configure(Map<String, ?> configs) {
     PercentileMetricAnomalyFinderConfig internalConfig = new PercentileMetricAnomalyFinderConfig(configs);
     _anomalyUpperPercentile =
