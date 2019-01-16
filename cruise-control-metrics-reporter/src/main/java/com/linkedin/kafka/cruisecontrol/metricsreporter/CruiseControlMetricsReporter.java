@@ -147,8 +147,10 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
         }
         _numMetricSendFailure = 0;
         long nextReportTime = now + _reportingIntervalMs;
-        LOG.debug("Reporting finished for time {} in {} ms. Next reporting time {}",
-                  now, System.currentTimeMillis() - now, nextReportTime);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Reporting finished for time {} in {} ms. Next reporting time {}",
+                    now, System.currentTimeMillis() - now, nextReportTime);
+        }
         while (!_shutdown && now < nextReportTime) {
           try {
             Thread.sleep(nextReportTime - now);

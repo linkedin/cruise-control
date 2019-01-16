@@ -121,8 +121,10 @@ class OptimizationVerifier {
     GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel,
                                                                                 goalByPriority,
                                                                                 new OperationProgress());
-    LOG.trace("Took {} ms to execute {} to generate {} proposals.", System.currentTimeMillis() - startTime,
-              goalByPriority, optimizerResult.goalProposals().size());
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("Took {} ms to execute {} to generate {} proposals.", System.currentTimeMillis() - startTime,
+                goalByPriority, optimizerResult.goalProposals().size());
+    }
 
     for (Verification verification : verifications) {
       switch (verification) {

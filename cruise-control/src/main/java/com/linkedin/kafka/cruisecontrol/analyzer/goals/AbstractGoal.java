@@ -95,7 +95,9 @@ public abstract class AbstractGoal implements Goal {
     }
     ClusterModelStats statsAfterOptimization = clusterModel.getClusterStats(_balancingConstraint);
     LOG.trace("[POST - {}] {}", name(), statsAfterOptimization);
-    LOG.debug("Finished optimization for {} in {}ms.", name(), System.currentTimeMillis() - goalStartTime);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Finished optimization for {} in {}ms.", name(), System.currentTimeMillis() - goalStartTime);
+    }
     LOG.trace("Cluster after optimization is {}", clusterModel);
     // We only ensure the optimization did not make stats worse when it is not self-healing.
     if (brokenBrokers.isEmpty()) {

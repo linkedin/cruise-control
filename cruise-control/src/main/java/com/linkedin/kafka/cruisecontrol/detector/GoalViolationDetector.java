@@ -93,8 +93,10 @@ public class GoalViolationDetector implements Runnable {
   @Override
   public void run() {
     if (_loadMonitor.clusterModelGeneration().equals(_lastCheckedModelGeneration)) {
-      LOG.debug("Skipping goal violation detection because the model generation hasn't changed. Current model generation {}",
-                _loadMonitor.clusterModelGeneration());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Skipping goal violation detection because the model generation hasn't changed. Current model generation {}",
+                  _loadMonitor.clusterModelGeneration());
+      }
       return;
     }
 

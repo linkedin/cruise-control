@@ -107,7 +107,7 @@ public class CaseInsensitiveGoalConfigTest {
 
   @Test
   public void test() {
-    LOG.debug("Testing case insensitive goal configuration: {}.", _properties.toString());
+    LOG.debug("Testing case insensitive goal configuration: {}.", _properties);
 
     if (_exceptionClass != null) {
       expected.expect(_exceptionClass);

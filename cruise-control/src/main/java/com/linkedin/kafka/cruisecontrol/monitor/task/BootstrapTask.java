@@ -174,10 +174,12 @@ class BootstrapTask implements Runnable {
   }
 
   private boolean isDone(long now) {
-    LOG.trace("Mode: {}, Sampled range [{}, {}], now = {}, MetricSamplerAggregator snapshot windows: {}, "
-                  + "sampling interval: {}",
-              _mode, _bootstrappedRangeStartMs, _bootstrappedRangeEndMs, now,
-              _metricSampleAggregator.allWindows(), _samplingIntervalMs);
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("Mode: {}, Sampled range [{}, {}], now = {}, MetricSamplerAggregator snapshot windows: {}, "
+                + "sampling interval: {}",
+                _mode, _bootstrappedRangeStartMs, _bootstrappedRangeEndMs, now,
+                _metricSampleAggregator.allWindows(), _samplingIntervalMs);
+    }
     switch (_mode) {
       case RANGE:
         return _bootstrappedRangeStartMs == _startMs && _bootstrappedRangeEndMs == _endMs;

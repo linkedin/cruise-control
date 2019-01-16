@@ -201,11 +201,13 @@ public class GoalOptimizer implements Runnable {
         // Check in 30 seconds to see if the load monitor has sufficient number of snapshots.
         sleepTime = 30000L;
       } else if (!validCachedProposal()) {
-        LOG.debug("Invalidated cache. Model generation (cached: {}, current: {}).{}",
-                  _bestProposal == null ? null : _bestProposal.modelGeneration(),
-                  _loadMonitor.clusterModelGeneration(),
-                  _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
-                                                             _bestProposal.excludedTopics()));
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Invalidated cache. Model generation (cached: {}, current: {}).{}",
+                    _bestProposal == null ? null : _bestProposal.modelGeneration(),
+                    _loadMonitor.clusterModelGeneration(),
+                    _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
+                                                               _bestProposal.excludedTopics()));
+        }
         clearBestProposal();
 
         long start = System.nanoTime();
@@ -248,7 +250,7 @@ public class GoalOptimizer implements Runnable {
             future.get();
             done = true;
           } catch (InterruptedException ie) {
-            LOG.debug("Goal optimizer received exception when precomputing the proposal candidates {}.", ie.toString());
+            LOG.debug("Goal optimizer received exception when precomputing the proposal candidates {}.", ie);
           }
         }
       } catch (ExecutionException ee) {
@@ -324,14 +326,16 @@ public class GoalOptimizer implements Runnable {
     sanityCheckReadyForGettingCachedProposals();
     synchronized (_cacheLock) {
       if (!validCachedProposal() || (!allowCapacityEstimation && _bestProposal.isCapacityEstimated())) {
-        LOG.debug("Cached best proposal is not usable. Model generation (cached: {}, current: {}). Capacity estimation"
-                  + " (cached: {}, allowed: {}).{} Wait for cache update.",
-                  _bestProposal == null ? null : _bestProposal.modelGeneration(),
-                  _loadMonitor.clusterModelGeneration(),
-                  _bestProposal == null ? null : _bestProposal.isCapacityEstimated(),
-                  allowCapacityEstimation,
-                  _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
-                                                             _bestProposal.excludedTopics()));
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Cached best proposal is not usable. Model generation (cached: {}, current: {}). Capacity estimation"
+                    + " (cached: {}, allowed: {}).{} Wait for cache update.",
+                    _bestProposal == null ? null : _bestProposal.modelGeneration(),
+                    _loadMonitor.clusterModelGeneration(),
+                    _bestProposal == null ? null : _bestProposal.isCapacityEstimated(),
+                    allowCapacityEstimation,
+                    _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
+                                                               _bestProposal.excludedTopics()));
+        }
         // Invalidate the cache and set the new caching rule regarding capacity estimation.
         clearBestProposal();
         // Explicitly allow capacity estimation to exit the loop upon computing best proposals.
@@ -469,7 +473,9 @@ public class GoalOptimizer implements Runnable {
       }
       logProgress(isSelfHealing, goal.name(), optimizedGoals.size(), goalProposals);
       step.done();
-      LOG.debug("Broker level stats after optimization: {}", clusterModel.brokerStats());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Broker level stats after optimization: {}", clusterModel.brokerStats());
+      }
     }
 
     clusterModel.sanityCheck();
@@ -518,8 +524,7 @@ public class GoalOptimizer implements Runnable {
   private OptimizerResult updateBestProposal(OptimizerResult result) {
     synchronized (_cacheLock) {
       if (!validCachedProposal()) {
-        LOG.debug("Updated best proposal, broker stats: \n{}",
-                  result.brokerStatsAfterOptimization());
+        LOG.debug("Updated best proposal, broker stats: \n{}", result.brokerStatsAfterOptimization());
         _bestProposal = result;
       } else {
         boolean shouldUpdate = true;

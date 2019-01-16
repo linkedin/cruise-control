@@ -411,8 +411,10 @@ public class KafkaSampleStore implements SampleStore {
                      });
     }
     _producer.flush();
-    LOG.debug("Stored {} partition metric samples and {} broker metric samples to Kafka",
-              metricSampleCount.get(), brokerMetricSampleCount.get());
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Stored {} partition metric samples and {} broker metric samples to Kafka",
+                metricSampleCount.get(), brokerMetricSampleCount.get());
+    }
   }
 
   @Override

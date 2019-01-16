@@ -490,7 +490,9 @@ public class LoadMonitor {
           clusterModel.setBrokerState(brokerId, Broker.State.BAD_DISKS);
         }
       }
-      LOG.debug("Generated cluster model in {} ms", System.currentTimeMillis() - start);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Generated cluster model in {} ms", System.currentTimeMillis() - start);
+      }
     } finally {
       ctx.stop();
     }
