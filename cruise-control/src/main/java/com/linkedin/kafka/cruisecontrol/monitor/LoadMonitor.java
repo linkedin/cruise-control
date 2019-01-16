@@ -470,7 +470,9 @@ public class LoadMonitor {
 
       // Get the dead brokers and mark them as dead.
       deadBrokers(kafkaCluster).forEach(brokerId -> clusterModel.setBrokerState(brokerId, Broker.State.DEAD));
-      LOG.debug("Generated cluster model in {} ms", System.currentTimeMillis() - start);
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Generated cluster model in {} ms", System.currentTimeMillis() - start);
+      }
     } finally {
       ctx.stop();
     }

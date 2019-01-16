@@ -89,7 +89,9 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
         _metricConsumer.seek(tp, endOffsets.get(tp));
       }
     }
-    LOG.debug("Starting consuming from metrics reporter topic partitions {}", _metricConsumer.assignment());
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Starting consuming from metrics reporter topic partitions {}.", _metricConsumer.assignment());
+    }
     _metricConsumer.resume(_metricConsumer.paused());
     int totalMetricsAdded = 0;
     long maxTimeStamp = -1L;

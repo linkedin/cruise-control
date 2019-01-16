@@ -213,8 +213,10 @@ public class UserTaskManager implements Closeable {
         Map.Entry<SessionKey, UUID> entry = iter.next();
         SessionKey sessionKey = entry.getKey();
         HttpSession session = sessionKey.httpSession();
-        LOG.trace("Session {} was last accessed at {}, age is {} ms", session, session.getLastAccessedTime(),
-                  now - session.getLastAccessedTime());
+        if (LOG.isTraceEnabled()) {
+          LOG.trace("Session {} was last accessed at {}, age is {} ms", session, session.getLastAccessedTime(),
+                    now - session.getLastAccessedTime());
+        }
         if (now >= session.getLastAccessedTime() + _sessionExpiryMs) {
           LOG.info("Expiring SessionKey {}", entry.getKey());
           iter.remove();

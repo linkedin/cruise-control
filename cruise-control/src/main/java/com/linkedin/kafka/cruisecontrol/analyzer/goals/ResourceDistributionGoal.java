@@ -532,7 +532,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           swappedOutReplica = sourceReplica;
           break;
         } else if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
-          LOG.debug("Swap load out timeout for source replica {}.", sourceReplica.toString());
+          LOG.debug("Swap load out timeout for source replica {}.", sourceReplica);
           return true;
         }
       }
@@ -645,7 +645,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           swappedOutReplica = sourceReplica;
           break;
         } else if (remainingPerBrokerSwapTimeMs(swapStartTimeMs) <= 0) {
-          LOG.debug("Swap load in timeout for source replica {}.", sourceReplica.toString());
+          LOG.debug("Swap load in timeout for source replica {}.", sourceReplica);
           return true;
         }
       }

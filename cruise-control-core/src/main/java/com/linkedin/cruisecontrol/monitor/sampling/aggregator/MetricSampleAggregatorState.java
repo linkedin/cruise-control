@@ -75,7 +75,9 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
     synchronized (_windowGenerations[arrayIndex]) {
       if (windowIndex >= _oldestWindowIndex) {
         _windowGenerations[arrayIndex].set(generation);
-        LOG.debug("Updated window {} generation to {}", windowIndex * _windowMs, generation);
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Updated window {} generation to {}", windowIndex * _windowMs, generation);
+        }
       }
     }
   }
@@ -103,8 +105,10 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
         || inValidRange(startingWindowIndex + numWindowIndexesToReset - 1)) {
       throw new IllegalStateException("Should never reset a window index that is in the valid range");
     }
-    LOG.debug("Resetting window index [{}, {}]", startingWindowIndex,
-              startingWindowIndex + numWindowIndexesToReset - 1);
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Resetting window index [{}, {}]", startingWindowIndex,
+                startingWindowIndex + numWindowIndexesToReset - 1);
+    }
     // We are resetting all the data here.
     for (long wi = startingWindowIndex; wi < startingWindowIndex + numWindowIndexesToReset; wi++) {
       // It is important to synchronize on all the window generation here, so that no thread will miss the reset.

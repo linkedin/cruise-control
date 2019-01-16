@@ -91,7 +91,9 @@ public class MetadataClient {
         isMetadataUpdated = _metadata.version() > version;
       }
       if (isMetadataUpdated) {
-        LOG.debug("Updated metadata {}", _metadata.fetch());
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Updated metadata {}", _metadata.fetch());
+        }
         if (MonitorUtils.metadataChanged(beforeUpdate, _metadata.fetch())) {
           _metadataGeneration.incrementAndGet();
         }

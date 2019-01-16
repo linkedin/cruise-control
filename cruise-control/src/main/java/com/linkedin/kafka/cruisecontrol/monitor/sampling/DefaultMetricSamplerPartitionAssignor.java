@@ -54,8 +54,9 @@ public class DefaultMetricSamplerPartitionAssignor implements MetricSamplerParti
       }
       totalPartitionAssigned += partitionsForTopic.size();
     }
-    // Print the assignments if the logger is set to debug level or lower.
-    maybeDumpAssignments(assignments);
+    if (LOG.isTraceEnabled()) {
+      maybeDumpAssignments(assignments);
+    }
     return assignments;
   }
 

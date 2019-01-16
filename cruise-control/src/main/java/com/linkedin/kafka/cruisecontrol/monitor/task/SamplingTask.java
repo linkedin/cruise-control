@@ -79,7 +79,7 @@ class SamplingTask implements Runnable {
       }
     } else {
       String reason = _loadMonitorTaskRunner.reasonOfLatestPauseOrResume();
-      LOG.info("Skip sampling because the load monitor is in {} state%s.", _loadMonitorTaskRunner.state(),
+      LOG.info("Skip sampling because the load monitor is in {} state{}.", _loadMonitorTaskRunner.state(),
                String.format(reason == null ? "" : " due to %s.", reason));
       // Something else is in progress, we advance the end time to avoid a big metric fetch after bootstrap finishes.
       // Otherwise we may see some memory issue.

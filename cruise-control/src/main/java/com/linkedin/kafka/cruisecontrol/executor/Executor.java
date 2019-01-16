@@ -664,7 +664,9 @@ public class Executor {
         }
 
         Cluster cluster = _metadataClient.refreshMetadata().cluster();
-        LOG.debug("Tasks in execution: {}", _executionTaskManager.inExecutionTasks());
+        if (LOG.isDebugEnabled()) {
+          LOG.debug("Tasks in execution: {}", _executionTaskManager.inExecutionTasks());
+        }
         List<ExecutionTask> deadOrAbortingTasks = new ArrayList<>();
         for (ExecutionTask task : _executionTaskManager.inExecutionTasks()) {
           TopicPartition tp = task.proposal().topicPartition();

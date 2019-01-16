@@ -106,8 +106,10 @@ public class RawMetricValues extends WindowIndexedArrays {
         }
       }
     }
-    LOG.trace("Added metric sample {} to window index {}, actual index is {}, current count : {}",
-              sample, windowIndex, idx, _counts[idx]);
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("Added metric sample {} to window index {}, actual index is {}, current count : {}",
+                sample, windowIndex, idx, _counts[idx]);
+    }
   }
 
   /**
@@ -201,8 +203,10 @@ public class RawMetricValues extends WindowIndexedArrays {
       _validity.clear(index);
       _extrapolations.clear(index);
     }
-    LOG.trace("Resetting window index [{}, {}], abandon {} samples.", startingWindowIndex,
-              startingWindowIndex + numWindowIndexesToReset - 1, numAbandonedSamples);
+    if (LOG.isTraceEnabled()) {
+      LOG.trace("Resetting window index [{}, {}], abandon {} samples.", startingWindowIndex,
+                startingWindowIndex + numWindowIndexesToReset - 1, numAbandonedSamples);
+    }
     return numAbandonedSamples;
   }
 
