@@ -78,6 +78,7 @@ public class GoalViolations extends KafkaAnomaly {
     sb.append("}, fixable goal violations: {");
     joiner = new StringJoiner(",");
     _violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()).forEach(joiner::add);
+    sb.append(joiner.toString());
     sb.append("}}");
     return sb.toString();
   }
