@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.async.progress.OptimizationForGoal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -724,12 +725,22 @@ public class GoalOptimizer implements Runnable {
         } else {
           LOG.warn("The cluster model does not have valid topics, skipping proposal precomputation.");
         }
+      } catch (OptimizationFailureException ofe) {
+        LOG.warn("Detected unfixable proposal optimization", ofe);
+        exceptionHandler(ofe);
       } catch (Exception e) {
         LOG.error("Proposal precomputation encountered error", e);
-        clearBestProposal(e);
+        exceptionHandler(e);
+      }
+    }
+
+    private void exceptionHandler(Exception e) {
+      clearBestProposal(e);
+      synchronized (_cacheLock) {
         // Wake up any thread that is waiting for a proposal update.
         _cacheLock.notifyAll();
       }
     }
+
   }
 }
