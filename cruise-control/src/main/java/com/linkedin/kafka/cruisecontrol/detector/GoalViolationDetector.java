@@ -127,6 +127,14 @@ public class GoalViolationDetector implements Runnable {
             clusterModel = _loadMonitor.clusterModel(now,
                                                      goal.clusterModelCompletenessRequirements(),
                                                      new OperationProgress());
+
+            // If the clusterModel contains dead brokers, goal violation detector will ignore any goal violations.
+            // Detection and fix for dead brokers is the responsibility of broker failure detector and its self-healer.
+            if (!clusterModel.deadBrokers().isEmpty()) {
+              LOG.info("Skipping goal violation detection due to dead brokers {}, which are reported by broker failure "
+                       + "detector, and fixed if its self healing configuration is enabled.", clusterModel.deadBrokers());
+              return;
+            }
             KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation,
                                                              clusterModel.capacityEstimationInfoByBrokerId());
             _lastCheckedModelGeneration = clusterModel.generation();
