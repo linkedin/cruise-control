@@ -35,9 +35,7 @@ object ExecutorUtils {
       // reassignment together.
       val newReplicaAssignment = scala.collection.mutable.Map(inProgressReplicaReassignment.toSeq: _*)
       reassignmentTasks.foreach({ task =>
-        val topic = task.proposal.topic
-        val partition = task.proposal.partitionId
-        val tp = new TopicPartition(topic, partition)
+        val tp = task.proposal.topicPartition()
         val oldReplicas = asScalaBuffer(task.proposal.oldReplicas()).map(_.toInt)
         val newReplicas = asScalaBuffer(task.proposal().newReplicas()).map(_.toInt)
 
@@ -73,7 +71,7 @@ object ExecutorUtils {
               // verify with current assignment
               val currentReplicaAssignment = kafkaZkClient.getReplicasForPartition(tp)
               if (currentReplicaAssignment.isEmpty) {
-                LOG.warn(s"The partitionId $partition does not exist.")
+                LOG.warn(s"The partition $tp does not exist.")
                 addTask = false
                 Seq.empty
               } else {
@@ -88,8 +86,15 @@ object ExecutorUtils {
       })
 
       // We do not use the ReassignPartitionsCommand here because we want to have incremental partition movement.
-      if (newReplicaAssignment.nonEmpty)
+      if (newReplicaAssignment.nonEmpty) {
+        // Due to KAFKA-7854, to support the level of desired concurrency in partition reassignments, we explicitly delete
+        // partition reassignment zNode, then create it with the desired content.
+        kafkaZkClient.deletePartitionReassignment()
+        // There is a known race condition between CC Executor and Kafka Controller to override the zNode. If this race
+        // condition happens, controller might fail to get the requested updates. The caller of this method should ensure
+        // that such conflicting writes are handled -- e.g. via OCC.
         kafkaZkClient.setOrCreatePartitionReassignment(newReplicaAssignment)
+      }
     }
   }
 

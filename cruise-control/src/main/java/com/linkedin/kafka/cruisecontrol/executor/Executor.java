@@ -822,13 +822,33 @@ public class Executor {
     }
 
     /**
+     * Checks whether the topicPartitions of the execution tasks in the given subset is indeed a subset of the given set.
+     *
+     * @param set The original set.
+     * @param subset The subset to validate whether it is indeed a subset of the given set.
+     * @return True if the topicPartitions of the given subset constitute a subset of the given set, false otherwise.
+     */
+    private boolean isSubset(Set<TopicPartition> set, Collection<ExecutionTask> subset) {
+      boolean isSubset = true;
+      for (ExecutionTask executionTask : subset) {
+        TopicPartition tp = executionTask.proposal().topicPartition();
+        if (!set.contains(tp)) {
+          isSubset = false;
+          break;
+        }
+      }
+
+      return isSubset;
+    }
+
+    /**
      * Due to the race condition between the controller and Cruise Control, some of the submitted tasks may be
      * deleted by controller without being executed. We will resubmit those tasks in that case.
      */
     private void maybeReexecuteTasks() {
       List<ExecutionTask> replicaActionsToReexecute =
           new ArrayList<>(_executionTaskManager.inExecutionTasks(ExecutionTask.TaskType.REPLICA_ACTION));
-      if (replicaActionsToReexecute.size() > ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient).size()) {
+      if (!isSubset(ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient), replicaActionsToReexecute)) {
         LOG.info("Reexecuting tasks {}", replicaActionsToReexecute);
         ExecutorUtils.executeReplicaReassignmentTasks(_kafkaZkClient, replicaActionsToReexecute);
       }
