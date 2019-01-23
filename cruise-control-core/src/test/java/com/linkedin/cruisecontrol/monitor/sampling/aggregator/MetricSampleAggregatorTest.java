@@ -37,9 +37,11 @@ public class MetricSampleAggregatorTest {
   private static final int NUM_WINDOWS = 20;
   private static final long WINDOW_MS = 1000L;
   private static final int MIN_SAMPLES_PER_WINDOW = 4;
-  private static final IntegerEntity ENTITY1 = new IntegerEntity("g1", 1234);
-  private static final IntegerEntity ENTITY2 = new IntegerEntity("g1", 5678);
-  private static final IntegerEntity ENTITY3 = new IntegerEntity("g2", 1234);
+  private static final String ENTITY_GROUP_1 = "g1";
+  private static final String ENTITY_GROUP_2 = "g2";
+  private static final IntegerEntity ENTITY1 = new IntegerEntity(ENTITY_GROUP_1, 1234);
+  private static final IntegerEntity ENTITY2 = new IntegerEntity(ENTITY_GROUP_1, 5678);
+  private static final IntegerEntity ENTITY3 = new IntegerEntity(ENTITY_GROUP_2, 1234);
   private final MetricDef _metricDef = CruiseControlUnitTestUtils.getMetricDef();
 
   @Test
@@ -108,6 +110,22 @@ public class MetricSampleAggregatorTest {
                                                         aggregator, ENTITY2, 1, WINDOW_MS, _metricDef);
     aggregator.completeness(-1, Long.MAX_VALUE, options);
     assertEquals(NUM_WINDOWS + 2, windowState.windowStates().get((long) 2).generation().intValue());
+    long initGeneration = aggregator.generation();
+    // Ensure that generation is not bumped up for group retains that remove no elements.
+    aggregator.retainEntityGroup(Collections.singleton(ENTITY_GROUP_1));
+    assertEquals(initGeneration, aggregator.generation().longValue());
+    // Ensure that generation is not bumped up for group removes that remove no elements.
+    aggregator.removeEntityGroup(Collections.emptySet());
+    assertEquals(initGeneration, aggregator.generation().longValue());
+    // Ensure that generation is not bumped up for entity removes that remove no elements.
+    aggregator.removeEntities(Collections.emptySet());
+    assertEquals(initGeneration, aggregator.generation().longValue());
+    // Ensure that generation is not bumped up for entity retains that remove no elements.
+    aggregator.retainEntities(new HashSet<>(Arrays.asList(ENTITY1, ENTITY2)));
+    assertEquals(initGeneration, aggregator.generation().longValue());
+    // Ensure that generation is bumped up for retains that remove elements.
+    aggregator.retainEntityGroup(Collections.emptySet());
+    assertEquals(initGeneration + 1, aggregator.generation().longValue());
   }
 
   @Test

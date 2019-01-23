@@ -354,11 +354,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * @return the number of samples aggregated by the MetricSampleAggregator.
    */
   public int numSamples() {
-    int count = 0;
-    for (RawMetricValues rawValues : _rawMetrics.values()) {
-      count += rawValues.numSamples();
-    }
-    return count;
+    return _rawMetrics.values().stream().mapToInt(RawMetricValues::numSamples).sum();
   }
 
   /**
@@ -367,8 +363,10 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * @param entities the entities to retain.
    */
   public void retainEntities(Set<E> entities) {
-    _rawMetrics.entrySet().removeIf(entry -> !entities.contains(entry.getKey()));
-    _generation.incrementAndGet();
+    boolean anyElementsRemoved = _rawMetrics.entrySet().removeIf(entry -> !entities.contains(entry.getKey()));
+    if (anyElementsRemoved) {
+      _generation.incrementAndGet();
+    }
   }
 
   /**
@@ -377,8 +375,10 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * @param entities the entities to remove.
    */
   public void removeEntities(Set<E> entities) {
-    _rawMetrics.entrySet().removeIf(entry -> entities.contains(entry.getKey()));
-    _generation.incrementAndGet();
+    boolean anyElementsRemoved = _rawMetrics.entrySet().removeIf(entry -> entities.contains(entry.getKey()));
+    if (anyElementsRemoved) {
+      _generation.incrementAndGet();
+    }
   }
 
   /**
@@ -387,8 +387,10 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * @param entityGroups the entity groups to retain.
    */
   public void retainEntityGroup(Set<G> entityGroups) {
-    _rawMetrics.entrySet().removeIf(entry -> !entityGroups.contains(entry.getKey().group()));
-    _generation.incrementAndGet();
+    boolean anyElementsRemoved = _rawMetrics.entrySet().removeIf(entry -> !entityGroups.contains(entry.getKey().group()));
+    if (anyElementsRemoved) {
+      _generation.incrementAndGet();
+    }
   }
 
   /**
@@ -397,8 +399,10 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    * @param entityGroups the entity groups to remove from the MetricSampleAggregator.
    */
   public void removeEntityGroup(Set<G> entityGroups) {
-    _rawMetrics.entrySet().removeIf(entry -> entityGroups.contains(entry.getKey().group()));
-    _generation.incrementAndGet();
+    boolean anyElementsRemoved = _rawMetrics.entrySet().removeIf(entry -> entityGroups.contains(entry.getKey().group()));
+    if (anyElementsRemoved) {
+      _generation.incrementAndGet();
+    }
   }
 
   /**
