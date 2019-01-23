@@ -80,7 +80,7 @@ object ExecutorUtils {
                 addTask = false
                 Seq.empty
               } else {
-                // we are not verifying the old replicas becuase the we may be reexecuting a task,
+                // we are not verifying the old replicas because the we may be reexecuting a task,
                 // in which case the replica list could be different from the old replicas.
                 newReplicas
               }
