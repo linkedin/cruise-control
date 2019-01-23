@@ -413,7 +413,7 @@ public class ParameterUtils {
   private static Set<String> parseParamToStringSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
     String paramString = urlDecode(request.getParameter(param));
     Set<String> paramsString = paramString == null ? new HashSet<>(0)
-                                                         : new HashSet<>(Arrays.asList(paramString.split(",")));
+                                                   : new HashSet<>(Arrays.asList(paramString.split(",")));
     paramsString.removeIf(String::isEmpty);
     return paramsString;
   }
@@ -584,10 +584,7 @@ public class ParameterUtils {
    * Default: An empty set.
    */
   public static Set<EndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
-    String endPointsString = urlDecode(request.getParameter(ENDPOINTS_PARAM));
-    Set<String> parsedEndPoints = endPointsString == null ? new HashSet<>(0)
-                                                : new HashSet<>(Arrays.asList(endPointsString.split(",")));
-    parsedEndPoints.removeIf(String::isEmpty);
+    Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM);
 
     Set<EndPoint> endPoints = new HashSet<>();
     for (EndPoint endPoint : EndPoint.cachedValues()) {
@@ -602,10 +599,7 @@ public class ParameterUtils {
    * Default: An empty set.
    */
   public static Set<UserTaskManager.TaskState> types(HttpServletRequest request) throws UnsupportedEncodingException {
-    String taskStatesString = urlDecode(request.getParameter(TYPES_PARAM));
-    Set<String> parsedTaskStates = taskStatesString == null ? new HashSet<>(0)
-                                                : new HashSet<>(Arrays.asList(taskStatesString.split(",")));
-    parsedTaskStates.removeIf(String::isEmpty);
+    Set<String> parsedTaskStates = parseParamToStringSet(request, TYPES_PARAM);
 
     Set<UserTaskManager.TaskState> taskStates = new HashSet<>();
     for (UserTaskManager.TaskState state : UserTaskManager.TaskState.cachedValues()) {
