@@ -9,6 +9,7 @@ import java.util
 import kafka.admin.PreferredReplicaLeaderElectionCommand
 import kafka.zk.KafkaZkClient
 import org.apache.kafka.common.TopicPartition
+import org.apache.zookeeper.KeeperException.NodeExistsException
 import org.slf4j.{Logger, LoggerFactory}
 
 import scala.collection.JavaConversions._
@@ -87,13 +88,24 @@ object ExecutorUtils {
 
       // We do not use the ReassignPartitionsCommand here because we want to have incremental partition movement.
       if (newReplicaAssignment.nonEmpty) {
-        // Due to KAFKA-7854, to support the level of desired concurrency in partition reassignments, we explicitly delete
-        // partition reassignment zNode, then create it with the desired content.
-        kafkaZkClient.deletePartitionReassignment()
-        // There is a known race condition between CC Executor and Kafka Controller to override the zNode. If this race
-        // condition happens, controller might fail to get the requested updates. The caller of this method should ensure
-        // that such conflicting writes are handled -- e.g. via OCC.
-        kafkaZkClient.setOrCreatePartitionReassignment(newReplicaAssignment)
+        var isUpdated = false
+        while (!isUpdated) {
+          try {
+            // Due to KAFKA-7854, to support the level of desired concurrency in partition reassignments, we explicitly delete
+            // partition reassignment zNode (async request), then create it with the desired content after a .
+            kafkaZkClient.deletePartitionReassignment()
+            Thread.sleep(50)
+            // There is a known race condition between CC Executor and Kafka Controller to override the zNode.
+            kafkaZkClient.setOrCreatePartitionReassignment(newReplicaAssignment)
+            isUpdated = true
+          } catch {
+            // If this race condition happens, controller might fail to get the requested updates. The caller of this method should ensure
+            // that such conflicting writes are handled -- e.g. via OCC.
+            case e: NodeExistsException =>
+              // Let it go and try again after a wait.
+              Thread.sleep(200)
+          }
+        }
       }
     }
   }
