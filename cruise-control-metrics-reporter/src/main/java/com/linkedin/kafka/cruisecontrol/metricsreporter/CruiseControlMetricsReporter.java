@@ -11,19 +11,24 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.YammerMetricProcessor;
 import com.yammer.metrics.Metrics;
 import com.yammer.metrics.core.Metric;
+
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import kafka.server.KafkaConfig;
 import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.clients.admin.*;
 import org.apache.kafka.clients.producer.Callback;
 import org.apache.kafka.clients.producer.KafkaProducer;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.errors.InterruptException;
+import org.apache.kafka.common.errors.TopicExistsException;
 import org.apache.kafka.common.metrics.KafkaMetric;
 import org.apache.kafka.common.metrics.MetricsReporter;
 import org.apache.kafka.common.serialization.StringSerializer;
@@ -43,6 +48,8 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
   private long _lastReportingTime = System.currentTimeMillis();
   private int _numMetricSendFailure = 0;
   private volatile boolean _shutdown = false;
+  private NewTopic _newTopic;
+  private AdminClient _adminClient;
 
   @Override
   public void init(List<KafkaMetric> metrics) {
@@ -112,11 +119,46 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
 
     _cruiseControlMetricsTopic = reporterConfig.getString(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG);
     _reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG);
+
+    if(reporterConfig.getBoolean(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG)) {
+      _newTopic = createNewTopicFromReporterConfig(reporterConfig);
+      final Properties adminProperties = new Properties();
+      adminProperties.put(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, producerProps.get(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG));
+      adminProperties.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, producerProps.get(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG));
+      _adminClient = KafkaAdminClient.create(adminProperties);
+    }
+
+  }
+
+  private static NewTopic createNewTopicFromReporterConfig(CruiseControlMetricsReporterConfig reporterConfig) {
+    String cruiseControlMetricsTopic = reporterConfig.getString(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG);
+    Integer cruiseControlMetricsTopicNumPartition = reporterConfig.getInt(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_CONFIG);
+    Short cruiseControlMetricsTopicReplicaFactor = reporterConfig.getShort(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG);
+    return new NewTopic(cruiseControlMetricsTopic, cruiseControlMetricsTopicNumPartition, cruiseControlMetricsTopicReplicaFactor);
+  }
+
+  private static void createCruiseControlMetricsTopic(AdminClient adminClient, NewTopic newTopic) {
+    try {
+      final CreateTopicsResult createTopicsResult = adminClient.createTopics(Collections.singletonList(newTopic));
+      createTopicsResult.values().get(newTopic.name()).get();
+      LOG.info("Cruise Control metrics topic created");
+    } catch (InterruptedException | ExecutionException e) {
+      if (!(e.getCause() instanceof TopicExistsException)) {
+        LOG.error("Unable to create Cruise Control topic", e);
+      }
+    }
   }
 
   @Override
   public void run() {
     LOG.info("Starting Cruise Control metrics reporter with reporting interval of {} ms.", _reportingIntervalMs);
+
+    if(_newTopic != null && _adminClient != null) {
+      LOG.info("Try to create Cruise Control metrics topic if not exist");
+      createCruiseControlMetricsTopic(_adminClient, _newTopic);
+      _adminClient.close();
+    }
+
     try {
       while (!_shutdown) {
         long now = System.currentTimeMillis();
