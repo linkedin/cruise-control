@@ -766,16 +766,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC)
         .define(DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG,
                 ConfigDef.Type.LONG,
-                TimeUnit.HOURS.toMillis(24),
+                TimeUnit.HOURS.toMillis(336),
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 DEMOTION_HISTORY_RETENTION_TIME_MS_DOC)
         .define(REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG,
-            ConfigDef.Type.LONG,
-            TimeUnit.HOURS.toMillis(12),
-            atLeast(0),
-            ConfigDef.Importance.MEDIUM,
-            REMOVAL_HISTORY_RETENTION_TIME_MS_DOC)
+                ConfigDef.Type.LONG,
+                TimeUnit.HOURS.toMillis(336),
+                atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                REMOVAL_HISTORY_RETENTION_TIME_MS_DOC)
         .define(MAX_CACHED_COMPLETED_USER_TASKS_CONFIG,
                 ConfigDef.Type.INT,
                 100,
