@@ -234,8 +234,13 @@ public class KafkaSampleStore implements SampleStore {
 
   /**
    * Increase the replication factor of a Kafka topic through adding new replicas in a rack-aware, round-robin way.
-   * If Zookeeper does not have rack information about brokers, then rack-aware property is not guaranteed.
-   * In this case it is only guaranteed that new replicas are added to brokers which do not currently host the partition.
+   * There are two scenarios that rack awareness property is not guaranteed.
+   * <ul>
+   *   <li> If Zookeeper does not have rack information about brokers, then it is only guaranteed that new replicas are
+   *   added to brokers which do not currently host the partition.</li>
+   *   <li> If replication factor to set for the topic is larger than number of racks in the cluster, then rack awareness
+   *   property is ignored.</li>
+   * </ul>
    *
    * @param zkUtils ZkUtils class to use to increase replication factor.
    * @param topicMetadata Topic metadata stored in Zookeeper.
@@ -260,9 +265,12 @@ public class KafkaSampleStore implements SampleStore {
       brokersByRack.get(rack).add(bm.id());
       rackByBroker.put(bm.id(), rack);
     }
+
+    boolean skipRackAwarenessCheck = false;
     if (replicationFactor > brokersByRack.size()) {
-      throw new RuntimeException("Unable to increase topic " + topic + " replica factor to " + replicationFactor
-                                 + " since there are only " + brokersByRack.size() + " racks in the cluster.");
+      skipRackAwarenessCheck = true;
+      LOG.warn("Target replica factor for topic " + topic + " is larger than number of racks in cluster, new replica maybe" +
+               " added in none rack-aware way.");
     }
 
     scala.collection.mutable.Map<TopicAndPartition, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
@@ -278,12 +286,14 @@ public class KafkaSampleStore implements SampleStore {
           newAssignedReplica.add(node.id());
           currentOccupiedRack.add(rackByBroker.get(node.id()));
         });
-        // Add new replica to partition in rack-aware(if rack info is available), round-robin way.
+        // Add new replica to partition in rack-aware(if possible), round-robin way.
         while (newAssignedReplica.size() < replicationFactor) {
-          if (!currentOccupiedRack.contains(racks.get(rackCursor))) {
+          if (!currentOccupiedRack.contains(racks.get(rackCursor)) ||
+              (skipRackAwarenessCheck && currentOccupiedRack.size() == racks.size())) {
             String rack = racks.get(rackCursor);
             int cursor = cursors[rackCursor];
             newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
+            currentOccupiedRack.add(rack);
             cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
           }
           rackCursor = (rackCursor + 1) % racks.size();
