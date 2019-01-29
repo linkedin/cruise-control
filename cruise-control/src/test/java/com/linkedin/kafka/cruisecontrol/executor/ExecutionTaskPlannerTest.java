@@ -25,14 +25,13 @@ import java.util.Map;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
 
 /**
  * Unit test class for execution task planner
  */
 public class ExecutionTaskPlannerTest {
-  private static final String TOPIC1 = "topic1";
-  private static final String TOPIC2 = "topic2";
-
   private final ExecutionProposal leaderMovement1 =
       new ExecutionProposal(new TopicPartition(TOPIC1, 0), 0, 1, Arrays.asList(1, 0), Arrays.asList(0, 1));
   private final ExecutionProposal leaderMovement2 =

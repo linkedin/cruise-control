@@ -12,6 +12,7 @@ import java.util.NavigableSet;
 import java.util.Random;
 import java.util.function.Function;
 
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -19,7 +20,6 @@ import static org.junit.Assert.assertTrue;
  * Unit test for {@link SortedReplicas}
  */
 public class SortedReplicasTest {
-  private static final String TOPIC = "topic";
   private static final String SORT_NAME = "sortName";
   private static final Random RANDOM = new Random(0xDEADBEEF);
 
@@ -36,12 +36,12 @@ public class SortedReplicasTest {
     SortedReplicas sr = broker.trackedSortedReplicas(SORT_NAME);
 
     int numReplicas = sr.sortedReplicas().size();
-    Replica replica1 = new Replica(new TopicPartition(TOPIC, 105), broker, false);
+    Replica replica1 = new Replica(new TopicPartition(TOPIC0, 105), broker, false);
     sr.add(replica1);
     assertEquals("The selection function should have filtered out the replica",
                  numReplicas, sr.sortedReplicas().size());
 
-    Replica replica2 = new Replica(new TopicPartition(TOPIC, 103), broker, true);
+    Replica replica2 = new Replica(new TopicPartition(TOPIC0, 103), broker, true);
     sr.add(replica2);
     assertEquals("The replica should have been added.", numReplicas + 1, sr.sortedReplicas().size());
 
@@ -65,7 +65,7 @@ public class SortedReplicasTest {
     SortedReplicas sr = broker.trackedSortedReplicas(SORT_NAME);
 
     assertEquals("The replicas should be sorted lazily", 0, sr.numReplicas());
-    Replica replica = new Replica(new TopicPartition(TOPIC, 105), broker, false);
+    Replica replica = new Replica(new TopicPartition(TOPIC0, 105), broker, false);
     sr.add(replica);
     assertEquals("The replicas should be sorted lazily", 0, sr.numReplicas());
     sr.remove(replica);
@@ -145,7 +145,7 @@ public class SortedReplicasTest {
     Broker broker = new Broker(host, 0, TestConstants.BROKER_CAPACITY);
 
     for (int i = 0; i < numReplicas; i++) {
-      Replica r = new Replica(new TopicPartition(TOPIC, i), broker, i % 3 == 0);
+      Replica r = new Replica(new TopicPartition(TOPIC0, i), broker, i % 3 == 0);
       broker.addReplica(r);
     }
     return broker;

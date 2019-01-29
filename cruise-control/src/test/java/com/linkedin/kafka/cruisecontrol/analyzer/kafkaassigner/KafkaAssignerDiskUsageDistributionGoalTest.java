@@ -28,6 +28,9 @@ import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -35,10 +38,6 @@ import static org.junit.Assert.assertEquals;
 
 
 public class KafkaAssignerDiskUsageDistributionGoalTest {
-  private static final String TOPIC0 = "topic0";
-  private static final String TOPIC1 = "topic1";
-  private static final String TOPIC2 = "topic2";
-
   private static final TopicPartition T0P0 = new TopicPartition(TOPIC0, 0);
   private static final TopicPartition T0P1 = new TopicPartition(TOPIC0, 1);
   private static final TopicPartition T0P2 = new TopicPartition(TOPIC0, 2);

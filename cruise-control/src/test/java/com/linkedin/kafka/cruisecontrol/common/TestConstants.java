@@ -10,6 +10,10 @@ import java.util.Map;
 
 
 public class TestConstants {
+  public static final String TOPIC0 = "topic0";
+  public static final String TOPIC1 = "topic1";
+  public static final String TOPIC2 = "topic2";
+  public static final String TOPIC3 = "topic3";
   public static final long SEED_BASE = 3140;
   public static final long REPLICATION_SEED = 5234;
   public static final long LEADER_SEED = 72033;

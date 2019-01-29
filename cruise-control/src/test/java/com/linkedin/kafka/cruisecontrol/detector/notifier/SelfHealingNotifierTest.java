@@ -27,6 +27,7 @@ import static org.junit.Assert.assertTrue;
  */
 public class SelfHealingNotifierTest {
   private static final boolean EXCLUDE_RECENTLY_DEMOTED_BROKERS = true;
+  private static final boolean EXCLUDE_RECENTLY_REMOVED_BROKERS = true;
 
   @Test
   public void testOnBrokerFailure() {
@@ -45,7 +46,8 @@ public class SelfHealingNotifierTest {
     AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
                                                                                           failedBrokers,
                                                                                           allowCapacityEstimation,
-                                                                                          EXCLUDE_RECENTLY_DEMOTED_BROKERS));
+                                                                                          EXCLUDE_RECENTLY_DEMOTED_BROKERS,
+                                                                                          EXCLUDE_RECENTLY_REMOVED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(SelfHealingNotifier.DEFAULT_ALERT_THRESHOLD_MS + failureTime1 - mockTime.milliseconds(),
                  result.delay());
@@ -56,7 +58,8 @@ public class SelfHealingNotifierTest {
     result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
                                                                 failedBrokers,
                                                                 allowCapacityEstimation,
-                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS));
+                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS,
+                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
     assertFalse(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -67,7 +70,8 @@ public class SelfHealingNotifierTest {
     result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
                                                                 failedBrokers,
                                                                 allowCapacityEstimation,
-                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS));
+                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS,
+                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(SelfHealingNotifier.DEFAULT_AUTO_FIX_THRESHOLD_MS + failureTime1 - mockTime.milliseconds(),
                  result.delay());
@@ -79,7 +83,8 @@ public class SelfHealingNotifierTest {
     result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
                                                                 failedBrokers,
                                                                 allowCapacityEstimation,
-                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS));
+                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS,
+                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -91,7 +96,8 @@ public class SelfHealingNotifierTest {
     result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
                                                                 failedBrokers,
                                                                 allowCapacityEstimation,
-                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS));
+                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS,
+                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.FIX, result.action());
     assertEquals(-1L, result.delay());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -125,14 +131,21 @@ public class SelfHealingNotifierTest {
     mockTime.sleep(SelfHealingNotifier.DEFAULT_AUTO_FIX_THRESHOLD_MS + failureTime1);
     anomalyNotifier.resetAlert(AnomalyType.BROKER_FAILURE);
     AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(
-        new BrokerFailures(mockKafkaCruiseControl, failedBrokers, true, EXCLUDE_RECENTLY_DEMOTED_BROKERS));
+        new BrokerFailures(mockKafkaCruiseControl,
+                           failedBrokers,
+                           true,
+                           EXCLUDE_RECENTLY_DEMOTED_BROKERS,
+                           EXCLUDE_RECENTLY_REMOVED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
     assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.BROKER_FAILURE));
 
     // (2) Goal Violation
     anomalyNotifier.resetAlert(AnomalyType.GOAL_VIOLATION);
-    result = anomalyNotifier.onGoalViolation(new GoalViolations(mockKafkaCruiseControl, true, true));
+    result = anomalyNotifier.onGoalViolation(new GoalViolations(mockKafkaCruiseControl,
+                                                                true,
+                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS,
+                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.GOAL_VIOLATION));
     assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.GOAL_VIOLATION));

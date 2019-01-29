@@ -63,6 +63,8 @@ public class GoalOptimizer implements Runnable {
   private static final String RECENT_WINDOWS = "recentWindows";
   private static final String MONITORED_PARTITIONS_PERCENTAGE = "monitoredPartitionsPercentage";
   private static final String EXCLUDED_TOPICS = "excludedTopics";
+  private static final String EXCLUDED_BROKERS_FOR_LEADERSHIP = "excludedBrokersForLeadership";
+  private static final String EXCLUDED_BROKERS_FOR_REPLICA_MOVE = "excludedBrokersForReplicaMove";
   private static final Logger LOG = LoggerFactory.getLogger(GoalOptimizer.class);
   private final List<Goal> _goalsByPriority;
   private final BalancingConstraint _balancingConstraint;
@@ -395,14 +397,20 @@ public class GoalOptimizer implements Runnable {
    * Provides optimization
    * (1) using {@link #_defaultExcludedTopics}, and
    * (2) does not exclude any brokers for receiving leadership.
+   * (3) does not exclude any brokers for receiving replicas.
    *
-   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern, Set)}.
+   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern, Set, Set)}.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        List<Goal> goalsByPriority,
                                        OperationProgress operationProgress)
       throws KafkaCruiseControlException {
-    return optimizations(clusterModel, goalsByPriority, operationProgress, null, Collections.emptySet());
+    return optimizations(clusterModel,
+                         goalsByPriority,
+                         operationProgress,
+                         null,
+                         Collections.emptySet(),
+                         Collections.emptySet());
   }
 
   /**
@@ -419,13 +427,15 @@ public class GoalOptimizer implements Runnable {
    * @param requestedExcludedTopics Topics requested to be excluded from partition movement (if null,
    *                                use {@link #_defaultExcludedTopics})
    * @param excludedBrokersForLeadership Brokers excluded from receiving leadership upon proposal generation.
+   * @param excludedBrokersForReplicaMove Brokers excluded from receiving replicas upon proposal generation.
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        List<Goal> goalsByPriority,
                                        OperationProgress operationProgress,
                                        Pattern requestedExcludedTopics,
-                                       Set<Integer> excludedBrokersForLeadership)
+                                       Set<Integer> excludedBrokersForLeadership,
+                                       Set<Integer> excludedBrokersForReplicaMove)
       throws KafkaCruiseControlException {
     if (clusterModel == null) {
       throw new IllegalArgumentException("The cluster model cannot be null");
@@ -452,7 +462,7 @@ public class GoalOptimizer implements Runnable {
     Map<TopicPartition, Integer> preOptimizedLeaderDistribution = null;
     Set<String> excludedTopics = excludedTopics(clusterModel, requestedExcludedTopics);
     LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics, excludedBrokersForLeadership);
+    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove);
     for (Goal goal : goalsByPriority) {
       preOptimizedReplicaDistribution = preOptimizedReplicaDistribution == null ? initReplicaDistribution : clusterModel.getReplicaDistribution();
       preOptimizedLeaderDistribution = preOptimizedLeaderDistribution == null ? initLeaderDistribution : clusterModel.getLeaderDistribution();
@@ -495,7 +505,7 @@ public class GoalOptimizer implements Runnable {
                                clusterModel.generation(),
                                clusterModel.getClusterStats(_balancingConstraint),
                                clusterModel.capacityEstimationInfoByBrokerId(),
-                               excludedTopics);
+                               optimizationOptions);
   }
 
   private Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
@@ -574,7 +584,7 @@ public class GoalOptimizer implements Runnable {
     private final ModelGeneration _modelGeneration;
     private final ClusterModelStats _clusterModelStats;
     private final Map<Integer, String> _capacityEstimationInfoByBrokerId;
-    private final Set<String> _excludedTopics;
+    private final OptimizationOptions _optimizationOptions;
 
     OptimizerResult(Map<Goal, ClusterModelStats> statsByGoalPriority,
                     Set<String> violatedGoalNamesBeforeOptimization,
@@ -585,7 +595,7 @@ public class GoalOptimizer implements Runnable {
                     ModelGeneration modelGeneration,
                     ClusterModelStats clusterModelStats,
                     Map<Integer, String> capacityEstimationInfoByBrokerId,
-                    Set<String> excludedTopics) {
+                    OptimizationOptions optimizationOptions) {
       _clusterModelStatsComparatorByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
       _statsByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
       for (Map.Entry<Goal, ClusterModelStats> entry : statsByGoalPriority.entrySet()) {
@@ -603,7 +613,7 @@ public class GoalOptimizer implements Runnable {
       _modelGeneration = modelGeneration;
       _clusterModelStats = clusterModelStats;
       _capacityEstimationInfoByBrokerId = capacityEstimationInfoByBrokerId;
-      _excludedTopics = excludedTopics;
+      _optimizationOptions = optimizationOptions;
     }
 
     public Map<String, Goal.ClusterModelStatsComparator> clusterModelStatsComparatorByGoalName() {
@@ -651,7 +661,15 @@ public class GoalOptimizer implements Runnable {
     }
 
     public Set<String> excludedTopics() {
-      return _excludedTopics;
+      return _optimizationOptions.excludedTopics();
+    }
+
+    public Set<Integer> excludedBrokersForLeadership() {
+      return _optimizationOptions.excludedBrokersForLeadership();
+    }
+
+    public Set<Integer> excludedBrokersForReplicaMove() {
+      return _optimizationOptions.excludedBrokersForReplicaMove();
     }
 
     private List<Number> getMovementStats() {
@@ -673,10 +691,11 @@ public class GoalOptimizer implements Runnable {
       List<Number> moveStats = getMovementStats();
       return String.format("%n%nThe optimization proposal has %d replica(%d MB) movements and %d leadership movements "
                            + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions "
-                           + "covered.%nExcluded Topics: %s",
+                           + "covered.%nExcluded Topics: %s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers "
+                           + "For Replica Move: %s.",
                            moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(),
                            _clusterModelStats.numSnapshotWindows(), _clusterModelStats.monitoredPartitionsPercentage() * 100,
-                           _excludedTopics);
+                           excludedTopics(), excludedBrokersForLeadership(), excludedBrokersForReplicaMove());
     }
 
     public Map<String, Object> getProposalSummaryForJson() {
@@ -687,7 +706,9 @@ public class GoalOptimizer implements Runnable {
       ret.put(NUM_LEADER_MOVEMENTS, moveStats.get(2).intValue());
       ret.put(RECENT_WINDOWS, _clusterModelStats.numSnapshotWindows());
       ret.put(MONITORED_PARTITIONS_PERCENTAGE, _clusterModelStats.monitoredPartitionsPercentage() * 100.0);
-      ret.put(EXCLUDED_TOPICS, _excludedTopics);
+      ret.put(EXCLUDED_TOPICS, excludedTopics());
+      ret.put(EXCLUDED_BROKERS_FOR_LEADERSHIP, excludedBrokersForLeadership());
+      ret.put(EXCLUDED_BROKERS_FOR_REPLICA_MOVE, excludedBrokersForReplicaMove());
       return ret;
     }
   }

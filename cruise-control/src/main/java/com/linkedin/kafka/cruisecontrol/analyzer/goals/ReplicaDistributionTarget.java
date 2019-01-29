@@ -227,38 +227,38 @@ class ReplicaDistributionTarget {
                                               OptimizationOptions optimizationOptions) {
     boolean isMoveSuccessful = false;
     // Get eligible brokers to receive this replica.
-    for (int brokerId : replicaToMove.broker().isAlive()
-                        ? sortedCandidateBrokerIds()
-                        : clusterModel.aliveBrokers().stream().map(Broker::id).collect(Collectors.toList())) {
+    for (int candidateBrokerId : replicaToMove.broker().isAlive()
+                                 ? sortedCandidateBrokerIds()
+                                 : clusterModel.aliveBrokers().stream().map(Broker::id).collect(Collectors.toList())) {
       // filter out the broker that is not eligible.
-      if (!isEligibleForReplicaMove(clusterModel, replicaToMove, brokerId, optimizationOptions)) {
+      if (!isEligibleForReplicaMove(clusterModel, replicaToMove, candidateBrokerId, optimizationOptions)) {
         continue;
       }
       // Check if movement is acceptable by this and optimized goals. Movement is acceptable by (1) this goal
       // if the eligible destination broker does not contain a replica in the same partition set, (2) optimized
       // goals if for each optimized goal accepts the replica movement action.
       BalancingAction proposal =
-          new BalancingAction(replicaToMove.topicPartition(), replicaToMove.broker().id(), brokerId,
+          new BalancingAction(replicaToMove.topicPartition(), replicaToMove.broker().id(), candidateBrokerId,
                               ActionType.REPLICA_MOVEMENT);
-      if (!legitMove(replicaToMove, clusterModel.broker(brokerId), ActionType.REPLICA_MOVEMENT)) {
+      if (!legitMove(replicaToMove, clusterModel.broker(candidateBrokerId), ActionType.REPLICA_MOVEMENT)) {
         continue;
       }
 
       boolean canMove = AnalyzerUtils.isProposalAcceptableForOptimizedGoals(optimizedGoals, proposal, clusterModel) == ACCEPT;
       if (canMove) {
-        clusterModel.relocateReplica(replicaToMove.topicPartition(), replicaToMove.broker().id(), brokerId);
+        clusterModel.relocateReplica(replicaToMove.topicPartition(), replicaToMove.broker().id(), candidateBrokerId);
         isMoveSuccessful = true;
         // Consume an eligible broker id.
-        Integer requiredNumReplicas = _requiredNumReplicasByBrokerId.get(brokerId);
+        Integer requiredNumReplicas = _requiredNumReplicasByBrokerId.get(candidateBrokerId);
         if (requiredNumReplicas != null) {
           if (requiredNumReplicas == 1) {
-            _requiredNumReplicasByBrokerId.remove(brokerId);
+            _requiredNumReplicasByBrokerId.remove(candidateBrokerId);
           } else {
             requiredNumReplicas--;
-            _requiredNumReplicasByBrokerId.put(brokerId, requiredNumReplicas);
+            _requiredNumReplicasByBrokerId.put(candidateBrokerId, requiredNumReplicas);
           }
         } else {
-          _secondaryEligibleBrokerIds.remove(brokerId);
+          _secondaryEligibleBrokerIds.remove(candidateBrokerId);
         }
         break;
       }
