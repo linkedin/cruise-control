@@ -20,6 +20,7 @@ import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
@@ -173,6 +174,7 @@ public class KafkaCruiseControl {
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
+   * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @return The optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
@@ -189,7 +191,8 @@ public class KafkaCruiseControl {
                                                            boolean skipHardGoalCheck,
                                                            Pattern excludedTopics,
                                                            String uuid,
-                                                           boolean excludeRecentlyDemotedBrokers)
+                                                           boolean excludeRecentlyDemotedBrokers,
+                                                           boolean excludeRecentlyRemovedBrokers)
       throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
@@ -205,7 +208,8 @@ public class KafkaCruiseControl {
                                                                       operationProgress,
                                                                       allowCapacityEstimation,
                                                                       excludedTopics,
-                                                                      excludeRecentlyDemotedBrokers);
+                                                                      excludeRecentlyDemotedBrokers,
+                                                                      excludeRecentlyRemovedBrokers);
       if (!dryRun) {
         executeRemoval(result.goalProposals(), throttleDecommissionedBroker, brokerIds, isKafkaAssignerMode(goals),
                        concurrentPartitionMovements, concurrentLeaderMovements, uuid);
@@ -234,6 +238,7 @@ public class KafkaCruiseControl {
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
+   * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @return the optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the process of fixing offline replicas.
@@ -248,7 +253,8 @@ public class KafkaCruiseControl {
                                                           boolean skipHardGoalCheck,
                                                           Pattern excludedTopics,
                                                           String uuid,
-                                                          boolean excludeRecentlyDemotedBrokers)
+                                                          boolean excludeRecentlyDemotedBrokers,
+                                                          boolean excludeRecentlyRemovedBrokers)
       throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
@@ -259,9 +265,13 @@ public class KafkaCruiseControl {
                                                             operationProgress);
       // Ensure that the generated cluster model contains offline replicas.
       sanityCheckOfflineReplicaPresence(clusterModel);
-      GoalOptimizer.OptimizerResult result =
-          getOptimizationProposals(clusterModel, goalsByPriority, operationProgress, allowCapacityEstimation,
-                                   excludedTopics, excludeRecentlyDemotedBrokers);
+      GoalOptimizer.OptimizerResult result = getOptimizationProposals(clusterModel,
+                                                                      goalsByPriority,
+                                                                      operationProgress,
+                                                                      allowCapacityEstimation,
+                                                                      excludedTopics,
+                                                                      excludeRecentlyDemotedBrokers,
+                                                                      excludeRecentlyRemovedBrokers);
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          Collections.emptyList(),
@@ -314,6 +324,7 @@ public class KafkaCruiseControl {
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
+   * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the broker addition.
    */
@@ -329,7 +340,8 @@ public class KafkaCruiseControl {
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics,
                                                   String uuid,
-                                                  boolean excludeRecentlyDemotedBrokers) throws KafkaCruiseControlException {
+                                                  boolean excludeRecentlyDemotedBrokers,
+                                                  boolean excludeRecentlyRemovedBrokers) throws KafkaCruiseControlException {
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -346,7 +358,8 @@ public class KafkaCruiseControl {
                                                                       operationProgress,
                                                                       allowCapacityEstimation,
                                                                       excludedTopics,
-                                                                      excludeRecentlyDemotedBrokers);
+                                                                      excludeRecentlyDemotedBrokers,
+                                                                      excludeRecentlyRemovedBrokers);
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          throttleAddedBrokers ? Collections.emptyList() : brokerIds,
@@ -378,6 +391,7 @@ public class KafkaCruiseControl {
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
+   * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
@@ -391,10 +405,12 @@ public class KafkaCruiseControl {
                                                  boolean skipHardGoalCheck,
                                                  Pattern excludedTopics,
                                                  String uuid,
-                                                 boolean excludeRecentlyDemotedBrokers) throws KafkaCruiseControlException {
+                                                 boolean excludeRecentlyDemotedBrokers,
+                                                 boolean excludeRecentlyRemovedBrokers) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress,
                                                                     allowCapacityEstimation, skipHardGoalCheck,
-                                                                    excludedTopics, excludeRecentlyDemotedBrokers);
+                                                                    excludedTopics, excludeRecentlyDemotedBrokers,
+                                                                    excludeRecentlyRemovedBrokers);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
                        concurrentPartitionMovements, concurrentLeaderMovements, uuid);
@@ -452,7 +468,8 @@ public class KafkaCruiseControl {
                                                                       operationProgress,
                                                                       allowCapacityEstimation,
                                                                       null,
-                                                                      excludeRecentlyDemotedBrokers);
+                                                                      excludeRecentlyDemotedBrokers,
+                                                                      false);
       if (!dryRun) {
         executeDemotion(result.goalProposals(), brokerIds, concurrentLeaderMovements, uuid);
       }
@@ -654,6 +671,7 @@ public class KafkaCruiseControl {
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
+   * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    */
@@ -663,7 +681,8 @@ public class KafkaCruiseControl {
                                                                 boolean allowCapacityEstimation,
                                                                 boolean skipHardGoalCheck,
                                                                 Pattern excludedTopics,
-                                                                boolean excludeRecentlyDemotedBrokers)
+                                                                boolean excludeRecentlyDemotedBrokers,
+                                                                boolean excludeRecentlyRemovedBrokers)
       throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
@@ -671,14 +690,15 @@ public class KafkaCruiseControl {
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     // There are a few cases that we cannot use the cached best proposals:
-    // 1. When users dynamically specified goals, excluded topics, or requested to exclude recently demoted brokers.
+    // 1. When users dynamically specified goals, excluded topics, or requested to exclude recently demoted/removed brokers.
     // 2. When provided requirements contain a weaker requirement than what is used by the cached proposal.
     ModelCompletenessRequirements requirementsForCache = _goalOptimizer.modelCompletenessRequirementsForPrecomputing();
     boolean hasWeakerRequirement =
         requirementsForCache.minMonitoredPartitionsPercentage() > modelCompletenessRequirements.minMonitoredPartitionsPercentage()
         || requirementsForCache.minRequiredNumWindows() > modelCompletenessRequirements.minRequiredNumWindows()
         || (requirementsForCache.includeAllTopics() && !modelCompletenessRequirements.includeAllTopics());
-    if ((goals != null && !goals.isEmpty()) || hasWeakerRequirement || excludedTopics != null || excludeRecentlyDemotedBrokers) {
+    if ((goals != null && !goals.isEmpty()) || hasWeakerRequirement || excludedTopics != null
+        || excludeRecentlyDemotedBrokers || excludeRecentlyRemovedBrokers) {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         // The cached proposals are computed with ignoreMinMonitoredPartitions = true. So if user provided a different
         // setting, we need to generate a new model.
@@ -692,7 +712,8 @@ public class KafkaCruiseControl {
                                           operationProgress,
                                           allowCapacityEstimation,
                                           excludedTopics,
-                                          excludeRecentlyDemotedBrokers);
+                                          excludeRecentlyDemotedBrokers,
+                                          excludeRecentlyRemovedBrokers);
       } catch (KafkaCruiseControlException kcce) {
         throw kcce;
       } catch (Exception e) {
@@ -709,20 +730,28 @@ public class KafkaCruiseControl {
                                                                  OperationProgress operationProgress,
                                                                  boolean allowCapacityEstimation,
                                                                  Pattern requestedExcludedTopics,
-                                                                 boolean excludeRecentlyDemotedBrokers)
+                                                                 boolean excludeRecentlyDemotedBrokers,
+                                                                 boolean excludeRecentlyRemovedBrokers)
       throws KafkaCruiseControlException {
     sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
     synchronized (this) {
-      Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers
-                                                  ? state(operationProgress, Collections.singleton(EXECUTOR))
-                                                      .executorState().recentlyDemotedBrokers()
-                                                  : Collections.emptySet();
+      ExecutorState executorState = null;
+      if (excludeRecentlyDemotedBrokers || excludeRecentlyRemovedBrokers) {
+        executorState = state(operationProgress, Collections.singleton(EXECUTOR)).executorState();
+      }
+
+      Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
+                                                                                : Collections.emptySet();
+
+      Set<Integer> excludedBrokersForReplicaMove = excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
+                                                                                 : Collections.emptySet();
 
       return _goalOptimizer.optimizations(clusterModel,
                                           goalsByPriority,
                                           operationProgress,
                                           requestedExcludedTopics,
-                                          excludedBrokersForLeadership);
+                                          excludedBrokersForLeadership,
+                                          excludedBrokersForReplicaMove);
     }
   }
 

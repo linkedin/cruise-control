@@ -5,45 +5,137 @@
 package com.linkedin.kafka.cruisecontrol.common;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-
-import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-
+import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
+
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues;
 
 
 public class DeterministicCluster {
+  public static final String T1 = "T1";
+  public static final String T2 = "T2";
+  public static final Map<Integer, Integer> RACK_BY_BROKER;
+  static {
+    Map<Integer, Integer> racksByBrokerIds = new HashMap<>();
+    racksByBrokerIds.put(0, 0);
+    racksByBrokerIds.put(1, 0);
+    racksByBrokerIds.put(2, 1);
+    RACK_BY_BROKER = Collections.unmodifiableMap(racksByBrokerIds);
+  }
 
   private DeterministicCluster() {
 
   }
 
-  // Two racks, three brokers, one partition, two replicas
-  public static ClusterModel rackAwareSatisfiable() {
-    List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
-    ClusterModel cluster = DeterministicCluster.getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
-                                                                                   TestConstants.BROKER_CAPACITY);
+  // Two racks, three brokers, two partitions, two replicas, leaders are in index-1 (not in index-0).
+  public static ClusterModel unbalanced3() {
+    ClusterModel cluster = getHomogeneousCluster(RACK_BY_BROKER, TestConstants.BROKER_CAPACITY);
 
     // Create topic partition.
-    TopicPartition pInfoT10 = new TopicPartition("T1", 0);
+    TopicPartition pInfoT10 = new TopicPartition(T1, 0);
+    TopicPartition pInfoT20 = new TopicPartition(T2, 0);
+
+    // Create replicas for topics -- leader is not in the first position!
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoT10, 0, false);
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoT20, 0, false);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT10, 1, true);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT20, 1, true);
+
+    AggregatedMetricValues aggregatedMetricValues =
+        getAggregatedMetricValues(TestConstants.TYPICAL_CPU_CAPACITY / 2,
+                                  TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                  TestConstants.MEDIUM_BROKER_CAPACITY / 2,
+                                  TestConstants.LARGE_BROKER_CAPACITY / 2);
+
+    // Create snapshots and push them to the cluster.
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT10, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT20, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoT10, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoT20, aggregatedMetricValues, Collections.singletonList(1L));
+
+    return cluster;
+  }
+
+  // Two racks, three brokers, six partitions, one replica.
+  public static ClusterModel unbalanced2() {
+
+    ClusterModel cluster = unbalanced();
+    // Create topic partition.
+    TopicPartition pInfoT30 = new TopicPartition(T1, 1);
+    TopicPartition pInfoT40 = new TopicPartition(T2, 1);
+    TopicPartition pInfoT50 = new TopicPartition(T1, 2);
+    TopicPartition pInfoT60 = new TopicPartition(T2, 2);
+    // Create replicas for topics.
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoT30, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT40, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT50, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT60, 0, true);
+
+    AggregatedMetricValues aggregatedMetricValues =
+        getAggregatedMetricValues(TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                  TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                  TestConstants.MEDIUM_BROKER_CAPACITY / 2,
+                                  TestConstants.LARGE_BROKER_CAPACITY / 2);
+
+    // Create snapshots and push them to the cluster.
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoT30, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT40, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT50, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT60, aggregatedMetricValues, Collections.singletonList(1L));
+    return cluster;
+  }
+
+  // Two racks, three brokers, two partitions, one replica.
+  public static ClusterModel unbalanced() {
+    ClusterModel cluster = getHomogeneousCluster(RACK_BY_BROKER, TestConstants.BROKER_CAPACITY);
+
+    // Create topic partition.
+    TopicPartition pInfoT10 = new TopicPartition(T1, 0);
+    TopicPartition pInfoT20 = new TopicPartition(T2, 0);
+
+    // Create replicas for topics.
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT10, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT20, 0, true);
+
+    AggregatedMetricValues aggregatedMetricValues =
+        getAggregatedMetricValues(TestConstants.TYPICAL_CPU_CAPACITY / 2,
+                                  TestConstants.LARGE_BROKER_CAPACITY / 2,
+                                  TestConstants.MEDIUM_BROKER_CAPACITY / 2,
+                                  TestConstants.LARGE_BROKER_CAPACITY / 2);
+
+    // Create snapshots and push them to the cluster.
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT10, aggregatedMetricValues, Collections.singletonList(1L));
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT20, aggregatedMetricValues, Collections.singletonList(1L));
+
+    return cluster;
+  }
+
+  // Two racks, three brokers, one partition, two replicas
+  public static ClusterModel rackAwareSatisfiable() {
+    ClusterModel cluster = getHomogeneousCluster(RACK_BY_BROKER, TestConstants.BROKER_CAPACITY);
+
+    // Create topic partition.
+    TopicPartition pInfoT10 = new TopicPartition(T1, 0);
 
     // Create replicas for topic: T1.
-    cluster.createReplica("0", 0, pInfoT10, 0, true);
-    cluster.createReplica("0", 1, pInfoT10, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT10, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoT10, 1, false);
 
     // Create snapshots and push them to the cluster.
     List<Long> windows = Collections.singletonList(1L);
-    cluster.setReplicaLoad("0", 0, pInfoT10,
-                           KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(40.0, 100.0, 130.0, 75.0),
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT10,
+                           getAggregatedMetricValues(40.0, 100.0, 130.0, 75.0),
                            windows);
-    cluster.setReplicaLoad("0", 1, pInfoT10,
-                           KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(5.0, 100.0, 0.0, 75.0),
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoT10,
+                           getAggregatedMetricValues(5.0, 100.0, 0.0, 75.0),
                            windows);
 
     return cluster;
@@ -52,11 +144,11 @@ public class DeterministicCluster {
   // two racks, three brokers, one partition, three replicas.
   public static ClusterModel rackAwareUnsatisfiable() {
     ClusterModel cluster = rackAwareSatisfiable();
-    TopicPartition pInfoT10 = new TopicPartition("T1", 0);
+    TopicPartition pInfoT10 = new TopicPartition(T1, 0);
 
-    cluster.createReplica("1", 2, pInfoT10, 2, false);
-    cluster.setReplicaLoad("1", 2, pInfoT10,
-                           KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(60.0, 100.0, 130.0, 75.0),
+    cluster.createReplica(RACK_BY_BROKER.get(2).toString(), 2, pInfoT10, 2, false);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(2).toString(), 2, pInfoT10,
+                           getAggregatedMetricValues(60.0, 100.0, 130.0, 75.0),
                            Collections.singletonList(1L));
 
     return cluster;
@@ -153,41 +245,39 @@ public class DeterministicCluster {
    * @return Small scale cluster.
    */
   public static ClusterModel smallClusterModel(Map<Resource, Double> brokerCapacity) {
-    List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
-    ClusterModel cluster = getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
-        brokerCapacity);
+    ClusterModel cluster = getHomogeneousCluster(RACK_BY_BROKER, brokerCapacity);
 
     // Create topic partition.
-    TopicPartition pInfoT10 = new TopicPartition("T1", 0);
-    TopicPartition pInfoT11 = new TopicPartition("T1", 1);
-    TopicPartition pInfoT20 = new TopicPartition("T2", 0);
-    TopicPartition pInfoT21 = new TopicPartition("T2", 1);
-    TopicPartition pInfoT22 = new TopicPartition("T2", 2);
+    TopicPartition pInfoT10 = new TopicPartition(T1, 0);
+    TopicPartition pInfoT11 = new TopicPartition(T1, 1);
+    TopicPartition pInfoT20 = new TopicPartition(T2, 0);
+    TopicPartition pInfoT21 = new TopicPartition(T2, 1);
+    TopicPartition pInfoT22 = new TopicPartition(T2, 2);
     // Create replicas for topic: T1.
-    cluster.createReplica("0", 0, pInfoT10, 0, true);
-    cluster.createReplica("1", 2, pInfoT10, 1, false);
-    cluster.createReplica("0", 1, pInfoT11, 0, true);
-    cluster.createReplica("0", 0, pInfoT11, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT10, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(2).toString(), 2, pInfoT10, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoT11, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT11, 1, false);
     // Create replicas for topic: T2.
-    cluster.createReplica("0", 1, pInfoT20, 0, true);
-    cluster.createReplica("1", 2, pInfoT20, 1, false);
-    cluster.createReplica("0", 0, pInfoT21, 0, true);
-    cluster.createReplica("1", 2, pInfoT21, 1, false);
-    cluster.createReplica("0", 0, pInfoT22, 0, true);
-    cluster.createReplica("0", 1, pInfoT22, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoT20, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(2).toString(), 2, pInfoT20, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT21, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(2).toString(), 2, pInfoT21, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoT22, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoT22, 1, false);
 
     // Create snapshots and push them to the cluster.
     List<Long> windows = Collections.singletonList(1L);
-    cluster.setReplicaLoad("0", 0, pInfoT10, createLoad(100.0, 100.0, 130.0, 75.0), windows);
-    cluster.setReplicaLoad("1", 2, pInfoT10, createLoad(5.0, 100.0, 0.0, 75.0), windows);
-    cluster.setReplicaLoad("0", 1, pInfoT11, createLoad(40.5, 90.0, 110.0, 55.0), windows);
-    cluster.setReplicaLoad("0", 0, pInfoT11, createLoad(80.5, 90.0, 0.0, 55.0), windows);
-    cluster.setReplicaLoad("0", 1, pInfoT20, createLoad(5.0, 5.0, 6.0, 5.0), windows);
-    cluster.setReplicaLoad("1", 2, pInfoT20, createLoad(4.0, 5.0, 0.0, 5.0), windows);
-    cluster.setReplicaLoad("0", 0, pInfoT21, createLoad(100.0, 25.0, 45.0, 55.0), windows);
-    cluster.setReplicaLoad("1", 2, pInfoT21, createLoad(20.5, 25.0, 0.0, 55.0), windows);
-    cluster.setReplicaLoad("0", 0, pInfoT22, createLoad(85.0, 45.0, 120.0, 95.0), windows);
-    cluster.setReplicaLoad("0", 1, pInfoT22, createLoad(55.0, 45.0, 0.0, 95.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT10, createLoad(100.0, 100.0, 130.0, 75.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(2).toString(), 2, pInfoT10, createLoad(5.0, 100.0, 0.0, 75.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoT11, createLoad(40.5, 90.0, 110.0, 55.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT11, createLoad(80.5, 90.0, 0.0, 55.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoT20, createLoad(5.0, 5.0, 6.0, 5.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(2).toString(), 2, pInfoT20, createLoad(4.0, 5.0, 0.0, 5.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT21, createLoad(100.0, 25.0, 45.0, 55.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(2).toString(), 2, pInfoT21, createLoad(20.5, 25.0, 0.0, 55.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoT22, createLoad(85.0, 45.0, 120.0, 95.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoT22, createLoad(55.0, 45.0, 0.0, 95.0), windows);
 
     return cluster;
   }
@@ -203,9 +293,7 @@ public class DeterministicCluster {
    * @return A medium test cluster.
    */
   public static ClusterModel mediumClusterModel(Map<Resource, Double> brokerCapacity) {
-    List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
-    ClusterModel cluster = getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
-        brokerCapacity);
+    ClusterModel cluster = getHomogeneousCluster(RACK_BY_BROKER, brokerCapacity);
     // Create topic partition.
     TopicPartition pInfoA0 = new TopicPartition("A", 0);
     TopicPartition pInfoA1 = new TopicPartition("A", 1);
@@ -215,58 +303,54 @@ public class DeterministicCluster {
     TopicPartition pInfoD0 = new TopicPartition("D", 0);
 
     // Create replicas for TopicA.
-    cluster.createReplica("0", 1, pInfoA0, 0, true);
-    cluster.createReplica("0", 0, pInfoA0, 1, false);
-    cluster.createReplica("0", 0, pInfoA1, 0, true);
-    cluster.createReplica("1", 2, pInfoA1, 1, false);
-    cluster.createReplica("0", 0, pInfoA2, 0, true);
-    cluster.createReplica("1", 2, pInfoA2, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoA0, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoA0, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoA1, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(2).toString(), 2, pInfoA1, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(0).toString(), 0, pInfoA2, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(2).toString(), 2, pInfoA2, 1, false);
     // Create replicas for TopicB.
-    cluster.createReplica("0", 1, pInfoB0, 0, true);
-    cluster.createReplica("1", 2, pInfoB0, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoB0, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(2).toString(), 2, pInfoB0, 1, false);
     // Create replicas for TopicC.
-    cluster.createReplica("1", 2, pInfoC0, 0, true);
-    cluster.createReplica("0", 1, pInfoC0, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(2).toString(), 2, pInfoC0, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoC0, 1, false);
     // Create replicas for TopicD.
-    cluster.createReplica("0", 1, pInfoD0, 0, true);
-    cluster.createReplica("1", 2, pInfoD0, 1, false);
+    cluster.createReplica(RACK_BY_BROKER.get(1).toString(), 1, pInfoD0, 0, true);
+    cluster.createReplica(RACK_BY_BROKER.get(2).toString(), 2, pInfoD0, 1, false);
 
     // Create snapshots and push them to the cluster.
     List<Long> windows = Collections.singletonList(1L);
-    cluster.setReplicaLoad("0", 0, pInfoA0, createLoad(5.0, 5.0, 0.0, 4.0), windows);
-    cluster.setReplicaLoad("0", 0, pInfoA1, createLoad(5.0, 3.0, 10.0, 8.0), windows);
-    cluster.setReplicaLoad("0", 0, pInfoA2, createLoad(5.0, 2.0, 10.0, 6.0), windows);
-    cluster.setReplicaLoad("0", 1, pInfoB0, createLoad(5.0, 4.0, 10.0, 7.0), windows);
-    cluster.setReplicaLoad("0", 1, pInfoC0, createLoad(5.0, 6.0, 0.0, 4.0), windows);
-    cluster.setReplicaLoad("0", 1, pInfoD0, createLoad(5.0, 5.0, 10.0, 6.0), windows);
-    cluster.setReplicaLoad("0", 1, pInfoA0, createLoad(5.0, 4.0, 10.0, 10.0), windows);
-    cluster.setReplicaLoad("1", 2, pInfoB0, createLoad(2.0, 2.0, 0.0, 5.0), windows);
-    cluster.setReplicaLoad("1", 2, pInfoC0, createLoad(1.0, 8.0, 10.0, 4.0), windows);
-    cluster.setReplicaLoad("1", 2, pInfoD0, createLoad(2.0, 8.0, 0.0, 7.0), windows);
-    cluster.setReplicaLoad("1", 2, pInfoA1, createLoad(3.0, 4.0, 0.0, 6.0), windows);
-    cluster.setReplicaLoad("1", 2, pInfoA2, createLoad(4.0, 5.0, 0.0, 3.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoA0, createLoad(5.0, 5.0, 0.0, 4.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoA1, createLoad(5.0, 3.0, 10.0, 8.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(0).toString(), 0, pInfoA2, createLoad(5.0, 2.0, 10.0, 6.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoB0, createLoad(5.0, 4.0, 10.0, 7.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoC0, createLoad(5.0, 6.0, 0.0, 4.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoD0, createLoad(5.0, 5.0, 10.0, 6.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(1).toString(), 1, pInfoA0, createLoad(5.0, 4.0, 10.0, 10.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(2).toString(), 2, pInfoB0, createLoad(2.0, 2.0, 0.0, 5.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(2).toString(), 2, pInfoC0, createLoad(1.0, 8.0, 10.0, 4.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(2).toString(), 2, pInfoD0, createLoad(2.0, 8.0, 0.0, 7.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(2).toString(), 2, pInfoA1, createLoad(3.0, 4.0, 0.0, 6.0), windows);
+    cluster.setReplicaLoad(RACK_BY_BROKER.get(2).toString(), 2, pInfoA2, createLoad(4.0, 5.0, 0.0, 3.0), windows);
 
     return cluster;
   }
 
   private static AggregatedMetricValues createLoad(double cpu, double networkIn, double networkOut, double disk) {
-    return KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(cpu, networkIn, networkOut, disk);
+    return getAggregatedMetricValues(cpu, networkIn, networkOut, disk);
   }
 
   /**
    * Creates a deterministic cluster with the given number of racks and the broker distribution.
    *
-   * @param numRacks                Number of racks in ToR architecture.
-   * @param orderedRackIdsOfBrokers Specifies the rack id for each broker.
-   * @param brokerCapacity          Alive broker capacity.
+   * @param rackByBroker Racks by broker ids.
+   * @param brokerCapacity Alive broker capacity.
    * @return Cluster with the specified number of racks and broker distribution.
    */
-  public static ClusterModel getHomogeneousDeterministicCluster(int numRacks,
-                                                                List<Integer> orderedRackIdsOfBrokers,
-                                                                Map<Resource, Double> brokerCapacity) {
-    int numBrokers = orderedRackIdsOfBrokers.size();
+  public static ClusterModel getHomogeneousCluster(Map<Integer, Integer> rackByBroker, Map<Resource, Double> brokerCapacity) {
     // Sanity checks.
-    if (numRacks > numBrokers || numBrokers <= 0 || numRacks <= 0 ||
+    if (rackByBroker.size() <= 0 ||
         brokerCapacity.get(Resource.CPU) < 0 ||
         brokerCapacity.get(Resource.DISK) < 0 ||
         brokerCapacity.get(Resource.NW_IN) < 0 ||
@@ -277,17 +361,17 @@ public class DeterministicCluster {
     // Create cluster.
     ClusterModel cluster = new ClusterModel(new ModelGeneration(0, 0L), 1.0);
     // Create racks and add them to cluster.
-    for (int i = 0; i < numRacks; i++) {
-      cluster.createRack(Integer.toString(i));
+    Set<Integer> racks = new HashSet<>();
+    for (int rackId : rackByBroker.values()) {
+      if (racks.add(rackId)) {
+        cluster.createRack(Integer.toString(rackId));
+      }
     }
 
     BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(brokerCapacity);
     // Create brokers and assign a broker to each rack.
-    int brokerId = 0;
-    for (Integer rackId : orderedRackIdsOfBrokers) {
-      cluster.createBroker(rackId.toString(), Integer.toString(brokerId), brokerId, commonBrokerCapacityInfo);
-      brokerId++;
-    }
+    rackByBroker.forEach(
+        (key, value) -> cluster.createBroker(value.toString(), Integer.toString(key), key, commonBrokerCapacityInfo));
     return cluster;
   }
 }

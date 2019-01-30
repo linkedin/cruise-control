@@ -364,6 +364,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     Set<Integer> excludedBrokersForLeadership = optimizationOptions.excludedBrokersForLeadership();
+    Set<Integer> excludedBrokersForReplicaMove = optimizationOptions.excludedBrokersForReplicaMove();
     // If this broker is excluded for leadership, then it can move in only followers.
     boolean canMoveInFollowersOnly = excludedBrokersForLeadership.contains(broker.id());
     PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
@@ -374,7 +375,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       // Get candidate replicas on candidate broker to try moving load from -- sorted in the order of trial (descending load).
       if (utilizationPercentage(candidate, resource()) > clusterUtilization) {
         SortedSet<Replica> replicasToMoveIn = sortedCandidateReplicas(candidate, excludedTopics, 0, false, canMoveInFollowersOnly);
-        CandidateBroker candidateBroker = new CandidateBroker(candidate, resource(), replicasToMoveIn, false, excludedBrokersForLeadership);
+        CandidateBroker candidateBroker = new CandidateBroker(candidate,
+                                                              resource(),
+                                                              replicasToMoveIn,
+                                                              false,
+                                                              excludedBrokersForLeadership,
+                                                              excludedBrokersForReplicaMove);
         candidateBrokerPQ.add(candidateBroker);
       }
     }
@@ -496,7 +502,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                              Set<Goal> optimizedGoals,
                                              OptimizationOptions optimizationOptions) {
     long swapStartTimeMs = System.currentTimeMillis();
-    if (!broker.isAlive()) {
+    if (!broker.isAlive() || optimizationOptions.excludedBrokersForReplicaMove().contains(broker.id())) {
+      // If the source broker is (1) dead, or (2) excluded for replica move, then swap operation is not possible.
       return true;
     }
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
@@ -518,8 +525,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     sourceReplicas.addAll(resource() == Resource.NW_OUT ? broker.leaderReplicas() : broker.replicas());
     double maxSourceReplicaLoad = getMaxReplicaLoad(sourceReplicas);
 
-    // Sort the replicas initially to avoid sorting it every time.
     Set<Integer> excludedBrokersForLeadership = optimizationOptions.excludedBrokersForLeadership();
+    Set<Integer> excludedBrokersForReplicaMove = optimizationOptions.excludedBrokersForReplicaMove();
+    // Sort the replicas initially to avoid sorting it every time.
     // If this broker is excluded for leadership, then it can swapped with only followers.
     boolean canSwapWithFollowersOnly = excludedBrokersForLeadership.contains(broker.id());
     PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
@@ -528,8 +536,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (ascending load).
       SortedSet<Replica> replicasToSwapWith = sortedCandidateReplicas(candidate, excludedTopics, maxSourceReplicaLoad, true,
                                                                       canSwapWithFollowersOnly);
-      CandidateBroker candidateBroker = new CandidateBroker(candidate, resource(), replicasToSwapWith, true,
-                                                            excludedBrokersForLeadership);
+      CandidateBroker candidateBroker = new CandidateBroker(candidate,
+                                                            resource(),
+                                                            replicasToSwapWith,
+                                                            true,
+                                                            excludedBrokersForLeadership,
+                                                            excludedBrokersForReplicaMove);
       candidateBrokerPQ.add(candidateBroker);
     }
 
@@ -617,8 +629,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                             Set<Goal> optimizedGoals,
                                             OptimizationOptions optimizationOptions) {
     long swapStartTimeMs = System.currentTimeMillis();
-    if (!broker.isAlive() || broker.replicas().isEmpty()) {
-      // Source broker is dead or has no replicas to swap.
+    if (!broker.isAlive() || broker.replicas().isEmpty()
+        || optimizationOptions.excludedBrokersForReplicaMove().contains(broker.id())) {
+      // If the source broker is (1) dead, (2) has no replicas to swap, or (3) excluded for replica move, then swap
+      // operation is not possible
       return true;
     }
 
@@ -640,8 +654,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
     sourceReplicas.addAll(broker.replicas());
 
-    // Sort the replicas initially to avoid sorting it every time.
     Set<Integer> excludedBrokersForLeadership = optimizationOptions.excludedBrokersForLeadership();
+    Set<Integer> excludedBrokersForReplicaMove = optimizationOptions.excludedBrokersForReplicaMove();
+    // Sort the replicas initially to avoid sorting it every time.
     // If this broker is excluded for leadership, then it can swapped with only followers.
     boolean canSwapWithFollowersOnly = excludedBrokersForLeadership.contains(broker.id());
     PriorityQueue<CandidateBroker> candidateBrokerPQ = new PriorityQueue<>();
@@ -649,7 +664,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (descending load).
       double minSourceReplicaLoad = sourceReplicas.first().load().expectedUtilizationFor(resource());
       SortedSet<Replica> replicasToSwapWith = sortedCandidateReplicas(candidate, excludedTopics, minSourceReplicaLoad, false, canSwapWithFollowersOnly);
-      CandidateBroker candidateBroker = new CandidateBroker(candidate, resource(), replicasToSwapWith, false, excludedBrokersForLeadership);
+      CandidateBroker candidateBroker = new CandidateBroker(candidate,
+                                                            resource(),
+                                                            replicasToSwapWith,
+                                                            false,
+                                                            excludedBrokersForLeadership,
+                                                            excludedBrokersForReplicaMove);
       candidateBrokerPQ.add(candidateBroker);
     }
 

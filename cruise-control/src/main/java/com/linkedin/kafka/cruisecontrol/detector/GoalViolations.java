@@ -27,12 +27,17 @@ public class GoalViolations extends KafkaAnomaly {
   private final Map<Boolean, List<String>> _violatedGoalsByFixability;
   private final boolean _allowCapacityEstimation;
   private final boolean _excludeRecentlyDemotedBrokers;
+  private final boolean _excludeRecentlyRemovedBrokers;
 
-  public GoalViolations(KafkaCruiseControl kafkaCruiseControl, boolean allowCapacityEstimation, boolean excludeRecentlyDemotedBrokers) {
+  public GoalViolations(KafkaCruiseControl kafkaCruiseControl,
+                        boolean allowCapacityEstimation,
+                        boolean excludeRecentlyDemotedBrokers,
+                        boolean excludeRecentlyRemovedBrokers) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _allowCapacityEstimation = allowCapacityEstimation;
     _violatedGoalsByFixability = new HashMap<>();
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
+    _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
   }
 
   /**
@@ -59,7 +64,7 @@ public class GoalViolations extends KafkaAnomaly {
         // Fix the fixable goal violations with rebalance operation.
         _kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation,
                                       null, null, false, null,
-                                      null, _excludeRecentlyDemotedBrokers);
+                                      null, _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
       } catch (IllegalStateException e) {
         LOG.warn("Got exception when trying to fix the cluster for violated goals {}: {}", _violatedGoalsByFixability.get(true), e.getMessage());
       }
@@ -71,15 +76,16 @@ public class GoalViolations extends KafkaAnomaly {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append("{unfixable goal violations: {");
+    sb.append("{Unfixable goal violations: {");
     StringJoiner joiner = new StringJoiner(",");
     _violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()).forEach(joiner::add);
     sb.append(joiner.toString());
-    sb.append("}, fixable goal violations: {");
+    sb.append("}, Fixable goal violations: {");
     joiner = new StringJoiner(",");
     _violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()).forEach(joiner::add);
     sb.append(joiner.toString());
-    sb.append("}}");
+    sb.append(String.format("}, Exclude brokers recently (removed: %s demoted: %s)}",
+                            _excludeRecentlyRemovedBrokers, _excludeRecentlyDemotedBrokers));
     return sb.toString();
   }
 }

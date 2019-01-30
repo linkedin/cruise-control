@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
 
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters.ModelCoefficient.LEADER_BYTES_OUT;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.DISK_USAGE;
@@ -50,12 +51,11 @@ import static org.junit.Assert.fail;
  * Unit test for {@link KafkaPartitionMetricSampleAggregator}.
  */
 public class KafkaPartitionMetricSampleAggregatorTest {
-  private static final String TOPIC = "topic";
   private static final int PARTITION = 0;
   private static final int NUM_WINDOWS = 20;
   private static final long WINDOW_MS = 1000L;
   private static final int MIN_SAMPLES_PER_WINDOW = 4;
-  private static final TopicPartition TP = new TopicPartition(TOPIC, PARTITION);
+  private static final TopicPartition TP = new TopicPartition(TOPIC0, PARTITION);
   private static final PartitionEntity PE = new PartitionEntity(TP);
 
   @Test
@@ -109,7 +109,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
 
     populateSampleAggregator(NUM_WINDOWS + 1, MIN_SAMPLES_PER_WINDOW, metricSampleAggregator);
 
-    TopicPartition tp1 = new TopicPartition(TOPIC + "1", 0);
+    TopicPartition tp1 = new TopicPartition(TOPIC0 + "1", 0);
     Cluster cluster = getCluster(Arrays.asList(TP, tp1));
     metadata.update(cluster, Collections.emptySet(), 1);
 
@@ -144,7 +144,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     KafkaPartitionMetricSampleAggregator
         metricSampleAggregator = new KafkaPartitionMetricSampleAggregator(config, metadata);
 
-    TopicPartition tp1 = new TopicPartition(TOPIC, 1);
+    TopicPartition tp1 = new TopicPartition(TOPIC0, 1);
     Cluster cluster = getCluster(Arrays.asList(TP, tp1));
     PartitionEntity pe1 = new PartitionEntity(tp1);
     metadata.update(cluster, Collections.emptySet(), 1);
@@ -456,7 +456,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
    * Two topics with 2 partitions each. No data missing.
    */
   private TestContext setupScenario1() {
-    TopicPartition t0p1 = new TopicPartition(TOPIC, 1);
+    TopicPartition t0p1 = new TopicPartition(TOPIC0, 1);
     TopicPartition t1p0 = new TopicPartition("TOPIC1", 0);
     TopicPartition t1p1 = new TopicPartition("TOPIC1", 1);
     List<TopicPartition> allPartitions = Arrays.asList(TP, t0p1, t1p0, t1p1);
@@ -476,7 +476,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
    * Other partitions has full data.
    */
   private TestContext setupScenario2() {
-    TopicPartition t0p1 = new TopicPartition(TOPIC, 1);
+    TopicPartition t0p1 = new TopicPartition(TOPIC0, 1);
     TopicPartition t1p0 = new TopicPartition("TOPIC1", 0);
     TopicPartition t1p1 = new TopicPartition("TOPIC1", 1);
     List<TopicPartition> allPartitions = Arrays.asList(TP, t0p1, t1p0, t1p1);
@@ -504,7 +504,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
    * Other partitions have all data.
    */
   private TestContext setupScenario3() {
-    TopicPartition t0p1 = new TopicPartition(TOPIC, 1);
+    TopicPartition t0p1 = new TopicPartition(TOPIC0, 1);
     TopicPartition t1p0 = new TopicPartition("TOPIC1", 0);
     TopicPartition t1p1 = new TopicPartition("TOPIC1", 1);
     TopicPartition t2p0 = new TopicPartition("TOPIC2", 0);
@@ -539,7 +539,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
    * All other partitions have full data.
    */
   private TestContext setupScenario4() {
-    TopicPartition t0p1 = new TopicPartition(TOPIC, 1);
+    TopicPartition t0p1 = new TopicPartition(TOPIC0, 1);
     TopicPartition t1p0 = new TopicPartition("TOPIC1", 0);
     TopicPartition t1p1 = new TopicPartition("TOPIC1", 1);
     TopicPartition t2p0 = new TopicPartition("TOPIC2", 0);

@@ -32,9 +32,9 @@ import java.util.concurrent.Executors;
  *
  * <ul>
  * <li>{@link KafkaCruiseControl#decommissionBrokers(java.util.Collection, boolean, boolean, List, ModelCompletenessRequirements,
- * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean)}</li>
+ * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean, boolean)}</li>
  * <li>{@link KafkaCruiseControl#addBrokers(java.util.Collection, boolean, boolean, List, ModelCompletenessRequirements,
- * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean)}</li>
+ * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean, boolean)}</li>
  * <li>{@link KafkaCruiseControl#demoteBrokers(java.util.Collection, boolean, OperationProgress, boolean, Integer, boolean,
  * boolean, String, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
@@ -42,11 +42,11 @@ import java.util.concurrent.Executors;
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress,
- * boolean, boolean, java.util.regex.Pattern, boolean)}</li>
+ * boolean, boolean, java.util.regex.Pattern, boolean, boolean)}</li>
  * <li>{@link KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements, OperationProgress,
- * boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean)}</li>
+ * boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean, boolean)}</li>
  * <li>{@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress,
- * boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean)}</li>
+ * boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean, boolean)}</li>
  * </ul>
  *
  * The other operations are non-blocking by default.
@@ -79,7 +79,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
 
   /**
    * @see KafkaCruiseControl#decommissionBrokers(java.util.Collection, boolean, boolean, List, ModelCompletenessRequirements,
-   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean)
+   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean, boolean)
    */
   public OperationFuture decommissionBrokers(List<String> goals,
                                              ModelCompletenessRequirements requirements,
@@ -108,7 +108,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
 
   /**
    * @see KafkaCruiseControl#addBrokers(java.util.Collection, boolean, boolean, List, ModelCompletenessRequirements,
-   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean)
+   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern, String, boolean, boolean)
    */
   public OperationFuture addBrokers(List<String> goals,
                                     ModelCompletenessRequirements requirements,
@@ -143,7 +143,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
 
   /**
    * @see KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress, boolean,
-   * boolean, java.util.regex.Pattern, boolean)
+   * boolean, java.util.regex.Pattern, boolean, boolean)
    */
   public OperationFuture getOptimizationProposals(List<String> goals,
                                                   ModelCompletenessRequirements requirements,
@@ -156,7 +156,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
 
   /**
    * @see KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress, boolean, Integer,
-   * Integer, boolean, java.util.regex.Pattern, String, boolean)
+   * Integer, boolean, java.util.regex.Pattern, String, boolean, boolean)
    */
   public OperationFuture rebalance(List<String> goals,
                                    ModelCompletenessRequirements requirements,

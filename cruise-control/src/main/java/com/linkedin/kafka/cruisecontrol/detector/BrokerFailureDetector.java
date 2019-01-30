@@ -40,6 +40,8 @@ public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
   // TODO: Make this configurable.
   private static final boolean EXCLUDE_RECENTLY_DEMOTED_BROKERS = true;
+  // TODO: Make this configurable.
+  private static final boolean EXCLUDE_RECENTLY_REMOVED_BROKERS = true;
   private static final long MAX_METADATA_WAIT_MS = 60000L;
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
@@ -161,7 +163,11 @@ public class BrokerFailureDetector {
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
       Map<Integer, Long> failedBrokers = new HashMap<>(_failedBrokers);
-      _anomalies.add(new BrokerFailures(_kafkaCruiseControl, failedBrokers, _allowCapacityEstimation, EXCLUDE_RECENTLY_DEMOTED_BROKERS));
+      _anomalies.add(new BrokerFailures(_kafkaCruiseControl,
+                                        failedBrokers,
+                                        _allowCapacityEstimation,
+                                        EXCLUDE_RECENTLY_DEMOTED_BROKERS,
+                                        EXCLUDE_RECENTLY_REMOVED_BROKERS));
     }
   }
 

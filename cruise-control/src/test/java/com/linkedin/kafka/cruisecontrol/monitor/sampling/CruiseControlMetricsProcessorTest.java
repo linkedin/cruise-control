@@ -24,6 +24,8 @@ import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.*;
 import static org.junit.Assert.assertEquals;
@@ -37,8 +39,6 @@ import static org.junit.Assert.fail;
 public class CruiseControlMetricsProcessorTest {
   private static final int BYTES_IN_KB = 1024;
   private static final int BYTES_IN_MB = 1024 * 1024;
-  private static final String TOPIC1 = "topic1";
-  private static final String TOPIC2 = "topic2";
   private static final int P0 = 0;
   private static final int P1 = 1;
   private static final TopicPartition T1P0 = new TopicPartition(TOPIC1, P0);

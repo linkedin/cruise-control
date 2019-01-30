@@ -39,6 +39,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA
  */
 public abstract class CapacityGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(CapacityGoal.class);
+  private static final int MIN_NUM_VALID_WINDOWS = 1;
 
   /**
    * Constructor for Capacity Goal.
@@ -103,7 +104,7 @@ public abstract class CapacityGoal extends AbstractGoal {
   @Override
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
     // We only need the latest snapshot and include all the topics.
-    return new ModelCompletenessRequirements(1, _minMonitoredPartitionPercentage, true);
+    return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS, _minMonitoredPartitionPercentage, true);
   }
 
   /**
