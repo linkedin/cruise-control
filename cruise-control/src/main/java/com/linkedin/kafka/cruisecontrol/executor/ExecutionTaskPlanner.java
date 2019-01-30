@@ -38,8 +38,8 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.L
  * </ul>
  * <p>
  * This class tracks the execution proposals for each broker using a sorted Set. The proposal's position in this set
- * represents its execution order and is determined by the passed in ReplicaMovementStrategy or
- * {@link ExecutionTaskPlanner#_defaultReplicaMovementTaskStrategy}. The proposal is tracked both under source broker and
+ * represents its execution order and is determined by the passed in {@link ReplicaMovementStrategy} or
+ * {@link #_defaultReplicaMovementTaskStrategy}. The proposal is tracked both under source broker and
  * destination broker's plan. Once a proposal is fulfilled, the proposal will be removed from both source broker and destination
  * broker's execution plan.
  * <p>
@@ -92,7 +92,8 @@ public class ExecutionTaskPlanner {
    * @param cluster Kafka cluster state.
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    */
-  public void addExecutionProposals(Collection<ExecutionProposal> proposals, Cluster cluster,
+  public void addExecutionProposals(Collection<ExecutionProposal> proposals,
+                                    Cluster cluster,
                                     ReplicaMovementStrategy replicaMovementStrategy) {
     LOG.trace("Cluster state before adding proposals: {}.", cluster);
     maybeAddReplicaMovementTasks(proposals, cluster, replicaMovementStrategy);
@@ -106,7 +107,8 @@ public class ExecutionTaskPlanner {
    * @param cluster Kafka cluster state.
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    */
-  private void maybeAddReplicaMovementTasks(Collection<ExecutionProposal> proposals, Cluster cluster,
+  private void maybeAddReplicaMovementTasks(Collection<ExecutionProposal> proposals,
+                                            Cluster cluster,
                                             ReplicaMovementStrategy replicaMovementStrategy) {
     for (ExecutionProposal proposal : proposals) {
       TopicPartition tp = proposal.topicPartition();

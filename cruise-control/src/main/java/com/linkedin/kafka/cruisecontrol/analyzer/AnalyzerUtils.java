@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
-import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
 import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
@@ -181,19 +180,6 @@ public class AnalyzerUtils {
       caseInsensitiveGoalsByName.put(goal.name(), goal);
     }
     return caseInsensitiveGoalsByName;
-  }
-
-  /**
-   * Get a replica movement strategy map with strategy name as the keys.
-   */
-  public static Map<String, ReplicaMovementStrategy> getCaseInsensitiveReplicaMovementStrategiesByName(KafkaCruiseControlConfig config) {
-    List<ReplicaMovementStrategy> strategies = config.getConfiguredInstances(KafkaCruiseControlConfig.REPLICA_MOVEMENT_STRATEGIES_CONFIG,
-                                                                             ReplicaMovementStrategy.class);
-    Map<String, ReplicaMovementStrategy> caseInsensitiveStrategiesByName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    for (ReplicaMovementStrategy strategy: strategies) {
-      caseInsensitiveStrategiesByName.put(strategy.name(), strategy);
-    }
-    return caseInsensitiveStrategiesByName;
   }
 
   /**

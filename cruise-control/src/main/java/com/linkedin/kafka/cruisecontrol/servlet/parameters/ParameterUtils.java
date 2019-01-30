@@ -174,7 +174,7 @@ public class ParameterUtils {
     demoteBroker.add(SKIP_URP_DEMOTION_PARAM);
     demoteBroker.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
     demoteBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
-    addOrRemoveBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    demoteBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
@@ -295,6 +295,13 @@ public class ParameterUtils {
   private static boolean getBooleanParam(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
     String parameterString = request.getParameter(parameter);
     return parameterString == null ? defaultIfMissing : Boolean.parseBoolean(parameterString);
+  }
+
+  private static List<String> getListParam(HttpServletRequest request, String parameter) throws UnsupportedEncodingException {
+    String paramString = urlDecode(request.getParameter(parameter));
+    List<String> retList = paramString == null ? new ArrayList<>() : Arrays.asList(paramString.split(","));
+    retList.removeIf(String::isEmpty);
+    return Collections.unmodifiableList(retList);
   }
 
   public static boolean wantJSON(HttpServletRequest request) {
@@ -492,22 +499,23 @@ public class ParameterUtils {
     return s == null ? null : URLDecoder.decode(s, StandardCharsets.UTF_8.name());
   }
 
+  static List<String> getReplicaMovementStrategies(HttpServletRequest request) throws UnsupportedEncodingException {
+    return getListParam(request, REPLICA_MOVEMENT_STRATEGIES_PARAM);
+  }
+
   static List<String> getGoals(HttpServletRequest request) throws UnsupportedEncodingException {
     boolean isKafkaAssignerMode = getMode(request);
-    List<String> goals;
-    String goalsString = urlDecode(request.getParameter(GOALS_PARAM));
-    goals = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
-    goals.removeIf(String::isEmpty);
+    List<String> goals = getListParam(request, GOALS_PARAM);
 
     // KafkaAssigner mode is assumed to use two KafkaAssigner goals, if client specifies goals in request, throw exception.
     if (isKafkaAssignerMode) {
       if (!goals.isEmpty()) {
         throw new UserRequestException("Kafka assigner mode does not support explicitly specifying goals in request.");
       }
-      goals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
-                            KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName());
+      return Collections.unmodifiableList(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
+                                                        KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName()));
     }
-    return Collections.unmodifiableList(goals);
+    return goals;
   }
 
   public static int entries(HttpServletRequest request) {
@@ -628,17 +636,6 @@ public class ParameterUtils {
       dataFrom = DataFrom.valueOf(dataFromString.toUpperCase());
     }
     return dataFrom;
-  }
-
-  /**
-   * Default: An empty list.
-   */
-  static List<String> getReplicaMovementStrategies(HttpServletRequest request) throws UnsupportedEncodingException {
-    List<String> strategies;
-    String goalsString = urlDecode(request.getParameter(REPLICA_MOVEMENT_STRATEGIES_PARAM));
-    strategies = goalsString == null ? new ArrayList<>() : Arrays.asList(goalsString.split(","));
-    strategies.removeIf(String::isEmpty);
-    return Collections.unmodifiableList(strategies);
   }
 
   /**

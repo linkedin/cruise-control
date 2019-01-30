@@ -443,14 +443,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       "will also reduce the controller burden.";
 
   /**
-   * <code>execution.task.strategy</code>
+   * <code>replica.movement.strategies</code>
    */
   public static final String REPLICA_MOVEMENT_STRATEGIES_CONFIG = "replica.movement.strategies";
   private static final String REPLICA_MOVEMENT_STRATEGIES_DOC = "A list of supported strategies used to determine execution order "
       + "for generated partition movement tasks.";
 
   /**
-   * <code>default.goals</code>
+   * <code>default.replica.movement.strategies</code>
    */
   public static final String DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG = "default.replica.movement.strategies";
   private static final String DEFAULT_REPLICA_MOVEMENT_STRATEGIES_DOC = "The list of replica movement strategies that will be used "
