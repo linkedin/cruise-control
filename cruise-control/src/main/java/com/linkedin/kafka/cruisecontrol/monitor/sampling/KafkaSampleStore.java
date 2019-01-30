@@ -78,6 +78,8 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicN
  *   store topic, default value is set to {@link #DEFAULT_MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS}.</li>
  *   <li>{@link #MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS_CONFIG}: The config for the minimal retention time for Kafka broker sample store
  *   topic, default value is set to {@link #DEFAULT_MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS}.</li>
+ *   <li>{@link #SKIP_SAMPLE_STORE_TOPIC_RACK_AWARENESS_CHECK_CONFIG}: The config to skip checking sample store topics' replica distribution violate
+ *   rack awareness property or not, default value is set to false.</li>
  * </ul>
  */
 public class KafkaSampleStore implements SampleStore {
@@ -110,6 +112,7 @@ public class KafkaSampleStore implements SampleStore {
   protected volatile double _loadingProgress;
   protected Producer<byte[], byte[]> _producer;
   protected volatile boolean _shutdown = false;
+  protected boolean _skipSampleStoreTopicRackAwarenessCheck;
 
   public static final String PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "partition.metric.sample.store.topic";
   public static final String BROKER_METRIC_SAMPLE_STORE_TOPIC_CONFIG = "broker.metric.sample.store.topic";
@@ -119,6 +122,7 @@ public class KafkaSampleStore implements SampleStore {
   public static final String BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT_CONFIG = "broker.sample.store.topic.partition.count";
   public static final String MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS_CONFIG = "min.partition.sample.store.topic.retention.time.ms";
   public static final String MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS_CONFIG = "min.broker.sample.store.topic.retention.time.ms";
+  public static final String SKIP_SAMPLE_STORE_TOPIC_RACK_AWARENESS_CHECK_CONFIG = "skip.sample.store.topic.rack.awareness.check";
   @Override
   public void configure(Map<String, ?> config) {
     _partitionMetricSampleStoreTopic = KafkaCruiseControlUtils.getRequiredConfig(config, PARTITION_METRIC_SAMPLE_STORE_TOPIC_CONFIG);
@@ -150,6 +154,8 @@ public class KafkaSampleStore implements SampleStore {
     String numProcessingThreadsString = (String) config.get(NUM_SAMPLE_LOADING_THREADS_CONFIG);
     int numProcessingThreads = numProcessingThreadsString == null || numProcessingThreadsString.isEmpty()
                                ? DEFAULT_NUM_SAMPLE_LOADING_THREADS : Integer.parseInt(numProcessingThreadsString);
+    String skipSampleStoreTopicRackAwarenessCheckString = (String) config.get(SKIP_SAMPLE_STORE_TOPIC_RACK_AWARENESS_CHECK_CONFIG);
+    _skipSampleStoreTopicRackAwarenessCheck = Boolean.parseBoolean(skipSampleStoreTopicRackAwarenessCheckString);
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
     _consumers = new ArrayList<>(numProcessingThreads);
     for (int i = 0; i < numProcessingThreads; i++) {
@@ -266,11 +272,14 @@ public class KafkaSampleStore implements SampleStore {
       rackByBroker.put(bm.id(), rack);
     }
 
-    boolean skipRackAwarenessCheck = false;
     if (replicationFactor > brokersByRack.size()) {
-      skipRackAwarenessCheck = true;
-      LOG.warn("Target replica factor for topic " + topic + " is larger than number of racks in cluster, new replica maybe" +
-               " added in none rack-aware way.");
+      if (_skipSampleStoreTopicRackAwarenessCheck) {
+        LOG.warn("Target replication factor for topic " + topic + " is larger than number of racks in cluster, new replica maybe"
+                 + " added in none rack-aware way.");
+      } else {
+        throw new RuntimeException("Unable to increase topic " + topic + " replica factor to " + replicationFactor
+                                   + " since there are only " + brokersByRack.size() + " racks in the cluster.");
+      }
     }
 
     scala.collection.mutable.Map<TopicAndPartition, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
@@ -288,8 +297,7 @@ public class KafkaSampleStore implements SampleStore {
         });
         // Add new replica to partition in rack-aware(if possible), round-robin way.
         while (newAssignedReplica.size() < replicationFactor) {
-          if (!currentOccupiedRack.contains(racks.get(rackCursor)) ||
-              (skipRackAwarenessCheck && currentOccupiedRack.size() == racks.size())) {
+          if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
             String rack = racks.get(rackCursor);
             int cursor = cursors[rackCursor];
             newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
