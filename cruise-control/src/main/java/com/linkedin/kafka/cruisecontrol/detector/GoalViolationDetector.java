@@ -116,6 +116,19 @@ public class GoalViolationDetector implements Runnable {
       long now = _time.milliseconds();
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
+
+      // Retrieve excluded brokers for leadership and replica move.
+      ExecutorState executorState = null;
+      if (EXCLUDE_RECENTLY_DEMOTED_BROKERS || EXCLUDE_RECENTLY_REMOVED_BROKERS) {
+        executorState = _kafkaCruiseControl.state(new OperationProgress(), Collections.singleton(EXECUTOR)).executorState();
+      }
+
+      Set<Integer> excludedBrokersForLeadership = EXCLUDE_RECENTLY_DEMOTED_BROKERS ? executorState.recentlyDemotedBrokers()
+                                                                                   : Collections.emptySet();
+
+      Set<Integer> excludedBrokersForReplicaMove = EXCLUDE_RECENTLY_DEMOTED_BROKERS ? executorState.recentlyRemovedBrokers()
+                                                                                    : Collections.emptySet();
+
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
         Goal goal = entry.getValue();
         if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
@@ -143,18 +156,6 @@ public class GoalViolationDetector implements Runnable {
                                                              clusterModel.capacityEstimationInfoByBrokerId());
             _lastCheckedModelGeneration = clusterModel.generation();
           }
-
-          ExecutorState executorState = null;
-          if (EXCLUDE_RECENTLY_DEMOTED_BROKERS || EXCLUDE_RECENTLY_REMOVED_BROKERS) {
-            executorState = _kafkaCruiseControl.state(new OperationProgress(), Collections.singleton(EXECUTOR)).executorState();
-          }
-
-          Set<Integer> excludedBrokersForLeadership = EXCLUDE_RECENTLY_DEMOTED_BROKERS ? executorState.recentlyDemotedBrokers()
-                                                                                       : Collections.emptySet();
-
-          Set<Integer> excludedBrokersForReplicaMove = EXCLUDE_RECENTLY_DEMOTED_BROKERS ? executorState.recentlyRemovedBrokers()
-                                                                                        : Collections.emptySet();
-
           newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations, excludedBrokersForLeadership, excludedBrokersForReplicaMove);
         } else {
           LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
