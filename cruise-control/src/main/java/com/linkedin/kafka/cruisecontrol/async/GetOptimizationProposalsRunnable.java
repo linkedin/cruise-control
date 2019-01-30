@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * The async runnable for {@link KafkaCruiseControl#getOptimizationProposals(
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)} and
  * {@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean, Pattern, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean, Pattern, boolean, boolean)}
  */
 class GetOptimizationProposalsRunnable extends OperationRunnable {
   private final List<String> _goals;
@@ -24,6 +24,7 @@ class GetOptimizationProposalsRunnable extends OperationRunnable {
   private final boolean _allowCapacityEstimation;
   private final Pattern _excludedTopics;
   private final boolean _excludeRecentlyDemotedBrokers;
+  private final boolean _excludeRecentlyRemovedBrokers;
 
   GetOptimizationProposalsRunnable(KafkaCruiseControl kafkaCruiseControl,
                                    OperationFuture future,
@@ -36,6 +37,7 @@ class GetOptimizationProposalsRunnable extends OperationRunnable {
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _excludedTopics = parameters.excludedTopics();
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
+    _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
   }
 
   @Override
@@ -46,6 +48,7 @@ class GetOptimizationProposalsRunnable extends OperationRunnable {
                                                                                _allowCapacityEstimation,
                                                                                true,
                                                                                _excludedTopics,
-                                                                               _excludeRecentlyDemotedBrokers));
+                                                                               _excludeRecentlyDemotedBrokers,
+                                                                               _excludeRecentlyRemovedBrokers));
   }
 }

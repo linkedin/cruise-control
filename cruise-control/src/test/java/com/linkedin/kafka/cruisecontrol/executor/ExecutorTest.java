@@ -36,6 +36,10 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -43,15 +47,11 @@ import static org.junit.Assert.fail;
 
 public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
   private static final long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000L;
-  private static final String TOPIC_0 = "testPartitionMovement0";
-  private static final String TOPIC_1 = "testPartitionMovement1";
-  private static final String TOPIC_2 = "testPartitionMovement2";
-  private static final String TOPIC_3 = "testPartitionMovement3";
   private static final int PARTITION = 0;
-  private static final TopicPartition TP0 = new TopicPartition(TOPIC_0, PARTITION);
-  private static final TopicPartition TP1 = new TopicPartition(TOPIC_1, PARTITION);
-  private static final TopicPartition TP2 = new TopicPartition(TOPIC_2, PARTITION);
-  private static final TopicPartition TP3 = new TopicPartition(TOPIC_3, PARTITION);
+  private static final TopicPartition TP0 = new TopicPartition(TOPIC0, PARTITION);
+  private static final TopicPartition TP1 = new TopicPartition(TOPIC1, PARTITION);
+  private static final TopicPartition TP2 = new TopicPartition(TOPIC2, PARTITION);
+  private static final TopicPartition TP3 = new TopicPartition(TOPIC3, PARTITION);
 
 
   @Override
@@ -74,8 +74,8 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
-    int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
-    int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
+    int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
+    int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
 
     ExecutionProposal proposal0 =
         new ExecutionProposal(TP0, 0, initialLeader0,
@@ -99,8 +99,8 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
-    int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
-    int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
+    int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
+    int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
 
     ExecutionProposal proposal0 =
         new ExecutionProposal(TP0, 0, initialLeader0,
@@ -133,8 +133,8 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
-    int initialLeader0 = topicDescriptions.get(TOPIC_0).partitions().get(0).leader().id();
-    int initialLeader1 = topicDescriptions.get(TOPIC_1).partitions().get(0).leader().id();
+    int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
+    int initialLeader1 = topicDescriptions.get(TOPIC1).partitions().get(0).leader().id();
 
     _brokers.get(initialLeader0 == 0 ? 1 : 0).shutdown();
     ExecutionProposal proposal0 =
@@ -153,7 +153,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
       // We are not doing the rollback.
       assertEquals(Collections.singletonList(initialLeader0 == 0 ? 1 : 0),
                    ExecutorUtils.newAssignmentForPartition(zkUtils, TP0));
-      assertEquals(initialLeader0, zkUtils.getLeaderForPartition(TOPIC_1, PARTITION).get());
+      assertEquals(initialLeader0, zkUtils.getLeaderForPartition(TOPIC1, PARTITION).get());
     } finally {
       KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
     }
@@ -207,8 +207,8 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
   private Map<String, TopicDescription> createTopics() throws InterruptedException {
     AdminClient adminClient = getAdminClient(broker(0).getPlaintextAddr());
 
-    adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC_0, 1, (short) 1),
-                                           new NewTopic(TOPIC_1, 1, (short) 2)));
+    adminClient.createTopics(Arrays.asList(new NewTopic(TOPIC0, 1, (short) 1),
+                                           new NewTopic(TOPIC1, 1, (short) 2)));
 
     // We need to use the admin clients to query the metadata from two different brokers to make sure that
     // both brokers have the latest metadata. Otherwise the Executor may get confused when it does not
@@ -218,8 +218,8 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     do {
       try (AdminClient adminClient0 = getAdminClient(broker(0).getPlaintextAddr());
           AdminClient adminClient1 = getAdminClient(broker(1).getPlaintextAddr())) {
-        topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC_0, TOPIC_1)).all().get();
-        topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC_0, TOPIC_1)).all().get();
+        topicDescriptions0 = adminClient0.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).all().get();
+        topicDescriptions1 = adminClient1.describeTopics(Arrays.asList(TOPIC0, TOPIC1)).all().get();
         try {
           Thread.sleep(100);
         } catch (InterruptedException e) {

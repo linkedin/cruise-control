@@ -16,7 +16,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistri
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PotentialNwOutGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
@@ -49,17 +48,16 @@ import org.junit.runners.Parameterized;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.RACK_BY_BROKER;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced2;
-import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced3;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
 
 
 /**
- * Unit test for testing goals with excluded brokers for leadership under fixed cluster properties.
+ * Unit test for testing goals with excluded brokers for replica move under fixed cluster properties.
  */
 @RunWith(Parameterized.class)
-public class ExcludedBrokersForLeadershipTest {
+public class ExcludedBrokersForReplicaMoveTest {
 
   @Rule
   public ExpectedException expected = ExpectedException.none();
@@ -70,6 +68,7 @@ public class ExcludedBrokersForLeadershipTest {
 
     Set<Integer> noExclusion = Collections.emptySet();
     Set<Integer> excludeB1 = Collections.unmodifiableSet(Collections.singleton(1));
+    Set<Integer> excludeB2 = Collections.unmodifiableSet(Collections.singleton(2));
     Set<Integer> excludeAllBrokers = Collections.unmodifiableSet(RACK_BY_BROKER.keySet());
     Set<Integer> noDeadBroker = Collections.emptySet();
     Set<Integer> deadBroker0 = Collections.unmodifiableSet(Collections.singleton(0));
@@ -77,16 +76,19 @@ public class ExcludedBrokersForLeadershipTest {
     // ============RackAwareGoal============
     // With single excluded broker, rack aware satisfiable cluster, no dead brokers (No exception, No proposal, Expected to look optimized)
     p.add(params(0, RackAwareGoal.class, excludeB1, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
+    // With single excluded broker, rack aware satisfiable cluster -- but with a broker excluded on the other rack, no
+    // dead brokers (Exception)
+    p.add(params(1, RackAwareGoal.class, excludeB2, OptimizationFailureException.class, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, null));
     // With single excluded broker, rack aware satisfiable cluster, one dead brokers (No exception, No proposal, Expected to look optimized)
-    p.add(params(1, RackAwareGoal.class, excludeB1, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
+    p.add(params(2, RackAwareGoal.class, excludeB2, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
     // Without excluded broker, rack aware satisfiable cluster, no dead brokers (No exception, Proposal expected, Expected to look optimized)
-    p.add(params(2, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
+    p.add(params(3, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), noDeadBroker, true));
     // Without excluded broker, rack aware satisfiable cluster, one dead broker (No exception, Proposal expected, Expected to look optimized)
-    p.add(params(3, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
+    p.add(params(4, RackAwareGoal.class, noExclusion, null, DeterministicCluster.rackAwareSatisfiable(), deadBroker0, true));
     // With single excluded broker, rack aware unsatisfiable cluster, no dead broker (Exception)
-    p.add(params(4, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
+    p.add(params(5, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), noDeadBroker, null));
     // With single excluded broker, rack aware unsatisfiable cluster, one dead broker (Exception)
-    p.add(params(5, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
+    p.add(params(6, RackAwareGoal.class, excludeB1, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
 
     for (Class<? extends Goal> goalClass : Arrays.asList(CpuCapacityGoal.class,
                                                          DiskCapacityGoal.class,
@@ -179,17 +181,6 @@ public class ExcludedBrokersForLeadershipTest {
     // for excluded brokers, Expected to look optimized)
     p.add(params(3, ReplicaDistributionGoal.class, excludeAllBrokers, null, unbalanced2(), deadBroker0, true));
 
-    // ============PreferredLeaderElectionGoal============
-    // Test: With single excluded broker, satisfiable cluster, no dead broker (No exception, No proposal for
-    // excluded broker, Expected to look optimized)
-    p.add(params(0, PreferredLeaderElectionGoal.class, noExclusion, null, unbalanced3(), noDeadBroker, true));
-    // Test: With single excluded broker, satisfiable cluster, one dead broker (No exception, No proposal for
-    // excluded broker, Expected to look optimized)
-    p.add(params(1, PreferredLeaderElectionGoal.class, excludeB1, null, unbalanced3(), noDeadBroker, false));
-    // Test: With all brokers excluded, balance not satisfiable, no dead brokers (No exception, No proposal
-    // for excluded brokers, Expected to look optimized)
-    p.add(params(2, PreferredLeaderElectionGoal.class, excludeAllBrokers, null, unbalanced3(), noDeadBroker, false));
-
     return p;
   }
 
@@ -201,27 +192,44 @@ public class ExcludedBrokersForLeadershipTest {
   private Boolean _expectedToOptimize;
 
   /**
-   * Constructor of Excluded Brokers For Leadership Test.
+   * Constructor of Excluded Brokers For Replica Move Test.
    *
    * @param testId the test id
    * @param goal Goal to be tested.
-   * @param excludedBrokersForLeadership Brokers excluded from receiving leadership upon proposal generation.
+   * @param excludedBrokersForReplicaMove Brokers excluded from receiving replicas upon proposal generation.
    * @param exceptionClass Expected exception class (if any).
    * @param clusterModel Cluster model to be used for the test.
    * @param expectedToOptimize The expectation on whether the cluster state will be considered optimized or not.
    */
-  public ExcludedBrokersForLeadershipTest(int testId,
-                                          Goal goal,
-                                          Set<Integer> excludedBrokersForLeadership,
-                                          Class<Throwable> exceptionClass,
-                                          ClusterModel clusterModel,
-                                          Boolean expectedToOptimize) {
+  public ExcludedBrokersForReplicaMoveTest(int testId,
+                                           Goal goal,
+                                           Set<Integer> excludedBrokersForReplicaMove,
+                                           Class<Throwable> exceptionClass,
+                                           ClusterModel clusterModel,
+                                           Boolean expectedToOptimize) {
     _testId = testId;
     _goal = goal;
-    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), excludedBrokersForLeadership);
+    _optimizationOptions = new OptimizationOptions(Collections.emptySet(), Collections.emptySet(), excludedBrokersForReplicaMove);
     _exceptionClass = exceptionClass;
     _clusterModel = clusterModel;
     _expectedToOptimize = expectedToOptimize;
+  }
+
+  private boolean violatesExcludedBrokersForReplicaMove(Set<Integer> excludedBrokersForReplicaMove,
+                                                        ExecutionProposal proposal) {
+    int numOfflineOldReplicas =
+        (int) proposal.oldReplicas().stream().filter(brokerId -> !_clusterModel.broker(brokerId).isAlive()).count();
+
+    int numNewReplicasOnExcludedBrokers = 0;
+    for (int i = 0; i < proposal.newReplicas().size(); i++) {
+      int oldBroker = proposal.oldReplicas().get(i);
+      int newBroker = proposal.newReplicas().get(i);
+      if (oldBroker != newBroker && excludedBrokersForReplicaMove.contains(newBroker)) {
+        numNewReplicasOnExcludedBrokers++;
+      }
+    }
+
+    return numNewReplicasOnExcludedBrokers > numOfflineOldReplicas;
   }
 
   @Test
@@ -230,42 +238,41 @@ public class ExcludedBrokersForLeadershipTest {
       Map<TopicPartition, List<Integer>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
       Map<TopicPartition, Integer> initLeaderDistribution = _clusterModel.getLeaderDistribution();
 
-      Set<Integer> excludedBrokersForLeadership = _optimizationOptions.excludedBrokersForLeadership();
+      Set<Integer> excludedBrokersForReplicaMove = _optimizationOptions.excludedBrokersForReplicaMove();
       if (_expectedToOptimize) {
-        assertTrue("Failed to optimize " + _goal.name() + " with excluded brokers for leadership.",
+        assertTrue("Failed to optimize " + _goal.name() + " with excluded brokers for replica move.",
                    _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
       } else {
-        assertFalse("Optimized " + _goal.name() + " with excluded brokers for leadership " + excludedBrokersForLeadership,
+        assertFalse("Optimized " + _goal.name() + " with excluded brokers for replicaMove " + excludedBrokersForReplicaMove,
                     _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
       }
-      // Generated proposals cannot move leadership to the excluded brokers for leadership.
-      if (!excludedBrokersForLeadership.isEmpty()) {
+      // Generated proposals cannot move replicas to the excluded brokers for replica move.
+      if (!excludedBrokersForReplicaMove.isEmpty()) {
         Set<ExecutionProposal> goalProposals =
             AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, _clusterModel);
         for (ExecutionProposal proposal : goalProposals) {
-          if (proposal.hasLeaderAction() && excludedBrokersForLeadership.contains(proposal.newLeader())
-              && _clusterModel.broker(proposal.oldLeader()).isAlive()) {
-            fail(String.format("Leadership move in %s from an online replica to an excluded broker for leadership %s.",
-                               proposal, excludedBrokersForLeadership));
+          if (proposal.hasReplicaAction() && violatesExcludedBrokersForReplicaMove(excludedBrokersForReplicaMove, proposal)) {
+            fail(String.format("A replica move in %s to an excluded broker for replica move %s.",
+                               proposal, excludedBrokersForReplicaMove));
           }
         }
       }
     } else {
       expected.expect(_exceptionClass);
-      assertTrue("Failed to optimize with excluded brokers for leadership.",
+      assertTrue("Failed to optimize with excluded brokers for replica move.",
                  _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
     }
   }
 
   private static Object[] params(int tid,
                                  Class<? extends Goal> goalClass,
-                                 Set<Integer> excludedBrokersForLeadership,
+                                 Set<Integer> excludedBrokersForReplicaMove,
                                  Class<? extends Throwable> exceptionClass,
                                  ClusterModel clusterModel,
                                  Collection<Integer> deadBrokers,
                                  Boolean expectedToOptimize) throws Exception {
     deadBrokers.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
-    return new Object[]{tid, goal(goalClass), excludedBrokersForLeadership, exceptionClass, clusterModel, expectedToOptimize};
+    return new Object[]{tid, goal(goalClass), excludedBrokersForReplicaMove, exceptionClass, clusterModel, expectedToOptimize};
   }
 
   private static Goal goal(Class<? extends Goal> goalClass) throws Exception {

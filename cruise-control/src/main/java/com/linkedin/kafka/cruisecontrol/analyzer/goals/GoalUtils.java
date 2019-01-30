@@ -47,8 +47,15 @@ public class GoalUtils {
                                           Replica replica,
                                           int candidateId,
                                           OptimizationOptions optimizationOptions) {
+    // Check eligibility for leadership
     if (optimizationOptions.excludedBrokersForLeadership().contains(candidateId)
         && replica.originalBroker().isAlive() && replica.isLeader()) {
+      return false;
+    }
+
+    // Check eligibility for replica move
+    if (optimizationOptions.excludedBrokersForReplicaMove().contains(candidateId)
+        && replica.originalBroker().isAlive()) {
       return false;
     }
 
@@ -87,6 +94,27 @@ public class GoalUtils {
   }
 
   /**
+   * Filter out the given excluded brokers from the original brokers (if needed). If the action is:
+   * <ul>
+   * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#REPLICA_MOVEMENT}, then unless the source replica
+   * is dead, brokers excluded for replica move are not eligible.</li>
+   * </ul>
+   *
+   * @param originalBrokers Original list of brokers to be filtered.
+   * @param excludedBrokers Brokers to be excluded from.
+   * @param replica Replica affected from the action.
+   * @param action Action that affects the given replica.
+   */
+  private static void filterOutBrokersExcludedForReplicaMove(List<Broker> originalBrokers,
+                                                             Set<Integer> excludedBrokers,
+                                                             Replica replica,
+                                                             ActionType action) {
+    if (!excludedBrokers.isEmpty() && action == ActionType.REPLICA_MOVEMENT && replica.originalBroker().isAlive()) {
+      originalBrokers.removeIf(broker -> excludedBrokers.contains(broker.id()));
+    }
+  }
+
+  /**
    * Filter the given candidate brokers in the given clusterModel to retrieve the eligible ones for execution of a
    * {@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#REPLICA_MOVEMENT} or
    * {@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#LEADERSHIP_MOVEMENT} action for the given replica.
@@ -109,6 +137,7 @@ public class GoalUtils {
 
     List<Broker> eligibleBrokers = new ArrayList<>(candidates);
     filterOutBrokersExcludedForLeadership(eligibleBrokers, optimizationOptions.excludedBrokersForLeadership(), replica, action);
+    filterOutBrokersExcludedForReplicaMove(eligibleBrokers, optimizationOptions.excludedBrokersForReplicaMove(), replica, action);
 
     if (clusterModel.newBrokers().isEmpty()) {
       return eligibleBrokers;
@@ -139,17 +168,16 @@ public class GoalUtils {
 
   /**
    * Get eligible replicas among the given candidate replicas for the proposed swap operation of the source replica.
-   * Invariant: No replica is eligible if the candidate broker is excluded for leadership and the source replica is the leader.
+   * Invariant-1: No replica is eligible if the candidate broker is excluded for leadership and the source replica is the leader.
+   * Invariant-2: No replica is eligible if the candidate broker is excluded for replica move.
    *
    * @param clusterModel The state of the cluster.
    * @param sourceReplica Source replica for intended swap operation.
    * @param cb Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
    * @return Eligible replicas for swap.
    */
-  static SortedSet<Replica> eligibleReplicasForSwap(ClusterModel clusterModel,
-                                                    Replica sourceReplica,
-                                                    CandidateBroker cb) {
-    if (cb.shouldExcludeForLeadership(sourceReplica)) {
+  static SortedSet<Replica> eligibleReplicasForSwap(ClusterModel clusterModel, Replica sourceReplica, CandidateBroker cb) {
+    if (cb.shouldExcludeForLeadership(sourceReplica) || cb.shouldExcludeForReplicaMove(sourceReplica)) {
       return Collections.emptySortedSet();
     }
 

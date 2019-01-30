@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -46,6 +47,8 @@ public class GoalViolationDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolationDetector.class);
   // TODO: Make this configurable.
   private static final boolean EXCLUDE_RECENTLY_DEMOTED_BROKERS = true;
+  // TODO: Make this configurable.
+  private static final boolean EXCLUDE_RECENTLY_REMOVED_BROKERS = true;
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final LoadMonitor _loadMonitor;
   private final SortedMap<Integer, Goal> _goals;
@@ -108,10 +111,24 @@ public class GoalViolationDetector implements Runnable {
 
     AutoCloseable clusterModelSemaphore = null;
     try {
-      GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation, EXCLUDE_RECENTLY_DEMOTED_BROKERS);
+      GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation,
+                                                         EXCLUDE_RECENTLY_DEMOTED_BROKERS, EXCLUDE_RECENTLY_REMOVED_BROKERS);
       long now = _time.milliseconds();
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
+
+      // Retrieve excluded brokers for leadership and replica move.
+      ExecutorState executorState = null;
+      if (EXCLUDE_RECENTLY_DEMOTED_BROKERS || EXCLUDE_RECENTLY_REMOVED_BROKERS) {
+        executorState = _kafkaCruiseControl.state(new OperationProgress(), Collections.singleton(EXECUTOR)).executorState();
+      }
+
+      Set<Integer> excludedBrokersForLeadership = EXCLUDE_RECENTLY_DEMOTED_BROKERS ? executorState.recentlyDemotedBrokers()
+                                                                                   : Collections.emptySet();
+
+      Set<Integer> excludedBrokersForReplicaMove = EXCLUDE_RECENTLY_DEMOTED_BROKERS ? executorState.recentlyRemovedBrokers()
+                                                                                    : Collections.emptySet();
+
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
         Goal goal = entry.getValue();
         if (_loadMonitor.meetCompletenessRequirements(goal.clusterModelCompletenessRequirements())) {
@@ -139,12 +156,7 @@ public class GoalViolationDetector implements Runnable {
                                                              clusterModel.capacityEstimationInfoByBrokerId());
             _lastCheckedModelGeneration = clusterModel.generation();
           }
-          Set<Integer> excludedBrokersForLeadership = EXCLUDE_RECENTLY_DEMOTED_BROKERS
-                                                      ? _kafkaCruiseControl.state(new OperationProgress(), Collections.singleton(EXECUTOR))
-                                                                           .executorState().recentlyDemotedBrokers()
-                                                      : Collections.emptySet();
-
-          newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations, excludedBrokersForLeadership);
+          newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations, excludedBrokersForLeadership, excludedBrokersForReplicaMove);
         } else {
           LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
         }
@@ -180,7 +192,8 @@ public class GoalViolationDetector implements Runnable {
   private boolean optimizeForGoal(ClusterModel clusterModel,
                                   Goal goal,
                                   GoalViolations goalViolations,
-                                  Set<Integer> excludedBrokersForLeadership)
+                                  Set<Integer> excludedBrokersForLeadership,
+                                  Set<Integer> excludedBrokersForReplicaMove)
       throws KafkaCruiseControlException {
     if (clusterModel.topics().isEmpty()) {
       LOG.info("Skipping goal violation detection because the cluster model does not have any topic.");
@@ -189,7 +202,9 @@ public class GoalViolationDetector implements Runnable {
     Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, Integer> initLeaderDistribution = clusterModel.getLeaderDistribution();
     try {
-      goal.optimize(clusterModel, new HashSet<>(), new OptimizationOptions(excludedTopics(clusterModel), excludedBrokersForLeadership));
+      goal.optimize(clusterModel, new HashSet<>(), new OptimizationOptions(excludedTopics(clusterModel),
+                                                                           excludedBrokersForLeadership,
+                                                                           excludedBrokersForReplicaMove));
     } catch (OptimizationFailureException ofe) {
       // An OptimizationFailureException indicates (1) a hard goal violation that cannot be fixed typically due to
       // lack of physical hardware (e.g. insufficient number of racks to satisfy rack awareness, insufficient number

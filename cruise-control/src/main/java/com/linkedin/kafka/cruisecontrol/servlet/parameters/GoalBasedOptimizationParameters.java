@@ -16,6 +16,7 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
   protected boolean _useReadyDefaultGoals;
   protected List<String> _goals;
   protected Pattern _excludedTopics;
+  protected boolean _excludeRecentlyRemovedBrokers;
 
   GoalBasedOptimizationParameters(HttpServletRequest request) {
     super(request);
@@ -28,6 +29,7 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
     _useReadyDefaultGoals = ParameterUtils.useReadyDefaultGoals(_request);
     _goals = ParameterUtils.getGoals(_request);
     _excludedTopics = ParameterUtils.excludedTopics(_request);
+    _excludeRecentlyRemovedBrokers = ParameterUtils.excludeRecentlyRemovedBrokers(_request);
   }
 
   public ParameterUtils.DataFrom dataFrom() {
@@ -44,6 +46,10 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
 
   public Pattern excludedTopics() {
     return _excludedTopics;
+  }
+
+  public boolean excludeRecentlyRemovedBrokers() {
+    return _excludeRecentlyRemovedBrokers;
   }
 
   public static class GoalsAndRequirements {

@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
@@ -48,6 +47,10 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.T1;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.T2;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced2;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
@@ -67,8 +70,8 @@ public class ExcludedTopicsTest {
     Collection<Object[]> p = new ArrayList<>();
 
     Set<String> noExclusion = Collections.emptySet();
-    Set<String> excludeT1 = Collections.unmodifiableSet(Collections.singleton("T1"));
-    Set<String> excludeAllTopics = Collections.unmodifiableSet(new HashSet<>(Arrays.asList("T1", "T2")));
+    Set<String> excludeT1 = Collections.unmodifiableSet(Collections.singleton(T1));
+    Set<String> excludeAllTopics = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(T1, T2)));
     Set<Integer> noDeadBroker = Collections.emptySet();
     Set<Integer> deadBroker0 = Collections.unmodifiableSet(Collections.singleton(0));
 
@@ -304,62 +307,5 @@ public class ExcludedTopicsTest {
       //Try default constructor
       return goalClass.newInstance();
     }
-  }
-
-  // two racks, three brokers, two partitions, one replica.
-  private static ClusterModel unbalanced() {
-
-    List<Integer> orderedRackIdsOfBrokers = Arrays.asList(0, 0, 1);
-    ClusterModel cluster = DeterministicCluster.getHomogeneousDeterministicCluster(2, orderedRackIdsOfBrokers,
-                                                                                   TestConstants.BROKER_CAPACITY);
-
-    // Create topic partition.
-    TopicPartition pInfoT10 = new TopicPartition("T1", 0);
-    TopicPartition pInfoT20 = new TopicPartition("T2", 0);
-
-    // Create replicas for topic: T1.
-    cluster.createReplica("0", 0, pInfoT10, 0, true);
-    cluster.createReplica("0", 0, pInfoT20, 0, true);
-
-    AggregatedMetricValues aggregatedMetricValues =
-        KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(TestConstants.TYPICAL_CPU_CAPACITY / 2,
-                                                                  TestConstants.LARGE_BROKER_CAPACITY / 2,
-                                                                  TestConstants.MEDIUM_BROKER_CAPACITY / 2,
-                                                                  TestConstants.LARGE_BROKER_CAPACITY / 2);
-
-    // Create snapshots and push them to the cluster.
-    cluster.setReplicaLoad("0", 0, pInfoT10, aggregatedMetricValues, Collections.singletonList(1L));
-    cluster.setReplicaLoad("0", 0, pInfoT20, aggregatedMetricValues, Collections.singletonList(1L));
-
-    return cluster;
-  }
-
- // two racks, three brokers, six partitions, one replica.
-  private static ClusterModel unbalanced2() {
-
-    ClusterModel cluster = unbalanced();
-    // Create topic partition.
-    TopicPartition pInfoT30 = new TopicPartition("T1", 1);
-    TopicPartition pInfoT40 = new TopicPartition("T2", 1);
-    TopicPartition pInfoT50 = new TopicPartition("T1", 2);
-    TopicPartition pInfoT60 = new TopicPartition("T2", 2);
-    // Create replicas for topic: T1.
-    cluster.createReplica("0", 1, pInfoT30, 0, true);
-    cluster.createReplica("0", 0, pInfoT40, 0, true);
-    cluster.createReplica("0", 0, pInfoT50, 0, true);
-    cluster.createReplica("0", 0, pInfoT60, 0, true);
-
-    AggregatedMetricValues aggregatedMetricValues =
-        KafkaCruiseControlUnitTestUtils.getAggregatedMetricValues(TestConstants.LARGE_BROKER_CAPACITY / 2,
-                                                                  TestConstants.LARGE_BROKER_CAPACITY / 2,
-                                                                  TestConstants.MEDIUM_BROKER_CAPACITY / 2,
-                                                                  TestConstants.LARGE_BROKER_CAPACITY / 2);
-
-    // Create snapshots and push them to the cluster.
-    cluster.setReplicaLoad("0", 1, pInfoT30, aggregatedMetricValues, Collections.singletonList(1L));
-    cluster.setReplicaLoad("0", 0, pInfoT40, aggregatedMetricValues, Collections.singletonList(1L));
-    cluster.setReplicaLoad("0", 0, pInfoT50, aggregatedMetricValues, Collections.singletonList(1L));
-    cluster.setReplicaLoad("0", 0, pInfoT60, aggregatedMetricValues, Collections.singletonList(1L));
-    return cluster;
   }
 }

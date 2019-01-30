@@ -14,6 +14,7 @@ import java.util.Set;
 public class OptimizationOptions {
   private final Set<String> _excludedTopics;
   private final Set<Integer> _excludedBrokersForLeadership;
+  private final Set<Integer> _excludedBrokersForReplicaMove;
 
   /**
    * Default value for {@link #_excludedBrokersForLeadership} is an empty set.
@@ -23,8 +24,15 @@ public class OptimizationOptions {
   }
 
   public OptimizationOptions(Set<String> excludedTopics, Set<Integer> excludedBrokersForLeadership) {
+    this(excludedTopics, excludedBrokersForLeadership, Collections.emptySet());
+  }
+
+  public OptimizationOptions(Set<String> excludedTopics,
+                             Set<Integer> excludedBrokersForLeadership,
+                             Set<Integer> excludedBrokersForReplicaMove) {
     _excludedTopics = excludedTopics;
     _excludedBrokersForLeadership = excludedBrokersForLeadership;
+    _excludedBrokersForReplicaMove = excludedBrokersForReplicaMove;
   }
 
   public Set<String> excludedTopics() {
@@ -33,5 +41,15 @@ public class OptimizationOptions {
 
   public Set<Integer> excludedBrokersForLeadership() {
     return Collections.unmodifiableSet(_excludedBrokersForLeadership);
+  }
+
+  public Set<Integer> excludedBrokersForReplicaMove() {
+    return Collections.unmodifiableSet(_excludedBrokersForReplicaMove);
+  }
+
+  @Override
+  public String toString() {
+    return String.format("{excludedTopics: %s, excludedBrokersForLeadership: %s, excludedBrokersForReplicaMove: %s}",
+                         _excludedTopics, _excludedBrokersForLeadership, _excludedBrokersForReplicaMove);
   }
 }

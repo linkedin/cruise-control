@@ -36,6 +36,8 @@ import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static org.easymock.EasyMock.anyLong;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -50,14 +52,12 @@ import static kafka.log.LogConfig.CleanupPolicyProp;
  * Unit test for LoadMonitor
  */
 public class LoadMonitorTest {
-  private static final String TOPIC_0 = "topic0";
-  private static final String TOPIC_1 = "topic1";
   private static final int P0 = 0;
   private static final int P1 = 1;
-  private static final TopicPartition T0P0 = new TopicPartition(TOPIC_0, P0);
-  private static final TopicPartition T0P1 = new TopicPartition(TOPIC_0, P1);
-  private static final TopicPartition T1P0 = new TopicPartition(TOPIC_1, P0);
-  private static final TopicPartition T1P1 = new TopicPartition(TOPIC_1, P1);
+  private static final TopicPartition T0P0 = new TopicPartition(TOPIC0, P0);
+  private static final TopicPartition T0P1 = new TopicPartition(TOPIC0, P1);
+  private static final TopicPartition T1P0 = new TopicPartition(TOPIC1, P0);
+  private static final TopicPartition T1P1 = new TopicPartition(TOPIC1, P1);
   private static final PartitionEntity PE_T0P0 = new PartitionEntity(T0P0);
   private static final PartitionEntity PE_T0P1 = new PartitionEntity(T0P1);
   private static final PartitionEntity PE_T1P0 = new PartitionEntity(T1P0);
