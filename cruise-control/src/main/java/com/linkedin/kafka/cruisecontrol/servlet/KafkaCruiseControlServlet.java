@@ -80,6 +80,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     _twoStepVerification = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _purgatory = _twoStepVerification ? new Purgatory(_config) : null;
     _userTaskManager = new UserTaskManager(_config, dropwizardMetricRegistry, _successfulRequestExecutionTimer, _purgatory);
+    _asyncKafkaCruiseControl.setUserTaskManagerInExecutor(_userTaskManager);
     _maxBlockMs = _config.getLong(KafkaCruiseControlConfig.WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS);
     _asyncOperationStep = new ThreadLocal<>();
     _asyncOperationStep.set(0);
