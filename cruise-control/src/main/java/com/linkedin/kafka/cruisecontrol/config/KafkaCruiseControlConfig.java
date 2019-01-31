@@ -754,7 +754,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 BROKER_METRICS_WINDOW_MS_DOC)
         .define(COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG,
                 ConfigDef.Type.LONG,
-                TimeUnit.HOURS.toMillis(6),
+                TimeUnit.HOURS.toMillis(24),
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC)
