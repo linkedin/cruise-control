@@ -835,7 +835,7 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
-   * @param uuid UUID of the execution.
+   * @param uuid Information about the execution such as task UUID, EndPoint requested and requestUrl.
    */
   private void executeProposals(Set<ExecutionProposal> proposals,
                                 Set<Integer> unthrottledBrokers,

@@ -913,7 +913,7 @@ public class Executor {
       _startedBy = "UNKNOWN";
       _operation = "UNKNOWN";
       _startedByUser = false;
-      if (_userTaskManager != null && _uuid != null) {
+      if (_uuid != null) {
         _userTaskInfo = _userTaskManager.getUserTaskById(_uuid);
         _actionUuid = _uuid;
         if (_userTaskInfo != null) {
