@@ -25,8 +25,8 @@ public class KafkaCruiseControlUtils {
   public static final int ZK_SESSION_TIMEOUT = 30000;
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
   public static final boolean IS_ZK_SECURITY_ENABLED = false;
-  public static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
-  public static final String DATA_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
+  public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
+  public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";
 
   private KafkaCruiseControlUtils() {
@@ -35,7 +35,7 @@ public class KafkaCruiseControlUtils {
 
   public static String currentUtcDate() {
     Date date = new Date(System.currentTimeMillis());
-    DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
+    DateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
     formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
     return formatter.format(date);
   }
@@ -44,7 +44,7 @@ public class KafkaCruiseControlUtils {
    * Format the timestamp from long to a human readable string.
    */
   public static String toDateString(long time) {
-    return toDateString(time, DATA_FORMAT2, "");
+    return toDateString(time, DATE_FORMAT2, "");
   }
 
   /**

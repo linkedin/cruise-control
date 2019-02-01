@@ -25,7 +25,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 
 
 public class UserTaskState extends AbstractCruiseControlResponse {
-  private static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
+  private static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   private static final String TIME_ZONE = "UTC";
   private static final String ACTIVE_TASK_LABEL_VALUE = UserTaskManager.TaskState.ACTIVE.type();
   private static final String COMPLETED_TASK_LABEL_VALUE = UserTaskManager.TaskState.COMPLETED.type();
@@ -152,7 +152,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
         clientAddressLabelSize =
             clientAddressLabelSize < userTaskInfo.clientIdentity().length() ? userTaskInfo.clientIdentity().length()
                                                                             : clientAddressLabelSize;
-        String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATA_FORMAT, TIME_ZONE);
+        String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATE_FORMAT, TIME_ZONE);
         startMsLabelSize = startMsLabelSize < dateFormatted.length() ? dateFormatted.length() : startMsLabelSize;
         requestURLLabelSize =
             requestURLLabelSize < userTaskInfo.requestWithParams().length() ? userTaskInfo.requestWithParams()
@@ -176,7 +176,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     sb.append(String.format(formattingStringBuilder.toString(), "USER TASK ID", "CLIENT ADDRESS", "START TIME", "STATUS",
                             "REQUEST URL")); // header
     for (UserTaskManager.UserTaskInfo userTaskInfo : prepareResultList(parameters)) {
-      String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATA_FORMAT, TIME_ZONE);
+      String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATE_FORMAT, TIME_ZONE);
       sb.append(String.format(formattingStringBuilder.toString(), userTaskInfo.userTaskId().toString(), userTaskInfo.clientIdentity(),
                               dateFormatted, userTaskInfo.state(), userTaskInfo.requestWithParams())); // values
     }
