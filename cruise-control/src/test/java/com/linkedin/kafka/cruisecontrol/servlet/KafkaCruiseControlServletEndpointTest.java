@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.servlet;
@@ -222,11 +222,11 @@ public class KafkaCruiseControlServletEndpointTest {
   // Some how we cannot instantiate UserTasksParameters (fail at instantiating LOGGER object), so we mock it.
   private UserTasksParameters mockUserTasksParameters(HttpServletRequest answerQueryRequest) throws UnsupportedEncodingException {
     UserTasksParameters parameters = EasyMock.mock(UserTasksParameters.class);
-    EasyMock.expect(parameters.userTaskIds()).andReturn(ParameterUtils.taskIds(answerQueryRequest)).anyTimes();
+    EasyMock.expect(parameters.userTaskIds()).andReturn(ParameterUtils.userTaskIds(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.clientIds()).andReturn(ParameterUtils.clientIds(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.endPoints()).andReturn(ParameterUtils.endPoints(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.endPoint()).andReturn(ParameterUtils.endPoint(answerQueryRequest)).anyTimes();
-    EasyMock.expect(parameters.taskStates()).andReturn(ParameterUtils.types(answerQueryRequest)).anyTimes();
+    EasyMock.expect(parameters.types()).andReturn(ParameterUtils.types(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.entries()).andReturn(ParameterUtils.entries(answerQueryRequest)).anyTimes();
 
     EasyMock.replay(parameters);

@@ -205,6 +205,10 @@ public class ParameterUtils {
     Set<String> userTasks = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     userTasks.add(JSON_PARAM);
     userTasks.add(USER_TASK_IDS_PARAM);
+    userTasks.add(CLIENT_IDS_PARAM);
+    userTasks.add(ENTRIES_PARAM);
+    userTasks.add(ENDPOINTS_PARAM);
+    userTasks.add(TYPES_PARAM);
 
     Set<String> admin = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     admin.add(JSON_PARAM);
@@ -564,7 +568,7 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  public static Set<UUID> taskIds(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
     String userTaskIdsString = urlDecode(request.getParameter(USER_TASK_IDS_PARAM));
     return userTaskIdsString == null ? Collections.emptySet()
                                      : Arrays.stream(userTaskIdsString.split(",")).map(UUID::fromString)

@@ -112,7 +112,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
       return;
     }
     Set<UUID> requestedUserTaskIds = ((UserTasksParameters) parameters).userTaskIds();
-    Set<UserTaskManager.TaskState> requestedTaskStates = ((UserTasksParameters) parameters).taskStates();
+    Set<UserTaskManager.TaskState> requestedTaskStates = ((UserTasksParameters) parameters).types();
     Set<EndPoint> requestedEndPoints = ((UserTasksParameters) parameters).endPoints();
     Set<String> requestedClientIds = ((UserTasksParameters) parameters).clientIds();
 
