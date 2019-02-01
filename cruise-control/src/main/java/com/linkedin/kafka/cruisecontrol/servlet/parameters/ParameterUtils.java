@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
+import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
@@ -43,45 +44,49 @@ import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
  * The util class for Kafka Cruise Control parameters.
  */
 public class ParameterUtils {
-  private static final String JSON_PARAM = "json";
-  private static final String START_MS_PARAM = "start";
-  private static final String END_MS_PARAM = "end";
-  private static final String ENTRIES_PARAM = "entries";
-  private static final String ALLOW_CAPACITY_ESTIMATION_PARAM = "allow_capacity_estimation";
-  private static final String CLEAR_METRICS_PARAM = "clearmetrics";
-  private static final String TIME_PARAM = "time";
-  private static final String VERBOSE_PARAM = "verbose";
-  private static final String SUPER_VERBOSE_PARAM = "super_verbose";
-  private static final String RESOURCE_PARAM = "resource";
-  private static final String REASON = "reason";
-  private static final String DATA_FROM_PARAM = "data_from";
-  private static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
-  private static final String MAX_LOAD_PARAM = "max_load";
-  private static final String GOALS_PARAM = "goals";
-  private static final String BROKER_ID_PARAM = "brokerid";
-  private static final String TOPIC_PARAM = "topic";
-  private static final String PARTITION_PARAM = "partition";
-  private static final String DRY_RUN_PARAM = "dryrun";
-  private static final String THROTTLE_ADDED_BROKER_PARAM = "throttle_added_broker";
-  private static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
-  private static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
-  private static final String USE_READY_DEFAULT_GOALS_PARAM = "use_ready_default_goals";
-  private static final String CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM = "concurrent_partition_movements_per_broker";
-  private static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
-  private static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
-  private static final String SUBSTATES_PARAM = "substates";
-  private static final String MIN_VALID_PARTITION_RATIO_PARAM = "min_valid_partition_ratio";
-  private static final String SKIP_HARD_GOAL_CHECK_PARAM = "skip_hard_goal_check";
-  private static final String EXCLUDED_TOPICS_PARAM = "excluded_topics";
-  private static final String USER_TASK_IDS_PARAM = "user_task_ids";
-  private static final String SKIP_URP_DEMOTION_PARAM = "skip_urp_demotion";
-  private static final String EXCLUDE_FOLLOWER_DEMOTION_PARAM = "exclude_follower_demotion";
-  private static final String DISABLE_SELF_HEALING_FOR_PARAM = "disable_self_healing_for";
-  private static final String ENABLE_SELF_HEALING_FOR_PARAM = "enable_self_healing_for";
-  private static final String EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM = "exclude_recently_demoted_brokers";
-  private static final String EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM = "exclude_recently_removed_brokers";
+  public static final String JSON_PARAM = "json";
+  public static final String START_MS_PARAM = "start";
+  public static final String END_MS_PARAM = "end";
+  public static final String ENTRIES_PARAM = "entries";
+  public static final String ALLOW_CAPACITY_ESTIMATION_PARAM = "allow_capacity_estimation";
+  public static final String CLEAR_METRICS_PARAM = "clearmetrics";
+  public static final String TIME_PARAM = "time";
+  public static final String VERBOSE_PARAM = "verbose";
+  public static final String SUPER_VERBOSE_PARAM = "super_verbose";
+  public static final String RESOURCE_PARAM = "resource";
+  public static final String REASON = "reason";
+  public static final String DATA_FROM_PARAM = "data_from";
+  public static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
+  public static final String MAX_LOAD_PARAM = "max_load";
+  public static final String GOALS_PARAM = "goals";
+  public static final String BROKER_ID_PARAM = "brokerid";
+  public static final String TOPIC_PARAM = "topic";
+  public static final String PARTITION_PARAM = "partition";
+  public static final String DRY_RUN_PARAM = "dryrun";
+  public static final String THROTTLE_ADDED_BROKER_PARAM = "throttle_added_broker";
+  public static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
+  public static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
+  public static final String USE_READY_DEFAULT_GOALS_PARAM = "use_ready_default_goals";
+  public static final String CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM = "concurrent_partition_movements_per_broker";
+  public static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
+  public static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
+  public static final String SUBSTATES_PARAM = "substates";
+  public static final String MIN_VALID_PARTITION_RATIO_PARAM = "min_valid_partition_ratio";
+  public static final String SKIP_HARD_GOAL_CHECK_PARAM = "skip_hard_goal_check";
+  public static final String EXCLUDED_TOPICS_PARAM = "excluded_topics";
+  public static final String USER_TASK_IDS_PARAM = "user_task_ids";
+  public static final String CLIENT_IDS_PARAM = "client_ids";
+  public static final String ENDPOINTS_PARAM = "endpoints";
+  public static final String TYPES_PARAM = "types";
+  public static final String SKIP_URP_DEMOTION_PARAM = "skip_urp_demotion";
+  public static final String EXCLUDE_FOLLOWER_DEMOTION_PARAM = "exclude_follower_demotion";
+  public static final String DISABLE_SELF_HEALING_FOR_PARAM = "disable_self_healing_for";
+  public static final String ENABLE_SELF_HEALING_FOR_PARAM = "enable_self_healing_for";
+  public static final String EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM = "exclude_recently_demoted_brokers";
+  public static final String EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM = "exclude_recently_removed_brokers";
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
+
   static {
     Map<EndPoint, Set<String>> validParamNames = new HashMap<>();
 
@@ -205,6 +210,10 @@ public class ParameterUtils {
     Set<String> userTasks = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     userTasks.add(JSON_PARAM);
     userTasks.add(USER_TASK_IDS_PARAM);
+    userTasks.add(CLIENT_IDS_PARAM);
+    userTasks.add(ENTRIES_PARAM);
+    userTasks.add(ENDPOINTS_PARAM);
+    userTasks.add(TYPES_PARAM);
 
     Set<String> admin = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     admin.add(JSON_PARAM);
@@ -411,14 +420,19 @@ public class ParameterUtils {
     return String.format("%s (Client: %s, Date: %s)", reason == null ? "No reason provided" : reason, ip, currentUtcDate());
   }
 
+  private static Set<String> parseParamToStringSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
+    String paramString = urlDecode(request.getParameter(param));
+    Set<String> paramsString = paramString == null ? new HashSet<>(0)
+                                                   : new HashSet<>(Arrays.asList(paramString.split(",")));
+    paramsString.removeIf(String::isEmpty);
+    return paramsString;
+  }
+
   /**
    * Empty parameter means all substates are requested.
    */
   static Set<CruiseControlState.SubState> substates(HttpServletRequest request) throws UnsupportedEncodingException {
-    String substatesParam = urlDecode(request.getParameter(SUBSTATES_PARAM));
-    Set<String> substatesString = substatesParam == null ? new HashSet<>(0)
-                                                         : new HashSet<>(Arrays.asList(substatesParam.split(",")));
-    substatesString.removeIf(String::isEmpty);
+    Set<String> substatesString = parseParamToStringSet(request, SUBSTATES_PARAM);
 
     Set<CruiseControlState.SubState> substates = new HashSet<>(substatesString.size());
     try {
@@ -498,7 +512,7 @@ public class ParameterUtils {
     return Collections.unmodifiableList(goals);
   }
 
-  static int entries(HttpServletRequest request) {
+  public static int entries(HttpServletRequest request) {
     String entriesString = request.getParameter(ENTRIES_PARAM);
     return entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
   }
@@ -560,11 +574,50 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
     String userTaskIdsString = urlDecode(request.getParameter(USER_TASK_IDS_PARAM));
     return userTaskIdsString == null ? Collections.emptySet()
                                      : Arrays.stream(userTaskIdsString.split(",")).map(UUID::fromString)
                                              .collect(Collectors.toSet());
+  }
+
+  /**
+   * Default: An empty set.
+   */
+  public static Set<String> clientIds(HttpServletRequest request) throws UnsupportedEncodingException {
+    Set<String> parsedClientIds = parseParamToStringSet(request, CLIENT_IDS_PARAM);
+    // May need to validate clientIds
+    return Collections.unmodifiableSet(parsedClientIds);
+  }
+
+  /**
+   * Default: An empty set.
+   */
+  public static Set<EndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
+    Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM);
+
+    Set<EndPoint> endPoints = new HashSet<>();
+    for (EndPoint endPoint : EndPoint.cachedValues()) {
+      if (parsedEndPoints.contains(endPoint.toString())) {
+        endPoints.add(endPoint);
+      }
+    }
+    return Collections.unmodifiableSet(endPoints);
+  }
+
+  /**
+   * Default: An empty set.
+   */
+  public static Set<UserTaskManager.TaskState> types(HttpServletRequest request) throws UnsupportedEncodingException {
+    Set<String> parsedTaskStates = parseParamToStringSet(request, TYPES_PARAM);
+
+    Set<UserTaskManager.TaskState> taskStates = new HashSet<>();
+    for (UserTaskManager.TaskState state : UserTaskManager.TaskState.cachedValues()) {
+      if (parsedTaskStates.contains(state.toString())) {
+        taskStates.add(state);
+      }
+    }
+    return Collections.unmodifiableSet(taskStates);
   }
 
   /**
