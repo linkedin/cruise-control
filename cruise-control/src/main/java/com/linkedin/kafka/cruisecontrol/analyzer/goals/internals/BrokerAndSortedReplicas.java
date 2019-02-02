@@ -48,22 +48,17 @@ public class BrokerAndSortedReplicas {
    * @return sorted replicas to move out of this broker, which are filtered based on the state of the cluster.
    */
   public List<Replica> replicasToMoveOut(ClusterModel clusterModel) {
-    List<Replica> replicasToMoveOut = new ArrayList<>(sortedReplicas());
     // Cluster has offline replicas, but this overloaded broker is alive -- we can move out only the immigrant replicas.
     if (!clusterModel.deadBrokers().isEmpty() && _broker.isAlive()) {
-      // 1. Find the index of the element that is not an immigrant.
-      int nonImmigrantIndex = 0;
-      for (Replica replica : replicasToMoveOut) {
+      // Return the sorted immigrant replicas.
+      for (Replica replica : sortedReplicas()) {
         if (!_broker.immigrantReplicas().contains(replica)) {
-          break;
+          return new ArrayList<>(sortedReplicas().subSet(sortedReplicas().first(), replica));
         }
-        nonImmigrantIndex++;
       }
-      // 2. Prune non immigrant replicas.
-      replicasToMoveOut.subList(nonImmigrantIndex, replicasToMoveOut.size()).clear();
     }
 
-    return replicasToMoveOut;
+    return new ArrayList<>(sortedReplicas());
   }
 
   @Override
