@@ -6,8 +6,11 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals.internals;
 
 import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 
@@ -34,6 +37,29 @@ public class BrokerAndSortedReplicas {
 
   public NavigableSet<Replica> sortedReplicas() {
     return sortedReplicas;
+  }
+
+  /**
+   * Get sorted replicas to move out of this broker, which are filtered based on the state of the cluster.
+   *
+   * If cluster has broken brokers, but this broker is alive, then replicas to move out are limited to offline and
+   * immigrant replicas
+   *
+   * @param clusterModel The state of the cluster.
+   * @return sorted replicas to move out of this broker, which are filtered based on the state of the cluster.
+   */
+  public List<Replica> replicasToMoveOut(ClusterModel clusterModel) {
+    // Cluster has offline replicas, but this broker is alive -- we can move out only the offline and immigrant replicas.
+    if (!clusterModel.brokenBrokers().isEmpty() && _broker.isAlive()) {
+      // Return the sorted immigrant replicas.
+      for (Replica replica : sortedReplicas()) {
+        if (!_broker.currentOfflineReplicas().contains(replica) && !_broker.immigrantReplicas().contains(replica)) {
+          return new ArrayList<>(sortedReplicas().subSet(sortedReplicas().first(), replica));
+        }
+      }
+    }
+
+    return new ArrayList<>(sortedReplicas());
   }
 
   @Override
