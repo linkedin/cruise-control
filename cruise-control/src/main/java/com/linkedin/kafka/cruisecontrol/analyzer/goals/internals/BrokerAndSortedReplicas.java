@@ -6,8 +6,11 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.goals.internals;
 
 import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.NavigableSet;
 import java.util.TreeSet;
 
@@ -34,6 +37,33 @@ public class BrokerAndSortedReplicas {
 
   public NavigableSet<Replica> sortedReplicas() {
     return sortedReplicas;
+  }
+
+  /**
+   * Get sorted replicas to move out of this broker, which are filtered based on the state of the cluster.
+   *
+   * If cluster has dead brokers, but this broker is alive, then replicas to move out are limited to the immigrants.
+   *
+   * @param clusterModel The state of the cluster.
+   * @return sorted replicas to move out of this broker, which are filtered based on the state of the cluster.
+   */
+  public List<Replica> replicasToMoveOut(ClusterModel clusterModel) {
+    List<Replica> replicasToMoveOut = new ArrayList<>(sortedReplicas());
+    // Cluster has offline replicas, but this overloaded broker is alive -- we can move out only the immigrant replicas.
+    if (!clusterModel.deadBrokers().isEmpty() && _broker.isAlive()) {
+      // 1. Find the index of the element that is not an immigrant.
+      int nonImmigrantIndex = 0;
+      for (Replica replica : replicasToMoveOut) {
+        if (!_broker.immigrantReplicas().contains(replica)) {
+          break;
+        }
+        nonImmigrantIndex++;
+      }
+      // 2. Prune non immigrant replicas.
+      replicasToMoveOut.subList(nonImmigrantIndex, replicasToMoveOut.size()).clear();
+    }
+
+    return replicasToMoveOut;
   }
 
   @Override
