@@ -576,7 +576,7 @@ public class GoalOptimizer implements Runnable {
   public static class OptimizerResult {
     private final Map<String, Goal.ClusterModelStatsComparator> _clusterModelStatsComparatorByGoalName;
     private final Map<String, ClusterModelStats> _statsByGoalName;
-    private final Set<ExecutionProposal> _optimizationProposals;
+    private final Set<ExecutionProposal> _proposals;
     private final Set<String> _violatedGoalNamesBeforeOptimization;
     private final Set<String> _violatedGoalNamesAfterOptimization;
     private final BrokerStats _brokerStatsBeforeOptimization;
@@ -589,7 +589,7 @@ public class GoalOptimizer implements Runnable {
     OptimizerResult(Map<Goal, ClusterModelStats> statsByGoalPriority,
                     Set<String> violatedGoalNamesBeforeOptimization,
                     Set<String> violatedGoalNamesAfterOptimization,
-                    Set<ExecutionProposal> optimizationProposals,
+                    Set<ExecutionProposal> proposals,
                     BrokerStats brokerStatsBeforeOptimization,
                     BrokerStats brokerStatsAfterOptimization,
                     ModelGeneration modelGeneration,
@@ -607,7 +607,7 @@ public class GoalOptimizer implements Runnable {
 
       _violatedGoalNamesBeforeOptimization = violatedGoalNamesBeforeOptimization;
       _violatedGoalNamesAfterOptimization = violatedGoalNamesAfterOptimization;
-      _optimizationProposals = optimizationProposals;
+      _proposals = proposals;
       _brokerStatsBeforeOptimization = brokerStatsBeforeOptimization;
       _brokerStatsAfterOptimization = brokerStatsAfterOptimization;
       _modelGeneration = modelGeneration;
@@ -625,7 +625,7 @@ public class GoalOptimizer implements Runnable {
     }
 
     public Set<ExecutionProposal> goalProposals() {
-      return _optimizationProposals;
+      return _proposals;
     }
 
     public Set<String> violatedGoalsBeforeOptimization() {
@@ -676,7 +676,7 @@ public class GoalOptimizer implements Runnable {
       Integer numReplicaMovements = 0;
       Integer numLeaderMovements = 0;
       long dataToMove = 0L;
-      for (ExecutionProposal p : _optimizationProposals) {
+      for (ExecutionProposal p : _proposals) {
         if (!p.replicasToAdd().isEmpty() || !p.replicasToRemove().isEmpty()) {
           numReplicaMovements++;
           dataToMove += p.dataToMoveInMB();
