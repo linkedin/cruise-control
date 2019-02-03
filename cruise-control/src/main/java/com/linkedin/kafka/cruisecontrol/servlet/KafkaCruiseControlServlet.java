@@ -380,7 +380,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private boolean addOrRemoveBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
       throws Exception {
-    AddedOrRemovedBrokerParameters parameters = new AddedOrRemovedBrokerParameters(request);
+    AddedOrRemovedBrokerParameters parameters = new AddedOrRemovedBrokerParameters(request, _config);
     if (parameters.parseParameters(response)) {
       // Failed to parse parameters.
       return true;
@@ -417,7 +417,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private boolean rebalance(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    RebalanceParameters parameters = new RebalanceParameters(request);
+    RebalanceParameters parameters = new RebalanceParameters(request, _config);
     if (parameters.parseParameters(response)) {
       // Failed to parse parameters.
       return true;
@@ -443,7 +443,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private boolean demoteBroker(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    DemoteBrokerParameters parameters = new DemoteBrokerParameters(request);
+    DemoteBrokerParameters parameters = new DemoteBrokerParameters(request, _config);
     if (parameters.parseParameters(response)) {
       // Failed to parse parameters.
       return true;

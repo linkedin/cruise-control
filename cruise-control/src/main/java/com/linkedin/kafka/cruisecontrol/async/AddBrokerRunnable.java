@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
@@ -16,7 +17,7 @@ import java.util.regex.Pattern;
 /**
  * The async runnable for {@link KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List,
  * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer,
- * Integer, boolean, Pattern, List, String, boolean, boolean)}
+ * Integer, boolean, Pattern, ReplicaMovementStrategy, String, boolean, boolean)}
  */
 class AddBrokerRunnable extends OperationRunnable {
   private final Collection<Integer> _brokerIds;
@@ -32,7 +33,7 @@ class AddBrokerRunnable extends OperationRunnable {
   private final String _uuid;
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
-  private final List<String> _replicaMovementStrategies;
+  private final ReplicaMovementStrategy _replicaMovementStrategy;
 
   AddBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture future,
@@ -51,7 +52,7 @@ class AddBrokerRunnable extends OperationRunnable {
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
-    _replicaMovementStrategies = parameters.replicaMovementStrategies();
+    _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _uuid = uuid;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
@@ -70,7 +71,7 @@ class AddBrokerRunnable extends OperationRunnable {
                                                                  _concurrentLeaderMovements,
                                                                  _skipHardGoalCheck,
                                                                  _excludedTopics,
-                                                                 _replicaMovementStrategies,
+                                                                 _replicaMovementStrategy,
                                                                  _uuid,
                                                                  _excludeRecentlyDemotedBrokers,
                                                                  _excludeRecentlyRemovedBrokers));

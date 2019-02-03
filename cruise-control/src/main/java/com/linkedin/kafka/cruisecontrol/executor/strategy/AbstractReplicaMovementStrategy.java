@@ -48,7 +48,7 @@ public abstract class AbstractReplicaMovementStrategy implements ReplicaMovement
 
       @Override
       public String name() {
-        return current.name() + "And" + strategy.name();
+        return current.name() + "," + strategy.name();
       }
     };
   }
