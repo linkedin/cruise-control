@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.FixOfflineReplicasParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
@@ -14,8 +15,8 @@ import java.util.regex.Pattern;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern, String,
- * boolean, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern,
+ * ReplicaMovementStrategy, String, boolean, boolean)}
  */
 class FixOfflineReplicasRunnable extends OperationRunnable {
   private final boolean _dryRun;
@@ -29,6 +30,7 @@ class FixOfflineReplicasRunnable extends OperationRunnable {
   private final String _uuid;
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
+  private final ReplicaMovementStrategy _replicaMovementStrategy;
 
   FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
                              OperationFuture future,
@@ -48,6 +50,7 @@ class FixOfflineReplicasRunnable extends OperationRunnable {
     _uuid = uuid;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
+    _replicaMovementStrategy = parameters.replicaMovementStrategy();
   }
 
   @Override
@@ -55,8 +58,8 @@ class FixOfflineReplicasRunnable extends OperationRunnable {
     return new OptimizationResult(_kafkaCruiseControl.fixOfflineReplicas(_dryRun, _goals, _modelCompletenessRequirements,
                                                                          _future.operationProgress(), _allowCapacityEstimation,
                                                                          _concurrentPartitionMovements, _concurrentLeaderMovements,
-                                                                         _skipHardGoalCheck, _excludedTopics, _uuid,
-                                                                         _excludeRecentlyDemotedBrokers,
+                                                                         _skipHardGoalCheck, _excludedTopics, _replicaMovementStrategy,
+                                                                         _uuid, _excludeRecentlyDemotedBrokers,
                                                                          _excludeRecentlyRemovedBrokers));
   }
 }

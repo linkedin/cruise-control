@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
 import javax.servlet.http.HttpServletRequest;
@@ -20,7 +22,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]&amp;concurrent_leader_movements=[POSITIVE-INTEGER]
  *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
  *    &amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]&amp;exclude_recently_demoted_brokers=[true/false]
- *    &amp;exclude_recently_removed_brokers=[true/false]
+ *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  *
  * 2. Add a broker
  *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]
@@ -28,7 +30,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]&amp;concurrent_leader_movements=[POSITIVE-INTEGER]
  *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
  *    &amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]&amp;exclude_recently_demoted_brokers=[true/false]
- *    &amp;exclude_recently_removed_brokers=[true/false]
+ *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  * </pre>
  */
 public class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParameters {
@@ -38,9 +40,12 @@ public class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParamet
   private boolean _dryRun;
   private boolean _throttleAddedOrRemovedBrokers;
   private boolean _skipHardGoalCheck;
+  private ReplicaMovementStrategy _replicaMovementStrategy;
+  private final KafkaCruiseControlConfig _config;
 
-  public AddedOrRemovedBrokerParameters(HttpServletRequest request) {
+  public AddedOrRemovedBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request);
+    _config = config;
   }
 
   @Override
@@ -52,6 +57,7 @@ public class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParamet
     _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
+    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
   }
 
   public List<Integer> brokerIds() {
@@ -76,5 +82,9 @@ public class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParamet
 
   public boolean skipHardGoalCheck() {
     return _skipHardGoalCheck;
+  }
+
+  public ReplicaMovementStrategy replicaMovementStrategy() {
+    return _replicaMovementStrategy;
   }
 }

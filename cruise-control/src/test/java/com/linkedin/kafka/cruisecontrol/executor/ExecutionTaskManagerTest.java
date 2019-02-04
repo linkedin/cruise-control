@@ -63,7 +63,8 @@ public class ExecutionTaskManagerTest {
       taskManager.setExecutionModeForTaskTracker(false);
       taskManager.addExecutionProposals(Collections.singletonList(proposal),
                                         Collections.emptySet(),
-                                        generateExpectedCluster(proposal, tp));
+                                        generateExpectedCluster(proposal, tp),
+                                        null);
       taskManager.setRequestedPartitionMovementConcurrency(null);
       taskManager.setRequestedLeadershipMovementConcurrency(null);
       List<ExecutionTask> tasks = taskManager.getReplicaMovementTasks();

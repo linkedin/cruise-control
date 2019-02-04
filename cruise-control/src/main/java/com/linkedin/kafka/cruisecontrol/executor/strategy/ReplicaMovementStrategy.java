@@ -40,4 +40,9 @@ public interface ReplicaMovementStrategy {
    * @return The comparator of task.
    */
   Comparator<ExecutionTask> taskComparator(Cluster cluster);
+
+  /**
+   * Get the name of this strategy. Name of a strategy provides an identification for the strategy in human readable format.
+   */
+  String name();
 }

@@ -382,15 +382,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private boolean addRemoveOrFixBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
       throws Exception {
-
     GoalBasedOptimizationParameters parameters;
     switch (endPoint) {
       case ADD_BROKER:
       case REMOVE_BROKER:
-        parameters = new AddedOrRemovedBrokerParameters(request);
+        parameters = new AddedOrRemovedBrokerParameters(request, _config);
         break;
       case FIX_OFFLINE_REPLICAS:
-        parameters = new FixOfflineReplicasParameters(request);
+        parameters = new FixOfflineReplicasParameters(request, _config);
         break;
       default:
         // Should never reach here.
@@ -446,7 +445,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private boolean rebalance(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    RebalanceParameters parameters = new RebalanceParameters(request);
+    RebalanceParameters parameters = new RebalanceParameters(request, _config);
     if (parameters.parseParameters(response)) {
       // Failed to parse parameters.
       return true;
@@ -472,7 +471,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private boolean demoteBroker(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    DemoteBrokerParameters parameters = new DemoteBrokerParameters(request);
+    DemoteBrokerParameters parameters = new DemoteBrokerParameters(request, _config);
     if (parameters.parseParameters(response)) {
       // Failed to parse parameters.
       return true;

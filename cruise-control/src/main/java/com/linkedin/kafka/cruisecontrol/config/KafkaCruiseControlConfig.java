@@ -22,6 +22,9 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionG
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.PostponeUrpReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeLargeReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeSmallReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
@@ -440,11 +443,18 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       "will also reduce the controller burden.";
 
   /**
-   * <code>execution.task.strategy</code>
+   * <code>replica.movement.strategies</code>
    */
   public static final String REPLICA_MOVEMENT_STRATEGIES_CONFIG = "replica.movement.strategies";
-  private static final String REPLICA_MOVEMENT_STRATEGIES_DOC = "A list of strategies used to determine execution order for "
-      + "generated partition movement tasks.";
+  private static final String REPLICA_MOVEMENT_STRATEGIES_DOC = "A list of supported strategies used to determine execution order "
+      + "for generated partition movement tasks.";
+
+  /**
+   * <code>default.replica.movement.strategies</code>
+   */
+  public static final String DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG = "default.replica.movement.strategies";
+  private static final String DEFAULT_REPLICA_MOVEMENT_STRATEGIES_DOC = "The list of replica movement strategies that will be used "
+      + "by default if no replica movement strategy list is provided.";
 
   /**
    * <code>execution.progress.check.interval.ms</code>
@@ -1004,9 +1014,18 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 NUM_CONCURRENT_LEADER_MOVEMENTS_DOC)
         .define(REPLICA_MOVEMENT_STRATEGIES_CONFIG,
                 ConfigDef.Type.LIST,
-                BaseReplicaMovementStrategy.class.getName(),
+                new StringJoiner(",")
+                    .add(PostponeUrpReplicaMovementStrategy.class.getName())
+                    .add(PrioritizeLargeReplicaMovementStrategy.class.getName())
+                    .add(PrioritizeSmallReplicaMovementStrategy.class.getName())
+                    .add(BaseReplicaMovementStrategy.class.getName()).toString(),
                 ConfigDef.Importance.MEDIUM,
                 REPLICA_MOVEMENT_STRATEGIES_DOC)
+        .define(DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG,
+                ConfigDef.Type.LIST,
+                BaseReplicaMovementStrategy.class.getName(),
+                ConfigDef.Importance.MEDIUM,
+                DEFAULT_REPLICA_MOVEMENT_STRATEGIES_DOC)
         .define(EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 10000L,
