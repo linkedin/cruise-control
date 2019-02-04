@@ -173,7 +173,8 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
-   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
+   *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
@@ -258,7 +259,8 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
-   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
+   *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
@@ -326,8 +328,8 @@ public class KafkaCruiseControl {
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
-   * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
-   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
+   *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
@@ -379,7 +381,8 @@ public class KafkaCruiseControl {
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipUrpDemotion Whether operate on partitions which are currently under replicated.
    * @param excludeFollowerDemotion Whether operate on the partitions which only have follower replicas on the brokers.
-   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
+   *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @return the optimization result.
@@ -709,7 +712,8 @@ public class KafkaCruiseControl {
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
+   *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
    */
   private void executeProposals(Collection<ExecutionProposal> proposals,
@@ -735,7 +739,8 @@ public class KafkaCruiseControl {
    *                                     (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
+   *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
    */
   private void executeRemoval(Collection<ExecutionProposal> proposals,
@@ -759,7 +764,8 @@ public class KafkaCruiseControl {
    * @param demotedBrokers Brokers to be demoted.
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
-   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
+   *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
    */
   private void executeDemotion(Collection<ExecutionProposal> proposals,
