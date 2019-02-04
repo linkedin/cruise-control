@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
 
@@ -18,6 +20,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
+ *    &amp;replica_movement_strategies=[strategy1,strategy2...]
  * </pre>
  */
 public class RebalanceParameters extends GoalBasedOptimizationParameters {
@@ -25,9 +28,12 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   private Integer _concurrentPartitionMovements;
   private Integer _concurrentLeaderMovements;
   private boolean _skipHardGoalCheck;
+  private ReplicaMovementStrategy _replicaMovementStrategy;
+  private final KafkaCruiseControlConfig _config;
 
-  public RebalanceParameters(HttpServletRequest request) {
+  public RebalanceParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request);
+    _config = config;
   }
 
   @Override
@@ -37,6 +43,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
     _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
+    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
   }
 
   public boolean dryRun() {
@@ -53,5 +60,9 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
 
   public boolean skipHardGoalCheck() {
     return _skipHardGoalCheck;
+  }
+
+  public ReplicaMovementStrategy replicaMovementStrategy() {
+    return _replicaMovementStrategy;
   }
 }

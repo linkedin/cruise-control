@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collection;
@@ -12,7 +13,8 @@ import java.util.Collection;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#demoteBrokers(Collection, boolean,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, boolean, boolean, String, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, boolean, boolean,
+ * ReplicaMovementStrategy, String, boolean)}
  */
 public class DemoteBrokerRunnable extends OperationRunnable {
   private final Collection<Integer> _brokerIds;
@@ -23,6 +25,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
   private final boolean _excludeFollowerDemotion;
   private final String _uuid;
   private final boolean _excludeRecentlyDemotedBrokers;
+  private final ReplicaMovementStrategy _replicaMovementStrategy;
 
   DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                        OperationFuture future,
@@ -35,6 +38,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _skipUrpDemotion = parameters.skipUrpDemotion();
     _excludeFollowerDemotion = parameters.excludeFollowerDemotion();
+    _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _uuid = uuid;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
   }
@@ -48,6 +52,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
                                                                     _concurrentLeaderMovements,
                                                                     _skipUrpDemotion,
                                                                     _excludeFollowerDemotion,
+                                                                    _replicaMovementStrategy,
                                                                     _uuid,
                                                                     _excludeRecentlyDemotedBrokers));
   }

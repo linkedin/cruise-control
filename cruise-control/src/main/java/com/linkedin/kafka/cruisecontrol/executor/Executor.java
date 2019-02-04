@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -137,7 +138,7 @@ public class Executor {
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
                                  config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
-                                 config.getList(KafkaCruiseControlConfig.REPLICA_MOVEMENT_STRATEGIES_CONFIG),
+                                 config.getList(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG),
                                  dropwizardMetricRegistry,
                                  time);
     _metadataClient = metadataClient != null
@@ -243,6 +244,7 @@ public class Executor {
    *                                              (if null, use num.concurrent.partition.movements.per.broker).
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
    *                                               (if null, use num.concurrent.leader.movements).
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
@@ -251,9 +253,10 @@ public class Executor {
                                             LoadMonitor loadMonitor,
                                             Integer requestedPartitionMovementConcurrency,
                                             Integer requestedLeadershipMovementConcurrency,
+                                            ReplicaMovementStrategy replicaMovementStrategy,
                                             String uuid) {
     initProposalExecution(proposals, unthrottledBrokers, loadMonitor, requestedPartitionMovementConcurrency,
-                          requestedLeadershipMovementConcurrency, uuid);
+                          requestedLeadershipMovementConcurrency, replicaMovementStrategy, uuid);
     startExecution(loadMonitor, null, removedBrokers);
   }
 
@@ -262,6 +265,7 @@ public class Executor {
                                                   LoadMonitor loadMonitor,
                                                   Integer requestedPartitionMovementConcurrency,
                                                   Integer requestedLeadershipMovementConcurrency,
+                                                  ReplicaMovementStrategy replicaMovementStrategy,
                                                   String uuid) {
     if (_hasOngoingExecution) {
       throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
@@ -271,7 +275,8 @@ public class Executor {
       throw new IllegalArgumentException("Load monitor cannot be null.");
     }
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
-    _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, _metadataClient.refreshMetadata().cluster());
+    _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, _metadataClient.refreshMetadata().cluster(),
+                                                replicaMovementStrategy);
     setRequestedPartitionMovementConcurrency(requestedPartitionMovementConcurrency);
     setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     if (uuid == null) {
@@ -289,6 +294,7 @@ public class Executor {
    * @param concurrentSwaps The number of concurrent swap operations per broker.
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
    *                                               (if null, use num.concurrent.leader.movements).
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    */
   public synchronized void executeDemoteProposals(Collection<ExecutionProposal> proposals,
@@ -296,8 +302,10 @@ public class Executor {
                                                   LoadMonitor loadMonitor,
                                                   Integer concurrentSwaps,
                                                   Integer requestedLeadershipMovementConcurrency,
+                                                  ReplicaMovementStrategy replicaMovementStrategy,
                                                   String uuid) {
-    initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, requestedLeadershipMovementConcurrency, uuid);
+    initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, requestedLeadershipMovementConcurrency,
+                          replicaMovementStrategy, uuid);
     startExecution(loadMonitor, demotedBrokers, null);
   }
 

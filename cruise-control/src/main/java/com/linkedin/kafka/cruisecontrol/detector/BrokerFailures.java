@@ -50,7 +50,7 @@ public class BrokerFailures extends KafkaAnomaly {
       _kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(), false, false,
                                              Collections.emptyList(), null, new OperationProgress(),
                                               _allowCapacityEstimation, null, null,
-                                              false, null, null,
+                                              false, null, null, null,
                                               _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
     }
   }

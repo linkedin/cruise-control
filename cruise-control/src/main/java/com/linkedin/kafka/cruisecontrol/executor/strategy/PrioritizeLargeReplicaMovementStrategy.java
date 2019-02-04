@@ -17,4 +17,12 @@ public class PrioritizeLargeReplicaMovementStrategy extends AbstractReplicaMovem
   public Comparator<ExecutionTask> taskComparator(Cluster cluster) {
     return (task1, task2) -> (int) (task2.proposal().dataToMoveInMB() - task1.proposal().dataToMoveInMB());
   }
+
+  /**
+   * Get the name of this strategy. Name of a strategy provides an identification for the strategy in human readable format.
+   */
+  @Override
+  public String name() {
+    return PrioritizeLargeReplicaMovementStrategy.class.getSimpleName();
+  }
 }
