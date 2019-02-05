@@ -45,10 +45,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlSta
  */
 public class GoalViolationDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolationDetector.class);
-  // TODO: Make this configurable.
-  private static final boolean EXCLUDE_RECENTLY_DEMOTED_BROKERS = true;
-  // TODO: Make this configurable.
-  private static final boolean EXCLUDE_RECENTLY_REMOVED_BROKERS = true;
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final LoadMonitor _loadMonitor;
   private final SortedMap<Integer, Goal> _goals;
@@ -57,6 +53,8 @@ public class GoalViolationDetector implements Runnable {
   private ModelGeneration _lastCheckedModelGeneration;
   private final Pattern _excludedTopics;
   private final boolean _allowCapacityEstimation;
+  private final boolean _excludeRecentlyDemotedBrokers;
+  private final boolean _excludeRecentlyRemovedBrokers;
 
   public GoalViolationDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
@@ -70,6 +68,8 @@ public class GoalViolationDetector implements Runnable {
     _time = time;
     _excludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
     _allowCapacityEstimation = config.getBoolean(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
+    _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
+    _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
     _kafkaCruiseControl = kafkaCruiseControl;
   }
 
@@ -112,22 +112,22 @@ public class GoalViolationDetector implements Runnable {
     AutoCloseable clusterModelSemaphore = null;
     try {
       GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation,
-                                                         EXCLUDE_RECENTLY_DEMOTED_BROKERS, EXCLUDE_RECENTLY_REMOVED_BROKERS);
+                                                         _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
       long now = _time.milliseconds();
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
 
       // Retrieve excluded brokers for leadership and replica move.
       ExecutorState executorState = null;
-      if (EXCLUDE_RECENTLY_DEMOTED_BROKERS || EXCLUDE_RECENTLY_REMOVED_BROKERS) {
+      if (_excludeRecentlyDemotedBrokers || _excludeRecentlyRemovedBrokers) {
         executorState = _kafkaCruiseControl.state(new OperationProgress(), Collections.singleton(EXECUTOR)).executorState();
       }
 
-      Set<Integer> excludedBrokersForLeadership = EXCLUDE_RECENTLY_DEMOTED_BROKERS ? executorState.recentlyDemotedBrokers()
-                                                                                   : Collections.emptySet();
+      Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
+                                                                                 : Collections.emptySet();
 
-      Set<Integer> excludedBrokersForReplicaMove = EXCLUDE_RECENTLY_DEMOTED_BROKERS ? executorState.recentlyRemovedBrokers()
-                                                                                    : Collections.emptySet();
+      Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
+                                                                                  : Collections.emptySet();
 
       for (Map.Entry<Integer, Goal> entry : _goals.entrySet()) {
         Goal goal = entry.getValue();

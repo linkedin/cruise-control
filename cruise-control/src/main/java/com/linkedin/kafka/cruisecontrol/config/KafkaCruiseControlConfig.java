@@ -528,6 +528,20 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "are excluded from optimizations during broker failure self healing, false otherwise.";
 
   /**
+   * <code>goal.violation.exclude.recently.demoted.brokers</code>
+   */
+  public static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG = "goal.violation.exclude.recently.demoted.brokers";
+  private static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC = "True if recently demoted brokers "
+      + "are excluded from optimizations during goal violation self healing, false otherwise.";
+
+  /**
+   * <code>goal.violation.exclude.recently.removed.brokers</code>
+   */
+  public static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG = "goal.violation.exclude.recently.removed.brokers";
+  private static final String GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC = "True if recently removed brokers "
+      + "are excluded from optimizations during goal violation self healing, false otherwise.";
+
+  /**
    * <code>failed.brokers.zk.path</code>
    */
   public static final String FAILED_BROKERS_ZK_PATH_CONFIG = "failed.brokers.zk.path";
@@ -1106,6 +1120,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 true,
                 ConfigDef.Importance.MEDIUM,
                 BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
+        .define(GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                true,
+                ConfigDef.Importance.MEDIUM,
+                GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
+        .define(GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                true,
+                ConfigDef.Importance.MEDIUM,
+                GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
         .define(FAILED_BROKERS_ZK_PATH_CONFIG,
                 ConfigDef.Type.STRING,
                 DEFAULT_FAILED_BROKERS_ZK_PATH,
