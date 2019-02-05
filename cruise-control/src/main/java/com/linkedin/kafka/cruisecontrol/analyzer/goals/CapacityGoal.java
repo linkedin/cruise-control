@@ -163,8 +163,10 @@ public abstract class CapacityGoal extends AbstractGoal {
     double allowedCapacity = clusterModel.capacityFor(resource()) * _balancingConstraint.capacityThreshold(resource());
 
     if (allowedCapacity < existingUtilization) {
-      throw new OptimizationFailureException("Insufficient healthy cluster capacity for resource:" + resource() +
-          " existing cluster utilization " + existingUtilization + " allowed capacity " + allowedCapacity);
+      throw new OptimizationFailureException(
+          String.format("Insufficient healthy cluster capacity for resource: %s existing cluster utilization %f allowed "
+                            + "capacity %f (capacity threshold: %f).", resource(), existingUtilization, allowedCapacity,
+                        _balancingConstraint.capacityThreshold(resource())));
     }
     clusterModel.trackSortedReplicas(sortName(),
                                      ReplicaSortFunctionFactory.deprioritizeImmigrants(),

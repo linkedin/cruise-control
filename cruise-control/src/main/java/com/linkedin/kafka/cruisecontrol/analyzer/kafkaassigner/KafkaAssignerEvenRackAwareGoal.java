@@ -315,12 +315,16 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
           maxReplicationFactorOfIncludedTopics =
               Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
           if (maxReplicationFactorOfIncludedTopics > numAliveRacks) {
-            throw new OptimizationFailureException("Insufficient number of racks to distribute included replicas.");
+            throw new OptimizationFailureException(
+                String.format("Insufficient number of racks to distribute included replicas (Current: %d, Needed: %d).",
+                              numAliveRacks, maxReplicationFactorOfIncludedTopics));
           }
         }
       }
     } else if (clusterModel.maxReplicationFactor() > numAliveRacks) {
-      throw new OptimizationFailureException("Insufficient number of racks to distribute each replica.");
+      throw new OptimizationFailureException(
+          String.format("Insufficient number of racks to distribute each replica (Current: %d, Needed: %d).",
+                        numAliveRacks, clusterModel.maxReplicationFactor()));
     }
   }
 
