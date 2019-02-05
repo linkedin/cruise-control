@@ -750,10 +750,12 @@ public class LoadMonitor {
    * Background task to clean up the partition metric samples in case of topic deletion.
    *
    * Due to Kafka bugs, the returned metadata may not contain all the topics during broker bounce.
-   * To handle that, we refresh metadata a few times and take a union of all the topics seen as the existing topics.
+   * To handle that, we refresh metadata a few times and take a union of all the topics seen as the existing topics
+   * -- in intervals of ({@link #CHECK_INTERVAL_MS} * {@link #REFRESH_LIMIT}).
    */
   private class PartitionMetricSampleAggregatorCleaner implements Runnable {
-    static final long CHECK_INTERVAL_MS = 30000;
+    static final long CHECK_INTERVAL_MS = 37500;
+    static final short REFRESH_LIMIT = 8;
     // A set remember all the topics seen from last metadata refresh.
     private final Set<String> _allTopics = new HashSet<>();
     // The metadata refresh count.
@@ -762,7 +764,7 @@ public class LoadMonitor {
     public void run() {
       _allTopics.addAll(_metadataClient.refreshMetadata().cluster().topics());
       _refreshCount++;
-      if (_refreshCount % 10 == 0) {
+      if (_refreshCount % REFRESH_LIMIT == 0) {
         _partitionMetricSampleAggregator.retainEntityGroup(_allTopics);
         _allTopics.clear();
       }
