@@ -514,6 +514,20 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "violated.";
 
   /**
+   * <code>broker.failure.exclude.recently.demoted.brokers</code>
+   */
+  public static final String BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG = "broker.failure.exclude.recently.demoted.brokers";
+  private static final String BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC = "True if recently demoted brokers "
+      + "are excluded from optimizations during broker failure self healing, false otherwise.";
+
+  /**
+   * <code>broker.failure.exclude.recently.removed.brokers</code>
+   */
+  public static final String BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG = "broker.failure.exclude.recently.removed.brokers";
+  private static final String BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC = "True if recently removed brokers "
+      + "are excluded from optimizations during broker failure self healing, false otherwise.";
+
+  /**
    * <code>failed.brokers.zk.path</code>
    */
   public static final String FAILED_BROKERS_ZK_PATH_CONFIG = "failed.brokers.zk.path";
@@ -1082,6 +1096,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(DiskCapacityGoal.class.getName()).toString(),
                 ConfigDef.Importance.MEDIUM,
                 ANOMALY_DETECTION_GOALS_DOC)
+        .define(BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                true,
+                ConfigDef.Importance.MEDIUM,
+                BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
+        .define(BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                true,
+                ConfigDef.Importance.MEDIUM,
+                BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
         .define(FAILED_BROKERS_ZK_PATH_CONFIG,
                 ConfigDef.Type.STRING,
                 DEFAULT_FAILED_BROKERS_ZK_PATH,
