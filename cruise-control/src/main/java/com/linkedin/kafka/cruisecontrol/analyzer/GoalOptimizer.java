@@ -267,8 +267,7 @@ public class GoalOptimizer implements Runnable {
 
   private boolean validCachedProposal() {
     synchronized (_cacheLock) {
-      return _bestProposal != null
-             && _bestProposal.modelGeneration().equals(_loadMonitor.clusterModelGeneration());
+      return _bestProposal != null && !_bestProposal.modelGeneration().isStale(_loadMonitor.clusterModelGeneration());
     }
   }
 
@@ -368,7 +367,10 @@ public class GoalOptimizer implements Runnable {
           }
         }
       }
-      LOG.debug("Returning optimization result from cache. Cached generation: {}", _bestProposal.modelGeneration());
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Returning optimization result from cache. Model generation (cached: {}, current: {}).",
+                  _bestProposal.modelGeneration(), _loadMonitor.clusterModelGeneration());
+      }
       // If the cached proposals are estimated, and the user requested for no estimation, we invalidate the cache and
       // calculate best proposals just once. If the returned result still involves an estimation, throw an exception.
       KafkaCruiseControl.sanityCheckCapacityEstimation(allowCapacityEstimation, _bestProposal.capacityEstimationInfoByBrokerId());
