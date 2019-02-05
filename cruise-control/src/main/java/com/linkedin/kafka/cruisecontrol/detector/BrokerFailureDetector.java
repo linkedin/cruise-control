@@ -38,10 +38,6 @@ import static java.util.stream.Collectors.toSet;
  */
 public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
-  // TODO: Make this configurable.
-  private static final boolean EXCLUDE_RECENTLY_DEMOTED_BROKERS = true;
-  // TODO: Make this configurable.
-  private static final boolean EXCLUDE_RECENTLY_REMOVED_BROKERS = true;
   private static final long MAX_METADATA_WAIT_MS = 60000L;
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
@@ -54,6 +50,8 @@ public class BrokerFailureDetector {
   private final Queue<Anomaly> _anomalies;
   private final Time _time;
   private final boolean _allowCapacityEstimation;
+  private final boolean _excludeRecentlyDemotedBrokers;
+  private final boolean _excludeRecentlyRemovedBrokers;
 
   public BrokerFailureDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
@@ -72,6 +70,8 @@ public class BrokerFailureDetector {
     _time = time;
     _kafkaCruiseControl = kafkaCruiseControl;
     _allowCapacityEstimation = config.getBoolean(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
+    _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
+    _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
   }
 
   void startDetection() {
@@ -166,8 +166,8 @@ public class BrokerFailureDetector {
       _anomalies.add(new BrokerFailures(_kafkaCruiseControl,
                                         failedBrokers,
                                         _allowCapacityEstimation,
-                                        EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                        EXCLUDE_RECENTLY_REMOVED_BROKERS));
+                                        _excludeRecentlyDemotedBrokers,
+                                        _excludeRecentlyRemovedBrokers));
     }
   }
 
