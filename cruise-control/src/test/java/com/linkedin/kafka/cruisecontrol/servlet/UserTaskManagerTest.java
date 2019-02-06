@@ -127,6 +127,7 @@ public class UserTaskManagerTest {
     EasyMock.expect(mockUUIDGenerator.randomUUID()).andReturn(testUserTaskId).anyTimes();
 
     HttpSession mockHttpSession = EasyMock.mock(HttpSession.class);
+    // Change mock session's last access time to always return current time to avoid unintended recycling of session.
     EasyMock.expect(mockHttpSession.getLastAccessedTime()).andReturn(System.currentTimeMillis()).anyTimes();
 
     HttpServletRequest mockHttpServletRequest = prepareRequest(mockHttpSession, null);
