@@ -58,19 +58,21 @@ public class GoalViolations extends KafkaAnomaly {
   }
 
   @Override
-  public void fix() throws KafkaCruiseControlException {
+  public boolean fix() throws KafkaCruiseControlException {
     if (_violatedGoalsByFixability.get(false) == null) {
       try {
         // Fix the fixable goal violations with rebalance operation.
         _kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation,
                                       null, null, false, null,
                                       null, null, _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
+        return true;
       } catch (IllegalStateException e) {
         LOG.warn("Got exception when trying to fix the cluster for violated goals {}: {}", _violatedGoalsByFixability.get(true), e.getMessage());
       }
     } else {
       LOG.info("Skip fixing goal violations due to unfixable goal violations {} detected.", _violatedGoalsByFixability.get(false));
     }
+    return false;
   }
 
   @Override

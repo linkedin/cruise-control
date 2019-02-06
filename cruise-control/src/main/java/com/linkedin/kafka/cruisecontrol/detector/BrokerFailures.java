@@ -44,7 +44,7 @@ public class BrokerFailures extends KafkaAnomaly {
   }
 
   @Override
-  public void fix() throws KafkaCruiseControlException {
+  public boolean fix() throws KafkaCruiseControlException {
     // Fix the cluster by removing the failed brokers (mode: non-Kafka_assigner).
     if (_failedBrokers != null && !_failedBrokers.isEmpty()) {
       _kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(), false, false,
@@ -52,7 +52,9 @@ public class BrokerFailures extends KafkaAnomaly {
                                               _allowCapacityEstimation, null, null,
                                               false, null, null, null,
                                               _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
+      return true;
     }
+    return false;
   }
 
   @Override

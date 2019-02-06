@@ -199,17 +199,17 @@ public class AnomalyDetector {
             // Call the anomaly notifier to see if a fix is desired.
             if (anomaly instanceof BrokerFailures) {
               BrokerFailures brokerFailures = (BrokerFailures) anomaly;
-              _anomalyDetectorState.addAnomaly(AnomalyType.BROKER_FAILURE, brokerFailures);
+              _anomalyDetectorState.addAnomalyDetection(AnomalyType.BROKER_FAILURE, brokerFailures);
               notificationResult = _anomalyNotifier.onBrokerFailure(brokerFailures);
               _brokerFailureRate.mark();
             } else if (anomaly instanceof GoalViolations) {
               GoalViolations goalViolations = (GoalViolations) anomaly;
-              _anomalyDetectorState.addAnomaly(AnomalyType.GOAL_VIOLATION, goalViolations);
+              _anomalyDetectorState.addAnomalyDetection(AnomalyType.GOAL_VIOLATION, goalViolations);
               notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
               _goalViolationRate.mark();
             } else if (anomaly instanceof KafkaMetricAnomaly) {
               KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomaly;
-              _anomalyDetectorState.addAnomaly(AnomalyType.METRIC_ANOMALY, metricAnomaly);
+              _anomalyDetectorState.addAnomalyDetection(AnomalyType.METRIC_ANOMALY, metricAnomaly);
               notificationResult = _anomalyNotifier.onMetricAnomaly(metricAnomaly);
               _metricAnomalyRate.mark();
             }
@@ -290,10 +290,28 @@ public class AnomalyDetector {
       return false;
     }
 
+    private AnomalyType getAnomalyType(Anomaly anomaly) {
+      if (anomaly instanceof BrokerFailures) {
+        return AnomalyType.BROKER_FAILURE;
+      } else if (anomaly instanceof GoalViolations) {
+        return AnomalyType.GOAL_VIOLATION;
+      } else if (anomaly instanceof KafkaMetricAnomaly) {
+        return AnomalyType.METRIC_ANOMALY;
+      } else {
+        throw new IllegalStateException("Unrecognized type for anomaly " + anomaly);
+      }
+    }
+
     private void fixAnomaly(Anomaly anomaly) throws Exception {
       if (isFixable(anomaly)) {
         LOG.info("Fixing anomaly {}", anomaly);
-        anomaly.fix();
+        boolean startedSuccessfully = false;
+        try {
+          startedSuccessfully = anomaly.fix();
+        } finally {
+          _anomalyDetectorState.addSelfHealing(getAnomalyType(anomaly), startedSuccessfully);
+          LOG.info("Self-healing {}.", startedSuccessfully ? "started successfully" : "failed to start");
+        }
       }
 
       _anomalies.clear();

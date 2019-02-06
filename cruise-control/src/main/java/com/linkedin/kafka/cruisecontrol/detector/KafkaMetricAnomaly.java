@@ -82,9 +82,10 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
    * Fix the anomaly with the system.
    */
   @Override
-  public void fix() throws KafkaCruiseControlException {
+  public boolean fix() throws KafkaCruiseControlException {
     // TODO: Fix the cluster by removing the leadership from the brokers with metric anomaly (See PR#175: demote_broker).
     LOG.trace("Fix the cluster by removing the leadership from the broker: {}", _brokerEntity);
+    return false;
   }
 
   @Override

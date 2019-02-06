@@ -11,6 +11,8 @@ public interface Anomaly {
 
   /**
    * Fix the anomaly with the system.
+   *
+   * @return True if fix was started successfully, false otherwise.
    */
-  void fix() throws Exception;
+  boolean fix() throws Exception;
 }
