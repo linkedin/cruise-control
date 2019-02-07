@@ -275,14 +275,14 @@ public class Executor {
     if (loadMonitor == null) {
       throw new IllegalArgumentException("Load monitor cannot be null.");
     }
+    if (uuid == null) {
+      throw new IllegalStateException("UUID of the execution cannot be null.");
+    }
     _executionTaskManager.setExecutionModeForTaskTracker(_isKafkaAssignerMode);
     _executionTaskManager.addExecutionProposals(proposals, brokersToSkipConcurrencyCheck, _metadataClient.refreshMetadata().cluster(),
                                                 replicaMovementStrategy);
     setRequestedPartitionMovementConcurrency(requestedPartitionMovementConcurrency);
     setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
-    if (uuid == null) {
-      LOG.info("Executing a request triggered by an anomaly detector.");
-    }
     _uuid = uuid;
   }
 

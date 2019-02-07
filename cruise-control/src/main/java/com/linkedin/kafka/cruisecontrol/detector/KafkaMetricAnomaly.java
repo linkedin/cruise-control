@@ -6,9 +6,11 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.metricanomaly.MetricAnomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
 import java.util.List;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,12 +20,14 @@ import org.slf4j.LoggerFactory;
  * A Kafka metric anomaly indicates unexpected rapid changes in metric values of a broker.
  */
 public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
+  private static final String ID_PREFIX = AnomalyType.METRIC_ANOMALY.toString();
   private static final Logger LOG = LoggerFactory.getLogger(KafkaMetricAnomaly.class);
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final String _description;
   private final BrokerEntity _brokerEntity;
   private final Integer _metricId;
   private final List<Long> _windows;
+  private final String _anomalyId;
 
   /**
    * Kafka Metric anomaly
@@ -44,6 +48,7 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
     _brokerEntity = brokerEntity;
     _metricId = metricId;
     _windows = windows;
+    _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
   }
 
   /**
@@ -78,13 +83,19 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
     return _metricId;
   }
 
+  @Override
+  public String anomalyId() {
+    return _anomalyId;
+  }
+
   /**
    * Fix the anomaly with the system.
    */
   @Override
-  public void fix() throws KafkaCruiseControlException {
+  public boolean fix() throws KafkaCruiseControlException {
     // TODO: Fix the cluster by removing the leadership from the brokers with metric anomaly (See PR#175: demote_broker).
     LOG.trace("Fix the cluster by removing the leadership from the broker: {}", _brokerEntity);
+    return false;
   }
 
   @Override
