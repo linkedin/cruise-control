@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,6 +23,7 @@ import org.slf4j.LoggerFactory;
  * A class that holds all the goal violations.
  */
 public class GoalViolations extends KafkaAnomaly {
+  private static final String UUID_PREFIX = AnomalyType.GOAL_VIOLATION.toString();
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
   private final KafkaCruiseControl _kafkaCruiseControl;
   // The priority order of goals is maintained here.
@@ -28,6 +31,7 @@ public class GoalViolations extends KafkaAnomaly {
   private final boolean _allowCapacityEstimation;
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
+  private final String _anomalyId;
 
   public GoalViolations(KafkaCruiseControl kafkaCruiseControl,
                         boolean allowCapacityEstimation,
@@ -38,6 +42,7 @@ public class GoalViolations extends KafkaAnomaly {
     _violatedGoalsByFixability = new HashMap<>();
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
+    _anomalyId = String.format("%s-%s", UUID_PREFIX, UUID.randomUUID().toString().substring(UUID_PREFIX.length() + 1));
   }
 
   /**
@@ -58,13 +63,18 @@ public class GoalViolations extends KafkaAnomaly {
   }
 
   @Override
+  public String anomalyId() {
+    return _anomalyId;
+  }
+
+  @Override
   public boolean fix() throws KafkaCruiseControlException {
     if (_violatedGoalsByFixability.get(false) == null) {
       try {
         // Fix the fixable goal violations with rebalance operation.
         _kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation,
                                       null, null, false, null,
-                                      null, null, _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
+                                      null, _anomalyId, _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
         return true;
       } catch (IllegalStateException e) {
         LOG.warn("Got exception when trying to fix the cluster for violated goals {}: {}", _violatedGoalsByFixability.get(true), e.getMessage());

@@ -280,7 +280,7 @@ public class Executor {
     setRequestedPartitionMovementConcurrency(requestedPartitionMovementConcurrency);
     setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     if (uuid == null) {
-      LOG.info("Executing a request triggered by an anomaly detector.");
+      throw new IllegalStateException("UUID of the execution cannot be null.");
     }
     _uuid = uuid;
   }

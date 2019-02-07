@@ -4,10 +4,18 @@
 
 package com.linkedin.cruisecontrol.detector;
 
+import java.util.UUID;
+
+
 /**
  * The interface for an anomaly.
  */
 public interface Anomaly {
+
+  /**
+   * @return A unique identifier for the anomaly.
+   */
+  String anomalyId();
 
   /**
    * Fix the anomaly with the system.

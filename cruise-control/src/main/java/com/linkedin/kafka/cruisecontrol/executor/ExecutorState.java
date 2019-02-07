@@ -379,7 +379,7 @@ public class ExecutorState {
       case NO_TASK_IN_PROGRESS:
         break;
       case STARTING_EXECUTION:
-        execState.put(TRIGGERED_USER_TASK_ID, _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid);
+        execState.put(TRIGGERED_USER_TASK_ID, _uuid);
         break;
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         if (verbose) {
@@ -392,7 +392,7 @@ public class ExecutorState {
         execState.put(NUM_FINISHED_LEADERSHIP_MOVEMENTS, _numFinishedLeadershipMovements);
         execState.put(NUM_TOTAL_LEADERSHIP_MOVEMENTS, numTotalLeadershipMovements());
         execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _maximumConcurrentLeaderMovements);
-        execState.put(TRIGGERED_USER_TASK_ID, _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid);
+        execState.put(TRIGGERED_USER_TASK_ID, _uuid);
         break;
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
       case STOPPING_EXECUTION:
@@ -407,7 +407,7 @@ public class ExecutorState {
         execState.put(DEAD_PARTITIONS, _deadPartitionMovements);
         execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _maximumConcurrentLeaderMovements);
         execState.put(MAXIMUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentPartitionMovementsPerBroker);
-        execState.put(TRIGGERED_USER_TASK_ID, _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid);
+        execState.put(TRIGGERED_USER_TASK_ID, _uuid);
         if (verbose) {
           List<Object> inProgressPartitionMovementList = new ArrayList<>(_inProgressPartitionMovements.size());
           List<Object> abortingPartitionMovementList = new ArrayList<>(_abortingPartitionMovements.size());
@@ -458,12 +458,12 @@ public class ExecutorState {
         return String.format("{%s: %s%s%s}", STATE, _state, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case STARTING_EXECUTION:
         return String.format("{%s: %s, %s: %s%s%s}", STATE, _state, TRIGGERED_USER_TASK_ID,
-                             _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
+                             _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         return String.format("{%s: %s, finished/total leadership movements: %d/%d, "
                              + "maximum concurrent leadership movements: %d, %s: %s%s%s}", STATE, _state, _numFinishedLeadershipMovements,
                              numTotalLeadershipMovements(), _maximumConcurrentLeaderMovements, TRIGGERED_USER_TASK_ID,
-                             _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
+                             _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
       case STOPPING_EXECUTION:
         return String.format("{%s: %s, in-progress/aborting partitions: %d/%d, completed/total bytes(MB): %d/%d, "
@@ -474,8 +474,7 @@ public class ExecutorState {
                              _abortedPartitionMovements.size(), _deadPartitionMovements.size(),
                              numTotalPartitionMovements(), _numFinishedLeadershipMovements, numTotalLeadershipMovements(),
                              _maximumConcurrentLeaderMovements, _maximumConcurrentPartitionMovementsPerBroker,
-                             TRIGGERED_USER_TASK_ID, _uuid == null ? "Initiated-by-AnomalyDetector" : _uuid,
-                             recentlyDemotedBrokers, recentlyRemovedBrokers);
+                             TRIGGERED_USER_TASK_ID, _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
       default:
         throw new IllegalStateException("This should never happen");
     }
