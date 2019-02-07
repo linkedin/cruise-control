@@ -29,6 +29,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
 
@@ -188,6 +189,10 @@ public class AnomalyDetector {
             // Service has shutdown.
             break;
           }
+          // Add anomaly detection to anomaly detector state.
+          AnomalyType anomalyType = getAnomalyType(anomaly);
+          _anomalyDetectorState.addAnomalyDetection(anomalyType, anomaly);
+
           // We schedule a delayed check if the executor is doing some work.
           ExecutorState.State executorState = _kafkaCruiseControl.state(
               new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
@@ -197,21 +202,24 @@ public class AnomalyDetector {
           } else {
             AnomalyNotificationResult notificationResult = null;
             // Call the anomaly notifier to see if a fix is desired.
-            if (anomaly instanceof BrokerFailures) {
-              BrokerFailures brokerFailures = (BrokerFailures) anomaly;
-              _anomalyDetectorState.addAnomaly(AnomalyType.BROKER_FAILURE, brokerFailures);
-              notificationResult = _anomalyNotifier.onBrokerFailure(brokerFailures);
-              _brokerFailureRate.mark();
-            } else if (anomaly instanceof GoalViolations) {
-              GoalViolations goalViolations = (GoalViolations) anomaly;
-              _anomalyDetectorState.addAnomaly(AnomalyType.GOAL_VIOLATION, goalViolations);
-              notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
-              _goalViolationRate.mark();
-            } else if (anomaly instanceof KafkaMetricAnomaly) {
-              KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomaly;
-              _anomalyDetectorState.addAnomaly(AnomalyType.METRIC_ANOMALY, metricAnomaly);
-              notificationResult = _anomalyNotifier.onMetricAnomaly(metricAnomaly);
-              _metricAnomalyRate.mark();
+            switch (anomalyType) {
+              case GOAL_VIOLATION:
+                GoalViolations goalViolations = (GoalViolations) anomaly;
+                notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
+                _goalViolationRate.mark();
+                break;
+              case BROKER_FAILURE:
+                BrokerFailures brokerFailures = (BrokerFailures) anomaly;
+                notificationResult = _anomalyNotifier.onBrokerFailure(brokerFailures);
+                _brokerFailureRate.mark();
+                break;
+              case METRIC_ANOMALY:
+                KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomaly;
+                notificationResult = _anomalyNotifier.onMetricAnomaly(metricAnomaly);
+                _metricAnomalyRate.mark();
+                break;
+              default:
+                throw new IllegalStateException("Unrecognized anomaly type.");
             }
             // Take the requested action if provided.
             LOG.debug("Received notification result {}", notificationResult);
@@ -225,6 +233,8 @@ public class AnomalyDetector {
                   break;
                 default:
                   // let it go.
+                  _anomalyDetectorState.onAnomalyHandle(anomaly, AnomalyState.Status.IGNORED);
+                  break;
               }
             }
           }
@@ -247,53 +257,55 @@ public class AnomalyDetector {
     }
 
     private void checkWithDelay(Anomaly anomaly, long delay) {
-      // We only do delayed check for broker failures.
-      if (anomaly instanceof BrokerFailures) {
+      // Anomaly detector does delayed check for broker failures, otherwise it ignores the anomaly.
+      if (getAnomalyType(anomaly) == AnomalyType.BROKER_FAILURE) {
         LOG.debug("Scheduling broker failure detection with delay of {} ms", delay);
         _detectorScheduler.schedule(_brokerFailureDetector::detectBrokerFailures, delay, TimeUnit.MILLISECONDS);
+        _anomalyDetectorState.onAnomalyHandle(anomaly, AnomalyState.Status.CHECK_WITH_DELAY);
+      } else {
+        _anomalyDetectorState.onAnomalyHandle(anomaly, AnomalyState.Status.IGNORED);
       }
     }
 
     /**
-     * Check whether the given anomaly is fixable. An anomaly is fixable if it (1) meets completeness requirements
+     * Check whether the given anomaly is ready for fix. An anomaly is ready if it (1) meets completeness requirements
      * and (2) load monitor is not in an unexpected state.
      *
-     * @param anomaly The anomaly to check whether fixable or not.
-     * @return true if fixable, false otherwise.
+     * @param anomaly The anomaly to check whether it is ready for a fix or not.
+     * @return true if ready for a fix, false otherwise.
      */
-    private boolean isFixable(Anomaly anomaly) {
-      String skipMsg;
-      if (anomaly instanceof GoalViolations) {
-        skipMsg = "goal violation fix";
-      } else if (anomaly instanceof BrokerFailures) {
-        skipMsg = "broker failure fix";
-      } else if (anomaly instanceof KafkaMetricAnomaly) {
-        skipMsg = "metric anomaly fix";
-      } else {
-        throw new IllegalArgumentException("Unrecognized anomaly.");
-      }
-
+    private boolean isReadyToFix(Anomaly anomaly) {
+      String skipMsg = String.format("%s fix", getAnomalyType(anomaly));
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
 
       // Fixing anomalies is possible only when (1) the state is not in and unavailable state ( e.g. loading or
       // bootstrapping) and (2) the completeness requirements are met for all goals.
       if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
         LOG.info("Skipping {} because load monitor is in {} state.", skipMsg, loadMonitorTaskRunnerState);
+        _anomalyDetectorState.onAnomalyHandle(anomaly, AnomalyState.Status.LOAD_MONITOR_NOT_READY);
       } else {
         boolean meetCompletenessRequirements = _kafkaCruiseControl.meetCompletenessRequirements(Collections.emptyList());
         if (meetCompletenessRequirements) {
           return true;
         } else {
           LOG.debug("Skipping {} because load completeness requirement is not met for goals.", skipMsg);
+          _anomalyDetectorState.onAnomalyHandle(anomaly, AnomalyState.Status.COMPLETENESS_NOT_READY);
         }
       }
       return false;
     }
 
     private void fixAnomaly(Anomaly anomaly) throws Exception {
-      if (isFixable(anomaly)) {
+      if (isReadyToFix(anomaly)) {
         LOG.info("Fixing anomaly {}", anomaly);
-        anomaly.fix();
+        boolean startedSuccessfully = false;
+        try {
+          startedSuccessfully = anomaly.fix();
+        } finally {
+          _anomalyDetectorState.onAnomalyHandle(anomaly, startedSuccessfully ? AnomalyState.Status.FIX_STARTED
+                                                                             : AnomalyState.Status.FIX_FAILED_TO_START);
+          LOG.info("Self-healing {}.", startedSuccessfully ? "started successfully" : "failed to start");
+        }
       }
 
       _anomalies.clear();

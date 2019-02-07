@@ -10,7 +10,14 @@ package com.linkedin.cruisecontrol.detector;
 public interface Anomaly {
 
   /**
-   * Fix the anomaly with the system.
+   * @return A unique identifier for the anomaly.
    */
-  void fix() throws Exception;
+  String anomalyId();
+
+  /**
+   * Fix the anomaly with the system.
+   *
+   * @return True if fix was started successfully, false otherwise.
+   */
+  boolean fix() throws Exception;
 }
