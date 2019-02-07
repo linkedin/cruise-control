@@ -621,12 +621,14 @@ public class KafkaCruiseControl {
     if (concurrentPartitionMovements != null) {
       _executor.setRequestedPartitionMovementConcurrency(concurrentPartitionMovements);
       ongoingConcurrencyChangeRequest += String.format("Partition movement concurrency is set to %d%n", concurrentPartitionMovements);
+      LOG.warn("Partition movement concurrency is set to: {} by user.", concurrentPartitionMovements);
     }
     // 1.2. Change leadership concurrency.
     Integer concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     if (concurrentLeaderMovements != null) {
       _executor.setRequestedLeadershipMovementConcurrency(concurrentLeaderMovements);
       ongoingConcurrencyChangeRequest += String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements);
+      LOG.warn("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
     }
 
     // 2. Enable/disable the specified anomaly detectors
@@ -646,6 +648,10 @@ public class KafkaCruiseControl {
       selfHealingBefore.put(anomalyType, _anomalyDetector.setSelfHealingFor(anomalyType, true));
       _anomalyDetector.anomalyDetectorState().setSelfHealingFor(anomalyType, true);
       selfHealingAfter.put(anomalyType, true);
+    }
+
+    if (!disableSelfHealingFor.isEmpty() || !enableSelfHealingFor.isEmpty()) {
+      LOG.warn("Self healing state is modified by user (before: {} after: {}).", selfHealingBefore, selfHealingAfter);
     }
 
     return new AdminResult(selfHealingBefore,
