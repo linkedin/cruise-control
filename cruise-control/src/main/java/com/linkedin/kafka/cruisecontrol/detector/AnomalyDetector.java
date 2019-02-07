@@ -172,6 +172,22 @@ public class AnomalyDetector {
     return oldSelfHealingEnabled;
   }
 
+  private void addAnomalyDetectionState(AnomalyType anomalyType, Anomaly anomaly) {
+    switch (anomalyType) {
+      case GOAL_VIOLATION:
+        _anomalyDetectorState.addAnomalyDetection(anomalyType, (GoalViolations) anomaly);
+        break;
+      case BROKER_FAILURE:
+        _anomalyDetectorState.addAnomalyDetection(anomalyType, (BrokerFailures) anomaly);
+        break;
+      case METRIC_ANOMALY:
+        _anomalyDetectorState.addAnomalyDetection(anomalyType, (KafkaMetricAnomaly) anomaly);
+        break;
+      default:
+        throw new IllegalStateException("Unrecognized anomaly type.");
+    }
+  }
+
   /**
    * A class that handles all the anomalies.
    */
@@ -189,6 +205,10 @@ public class AnomalyDetector {
             // Service has shutdown.
             break;
           }
+          // Add anomaly detection to anomaly detector state.
+          AnomalyType anomalyType = getAnomalyType(anomaly);
+          addAnomalyDetectionState(anomalyType, anomaly);
+
           // We schedule a delayed check if the executor is doing some work.
           ExecutorState.State executorState = _kafkaCruiseControl.state(
               new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
@@ -198,23 +218,19 @@ public class AnomalyDetector {
           } else {
             AnomalyNotificationResult notificationResult = null;
             // Call the anomaly notifier to see if a fix is desired.
-            AnomalyType anomalyType = getAnomalyType(anomaly);
             switch (anomalyType) {
               case GOAL_VIOLATION:
                 GoalViolations goalViolations = (GoalViolations) anomaly;
-                _anomalyDetectorState.addAnomalyDetection(anomalyType, goalViolations);
                 notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
                 _goalViolationRate.mark();
                 break;
               case BROKER_FAILURE:
                 BrokerFailures brokerFailures = (BrokerFailures) anomaly;
-                _anomalyDetectorState.addAnomalyDetection(anomalyType, brokerFailures);
                 notificationResult = _anomalyNotifier.onBrokerFailure(brokerFailures);
                 _brokerFailureRate.mark();
                 break;
               case METRIC_ANOMALY:
                 KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomaly;
-                _anomalyDetectorState.addAnomalyDetection(anomalyType, metricAnomaly);
                 notificationResult = _anomalyNotifier.onMetricAnomaly(metricAnomaly);
                 _metricAnomalyRate.mark();
                 break;
