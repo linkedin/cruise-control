@@ -4,8 +4,6 @@
 
 package com.linkedin.cruisecontrol.detector;
 
-import java.util.UUID;
-
 
 /**
  * The interface for an anomaly.
