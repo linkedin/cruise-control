@@ -117,9 +117,9 @@ public class AnomalyDetectorState {
   }
 
   private Set<Map<String, Object>> recentGoalViolations(boolean useDateFormat) {
-    Map<String, AnomalyState> goalViolationsByUuid = _recentAnomaliesByType.get(AnomalyType.GOAL_VIOLATION);
+    Map<String, AnomalyState> goalViolationsById = _recentAnomaliesByType.get(AnomalyType.GOAL_VIOLATION);
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
-    for (Map.Entry<String, AnomalyState> entry: goalViolationsByUuid.entrySet()) {
+    for (Map.Entry<String, AnomalyState> entry: goalViolationsById.entrySet()) {
       AnomalyState anomalyState = entry.getValue();
       GoalViolations goalViolations = (GoalViolations) anomalyState.anomaly();
       Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
@@ -133,9 +133,9 @@ public class AnomalyDetectorState {
   }
 
   private Set<Map<String, Object>> recentBrokerFailures(boolean useDateFormat) {
-    Map<String, AnomalyState> brokerFailuresByUuid = _recentAnomaliesByType.get(AnomalyType.BROKER_FAILURE);
+    Map<String, AnomalyState> brokerFailuresById = _recentAnomaliesByType.get(AnomalyType.BROKER_FAILURE);
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
-    for (Map.Entry<String, AnomalyState> entry : brokerFailuresByUuid.entrySet()) {
+    for (Map.Entry<String, AnomalyState> entry : brokerFailuresById.entrySet()) {
       AnomalyState anomalyState = entry.getValue();
       Map<String, Object> anomalyDetails = new HashMap<>(5);
       anomalyDetails.put(FAILED_BROKERS_BY_TIME_MS, ((BrokerFailures) anomalyState.anomaly()).failedBrokers());
@@ -146,9 +146,9 @@ public class AnomalyDetectorState {
   }
 
   private Set<Map<String, Object>> recentMetricAnomalies(boolean useDateFormat) {
-    Map<String, AnomalyState> metricAnomaliesByUuid = _recentAnomaliesByType.get(AnomalyType.METRIC_ANOMALY);
+    Map<String, AnomalyState> metricAnomaliesById = _recentAnomaliesByType.get(AnomalyType.METRIC_ANOMALY);
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
-    for (Map.Entry<String, AnomalyState> entry: metricAnomaliesByUuid.entrySet()) {
+    for (Map.Entry<String, AnomalyState> entry: metricAnomaliesById.entrySet()) {
       AnomalyState anomalyState = entry.getValue();
       Map<String, Object> anomalyDetails = new HashMap<>(5);
       KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomalyState.anomaly();

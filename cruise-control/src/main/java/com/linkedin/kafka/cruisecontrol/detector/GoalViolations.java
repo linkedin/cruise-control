@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
  * A class that holds all the goal violations.
  */
 public class GoalViolations extends KafkaAnomaly {
-  private static final String UUID_PREFIX = AnomalyType.GOAL_VIOLATION.toString();
+  private static final String ID_PREFIX = AnomalyType.GOAL_VIOLATION.toString();
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
   private final KafkaCruiseControl _kafkaCruiseControl;
   // The priority order of goals is maintained here.
@@ -42,7 +42,7 @@ public class GoalViolations extends KafkaAnomaly {
     _violatedGoalsByFixability = new HashMap<>();
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
-    _anomalyId = String.format("%s-%s", UUID_PREFIX, UUID.randomUUID().toString().substring(UUID_PREFIX.length() + 1));
+    _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
   }
 
   /**

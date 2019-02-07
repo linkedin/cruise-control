@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory;
  * A Kafka metric anomaly indicates unexpected rapid changes in metric values of a broker.
  */
 public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
-  private static final String UUID_PREFIX = AnomalyType.METRIC_ANOMALY.toString();
+  private static final String ID_PREFIX = AnomalyType.METRIC_ANOMALY.toString();
   private static final Logger LOG = LoggerFactory.getLogger(KafkaMetricAnomaly.class);
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final String _description;
@@ -48,7 +48,7 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
     _brokerEntity = brokerEntity;
     _metricId = metricId;
     _windows = windows;
-    _anomalyId = String.format("%s-%s", UUID_PREFIX, UUID.randomUUID().toString().substring(UUID_PREFIX.length() + 1));
+    _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
   }
 
   /**

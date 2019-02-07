@@ -20,7 +20,7 @@ import java.util.UUID;
  * The broker failures that have been detected.
  */
 public class BrokerFailures extends KafkaAnomaly {
-  private static final String UUID_PREFIX = AnomalyType.BROKER_FAILURE.toString();
+  private static final String ID_PREFIX = AnomalyType.BROKER_FAILURE.toString();
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final Map<Integer, Long> _failedBrokers;
   private final boolean _allowCapacityEstimation;
@@ -38,7 +38,7 @@ public class BrokerFailures extends KafkaAnomaly {
     _allowCapacityEstimation = allowCapacityEstimation;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
-    _anomalyId = String.format("%s-%s", UUID_PREFIX, UUID.randomUUID().toString().substring(UUID_PREFIX.length() + 1));
+    _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
   }
 
   /**

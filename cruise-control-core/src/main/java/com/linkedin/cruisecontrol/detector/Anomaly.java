@@ -4,7 +4,6 @@
 
 package com.linkedin.cruisecontrol.detector;
 
-
 /**
  * The interface for an anomaly.
  */
