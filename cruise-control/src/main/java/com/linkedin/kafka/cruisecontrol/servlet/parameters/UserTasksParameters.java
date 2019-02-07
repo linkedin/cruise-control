@@ -17,7 +17,8 @@ import javax.servlet.http.HttpServletRequest;
  *
  * <pre>
  * Retrieve the recent user tasks.
- *    GET /kafkacruisecontrol/user_tasks?json=[true/false]&amp;user_task_ids=[USER-TASK-IDS]
+ *    GET /kafkacruisecontrol/user_tasks?json=[true/false]&amp;user_task_ids=[Set-of-USER-TASK-IDS]&amp;client_ids=[Set-of-ClientIdentity]&amp;
+ *    endpoints=[Set-of-{@link EndPoint}]&amp;types=[Set-of-{@link UserTaskManager.TaskState}]&amp;entries=[POSITIVE-INTEGER]
  * </pre>
  */
 public class UserTasksParameters extends AbstractParameters {
