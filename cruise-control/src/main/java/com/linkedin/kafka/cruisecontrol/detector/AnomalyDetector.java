@@ -172,22 +172,6 @@ public class AnomalyDetector {
     return oldSelfHealingEnabled;
   }
 
-  private void addAnomalyDetectionState(AnomalyType anomalyType, Anomaly anomaly) {
-    switch (anomalyType) {
-      case GOAL_VIOLATION:
-        _anomalyDetectorState.addAnomalyDetection(anomalyType, (GoalViolations) anomaly);
-        break;
-      case BROKER_FAILURE:
-        _anomalyDetectorState.addAnomalyDetection(anomalyType, (BrokerFailures) anomaly);
-        break;
-      case METRIC_ANOMALY:
-        _anomalyDetectorState.addAnomalyDetection(anomalyType, (KafkaMetricAnomaly) anomaly);
-        break;
-      default:
-        throw new IllegalStateException("Unrecognized anomaly type.");
-    }
-  }
-
   /**
    * A class that handles all the anomalies.
    */
@@ -207,7 +191,7 @@ public class AnomalyDetector {
           }
           // Add anomaly detection to anomaly detector state.
           AnomalyType anomalyType = getAnomalyType(anomaly);
-          addAnomalyDetectionState(anomalyType, anomaly);
+          _anomalyDetectorState.addAnomalyDetection(anomalyType, anomaly);
 
           // We schedule a delayed check if the executor is doing some work.
           ExecutorState.State executorState = _kafkaCruiseControl.state(
