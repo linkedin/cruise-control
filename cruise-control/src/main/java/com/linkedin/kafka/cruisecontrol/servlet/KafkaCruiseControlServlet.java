@@ -118,10 +118,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     response.setStatus(SC_OK);
     if (_corsEnabled) {
       response.setHeader("Access-Control-Allow-Origin",
-          _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
+                         _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
       // This is required only as part of pre-flight response
       response.setHeader("Access-Control-Request-Method",
-          _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ALLOWMETHODS_CONFIG));
+                         _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ALLOWMETHODS_CONFIG));
     }
   }
 
@@ -397,15 +397,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       optimizationResult =
           getAndMaybeReturnProgress(request, response,
                                     uuid -> _asyncKafkaCruiseControl.addBrokers(goalsAndRequirements.goals(),
-                                                                              goalsAndRequirements.requirements(),
-                                                                              parameters,
-                                                                              uuid));
+                                                                                goalsAndRequirements.requirements(),
+                                                                                parameters,
+                                                                                uuid));
     } else {
       optimizationResult =
           getAndMaybeReturnProgress(request, response,
                                     uuid -> _asyncKafkaCruiseControl.decommissionBrokers(goalsAndRequirements.goals(),
-                                                                                       goalsAndRequirements.requirements(),
-                                                                                       parameters,
+                                                                                         goalsAndRequirements.requirements(),
+                                                                                         parameters,
                                                                                          uuid));
     }
     if (optimizationResult == null) {
@@ -431,9 +431,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     CruiseControlResponse optimizationResult =
         getAndMaybeReturnProgress(request, response,
                                   uuid -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
-                                                                           goalsAndRequirements.requirements(),
-                                                                           parameters,
-                                                                           uuid));
+                                                                             goalsAndRequirements.requirements(),
+                                                                             parameters,
+                                                                             uuid));
     if (optimizationResult == null) {
       return false;
     }

@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -43,6 +44,7 @@ public class GoalViolations extends KafkaAnomaly {
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
+    _optimizationResult = null;
   }
 
   /**
@@ -51,7 +53,7 @@ public class GoalViolations extends KafkaAnomaly {
    * @param goalName The name of the goal.
    * @param fixable Whether the violated goal is fixable or not.
    */
-  public void addViolation(String goalName, boolean fixable) {
+  void addViolation(String goalName, boolean fixable) {
     _violatedGoalsByFixability.computeIfAbsent(fixable, k -> new ArrayList<>()).add(goalName);
   }
 
@@ -72,9 +74,21 @@ public class GoalViolations extends KafkaAnomaly {
     if (_violatedGoalsByFixability.get(false) == null) {
       try {
         // Fix the fixable goal violations with rebalance operation.
-        _kafkaCruiseControl.rebalance(Collections.emptyList(), false, null, new OperationProgress(), _allowCapacityEstimation,
-                                      null, null, false, null,
-                                      null, _anomalyId, _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
+        _optimizationResult = new OptimizationResult(_kafkaCruiseControl.rebalance(Collections.emptyList(),
+                                                                                   false,
+                                                                                   null,
+                                                                                   new OperationProgress(),
+                                                                                   _allowCapacityEstimation,
+                                                                                   null,
+                                                                                   null,
+                                                                                   false,
+                                                                                   null,
+                                                                                   null,
+                                                                                   _anomalyId,
+                                                                                   _excludeRecentlyDemotedBrokers,
+                                                                                   _excludeRecentlyRemovedBrokers));
+        // Ensure that only the relevant response is cached to avoid memory pressure.
+        _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
         return true;
       } catch (IllegalStateException e) {
         LOG.warn("Got exception when trying to fix the cluster for violated goals {}: {}", _violatedGoalsByFixability.get(true), e.getMessage());
