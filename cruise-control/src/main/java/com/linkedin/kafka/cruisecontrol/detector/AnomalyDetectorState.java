@@ -42,6 +42,7 @@ public class AnomalyDetectorState {
   private static final String RECENT_GOAL_VIOLATIONS = "recentGoalViolations";
   private static final String RECENT_BROKER_FAILURES = "recentBrokerFailures";
   private static final String RECENT_METRIC_ANOMALIES = "recentMetricAnomalies";
+  private static final String OPTIMIZATION_RESULT = "optimizationResult";
 
   // Recent anomalies with anomaly state by the anomaly type.
   private final Map<AnomalyType, Map<String, AnomalyState>> _recentAnomaliesByType;
@@ -107,53 +108,66 @@ public class AnomalyDetectorState {
     return formatter.format(date);
   }
 
-  private static void populateCommonDetails(AnomalyState anomalyState, Map<String, Object> anomalyDetails, boolean useDateFormat) {
-    anomalyDetails.put(useDateFormat ? DETECTION_DATE : DETECTION_MS,
-                       useDateFormat ? getDateFormat(anomalyState.detectionMs()) : anomalyState.detectionMs());
+  private static void populateCommonDetails(AnomalyState anomalyState, Map<String, Object> anomalyDetails, boolean isJson) {
+    anomalyDetails.put(isJson ? DETECTION_MS : DETECTION_DATE,
+                       isJson ? anomalyState.detectionMs() : getDateFormat(anomalyState.detectionMs()));
     anomalyDetails.put(STATUS, anomalyState.status());
     anomalyDetails.put(ANOMALY_ID, anomalyState.anomalyId());
-    anomalyDetails.put(useDateFormat ? STATUS_UPDATE_DATE : STATUS_UPDATE_MS,
-                       useDateFormat ? getDateFormat(anomalyState.statusUpdateMs()) : anomalyState.statusUpdateMs());
+    anomalyDetails.put(isJson ? STATUS_UPDATE_MS : STATUS_UPDATE_DATE,
+                       isJson ? anomalyState.statusUpdateMs() : getDateFormat(anomalyState.statusUpdateMs()));
   }
 
-  private Set<Map<String, Object>> recentGoalViolations(boolean useDateFormat) {
+  private Set<Map<String, Object>> recentGoalViolations(boolean isJson) {
     Map<String, AnomalyState> goalViolationsById = _recentAnomaliesByType.get(AnomalyType.GOAL_VIOLATION);
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
     for (Map.Entry<String, AnomalyState> entry: goalViolationsById.entrySet()) {
       AnomalyState anomalyState = entry.getValue();
       GoalViolations goalViolations = (GoalViolations) anomalyState.anomaly();
       Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
-      Map<String, Object> anomalyDetails = new HashMap<>(6);
+      boolean hasFixStarted = anomalyState.status() == AnomalyState.Status.FIX_STARTED;
+      Map<String, Object> anomalyDetails = new HashMap<>(hasFixStarted ? 7 : 6);
       anomalyDetails.put(FIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()));
       anomalyDetails.put(UNFIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()));
-      populateCommonDetails(anomalyState, anomalyDetails, useDateFormat);
+      populateCommonDetails(anomalyState, anomalyDetails, isJson);
+      if (hasFixStarted) {
+        anomalyDetails.put(OPTIMIZATION_RESULT, goalViolations.optimizationResult(isJson));
+      }
       recentAnomalies.add(anomalyDetails);
     }
     return recentAnomalies;
   }
 
-  private Set<Map<String, Object>> recentBrokerFailures(boolean useDateFormat) {
+  private Set<Map<String, Object>> recentBrokerFailures(boolean isJson) {
     Map<String, AnomalyState> brokerFailuresById = _recentAnomaliesByType.get(AnomalyType.BROKER_FAILURE);
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
     for (Map.Entry<String, AnomalyState> entry : brokerFailuresById.entrySet()) {
       AnomalyState anomalyState = entry.getValue();
-      Map<String, Object> anomalyDetails = new HashMap<>(5);
-      anomalyDetails.put(FAILED_BROKERS_BY_TIME_MS, ((BrokerFailures) anomalyState.anomaly()).failedBrokers());
-      populateCommonDetails(anomalyState, anomalyDetails, useDateFormat);
+      boolean hasFixStarted = anomalyState.status() == AnomalyState.Status.FIX_STARTED;
+      Map<String, Object> anomalyDetails = new HashMap<>(hasFixStarted ? 6 : 5);
+      BrokerFailures brokerFailures = (BrokerFailures) anomalyState.anomaly();
+      anomalyDetails.put(FAILED_BROKERS_BY_TIME_MS, brokerFailures.failedBrokers());
+      populateCommonDetails(anomalyState, anomalyDetails, isJson);
+      if (hasFixStarted) {
+        anomalyDetails.put(OPTIMIZATION_RESULT, brokerFailures.optimizationResult(isJson));
+      }
       recentAnomalies.add(anomalyDetails);
     }
     return recentAnomalies;
   }
 
-  private Set<Map<String, Object>> recentMetricAnomalies(boolean useDateFormat) {
+  private Set<Map<String, Object>> recentMetricAnomalies(boolean isJson) {
     Map<String, AnomalyState> metricAnomaliesById = _recentAnomaliesByType.get(AnomalyType.METRIC_ANOMALY);
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
     for (Map.Entry<String, AnomalyState> entry: metricAnomaliesById.entrySet()) {
       AnomalyState anomalyState = entry.getValue();
-      Map<String, Object> anomalyDetails = new HashMap<>(5);
+      boolean hasFixStarted = anomalyState.status() == AnomalyState.Status.FIX_STARTED;
+      Map<String, Object> anomalyDetails = new HashMap<>(hasFixStarted ? 6 : 5);
       KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomalyState.anomaly();
       anomalyDetails.put(DESCRIPTION, metricAnomaly.description());
-      populateCommonDetails(anomalyState, anomalyDetails, useDateFormat);
+      populateCommonDetails(anomalyState, anomalyDetails, isJson);
+      if (hasFixStarted) {
+        anomalyDetails.put(OPTIMIZATION_RESULT, metricAnomaly.optimizationResult(isJson));
+      }
       recentAnomalies.add(anomalyDetails);
     }
     return recentAnomalies;
@@ -174,9 +188,9 @@ public class AnomalyDetectorState {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
     anomalyDetectorState.put(SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true));
     anomalyDetectorState.put(SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false));
-    anomalyDetectorState.put(RECENT_GOAL_VIOLATIONS, recentGoalViolations(false));
-    anomalyDetectorState.put(RECENT_BROKER_FAILURES, recentBrokerFailures(false));
-    anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentMetricAnomalies(false));
+    anomalyDetectorState.put(RECENT_GOAL_VIOLATIONS, recentGoalViolations(true));
+    anomalyDetectorState.put(RECENT_BROKER_FAILURES, recentBrokerFailures(true));
+    anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentMetricAnomalies(true));
 
     return anomalyDetectorState;
   }
@@ -187,8 +201,8 @@ public class AnomalyDetectorState {
     return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s}%n",
                          SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true),
                          SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false),
-                         RECENT_GOAL_VIOLATIONS, recentGoalViolations(true),
-                         RECENT_BROKER_FAILURES, recentBrokerFailures(true),
-                         RECENT_METRIC_ANOMALIES, recentMetricAnomalies(true));
+                         RECENT_GOAL_VIOLATIONS, recentGoalViolations(false),
+                         RECENT_BROKER_FAILURES, recentBrokerFailures(false),
+                         RECENT_METRIC_ANOMALIES, recentMetricAnomalies(false));
   }
 }
