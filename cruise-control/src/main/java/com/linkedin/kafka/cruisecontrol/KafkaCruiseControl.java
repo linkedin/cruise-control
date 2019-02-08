@@ -640,13 +640,11 @@ public class KafkaCruiseControl {
 
     for (AnomalyType anomalyType : disableSelfHealingFor) {
       selfHealingBefore.put(anomalyType, _anomalyDetector.setSelfHealingFor(anomalyType, false));
-      _anomalyDetector.anomalyDetectorState().setSelfHealingFor(anomalyType, false);
       selfHealingAfter.put(anomalyType, false);
     }
 
     for (AnomalyType anomalyType : enableSelfHealingFor) {
       selfHealingBefore.put(anomalyType, _anomalyDetector.setSelfHealingFor(anomalyType, true));
-      _anomalyDetector.anomalyDetectorState().setSelfHealingFor(anomalyType, true);
       selfHealingAfter.put(anomalyType, true);
     }
 

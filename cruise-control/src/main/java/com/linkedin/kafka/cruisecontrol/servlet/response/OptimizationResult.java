@@ -9,7 +9,6 @@ import com.google.gson.GsonBuilder;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
@@ -40,45 +39,55 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   private static final String FIXED = "FIXED";
   private static final String NO_ACTION = "NO-ACTION";
   private GoalOptimizer.OptimizerResult _optimizerResult;
+  private String _cachedJSONResponse;
+  private String _cachedPlaintextResponse;
 
   public OptimizationResult(GoalOptimizer.OptimizerResult optimizerResult) {
     _optimizerResult = optimizerResult;
+    _cachedJSONResponse = null;
+    _cachedPlaintextResponse = null;
   }
 
   public GoalOptimizer.OptimizerResult optimizerResult() {
     return _optimizerResult;
   }
 
-  private String getPlaintext(CruiseControlParameters parameters) {
-    StringBuilder sb = new StringBuilder();
+  /**
+   * @return JSON response if cached, null otherwise.
+   */
+  public String cachedJSONResponse() {
+    return _cachedJSONResponse;
+  }
 
-    EndPoint endPoint = parameters.endPoint();
-    String pretext;
-    switch (endPoint) {
+  /**
+   * @return Plaintext response if cached, null otherwise.
+   */
+  public String cachedPlaintextResponse() {
+    return _cachedPlaintextResponse;
+  }
+
+  private static String getPlaintextPretext(CruiseControlParameters parameters) {
+    switch (parameters.endPoint()) {
       case ADD_BROKER:
-        pretext = String.format("%n%nCluster load after adding broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
-        break;
+        return String.format("%n%nCluster load after adding broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
       case REMOVE_BROKER:
-        pretext = String.format("%n%nCluster load after removing broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
-        break;
+        return String.format("%n%nCluster load after removing broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
       case FIX_OFFLINE_REPLICAS:
-        pretext = String.format("%n%nCluster load after fixing offline replicas:%n");
-        break;
+        return String.format("%n%nCluster load after fixing offline replicas:%n");
       case PROPOSALS:
-        pretext = String.format("%n%nOptimized load:%n");
-        break;
+        return String.format("%n%nOptimized load:%n");
       case REBALANCE:
-        pretext = String.format("%n%nCluster load after rebalance:%n");
-        break;
+        return String.format("%n%nCluster load after rebalance:%n");
       case DEMOTE_BROKER:
-        pretext = String.format("%n%nCluster load after demoting broker %s:%n", ((DemoteBrokerParameters) parameters).brokerIds());
-        break;
+        return String.format("%n%nCluster load after demoting broker %s:%n", ((DemoteBrokerParameters) parameters).brokerIds());
       default:
         LOG.error("Unrecognized endpoint.");
         return "Unrecognized endpoint.";
     }
+  }
 
-    boolean isVerbose = ((KafkaOptimizationParameters) parameters).isVerbose();
+  private String getPlaintext(boolean isVerbose, String pretext) {
+    StringBuilder sb = new StringBuilder();
     if (isVerbose) {
       sb.append(_optimizerResult.goalProposals().toString());
     }
@@ -95,14 +104,32 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    _cachedResponse = parameters.json() ? getJSONString(parameters) : getPlaintext(parameters);
+    boolean isVerbose = ((KafkaOptimizationParameters) parameters).isVerbose();
+    _cachedResponse = parameters.json() ? getJSONString(isVerbose) : getPlaintext(isVerbose, getPlaintextPretext(parameters));
+    if (parameters.json()) {
+      _cachedJSONResponse = _cachedResponse;
+    } else {
+      _cachedPlaintextResponse = _cachedResponse;
+    }
     // Discard irrelevant response.
     _optimizerResult = null;
   }
 
-  private String getJSONString(CruiseControlParameters parameters) {
+  /**
+   * Keeps the JSON and plaintext response and discards the optimizer result.
+   */
+  public void discardIrrelevantAndCacheJsonAndPlaintext() {
+    if (_optimizerResult != null) {
+      _cachedJSONResponse = getJSONString(false);
+      _cachedPlaintextResponse = getPlaintext(false, String.format("%n%nCluster load after self-healing:%n"));
+      // Discard irrelevant response.
+      _optimizerResult = null;
+    }
+  }
+
+  private String getJSONString(boolean isVerbose) {
     Map<String, Object> optimizationResult = new HashMap<>();
-    if (((KafkaOptimizationParameters) parameters).isVerbose()) {
+    if (isVerbose) {
       optimizationResult.put(PROPOSALS, _optimizerResult.goalProposals().stream()
                                                         .map(ExecutionProposal::getJsonStructure).collect(Collectors.toSet()));
       optimizationResult.put(LOAD_BEFORE_OPTIMIZATION, _optimizerResult.brokerStatsBeforeOptimization().getJsonStructure());

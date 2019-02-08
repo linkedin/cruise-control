@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.List;
 import java.util.UUID;
 import org.slf4j.Logger;
@@ -28,6 +29,7 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
   private final Integer _metricId;
   private final List<Long> _windows;
   private final String _anomalyId;
+  private OptimizationResult _optimizationResult;
 
   /**
    * Kafka Metric anomaly
@@ -49,6 +51,7 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
     _metricId = metricId;
     _windows = windows;
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
+    _optimizationResult = null;
   }
 
   /**
@@ -101,5 +104,18 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
   @Override
   public String toString() {
     return String.format("{%nMetric Anomaly windows: %s description: %s%n}", _windows, _description);
+  }
+
+  /**
+   * Get the optimization result of self healing process, or null if no optimization result is available.
+   *
+   * @param isJson True for JSON response, false otherwise.
+   * @return the optimization result of self healing process, or null if no optimization result is available.
+   */
+  String optimizationResult(boolean isJson) {
+    if (_optimizationResult == null) {
+      return null;
+    }
+    return isJson ? _optimizationResult.cachedJSONResponse() : _optimizationResult.cachedPlaintextResponse();
   }
 }

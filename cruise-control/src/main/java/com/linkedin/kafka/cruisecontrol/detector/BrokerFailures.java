@@ -8,6 +8,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
@@ -39,6 +40,7 @@ public class BrokerFailures extends KafkaAnomaly {
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
+    _optimizationResult = null;
   }
 
   /**
@@ -57,11 +59,23 @@ public class BrokerFailures extends KafkaAnomaly {
   public boolean fix() throws KafkaCruiseControlException {
     // Fix the cluster by removing the failed brokers (mode: non-Kafka_assigner).
     if (_failedBrokers != null && !_failedBrokers.isEmpty()) {
-      _kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(), false, false,
-                                              Collections.emptyList(), null, new OperationProgress(),
-                                              _allowCapacityEstimation, null, null,
-                                              false, null, null, _anomalyId,
-                                              _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
+      _optimizationResult = new OptimizationResult(_kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(),
+                                                                                           false,
+                                                                                           false,
+                                                                                           Collections.emptyList(),
+                                                                                           null,
+                                                                                           new OperationProgress(),
+                                                                                           _allowCapacityEstimation,
+                                                                                           null,
+                                                                                           null,
+                                                                                           false,
+                                                                                           null,
+                                                                                           null,
+                                                                                           _anomalyId,
+                                                                                           _excludeRecentlyDemotedBrokers,
+                                                                                           _excludeRecentlyRemovedBrokers));
+      // Ensure that only the relevant response is cached to avoid memory pressure.
+      _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
       return true;
     }
     return false;
