@@ -51,7 +51,7 @@ public class UserTaskManager implements Closeable {
   public static final long USER_TASK_SCANNER_INITIAL_DELAY_SECONDS = 0;
 
   private static final Logger LOG = LoggerFactory.getLogger(UserTaskManager.class);
-  private final Map<SessionKey, UUID> _sessionToUserTaskIdMap;
+  private final Map<SessionKey, UUID> _sessionKeyToUserTaskIdMap;
   private final Map<TaskState, Map<UUID, UserTaskInfo>> _allUserTaskIdToFutureMap;
   private final long _sessionExpiryMs;
   private final long _maxActiveUserTasks;
@@ -68,7 +68,7 @@ public class UserTaskManager implements Closeable {
                          int maxCachedCompletedUserTasks,
                          MetricRegistry dropwizardMetricRegistry,
                          Map<EndPoint, Timer> successfulRequestExecutionTimer) {
-    _sessionToUserTaskIdMap = new HashMap<>();
+    _sessionKeyToUserTaskIdMap = new HashMap<>();
     Map<UUID, UserTaskInfo> activeUserTaskIdToFuturesMap = new LinkedHashMap<>();
     Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap = new LinkedHashMap<UUID, UserTaskInfo>() {
       @Override
@@ -90,7 +90,7 @@ public class UserTaskManager implements Closeable {
                                                  USER_TASK_SCANNER_PERIOD_SECONDS,
                                                  TimeUnit.SECONDS);
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-sessions"),
-                                      (Gauge<Integer>) _sessionToUserTaskIdMap::size);
+                                      (Gauge<Integer>) _sessionKeyToUserTaskIdMap::size);
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-user-tasks"),
                                       (Gauge<Integer>) _allUserTaskIdToFutureMap.get(TaskState.ACTIVE)::size);
     _successfulRequestExecutionTimer = successfulRequestExecutionTimer;
@@ -103,7 +103,7 @@ public class UserTaskManager implements Closeable {
                   int maxCachedCompletedUserTasks,
                   Time time,
                   UUIDGenerator uuidGenerator) {
-    _sessionToUserTaskIdMap = new HashMap<>();
+    _sessionKeyToUserTaskIdMap = new HashMap<>();
     Map<UUID, UserTaskInfo> activeUserTaskIdToFuturesMap = new LinkedHashMap<>();
     Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap = new LinkedHashMap<UUID, UserTaskInfo>() {
       @Override
@@ -192,8 +192,8 @@ public class UserTaskManager implements Closeable {
       LOG.info("Create a new UserTask {} with SessionKey {}", userTaskId, sessionKey);
       operationFutures = insertFuturesByUserTaskId(userTaskId, function, httpServletRequest);
 
-      synchronized (_sessionToUserTaskIdMap) {
-        _sessionToUserTaskIdMap.put(sessionKey, userTaskId);
+      synchronized (_sessionKeyToUserTaskIdMap) {
+        _sessionKeyToUserTaskIdMap.put(sessionKey, userTaskId);
       }
 
       httpServletResponse.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
@@ -214,20 +214,25 @@ public class UserTaskManager implements Closeable {
 
   private void expireOldSessions() {
     long now = _time.milliseconds();
-    synchronized (_sessionToUserTaskIdMap) {
-      Iterator<Map.Entry<SessionKey, UUID>> iter = _sessionToUserTaskIdMap.entrySet().iterator();
+    synchronized (_sessionKeyToUserTaskIdMap) {
+      Iterator<Map.Entry<SessionKey, UUID>> iter = _sessionKeyToUserTaskIdMap.entrySet().iterator();
       while (iter.hasNext()) {
         Map.Entry<SessionKey, UUID> entry = iter.next();
         SessionKey sessionKey = entry.getKey();
         HttpSession session = sessionKey.httpSession();
-        if (LOG.isTraceEnabled()) {
-          LOG.trace("Session {} was last accessed at {}, age is {} ms", session, session.getLastAccessedTime(),
-                    now - session.getLastAccessedTime());
-        }
-        if (now >= session.getLastAccessedTime() + _sessionExpiryMs) {
-          LOG.info("Expiring SessionKey {}", entry.getKey());
+        try {
+          if (LOG.isTraceEnabled()) {
+            LOG.trace("Session {} was last accessed at {}, age is {} ms.", session, session.getLastAccessedTime(),
+                      now - session.getLastAccessedTime());
+          }
+          if (now >= session.getLastAccessedTime() + _sessionExpiryMs) {
+            LOG.info("Expiring the session associated with {}.", sessionKey);
+            session.invalidate();
+          }
+        } catch (IllegalStateException e) {
+          LOG.info("Already expired the session associated with {}.", sessionKey);
+        } finally {
           iter.remove();
-          session.invalidate();
         }
       }
     }
@@ -249,8 +254,8 @@ public class UserTaskManager implements Closeable {
       userTaskId = UUID.fromString(userTaskIdString);
     } else {
       SessionKey sessionKey = new SessionKey(httpServletRequest);
-      synchronized (_sessionToUserTaskIdMap) {
-        userTaskId = _sessionToUserTaskIdMap.get(sessionKey);
+      synchronized (_sessionKeyToUserTaskIdMap) {
+        userTaskId = _sessionKeyToUserTaskIdMap.get(sessionKey);
       }
     }
 
@@ -345,7 +350,7 @@ public class UserTaskManager implements Closeable {
 
   @Override
   public String toString() {
-    return "UserTaskManager{_sessionToUserTaskIdMap=" + _sessionToUserTaskIdMap
+    return "UserTaskManager{_sessionKeyToUserTaskIdMap=" + _sessionKeyToUserTaskIdMap
            + ", _activeUserTaskIdToFuturesMap=" + _allUserTaskIdToFutureMap.get(TaskState.ACTIVE) + ", _completedUserTaskIdToFuturesMap="
            + _allUserTaskIdToFutureMap.get(TaskState.COMPLETED) + '}';
   }
@@ -370,8 +375,8 @@ public class UserTaskManager implements Closeable {
   }
 
   // for unit-test only
-  int numActiveSessions() {
-    return _sessionToUserTaskIdMap.size();
+  int numActiveSessionKeys() {
+    return _sessionKeyToUserTaskIdMap.size();
   }
 
   static public class SessionKey {
@@ -539,8 +544,7 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Possible state of tasks. We currently accept {@link TaskState#ACTIVE} and {@link TaskState#COMPLETED}, in the
-   * future we could also add {@link TaskState#CANCELLED}.
+   * Possible state of tasks.
    */
   public enum TaskState {
     ACTIVE("Active"),
