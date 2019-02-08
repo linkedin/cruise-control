@@ -114,9 +114,8 @@ public class UserTaskManagerTest {
     // Test UserTaskManger can recognize the previous created task by taskId.
     userTaskManager.getOrCreateUserTask(mockHttpServletRequest3, mockHttpServletResponse3, uuid -> future, 0);
 
-
     // The 2nd request should reuse the UserTask created for the 1st request since they use the same session and send the same request.
-    Assert.assertEquals(1, userTaskManager.numActiveSessions());
+    Assert.assertEquals(1, userTaskManager.numActiveSessionKeys());
   }
 
   @Test
