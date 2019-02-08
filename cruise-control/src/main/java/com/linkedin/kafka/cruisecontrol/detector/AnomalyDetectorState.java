@@ -109,11 +109,11 @@ public class AnomalyDetectorState {
   }
 
   private static void populateCommonDetails(AnomalyState anomalyState, Map<String, Object> anomalyDetails, boolean isJson) {
-    anomalyDetails.put(isJson ? DETECTION_DATE : DETECTION_MS,
+    anomalyDetails.put(isJson ? DETECTION_MS : DETECTION_DATE,
                        isJson ? anomalyState.detectionMs() : getDateFormat(anomalyState.detectionMs()));
     anomalyDetails.put(STATUS, anomalyState.status());
     anomalyDetails.put(ANOMALY_ID, anomalyState.anomalyId());
-    anomalyDetails.put(isJson ? STATUS_UPDATE_DATE : STATUS_UPDATE_MS,
+    anomalyDetails.put(isJson ? STATUS_UPDATE_MS : STATUS_UPDATE_DATE,
                        isJson ? anomalyState.statusUpdateMs() : getDateFormat(anomalyState.statusUpdateMs()));
   }
 
