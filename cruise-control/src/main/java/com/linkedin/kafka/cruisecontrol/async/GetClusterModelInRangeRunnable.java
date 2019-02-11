@@ -31,7 +31,7 @@ class GetClusterModelInRangeRunnable extends OperationRunnable {
                                                                  _future.operationProgress(),
                                                                  _parameters.allowCapacityEstimation());
     int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
-    return new PartitionLoadState(clusterModel.replicasSortedByUtilization(_parameters.resource()),
+    return new PartitionLoadState(clusterModel.replicasSortedByUtilization(_parameters.resource(), _parameters.wantMaxLoad()),
                                   _parameters.wantMaxLoad(),
                                   _parameters.entries(),
                                   _parameters.partitionUpperBoundary(),

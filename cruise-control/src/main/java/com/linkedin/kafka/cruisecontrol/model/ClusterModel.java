@@ -893,12 +893,13 @@ public class ClusterModel implements Serializable {
   /**
    * Sort the partitions in the cluster by the utilization of the given resource.
    * @param resource the resource type.
+   * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
    * @return a list of partitions sorted by utilization of the given resource.
    */
-  public List<Partition> replicasSortedByUtilization(Resource resource) {
+  public List<Partition> replicasSortedByUtilization(Resource resource, boolean wantMaxLoad) {
     List<Partition> partitionList = new ArrayList<>(_partitionsByTopicPartition.values());
-    partitionList.sort((o1, o2) -> Double.compare(o2.leader().load().expectedUtilizationFor(resource),
-                                                  o1.leader().load().expectedUtilizationFor(resource)));
+    partitionList.sort((o1, o2) -> Double.compare(o2.leader().load().expectedUtilizationFor(resource, wantMaxLoad),
+                                                  o1.leader().load().expectedUtilizationFor(resource, wantMaxLoad)));
     return partitionList;
   }
 
