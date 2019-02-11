@@ -56,7 +56,7 @@ public class AdminResult extends AbstractCruiseControlResponse {
 
   private String getPlaintext() {
     StringBuilder sb = new StringBuilder();
-    sb.append("{%n");
+    sb.append(String.format("{%n"));
     if (!_selfHealingEnabledBefore.isEmpty()) {
       sb.append(String.format("%s: %s, %s: %s%n", SELF_HEALING_ENABLED_BEFORE, _selfHealingEnabledBefore,
                               SELF_HEALING_ENABLED_AFTER, _selfHealingEnabledAfter));
