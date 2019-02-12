@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 
 
 public class DiskUsageDistributionGoal extends ResourceDistributionGoal {
@@ -50,6 +51,6 @@ public class DiskUsageDistributionGoal extends ResourceDistributionGoal {
 
   @Override
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
-    return new ModelCompletenessRequirements(1, _minMonitoredPartitionPercentage, true);
+    return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, _minMonitoredPartitionPercentage, true);
   }
 }

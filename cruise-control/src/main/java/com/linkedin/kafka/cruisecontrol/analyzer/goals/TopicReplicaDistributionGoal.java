@@ -33,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils.EPSILON;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 
 
 /**
@@ -42,7 +43,6 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils.EPSILON;
  */
 public class TopicReplicaDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(TopicReplicaDistributionGoal.class);
-
   private Map<String, ReplicaDistributionTarget> _replicaDistributionTargetByTopic;
   private String _currentRebalanceTopic;
   private List<String> _topicsToRebalance;
@@ -148,7 +148,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
   @Override
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
-    return new ModelCompletenessRequirements(1, 0.0, true);
+    return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, 0.0, true);
   }
 
   /**

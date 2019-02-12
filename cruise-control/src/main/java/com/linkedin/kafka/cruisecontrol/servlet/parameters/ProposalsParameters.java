@@ -16,6 +16,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;goals=[goal1,goal2...]&amp;data_from=[valid_windows/valid_partitions]&amp;excluded_topics=[pattern]
  *    &amp;use_ready_default_goals=[true/false]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
+ *    &amp;ignore_proposal_cache=[true/false]
  * </pre>
  */
 public class ProposalsParameters extends GoalBasedOptimizationParameters {
@@ -28,7 +29,7 @@ public class ProposalsParameters extends GoalBasedOptimizationParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_request) || !_goals.isEmpty();
+    _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_request);
   }
 
   public boolean ignoreProposalCache() {

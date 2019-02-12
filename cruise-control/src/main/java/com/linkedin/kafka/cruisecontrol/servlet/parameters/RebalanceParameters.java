@@ -21,6 +21,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
  *    &amp;replica_movement_strategies=[strategy1,strategy2...]
+ *    &amp;ignore_proposal_cache=[true/false]
  * </pre>
  */
 public class RebalanceParameters extends GoalBasedOptimizationParameters {
@@ -30,6 +31,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private final KafkaCruiseControlConfig _config;
+  private boolean _ignoreProposalCache;
 
   public RebalanceParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request);
@@ -44,6 +46,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
+    _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_request);
   }
 
   public boolean dryRun() {
@@ -64,5 +67,9 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
 
   public ReplicaMovementStrategy replicaMovementStrategy() {
     return _replicaMovementStrategy;
+  }
+
+  public boolean ignoreProposalCache() {
+    return _ignoreProposalCache;
   }
 }

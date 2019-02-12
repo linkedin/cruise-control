@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * The async runnable for {@link KafkaCruiseControl#getOptimizationProposals(
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)} and
  * {@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean, Pattern, boolean, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean, Pattern, boolean, boolean, boolean)}
  */
 class GetOptimizationProposalsRunnable extends OperationRunnable {
   private final List<String> _goals;
@@ -25,19 +25,19 @@ class GetOptimizationProposalsRunnable extends OperationRunnable {
   private final Pattern _excludedTopics;
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
+  private final boolean _ignoreProposalCache;
 
   GetOptimizationProposalsRunnable(KafkaCruiseControl kafkaCruiseControl,
                                    OperationFuture future,
-                                   List<String> goals,
-                                   ModelCompletenessRequirements modelCompletenessRequirements,
                                    ProposalsParameters parameters) {
     super(kafkaCruiseControl, future);
-    _goals = goals;
-    _modelCompletenessRequirements = modelCompletenessRequirements;
+    _goals = parameters.goals();
+    _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _excludedTopics = parameters.excludedTopics();
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
+    _ignoreProposalCache = parameters.ignoreProposalCache();
   }
 
   @Override
@@ -49,6 +49,7 @@ class GetOptimizationProposalsRunnable extends OperationRunnable {
                                                                                true,
                                                                                _excludedTopics,
                                                                                _excludeRecentlyDemotedBrokers,
-                                                                               _excludeRecentlyRemovedBrokers));
+                                                                               _excludeRecentlyRemovedBrokers,
+                                                                               _ignoreProposalCache));
   }
 }
