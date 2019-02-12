@@ -158,7 +158,7 @@ public class GoalViolationDetector implements Runnable {
           }
           newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations, excludedBrokersForLeadership, excludedBrokersForReplicaMove);
         } else {
-          LOG.debug("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
+          LOG.warn("Skipping goal violation detection for {} because load completeness requirement is not met.", goal);
         }
       }
       if (!goalViolations.violatedGoalsByFixability().isEmpty()) {

@@ -37,16 +37,14 @@ class DecommissionBrokersRunnable extends OperationRunnable {
 
   DecommissionBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                               OperationFuture future,
-                              List<String> goals,
-                              ModelCompletenessRequirements modelCompletenessRequirements,
                               AddedOrRemovedBrokerParameters parameters,
                               String uuid) {
     super(kafkaCruiseControl, future);
     _brokerIds = parameters.brokerIds();
     _dryRun = parameters.dryRun();
     _throttleRemovedBrokers = parameters.throttleAddedOrRemovedBrokers();
-    _goals = goals;
-    _modelCompletenessRequirements = modelCompletenessRequirements;
+    _goals = parameters.goals();
+    _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _concurrentPartitionMovements = parameters.concurrentPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();

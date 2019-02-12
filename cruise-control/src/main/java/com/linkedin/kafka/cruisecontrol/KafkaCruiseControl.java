@@ -333,6 +333,7 @@ public class KafkaCruiseControl {
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
+   * @param ignoreProposalCache True to explicitly ignore the proposal cache, false otherwise.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
@@ -348,11 +349,13 @@ public class KafkaCruiseControl {
                                                  ReplicaMovementStrategy replicaMovementStrategy,
                                                  String uuid,
                                                  boolean excludeRecentlyDemotedBrokers,
-                                                 boolean excludeRecentlyRemovedBrokers) throws KafkaCruiseControlException {
+                                                 boolean excludeRecentlyRemovedBrokers,
+                                                 boolean ignoreProposalCache) throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result = getOptimizationProposals(goals, requirements, operationProgress,
                                                                     allowCapacityEstimation, skipHardGoalCheck,
                                                                     excludedTopics, excludeRecentlyDemotedBrokers,
-                                                                    excludeRecentlyRemovedBrokers);
+                                                                    excludeRecentlyRemovedBrokers,
+                                                                    ignoreProposalCache);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
                        concurrentPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
@@ -621,6 +624,7 @@ public class KafkaCruiseControl {
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
+   * @param ignoreProposalCache True to explicitly ignore the proposal cache, false otherwise.
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    */
@@ -631,11 +635,15 @@ public class KafkaCruiseControl {
                                                                 boolean skipHardGoalCheck,
                                                                 Pattern excludedTopics,
                                                                 boolean excludeRecentlyDemotedBrokers,
-                                                                boolean excludeRecentlyRemovedBrokers)
+                                                                boolean excludeRecentlyRemovedBrokers,
+                                                                boolean ignoreProposalCache)
       throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
+    if (ignoreProposalCache) {
+      goals = goalsByPriority.stream().map(Goal::name).collect(Collectors.toList());
+    }
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     // There are a few cases that we cannot use the cached best proposals:

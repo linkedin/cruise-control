@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
  * A util class for goals.
  */
 public class GoalUtils {
+  public static final int MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING = 1;
   private static final double DEAD_BROKER_UTILIZATION = 1.0;
 
   private GoalUtils() {
