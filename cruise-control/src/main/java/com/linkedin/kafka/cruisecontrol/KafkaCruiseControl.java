@@ -641,9 +641,6 @@ public class KafkaCruiseControl {
     GoalOptimizer.OptimizerResult result;
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
-    if (ignoreProposalCache) {
-      goals = goalsByPriority.stream().map(Goal::name).collect(Collectors.toList());
-    }
     ModelCompletenessRequirements modelCompletenessRequirements =
         modelCompletenessRequirements(goalsByPriority).weaker(requirements);
     // There are a few cases that we cannot use the cached best proposals:
@@ -654,7 +651,7 @@ public class KafkaCruiseControl {
         requirementsForCache.minMonitoredPartitionsPercentage() > modelCompletenessRequirements.minMonitoredPartitionsPercentage()
         || requirementsForCache.minRequiredNumWindows() > modelCompletenessRequirements.minRequiredNumWindows()
         || (requirementsForCache.includeAllTopics() && !modelCompletenessRequirements.includeAllTopics());
-    if ((goals != null && !goals.isEmpty()) || hasWeakerRequirement || excludedTopics != null
+    if (ignoreProposalCache || (goals != null && !goals.isEmpty()) || hasWeakerRequirement || excludedTopics != null
         || excludeRecentlyDemotedBrokers || excludeRecentlyRemovedBrokers) {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         // The cached proposals are computed with ignoreMinMonitoredPartitions = true. So if user provided a different

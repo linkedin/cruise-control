@@ -330,8 +330,8 @@ public class ParameterUtils {
   private static boolean getBooleanExcludeGiven(HttpServletRequest request, String getParameter, String excludeParameter) {
     boolean booleanParam = getBooleanParam(request, getParameter, false);
     if (booleanParam && request.getParameter(excludeParameter) != null) {
-      throw new UserRequestException("Cannot specify " + getParameter + " parameter when explicitly specifying "
-                                     + excludeParameter + " in request.");
+      throw new UserRequestException("Cannot set " + getParameter + " parameter to true when explicitly specifying "
+                                     + excludeParameter + " in the request.");
     }
     return booleanParam;
   }
