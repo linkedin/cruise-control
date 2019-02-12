@@ -201,6 +201,7 @@ public class ParameterUtils {
     rebalance.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
     rebalance.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
     rebalance.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    rebalance.add(IGNORE_PROPOSAL_CACHE_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
@@ -332,6 +333,15 @@ public class ParameterUtils {
     return excludeBrokers;
   }
 
+  private static boolean getBooleanExcludeGiven(HttpServletRequest request, String getParameter, String excludeParameter) {
+    boolean booleanParam = getBooleanParam(request, getParameter, false);
+    if (booleanParam && request.getParameter(excludeParameter) != null) {
+      throw new UserRequestException("Cannot set " + getParameter + " parameter to true when explicitly specifying "
+                                     + excludeParameter + " in the request.");
+    }
+    return booleanParam;
+  }
+
   /**
    * Default: false -- i.e. a recently demoted broker may receive leadership from the other brokers.
    */
@@ -367,17 +377,11 @@ public class ParameterUtils {
   }
 
   static boolean ignoreProposalCache(HttpServletRequest request) {
-    return getBooleanParam(request, IGNORE_PROPOSAL_CACHE_PARAM, false);
+    return getBooleanExcludeGiven(request, IGNORE_PROPOSAL_CACHE_PARAM, GOALS_PARAM);
   }
 
   static boolean useReadyDefaultGoals(HttpServletRequest request) {
-    boolean useReadyDefaultGoals = getBooleanParam(request, USE_READY_DEFAULT_GOALS_PARAM, false);
-    // Ensure that goals parameter is not specified.
-    if (useReadyDefaultGoals && request.getParameter(GOALS_PARAM) != null) {
-      throw new UserRequestException("Cannot specify " + USE_READY_DEFAULT_GOALS_PARAM + " parameter when explicitly "
-                                     + "specifying goals in request.");
-    }
-    return useReadyDefaultGoals;
+    return getBooleanExcludeGiven(request, USE_READY_DEFAULT_GOALS_PARAM, GOALS_PARAM);
   }
 
   static boolean getDryRun(HttpServletRequest request) {
@@ -527,7 +531,7 @@ public class ParameterUtils {
     }
 
     List<ReplicaMovementStrategy> supportedStrategies = config.getConfiguredInstances(KafkaCruiseControlConfig.REPLICA_MOVEMENT_STRATEGIES_CONFIG,
-        ReplicaMovementStrategy.class);
+                                                                                      ReplicaMovementStrategy.class);
     Map<String, ReplicaMovementStrategy> supportedStrategiesByName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     for (ReplicaMovementStrategy strategy : supportedStrategies) {
       supportedStrategiesByName.put(strategy.name(), strategy);

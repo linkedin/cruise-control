@@ -19,7 +19,6 @@ import com.linkedin.kafka.cruisecontrol.async.progress.Pending;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -31,11 +30,11 @@ import java.util.concurrent.Executors;
  * The following async methods are supported:
  *
  * <ul>
- * <li>{@link KafkaCruiseControl#decommissionBrokers(java.util.Collection, boolean, boolean, List, ModelCompletenessRequirements,
- * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
+ * <li>{@link KafkaCruiseControl#decommissionBrokers(java.util.Collection, boolean, boolean, java.util.List,
+ * ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)}</li>
- * <li>{@link KafkaCruiseControl#addBrokers(java.util.Collection, boolean, boolean, List, ModelCompletenessRequirements,
- * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
+ * <li>{@link KafkaCruiseControl#addBrokers(java.util.Collection, boolean, boolean, java.util.List,
+ * ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)}</li>
  * <li>{@link KafkaCruiseControl#demoteBrokers(java.util.Collection, boolean, OperationProgress, boolean, Integer, boolean,
  * boolean, com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean)}</li>
@@ -43,14 +42,14 @@ import java.util.concurrent.Executors;
  * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getOptimizationProposals(OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
- * <li>{@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress,
- * boolean, boolean, java.util.regex.Pattern, boolean, boolean)}</li>
- * <li>{@link KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements, OperationProgress,
+ * <li>{@link KafkaCruiseControl#getOptimizationProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
+ * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean)}</li>
+ * <li>{@link KafkaCruiseControl#fixOfflineReplicas(boolean, java.util.List, ModelCompletenessRequirements, OperationProgress,
  * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)}</li>
- * <li>{@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress,
+ * <li>{@link KafkaCruiseControl#rebalance(java.util.List, boolean, ModelCompletenessRequirements, OperationProgress,
  * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
- * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)}</li>
+ * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, boolean)}</li>
  * </ul>
  *
  * The other operations are non-blocking by default.
@@ -82,48 +81,39 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#decommissionBrokers(java.util.Collection, boolean, boolean, List, ModelCompletenessRequirements,
-   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
+   * @see KafkaCruiseControl#decommissionBrokers(java.util.Collection, boolean, boolean, java.util.List,
+   * ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
    * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)
    */
-  public OperationFuture decommissionBrokers(List<String> goals,
-                                             ModelCompletenessRequirements requirements,
-                                             AddedOrRemovedBrokerParameters parameters,
-                                             String uuid) {
+  public OperationFuture decommissionBrokers(AddedOrRemovedBrokerParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Decommission brokers");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new DecommissionBrokersRunnable(this, future, goals, requirements, parameters, uuid));
+    _sessionExecutor.submit(new DecommissionBrokersRunnable(this, future, parameters, uuid));
     return future;
   }
 
   /**
-   * @see KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements, OperationProgress,
+   * @see KafkaCruiseControl#fixOfflineReplicas(boolean, java.util.List, ModelCompletenessRequirements, OperationProgress,
    * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
    * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)
    */
-  public OperationFuture fixOfflineReplicas(List<String> goals,
-                                            ModelCompletenessRequirements requirements,
-                                            FixOfflineReplicasParameters parameters,
-                                            String uuid) {
+  public OperationFuture fixOfflineReplicas(FixOfflineReplicasParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Fix offline replicas");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new FixOfflineReplicasRunnable(this, future, goals, requirements, parameters, uuid));
+    _sessionExecutor.submit(new FixOfflineReplicasRunnable(this, future, parameters, uuid));
 
     return future;
   }
 
   /**
-   * @see KafkaCruiseControl#addBrokers(java.util.Collection, boolean, boolean, List, ModelCompletenessRequirements,
-   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
+   * @see KafkaCruiseControl#addBrokers(java.util.Collection, boolean, boolean, java.util.List,
+   * ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
    * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)
    */
-  public OperationFuture addBrokers(List<String> goals,
-                                    ModelCompletenessRequirements requirements,
-                                    AddedOrRemovedBrokerParameters parameters,
-                                    String uuid) {
+  public OperationFuture addBrokers(AddedOrRemovedBrokerParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Add brokers");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new AddBrokerRunnable(this, future, goals, requirements, parameters, uuid));
+    _sessionExecutor.submit(new AddBrokerRunnable(this, future, parameters, uuid));
     return future;
   }
 
@@ -149,30 +139,25 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements, OperationProgress, boolean,
-   * boolean, java.util.regex.Pattern, boolean, boolean)
+   * @see KafkaCruiseControl#getOptimizationProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
+   * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean)
    */
-  public OperationFuture getOptimizationProposals(List<String> goals,
-                                                  ModelCompletenessRequirements requirements,
-                                                  ProposalsParameters parameters) {
+  public OperationFuture getOptimizationProposals(ProposalsParameters parameters) {
     OperationFuture future = new OperationFuture("Get customized optimization proposals");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new GetOptimizationProposalsRunnable(this, future, goals, requirements, parameters));
+    _sessionExecutor.submit(new GetOptimizationProposalsRunnable(this, future, parameters));
     return future;
   }
 
   /**
-   * @see KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements, OperationProgress, boolean, Integer,
-   * Integer, boolean, java.util.regex.Pattern, com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy,
-   * String, boolean, boolean)
+   * @see KafkaCruiseControl#rebalance(java.util.List, boolean, ModelCompletenessRequirements, OperationProgress,
+   * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
+   * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, boolean)
    */
-  public OperationFuture rebalance(List<String> goals,
-                                   ModelCompletenessRequirements requirements,
-                                   RebalanceParameters parameters,
-                                   String uuid) {
+  public OperationFuture rebalance(RebalanceParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Rebalance");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new RebalanceRunnable(this, future, goals, requirements, parameters, uuid));
+    _sessionExecutor.submit(new RebalanceRunnable(this, future, parameters, uuid));
     return future;
   }
 

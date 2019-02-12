@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 
 
 /**
@@ -39,7 +40,6 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA
  */
 public abstract class CapacityGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(CapacityGoal.class);
-  private static final int MIN_NUM_VALID_WINDOWS = 1;
 
   /**
    * Constructor for Capacity Goal.
@@ -104,7 +104,7 @@ public abstract class CapacityGoal extends AbstractGoal {
   @Override
   public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
     // We only need the latest snapshot and include all the topics.
-    return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS, _minMonitoredPartitionPercentage, true);
+    return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, _minMonitoredPartitionPercentage, true);
   }
 
   /**

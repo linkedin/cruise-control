@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 /**
  * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern,
- * ReplicaMovementStrategy, String, boolean, boolean)}
+ * ReplicaMovementStrategy, String, boolean, boolean, boolean)}
  */
 class RebalanceRunnable extends OperationRunnable {
   private final List<String> _goals;
@@ -31,17 +31,16 @@ class RebalanceRunnable extends OperationRunnable {
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
   private final ReplicaMovementStrategy _replicaMovementStrategy;
+  private final boolean _ignoreProposalCache;
 
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture future,
-                    List<String> goals,
-                    ModelCompletenessRequirements modelCompletenessRequirements,
                     RebalanceParameters parameters,
                     String uuid) {
     super(kafkaCruiseControl, future);
-    _goals = goals;
+    _goals = parameters.goals();
     _dryRun = parameters.dryRun();
-    _modelCompletenessRequirements = modelCompletenessRequirements;
+    _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _concurrentPartitionMovements = parameters.concurrentPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
@@ -51,6 +50,7 @@ class RebalanceRunnable extends OperationRunnable {
     _uuid = uuid;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
+    _ignoreProposalCache = parameters.ignoreProposalCache();
   }
 
   @Override
@@ -67,6 +67,7 @@ class RebalanceRunnable extends OperationRunnable {
                                                                 _replicaMovementStrategy,
                                                                 _uuid,
                                                                 _excludeRecentlyDemotedBrokers,
-                                                                _excludeRecentlyRemovedBrokers));
+                                                                _excludeRecentlyRemovedBrokers,
+                                                                _ignoreProposalCache));
   }
 }

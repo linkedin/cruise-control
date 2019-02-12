@@ -34,14 +34,12 @@ class FixOfflineReplicasRunnable extends OperationRunnable {
 
   FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
                              OperationFuture future,
-                             List<String> goals,
-                             ModelCompletenessRequirements modelCompletenessRequirements,
                              FixOfflineReplicasParameters parameters,
                              String uuid) {
     super(kafkaCruiseControl, future);
     _dryRun = parameters.dryRun();
-    _goals = goals;
-    _modelCompletenessRequirements = modelCompletenessRequirements;
+    _goals = parameters.goals();
+    _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _concurrentPartitionMovements = parameters.concurrentPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();

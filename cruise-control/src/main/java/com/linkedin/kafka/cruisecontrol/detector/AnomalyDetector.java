@@ -288,7 +288,7 @@ public class AnomalyDetector {
         if (meetCompletenessRequirements) {
           return true;
         } else {
-          LOG.debug("Skipping {} because load completeness requirement is not met for goals.", skipMsg);
+          LOG.warn("Skipping {} because load completeness requirement is not met for goals.", skipMsg);
           _anomalyDetectorState.onAnomalyHandle(anomaly, AnomalyState.Status.COMPLETENESS_NOT_READY);
         }
       }

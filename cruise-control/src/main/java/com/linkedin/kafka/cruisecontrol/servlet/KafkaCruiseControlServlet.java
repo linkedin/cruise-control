@@ -28,7 +28,6 @@ import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.servlet.response.BootstrapResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ResumeSamplingResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalExecutionResult;
@@ -37,11 +36,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -57,7 +52,6 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.hasValidParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.wantJSON;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DataFrom;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.returnProgress;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
@@ -333,18 +327,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       // Failed to parse parameters.
       return true;
     }
-
-    GoalBasedOptimizationParameters.GoalsAndRequirements goalsAndRequirements =
-        getGoalsAndRequirements(request, response, parameters.goals(), parameters.dataFrom(),
-                                parameters.ignoreProposalCache(), parameters.useReadyDefaultGoals());
-    if (goalsAndRequirements == null) {
-      return false;
-    }
-    // Get the optimization result asynchronously.
-    CruiseControlResponse optimizationResult = getAndMaybeReturnProgress(
-        request, response, uuid -> _asyncKafkaCruiseControl.getOptimizationProposals(goalsAndRequirements.goals(),
-                                                                                     goalsAndRequirements.requirements(),
-                                                                                     parameters));
+    CruiseControlResponse optimizationResult = getAndMaybeReturnProgress(request, response, uuid
+        -> _asyncKafkaCruiseControl.getOptimizationProposals(parameters));
     if (optimizationResult == null) {
       return false;
     }
@@ -400,37 +384,19 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       // Failed to parse parameters.
       return true;
     }
-
-    GoalBasedOptimizationParameters.GoalsAndRequirements goalsAndRequirements =
-        getGoalsAndRequirements(request, response, parameters.goals(), parameters.dataFrom(), false, parameters.useReadyDefaultGoals());
-    if (goalsAndRequirements == null) {
-      return false;
-    }
-    // Get proposals asynchronously.
     CruiseControlResponse optimizationResult;
     switch (endPoint) {
       case ADD_BROKER:
-        optimizationResult =
-            getAndMaybeReturnProgress(request, response,
-                                      uuid -> _asyncKafkaCruiseControl.addBrokers(goalsAndRequirements.goals(),
-                                                                                  goalsAndRequirements.requirements(),
-                                                                                  (AddedOrRemovedBrokerParameters) parameters,
-                                                                                  uuid));
+        optimizationResult = getAndMaybeReturnProgress(request, response, uuid
+            -> _asyncKafkaCruiseControl.addBrokers((AddedOrRemovedBrokerParameters) parameters, uuid));
         break;
       case REMOVE_BROKER:
-        optimizationResult =
-            getAndMaybeReturnProgress(request, response,
-                                      uuid -> _asyncKafkaCruiseControl.decommissionBrokers(goalsAndRequirements.goals(),
-                                                                                           goalsAndRequirements.requirements(),
-                                                                                           (AddedOrRemovedBrokerParameters) parameters,
-                                                                                           uuid));
+        optimizationResult = getAndMaybeReturnProgress(request, response, uuid
+            -> _asyncKafkaCruiseControl.decommissionBrokers((AddedOrRemovedBrokerParameters) parameters, uuid));
         break;
       case FIX_OFFLINE_REPLICAS:
-        optimizationResult = getAndMaybeReturnProgress(request, response,
-                                                       uuid -> _asyncKafkaCruiseControl.fixOfflineReplicas(goalsAndRequirements.goals(),
-                                                                                                           goalsAndRequirements.requirements(),
-                                                                                                           (FixOfflineReplicasParameters) parameters,
-                                                                                                           uuid));
+        optimizationResult = getAndMaybeReturnProgress(request, response, uuid
+            -> _asyncKafkaCruiseControl.fixOfflineReplicas((FixOfflineReplicasParameters) parameters, uuid));
         break;
       default:
         // Should never reach here.
@@ -450,18 +416,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       // Failed to parse parameters.
       return true;
     }
-
-    GoalBasedOptimizationParameters.GoalsAndRequirements goalsAndRequirements =
-        getGoalsAndRequirements(request, response, parameters.goals(), parameters.dataFrom(), false, parameters.useReadyDefaultGoals());
-    if (goalsAndRequirements == null) {
-      return false;
-    }
     CruiseControlResponse optimizationResult =
-        getAndMaybeReturnProgress(request, response,
-                                  uuid -> _asyncKafkaCruiseControl.rebalance(goalsAndRequirements.goals(),
-                                                                             goalsAndRequirements.requirements(),
-                                                                             parameters,
-                                                                             uuid));
+        getAndMaybeReturnProgress(request, response, uuid -> _asyncKafkaCruiseControl.rebalance(parameters, uuid));
     if (optimizationResult == null) {
       return false;
     }
@@ -477,7 +433,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return true;
     }
 
-    // Get proposals asynchronously.
     CruiseControlResponse optimizationResult =
         getAndMaybeReturnProgress(request, response, uuid -> _asyncKafkaCruiseControl.demoteBrokers(uuid, parameters));
     if (optimizationResult == null) {
@@ -541,50 +496,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } catch (TimeoutException te) {
       returnProgress(response, futures, wantJSON(request), _config);
       return null;
-    }
-  }
-
-  // package private for testing.
-  GoalBasedOptimizationParameters.GoalsAndRequirements getGoalsAndRequirements(HttpServletRequest request,
-                                                                               HttpServletResponse response,
-                                                                               List<String> userProvidedGoals,
-                                                                               DataFrom dataFrom,
-                                                                               boolean ignoreCache,
-                                                                               boolean useReadyDefaultGoals) throws Exception {
-    if (!userProvidedGoals.isEmpty() || dataFrom == DataFrom.VALID_PARTITIONS) {
-      return new GoalBasedOptimizationParameters.GoalsAndRequirements(userProvidedGoals, getRequirements(dataFrom));
-    }
-
-    CruiseControlStateParameters parameters = new CruiseControlStateParameters(null);
-    parameters.setSubstates(new HashSet<>(Arrays.asList(CruiseControlState.SubState.ANALYZER,
-                                                        CruiseControlState.SubState.MONITOR)));
-
-    CruiseControlResponse state = getAndMaybeReturnProgress(request, response,
-                                                            uuid -> _asyncKafkaCruiseControl.state(parameters));
-    if (state == null) {
-      return null;
-    }
-    int availableWindows = ((CruiseControlState) state).monitorState().numValidWindows();
-    List<String> allGoals = new ArrayList<>();
-    List<String> readyGoals = new ArrayList<>();
-    ((CruiseControlState) state).analyzerState().readyGoals().forEach((goal, ready) -> {
-      allGoals.add(goal.name());
-      if (ready) {
-        readyGoals.add(goal.name());
-      }
-    });
-    if (allGoals.size() == readyGoals.size()) {
-      // If all the goals work, use it.
-      return new GoalBasedOptimizationParameters.GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), null);
-    } else if (availableWindows > 0) {
-      // If some valid windows are available, use it.
-      return new GoalBasedOptimizationParameters.GoalsAndRequirements(ignoreCache ? allGoals : Collections.emptyList(), getRequirements(dataFrom));
-    } else if (useReadyDefaultGoals && readyGoals.size() > 0) {
-      // If no window is valid but some goals are ready, use them if using ready goals is permitted.
-      return new GoalBasedOptimizationParameters.GoalsAndRequirements(readyGoals, null);
-    } else {
-      // Ok, use default setting and let it throw exception.
-      return new GoalBasedOptimizationParameters.GoalsAndRequirements(Collections.emptyList(), null);
     }
   }
 

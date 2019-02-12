@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
-import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -16,7 +15,6 @@ import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.endPoint;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.wantJSON;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DataFrom;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
@@ -89,10 +87,5 @@ public class KafkaCruiseControlServletUtils {
     StringWriter sw = new StringWriter();
     ure.printStackTrace(new PrintWriter(sw));
     writeErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
-  }
-
-  static ModelCompletenessRequirements getRequirements(DataFrom dataFrom) {
-    return dataFrom == DataFrom.VALID_PARTITIONS ? new ModelCompletenessRequirements(Integer.MAX_VALUE, 0.0, true)
-                                                 : new ModelCompletenessRequirements(1, 1.0, true);
   }
 }
