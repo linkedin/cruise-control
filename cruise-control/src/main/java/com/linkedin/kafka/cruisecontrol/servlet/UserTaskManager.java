@@ -262,21 +262,15 @@ public class UserTaskManager implements Closeable {
     return userTaskId;
   }
 
-  private synchronized boolean isActiveUserTasksDone(UUID userTaskId) {
-    UserTaskInfo userTaskInfo = _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).get(userTaskId);
-    if (userTaskInfo == null || userTaskInfo.futures().isEmpty()) {
-      return true;
-    }
-
-    List<OperationFuture> futures = userTaskInfo.futures();
-    return futures.get(futures.size() - 1).isDone();
-  }
-
    synchronized void checkActiveUserTasks() {
     Iterator<Map.Entry<UUID, UserTaskInfo>> iter = _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).entrySet().iterator();
     while (iter.hasNext()) {
       Map.Entry<UUID, UserTaskInfo> entry = iter.next();
-      if (isActiveUserTasksDone(entry.getKey())) {
+      if (entry.getValue().isUserTaskDoneExceptionally()) {
+        LOG.warn("UserTask {} is complete with Exception and removed from active tasks list", entry.getKey());
+        _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED_WITH_ERROR));
+        iter.remove();
+      } else if (entry.getValue().isUserTaskDone()) {
         LOG.info("UserTask {} is complete and removed from active tasks list", entry.getKey());
         _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
         _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED));
@@ -322,7 +316,7 @@ public class UserTaskManager implements Closeable {
     if (_allUserTaskIdToFutureMap.get(TaskState.COMPLETED).containsKey(userTaskId)) {
       // Before add new operation to task, first recycle the task from completed task list.
       _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).put(userTaskId, _allUserTaskIdToFutureMap.get(TaskState.COMPLETED)
-          .remove(userTaskId).setState(TaskState.ACTIVE));
+                               .remove(userTaskId).setState(TaskState.ACTIVE));
       LOG.info("UserTask {} is recycled from complete task list and added back to active tasks list", userTaskId);
     }
     if (_allUserTaskIdToFutureMap.get(TaskState.ACTIVE).containsKey(userTaskId)) {
@@ -525,6 +519,14 @@ public class UserTaskManager implements Closeable {
       _state = nextState;
       return this;
     }
+
+    public boolean isUserTaskDone() {
+      return _futures == null || _futures.isEmpty() || _futures.get(_futures.size() - 1).isDone();
+    }
+
+    public boolean isUserTaskDoneExceptionally() {
+      return _futures != null && !_futures.isEmpty() && _futures.get(_futures.size() - 1).isCompletedExceptionally();
+    }
   }
 
   /**
@@ -548,7 +550,8 @@ public class UserTaskManager implements Closeable {
    */
   public enum TaskState {
     ACTIVE("Active"),
-    COMPLETED("Completed");
+    COMPLETED("Completed"),
+    COMPLETED_WITH_ERROR("CompletedWithError");
 
     private String _type;
     TaskState(String type) {
