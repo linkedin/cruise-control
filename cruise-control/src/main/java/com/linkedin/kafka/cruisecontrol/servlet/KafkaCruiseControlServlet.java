@@ -325,7 +325,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return true;
     }
     CruiseControlResponse optimizationResult = getAndMaybeReturnProgress(
-        request, response, uuid -> _asyncKafkaCruiseControl.getOptimizationProposals(parameters));
+        request, response, uuid -> _asyncKafkaCruiseControl.getProposals(parameters));
     if (optimizationResult == null) {
       return false;
     }

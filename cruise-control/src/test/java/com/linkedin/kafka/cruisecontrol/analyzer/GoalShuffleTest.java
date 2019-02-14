@@ -12,12 +12,14 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Properties;
 import java.util.StringJoiner;
 import org.apache.kafka.common.utils.SystemTime;
+import org.easymock.EasyMock;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -71,7 +73,8 @@ public class GoalShuffleTest {
     GoalOptimizer goalOptimizer = new GoalOptimizer(new KafkaCruiseControlConfig(balancingConstraint.setProps(props)),
                                                     null,
                                                     new SystemTime(),
-                                                    new MetricRegistry());
+                                                    new MetricRegistry(),
+                                                    EasyMock.mock(Executor.class));
     List<List<Goal>> goalByPriorityForPrecomputing = goalOptimizer.goalByPriorityForPrecomputing();
 
     // Check whether the correct number of goal priority is generated

@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.Properties;
 import org.apache.kafka.common.utils.SystemTime;
@@ -40,7 +41,7 @@ public class GoalOptimizerTest {
     KafkaCruiseControlConfig config = new KafkaCruiseControlConfig(props);
 
     GoalOptimizer goalOptimizer = new GoalOptimizer(config, EasyMock.mock(LoadMonitor.class), new SystemTime(),
-                                                    new MetricRegistry());
+                                                    new MetricRegistry(), EasyMock.mock(Executor.class));
     // Should exit immediately.
     goalOptimizer.run();
   }
