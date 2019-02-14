@@ -10,6 +10,7 @@ import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -26,7 +27,9 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
@@ -52,7 +55,7 @@ public class UserTaskManager implements Closeable {
 
   private static final Logger LOG = LoggerFactory.getLogger(UserTaskManager.class);
   private final Map<SessionKey, UUID> _sessionKeyToUserTaskIdMap;
-  private final Map<TaskState, Map<UUID, UserTaskInfo>> _allUserTaskIdToFutureMap;
+  private final Map<TaskState, Map<UUID, UserTaskInfo>> _allUuidToUserTaskInfoMap;
   private final long _sessionExpiryMs;
   private final long _maxActiveUserTasks;
   private final Time _time;
@@ -77,9 +80,9 @@ public class UserTaskManager implements Closeable {
         return this.size() > maxCachedCompletedUserTasks;
       }
     };
-    _allUserTaskIdToFutureMap = new HashMap<>(2);
-    _allUserTaskIdToFutureMap.put(TaskState.ACTIVE, activeUserTaskIdToFuturesMap);
-    _allUserTaskIdToFutureMap.put(TaskState.COMPLETED, completedUserTaskIdToFuturesMap);
+    _allUuidToUserTaskInfoMap = new HashMap<>(2);
+    _allUuidToUserTaskInfoMap.put(TaskState.ACTIVE, activeUserTaskIdToFuturesMap);
+    _allUuidToUserTaskInfoMap.put(TaskState.COMPLETED, completedUserTaskIdToFuturesMap);
 
     _sessionExpiryMs = sessionExpiryMs;
     _maxActiveUserTasks = maxActiveUserTasks;
@@ -93,7 +96,7 @@ public class UserTaskManager implements Closeable {
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-sessions"),
                                       (Gauge<Integer>) _sessionKeyToUserTaskIdMap::size);
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-user-tasks"),
-                                      (Gauge<Integer>) _allUserTaskIdToFutureMap.get(TaskState.ACTIVE)::size);
+                                      (Gauge<Integer>) _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE)::size);
     _successfulRequestExecutionTimer = successfulRequestExecutionTimer;
   }
 
@@ -112,9 +115,9 @@ public class UserTaskManager implements Closeable {
         return this.size() > maxCachedCompletedUserTasks;
       }
     };
-    _allUserTaskIdToFutureMap = new HashMap<>(2);
-    _allUserTaskIdToFutureMap.put(TaskState.ACTIVE, activeUserTaskIdToFuturesMap);
-    _allUserTaskIdToFutureMap.put(TaskState.COMPLETED, completedUserTaskIdToFuturesMap);
+    _allUuidToUserTaskInfoMap = new HashMap<>(2);
+    _allUuidToUserTaskInfoMap.put(TaskState.ACTIVE, activeUserTaskIdToFuturesMap);
+    _allUuidToUserTaskInfoMap.put(TaskState.COMPLETED, completedUserTaskIdToFuturesMap);
 
     _sessionExpiryMs = sessionExpiryMs;
     _maxActiveUserTasks = maxActiveUserTasks;
@@ -143,7 +146,7 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Create the UserTaskInfo reference if it doesn't exist.
+   * Create the Asynchronous UserTask reference if it doesn't exist.
    *
    * This method creates references {@link UserTaskInfo} and maps it to {@link HttpSession} from httpServletRequest. The
    * {@link HttpSession} is also used to fetch {@link OperationFuture} for the in-progress/completed UserTask. If the
@@ -156,56 +159,114 @@ public class UserTaskManager implements Closeable {
    * @param step The index of the step that has to be added or fetched.
    * @return The list of {@link OperationFuture} for the linked UserTask.
    */
-  public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest,
-                                                   HttpServletResponse httpServletResponse,
-                                                   Function<String, OperationFuture> function,
-                                                   int step) {
+  public List<OperationFuture> getOrCreateAsyncUserTask(HttpServletRequest httpServletRequest,
+                                                        HttpServletResponse httpServletResponse,
+                                                        Function<String, OperationFuture> function,
+                                                        int step) {
     UUID userTaskId = getUserTaskId(httpServletRequest);
-    List<OperationFuture> operationFutures = getFuturesByUserTaskId(userTaskId, httpServletRequest);
 
-    if (operationFutures != null) {
+    AsyncUserTaskInfo userTaskInfo = (AsyncUserTaskInfo) getUserTaskByUserTaskId(userTaskId, httpServletRequest);
+    Function<UUID, Consumer<UserTaskInfo>> consumer = (uuid) -> {
+      return (userTask) -> {
+        OperationFuture future = function.apply(uuid.toString());
+        userTask.futures().add(future);
+      };
+    };
+
+    if (userTaskInfo != null) {
       LOG.info("Fetch an existing UserTask {}", userTaskId);
       httpServletResponse.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
-      if (step < operationFutures.size()) {
-        return operationFutures;
-      } else if (step == operationFutures.size()) {
+      if (step < userTaskInfo.futures().size()) {
+        return userTaskInfo.futures();
+      } else if (step == userTaskInfo.futures().size()) {
         LOG.info("Add a new future to existing UserTask {}", userTaskId);
-        return insertFuturesByUserTaskId(userTaskId, function, httpServletRequest);
+        return insertUserTaskById(userTaskId, consumer.apply(userTaskId), httpServletRequest, false).futures();
       } else {
         throw new IllegalArgumentException(
-            String.format("There are %d steps in the session. Cannot add step %d.", operationFutures.size(), step));
+            String.format("There are %d steps in the session. Cannot add step %d.", userTaskInfo.futures().size(), step));
       }
     } else {
-      if (httpServletRequest.getHeader(USER_TASK_HEADER_NAME) != null) {
-        // request provides user_task_header that user tasks doesn't exist then just throw exception
-        String userTaskIdFromRequest = httpServletRequest.getHeader(USER_TASK_HEADER_NAME);
-        throw new IllegalArgumentException(
-            String.format("UserTask %s is an invalid %s", userTaskIdFromRequest, USER_TASK_HEADER_NAME));
-      }
 
+
+      ensureUserTaskHeaderNotPresent(USER_TASK_HEADER_NAME, httpServletRequest);
       if (step != 0) {
         throw new IllegalArgumentException(
             String.format("There are no step in the session. Cannot add step %d.", step));
       }
+      UUID userTaskId2 = _uuidGenerator.randomUUID();
+      userTaskInfo = (AsyncUserTaskInfo) insertUserTaskById(userTaskId2, consumer.apply(userTaskId2), httpServletRequest, false);
+      createSessionKeyMapping(userTaskId2, httpServletRequest);
 
-      SessionKey sessionKey = new SessionKey(httpServletRequest);
-      userTaskId = _uuidGenerator.randomUUID();
-      LOG.info("Create a new UserTask {} with SessionKey {}", userTaskId, sessionKey);
-      operationFutures = insertFuturesByUserTaskId(userTaskId, function, httpServletRequest);
 
-      synchronized (_sessionKeyToUserTaskIdMap) {
-        _sessionKeyToUserTaskIdMap.put(sessionKey, userTaskId);
-      }
+      httpServletResponse.setHeader(USER_TASK_HEADER_NAME, userTaskId2.toString());
+      return userTaskInfo.futures();
+    }
+  }
 
+  /**
+   * Create the Synchronous UserTask reference if it doesn't exist.
+   *
+   * For association between SyncUserTaskInfo with UUID and sessionKey, see description above getOrCreateAsyncUserTask. The difference
+   * between Synchronous and Asynchronous User Task is that synchronous tasks are do not have in-progress state. They are created when
+   * a synchronous request is finished, and inserted into _allUuidToUserTaskInfoMap for record keeping purpose.
+   *
+   * @param httpServletRequest the HttpServletRequest to create the UserTaskInfo reference.
+   * @param httpServletResponse the HttpServletResponse that contains the UserTaskId in the HttpServletResponse header.
+   * @return CruiseControlResponse the result of execution of synchronous tasks. Note that not all tasks have results (e.g. pauseSampling)
+   * for those cases, return null.
+   */
+  public CruiseControlResponse getOrCreateSyncUserTask(HttpServletRequest httpServletRequest,
+                                                       HttpServletResponse httpServletResponse,
+                                                       Supplier<CruiseControlResponse> supplier) {
+    UUID userTaskId = getUserTaskId(httpServletRequest);
+
+    SyncUserTaskInfo userTaskInfo = (SyncUserTaskInfo) getUserTaskByUserTaskId(userTaskId, httpServletRequest);
+    if (userTaskInfo != null) {
+      LOG.info("UserTask with Id {} already exists", userTaskId);
       httpServletResponse.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
-      return operationFutures;
+
+      return userTaskInfo.result();
+    }
+
+    ensureUserTaskHeaderNotPresent(USER_TASK_HEADER_NAME, httpServletRequest);
+
+    userTaskId = _uuidGenerator.randomUUID();
+    userTaskInfo = (SyncUserTaskInfo) insertUserTaskById(userTaskId, (userTask) -> {
+      ((SyncUserTaskInfo) userTask).setResult(supplier.get());
+
+      ((SyncUserTaskInfo) userTask).setEndMs(_time.milliseconds());
+    }, httpServletRequest, true);
+    createSessionKeyMapping(userTaskId, httpServletRequest);
+
+    httpServletResponse.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
+    return userTaskInfo.result();
+  }
+
+  private void ensureUserTaskHeaderNotPresent(String headerName, HttpServletRequest httpServletRequest) {
+    if (httpServletRequest.getHeader(headerName) != null) {
+      // request provides user_task_header that user tasks doesn't exist then just throw exception
+      String userTaskIdFromRequest = httpServletRequest.getHeader(headerName);
+      throw new IllegalArgumentException(
+          String.format("UserTask %s is an invalid %s", userTaskIdFromRequest, headerName));
+    }
+  }
+
+  private void createSessionKeyMapping(UUID userTaskId, HttpServletRequest httpServletRequest) {
+    SessionKey sessionKey = new SessionKey(httpServletRequest);
+    LOG.info("Create a new UserTask {} with SessionKey {}", userTaskId, sessionKey);
+    synchronized (_sessionKeyToUserTaskIdMap) {
+      _sessionKeyToUserTaskIdMap.put(sessionKey, userTaskId);
     }
   }
 
   @SuppressWarnings("unchecked")
   public <T> T getFuture(HttpServletRequest request) {
     UUID userTaskId = getUserTaskId(request);
-    List<OperationFuture> operationFutures = getFuturesByUserTaskId(userTaskId, request);
+    UserTaskInfo userTaskInfo = getUserTaskByUserTaskId(userTaskId, request);
+    List<OperationFuture> operationFutures = null;
+    if (userTaskInfo != null) {
+      operationFutures = userTaskInfo.futures();
+    }
     if (operationFutures == null || operationFutures.isEmpty()) {
       return null;
     }
@@ -264,17 +325,17 @@ public class UserTaskManager implements Closeable {
   }
 
    synchronized void checkActiveUserTasks() {
-    Iterator<Map.Entry<UUID, UserTaskInfo>> iter = _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).entrySet().iterator();
+    Iterator<Map.Entry<UUID, UserTaskInfo>> iter = _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).entrySet().iterator();
     while (iter.hasNext()) {
       Map.Entry<UUID, UserTaskInfo> entry = iter.next();
       if (entry.getValue().isUserTaskDoneExceptionally()) {
         LOG.warn("UserTask {} is completed with Exception and removed from active tasks list", entry.getKey());
-        _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED_WITH_ERROR));
+        _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED_WITH_ERROR));
         iter.remove();
       } else if (entry.getValue().isUserTaskDone()) {
         LOG.info("UserTask {} is completed and removed from active tasks list", entry.getKey());
         _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
-        _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED));
+        _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED));
         iter.remove();
       }
     }
@@ -282,72 +343,87 @@ public class UserTaskManager implements Closeable {
 
   private synchronized void removeOldUserTasks() {
     LOG.debug("Remove old user tasks");
-    _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).entrySet().removeIf(entry -> (entry.getValue().startMs()
-                                                                   + _completedUserTaskRetentionTimeMs < _time.milliseconds()));
+    _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).entrySet().removeIf(entry -> (entry.getValue().startMs()
+                                                                                     + _completedUserTaskRetentionTimeMs < _time.milliseconds()));
   }
 
-  synchronized List<OperationFuture> getFuturesByUserTaskId(UUID userTaskId, HttpServletRequest httpServletRequest) {
+  synchronized UserTaskInfo getUserTaskByUserTaskId(UUID userTaskId, HttpServletRequest httpServletRequest) {
     if (userTaskId == null) {
       return null;
     }
 
     String requestUrl = httpServletRequestToString(httpServletRequest);
-    if (_allUserTaskIdToFutureMap.get(TaskState.COMPLETED).containsKey(userTaskId)) {
-      UserTaskInfo userTaskInfo = _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).get(userTaskId);
+    if (_allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).containsKey(userTaskId)) {
+      UserTaskInfo userTaskInfo = _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).get(userTaskId);
       if (userTaskInfo.requestUrl().equals(requestUrl)
           && hasTheSameHttpParameter(userTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
-        return userTaskInfo.futures();
+        return userTaskInfo;
       }
     }
 
-    if (_allUserTaskIdToFutureMap.get(TaskState.ACTIVE).containsKey(userTaskId)) {
-      UserTaskInfo userTaskInfo = _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).get(userTaskId);
+    if (_allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).containsKey(userTaskId)) {
+      UserTaskInfo userTaskInfo = _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).get(userTaskId);
       if (userTaskInfo.requestUrl().equals(requestUrl)
           && hasTheSameHttpParameter(userTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
-        return userTaskInfo.futures();
+        return userTaskInfo;
       }
     }
 
     return null;
   }
 
-  private synchronized List<OperationFuture> insertFuturesByUserTaskId(UUID userTaskId,
-                                                                       Function<String, OperationFuture> operation,
-                                                                       HttpServletRequest httpServletRequest) {
-    if (_allUserTaskIdToFutureMap.get(TaskState.COMPLETED).containsKey(userTaskId)) {
+  /**
+   * Common function for adding sync/async tasks
+   * @param userTaskId UUID to uniquely identify task.
+   * @param operation lambda function to provide result to UserTaskInfo object
+   * @param httpServletRequest
+   * @param isSync: indicate whether the task created is sync or async
+   * @return
+   */
+  private synchronized UserTaskInfo insertUserTaskById(UUID userTaskId,
+                                                       Consumer<UserTaskInfo> operation,
+                                                       HttpServletRequest httpServletRequest,
+                                                       boolean isSync) {
+    if (_allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).containsKey(userTaskId)) {
       // Before add new operation to task, first recycle the task from completed task list.
-      _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).put(userTaskId, _allUserTaskIdToFutureMap.get(TaskState.COMPLETED)
-                               .remove(userTaskId).setState(TaskState.ACTIVE));
+      _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).put(userTaskId, _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED)
+          .remove(userTaskId).setState(TaskState.ACTIVE));
       LOG.info("UserTask {} is recycled from complete task list and added back to active tasks list", userTaskId);
     }
-    if (_allUserTaskIdToFutureMap.get(TaskState.ACTIVE).containsKey(userTaskId)) {
-      _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).get(userTaskId).futures().add(operation.apply(userTaskId.toString()));
+    UserTaskInfo userTaskInfo;
+
+    if (_allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).containsKey(userTaskId)) {
+      userTaskInfo = _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).get(userTaskId);
+      operation.accept(userTaskInfo);
     } else {
-      if (_allUserTaskIdToFutureMap.get(TaskState.ACTIVE).size() >= _maxActiveUserTasks) {
-        throw new RuntimeException("There are already " + _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).size() +
-            " active user tasks, which has reached the servlet capacity.");
+      if (_allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).size() >= _maxActiveUserTasks) {
+        throw new RuntimeException("There are already " + _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).size() +
+                                   " active user tasks, which has reached the servlet capacity.");
       }
-      UserTaskInfo userTaskInfo =
-          new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString()))),
-                           _time.milliseconds(), userTaskId, TaskState.ACTIVE);
-      _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).put(userTaskId, userTaskInfo);
+      if (isSync) {
+        userTaskInfo = new SyncUserTaskInfo(httpServletRequest, _time.milliseconds(), userTaskId, TaskState.ACTIVE);
+      } else {
+        userTaskInfo = new AsyncUserTaskInfo(httpServletRequest, _time.milliseconds(), userTaskId, TaskState.ACTIVE);
+      }
+      operation.accept(userTaskInfo);
+      _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).put(userTaskId, userTaskInfo);
     }
-    return _allUserTaskIdToFutureMap.get(TaskState.ACTIVE).get(userTaskId).futures();
+    return _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).get(userTaskId);
   }
 
   public synchronized List<UserTaskInfo> getActiveUserTasks() {
-    return new ArrayList<>(_allUserTaskIdToFutureMap.get(TaskState.ACTIVE).values());
+    return new ArrayList<>(_allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).values());
   }
 
   public synchronized List<UserTaskInfo> getCompletedUserTasks() {
-    return new ArrayList<>(_allUserTaskIdToFutureMap.get(TaskState.COMPLETED).values());
+    return new ArrayList<>(_allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).values());
   }
 
   @Override
   public String toString() {
     Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap = new LinkedHashMap<>();
     Map<UUID, UserTaskInfo> completedWithErrorUserTaskIdToFuturesMap = new LinkedHashMap<>();
-    _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).forEach((k, v) -> {
+    _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).forEach((k, v) -> {
       if (v.state() == TaskState.COMPLETED) {
         completedUserTaskIdToFuturesMap.put(k, v);
       } else {
@@ -355,8 +431,8 @@ public class UserTaskManager implements Closeable {
       }
     });
     return "UserTaskManager{_sessionKeyToUserTaskIdMap=" + _sessionKeyToUserTaskIdMap
-           + ", _activeUserTaskIdToFuturesMap=" + _allUserTaskIdToFutureMap.get(TaskState.ACTIVE)
-           + ", _completedUserTaskIdToFuturesMap=" + completedUserTaskIdToFuturesMap
+           + ", _activeUserTaskIdToFuturesMap=" + _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE)
+           + ", _completedUserTaskIdToFuturesMap=" + _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED)
            + ", _completedWithErrorUserTaskIdToFuturesMap=" + completedWithErrorUserTaskIdToFuturesMap + '}';
   }
 
@@ -438,38 +514,32 @@ public class UserTaskManager implements Closeable {
   /**
    * A class to encapsulate UserTask.
    */
-  public static class UserTaskInfo {
-    private final List<OperationFuture> _futures;
+  public abstract static class UserTaskInfo {
     private final String _requestUrl;
     private final String _clientIdentity;
-    private final long _startMs;
+    protected final long _startMs;
     private final UUID _userTaskId;
     private final Map<String, String[]> _queryParams;
     private final EndPoint _endPoint;
     private TaskState _state;
 
     public UserTaskInfo(HttpServletRequest httpServletRequest,
-                        List<OperationFuture> futures,
                         long startMs,
                         UUID userTaskId,
                         TaskState state) {
-      this(futures, httpServletRequestToString(httpServletRequest),
+      this(httpServletRequestToString(httpServletRequest),
            KafkaCruiseControlServletUtils.getClientIpAddress(httpServletRequest), startMs, userTaskId,
            httpServletRequest.getParameterMap(), ParameterUtils.endPoint(httpServletRequest), state);
     }
 
-    public UserTaskInfo(List<OperationFuture> futures,
-                        String requestUrl,
+    public UserTaskInfo(String requestUrl,
                         String clientIdentity,
                         long startMs,
                         UUID userTaskId,
                         Map<String, String[]> queryParams,
                         EndPoint endPoint,
                         TaskState state) {
-      if (futures == null || futures.isEmpty()) {
-        throw new IllegalArgumentException("Invalid OperationFuture list " + futures + " is provided for UserTaskInfo.");
-      }
-      _futures = futures;
+
       _requestUrl = requestUrl;
       _clientIdentity = clientIdentity;
       _startMs = startMs;
@@ -477,10 +547,6 @@ public class UserTaskManager implements Closeable {
       _queryParams = queryParams;
       _endPoint = endPoint;
       _state = state;
-    }
-
-    public List<OperationFuture> futures() {
-      return _futures;
     }
 
     public String requestUrl() {
@@ -507,9 +573,11 @@ public class UserTaskManager implements Closeable {
       return _endPoint;
     }
 
-    public long executionTimeNs() {
-      return _futures.get(_futures.size() - 1).finishTimeNs() - TimeUnit.MILLISECONDS.toNanos(_startMs);
-    }
+
+    public abstract long executionTimeNs();
+    public abstract List<OperationFuture> futures();
+    public abstract CruiseControlResponse result();
+    public abstract boolean isUserTaskDone();
 
     public TaskState state() {
       return _state;
@@ -543,6 +611,74 @@ public class UserTaskManager implements Closeable {
     }
   }
 
+  public static class AsyncUserTaskInfo extends UserTaskInfo {
+    private final List<OperationFuture> _futures;
+    public AsyncUserTaskInfo(HttpServletRequest httpServletRequest,
+                            long startMs,
+                            UUID userTaskId,
+                            TaskState state) {
+      super(httpServletRequest, startMs, userTaskId, state);
+      _futures = new ArrayList<>();
+    }
+
+    public List<OperationFuture> futures() {
+      return _futures;
+    }
+
+    public CruiseControlResponse result() {
+      return null;
+    }
+
+    @Override
+    public long executionTimeNs() {
+      return _futures.get(_futures.size() - 1).finishTimeNs() - TimeUnit.MILLISECONDS.toNanos(_startMs);
+    }
+
+    @Override
+    public boolean isUserTaskDone() {
+      return _futures == null || _futures.isEmpty();
+    }
+  }
+
+  public static class SyncUserTaskInfo extends UserTaskInfo {
+      private CruiseControlResponse _result;
+      private long _endMs;
+      public SyncUserTaskInfo(HttpServletRequest httpServletRequest,
+                          long startMs,
+                          UUID userTaskId,
+                          TaskState state) {
+        super(httpServletRequest, startMs, userTaskId, state);
+      }
+
+      // Synchronous tasks do not use Futures
+      public List<OperationFuture> futures() {
+        return null;
+      }
+
+      public CruiseControlResponse result() {
+        return _result;
+      }
+
+      public void setResult(CruiseControlResponse result) {
+        _result = result;
+      }
+
+      public void setEndMs(long endMs) {
+        _endMs = endMs;
+      }
+
+      @Override
+      public long executionTimeNs() {
+        return TimeUnit.MILLISECONDS.toNanos(_endMs - _startMs);
+      }
+
+      // Sync task are done when they are inserted.
+      @Override
+      public boolean isUserTaskDone() {
+        return true;
+      }
+  }
+
   /**
    * A runnable class to remove expired session, completed user tasks and old inactive tasks.
    */
@@ -560,7 +696,8 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Possible state of tasks.
+   * Possible state of tasks. We currently accept {@link TaskState#ACTIVE} and {@link TaskState#COMPLETED}, in the
+   * future we could also add Cancelled state.
    */
   public enum TaskState {
     ACTIVE("Active"),

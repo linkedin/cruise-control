@@ -125,13 +125,13 @@ public class KafkaCruiseControlServletEndpointTest {
     for (Object[] initInfo : _initializeServletRequestsOutput) {
       allParams.add(inputCreateTaskParams((HttpServletRequest) initInfo[0], 0, 0));
     }
-    // for the 6th getOrCreateUserTask() call, we set step to 1 and get the 2nd future
+    // for the 6th getOrCreateAsyncUserTask() call, we set step to 1 and get the 2nd future
     allParams.get(5)[1] = 1;
     allParams.get(5)[2] = 1;
 
     for (Object[] params : allParams) {
-      OperationFuture future = userTaskManager.getOrCreateUserTask((HttpServletRequest) params[0], mockHttpServletResponse, FUTURE_CREATOR,
-              (int) params[1]).get((int) params[2]);
+      OperationFuture future = userTaskManager.getOrCreateAsyncUserTask((HttpServletRequest) params[0], mockHttpServletResponse, FUTURE_CREATOR,
+                                                                        (int) params[1]).get((int) params[2]);
       _populateUserTaskManagerOutput.add(outputCreateTaskInfo(future));
     }
   }
