@@ -419,10 +419,7 @@ public class Executor {
     LOG.info("Executor shutdown completed.");
   }
 
-  /**
-   * package private for unit test.
-   */
-  boolean hasOngoingExecution() {
+  public boolean hasOngoingExecution() {
     return _hasOngoingExecution;
   }
 

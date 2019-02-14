@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.async.progress.OptimizationForGoal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
+import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
@@ -87,6 +88,7 @@ public class GoalOptimizer implements Runnable {
   private final Timer _proposalComputationTimer;
   private final ModelCompletenessRequirements _defaultModelCompletenessRequirements;
   private final ModelCompletenessRequirements _requirementsWithAvailableValidWindows;
+  private final Executor _executor;
 
   /**
    * Constructor for Goal Optimizer takes the goals as input. The order of the list determines the priority of goals
@@ -97,7 +99,8 @@ public class GoalOptimizer implements Runnable {
   public GoalOptimizer(KafkaCruiseControlConfig config,
                        LoadMonitor loadMonitor,
                        Time time,
-                       MetricRegistry dropwizardMetricRegistry) {
+                       MetricRegistry dropwizardMetricRegistry,
+                       Executor executor) {
     _goalsByPriority = AnalyzerUtils.getGoalMapByPriority(config);
     _defaultModelCompletenessRequirements = MonitorUtils.combineLoadRequirementOptions(_goalsByPriority);
     _requirementsWithAvailableValidWindows = new ModelCompletenessRequirements(
@@ -128,6 +131,7 @@ public class GoalOptimizer implements Runnable {
     _proposalGenerationException = new AtomicReference<>();
     _proposalPrecomputingProgress = new OperationProgress();
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
+    _executor = executor;
   }
 
   private void populateGoalByPriorityForPrecomputing() {
@@ -266,6 +270,10 @@ public class GoalOptimizer implements Runnable {
   }
 
   private boolean validCachedProposal() {
+    if (_executor.hasOngoingExecution()) {
+      LOG.warn("Skipping proposal cache validity check due to ongoing execution.");
+      return true;
+    }
     synchronized (_cacheLock) {
       return _bestProposal != null && !_bestProposal.modelGeneration().isStale(_loadMonitor.clusterModelGeneration());
     }

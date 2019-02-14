@@ -13,12 +13,12 @@ import java.util.regex.Pattern;
 
 
 /**
- * The async runnable for {@link KafkaCruiseControl#getOptimizationProposals(
+ * The async runnable for {@link KafkaCruiseControl#getProposals(
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)} and
- * {@link KafkaCruiseControl#getOptimizationProposals(List, ModelCompletenessRequirements,
+ * {@link KafkaCruiseControl#getProposals(List, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean, Pattern, boolean, boolean, boolean)}
  */
-class GetOptimizationProposalsRunnable extends OperationRunnable {
+class GetProposalsRunnable extends OperationRunnable {
   private final List<String> _goals;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
@@ -27,9 +27,9 @@ class GetOptimizationProposalsRunnable extends OperationRunnable {
   private final boolean _excludeRecentlyRemovedBrokers;
   private final boolean _ignoreProposalCache;
 
-  GetOptimizationProposalsRunnable(KafkaCruiseControl kafkaCruiseControl,
-                                   OperationFuture future,
-                                   ProposalsParameters parameters) {
+  GetProposalsRunnable(KafkaCruiseControl kafkaCruiseControl,
+                       OperationFuture future,
+                       ProposalsParameters parameters) {
     super(kafkaCruiseControl, future);
     _goals = parameters.goals();
     _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
@@ -42,14 +42,14 @@ class GetOptimizationProposalsRunnable extends OperationRunnable {
 
   @Override
   protected OptimizationResult getResult() throws Exception {
-    return new OptimizationResult(_kafkaCruiseControl.getOptimizationProposals(_goals,
-                                                                               _modelCompletenessRequirements,
-                                                                               _future.operationProgress(),
-                                                                               _allowCapacityEstimation,
-                                                                               true,
-                                                                               _excludedTopics,
-                                                                               _excludeRecentlyDemotedBrokers,
-                                                                               _excludeRecentlyRemovedBrokers,
-                                                                               _ignoreProposalCache));
+    return new OptimizationResult(_kafkaCruiseControl.getProposals(_goals,
+                                                                   _modelCompletenessRequirements,
+                                                                   _future.operationProgress(),
+                                                                   _allowCapacityEstimation,
+                                                                   true,
+                                                                   _excludedTopics,
+                                                                   _excludeRecentlyDemotedBrokers,
+                                                                   _excludeRecentlyRemovedBrokers,
+                                                                   _ignoreProposalCache));
   }
 }

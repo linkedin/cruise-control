@@ -39,9 +39,9 @@ import java.util.concurrent.Executors;
  * boolean, com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)}</li>
- * <li>{@link KafkaCruiseControl#getOptimizationProposals(OperationProgress, boolean)}</li>
+ * <li>{@link KafkaCruiseControl#getProposals(OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
- * <li>{@link KafkaCruiseControl#getOptimizationProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
+ * <li>{@link KafkaCruiseControl#getProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
  * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean)}</li>
  * <li>{@link KafkaCruiseControl#rebalance(java.util.List, boolean, ModelCompletenessRequirements, OperationProgress,
  * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
@@ -122,13 +122,13 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#getOptimizationProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
+   * @see KafkaCruiseControl#getProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
    * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean)
    */
-  public OperationFuture getOptimizationProposals(ProposalsParameters parameters) {
-    OperationFuture future = new OperationFuture("Get customized optimization proposals");
+  public OperationFuture getProposals(ProposalsParameters parameters) {
+    OperationFuture future = new OperationFuture("Get customized proposals");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new GetOptimizationProposalsRunnable(this, future, parameters));
+    _sessionExecutor.submit(new GetProposalsRunnable(this, future, parameters));
     return future;
   }
 
