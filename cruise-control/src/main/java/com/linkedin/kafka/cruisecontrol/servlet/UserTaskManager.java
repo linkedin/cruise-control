@@ -228,10 +228,10 @@ public class UserTaskManager implements Closeable {
           if (now >= session.getLastAccessedTime() + _sessionExpiryMs) {
             LOG.info("Expiring the session associated with {}.", sessionKey);
             session.invalidate();
+            iter.remove();
           }
         } catch (IllegalStateException e) {
           LOG.info("Already expired the session associated with {}.", sessionKey);
-        } finally {
           iter.remove();
         }
       }
