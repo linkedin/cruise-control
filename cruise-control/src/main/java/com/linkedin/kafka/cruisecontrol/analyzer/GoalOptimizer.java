@@ -207,23 +207,31 @@ public class GoalOptimizer implements Runnable {
         LOG.info("Skipping best proposal precomputing because load monitor does not have enough snapshots.");
         // Check in 30 seconds to see if the load monitor has sufficient number of snapshots.
         sleepTime = 30000L;
-      } else if (!validCachedProposal()) {
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Invalidated cache. Model generation (cached: {}, current: {}).{}",
-                    _bestProposal == null ? null : _bestProposal.modelGeneration(),
-                    _loadMonitor.clusterModelGeneration(),
-                    _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
-                                                               _bestProposal.excludedTopics()));
-        }
-        clearBestProposal();
-
-        long start = System.nanoTime();
-        // Proposal precomputation runs with the default topics to exclude.
-        computeBestProposal();
-        _proposalComputationTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
       } else {
-        LOG.debug("Skipping best proposal precomputing because the cached best result is still valid. "
+        try {
+          if (validCachedProposal()) {
+            if (LOG.isDebugEnabled()) {
+              LOG.debug("Invalidated cache. Model generation (cached: {}, current: {}).{}",
+                        _bestProposal == null ? null : _bestProposal.modelGeneration(),
+                        _loadMonitor.clusterModelGeneration(),
+                        _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
+                                                                   _bestProposal.excludedTopics()));
+            }
+            clearBestProposal();
+
+            long start = System.nanoTime();
+            // Proposal precomputation runs with the default topics to exclude.
+            computeBestProposal();
+            _proposalComputationTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
+          } else {
+            LOG.debug("Skipping best proposal precomputing because the cached best result is still valid. "
                       + "Cached generation: {}", _bestProposal.modelGeneration());
+          }
+        } catch (KafkaCruiseControlException e) {
+          // Check in 30 seconds to see if the ongoing execution has finished.
+          sleepTime = 30000L;
+          LOG.debug("Skipping best proposal precomputing because there is an ongoing execution.", e);
+        }
       }
       long deadline = _time.milliseconds() + sleepTime;
       if (!_shutdown && _time.milliseconds() < deadline) {
@@ -269,10 +277,9 @@ public class GoalOptimizer implements Runnable {
     }
   }
 
-  private boolean validCachedProposal() {
+  private boolean validCachedProposal() throws KafkaCruiseControlException {
     if (_executor.hasOngoingExecution()) {
-      LOG.warn("Skipping proposal cache validity check due to ongoing execution.");
-      return true;
+      throw new KafkaCruiseControlException("Attempt to use proposal cache during ongoing execution.");
     }
     synchronized (_cacheLock) {
       return _bestProposal != null && !_bestProposal.modelGeneration().isStale(_loadMonitor.clusterModelGeneration());
@@ -544,22 +551,7 @@ public class GoalOptimizer implements Runnable {
 
   private OptimizerResult updateBestProposal(OptimizerResult result) {
     synchronized (_cacheLock) {
-      if (!validCachedProposal()) {
-        LOG.debug("Updated best proposal, broker stats: \n{}", result.brokerStatsAfterOptimization());
-        _bestProposal = result;
-      } else {
-        boolean shouldUpdate = true;
-        for (Goal goal: _goalsByPriority) {
-          shouldUpdate = shouldUpdate
-                         && goal.clusterModelStatsComparator().compare(result.clusterModelStats(), _bestProposal
-              .clusterModelStats()) >= 0;
-        }
-
-        if (shouldUpdate) {
-          LOG.debug("Updated best proposal, broker stats: \n{}", result.brokerStatsAfterOptimization());
-          _bestProposal = result;
-        }
-      }
+      _bestProposal = result;
       // Wake up any thread that is waiting for a proposal update.
       _cacheLock.notifyAll();
       return _bestProposal;
