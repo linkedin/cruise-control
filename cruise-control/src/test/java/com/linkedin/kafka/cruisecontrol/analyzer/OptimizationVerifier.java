@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -26,6 +27,7 @@ import java.util.StringJoiner;
 
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import org.apache.kafka.common.utils.SystemTime;
+import org.easymock.EasyMock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -117,7 +119,8 @@ class OptimizationVerifier {
     GoalOptimizer goalOptimizer = new GoalOptimizer(new KafkaCruiseControlConfig(constraint.setProps(props)),
                                                     null,
                                                     new SystemTime(),
-                                                    new MetricRegistry());
+                                                    new MetricRegistry(),
+                                                    EasyMock.mock(Executor.class));
     GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel,
                                                                                 goalByPriority,
                                                                                 new OperationProgress());

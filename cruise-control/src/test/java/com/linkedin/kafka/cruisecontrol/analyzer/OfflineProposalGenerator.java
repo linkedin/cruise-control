@@ -8,6 +8,7 @@ import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
@@ -21,6 +22,7 @@ import java.util.Arrays;
 import java.util.Properties;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.utils.SystemTime;
+import org.easymock.EasyMock;
 
 
 public class OfflineProposalGenerator {
@@ -47,7 +49,11 @@ public class OfflineProposalGenerator {
 
     String loadBeforeOptimization = clusterModel.brokerStats().toString();
     // Instantiate the components.
-    GoalOptimizer goalOptimizer = new GoalOptimizer(config, null, new SystemTime(), new MetricRegistry());
+    GoalOptimizer goalOptimizer = new GoalOptimizer(config,
+                                                    null,
+                                                    new SystemTime(),
+                                                    new MetricRegistry(),
+                                                    EasyMock.mock(Executor.class));
     start = System.currentTimeMillis();
     GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel, new OperationProgress());
     end = System.currentTimeMillis();
