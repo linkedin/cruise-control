@@ -209,7 +209,7 @@ public class GoalOptimizer implements Runnable {
         sleepTime = 30000L;
       } else {
         try {
-          if (validCachedProposal()) {
+          if (!validCachedProposal()) {
             if (LOG.isDebugEnabled()) {
               LOG.debug("Invalidated cache. Model generation (cached: {}, current: {}).{}",
                         _bestProposal == null ? null : _bestProposal.modelGeneration(),
