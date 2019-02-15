@@ -25,7 +25,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -78,7 +77,6 @@ public class GoalOptimizer implements Runnable {
   private final AtomicBoolean _progressUpdateLock;
   private final AtomicReference<Exception> _proposalGenerationException;
   private final OperationProgress _proposalPrecomputingProgress;
-  private final List<List<Goal>> _goalByPriorityForPrecomputing;
   private final Object _cacheLock;
   private volatile OptimizerResult _cachedProposals;
   private volatile boolean _shutdown = false;
@@ -106,11 +104,8 @@ public class GoalOptimizer implements Runnable {
         1,
         _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage(),
         _defaultModelCompletenessRequirements.includeAllTopics());
-    _goalByPriorityForPrecomputing = new ArrayList<>();
     _numPrecomputingThreads = config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
-    _goalByPriorityForPrecomputing.add(new ArrayList<>(_goalsByPriority));
-    LOG.info("Goals by priority: {}", _goalsByPriority);
-    LOG.info("Goals by priority for proposal precomputing: {}", _goalByPriorityForPrecomputing);
+    LOG.info("Goals by priority for precomputing: {}", _goalsByPriority);
     _balancingConstraint = new BalancingConstraint(config);
     _defaultExcludedTopics = Pattern.compile(config.getString(KafkaCruiseControlConfig.TOPICS_EXCLUDED_FROM_PARTITION_MOVEMENT_CONFIG));
     _proposalExpirationMs = config.getLong(KafkaCruiseControlConfig.PROPOSAL_EXPIRATION_MS_CONFIG);
@@ -191,29 +186,23 @@ public class GoalOptimizer implements Runnable {
 
   private void computeCachedProposal() {
     long start = _time.milliseconds();
-    List<Future> futures = new ArrayList<>();
-    for (int i = 0; i < (_numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1); i++) {
-      futures.add(_proposalPrecomputingExecutor.submit(
-          new ProposalCandidateComputer(_goalByPriorityForPrecomputing.get(i))));
-    }
-    for (Future future : futures) {
-      try {
-        boolean done = false;
-        while (!_shutdown && !done) {
-          try {
-            future.get();
-            done = true;
-          } catch (InterruptedException ie) {
-            LOG.debug("Goal optimizer received exception when precomputing the proposal candidates {}.", ie);
-          }
+    Future future = _proposalPrecomputingExecutor.submit(new ProposalCandidateComputer());
+
+    try {
+      boolean done = false;
+      while (!_shutdown && !done) {
+        try {
+          future.get();
+          done = true;
+        } catch (InterruptedException ie) {
+          LOG.debug("Goal optimizer received exception when precomputing the proposal candidates {}.", ie);
         }
-      } catch (ExecutionException ee) {
-        LOG.error("Goal optimizer received exception when precomputing the proposal candidates.", ee);
       }
+    } catch (ExecutionException ee) {
+      LOG.error("Goal optimizer received exception when precomputing the proposal candidates.", ee);
     }
-    if (!futures.isEmpty()) {
-      LOG.info("Finished the precomputation proposal candidates in {} ms", _time.milliseconds() - start);
-    }
+
+    LOG.info("Finished the precomputation proposal candidates in {} ms", _time.milliseconds() - start);
   }
 
   private boolean validCachedProposal() throws KafkaCruiseControlException {
@@ -656,10 +645,8 @@ public class GoalOptimizer implements Runnable {
    * A class that precomputes the proposal candidates and find the cached proposals.
    */
   private class ProposalCandidateComputer implements Runnable {
-    private final List<Goal> _goalByPriority;
+    ProposalCandidateComputer() {
 
-    ProposalCandidateComputer(List<Goal> goalByPriority) {
-      _goalByPriority = new ArrayList<>(goalByPriority);
     }
 
     @Override
@@ -679,7 +666,7 @@ public class GoalOptimizer implements Runnable {
                                                      _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
         ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, operationProgress);
         if (!clusterModel.topics().isEmpty()) {
-          OptimizerResult result = optimizations(clusterModel, _goalByPriority, operationProgress);
+          OptimizerResult result = optimizations(clusterModel, _goalsByPriority, operationProgress);
           LOG.debug("Generated a proposal candidate in {} ms.", _time.milliseconds() - startMs);
           updateCachedProposals(result);
         } else {
