@@ -13,7 +13,6 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
 import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -225,53 +224,5 @@ public class AnalyzerUtils {
       } else {
           return v;
       }
-  }
-
-  /**
-   * Calculate the factorial of the given non-negative value.
-   *
-   * @param v The value for which the factorial will be calculated.
-   * @return the factorial of the given non-negative value.
-   */
-  public static int factorial(int v) {
-    if (v < 0) {
-      throw new IllegalArgumentException("Attempt to calculate factorial of a non-negative value.");
-    } else {
-      int res = 1;
-      for (int i = 2; i <= v; i++) {
-        res *= i;
-      }
-      return res;
-    }
-  }
-
-  /**
-   * Get all permutations of the given list of goals to permute.
-   *
-   * @param toPermute List of goals to permute.
-   * @return A set containing all possible permutations of the given list of goals to permute.
-   */
-  public static Set<List<Goal>> getPermutations(List<Goal> toPermute) {
-    Set<List<Goal>> allPermutations = new HashSet<>();
-    // Handle the case with single goal to permute.
-    if (toPermute.size() == 1) {
-      allPermutations.add(toPermute);
-      return allPermutations;
-    }
-
-    for (int i = 0; i < toPermute.size(); i++) {
-      // Copy the original list and remove the goal that we will prepend to the permutations of the remaining goals.
-      List<Goal> remainingToPermute = new ArrayList<>(toPermute);
-      Goal goal = toPermute.get(i);
-      remainingToPermute.remove(i);
-
-      // Prepend the goal to permutations of the remaining goals.
-      for (List<Goal> permutedRemaining: getPermutations(remainingToPermute)) {
-        permutedRemaining.add(0, goal);
-        allPermutations.add(permutedRemaining);
-      }
-    }
-
-    return allPermutations;
   }
 }

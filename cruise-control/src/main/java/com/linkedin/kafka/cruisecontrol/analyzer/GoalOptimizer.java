@@ -40,7 +40,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Pattern;
@@ -81,14 +80,14 @@ public class GoalOptimizer implements Runnable {
   private final OperationProgress _proposalPrecomputingProgress;
   private final List<List<Goal>> _goalByPriorityForPrecomputing;
   private final Object _cacheLock;
-  private final AtomicInteger _threadsWaitingForCache;
-  private volatile OptimizerResult _bestProposal;
+  private volatile OptimizerResult _cachedProposals;
   private volatile boolean _shutdown = false;
   private Thread _proposalPrecomputingSchedulerThread;
   private final Timer _proposalComputationTimer;
   private final ModelCompletenessRequirements _defaultModelCompletenessRequirements;
   private final ModelCompletenessRequirements _requirementsWithAvailableValidWindows;
   private final Executor _executor;
+  private volatile boolean _hasOngoingExplicitPrecomputation;
 
   /**
    * Constructor for Goal Optimizer takes the goals as input. The order of the list determines the priority of goals
@@ -108,11 +107,8 @@ public class GoalOptimizer implements Runnable {
         _defaultModelCompletenessRequirements.minMonitoredPartitionsPercentage(),
         _defaultModelCompletenessRequirements.includeAllTopics());
     _goalByPriorityForPrecomputing = new ArrayList<>();
-    // The number of proposal precomputing thread should not exceed the number of unique goal priority combinations.
-    _numPrecomputingThreads = Math.min(config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG),
-                                       AnalyzerUtils.factorial(_goalsByPriority.size()));
-    // Generate different goal priorities for each of proposal precomputing thread.
-    populateGoalByPriorityForPrecomputing();
+    _numPrecomputingThreads = config.getInt(KafkaCruiseControlConfig.NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG);
+    _goalByPriorityForPrecomputing.add(new ArrayList<>(_goalsByPriority));
     LOG.info("Goals by priority: {}", _goalsByPriority);
     LOG.info("Goals by priority for proposal precomputing: {}", _goalByPriorityForPrecomputing);
     _balancingConstraint = new BalancingConstraint(config);
@@ -124,71 +120,14 @@ public class GoalOptimizer implements Runnable {
     _loadMonitor = loadMonitor;
     _time = time;
     _cacheLock = new ReentrantLock();
-    _threadsWaitingForCache = new AtomicInteger(0);
-    _bestProposal = null;
+    _cachedProposals = null;
     _progressUpdateLock = new AtomicBoolean(false);
     // A new AtomicReference with null initial value.
     _proposalGenerationException = new AtomicReference<>();
     _proposalPrecomputingProgress = new OperationProgress();
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
     _executor = executor;
-  }
-
-  private void populateGoalByPriorityForPrecomputing() {
-    // Calculate the number of goals to compute the permutations.
-    int numberOfGoalsToComputePermutations = 0;
-    int numShuffledGoalsToGenerate = _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1;
-    while (true) {
-      if (AnalyzerUtils.factorial(++numberOfGoalsToComputePermutations) >= numShuffledGoalsToGenerate) {
-        break;
-      }
-    }
-
-    // Get all permutations of the last numberOfGoalsToComputePermutations goals.
-    int toIndex = _goalsByPriority.size() - numberOfGoalsToComputePermutations;
-    List<Goal> commonPrefix = _goalsByPriority.subList(0, toIndex);
-    List<Goal> suffixToPermute = _goalsByPriority.subList(toIndex, _goalsByPriority.size());
-
-    Set<List<Goal>> permutations = AnalyzerUtils.getPermutations(suffixToPermute);
-    Set<List<Goal>> shuffledGoals = new HashSet<>(permutations.size());
-    for (List<Goal> shuffledSuffix : permutations) {
-      List<Goal> shuffledGoalList = new ArrayList<>(commonPrefix);
-      shuffledGoalList.addAll(shuffledSuffix);
-      shuffledGoals.add(shuffledGoalList);
-    }
-
-    // Guarantee that one thread is working on the original goal priority.
-    _goalByPriorityForPrecomputing.add(new ArrayList<>(_goalsByPriority));
-    // Add the remaining goal priorities.
-    addShuffledGoalsForPrecomputing(shuffledGoals);
-  }
-
-  private void addShuffledGoalsForPrecomputing(Set<List<Goal>> shuffledGoals) {
-    // Add the others
-    int numShuffledGoalsToGenerate = _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1;
-    for (List<Goal> shuffledGoalList : shuffledGoals) {
-      if (_goalByPriorityForPrecomputing.size() == numShuffledGoalsToGenerate) {
-        break;
-      }
-      boolean isOriginalOrder = true;
-      for (int i = 0; i < shuffledGoalList.size(); i++) {
-        String shuffledGoal = shuffledGoalList.get(i).name();
-        if (!shuffledGoal.equals(_goalsByPriority.get(i).name())) {
-          isOriginalOrder = false;
-          break;
-        }
-      }
-      if (!isOriginalOrder) {
-        _goalByPriorityForPrecomputing.add(new ArrayList<>(shuffledGoalList));
-      }
-    }
-  }
-
-  /**
-   * Package private for unit test.
-   */
-  List<List<Goal>> goalByPriorityForPrecomputing() {
-    return _goalByPriorityForPrecomputing;
+    _hasOngoingExplicitPrecomputation = false;
   }
 
   @Override
@@ -200,11 +139,11 @@ public class GoalOptimizer implements Runnable {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
       long sleepTime = _proposalExpirationMs;
       if (loadMonitorTaskRunnerState == LOADING || loadMonitorTaskRunnerState == BOOTSTRAPPING) {
-        LOG.info("Skipping best proposal precomputing because load monitor is in " + loadMonitorTaskRunnerState + " state.");
+        LOG.info("Skipping proposal precomputing because load monitor is in " + loadMonitorTaskRunnerState + " state.");
         // Check in 30 seconds to see if the load monitor state has changed.
         sleepTime = 30000L;
       } else if (!_loadMonitor.meetCompletenessRequirements(_requirementsWithAvailableValidWindows)) {
-        LOG.info("Skipping best proposal precomputing because load monitor does not have enough snapshots.");
+        LOG.info("Skipping proposal precomputing because load monitor does not have enough snapshots.");
         // Check in 30 seconds to see if the load monitor has sufficient number of snapshots.
         sleepTime = 30000L;
       } else {
@@ -212,25 +151,25 @@ public class GoalOptimizer implements Runnable {
           if (!validCachedProposal()) {
             if (LOG.isDebugEnabled()) {
               LOG.debug("Invalidated cache. Model generation (cached: {}, current: {}).{}",
-                        _bestProposal == null ? null : _bestProposal.modelGeneration(),
+                        _cachedProposals == null ? null : _cachedProposals.modelGeneration(),
                         _loadMonitor.clusterModelGeneration(),
-                        _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
-                                                                   _bestProposal.excludedTopics()));
+                        _cachedProposals == null ? "" : String.format(" Cached was excluding default topics: %s.",
+                                                                      _cachedProposals.excludedTopics()));
             }
-            clearBestProposal();
+            clearCachedProposal();
 
             long start = System.nanoTime();
             // Proposal precomputation runs with the default topics to exclude.
-            computeBestProposal();
+            computeCachedProposal();
             _proposalComputationTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
           } else {
-            LOG.debug("Skipping best proposal precomputing because the cached best result is still valid. "
-                      + "Cached generation: {}", _bestProposal.modelGeneration());
+            LOG.debug("Skipping proposal precomputing because the cached proposal result is still valid. "
+                      + "Cached generation: {}", _cachedProposals.modelGeneration());
           }
         } catch (KafkaCruiseControlException e) {
           // Check in 30 seconds to see if the ongoing execution has finished.
           sleepTime = 30000L;
-          LOG.debug("Skipping best proposal precomputing because there is an ongoing execution.", e);
+          LOG.debug("Skipping proposal precomputing because there is an ongoing execution.", e);
         }
       }
       long deadline = _time.milliseconds() + sleepTime;
@@ -250,7 +189,7 @@ public class GoalOptimizer implements Runnable {
     return _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 2;
   }
 
-  private void computeBestProposal() {
+  private void computeCachedProposal() {
     long start = _time.milliseconds();
     List<Future> futures = new ArrayList<>();
     for (int i = 0; i < (_numPrecomputingThreads > 0 ? _numPrecomputingThreads : 1); i++) {
@@ -282,7 +221,7 @@ public class GoalOptimizer implements Runnable {
       throw new KafkaCruiseControlException("Attempt to use proposal cache during ongoing execution.");
     }
     synchronized (_cacheLock) {
-      return _bestProposal != null && !_bestProposal.modelGeneration().isStale(_loadMonitor.clusterModelGeneration());
+      return _cachedProposals != null && !_cachedProposals.modelGeneration().isStale(_loadMonitor.clusterModelGeneration());
     }
   }
 
@@ -319,7 +258,7 @@ public class GoalOptimizer implements Runnable {
       goalReadiness.put(goal, _loadMonitor.meetCompletenessRequirements(clusterAndGeneration,
                                                                         goal.clusterModelCompletenessRequirements()));
     }
-    return new AnalyzerState(_bestProposal != null, goalReadiness);
+    return new AnalyzerState(_cachedProposals != null, goalReadiness);
   }
 
   private void sanityCheckReadyForGettingCachedProposals() {
@@ -342,41 +281,38 @@ public class GoalOptimizer implements Runnable {
       throws InterruptedException, KafkaCruiseControlException {
     sanityCheckReadyForGettingCachedProposals();
     synchronized (_cacheLock) {
-      if (!validCachedProposal() || (!allowCapacityEstimation && _bestProposal.isCapacityEstimated())) {
+      if (!validCachedProposal() || (!allowCapacityEstimation && _cachedProposals.isCapacityEstimated())) {
         if (LOG.isDebugEnabled()) {
-          LOG.debug("Cached best proposal is not usable. Model generation (cached: {}, current: {}). Capacity estimation"
+          LOG.debug("Cached proposal result is not usable. Model generation (cached: {}, current: {}). Capacity estimation"
                     + " (cached: {}, allowed: {}).{} Wait for cache update.",
-                    _bestProposal == null ? null : _bestProposal.modelGeneration(),
+                    _cachedProposals == null ? null : _cachedProposals.modelGeneration(),
                     _loadMonitor.clusterModelGeneration(),
-                    _bestProposal == null ? null : _bestProposal.isCapacityEstimated(),
+                    _cachedProposals == null ? null : _cachedProposals.isCapacityEstimated(),
                     allowCapacityEstimation,
-                    _bestProposal == null ? "" : String.format(" Cached was excluding default topics: %s.",
-                                                               _bestProposal.excludedTopics()));
+                    _cachedProposals == null ? "" : String.format(" Cached was excluding default topics: %s.",
+                                                                  _cachedProposals.excludedTopics()));
         }
         // Invalidate the cache and set the new caching rule regarding capacity estimation.
-        clearBestProposal();
-        // Explicitly allow capacity estimation to exit the loop upon computing best proposals.
+        clearCachedProposal();
+        // Explicitly allow capacity estimation to exit the loop upon computing proposals.
         while (!validCachedProposal()) {
           try {
             operationProgress.clear();
-            // Prevent multiple thread submit from computing task together.
-            int numWaitingThread = _threadsWaitingForCache.getAndIncrement();
             if (_numPrecomputingThreads > 0) {
               // Wake up the proposal precomputing scheduler and wait for the cache update.
               _proposalPrecomputingSchedulerThread.interrupt();
-            } else if (numWaitingThread == 0) {
-              // Only submit task if nobody has submitted the computing task.
-              // No precomputing thread is available, schedule a computing and wait for the cache update.
-              _proposalPrecomputingExecutor.submit(this::computeBestProposal);
+            } else if (!_hasOngoingExplicitPrecomputation) {
+              // Submit background computation if there is no ongoing explicit precomputation and wait for the cache update.
+              _hasOngoingExplicitPrecomputation = true;
+              _proposalPrecomputingExecutor.submit(this::computeCachedProposal);
             }
             operationProgress.refer(_proposalPrecomputingProgress);
             _cacheLock.wait();
           } finally {
-            _threadsWaitingForCache.decrementAndGet();
             Exception proposalGenerationException = _proposalGenerationException.get();
             if (proposalGenerationException != null) {
-              // There has been an exception during the best proposal creation -- throw this exception to prevent unbounded wait.
-              LOG.error("Cannot create a cached best proposal due to exception.", proposalGenerationException);
+              // There has been an exception during the cached proposal creation -- throw this exception to prevent unbounded wait.
+              LOG.error("Cannot create cached proposals due to exception.", proposalGenerationException);
               throw new KafkaCruiseControlException(proposalGenerationException);
             }
           }
@@ -384,12 +320,12 @@ public class GoalOptimizer implements Runnable {
       }
       if (LOG.isDebugEnabled()) {
         LOG.debug("Returning optimization result from cache. Model generation (cached: {}, current: {}).",
-                  _bestProposal.modelGeneration(), _loadMonitor.clusterModelGeneration());
+                  _cachedProposals.modelGeneration(), _loadMonitor.clusterModelGeneration());
       }
       // If the cached proposals are estimated, and the user requested for no estimation, we invalidate the cache and
-      // calculate best proposals just once. If the returned result still involves an estimation, throw an exception.
-      KafkaCruiseControl.sanityCheckCapacityEstimation(allowCapacityEstimation, _bestProposal.capacityEstimationInfoByBrokerId());
-      return _bestProposal;
+      // calculate cached proposals just once. If the returned result still involves an estimation, throw an exception.
+      KafkaCruiseControl.sanityCheckCapacityEstimation(allowCapacityEstimation, _cachedProposals.capacityEstimationInfoByBrokerId());
+      return _cachedProposals;
     }
   }
 
@@ -528,9 +464,9 @@ public class GoalOptimizer implements Runnable {
   private Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
     Pattern topicsToExclude = requestedExcludedTopics != null ? requestedExcludedTopics : _defaultExcludedTopics;
     return clusterModel.topics()
-        .stream()
-        .filter(topic -> topicsToExclude.matcher(topic).matches())
-        .collect(Collectors.toSet());
+                       .stream()
+                       .filter(topic -> topicsToExclude.matcher(topic).matches())
+                       .collect(Collectors.toSet());
   }
 
   /**
@@ -549,26 +485,27 @@ public class GoalOptimizer implements Runnable {
     LOG.trace("Proposals for {}{}.{}%n", isSelfHeal ? "self-healing " : "", goalName, proposals);
   }
 
-  private OptimizerResult updateBestProposal(OptimizerResult result) {
+  private OptimizerResult updateCachedProposals(OptimizerResult result) {
     synchronized (_cacheLock) {
-      _bestProposal = result;
+      _hasOngoingExplicitPrecomputation = false;
+      _cachedProposals = result;
       // Wake up any thread that is waiting for a proposal update.
       _cacheLock.notifyAll();
-      return _bestProposal;
+      return _cachedProposals;
     }
   }
 
-  private void clearBestProposal(Exception e) {
+  private void clearCachedProposal(Exception e) {
     synchronized (_cacheLock) {
-      _bestProposal = null;
+      _cachedProposals = null;
       _progressUpdateLock.set(false);
       _proposalPrecomputingProgress.clear();
       _proposalGenerationException.set(e);
     }
   }
 
-  private void clearBestProposal() {
-    clearBestProposal(null);
+  private void clearCachedProposal() {
+    clearCachedProposal(null);
   }
 
   /**
@@ -716,7 +653,7 @@ public class GoalOptimizer implements Runnable {
   }
 
   /**
-   * A class that precomputes the proposal candidates and find the best proposal.
+   * A class that precomputes the proposal candidates and find the cached proposals.
    */
   private class ProposalCandidateComputer implements Runnable {
     private final List<Goal> _goalByPriority;
@@ -744,7 +681,7 @@ public class GoalOptimizer implements Runnable {
         if (!clusterModel.topics().isEmpty()) {
           OptimizerResult result = optimizations(clusterModel, _goalByPriority, operationProgress);
           LOG.debug("Generated a proposal candidate in {} ms.", _time.milliseconds() - startMs);
-          updateBestProposal(result);
+          updateCachedProposals(result);
         } else {
           LOG.warn("The cluster model does not have valid topics, skipping proposal precomputation.");
         }
@@ -758,8 +695,9 @@ public class GoalOptimizer implements Runnable {
     }
 
     private void exceptionHandler(Exception e) {
-      clearBestProposal(e);
+      clearCachedProposal(e);
       synchronized (_cacheLock) {
+        _hasOngoingExplicitPrecomputation = false;
         // Wake up any thread that is waiting for a proposal update.
         _cacheLock.notifyAll();
       }
