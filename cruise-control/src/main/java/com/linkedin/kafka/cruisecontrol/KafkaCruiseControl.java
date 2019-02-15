@@ -198,6 +198,7 @@ public class KafkaCruiseControl {
                                                            boolean excludeRecentlyDemotedBrokers,
                                                            boolean excludeRecentlyRemovedBrokers)
       throws KafkaCruiseControlException {
+    sanityCheckDryRun(dryRun);
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -263,6 +264,7 @@ public class KafkaCruiseControl {
                                                           boolean excludeRecentlyDemotedBrokers,
                                                           boolean excludeRecentlyRemovedBrokers)
       throws KafkaCruiseControlException {
+    sanityCheckDryRun(dryRun);
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -353,6 +355,7 @@ public class KafkaCruiseControl {
                                                   String uuid,
                                                   boolean excludeRecentlyDemotedBrokers,
                                                   boolean excludeRecentlyRemovedBrokers) throws KafkaCruiseControlException {
+    sanityCheckDryRun(dryRun);
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements modelCompletenessRequirements =
@@ -385,6 +388,18 @@ public class KafkaCruiseControl {
       throw kcce;
     } catch (Exception e) {
       throw new KafkaCruiseControlException(e);
+    }
+  }
+
+  /**
+   * Check if there is an ongoing execution and dryrun is false.
+   * This method helps to fail fast if a user attempts to start an execution during an ongoing execution.
+   *
+   * @param dryRun True if the request is just a dryrun, false if the intention is to start an execution.
+   */
+  private void sanityCheckDryRun(boolean dryRun) {
+    if (!dryRun && _executor.hasOngoingExecution()) {
+      throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
     }
   }
 
@@ -423,6 +438,7 @@ public class KafkaCruiseControl {
                                                  boolean excludeRecentlyDemotedBrokers,
                                                  boolean excludeRecentlyRemovedBrokers,
                                                  boolean ignoreProposalCache) throws KafkaCruiseControlException {
+    sanityCheckDryRun(dryRun);
     GoalOptimizer.OptimizerResult result = getProposals(goals, requirements, operationProgress,
                                                         allowCapacityEstimation, skipHardGoalCheck,
                                                         excludedTopics, excludeRecentlyDemotedBrokers,
@@ -473,6 +489,7 @@ public class KafkaCruiseControl {
                                                      String uuid,
                                                      boolean excludeRecentlyDemotedBrokers)
       throws KafkaCruiseControlException {
+    sanityCheckDryRun(dryRun);
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(skipUrpDemotion,
                                                                        excludeFollowerDemotion,
                                                                        skipUrpDemotion ? _loadMonitor.kafkaCluster() : null);
