@@ -8,7 +8,6 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
-import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
@@ -164,8 +163,8 @@ public abstract class CapacityGoal extends AbstractGoal {
 
     if (allowedCapacity < existingUtilization) {
       throw new OptimizationFailureException(
-          String.format("Insufficient healthy cluster capacity for resource: %s existing cluster utilization %f allowed "
-                            + "capacity %f (capacity threshold: %f).", resource(), existingUtilization, allowedCapacity,
+          String.format("[%s] Insufficient healthy cluster capacity for resource: %s existing cluster utilization %f allowed "
+                            + "capacity %f (capacity threshold: %f).", name(), resource(), existingUtilization, allowedCapacity,
                         _balancingConstraint.capacityThreshold(resource())));
     }
     clusterModel.trackSortedReplicas(sortName(),
@@ -191,7 +190,7 @@ public abstract class CapacityGoal extends AbstractGoal {
     // While proposals exclude the excludedTopics, the utilization still considers replicas of the excludedTopics.
     ensureUtilizationUnderCapacity(clusterModel);
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);
+    GoalUtils.ensureNoReplicaOnDeadBrokers(clusterModel, name());
     finish();
     clusterModel.untrackSortedReplicas(sortName());
     clusterModel.untrackSortedReplicas(sortNameByLeader());
@@ -333,13 +332,15 @@ public abstract class CapacityGoal extends AbstractGoal {
     if (isUtilizationOverLimit) {
       if (!currentResource.isHostResource()) {
         // Utilization is above the capacity limit after all replicas in the given source broker were checked.
-        throw new OptimizationFailureException("Violated capacity limit of " + brokerCapacityLimit + " via broker "
-            + "utilization of " + broker.load().expectedUtilizationFor(currentResource) + " with broker id "
-            + broker.id() + " for resource " + currentResource);
+        throw new OptimizationFailureException(
+            String.format("[%s] Violated capacity limit of %f via broker utilization of %f with broker %d for resource %s.",
+                          name(), brokerCapacityLimit, broker.load().expectedUtilizationFor(currentResource),
+                          broker.id(), currentResource));
       } else {
-        throw new OptimizationFailureException("Violated capacity limit of " + hostCapacityLimit + " via host "
-            + "utilization of " + broker.host().load().expectedUtilizationFor(currentResource) + " with hostname "
-            + broker.host().name() + " for resource " + currentResource);
+        throw new OptimizationFailureException(
+            String.format("[%s] Violated capacity limit of %f via host utilization of %f with hostname %s for resource %s.",
+                          name(), hostCapacityLimit, broker.host().load().expectedUtilizationFor(currentResource),
+                          broker.host().name(), currentResource));
       }
     }
   }

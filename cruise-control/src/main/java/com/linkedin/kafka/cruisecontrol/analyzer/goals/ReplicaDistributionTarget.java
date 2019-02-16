@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
@@ -126,8 +125,7 @@ class ReplicaDistributionTarget {
                                                       Replica replicaToMove,
                                                       int numLocalReplicas,
                                                       Set<Goal> optimizedGoals,
-                                                      OptimizationOptions optimizationOptions)
-      throws OptimizationFailureException {
+                                                      OptimizationOptions optimizationOptions) {
     // Sanity check the number of replicas to move from the local to a remote broker to achieve the distribution
     // target. If the broker is dead, the replica must move to another broker.
     if (replicaToMove.broker().isAlive() && numReplicasToMove(numLocalReplicas) == 0) {
@@ -136,9 +134,6 @@ class ReplicaDistributionTarget {
 
     // Attempt to move the replica to an eligible broker.
     boolean isMoveSuccessful = moveReplicaToEligibleBroker(clusterModel, replicaToMove, optimizedGoals, optimizationOptions);
-    if (!replicaToMove.broker().isAlive()) {
-      throw new OptimizationFailureException("Self healing failed to move the replica away from decommissioned broker.");
-    }
 
     // Update consumed warm broker credits. Credit is consumed because the broker was unable to move replicas.
     if (!isMoveSuccessful) {

@@ -247,27 +247,17 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       _succeeded = false;
     }
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (replica.broker().isAlive()) {
-        continue;
-      }
+    try {
+      GoalUtils.ensureNoReplicaOnDeadBrokers(clusterModel, name());
+    } catch (OptimizationFailureException ofe) {
       if (_selfHealingDeadBrokersOnly) {
-        throw new OptimizationFailureException(
-            "Self healing failed to move the replica away from decommissioned brokers.");
+        throw ofe;
       }
       _selfHealingDeadBrokersOnly = true;
-      LOG.warn("Omitting resource balance limit to relocate remaining replicas from dead brokers.");
+      LOG.warn("Ignoring replica balance limit to move replicas from dead brokers to healthy ones.");
       return;
     }
-    // No dead broker contains replica.
-    _selfHealingDeadBrokersOnly = false;
 
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (!replica.broker().isAlive()) {
-        throw new OptimizationFailureException("Self healing failed to move the replica away from decommissioned broker.");
-      }
-    }
     finish();
   }
 

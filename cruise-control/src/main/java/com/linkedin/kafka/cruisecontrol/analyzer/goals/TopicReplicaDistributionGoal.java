@@ -246,12 +246,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
     if (!clusterModel.selfHealingEligibleReplicas().isEmpty()) {
       // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-      for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-        if (!replica.broker().isAlive()) {
-          throw new OptimizationFailureException(
-              "Self healing failed to move the replica away from decommissioned broker.");
-        }
-      }
+      GoalUtils.ensureNoReplicaOnDeadBrokers(clusterModel, name());
       finish();   // Finish self healing.
     } else if (_currentRebalanceTopic == null || ++_numRebalancedTopics == _topicsToRebalance.size()) {
       finish();   // Finish rebalance.

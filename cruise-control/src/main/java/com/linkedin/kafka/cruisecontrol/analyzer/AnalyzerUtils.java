@@ -7,12 +7,10 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
 import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
-import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -111,24 +109,6 @@ public class AnalyzerUtils {
       }
     }
     return ACCEPT;
-  }
-
-  /**
-   * Checks the replicas that are supposed to be moved away from the dead brokers. If there are still replicas
-   * on the dead broker, throw exception.
-   * @param clusterModel the cluster model to check.
-   * @throws OptimizationFailureException when there are still replicas on the dead broker.
-   */
-  public static void ensureNoReplicaOnDeadBrokers(ClusterModel clusterModel) throws OptimizationFailureException {
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (!replica.broker().isAlive()) {
-        throw new OptimizationFailureException(String.format(
-            "Self healing failed to move the replica %s away from decommissioned broker %d for goal. There are still "
-                + "%d replicas on the broker.",
-            replica, replica.broker().id(), replica.broker().replicas().size()));
-      }
-    }
   }
 
   /**
