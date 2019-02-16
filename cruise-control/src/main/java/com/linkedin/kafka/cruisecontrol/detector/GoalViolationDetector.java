@@ -93,19 +93,44 @@ public class GoalViolationDetector implements Runnable {
     return orderedGoals;
   }
 
-  @Override
-  public void run() {
+  /**
+   * Skip goal violation detection if any of the following is true:
+   * <ul>
+   * <li>Cluster model generation has not changed since the last goal violation check.</li>
+   * <li>Load monitor is not ready.</li>
+   * <li>There is an ongoing execution.</li>
+   * </ul>
+   *
+   * @return True to skip goal violation detection based on the current state, false otherwise.
+   */
+  private boolean shouldSkipGoalViolationDetection() {
     if (_loadMonitor.clusterModelGeneration().equals(_lastCheckedModelGeneration)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Skipping goal violation detection because the model generation hasn't changed. Current model generation {}",
                   _loadMonitor.clusterModelGeneration());
       }
-      return;
+      return true;
     }
 
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
     if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
       LOG.info("Skipping goal violation detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
+      return true;
+    }
+
+    ExecutorState.State executorState = _kafkaCruiseControl.state(
+        new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
+    if (executorState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+      LOG.info("Skipping goal violation detection because the executor is in {} state.", executorState);
+      return true;
+    }
+
+    return false;
+  }
+
+  @Override
+  public void run() {
+    if (shouldSkipGoalViolationDetection()) {
       return;
     }
 
