@@ -70,6 +70,7 @@ public class UserTaskManager implements Closeable {
                          Map<EndPoint, Timer> successfulRequestExecutionTimer) {
     _sessionKeyToUserTaskIdMap = new HashMap<>();
     Map<UUID, UserTaskInfo> activeUserTaskIdToFuturesMap = new LinkedHashMap<>();
+    // completedUserTaskIdToFuturesMap stores tasks completed either successfully or exceptionally.
     Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap = new LinkedHashMap<UUID, UserTaskInfo>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<UUID, UserTaskInfo> eldest) {
@@ -267,11 +268,11 @@ public class UserTaskManager implements Closeable {
     while (iter.hasNext()) {
       Map.Entry<UUID, UserTaskInfo> entry = iter.next();
       if (entry.getValue().isUserTaskDoneExceptionally()) {
-        LOG.warn("UserTask {} is complete with Exception and removed from active tasks list", entry.getKey());
+        LOG.warn("UserTask {} is completed with Exception and removed from active tasks list", entry.getKey());
         _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED_WITH_ERROR));
         iter.remove();
       } else if (entry.getValue().isUserTaskDone()) {
-        LOG.info("UserTask {} is complete and removed from active tasks list", entry.getKey());
+        LOG.info("UserTask {} is completed and removed from active tasks list", entry.getKey());
         _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
         _allUserTaskIdToFutureMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED));
         iter.remove();
@@ -455,6 +456,9 @@ public class UserTaskManager implements Closeable {
                         Map<String, String[]> queryParams,
                         EndPoint endPoint,
                         TaskState state) {
+      if (futures == null || futures.isEmpty()) {
+        throw new IllegalArgumentException("Invalid OperationFuture list " + futures + " is provided for UserTaskInfo.");
+      }
       _futures = futures;
       _requestUrl = requestUrl;
       _clientIdentity = clientIdentity;
@@ -520,12 +524,12 @@ public class UserTaskManager implements Closeable {
       return this;
     }
 
-    public boolean isUserTaskDone() {
-      return _futures == null || _futures.isEmpty() || _futures.get(_futures.size() - 1).isDone();
+    boolean isUserTaskDone() {
+      return _futures.get(_futures.size() - 1).isDone();
     }
 
-    public boolean isUserTaskDoneExceptionally() {
-      return _futures != null && !_futures.isEmpty() && _futures.get(_futures.size() - 1).isCompletedExceptionally();
+    boolean isUserTaskDoneExceptionally() {
+      return _futures.get(_futures.size() - 1).isCompletedExceptionally();
     }
   }
 
@@ -561,7 +565,13 @@ public class UserTaskManager implements Closeable {
     public String type() {
       return _type;
     }
-    private static final List<TaskState> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+
+    @Override
+    public String toString() {
+      return _type;
+    }
+
+    private static final List<TaskState> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(ACTIVE, COMPLETED));
 
     /**
      * Use this instead of values() because values() creates a new array each time.
