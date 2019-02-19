@@ -58,7 +58,7 @@ public class ParameterUtils {
   public static final String VERBOSE_PARAM = "verbose";
   public static final String SUPER_VERBOSE_PARAM = "super_verbose";
   public static final String RESOURCE_PARAM = "resource";
-  public static final String REASON = "reason";
+  public static final String REASON_PARAM = "reason";
   public static final String DATA_FROM_PARAM = "data_from";
   public static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
   public static final String MAX_LOAD_PARAM = "max_load";
@@ -303,14 +303,22 @@ public class ParameterUtils {
     return true;
   }
 
+  /**
+   * Returns the case sensitive request parameter name, or <code>null</code> if the parameter does not exist.
+   */
+  private static String caseSensitiveParameterName(HttpServletRequest request, String parameter) {
+    return request.getParameterMap().keySet().stream().filter(parameter::equalsIgnoreCase).findFirst().orElse(null);
+  }
+
   private static boolean getBooleanParam(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
-    String parameterString = request.getParameter(parameter);
-    return parameterString == null ? defaultIfMissing : Boolean.parseBoolean(parameterString);
+    String parameterString = caseSensitiveParameterName(request, parameter);
+    return parameterString == null ? defaultIfMissing : Boolean.parseBoolean(request.getParameter(parameterString));
   }
 
   private static List<String> getListParam(HttpServletRequest request, String parameter) throws UnsupportedEncodingException {
-    String paramString = urlDecode(request.getParameter(parameter));
-    List<String> retList = paramString == null ? new ArrayList<>() : Arrays.asList(paramString.split(","));
+    String parameterString = caseSensitiveParameterName(request, parameter);
+    List<String> retList = parameterString == null ? new ArrayList<>()
+                                                   : Arrays.asList(urlDecode(request.getParameter(parameterString)).split(","));
     retList.removeIf(String::isEmpty);
     return Collections.unmodifiableList(retList);
   }
@@ -335,7 +343,7 @@ public class ParameterUtils {
 
   private static boolean getBooleanExcludeGiven(HttpServletRequest request, String getParameter, String excludeParameter) {
     boolean booleanParam = getBooleanParam(request, getParameter, false);
-    if (booleanParam && request.getParameter(excludeParameter) != null) {
+    if (booleanParam && caseSensitiveParameterName(request, excludeParameter) != null) {
       throw new UserRequestException("Cannot set " + getParameter + " parameter to true when explicitly specifying "
                                      + excludeParameter + " in the request.");
     }
@@ -394,32 +402,36 @@ public class ParameterUtils {
   }
 
   static long time(HttpServletRequest request) {
-    String timeString = request.getParameter(TIME_PARAM);
-    return (timeString == null || timeString.toUpperCase().equals("NOW")) ? System.currentTimeMillis()
-                                                                          : Long.parseLong(timeString);
+    String parameterString = caseSensitiveParameterName(request, TIME_PARAM);
+    if (parameterString == null) {
+      return System.currentTimeMillis();
+    }
+
+    String timeString = request.getParameter(parameterString);
+    return timeString.toUpperCase().equals("NOW") ? System.currentTimeMillis() : Long.parseLong(timeString);
   }
 
   static Long startMs(HttpServletRequest request) {
-    String startMsString = request.getParameter(START_MS_PARAM);
-    return startMsString == null ? null : Long.valueOf(startMsString);
+    String parameterString = caseSensitiveParameterName(request, START_MS_PARAM);
+    return parameterString == null ? null : Long.valueOf(request.getParameter(parameterString));
   }
 
   static Long endMs(HttpServletRequest request) {
-    String endMsString = request.getParameter(END_MS_PARAM);
-    return endMsString == null ? null : Long.valueOf(endMsString);
+    String parameterString = caseSensitiveParameterName(request, END_MS_PARAM);
+    return parameterString == null ? null : Long.valueOf(request.getParameter(parameterString));
   }
 
   static Pattern topic(HttpServletRequest request) {
-    String topicString = request.getParameter(TOPIC_PARAM);
-    return topicString != null ? Pattern.compile(topicString) : null;
+    String parameterString = caseSensitiveParameterName(request, TOPIC_PARAM);
+    return parameterString == null ? null : Pattern.compile(request.getParameter(parameterString));
   }
 
   static Double minValidPartitionRatio(HttpServletRequest request) {
-    String minValidPartitionRatioString = request.getParameter(MIN_VALID_PARTITION_RATIO_PARAM);
-    if (minValidPartitionRatioString == null) {
+    String parameterString = caseSensitiveParameterName(request, MIN_VALID_PARTITION_RATIO_PARAM);
+    if (parameterString == null) {
       return null;
     } else {
-      Double minValidPartitionRatio = Double.parseDouble(minValidPartitionRatioString);
+      Double minValidPartitionRatio = Double.parseDouble(request.getParameter(parameterString));
       if (minValidPartitionRatio > 1.0 || minValidPartitionRatio < 0.0) {
         throw new IllegalArgumentException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
                                            + minValidPartitionRatio.toString() + ").");
@@ -429,20 +441,22 @@ public class ParameterUtils {
   }
 
   static String resourceString(HttpServletRequest request) {
-    String resourceString = request.getParameter(RESOURCE_PARAM);
-    return resourceString == null ? DEFAULT_PARTITION_LOAD_RESOURCE : resourceString;
+    String parameterString = caseSensitiveParameterName(request, RESOURCE_PARAM);
+    return parameterString == null ? DEFAULT_PARTITION_LOAD_RESOURCE : request.getParameter(parameterString);
   }
 
   static String reason(HttpServletRequest request) {
-    String reason = request.getParameter(REASON);
+    String parameterString = caseSensitiveParameterName(request, REASON_PARAM);
     String ip = getClientIpAddress(request);
-    return String.format("%s (Client: %s, Date: %s)", reason == null ? "No reason provided" : reason, ip, currentUtcDate());
+    return String.format("%s (Client: %s, Date: %s)", parameterString == null ? "No reason provided"
+                                                                              : request.getParameter(parameterString), ip, currentUtcDate());
   }
 
   private static Set<String> parseParamToStringSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
-    String paramString = urlDecode(request.getParameter(param));
-    Set<String> paramsString = paramString == null ? new HashSet<>(0)
-                                                   : new HashSet<>(Arrays.asList(paramString.split(",")));
+    String parameterString = caseSensitiveParameterName(request, param);
+    Set<String> paramsString = parameterString == null
+                               ? new HashSet<>(0)
+                               : new HashSet<>(Arrays.asList(urlDecode(request.getParameter(parameterString)).split(",")));
     paramsString.removeIf(String::isEmpty);
     return paramsString;
   }
@@ -467,9 +481,10 @@ public class ParameterUtils {
   }
 
   private static Set<AnomalyType> anomalyTypes(HttpServletRequest request, boolean isEnable) throws UnsupportedEncodingException {
-    String selfHealingForParam = urlDecode(request.getParameter(isEnable ? ENABLE_SELF_HEALING_FOR_PARAM : DISABLE_SELF_HEALING_FOR_PARAM));
-    Set<String> selfHealingForString = selfHealingForParam == null ? new HashSet<>(0)
-                                                                   : new HashSet<>(Arrays.asList(selfHealingForParam.split(",")));
+    String parameterString = caseSensitiveParameterName(request, isEnable ? ENABLE_SELF_HEALING_FOR_PARAM : DISABLE_SELF_HEALING_FOR_PARAM);
+    Set<String> selfHealingForString = parameterString == null
+                                       ? new HashSet<>(0)
+                                       : new HashSet<>(Arrays.asList(urlDecode(request.getParameter(parameterString)).split(",")));
     selfHealingForString.removeIf(String::isEmpty);
 
     Set<AnomalyType> anomalyTypes = new HashSet<>(selfHealingForString.size());
@@ -565,21 +580,20 @@ public class ParameterUtils {
   }
 
   public static int entries(HttpServletRequest request) {
-    String entriesString = request.getParameter(ENTRIES_PARAM);
-    return entriesString == null ? Integer.MAX_VALUE : Integer.parseInt(entriesString);
+    String parameterString = caseSensitiveParameterName(request, ENTRIES_PARAM);
+    return parameterString == null ? Integer.MAX_VALUE : Integer.parseInt(request.getParameter(parameterString));
   }
 
   /**
    * @param isPartitionMovement True if partition movement per broker, false if the total leader movement.
    */
   static Integer concurrentMovements(HttpServletRequest request, boolean isPartitionMovement) {
-    String concurrentMovementsPerBrokerString = isPartitionMovement
-                                                ? request.getParameter(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM)
-                                                : request.getParameter(CONCURRENT_LEADER_MOVEMENTS_PARAM);
-    if (concurrentMovementsPerBrokerString == null) {
+    String parameterString = caseSensitiveParameterName(request, isPartitionMovement ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM
+                                                                                     : CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    if (parameterString == null) {
       return null;
     }
-    Integer concurrentMovementsPerBroker = Integer.parseInt(concurrentMovementsPerBrokerString);
+    Integer concurrentMovementsPerBroker = Integer.parseInt(request.getParameter(parameterString));
     if (concurrentMovementsPerBroker <= 0) {
       throw new IllegalArgumentException("The requested movement concurrency must be positive (Requested: "
                                          + concurrentMovementsPerBroker.toString() + ").");
@@ -589,18 +603,20 @@ public class ParameterUtils {
   }
 
   static Pattern excludedTopics(HttpServletRequest request) {
-    String excludedTopicsString = request.getParameter(EXCLUDED_TOPICS_PARAM);
-    return excludedTopicsString != null ? Pattern.compile(excludedTopicsString) : null;
+    String parameterString = caseSensitiveParameterName(request, EXCLUDED_TOPICS_PARAM);
+    return parameterString == null ? null : Pattern.compile(request.getParameter(parameterString));
   }
 
   /**
    * @param isUpperBound True if upper bound, false if lower bound.
    */
   static int partitionBoundary(HttpServletRequest request, boolean isUpperBound) {
-    String partitionString = request.getParameter(PARTITION_PARAM);
-    if (partitionString == null) {
+    String parameterString = caseSensitiveParameterName(request, PARTITION_PARAM);
+    if (parameterString == null) {
       return isUpperBound ? Integer.MAX_VALUE : Integer.MIN_VALUE;
-    } else if (!partitionString.contains("-")) {
+    }
+    String partitionString = request.getParameter(parameterString);
+    if (!partitionString.contains("-")) {
       return Integer.parseInt(partitionString);
     }
 
@@ -613,9 +629,9 @@ public class ParameterUtils {
 
   static List<Integer> brokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
     List<Integer> brokerIds = new ArrayList<>();
-    String brokersString = urlDecode(request.getParameter(BROKER_ID_PARAM));
-    if (brokersString != null) {
-      brokerIds = Arrays.stream(brokersString.split(",")).map(Integer::parseInt).collect(Collectors.toList());
+    String parameterString = caseSensitiveParameterName(request, BROKER_ID_PARAM);
+    if (parameterString != null) {
+      brokerIds = Arrays.stream(urlDecode(request.getParameter(parameterString)).split(",")).map(Integer::parseInt).collect(Collectors.toList());
     }
     if (endPoint(request) != FIX_OFFLINE_REPLICAS && brokerIds.isEmpty()) {
       throw new IllegalArgumentException("Target broker ID is not provided.");
@@ -627,10 +643,10 @@ public class ParameterUtils {
    * Default: An empty set.
    */
   public static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
-    String userTaskIdsString = urlDecode(request.getParameter(USER_TASK_IDS_PARAM));
-    return userTaskIdsString == null ? Collections.emptySet()
-                                     : Arrays.stream(userTaskIdsString.split(",")).map(UUID::fromString)
-                                             .collect(Collectors.toSet());
+    String parameterString = caseSensitiveParameterName(request, USER_TASK_IDS_PARAM);
+    return parameterString == null
+           ? Collections.emptySet()
+           : Arrays.stream(urlDecode(request.getParameter(parameterString)).split(",")).map(UUID::fromString).collect(Collectors.toSet());
   }
 
   /**
@@ -677,9 +693,9 @@ public class ParameterUtils {
    */
   static DataFrom getDataFrom(HttpServletRequest request) {
     DataFrom dataFrom = DataFrom.VALID_WINDOWS;
-    String dataFromString = request.getParameter(DATA_FROM_PARAM);
-    if (dataFromString != null) {
-      dataFrom = DataFrom.valueOf(dataFromString.toUpperCase());
+    String parameterString = caseSensitiveParameterName(request, DATA_FROM_PARAM);
+    if (parameterString != null) {
+      dataFrom = DataFrom.valueOf(request.getParameter(parameterString).toUpperCase());
     }
     return dataFrom;
   }
