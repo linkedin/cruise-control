@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
-import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
@@ -177,15 +176,15 @@ public class RackAwareGoal extends AbstractGoal {
               Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
           if (maxReplicationFactorOfIncludedTopics > numAliveRacks) {
             throw new OptimizationFailureException(
-                String.format("Insufficient number of racks to distribute included replicas (Current: %d, Needed: %d).",
-                              numAliveRacks, maxReplicationFactorOfIncludedTopics));
+                String.format("[%s] Insufficient number of racks to distribute included replicas (Current: %d, Needed: %d).",
+                              name(), numAliveRacks, maxReplicationFactorOfIncludedTopics));
           }
         }
       }
     } else if (clusterModel.maxReplicationFactor() > numAliveRacks) {
       throw new OptimizationFailureException(
-          String.format("Insufficient number of racks to distribute each replica (Current: %d, Needed: %d).",
-                        numAliveRacks, clusterModel.maxReplicationFactor()));
+          String.format("[%s] Insufficient number of racks to distribute each replica (Current: %d, Needed: %d).",
+                        name(), numAliveRacks, clusterModel.maxReplicationFactor()));
     }
   }
 
@@ -205,7 +204,7 @@ public class RackAwareGoal extends AbstractGoal {
     // Sanity check to confirm that the final distribution is rack aware.
     ensureRackAware(clusterModel, excludedTopics);
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    AnalyzerUtils.ensureNoReplicaOnDeadBrokers(clusterModel);
+    GoalUtils.ensureNoReplicaOnDeadBrokers(clusterModel, name());
     finish();
   }
 
@@ -236,7 +235,7 @@ public class RackAwareGoal extends AbstractGoal {
       if (maybeApplyBalancingAction(clusterModel, replica, rackAwareEligibleBrokers(replica, clusterModel),
                                     ActionType.REPLICA_MOVEMENT, optimizedGoals, optimizationOptions) == null) {
         throw new OptimizationFailureException(
-            "Violated rack-awareness requirement for broker with id " + broker.id() + ".");
+            String.format("[%s] Violated rack-awareness requirement for broker with id %d.", name(), broker.id()));
       }
     }
   }

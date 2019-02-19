@@ -225,17 +225,14 @@ public class PotentialNwOutGoal extends AbstractGoal {
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws OptimizationFailureException {
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
-    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (replica.broker().isAlive()) {
-        continue;
-      }
+    try {
+      GoalUtils.ensureNoReplicaOnDeadBrokers(clusterModel, name());
+    } catch (OptimizationFailureException ofe) {
       if (_selfHealingDeadBrokersOnly) {
-        throw new OptimizationFailureException("Self healing failed to move the replica away from decommissioned brokers.");
+        throw ofe;
       }
       _selfHealingDeadBrokersOnly = true;
-      LOG.warn(
-          "Ignoring potential network outbound limit to relocate remaining replicas from dead brokers to healthy ones.");
+      LOG.warn("Ignoring potential network outbound limit to move replicas from dead brokers to healthy ones.");
       return;
     }
 

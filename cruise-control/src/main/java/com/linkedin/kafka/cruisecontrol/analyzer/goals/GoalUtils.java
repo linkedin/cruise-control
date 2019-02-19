@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.CandidateBroker;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
@@ -209,6 +210,25 @@ public class GoalUtils {
 
     // CASE#3: No swap is possible between old brokers when there are new brokers in the cluster.
     return Collections.emptySortedSet();
+  }
+
+  /**
+   * Checks the replicas that are supposed to be moved away from the dead brokers. If there are still replicas
+   * on the dead broker, throw exception.
+   * @param clusterModel the cluster model to check.
+   * @param goalName Goal name for which the sanity check is executed.
+   * @throws OptimizationFailureException when there are still replicas on the dead broker.
+   */
+  public static void ensureNoReplicaOnDeadBrokers(ClusterModel clusterModel, String goalName)
+      throws OptimizationFailureException {
+    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
+    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
+      if (!replica.broker().isAlive()) {
+        throw new OptimizationFailureException(String.format(
+            "[%s] Self healing failed to move the replica %s from decommissioned broker %d (contains %d replicas).",
+            goalName, replica, replica.broker().id(), replica.broker().replicas().size()));
+      }
+    }
   }
 
   /**
