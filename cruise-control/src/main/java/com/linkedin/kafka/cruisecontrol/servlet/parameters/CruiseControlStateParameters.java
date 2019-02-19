@@ -15,7 +15,7 @@ import javax.servlet.http.HttpServletRequest;
  *
  * <pre>
  *    GET /kafkacruisecontrol/state?verbose=[true/false]&amp;substates=[SUBSTATES]&amp;super_verbose=[true/false]
- *    &amp;verbose=[true/false]&amp;json=[true/false]
+ *    &amp;json=[true/false]
  * </pre>
  */
 public class CruiseControlStateParameters extends AbstractParameters {
