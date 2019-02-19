@@ -29,6 +29,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   private static final String TIME_ZONE = "UTC";
   private static final String ACTIVE_TASK_LABEL_VALUE = UserTaskManager.TaskState.ACTIVE.type();
   private static final String COMPLETED_TASK_LABEL_VALUE = UserTaskManager.TaskState.COMPLETED.type();
+  private static final String COMPLETED_WITH_ERROR_TASK_LABEL_VALUE = UserTaskManager.TaskState.COMPLETED_WITH_ERROR.type();
   private static final String USER_TASK_ID = "UserTaskId";
   private static final String REQUEST_URL = "RequestURL";
   private static final String CLIENT_ID = "ClientIdentity";
@@ -74,6 +75,8 @@ public class UserTaskState extends AbstractCruiseControlResponse {
         return ACTIVE_TASK_LABEL_VALUE;
       case COMPLETED:
         return COMPLETED_TASK_LABEL_VALUE;
+      case COMPLETED_WITH_ERROR:
+        return COMPLETED_WITH_ERROR_TASK_LABEL_VALUE;
       default:
         throw new IllegalStateException("Unrecognized state " + userTaskInfo.state());
     }
