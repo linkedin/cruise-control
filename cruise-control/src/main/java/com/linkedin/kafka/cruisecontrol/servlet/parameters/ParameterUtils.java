@@ -58,7 +58,7 @@ public class ParameterUtils {
   public static final String VERBOSE_PARAM = "verbose";
   public static final String SUPER_VERBOSE_PARAM = "super_verbose";
   public static final String RESOURCE_PARAM = "resource";
-  public static final String REASON = "reason";
+  public static final String REASON_PARAM = "reason";
   public static final String DATA_FROM_PARAM = "data_from";
   public static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
   public static final String MAX_LOAD_PARAM = "max_load";
@@ -440,7 +440,7 @@ public class ParameterUtils {
   }
 
   static String reason(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request, REASON);
+    String parameterString = caseSensitiveParameterName(request, REASON_PARAM);
     String ip = getClientIpAddress(request);
     return String.format("%s (Client: %s, Date: %s)", parameterString == null ? "No reason provided"
                                                                               : request.getParameter(parameterString), ip, currentUtcDate());
@@ -608,11 +608,13 @@ public class ParameterUtils {
     String parameterString = caseSensitiveParameterName(request, PARTITION_PARAM);
     if (parameterString == null) {
       return isUpperBound ? Integer.MAX_VALUE : Integer.MIN_VALUE;
-    } else if (!parameterString.contains("-")) {
-      return Integer.parseInt(request.getParameter(parameterString));
+    }
+    String partitionString = request.getParameter(parameterString);
+    if (!partitionString.contains("-")) {
+      return Integer.parseInt(partitionString);
     }
 
-    String[] boundaries = request.getParameter(parameterString).split("-");
+    String[] boundaries = partitionString.split("-");
     if (boundaries.length > 2) {
       throw new IllegalArgumentException("The " + PARTITION_PARAM + " parameter cannot contain multiple dashes.");
     }
