@@ -7,13 +7,10 @@ package com.linkedin.kafka.cruisecontrol.analyzer;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
-import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
 import com.linkedin.kafka.cruisecontrol.model.RawAndDerivedResource;
-import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -112,41 +109,6 @@ public class AnalyzerUtils {
       }
     }
     return ACCEPT;
-  }
-
-  /**
-   * Checks the replicas that are supposed to be moved away from the dead brokers or broken disks have been moved.
-   * If there are still replicas on the dead brokers or broken disks, throws an exception.
-   * @param clusterModel the cluster model to check.
-   * @throws OptimizationFailureException when there are still replicas on the dead brokers or on broken disks.
-   */
-  public static void ensureNoOfflineReplicas(ClusterModel clusterModel) throws OptimizationFailureException {
-    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker or on broken disk.
-    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
-      if (replica.isCurrentOffline()) {
-        throw new OptimizationFailureException(String.format(
-              "Self healing failed to move the replica %s away from %s broker %d for goal. There are still %d replicas on "
-              + "the broker.", replica, replica.broker().state(), replica.broker().id(), replica.broker().replicas().size()));
-      }
-    }
-  }
-
-  /**
-   * Checks for the broker with broken disk, the partitions of the replicas used to be on its broken disk does not have
-   * any replica on this broker.
-   * @throws OptimizationFailureException when there are replicas hosted by broker with broken disk which belongs to the
-   * same partition as the replica used to be hosted on broken disks
-   */
-  public static void ensureReplicasMoveOffBrokersWithBadDisks(ClusterModel clusterModel) throws OptimizationFailureException {
-    for (Broker broker : clusterModel.brokersWithBadDisks()) {
-      for (Replica replica : broker.replicas()) {
-        if (!clusterModel.partition(replica.topicPartition()).canAssignReplicaToBroker(broker)) {
-          throw new OptimizationFailureException(String.format(
-                "A replica of partition %s has been moved back to broker %d for a goal. This broker used to host a replica "
-                + "of this partition on its broken disk.", clusterModel.partition(replica.topicPartition()), replica.broker().id()));
-        }
-      }
-    }
   }
 
   /**

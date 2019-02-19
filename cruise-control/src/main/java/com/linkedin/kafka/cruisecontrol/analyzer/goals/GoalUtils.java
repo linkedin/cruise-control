@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.CandidateBroker;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
@@ -213,6 +214,46 @@ public class GoalUtils {
 
     // CASE#3: No swap is possible between old brokers when there are new brokers in the cluster.
     return Collections.emptySortedSet();
+  }
+
+  /**
+   * Checks the replicas that are supposed to be moved away from the dead brokers or broken disks have been moved.
+   * If there are still replicas on the dead brokers or broken disks, throws an exception.
+   * @param clusterModel the cluster model to check.
+   * @param goalName Goal name for which the sanity check is executed.
+   * @throws OptimizationFailureException when there are still replicas on the dead brokers or on broken disks.
+   */
+  public static void ensureNoOfflineReplicas(ClusterModel clusterModel, String goalName)
+      throws OptimizationFailureException {
+    // Sanity check: No self-healing eligible replica should remain at a decommissioned broker or on broken disk.
+    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
+      if (replica.isCurrentOffline()) {
+        throw new OptimizationFailureException(String.format(
+            "[%s] Self healing failed to move the replica %s from %s broker %d (contains %d replicas).",
+            goalName, replica, replica.broker().state(), replica.broker().id(), replica.broker().replicas().size()));
+      }
+    }
+  }
+
+  /**
+   * Checks for the broker with broken disk, the partitions of the replicas used to be on its broken disk does not have
+   * any replica on this broker.
+   * @param clusterModel the cluster model to check.
+   * @param goalName Goal name for which the sanity check is executed.
+   * @throws OptimizationFailureException when there are replicas hosted by broker with broken disk which belongs to the
+   * same partition as the replica used to be hosted on broken disks
+   */
+  public static void ensureReplicasMoveOffBrokersWithBadDisks(ClusterModel clusterModel, String goalName)
+      throws OptimizationFailureException {
+    for (Broker broker : clusterModel.brokersWithBadDisks()) {
+      for (Replica replica : broker.replicas()) {
+        if (!clusterModel.partition(replica.topicPartition()).canAssignReplicaToBroker(broker)) {
+          throw new OptimizationFailureException(String.format(
+              "[%s] A replica of partition %s has been moved back to broker %d, where it was originally hosted on a "
+              + "broken disk.", goalName, clusterModel.partition(replica.topicPartition()), replica.broker().id()));
+        }
+      }
+    }
   }
 
   /**

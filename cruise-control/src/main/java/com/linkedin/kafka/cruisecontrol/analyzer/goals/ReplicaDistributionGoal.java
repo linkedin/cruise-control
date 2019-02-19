@@ -248,17 +248,17 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     }
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
     try {
-      AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
+      GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
     } catch (OptimizationFailureException ofe) {
       if (_fixOfflineReplicasOnly) {
         throw ofe;
       }
       _fixOfflineReplicasOnly = true;
-      LOG.warn("Omitting resource balance limit to relocate remaining replicas from dead brokers/disks.");
+      LOG.warn("Ignoring replica balance limit to move replicas from dead brokers/disks.");
       return;
     }
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
-    AnalyzerUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel);
+    GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
     finish();
   }
 

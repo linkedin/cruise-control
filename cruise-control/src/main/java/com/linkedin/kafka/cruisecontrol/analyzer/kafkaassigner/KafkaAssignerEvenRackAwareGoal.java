@@ -6,11 +6,11 @@
 package com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
-import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -132,13 +132,13 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
           // Apply the necessary move (if needed).
           if (!maybeApplyMove(clusterModel, partition, position)) {
             throw new OptimizationFailureException(
-                String.format("Unable to apply move for replica %s.", replicaAtPosition(partition, position)));
+                String.format("[%s] Unable to apply move for replica %s.", name(), replicaAtPosition(partition, position)));
           }
         }
       }
     }
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
-    AnalyzerUtils.ensureNoOfflineReplicas(clusterModel);
+    GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
     ensureRackAware(clusterModel, excludedTopics);
     return true;
   }
@@ -317,15 +317,15 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
               Math.max(maxReplicationFactorOfIncludedTopics, replicationFactorByTopicEntry.getValue());
           if (maxReplicationFactorOfIncludedTopics > numAliveRacks) {
             throw new OptimizationFailureException(
-                String.format("Insufficient number of racks to distribute included replicas (Current: %d, Needed: %d).",
-                              numAliveRacks, maxReplicationFactorOfIncludedTopics));
+                String.format("[%s] Insufficient number of racks to distribute included replicas (Current: %d, Needed: %d).",
+                              name(), numAliveRacks, maxReplicationFactorOfIncludedTopics));
           }
         }
       }
     } else if (clusterModel.maxReplicationFactor() > numAliveRacks) {
       throw new OptimizationFailureException(
-          String.format("Insufficient number of racks to distribute each replica (Current: %d, Needed: %d).",
-                        numAliveRacks, clusterModel.maxReplicationFactor()));
+          String.format("[%s] Insufficient number of racks to distribute each replica (Current: %d, Needed: %d).",
+                        name(), numAliveRacks, clusterModel.maxReplicationFactor()));
     }
   }
 
