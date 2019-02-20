@@ -341,7 +341,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                           Function<String, OperationFuture> function)
       throws ExecutionException, InterruptedException, IOException {
     int step = _asyncOperationStep.get();
-    List<OperationFuture> futures = _userTaskManager.getOrCreateAsyncUserTask(request, response, function, step);
+    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, function, step, true);
     _asyncOperationStep.set(step + 1);
     try {
       return futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);
