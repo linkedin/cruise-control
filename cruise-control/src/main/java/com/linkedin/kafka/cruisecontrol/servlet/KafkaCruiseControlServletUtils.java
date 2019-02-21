@@ -4,12 +4,18 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
+import com.codahale.metrics.Timer;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -18,6 +24,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
+import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 
 
 /**
@@ -81,11 +88,49 @@ public class KafkaCruiseControlServletUtils {
     return endPoint;
   }
 
-  static void handleUserRequestException(UserRequestException ure, HttpServletRequest request, HttpServletResponse response)
+  static String handleUserRequestException(UserRequestException ure, HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     String errorMessage = String.format("Bad %s request '%s'", request.getMethod(), request.getPathInfo());
     StringWriter sw = new StringWriter();
     ure.printStackTrace(new PrintWriter(sw));
     writeErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
+    return errorMessage;
+  }
+
+  static String handleException(Exception e, HttpServletRequest request, HttpServletResponse response) throws IOException {
+    StringWriter sw = new StringWriter();
+    e.printStackTrace(new PrintWriter(sw));
+    String errorMessage = String.format("Error processing %s request '%s' due to: '%s'.",
+                                        request.getMethod(), request.getPathInfo(), e.getMessage());
+    writeErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
+    return errorMessage;
+  }
+
+  static <P extends CruiseControlParameters, R extends CruiseControlResponse> void syncRequest(Supplier<P> paramSupplier,
+                                                                                               Supplier<R> resultSupplier,
+                                                                                               HttpServletResponse response,
+                                                                                               Timer successfulRequestExecutionTimer)
+      throws IOException {
+    long requestExecutionStartTime = System.nanoTime();
+    P parameters = paramSupplier.get();
+    if (!parameters.parseParameters(response)) {
+      // Successfully parsed parameters.
+      resultSupplier.get().writeSuccessResponse(parameters, response);
+      successfulRequestExecutionTimer.update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+    }
+  }
+
+  static <P extends CruiseControlParameters, R extends CruiseControlResponse> void syncRequest(Supplier<P> paramSupplier,
+                                                                                               Function<P, R> resultSupplier,
+                                                                                               HttpServletResponse response,
+                                                                                               Timer successfulRequestExecutionTimer)
+      throws IOException {
+    long requestExecutionStartTime = System.nanoTime();
+    P parameters = paramSupplier.get();
+    if (!parameters.parseParameters(response)) {
+      // Successfully parsed parameters.
+      resultSupplier.apply(parameters).writeSuccessResponse(parameters, response);
+      successfulRequestExecutionTimer.update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+    }
   }
 }

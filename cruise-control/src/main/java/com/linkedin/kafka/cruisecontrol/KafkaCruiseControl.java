@@ -35,8 +35,13 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.BootstrapResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
+import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.ResumeSamplingResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalExecutionResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.TrainResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.InputStream;
 import java.util.Arrays;
@@ -587,8 +592,9 @@ public class KafkaCruiseControl {
    * Bootstrap the load monitor.
    *
    * @param parameters Bootstrap parameters.
+   * @return Bootstrap result.
    */
-  public void bootstrapLoadMonitor(BootstrapParameters parameters) {
+  public BootstrapResult bootstrapLoadMonitor(BootstrapParameters parameters) {
     Long startMs = parameters.startMs();
     Long endMs = parameters.endMs();
     boolean clearMetrics = parameters.clearMetrics();
@@ -603,24 +609,29 @@ public class KafkaCruiseControl {
       // Bootstrap the load monitor with the most recent metric samples until it catches up -- clears all metric samples.
       _loadMonitor.bootstrap(clearMetrics);
     }
+    return new BootstrapResult();
   }
 
   /**
    * Train load model of Kafka Cruise Control with metric samples in a training period.
    *
    * @param parameters Train parameters.
+   * @return Train result.
    */
-  public void trainLoadModel(TrainParameters parameters) {
+  public TrainResult trainLoadModel(TrainParameters parameters) {
     _loadMonitor.train(parameters.startMs(), parameters.endMs());
+    return new TrainResult();
   }
 
   /**
    * Pause all the activities of the load monitor. Load monitor can only be paused if it is in RUNNING state.
    *
    * @param parameters Pause Parameters.
+   * @return Pause sampling result.
    */
-  public void pauseLoadMonitorActivity(PauseResumeParameters parameters) {
+  public PauseSamplingResult pauseLoadMonitorActivity(PauseResumeParameters parameters) {
     _loadMonitor.pauseMetricSampling(parameters.reason());
+    return new PauseSamplingResult();
   }
 
   /**
@@ -681,9 +692,11 @@ public class KafkaCruiseControl {
    * Resume all the activities of the load monitor.
    *
    * @param parameters Resume Parameters.
+   * @return Resume sampling result.
    */
-  public void resumeLoadMonitorActivity(PauseResumeParameters parameters) {
+  public ResumeSamplingResult resumeLoadMonitorActivity(PauseResumeParameters parameters) {
     _loadMonitor.resumeMetricSampling(parameters.reason());
+    return new ResumeSamplingResult();
   }
 
   /**
@@ -903,9 +916,12 @@ public class KafkaCruiseControl {
 
   /**
    * Stop the executor if it is executing the proposals.
+   *
+   * @return Stop proposal execution result.
    */
-  public void stopProposalExecution() {
+  public StopProposalExecutionResult stopProposalExecution() {
     _executor.userTriggeredStopExecution();
+    return new StopProposalExecutionResult();
   }
 
   /**

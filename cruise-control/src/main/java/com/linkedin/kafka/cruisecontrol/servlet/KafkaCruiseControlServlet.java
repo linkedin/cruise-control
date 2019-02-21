@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerP
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.FixOfflineReplicasParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.GoalBasedOptimizationParameters;
@@ -27,15 +28,8 @@ import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
-import com.linkedin.kafka.cruisecontrol.servlet.response.BootstrapResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.ResumeSamplingResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalExecutionResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.TrainResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +37,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -53,9 +48,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.hasValidParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.wantJSON;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.returnProgress;
-import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
-import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
 
 
 /**
@@ -141,15 +134,14 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       EndPoint endPoint = getValidEndpoint(request, response);
       if (endPoint != null && hasValidParameters(request, response)) {
         _requestMeter.get(endPoint).mark();
-        long requestExecutionStartTime = System.nanoTime();
         switch (endPoint) {
           case BOOTSTRAP:
-            bootstrap(request, response);
-            _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+            syncRequest(() -> new BootstrapParameters(request), _asyncKafkaCruiseControl::bootstrapLoadMonitor,
+                        response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case TRAIN:
-            train(request, response);
-            _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+            syncRequest(() -> new TrainParameters(request), _asyncKafkaCruiseControl::trainLoadModel,
+                        response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case LOAD:
             getClusterLoad(request, response);
@@ -164,26 +156,23 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             getState(request, response);
             break;
           case KAFKA_CLUSTER_STATE:
-            getKafkaClusterState(request, response);
-            _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+            syncRequest(() -> new KafkaClusterStateParameters(request), _asyncKafkaCruiseControl::kafkaClusterState,
+                        response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case USER_TASKS:
-            getUserTaskState(request, response);
-            _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+            syncRequest(() -> new UserTasksParameters(request), this::userTaskState,
+                        response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           default:
             throw new UserRequestException("Invalid URL for GET");
         }
       }
     } catch (UserRequestException ure) {
-      LOG.error("Why are you failing?", ure);
-      handleUserRequestException(ure, request, response);
+      String errorMessage = handleUserRequestException(ure, request, response);
+      LOG.error(errorMessage, ure);
     } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      String errorMessage = String.format("Error processing GET request '%s' due to '%s'.", request.getPathInfo(), e.getMessage());
+      String errorMessage = handleException(e, request, response);
       LOG.error(errorMessage, e);
-      writeErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
     } finally {
       try {
         response.getOutputStream().close();
@@ -215,8 +204,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       EndPoint endPoint = getValidEndpoint(request, response);
       if (endPoint != null && hasValidParameters(request, response)) {
         _requestMeter.get(endPoint).mark();
-
-        long requestExecutionStartTime = System.nanoTime();
         switch (endPoint) {
           case ADD_BROKER:
           case REMOVE_BROKER:
@@ -227,36 +214,34 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             rebalance(request, response);
             break;
           case STOP_PROPOSAL_EXECUTION:
-            stopProposalExecution(request, response);
-            _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+            syncRequest(() -> new BaseParameters(request), _asyncKafkaCruiseControl::stopProposalExecution,
+                        response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case PAUSE_SAMPLING:
-            pauseSampling(request, response);
-            _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+            syncRequest(() -> new PauseResumeParameters(request), _asyncKafkaCruiseControl::pauseLoadMonitorActivity,
+                        response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case RESUME_SAMPLING:
-            resumeSampling(request, response);
-            _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+            syncRequest(() -> new PauseResumeParameters(request), _asyncKafkaCruiseControl::resumeLoadMonitorActivity,
+                        response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case DEMOTE_BROKER:
             demoteBroker(request, response);
             break;
           case ADMIN:
-            admin(request, response);
+            syncRequest(() -> new AdminParameters(request), _asyncKafkaCruiseControl::handleAdminRequest,
+                        response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           default:
             throw new UserRequestException("Invalid URL for POST");
         }
       }
     } catch (UserRequestException ure) {
-      LOG.error("Why are you failing?", ure);
-      handleUserRequestException(ure, request, response);
+      String errorMessage = handleUserRequestException(ure, request, response);
+      LOG.error(errorMessage, ure);
     } catch (Exception e) {
-      StringWriter sw = new StringWriter();
-      e.printStackTrace(new PrintWriter(sw));
-      String errorMessage = String.format("Error processing POST request '%s' due to: '%s'.", request.getPathInfo(), e.getMessage());
+      String errorMessage = handleException(e, request, response);
       LOG.error(errorMessage, e);
-      writeErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
     } finally {
       try {
         response.getOutputStream().close();
@@ -266,222 +251,108 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
   }
 
-  private void bootstrap(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    BootstrapParameters parameters = new BootstrapParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return;
-    }
-
-    _asyncKafkaCruiseControl.bootstrapLoadMonitor(parameters);
-    new BootstrapResult().writeSuccessResponse(parameters, response);
+  private UserTaskState userTaskState() {
+    return new UserTaskState(_userTaskManager.getActiveUserTasks(), _userTaskManager.getCompletedUserTasks());
   }
 
-  private void train(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    TrainParameters parameters = new TrainParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return;
-    }
-
-    _asyncKafkaCruiseControl.trainLoadModel(parameters);
-    new TrainResult().writeSuccessResponse(parameters, response);
+  private void getClusterLoad(HttpServletRequest request, HttpServletResponse response)
+      throws IOException, ExecutionException, InterruptedException {
+    asyncRequest(() -> new ClusterLoadParameters(request),
+                 parameters -> (uuid -> _asyncKafkaCruiseControl.getBrokerStats(parameters)),
+                 request, response);
   }
 
-  private boolean getClusterLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    ClusterLoadParameters parameters = new ClusterLoadParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return true;
-    }
-
-    CruiseControlResponse brokerStats = getAndMaybeReturnProgress(request, response,
-                                                                  uuid -> _asyncKafkaCruiseControl.getBrokerStats(parameters));
-    if (brokerStats == null) {
-      return false;
-    }
-    brokerStats.writeSuccessResponse(parameters, response);
-    return true;
+  private void getPartitionLoad(HttpServletRequest request, HttpServletResponse response)
+      throws IOException, ExecutionException, InterruptedException {
+    asyncRequest(() -> new PartitionLoadParameters(request),
+                 parameters -> (uuid -> _asyncKafkaCruiseControl.partitionLoadState(parameters)),
+                 request, response);
   }
 
-  private boolean getPartitionLoad(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    PartitionLoadParameters parameters = new PartitionLoadParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return true;
-    }
-    // Get cluster model asynchronously.
-    CruiseControlResponse kafkaPartitionLoadState = getAndMaybeReturnProgress(request, response,
-                                                                              uuid -> _asyncKafkaCruiseControl.partitionLoadState(parameters));
-    if (kafkaPartitionLoadState == null) {
-      return false;
-    }
-
-    kafkaPartitionLoadState.writeSuccessResponse(parameters, response);
-    return true;
+  private void getProposals(HttpServletRequest request, HttpServletResponse response)
+      throws IOException, ExecutionException, InterruptedException {
+    asyncRequest(() -> new ProposalsParameters(request),
+                 parameters -> (uuid -> _asyncKafkaCruiseControl.getProposals(parameters)),
+                 request, response);
   }
 
-  private boolean getProposals(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    ProposalsParameters parameters = new ProposalsParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return true;
-    }
-    CruiseControlResponse optimizationResult = getAndMaybeReturnProgress(request, response, uuid
-        -> _asyncKafkaCruiseControl.getProposals(parameters));
-    if (optimizationResult == null) {
-      return false;
-    }
-
-    optimizationResult.writeSuccessResponse(parameters, response);
-    return true;
+  private void getState(HttpServletRequest request, HttpServletResponse response)
+      throws IOException, ExecutionException, InterruptedException {
+    asyncRequest(() -> new CruiseControlStateParameters(request),
+                 parameters -> (uuid -> _asyncKafkaCruiseControl.state(parameters)),
+                 request, response);
   }
 
-  private void getKafkaClusterState(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    KafkaClusterStateParameters parameters = new KafkaClusterStateParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return;
-    }
-
-    _asyncKafkaCruiseControl.kafkaClusterState().writeSuccessResponse(parameters, response);
+  private void rebalance(HttpServletRequest request, HttpServletResponse response)
+      throws IOException, ExecutionException, InterruptedException {
+    asyncRequest(() -> new RebalanceParameters(request, _config),
+                 parameters -> (uuid -> _asyncKafkaCruiseControl.rebalance(parameters, uuid)),
+                 request, response);
   }
 
-  private boolean getState(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    CruiseControlStateParameters parameters = new CruiseControlStateParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return true;
-    }
-
-    CruiseControlResponse state = getAndMaybeReturnProgress(request, response,
-                                                            uuid -> _asyncKafkaCruiseControl.state(parameters));
-    if (state == null) {
-      return false;
-    }
-
-    state.writeSuccessResponse(parameters, response);
-    return true;
+  private void demoteBroker(HttpServletRequest request, HttpServletResponse response)
+      throws IOException, ExecutionException, InterruptedException {
+    asyncRequest(() -> new DemoteBrokerParameters(request, _config),
+                 parameters -> (uuid -> _asyncKafkaCruiseControl.demoteBrokers(uuid, parameters)),
+                 request, response);
   }
 
-  private boolean addRemoveOrFixBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
-      throws Exception {
-    GoalBasedOptimizationParameters parameters;
+  private void addRemoveOrFixBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
+      throws IOException, ExecutionException, InterruptedException {
+    Function<GoalBasedOptimizationParameters, Function<String, OperationFuture>> function;
+    GoalBasedOptimizationParameters optimizationParameters;
     switch (endPoint) {
       case ADD_BROKER:
+        function = parameters ->
+            (uuid -> _asyncKafkaCruiseControl.addBrokers((AddedOrRemovedBrokerParameters) parameters, uuid));
+        optimizationParameters = new AddedOrRemovedBrokerParameters(request, _config);
+        break;
       case REMOVE_BROKER:
-        parameters = new AddedOrRemovedBrokerParameters(request, _config);
+        function = parameters ->
+            (uuid -> _asyncKafkaCruiseControl.decommissionBrokers((AddedOrRemovedBrokerParameters) parameters, uuid));
+        optimizationParameters = new AddedOrRemovedBrokerParameters(request, _config);
         break;
       case FIX_OFFLINE_REPLICAS:
-        parameters = new FixOfflineReplicasParameters(request, _config);
+        function = parameters ->
+            (uuid -> _asyncKafkaCruiseControl.fixOfflineReplicas((FixOfflineReplicasParameters) parameters, uuid));
+        optimizationParameters = new FixOfflineReplicasParameters(request, _config);
         break;
       default:
         // Should never reach here.
         throw new IllegalArgumentException("Unexpected endpoint");
     }
 
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return true;
-    }
-    CruiseControlResponse optimizationResult;
-    switch (endPoint) {
-      case ADD_BROKER:
-        optimizationResult = getAndMaybeReturnProgress(request, response, uuid
-            -> _asyncKafkaCruiseControl.addBrokers((AddedOrRemovedBrokerParameters) parameters, uuid));
-        break;
-      case REMOVE_BROKER:
-        optimizationResult = getAndMaybeReturnProgress(request, response, uuid
-            -> _asyncKafkaCruiseControl.decommissionBrokers((AddedOrRemovedBrokerParameters) parameters, uuid));
-        break;
-      case FIX_OFFLINE_REPLICAS:
-        optimizationResult = getAndMaybeReturnProgress(request, response, uuid
-            -> _asyncKafkaCruiseControl.fixOfflineReplicas((FixOfflineReplicasParameters) parameters, uuid));
-        break;
-      default:
-        // Should never reach here.
-        throw new IllegalArgumentException("Unexpected endpoint");
-    }
-    if (optimizationResult == null) {
-      return false;
-    }
-
-    optimizationResult.writeSuccessResponse(parameters, response);
-    return true;
+    asyncRequest(() -> optimizationParameters, function, request, response);
   }
 
-  private boolean rebalance(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    RebalanceParameters parameters = new RebalanceParameters(request, _config);
+  /**
+   * Handle async request and populate the response.
+   *
+   * @param paramSupplier Supplier to get the request parameters.
+   * @param function Function that generates the function to pass to getAndMaybeReturnProgress using request parameters.
+   * @param request Http servlet request.
+   * @param response Http servlet response.
+   * @param <P> Type corresponding to the request parameters.
+   */
+  private <P extends CruiseControlParameters> void asyncRequest(Supplier<P> paramSupplier,
+                                                                Function<P, Function<String, OperationFuture>> function,
+                                                                HttpServletRequest request,
+                                                                HttpServletResponse response)
+      throws IOException, ExecutionException, InterruptedException {
+    P parameters = paramSupplier.get();
     if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return true;
-    }
-    CruiseControlResponse optimizationResult =
-        getAndMaybeReturnProgress(request, response, uuid -> _asyncKafkaCruiseControl.rebalance(parameters, uuid));
-    if (optimizationResult == null) {
-      return false;
-    }
-
-    optimizationResult.writeSuccessResponse(parameters, response);
-    return true;
-  }
-
-  private boolean demoteBroker(HttpServletRequest request, HttpServletResponse response) throws Exception {
-    DemoteBrokerParameters parameters = new DemoteBrokerParameters(request, _config);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return true;
-    }
-
-    CruiseControlResponse optimizationResult =
-        getAndMaybeReturnProgress(request, response, uuid -> _asyncKafkaCruiseControl.demoteBrokers(uuid, parameters));
-    if (optimizationResult == null) {
-      return false;
-    }
-
-    optimizationResult.writeSuccessResponse(parameters, response);
-    return true;
-  }
-
-  private void stopProposalExecution(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    BaseParameters parameters = new BaseParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return;
-    }
-    _asyncKafkaCruiseControl.stopProposalExecution();
-    new StopProposalExecutionResult().writeSuccessResponse(parameters, response);
-  }
-
-  private void admin(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    AdminParameters parameters = new AdminParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
+      LOG.warn("Failed to parse parameters: {} for async request: {}.", request.getParameterMap(), request.getPathInfo());
       return;
     }
 
-    CruiseControlResponse adminResult = _asyncKafkaCruiseControl.handleAdminRequest(parameters);
-    adminResult.writeSuccessResponse(parameters, response);
-  }
-
-  private void pauseSampling(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    PauseResumeParameters parameters = new PauseResumeParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
+    CruiseControlResponse ccResponse = getAndMaybeReturnProgress(request, response, function.apply(parameters));
+    if (ccResponse == null) {
+      LOG.info("Computation is in progress for async request: {}.", request.getPathInfo());
       return;
     }
-    _asyncKafkaCruiseControl.pauseLoadMonitorActivity(parameters);
-    new PauseSamplingResult().writeSuccessResponse(parameters, response);
-  }
 
-  private void resumeSampling(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    PauseResumeParameters parameters = new PauseResumeParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return;
-    }
-    _asyncKafkaCruiseControl.resumeLoadMonitorActivity(parameters);
-    new ResumeSamplingResult().writeSuccessResponse(parameters, response);
+    ccResponse.writeSuccessResponse(parameters, response);
+    LOG.info("Computation is completed for async request: {}.", request.getPathInfo());
   }
 
   private CruiseControlResponse getAndMaybeReturnProgress(HttpServletRequest request,
@@ -497,16 +368,5 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       returnProgress(response, futures, wantJSON(request), _config);
       return null;
     }
-  }
-
-  private void getUserTaskState(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    UserTasksParameters parameters = new UserTasksParameters(request);
-    if (parameters.parseParameters(response)) {
-      // Failed to parse parameters.
-      return;
-    }
-    UserTaskState userTaskState = new UserTaskState(_userTaskManager.getActiveUserTasks(),
-                                                    _userTaskManager.getCompletedUserTasks());
-    userTaskState.writeSuccessResponse(parameters, response);
   }
 }
