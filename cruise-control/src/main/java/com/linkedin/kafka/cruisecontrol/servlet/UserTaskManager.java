@@ -18,6 +18,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -62,6 +63,7 @@ public class UserTaskManager implements Closeable {
   private final UUIDGenerator _uuidGenerator;
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer;
   private final long _completedUserTaskRetentionTimeMs;
+  private final Map<EndPoint, UserTaskCleanerInfo> _userTaskCleanerMap;
 
   public UserTaskManager(long sessionExpiryMs,
                          long maxActiveUserTasks,
@@ -91,6 +93,9 @@ public class UserTaskManager implements Closeable {
                                                  USER_TASK_SCANNER_INITIAL_DELAY_SECONDS,
                                                  USER_TASK_SCANNER_PERIOD_SECONDS,
                                                  TimeUnit.SECONDS);
+
+    _userTaskCleanerMap = new HashMap<>();
+    initUserTaskCleanerMap();
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-sessions"),
                                       (Gauge<Integer>) _sessionKeyToUserTaskIdMap::size);
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-user-tasks"),
@@ -126,6 +131,8 @@ public class UserTaskManager implements Closeable {
                                                  USER_TASK_SCANNER_INITIAL_DELAY_SECONDS,
                                                  USER_TASK_SCANNER_PERIOD_SECONDS,
                                                  TimeUnit.SECONDS);
+    _userTaskCleanerMap = new HashMap<>();
+    initUserTaskCleanerMap();
     _successfulRequestExecutionTimer = new HashMap<>();
     EndPoint.cachedValues().forEach(e -> _successfulRequestExecutionTimer.put(e, new Timer()));
   }
@@ -137,6 +144,19 @@ public class UserTaskManager implements Closeable {
                   int maxCachedCompletedUserTasks,
                   Time time) {
     this(sessionExpiryMs, maxActiveUserTasks, completedUserTaskRetentionTimeMs, maxCachedCompletedUserTasks, time, new UUIDGenerator());
+  }
+
+  /**
+   * Sets history limit for different endpoints. For now, only limit number of {@link EndPoint.USER_TASKS} in history to 5 entries.
+    */
+  private void initUserTaskCleanerMap() {
+    _userTaskCleanerMap.put(EndPoint.USER_TASKS, new UserTaskCleanerInfo(5));
+  }
+
+  private synchronized void cleanUserTasks() {
+    for (Map.Entry<EndPoint, UserTaskCleanerInfo> entry : _userTaskCleanerMap.entrySet()) {
+      entry.getValue().cleanUserTask();
+    }
   }
 
   private static String httpServletRequestToString(HttpServletRequest request) {
@@ -286,6 +306,9 @@ public class UserTaskManager implements Closeable {
     Iterator<Map.Entry<UUID, UserTaskInfo>> iter = _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).entrySet().iterator();
     while (iter.hasNext()) {
       Map.Entry<UUID, UserTaskInfo> entry = iter.next();
+      if (_userTaskCleanerMap.containsKey(entry.getValue().endPoint())) {
+        _userTaskCleanerMap.get(entry.getValue().endPoint()).addUserTaskUuid(entry.getKey());
+      }
       if (entry.getValue().isUserTaskDoneExceptionally()) {
         LOG.warn("UserTask {} is completed with Exception and removed from active tasks list", entry.getKey());
         _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED_WITH_ERROR));
@@ -580,6 +603,7 @@ public class UserTaskManager implements Closeable {
         expireOldSessions();
         checkActiveUserTasks();
         removeOldUserTasks();
+        cleanUserTasks();
       } catch (Throwable t) {
         LOG.warn("Received exception when trying to expire sessions.", t);
       }
@@ -617,6 +641,37 @@ public class UserTaskManager implements Closeable {
      */
     public static List<TaskState> cachedValues() {
       return CACHED_VALUES;
+    }
+  }
+
+  /**
+   * {@link _allUuidToUserTaskInfoMap} stores active and completed user tasks for history. Some historic user requests are
+   * less important for the user, e.g. {@link EndPoint.USER_TASKS} is not very interesting. To prevent un-interesting but
+   * frequently-called endpoints from flooding out interesting requests, we need to periodically cleanup requests. We can set
+   * per endpoint limit and utilize the {@link UserTaskScanner} to do the cleaning.
+   */
+  private class UserTaskCleanerInfo {
+    private final int _limit;
+    private final LinkedList<UUID> _tasks;
+    public UserTaskCleanerInfo(int limit) {
+      _limit = limit;
+      _tasks = new LinkedList<UUID>();
+    }
+
+    public void addUserTaskUuid(UUID uuid) {
+      _tasks.addLast(uuid);
+    }
+
+    private boolean needCleaning() {
+      return _tasks.size() > _limit;
+    }
+
+    // User tasks are removed in FIFO order.
+    public void cleanUserTask() {
+      while (needCleaning()) {
+        UUID uuidRemove = _tasks.removeFirst();
+        _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).remove(uuidRemove);
+      }
     }
   }
 }
