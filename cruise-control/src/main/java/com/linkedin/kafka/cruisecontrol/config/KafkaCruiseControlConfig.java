@@ -888,19 +888,19 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Importance.HIGH, MIN_VALID_PARTITION_RATIO_DOC)
         .define(LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG,
                 ConfigDef.Type.DOUBLE,
-                0.6,
+                0.7,
                 between(0, 1),
                 ConfigDef.Importance.MEDIUM,
                 LEADER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_DOC)
         .define(LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG,
                 ConfigDef.Type.DOUBLE,
-                0.1,
+                0.15,
                 between(0, 1),
                 ConfigDef.Importance.MEDIUM,
                 LEADER_NETWORK_OUTBOUND_WEIGHT_FOR_CPU_UTIL_DOC)
         .define(FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_CONFIG,
                 ConfigDef.Type.DOUBLE,
-                0.3,
+                0.15,
                 between(0, 1),
                 ConfigDef.Importance.MEDIUM,
                 FOLLOWER_NETWORK_INBOUND_WEIGHT_FOR_CPU_UTIL_DOC)
