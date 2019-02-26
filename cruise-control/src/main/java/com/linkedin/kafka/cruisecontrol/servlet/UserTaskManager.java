@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 
 /**
  * {@link UserTaskManager} keeps track of Sync and Async requests. This information helps keep track of what actions user
- * performed on Cruise Control.
+ * performed on Cruise Control and the corresponding response for these actions.
  *
  * Some {@link HttpServletRequest} can execute for long durations. The servlet submits the asynchronous tasks and returns the
  * progress of the operation instead of blocking for the operation to complete. {@link UserTaskManager} maintains the
@@ -51,6 +51,7 @@ public class UserTaskManager implements Closeable {
   public static final String USER_TASK_HEADER_NAME = "User-Task-ID";
   public static final long USER_TASK_SCANNER_PERIOD_SECONDS = 5;
   public static final long USER_TASK_SCANNER_INITIAL_DELAY_SECONDS = 0;
+  public static int COMPLETED_USER_TASKS_LIMIT = 5;   //TODO: make configurable
 
   private static final Logger LOG = LoggerFactory.getLogger(UserTaskManager.class);
   private final Map<SessionKey, UUID> _sessionKeyToUserTaskIdMap;
@@ -147,10 +148,11 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Sets history limit for different endpoints. For now, only limit number of {@link EndPoint.USER_TASKS} in history to 5 entries.
+   * Sets history limit for different endpoints. For now, only limit number of {@link EndPoint#USER_TASKS} in history to
+   * {@link #COMPLETED_USER_TASKS_LIMIT} entries.
     */
   private void initUserTaskCleanerMap() {
-    _userTaskCleanerMap.put(EndPoint.USER_TASKS, new UserTaskCleanerInfo(5));
+    _userTaskCleanerMap.put(EndPoint.USER_TASKS, new UserTaskCleanerInfo(COMPLETED_USER_TASKS_LIMIT));
   }
 
   private synchronized void cleanUserTasks() {
@@ -177,18 +179,15 @@ public class UserTaskManager implements Closeable {
    * @param function A function that takes a UUID and returns {@link OperationFuture}. For sync task, the function always
    *                 returns a completed Future.
    * @param step The index of the step that has to be added or fetched.
-   * @param asyncComplete Indicate whether the task is sync or async.
+   * @param isAsyncRequest Indicate whether the task is sync or async.
    * @return The list of {@link OperationFuture} for the linked UserTask.
    */
   public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
-      Function<String, OperationFuture> function, int step, boolean asyncComplete) {
+                                                   Function<String, OperationFuture> function,
+                                                   int step,
+                                                   boolean isAsyncRequest) {
     UUID userTaskId = getUserTaskId(httpServletRequest);
     UserTaskInfo userTaskInfo = getUserTaskByUserTaskId(userTaskId, httpServletRequest);
-
-    if (!asyncComplete && userTaskInfo != null) {
-      throw new IllegalArgumentException(
-          String.format("Sync operation should not have %s", USER_TASK_HEADER_NAME));
-    }
 
     if (userTaskInfo != null) {
       LOG.info("Fetch an existing UserTask {}", userTaskId);
@@ -211,7 +210,7 @@ public class UserTaskManager implements Closeable {
       userTaskId = _uuidGenerator.randomUUID();
       userTaskInfo = insertFuturesByUserTaskId(userTaskId, function, httpServletRequest);
       // Only create user task id to session mapping for async request
-      if (asyncComplete) {
+      if (isAsyncRequest) {
         createSessionKeyMapping(userTaskId, httpServletRequest);
       }
 
@@ -611,8 +610,8 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Possible state of tasks. We currently accept {@link TaskState#ACTIVE} and {@link TaskState#COMPLETED}, in the
-   * future we could also add Cancelled state.
+   * TODO We currently accept {@link TaskState#ACTIVE} and {@link TaskState#COMPLETED}, in the
+   * future we could also add other states as specified in Cruise Control ticket: https://github.com/linkedin/cruise-control/issues/571
    */
   public enum TaskState {
     ACTIVE("Active"),
@@ -645,8 +644,8 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * {@link _allUuidToUserTaskInfoMap} stores active and completed user tasks for history. Some historic user requests are
-   * less important for the user, e.g. {@link EndPoint.USER_TASKS} is not very interesting. To prevent un-interesting but
+   * {@link #_allUuidToUserTaskInfoMap} stores active and completed user tasks for history. Some historic user requests are
+   * less important for the user, e.g. {@link EndPoint#USER_TASKS} is not very interesting. To prevent un-interesting but
    * frequently-called endpoints from flooding out interesting requests, we need to periodically cleanup requests. We can set
    * per endpoint limit and utilize the {@link UserTaskScanner} to do the cleaning.
    */

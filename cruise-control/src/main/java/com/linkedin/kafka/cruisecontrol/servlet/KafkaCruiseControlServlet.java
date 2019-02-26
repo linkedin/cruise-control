@@ -337,42 +337,58 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private <P extends CruiseControlParameters, R extends CruiseControlResponse> void syncRequest(Supplier<P> paramSupplier,
-                                                                                               Supplier<R> resultSupplier,
+                                                                                                Supplier<R> resultSupplier,
                                                                                                 HttpServletRequest request,
-                                                                                               HttpServletResponse response,
-                                                                                               Timer successfulRequestExecutionTimer)
-      throws IOException {
+                                                                                                HttpServletResponse response,
+                                                                                                Timer successfulRequestExecutionTimer)
+      throws ExecutionException, InterruptedException, IOException {
     long requestExecutionStartTime = System.nanoTime();
     P parameters = paramSupplier.get();
+
     if (!parameters.parseParameters(response)) {
-      OperationFuture future = new OperationFuture("Sync request");
-      CruiseControlResponse result = resultSupplier.get();
-      future.complete(result);
-      _userTaskManager.getOrCreateUserTask(request, response, uuid -> future, 0, false);
+      int step = 0;
+
+      OperationFuture resultFuture = _userTaskManager.getOrCreateUserTask(request, response, uuid -> {
+        OperationFuture future = new OperationFuture(String.format("%s request", parameters.endPoint().toString()));
+        future.complete(resultSupplier.get());
+        return future;
+      }, step, false).get(step);
+
+      CruiseControlResponse result = resultFuture.get();
 
       // Successfully parsed parameters.
       result.writeSuccessResponse(parameters, response);
       successfulRequestExecutionTimer.update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+    } else {
+      LOG.warn("Failed to parse parameters: {} for sync request: {}.", request.getParameterMap(), request.getPathInfo());
     }
   }
 
   private <P extends CruiseControlParameters, R extends CruiseControlResponse> void syncRequest(Supplier<P> paramSupplier,
-                                                                                               Function<P, R> resultSupplier,
+                                                                                                Function<P, R> resultSupplier,
                                                                                                 HttpServletRequest request,
-                                                                                               HttpServletResponse response,
-                                                                                               Timer successfulRequestExecutionTimer)
-      throws IOException {
+                                                                                                HttpServletResponse response,
+                                                                                                Timer successfulRequestExecutionTimer)
+      throws ExecutionException, InterruptedException, IOException {
     long requestExecutionStartTime = System.nanoTime();
     P parameters = paramSupplier.get();
+
     if (!parameters.parseParameters(response)) {
-      OperationFuture future = new OperationFuture("Sync request");
-      CruiseControlResponse result = resultSupplier.apply(parameters);
-      future.complete(result);
-      _userTaskManager.getOrCreateUserTask(request, response, uuid -> future, 0, false);
+      int step = 0;
+
+      OperationFuture resultFuture = _userTaskManager.getOrCreateUserTask(request, response, uuid -> {
+        OperationFuture future = new OperationFuture(String.format("%s request", parameters.endPoint().toString()));
+        future.complete(resultSupplier.apply(parameters));
+        return future;
+      }, step, false).get(step);
+
+      CruiseControlResponse result = resultFuture.get();
 
       // Successfully parsed parameters.
       result.writeSuccessResponse(parameters, response);
       successfulRequestExecutionTimer.update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+    } else {
+      LOG.warn("Failed to parse parameters: {} for sync request: {}.", request.getParameterMap(), request.getPathInfo());
     }
   }
 
