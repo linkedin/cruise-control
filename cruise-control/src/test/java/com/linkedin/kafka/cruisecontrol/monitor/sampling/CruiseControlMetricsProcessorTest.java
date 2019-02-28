@@ -13,7 +13,9 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.TopicMetric;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.Cluster;
@@ -28,6 +30,7 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
 import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType.*;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.*;
+import static com.linkedin.kafka.cruisecontrol.model.ModelUtils.estimateLeaderCpuUtil;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -48,6 +51,55 @@ public class CruiseControlMetricsProcessorTest {
   private static final int BROKER_ID_0 = 0;
   private static final int BROKER_ID_1 = 1;
   private static final double DELTA = 0.001;
+  private static final double B0_CPU = 50.0;
+  private static final double B1_CPU = 30.0;
+  private static final double B0_ALL_TOPIC_BYTES_IN = 820.0;
+  private static final double B1_ALL_TOPIC_BYTES_IN = 500.0;
+  private static final double B0_ALL_TOPIC_BYTES_OUT = 1380.0;
+  private static final double B1_ALL_TOPIC_BYTES_OUT = 500.0;
+  private static final double B0_TOPIC1_BYTES_IN = 20.0;
+  private static final double B1_TOPIC1_BYTES_IN = 500.0;
+  private static final double B0_TOPIC2_BYTES_IN = 800.0;
+  private static final double B0_TOPIC1_BYTES_OUT = 80.0;
+  private static final double B1_TOPIC1_BYTES_OUT = 500.0;
+  private static final double B0_TOPIC2_BYTES_OUT = 1300.0;
+  private static final double B1_TOPIC1_REPLICATION_BYTES_IN = 20.0;
+  private static final double B0_TOPIC1_REPLICATION_BYTES_IN = 500.0;
+  private static final double B1_TOPIC2_REPLICATION_BYTES_IN = 800.0;
+  private static final double B0_TOPIC1_REPLICATION_BYTES_OUT = 20.0;
+  private static final double B1_TOPIC1_REPLICATION_BYTES_OUT = 500.0;
+  private static final double B0_TOPIC2_REPLICATION_BYTES_OUT = 800.0;
+  private static final double T1P0_BYTES_SIZE = 100.0;
+  private static final double T1P1_BYTES_SIZE = 300.0;
+  private static final double T2P0_BYTES_SIZE = 200.0;
+  private static final double T2P1_BYTES_SIZE = 500.0;
+  private static final Map<TopicPartition, Double> CPU_UTIL = new HashMap<>();
+  static {
+    CPU_UTIL.put(T1P0, estimateLeaderCpuUtil(B0_CPU,
+                                             B0_ALL_TOPIC_BYTES_IN,
+                                             B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
+                                             B0_TOPIC1_REPLICATION_BYTES_IN,
+                                             B0_TOPIC1_BYTES_IN,
+                                             B0_TOPIC1_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT));
+    CPU_UTIL.put(T1P1, estimateLeaderCpuUtil(B1_CPU,
+                                             B1_ALL_TOPIC_BYTES_IN,
+                                             B1_ALL_TOPIC_BYTES_OUT + B1_TOPIC1_REPLICATION_BYTES_OUT,
+                                             B1_TOPIC1_REPLICATION_BYTES_IN + B1_TOPIC2_REPLICATION_BYTES_IN,
+                                             B1_TOPIC1_BYTES_IN,
+                                             B1_TOPIC1_BYTES_OUT + B1_TOPIC1_REPLICATION_BYTES_OUT));
+    CPU_UTIL.put(T2P0, estimateLeaderCpuUtil(B0_CPU,
+                                             B0_ALL_TOPIC_BYTES_IN,
+                                             B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
+                                             B0_TOPIC1_REPLICATION_BYTES_IN,
+                                             B0_TOPIC2_BYTES_IN / 2,
+                                             (B0_TOPIC2_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT) / 2));
+    CPU_UTIL.put(T2P1, estimateLeaderCpuUtil(B0_CPU,
+                                             B0_ALL_TOPIC_BYTES_IN,
+                                             B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
+                                             B0_TOPIC1_REPLICATION_BYTES_IN,
+                                             B0_TOPIC2_BYTES_IN / 2,
+                                             (B0_TOPIC2_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT) / 2));
+  }
   private final Time _time = new MockTime(0, 100L, TimeUnit.NANOSECONDS.convert(100L, TimeUnit.MILLISECONDS));
 
   @Test
@@ -64,23 +116,28 @@ public class CruiseControlMetricsProcessorTest {
 
     for (PartitionMetricSample sample : samples.partitionMetricSamples()) {
       if (sample.entity().tp().equals(T1P0)) {
-        validatePartitionMetricSample(sample, _time.milliseconds() + 2, 1.27610208, 20.0, 80.0, 100.0);
+        validatePartitionMetricSample(sample, _time.milliseconds() + 2, CPU_UTIL.get(T1P0),
+                                      B0_TOPIC1_BYTES_IN, B0_TOPIC1_BYTES_OUT, T1P0_BYTES_SIZE);
       } else if (sample.entity().tp().equals(T1P1)) {
-        validatePartitionMetricSample(sample, _time.milliseconds() + 2, 18.5758513, 500.0, 500.0, 300.0);
+        validatePartitionMetricSample(sample, _time.milliseconds() + 2, CPU_UTIL.get(T1P1),
+                                      B1_TOPIC1_BYTES_IN, B1_TOPIC1_BYTES_OUT, T1P1_BYTES_SIZE);
       } else if (sample.entity().tp().equals(T2P0)) {
-        validatePartitionMetricSample(sample, _time.milliseconds() + 2, 20.0116009, 400.0, 650.0, 200.0);
+        validatePartitionMetricSample(sample, _time.milliseconds() + 2, CPU_UTIL.get(T2P0),
+                                      B0_TOPIC2_BYTES_IN / 2, B0_TOPIC2_BYTES_OUT / 2, T2P0_BYTES_SIZE);
       } else if (sample.entity().tp().equals(T2P1)) {
-        validatePartitionMetricSample(sample, _time.milliseconds() + 2, 20.0116009, 400.0, 650.0, 500.0);
+        validatePartitionMetricSample(sample, _time.milliseconds() + 2, CPU_UTIL.get(T2P1),
+                                      B0_TOPIC2_BYTES_IN / 2, B0_TOPIC2_BYTES_OUT / 2, T2P1_BYTES_SIZE);
       } else {
         fail("Should never have partition " + sample.entity().tp());
       }
     }
 
     for (BrokerMetricSample sample : samples.brokerMetricSamples()) {
-      if (sample.metricValue(CPU_USAGE) == 50.0) {
-        assertEquals(500.0, sample.metricValue(REPLICATION_BYTES_IN_RATE), DELTA);
-      } else if (sample.metricValue(CPU_USAGE) == 30.0) {
-        assertEquals(820.0, sample.metricValue(REPLICATION_BYTES_IN_RATE), DELTA);
+      if (sample.metricValue(CPU_USAGE) == B0_CPU) {
+        assertEquals(B0_TOPIC1_REPLICATION_BYTES_IN, sample.metricValue(REPLICATION_BYTES_IN_RATE), DELTA);
+      } else if (sample.metricValue(CPU_USAGE) == B1_CPU) {
+        assertEquals(B1_TOPIC1_REPLICATION_BYTES_IN + B1_TOPIC2_REPLICATION_BYTES_IN,
+                     sample.metricValue(REPLICATION_BYTES_IN_RATE), DELTA);
       } else {
         fail("Should never have broker cpu util " + sample.metricValue(CPU_USAGE));
       }
@@ -172,18 +229,24 @@ public class CruiseControlMetricsProcessorTest {
     for (PartitionMetricSample sample : samples.partitionMetricSamples()) {
       if (sample.entity().tp().equals(T1P0)) {
         // T1P0 should not have any IO or CPU usage.
-        validatePartitionMetricSample(sample, _time.milliseconds() + 2, 0.0, 0.0, 0.0, 100.0);
+        validatePartitionMetricSample(sample, _time.milliseconds() + 2, 0.0, 0.0, 0.0, T1P0_BYTES_SIZE);
       }
     }
   }
 
   /**
-   * T1P0(B0): NW_IN = 20 Bps, NW_OUT = 80 Bps, size = 100 MB
-   * T1P1(B1): NW_IN = 500 Bps, NW_OUT = 500 Bps, size = 300 MB
-   * T2P0(B0): NW_IN = 300 Bps, NW_OUT = 300 Bps, size = 200 MB
-   * T2P1(B0): NW_IN = 500 Bps, NW_OUT = 1000 Bps, size = 500 MB
-   * B0: CPU = 50%
-   * B1: CPU = 30%
+   * <ul>
+   * <li>T1P0(B0): NW_IN = {@link #B0_TOPIC1_BYTES_IN} KB, NW_OUT = {@link #B0_TOPIC1_BYTES_OUT} KB,
+   * size = {@link #T1P0_BYTES_SIZE} MB</li>
+   * <li>T1P1(B1): NW_IN = {@link #B1_TOPIC1_BYTES_IN} KB, NW_OUT = {@link #B1_TOPIC1_BYTES_OUT} KB,
+   * size = {@link #T1P1_BYTES_SIZE} MB</li>
+   * <li>T2P0(B0): NW_IN = est. {@link #B0_TOPIC2_BYTES_IN}/2 KB, NW_OUT = est. {@link #B0_TOPIC2_BYTES_OUT}/2 KB,
+   * size = {@link #T2P0_BYTES_SIZE} MB</li>
+   * <li>T2P1(B0): NW_IN = est. {@link #B0_TOPIC2_BYTES_IN}/2 KB, NW_OUT = est. {@link #B0_TOPIC2_BYTES_OUT}/2 KB,
+   * size = {@link #T2P1_BYTES_SIZE} MB</li>
+   * <li>B0: CPU = {@link #B0_CPU}%</li>
+   * <li>B1: CPU = {@link #B1_CPU}%</li>
+   * </ul>
    */
   private Set<CruiseControlMetric> getCruiseControlMetrics() {
     Set<CruiseControlMetric> metrics = new HashSet<>();
@@ -192,16 +255,20 @@ public class CruiseControlMetricsProcessorTest {
     for (RawMetricType rawMetricType : RawMetricType.brokerMetricTypesDiffForVersion(BrokerMetricSample.MIN_SUPPORTED_VERSION)) {
       switch (rawMetricType) {
         case ALL_TOPIC_BYTES_IN:
-          metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0, 820.0 * BYTES_IN_KB));
-          metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_1, 500.0 * BYTES_IN_KB));
+          metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0,
+                                       B0_ALL_TOPIC_BYTES_IN * BYTES_IN_KB));
+          metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_1,
+                                       B1_ALL_TOPIC_BYTES_IN * BYTES_IN_KB));
           break;
         case ALL_TOPIC_BYTES_OUT:
-          metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, 1380.0 * BYTES_IN_KB));
-          metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_1, 500.0 * BYTES_IN_KB));
+          metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0,
+                                       B0_ALL_TOPIC_BYTES_OUT * BYTES_IN_KB));
+          metrics.add(new BrokerMetric(RawMetricType.ALL_TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_1,
+                                       B1_ALL_TOPIC_BYTES_OUT * BYTES_IN_KB));
           break;
         case BROKER_CPU_UTIL:
-          metrics.add(new BrokerMetric(RawMetricType.BROKER_CPU_UTIL, _time.milliseconds(), BROKER_ID_0, 50.0));
-          metrics.add(new BrokerMetric(RawMetricType.BROKER_CPU_UTIL, _time.milliseconds(), BROKER_ID_1, 30.0));
+          metrics.add(new BrokerMetric(RawMetricType.BROKER_CPU_UTIL, _time.milliseconds(), BROKER_ID_0, B0_CPU));
+          metrics.add(new BrokerMetric(RawMetricType.BROKER_CPU_UTIL, _time.milliseconds(), BROKER_ID_1, B1_CPU));
           break;
         default:
           metrics.add(new BrokerMetric(rawMetricType, _time.milliseconds(), BROKER_ID_0, i++ * BYTES_IN_MB));
@@ -213,24 +280,36 @@ public class CruiseControlMetricsProcessorTest {
     for (RawMetricType rawMetricType : RawMetricType.topicMetricTypes()) {
       switch (rawMetricType) {
         case TOPIC_BYTES_IN:
-          metrics.add(new TopicMetric(TOPIC_BYTES_IN, _time.milliseconds() + 1, BROKER_ID_0, TOPIC1, 20.0 * BYTES_IN_KB));
-          metrics.add(new TopicMetric(TOPIC_BYTES_IN, _time.milliseconds() + 2, BROKER_ID_1, TOPIC1, 500.0 * BYTES_IN_KB));
-          metrics.add(new TopicMetric(TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0, TOPIC2, 800.0 * BYTES_IN_KB));
+          metrics.add(new TopicMetric(TOPIC_BYTES_IN, _time.milliseconds() + 1, BROKER_ID_0, TOPIC1,
+                                      B0_TOPIC1_BYTES_IN * BYTES_IN_KB));
+          metrics.add(new TopicMetric(TOPIC_BYTES_IN, _time.milliseconds() + 2, BROKER_ID_1, TOPIC1,
+                                      B1_TOPIC1_BYTES_IN * BYTES_IN_KB));
+          metrics.add(new TopicMetric(TOPIC_BYTES_IN, _time.milliseconds(), BROKER_ID_0, TOPIC2,
+                                      B0_TOPIC2_BYTES_IN * BYTES_IN_KB));
           break;
         case TOPIC_BYTES_OUT:
-          metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC1, 80.0 * BYTES_IN_KB));
-          metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_1, TOPIC1, 500.0 * BYTES_IN_KB));
-          metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC2, 1300.0 * BYTES_IN_KB));
+          metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC1,
+                                      B0_TOPIC1_BYTES_OUT * BYTES_IN_KB));
+          metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_1, TOPIC1,
+                                      B1_TOPIC1_BYTES_OUT * BYTES_IN_KB));
+          metrics.add(new TopicMetric(RawMetricType.TOPIC_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC2,
+                                      B0_TOPIC2_BYTES_OUT * BYTES_IN_KB));
           break;
         case TOPIC_REPLICATION_BYTES_IN:
-          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_IN, _time.milliseconds(), BROKER_ID_1, TOPIC1, 20.0 * BYTES_IN_KB));
-          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_IN, _time.milliseconds(), BROKER_ID_0, TOPIC1, 500.0 * BYTES_IN_KB));
-          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_IN, _time.milliseconds(), BROKER_ID_1, TOPIC2, 800.0 * BYTES_IN_KB));
+          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_IN, _time.milliseconds(), BROKER_ID_1, TOPIC1,
+                                      B1_TOPIC1_REPLICATION_BYTES_IN * BYTES_IN_KB));
+          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_IN, _time.milliseconds(), BROKER_ID_0, TOPIC1,
+                                      B0_TOPIC1_REPLICATION_BYTES_IN * BYTES_IN_KB));
+          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_IN, _time.milliseconds(), BROKER_ID_1, TOPIC2,
+                                      B1_TOPIC2_REPLICATION_BYTES_IN * BYTES_IN_KB));
           break;
         case TOPIC_REPLICATION_BYTES_OUT:
-          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC1, 20.0 * BYTES_IN_KB));
-          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_OUT, _time.milliseconds(), BROKER_ID_1, TOPIC1, 500.0 * BYTES_IN_KB));
-          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC2, 800.0 * BYTES_IN_KB));
+          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC1,
+                                      B0_TOPIC1_REPLICATION_BYTES_OUT * BYTES_IN_KB));
+          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_OUT, _time.milliseconds(), BROKER_ID_1, TOPIC1,
+                                      B1_TOPIC1_REPLICATION_BYTES_OUT * BYTES_IN_KB));
+          metrics.add(new TopicMetric(RawMetricType.TOPIC_REPLICATION_BYTES_OUT, _time.milliseconds(), BROKER_ID_0, TOPIC2,
+                                      B0_TOPIC2_REPLICATION_BYTES_OUT * BYTES_IN_KB));
           break;
         default:
           metrics.add(new TopicMetric(rawMetricType, _time.milliseconds(),  BROKER_ID_0, TOPIC1, i * BYTES_IN_MB));
@@ -241,14 +320,22 @@ public class CruiseControlMetricsProcessorTest {
       }
     }
 
-    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC1, P0, 100 * BYTES_IN_MB));
-    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC1, P1, 300 * BYTES_IN_MB));
-    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC2, P0, 200 * BYTES_IN_MB));
-    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC2, P1, 500 * BYTES_IN_MB));
-    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_1, TOPIC1, P0, 100 * BYTES_IN_MB));
-    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_1, TOPIC1, P1, 300 * BYTES_IN_MB));
-    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_1, TOPIC2, P0, 200 * BYTES_IN_MB));
-    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_1, TOPIC2, P1, 500 * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC1, P0,
+                                    T1P0_BYTES_SIZE * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC1, P1,
+                                    T1P1_BYTES_SIZE * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC2, P0,
+                                    T2P0_BYTES_SIZE * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_0, TOPIC2, P1,
+                                    T2P1_BYTES_SIZE * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_1, TOPIC1, P0,
+                                    T1P0_BYTES_SIZE * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_1, TOPIC1, P1,
+                                    T1P1_BYTES_SIZE * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_1, TOPIC2, P0,
+                                    T2P0_BYTES_SIZE * BYTES_IN_MB));
+    metrics.add(new PartitionMetric(RawMetricType.PARTITION_SIZE, _time.milliseconds(), BROKER_ID_1, TOPIC2, P1,
+                                    T2P1_BYTES_SIZE * BYTES_IN_MB));
     return metrics;
   }
 
