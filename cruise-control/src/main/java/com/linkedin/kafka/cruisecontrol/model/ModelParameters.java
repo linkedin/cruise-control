@@ -18,15 +18,15 @@ public class ModelParameters {
   /**
    * The contribution weight of leader bytes in on the CPU utilization of a broker.
    */
-  static double CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE = 0.6;
+  static double CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE = 0.7;
   /**
    * The contribution weight of leader bytes out on the CPU utilization of a broker.
    */
-  static double CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE = 0.1;
+  static double CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE = 0.15;
   /**
    * The contribution weight of follower bytes in on the CPU utilization of a broker.
    */
-  static double CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE = 0.3;
+  static double CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE = 0.15;
 
   private ModelParameters() {
 
