@@ -72,20 +72,25 @@ public class UserTaskManagerTest {
     Assert.assertEquals(future, future3);
 
     EasyMock.reset(mockHttpServletResponse);
+
     // test-case: for sync task, UserTaskManager does not create mapping between request URL and UUID.
     HttpServletRequest mockHttpServletRequest3 = prepareRequest(null, null, "test_sync_request", Collections.emptyMap());
-    userTaskManager.getOrCreateUserTask(mockHttpServletRequest3, mockHttpServletResponse, uuid -> future, 0, false).get(0);
+    OperationFuture future4 =
+        userTaskManager.getOrCreateUserTask(mockHttpServletRequest3, mockHttpServletResponse, uuid -> future, 0, false).get(0);
 
-    // mockHttpServletRequest3 does not contain User-task-id, so the only place to retrieve non-null user-task-id is _sessionKeyToUserTaskIdMap.
-    // The 2 Assert's below contrast different behavior for sync vs async request. For sync, we won't find session to UUID mapping, so expect null;
-    // For async, we will find session to UUID mapping, so expect non null.
+    // New async request have session mapping where a session key is mapped to the UUID associated with the request. Such a mapping is
+    // not created for sync request. So in the 2 asserts below , we expect that given a http request, we are able to find request associated UUID
+    // for async request but not for sync request.
     UUID savedUUID = userTaskManager.getUserTaskId(mockHttpServletRequest3);
     Assert.assertEquals(savedUUID, null);
+    Assert.assertEquals(future4, future);
 
     EasyMock.reset(mockHttpServletResponse);
-    userTaskManager.getOrCreateUserTask(mockHttpServletRequest3, mockHttpServletResponse, uuid -> future, 0, true).get(0);
+    OperationFuture future5 =
+        userTaskManager.getOrCreateUserTask(mockHttpServletRequest3, mockHttpServletResponse, uuid -> future, 0, true).get(0);
     savedUUID = userTaskManager.getUserTaskId(mockHttpServletRequest3);
     Assert.assertNotEquals(savedUUID, null);
+    Assert.assertEquals(future5, future);
 
     userTaskManager.close();
   }
@@ -166,7 +171,6 @@ public class UserTaskManagerTest {
         userTaskManager.getOrCreateUserTask(mockHttpServletRequest, mockHttpServletResponse, uuid -> testFuture2, 1,
             true).get(1);
     Assert.assertEquals(testFuture2, insertedFuture2);
-
 
     Assert.assertEquals(userTaskManager.getUserTaskByUserTaskId(testUserTaskId, mockHttpServletRequest).futures().size(), 2);
     userTaskManager.close();

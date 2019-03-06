@@ -346,6 +346,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     P parameters = paramSupplier.get();
 
     if (!parameters.parseParameters(response)) {
+      // Successfully parsed parameters.
       int step = 0;
 
       OperationFuture resultFuture = _userTaskManager.getOrCreateUserTask(request, response, uuid -> {
@@ -356,7 +357,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
       CruiseControlResponse result = resultFuture.get();
 
-      // Successfully parsed parameters.
       result.writeSuccessResponse(parameters, response);
       successfulRequestExecutionTimer.update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
     } else {
@@ -374,6 +374,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     P parameters = paramSupplier.get();
 
     if (!parameters.parseParameters(response)) {
+      // Successfully parsed parameters.
       int step = 0;
 
       OperationFuture resultFuture = _userTaskManager.getOrCreateUserTask(request, response, uuid -> {
@@ -384,7 +385,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
       CruiseControlResponse result = resultFuture.get();
 
-      // Successfully parsed parameters.
       result.writeSuccessResponse(parameters, response);
       successfulRequestExecutionTimer.update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
     } else {

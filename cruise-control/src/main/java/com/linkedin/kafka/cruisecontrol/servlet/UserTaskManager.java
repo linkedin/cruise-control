@@ -18,7 +18,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -37,21 +36,20 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * {@link UserTaskManager} keeps track of Sync and Async requests. This information helps keep track of what actions user
- * performed on Cruise Control and the corresponding response for these actions.
+ * {@link UserTaskManager} keeps track of Sync and Async user tasks. When a {@link HttpServletRequest} comes in, the servlets
+ * creates the tasks to track the corresponding request and results.
  *
- * Some {@link HttpServletRequest} can execute for long durations. The servlet submits the asynchronous tasks and returns the
+ * Some {@link HttpServletRequest} can execute for long durations, the servlet submits the asynchronous tasks and returns the
  * progress of the operation instead of blocking for the operation to complete. {@link UserTaskManager} maintains the
- * mapping of Request URL and {@link HttpSession} to UserTaskID({@link UUID}). To fetch the status of a request, the
- * client can use the same Request ULR along with session cookie to retrieve the current status. The status of the
+ * mapping of Request URL and {@link HttpSession} to UserTaskID({@link UUID}) for async requests. To fetch the status of a async
+ * request, the client can use the same Request ULR along with session cookie to retrieve the current status. The status of the
  * request can also be fetched using the UserTaskID. '/user_tasks' endpoint can be used to fetch all the active and
- * recently completed UserTasks.
+ * recently completed UserTasks. For sync requests, only UserTaskID can be used to fetch their status.
  */
 public class UserTaskManager implements Closeable {
   public static final String USER_TASK_HEADER_NAME = "User-Task-ID";
   public static final long USER_TASK_SCANNER_PERIOD_SECONDS = 5;
   public static final long USER_TASK_SCANNER_INITIAL_DELAY_SECONDS = 0;
-  public static int COMPLETED_USER_TASKS_LIMIT = 5;   //TODO: make configurable
 
   private static final Logger LOG = LoggerFactory.getLogger(UserTaskManager.class);
   private final Map<SessionKey, UUID> _sessionKeyToUserTaskIdMap;
@@ -64,7 +62,6 @@ public class UserTaskManager implements Closeable {
   private final UUIDGenerator _uuidGenerator;
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer;
   private final long _completedUserTaskRetentionTimeMs;
-  private final Map<EndPoint, UserTaskCleanerInfo> _userTaskCleanerMap;
 
   public UserTaskManager(long sessionExpiryMs,
                          long maxActiveUserTasks,
@@ -94,9 +91,6 @@ public class UserTaskManager implements Closeable {
                                                  USER_TASK_SCANNER_INITIAL_DELAY_SECONDS,
                                                  USER_TASK_SCANNER_PERIOD_SECONDS,
                                                  TimeUnit.SECONDS);
-
-    _userTaskCleanerMap = new HashMap<>();
-    initUserTaskCleanerMap();
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-sessions"),
                                       (Gauge<Integer>) _sessionKeyToUserTaskIdMap::size);
     dropwizardMetricRegistry.register(MetricRegistry.name("UserTaskManager", "num-active-user-tasks"),
@@ -132,8 +126,6 @@ public class UserTaskManager implements Closeable {
                                                  USER_TASK_SCANNER_INITIAL_DELAY_SECONDS,
                                                  USER_TASK_SCANNER_PERIOD_SECONDS,
                                                  TimeUnit.SECONDS);
-    _userTaskCleanerMap = new HashMap<>();
-    initUserTaskCleanerMap();
     _successfulRequestExecutionTimer = new HashMap<>();
     EndPoint.cachedValues().forEach(e -> _successfulRequestExecutionTimer.put(e, new Timer()));
   }
@@ -147,39 +139,23 @@ public class UserTaskManager implements Closeable {
     this(sessionExpiryMs, maxActiveUserTasks, completedUserTaskRetentionTimeMs, maxCachedCompletedUserTasks, time, new UUIDGenerator());
   }
 
-  /**
-   * Sets history limit for different endpoints. For now, only limit number of {@link EndPoint#USER_TASKS} in history to
-   * {@link #COMPLETED_USER_TASKS_LIMIT} entries.
-    */
-  private void initUserTaskCleanerMap() {
-    _userTaskCleanerMap.put(EndPoint.USER_TASKS, new UserTaskCleanerInfo(COMPLETED_USER_TASKS_LIMIT));
-  }
-
-  private synchronized void cleanUserTasks() {
-    for (Map.Entry<EndPoint, UserTaskCleanerInfo> entry : _userTaskCleanerMap.entrySet()) {
-      entry.getValue().cleanUserTask();
-    }
-  }
-
   private static String httpServletRequestToString(HttpServletRequest request) {
     return String.format("%s %s", request.getMethod(), request.getRequestURI());
   }
 
   /**
-   * Create the UserTask reference for sync or async task if it doesn't exist.
+   * This method creates a {@link UserTaskInfo} reference for a new sync or async request and a UUID to map to it. For async request
+   * a {@link SessionKey} is also created to map to the UUID. For async request, both UUID and @{link HttpSession} can be used to fetch
+   * {@link OperationFuture} for the in-progress/completed UserTask. If the UserTaskId is passed in the httpServletRequest
+   * header then that takes precedence over {@link HttpSession}. For sync task, only UUID can be used to fetch {@link OperationFuture},
+   * which already contains the finished result.
    *
-   * This method creates references {@link UserTaskInfo} and maps it to {@link HttpSession} from httpServletRequest. The
-   * {@link HttpSession} is also used to fetch {@link OperationFuture} for the in-progress/completed UserTask. If the
-   * UserTaskID is passed in the httpServletRequest header then that takes precedence over {@link HttpSession} to fetch
-   * the {@link OperationFuture} for the UserTask. Sync task is not saved in Session map.
-   *
-   * @param httpServletRequest the HttpServletRequest to create the UserTaskInfo reference. Sync request should not contain
-   *                           UUID in the header.
+   * @param httpServletRequest the HttpServletRequest to create the {@link UserTaskInfo} reference.
    * @param httpServletResponse the HttpServletResponse that contains the UserTaskId in the HttpServletResponse header.
    * @param function A function that takes a UUID and returns {@link OperationFuture}. For sync task, the function always
    *                 returns a completed Future.
    * @param step The index of the step that has to be added or fetched.
-   * @param isAsyncRequest Indicate whether the task is sync or async.
+   * @param isAsyncRequest Indicate whether the task is async or sync.
    * @return The list of {@link OperationFuture} for the linked UserTask.
    */
   public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
@@ -305,9 +281,6 @@ public class UserTaskManager implements Closeable {
     Iterator<Map.Entry<UUID, UserTaskInfo>> iter = _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).entrySet().iterator();
     while (iter.hasNext()) {
       Map.Entry<UUID, UserTaskInfo> entry = iter.next();
-      if (_userTaskCleanerMap.containsKey(entry.getValue().endPoint())) {
-        _userTaskCleanerMap.get(entry.getValue().endPoint()).addUserTaskUuid(entry.getKey());
-      }
       if (entry.getValue().isUserTaskDoneExceptionally()) {
         LOG.warn("UserTask {} is completed with Exception and removed from active tasks list", entry.getKey());
         _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED_WITH_ERROR));
@@ -356,12 +329,12 @@ public class UserTaskManager implements Closeable {
    * Common function for adding sync/async tasks
    * @param userTaskId UUID to uniquely identify task.
    * @param operation lambda function to provide result to UserTaskInfo object
-   * @param httpServletRequest
-   * @return
+   * @param httpServletRequest http request associated with the task
+   * @return {@link UserTaskInfo} containing request detail and  {@link OperationFuture}
    */
   private synchronized UserTaskInfo insertFuturesByUserTaskId(UUID userTaskId,
-      Function<String, OperationFuture> operation,
-      HttpServletRequest httpServletRequest) {
+                                                              Function<String, OperationFuture> operation,
+                                                              HttpServletRequest httpServletRequest) {
     if (_allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).containsKey(userTaskId)) {
       // Before add new operation to task, first recycle the task from completed task list.
       _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).put(userTaskId, _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED)
@@ -375,10 +348,9 @@ public class UserTaskManager implements Closeable {
         throw new RuntimeException("There are already " + _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).size() +
             " active user tasks, which has reached the servlet capacity.");
       }
-      // new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString())))
       UserTaskInfo userTaskInfo =
           new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString()))),
-              _time.milliseconds(), userTaskId, TaskState.ACTIVE);
+                           _time.milliseconds(), userTaskId, TaskState.ACTIVE);
       _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).put(userTaskId, userTaskInfo);
     }
     return _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).get(userTaskId);
@@ -503,8 +475,8 @@ public class UserTaskManager implements Closeable {
                         UUID userTaskId,
                         TaskState state) {
       this(futures, httpServletRequestToString(httpServletRequest),
-          KafkaCruiseControlServletUtils.getClientIpAddress(httpServletRequest), startMs, userTaskId,
-          httpServletRequest.getParameterMap(), ParameterUtils.endPoint(httpServletRequest), state);
+           KafkaCruiseControlServletUtils.getClientIpAddress(httpServletRequest), startMs, userTaskId,
+           httpServletRequest.getParameterMap(), ParameterUtils.endPoint(httpServletRequest), state);
     }
 
     UserTaskInfo(List<OperationFuture> futures,
@@ -602,7 +574,6 @@ public class UserTaskManager implements Closeable {
         expireOldSessions();
         checkActiveUserTasks();
         removeOldUserTasks();
-        cleanUserTasks();
       } catch (Throwable t) {
         LOG.warn("Received exception when trying to expire sessions.", t);
       }
@@ -610,7 +581,7 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * TODO We currently accept {@link TaskState#ACTIVE} and {@link TaskState#COMPLETED}, in the
+   * TODO We currently accept {@link TaskState#ACTIVE}, {@link TaskState#COMPLETED} and {@link COMPLETED_WITH_ERROR}, in the
    * future we could also add other states as specified in Cruise Control ticket: https://github.com/linkedin/cruise-control/issues/571
    */
   public enum TaskState {
@@ -640,37 +611,6 @@ public class UserTaskManager implements Closeable {
      */
     public static List<TaskState> cachedValues() {
       return CACHED_VALUES;
-    }
-  }
-
-  /**
-   * {@link #_allUuidToUserTaskInfoMap} stores active and completed user tasks for history. Some historic user requests are
-   * less important for the user, e.g. {@link EndPoint#USER_TASKS} is not very interesting. To prevent un-interesting but
-   * frequently-called endpoints from flooding out interesting requests, we need to periodically cleanup requests. We can set
-   * per endpoint limit and utilize the {@link UserTaskScanner} to do the cleaning.
-   */
-  private class UserTaskCleanerInfo {
-    private final int _limit;
-    private final LinkedList<UUID> _tasks;
-    public UserTaskCleanerInfo(int limit) {
-      _limit = limit;
-      _tasks = new LinkedList<UUID>();
-    }
-
-    public void addUserTaskUuid(UUID uuid) {
-      _tasks.addLast(uuid);
-    }
-
-    private boolean needCleaning() {
-      return _tasks.size() > _limit;
-    }
-
-    // User tasks are removed in FIFO order.
-    public void cleanUserTask() {
-      while (needCleaning()) {
-        UUID uuidRemove = _tasks.removeFirst();
-        _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).remove(uuidRemove);
-      }
     }
   }
 }
