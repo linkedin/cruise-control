@@ -14,18 +14,22 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.BaseParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.purgatory.Purgatory;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
+import com.linkedin.kafka.cruisecontrol.servlet.response.PurgatoryOrReviewResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
 import java.io.IOException;
 import java.util.HashMap;
@@ -63,21 +67,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private final Map<EndPoint, Meter> _requestMeter = new HashMap<>();
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer = new HashMap<>();
   private final boolean _corsEnabled;
+  private final boolean _twoStepVerification;
+  private final Purgatory _purgatory;
 
-  public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl,
-                                   long maxBlockMs,
-                                   long sessionExpiryMs,
-                                   MetricRegistry dropwizardMetricRegistry,
-                                   KafkaCruiseControlConfig kafkaCruiseControlConfig) {
-    _config = kafkaCruiseControlConfig;
+  public KafkaCruiseControlServlet(AsyncKafkaCruiseControl asynckafkaCruiseControl, MetricRegistry dropwizardMetricRegistry) {
+    _config = asynckafkaCruiseControl.config();
     _corsEnabled = _config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
     _asyncKafkaCruiseControl = asynckafkaCruiseControl;
-    KafkaCruiseControlConfig config = asynckafkaCruiseControl.config();
-    _userTaskManager = new UserTaskManager(sessionExpiryMs, config.getInt(KafkaCruiseControlConfig.MAX_ACTIVE_USER_TASKS_CONFIG),
-                                           config.getLong(KafkaCruiseControlConfig.COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG),
-                                           config.getInt(KafkaCruiseControlConfig.MAX_CACHED_COMPLETED_USER_TASKS_CONFIG),
-                                           dropwizardMetricRegistry, _successfulRequestExecutionTimer);
-    _maxBlockMs = maxBlockMs;
+    _twoStepVerification = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _purgatory = _twoStepVerification ? new Purgatory(_config) : null;
+    _userTaskManager = new UserTaskManager(_config, dropwizardMetricRegistry, _successfulRequestExecutionTimer, _purgatory);
+    _maxBlockMs = _config.getLong(KafkaCruiseControlConfig.WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS);
     _asyncOperationStep = new ThreadLocal<>();
     _asyncOperationStep.set(0);
 
@@ -181,6 +181,32 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
   }
 
+  @SuppressWarnings("unchecked")
+  private <P extends CruiseControlParameters> P maybeAddToPurgatory(HttpServletRequest request,
+                                                                    HttpServletResponse response,
+                                                                    Supplier<P> paramSupplier)
+      throws IOException {
+    if (!_twoStepVerification) {
+      // Do not add to the purgatory if the two-step verification is disabled.
+      return null;
+    }
+
+    Integer reviewId = ParameterUtils.reviewId(request, _twoStepVerification);
+    if (reviewId != null) {
+      return (P) _purgatory.submit(reviewId, request).parameters();
+    } else {
+      P parameters = paramSupplier.get();
+      if (!parameters.parseParameters(response)) {
+        // Add request to purgatory and return PurgatoryOrReviewResult.
+        PurgatoryOrReviewResult purgatoryOrReviewResult = _purgatory.addRequest(request, parameters);
+        purgatoryOrReviewResult.writeSuccessResponse(parameters, response);
+        LOG.info("Added request {} with parameters {} to purgatory.", request.getPathInfo(), request.getParameterMap());
+      }
+
+      return null;
+    }
+  }
+
   /**
    * The POST method allows user to perform the following actions:
    *
@@ -188,11 +214,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 1. Decommission a broker (See {@link AddedOrRemovedBrokerParameters}).
    * 2. Add a broker (See {@link AddedOrRemovedBrokerParameters}).
    * 3. Trigger a workload balance (See {@link RebalanceParameters}).
-   * 4. Stop the proposal execution (See {@link BaseParameters}).
+   * 4. Stop the proposal execution (See {@link StopProposalParameters}).
    * 5. Pause metrics sampling (See {@link PauseResumeParameters}).
    * 6. Resume metrics sampling (See {@link PauseResumeParameters}).
    * 7. Demote a broker (See {@link DemoteBrokerParameters}).
    * 8. Admin operations on Cruise Control (See {@link AdminParameters}).
+   * 9. Review requests for two-step verification (See {@link ReviewParameters}).
    * </pre>
    */
   @Override
@@ -202,31 +229,69 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       EndPoint endPoint = getValidEndpoint(request, response);
       if (endPoint != null && hasValidParameters(request, response)) {
         _requestMeter.get(endPoint).mark();
+        CruiseControlParameters reviewedParams;
         switch (endPoint) {
           case ADD_BROKER:
           case REMOVE_BROKER:
-            addOrRemoveBroker(request, response, endPoint);
+            reviewedParams = maybeAddToPurgatory(request, response, () -> new AddedOrRemovedBrokerParameters(request, _config));
+            if (!_twoStepVerification || reviewedParams != null) {
+              addOrRemoveBroker(request, response, endPoint, (AddedOrRemovedBrokerParameters) reviewedParams);
+            }
             break;
           case REBALANCE:
-            rebalance(request, response);
+            reviewedParams = maybeAddToPurgatory(request, response, () -> new RebalanceParameters(request, _config));
+            if (!_twoStepVerification || reviewedParams != null) {
+              rebalance(request, response, (RebalanceParameters) reviewedParams);
+            }
             break;
           case STOP_PROPOSAL_EXECUTION:
-            syncRequest(() -> new BaseParameters(request), _asyncKafkaCruiseControl::stopProposalExecution,
-                        request, response, _successfulRequestExecutionTimer.get(endPoint));
+            reviewedParams = maybeAddToPurgatory(request, response, () -> new StopProposalParameters(request, _twoStepVerification));
+            if (!_twoStepVerification || reviewedParams != null) {
+              syncRequest(!_twoStepVerification
+                          ? () -> new StopProposalParameters(request, _twoStepVerification)
+                          : () -> new StopProposalParameters(request, _twoStepVerification, (StopProposalParameters) reviewedParams),
+                          _asyncKafkaCruiseControl::stopProposalExecution,
+                          request, response, _successfulRequestExecutionTimer.get(endPoint));
+            }
             break;
           case PAUSE_SAMPLING:
-            syncRequest(() -> new PauseResumeParameters(request), _asyncKafkaCruiseControl::pauseLoadMonitorActivity,
-                        request, response, _successfulRequestExecutionTimer.get(endPoint));
+            reviewedParams = maybeAddToPurgatory(request, response, () -> new PauseResumeParameters(request, _twoStepVerification));
+            if (!_twoStepVerification || reviewedParams != null) {
+              syncRequest(!_twoStepVerification
+                          ? () -> new PauseResumeParameters(request, _twoStepVerification)
+                          : () -> new PauseResumeParameters(request, _twoStepVerification, (PauseResumeParameters) reviewedParams),
+                          _asyncKafkaCruiseControl::pauseLoadMonitorActivity,
+                          request, response, _successfulRequestExecutionTimer.get(endPoint));
+            }
             break;
           case RESUME_SAMPLING:
-            syncRequest(() -> new PauseResumeParameters(request), _asyncKafkaCruiseControl::resumeLoadMonitorActivity,
-                        request, response, _successfulRequestExecutionTimer.get(endPoint));
+            reviewedParams = maybeAddToPurgatory(request, response, () -> new PauseResumeParameters(request, _twoStepVerification));
+            if (!_twoStepVerification || reviewedParams != null) {
+              syncRequest(!_twoStepVerification
+                          ? () -> new PauseResumeParameters(request, _twoStepVerification)
+                          : () -> new PauseResumeParameters(request, _twoStepVerification, (PauseResumeParameters) reviewedParams),
+                          _asyncKafkaCruiseControl::resumeLoadMonitorActivity,
+                          request, response, _successfulRequestExecutionTimer.get(endPoint));
+            }
             break;
           case DEMOTE_BROKER:
-            demoteBroker(request, response);
+            reviewedParams = maybeAddToPurgatory(request, response, () -> new DemoteBrokerParameters(request, _config));
+            if (!_twoStepVerification || reviewedParams != null) {
+              demoteBroker(request, response, (DemoteBrokerParameters) reviewedParams);
+            }
             break;
           case ADMIN:
-            syncRequest(() -> new AdminParameters(request), _asyncKafkaCruiseControl::handleAdminRequest,
+            reviewedParams = maybeAddToPurgatory(request, response, () -> new AdminParameters(request, _twoStepVerification));
+            if (!_twoStepVerification || reviewedParams != null) {
+              syncRequest(!_twoStepVerification
+                          ? () -> new AdminParameters(request, _twoStepVerification)
+                          : () -> new AdminParameters(request, _twoStepVerification, (AdminParameters) reviewedParams),
+                          _asyncKafkaCruiseControl::handleAdminRequest,
+                          request, response, _successfulRequestExecutionTimer.get(endPoint));
+            }
+            break;
+          case REVIEW:
+            syncRequest(() -> new ReviewParameters(request), this::handleReviewRequest,
                         request, response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           default:
@@ -250,6 +315,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private UserTaskState userTaskState() {
     return new UserTaskState(_userTaskManager.getActiveUserTasks(), _userTaskManager.getCompletedUserTasks());
+  }
+
+  private synchronized PurgatoryOrReviewResult handleReviewRequest(ReviewParameters parameters) {
+    return _purgatory.applyReview(parameters.reviewRequests(), parameters.reason());
   }
 
   private void getClusterLoad(HttpServletRequest request, HttpServletResponse response)
@@ -280,21 +349,28 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                  request, response);
   }
 
-  private void rebalance(HttpServletRequest request, HttpServletResponse response)
+  private void rebalance(HttpServletRequest request, HttpServletResponse response, RebalanceParameters reviewedParams)
       throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(() -> new RebalanceParameters(request, _config),
+    asyncRequest(!_twoStepVerification
+                 ? () -> new RebalanceParameters(request, _config)
+                 : () -> new RebalanceParameters(request, _config, reviewedParams),
                  parameters -> (uuid -> _asyncKafkaCruiseControl.rebalance(parameters, uuid)),
                  request, response);
   }
 
-  private void demoteBroker(HttpServletRequest request, HttpServletResponse response)
+  private void demoteBroker(HttpServletRequest request, HttpServletResponse response, DemoteBrokerParameters reviewedParams)
       throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(() -> new DemoteBrokerParameters(request, _config),
+    asyncRequest(!_twoStepVerification
+                 ? () -> new DemoteBrokerParameters(request, _config)
+                 : () -> new DemoteBrokerParameters(request, _config, reviewedParams),
                  parameters -> (uuid -> _asyncKafkaCruiseControl.demoteBrokers(uuid, parameters)),
                  request, response);
   }
 
-  private void addOrRemoveBroker(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
+  private void addOrRemoveBroker(HttpServletRequest request,
+                                 HttpServletResponse response,
+                                 EndPoint endPoint,
+                                 AddedOrRemovedBrokerParameters reviewedParams)
       throws IOException, ExecutionException, InterruptedException {
     Function<AddedOrRemovedBrokerParameters, Function<String, OperationFuture>> function;
     if (endPoint == ADD_BROKER) {
@@ -303,7 +379,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       function = parameters -> (uuid -> _asyncKafkaCruiseControl.decommissionBrokers(parameters, uuid));
     }
 
-    asyncRequest(() -> new AddedOrRemovedBrokerParameters(request, _config), function, request, response);
+    asyncRequest(!_twoStepVerification
+                 ? () -> new AddedOrRemovedBrokerParameters(request, _config)
+                 : () -> new AddedOrRemovedBrokerParameters(request, _config, reviewedParams),
+                 function, request, response);
   }
 
   /**

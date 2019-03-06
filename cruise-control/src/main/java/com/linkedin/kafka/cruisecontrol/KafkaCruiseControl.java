@@ -40,7 +40,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ResumeSamplingResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalExecutionResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.TrainResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.InputStream;
@@ -845,9 +845,9 @@ public class KafkaCruiseControl {
    *
    * @return Stop proposal execution result.
    */
-  public StopProposalExecutionResult stopProposalExecution() {
+  public StopProposalResult stopProposalExecution() {
     _executor.userTriggeredStopExecution();
-    return new StopProposalExecutionResult();
+    return new StopProposalResult();
   }
 
   /**

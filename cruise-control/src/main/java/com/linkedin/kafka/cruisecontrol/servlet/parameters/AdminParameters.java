@@ -17,7 +17,7 @@ import javax.servlet.http.HttpServletRequest;
  * <pre>
  *    POST /kafkacruisecontrol/admin?json=[true/false]&amp;disable_self_healing_for=[Set-of-{@link AnomalyType}]
  *    &amp;enable_self_healing_for=[Set-of-{@link AnomalyType}]&amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]
- *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]
+ *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;review_id=[id]
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
@@ -25,19 +25,43 @@ public class AdminParameters extends AbstractParameters {
   private Set<AnomalyType> _enableSelfHealingFor;
   private Integer _concurrentPartitionMovements;
   private Integer _concurrentLeaderMovements;
+  private Integer _reviewId;
+  private boolean _twoStepVerificationEnabled;
+  private final AdminParameters _reviewedParams;
 
-  public AdminParameters(HttpServletRequest request) {
+  public AdminParameters(HttpServletRequest request, boolean twoStepVerificationEnabled) {
     super(request);
+    _twoStepVerificationEnabled = twoStepVerificationEnabled;
+    _reviewedParams = null;
+  }
+
+  public AdminParameters(HttpServletRequest request, boolean twoStepVerificationEnabled, AdminParameters reviewedParams) {
+    super(request, reviewedParams);
+    _twoStepVerificationEnabled = twoStepVerificationEnabled;
+    _reviewedParams = reviewedParams;
   }
 
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_request);
-    _enableSelfHealingFor = selfHealingFor.get(true);
-    _disableSelfHealingFor = selfHealingFor.get(false);
-    _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    if (_reviewedParams == null) {
+      Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_request);
+      _enableSelfHealingFor = selfHealingFor.get(true);
+      _disableSelfHealingFor = selfHealingFor.get(false);
+      _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
+      _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    } else {
+      _enableSelfHealingFor = _reviewedParams.enableSelfHealingFor();
+      _disableSelfHealingFor = _reviewedParams.disableSelfHealingFor();
+      _concurrentPartitionMovements = _reviewedParams.concurrentPartitionMovements();
+      _concurrentLeaderMovements = _reviewedParams.concurrentLeaderMovements();
+    }
+    // Review id is always retrieved from the current parameters.
+    _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
+  }
+
+  public Integer reviewId() {
+    return _reviewId;
   }
 
   public Set<AnomalyType> disableSelfHealingFor() {

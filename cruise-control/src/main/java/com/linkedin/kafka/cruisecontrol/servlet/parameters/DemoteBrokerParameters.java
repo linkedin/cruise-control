@@ -20,6 +20,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
  *    &amp;skip_urp_demotion=[true/false]&amp;exclude_follower_demotion=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
+ *    &amp;review_id=[id]
  * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
@@ -30,22 +31,42 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   private boolean _excludeFollowerDemotion;
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private KafkaCruiseControlConfig _config;
+  private Integer _reviewId;
+  private final DemoteBrokerParameters _reviewedParams;
 
   public DemoteBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request);
     _config = config;
+    _reviewedParams = null;
+  }
+
+  public DemoteBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config, DemoteBrokerParameters reviewedParams) {
+    super(request, reviewedParams);
+    _config = config;
+    _reviewedParams = reviewedParams;
   }
 
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _brokerIds = ParameterUtils.brokerIds(_request);
-    _dryRun = ParameterUtils.getDryRun(_request);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
-    _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
-    _skipUrpDemotion = ParameterUtils.skipUrpDemotion(_request);
-    _excludeFollowerDemotion = ParameterUtils.excludeFollowerDemotion(_request);
-    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
+    _brokerIds = _reviewedParams == null ? ParameterUtils.brokerIds(_request) : _reviewedParams.brokerIds();
+    _dryRun = _reviewedParams == null ? ParameterUtils.getDryRun(_request) : _reviewedParams.dryRun();
+    _concurrentLeaderMovements = _reviewedParams == null ? ParameterUtils.concurrentMovements(_request, false)
+                                                         : _reviewedParams.concurrentLeaderMovements();
+    _allowCapacityEstimation = _reviewedParams == null ? ParameterUtils.allowCapacityEstimation(_request)
+                                                       : _reviewedParams.allowCapacityEstimation();
+    _skipUrpDemotion = _reviewedParams == null ? ParameterUtils.skipUrpDemotion(_request) : _reviewedParams.skipUrpDemotion();
+    _excludeFollowerDemotion = _reviewedParams == null ? ParameterUtils.excludeFollowerDemotion(_request)
+                                                       : _reviewedParams.excludeFollowerDemotion();
+    _replicaMovementStrategy = _reviewedParams == null ? ParameterUtils.getReplicaMovementStrategy(_request, _config)
+                                                       : _reviewedParams.replicaMovementStrategy();
+    // Review id is always retrieved from the current parameters.
+    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+  }
+
+  public Integer reviewId() {
+    return _reviewId;
   }
 
   public boolean dryRun() {

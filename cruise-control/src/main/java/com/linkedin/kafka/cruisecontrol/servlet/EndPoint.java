@@ -28,7 +28,8 @@ public enum EndPoint {
   KAFKA_CLUSTER_STATE,
   DEMOTE_BROKER,
   USER_TASKS,
-  ADMIN;
+  ADMIN,
+  REVIEW;
 
   private static final List<EndPoint> GET_ENDPOINT = Arrays.asList(BOOTSTRAP,
                                                                    TRAIN,
@@ -45,7 +46,8 @@ public enum EndPoint {
                                                                     PAUSE_SAMPLING,
                                                                     RESUME_SAMPLING,
                                                                     DEMOTE_BROKER,
-                                                                    ADMIN);
+                                                                    ADMIN,
+                                                                    REVIEW);
   private static final List<EndPoint> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
   public static List<EndPoint> getEndpoint() {

@@ -30,19 +30,29 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
   protected Pattern _excludedTopics;
   protected boolean _excludeRecentlyRemovedBrokers;
   protected GoalsAndRequirements _goalsAndRequirements;
+  private final GoalBasedOptimizationParameters _reviewedParams;
 
   GoalBasedOptimizationParameters(HttpServletRequest request) {
     super(request);
+    _reviewedParams = null;
+  }
+
+  GoalBasedOptimizationParameters(HttpServletRequest request, GoalBasedOptimizationParameters reviewedParams) {
+    super(request, reviewedParams);
+    _reviewedParams = reviewedParams;
   }
 
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _dataFrom = ParameterUtils.getDataFrom(_request);
-    _useReadyDefaultGoals = ParameterUtils.useReadyDefaultGoals(_request);
-    _excludedTopics = ParameterUtils.excludedTopics(_request);
-    _excludeRecentlyRemovedBrokers = ParameterUtils.excludeRecentlyRemovedBrokers(_request);
-    List<String> goals = ParameterUtils.getGoals(_request);
+    _dataFrom = _reviewedParams == null ? ParameterUtils.getDataFrom(_request) : _reviewedParams.dataFrom();
+    _useReadyDefaultGoals = _reviewedParams == null ? ParameterUtils.useReadyDefaultGoals(_request)
+                                                    : _reviewedParams.useReadyDefaultGoals();
+    _excludedTopics = _reviewedParams == null ? ParameterUtils.excludedTopics(_request)
+                                              : _reviewedParams.excludedTopics();
+    _excludeRecentlyRemovedBrokers = _reviewedParams == null ? ParameterUtils.excludeRecentlyRemovedBrokers(_request)
+                                                             : _reviewedParams.excludeRecentlyRemovedBrokers();
+    List<String> goals = _reviewedParams == null ? ParameterUtils.getGoals(_request) : _reviewedParams.goals();
     _goalsAndRequirements = new GoalsAndRequirements(goals, getRequirements(_dataFrom));
   }
 

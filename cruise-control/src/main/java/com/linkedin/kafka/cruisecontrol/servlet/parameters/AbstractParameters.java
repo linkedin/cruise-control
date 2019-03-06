@@ -25,14 +25,20 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   // Common to all parameters, expected to be populated via initParameters.
   protected boolean _json = false;
   protected EndPoint _endPoint = null;
+  private final AbstractParameters _reviewedParams;
 
   public AbstractParameters(HttpServletRequest request) {
+    this(request, null);
+  }
+
+  public AbstractParameters(HttpServletRequest request, AbstractParameters reviewedParams) {
     _request = request;
+    _reviewedParams = reviewedParams;
   }
 
   protected void initParameters() throws UnsupportedEncodingException {
-    _endPoint = ParameterUtils.endPoint(_request);
-    _json = ParameterUtils.wantJSON(_request);
+    _endPoint = _reviewedParams == null ? ParameterUtils.endPoint(_request) : _reviewedParams.endPoint();
+    _json = _reviewedParams == null ? ParameterUtils.wantJSON(_request) : _reviewedParams.json();
   }
 
   @Override
