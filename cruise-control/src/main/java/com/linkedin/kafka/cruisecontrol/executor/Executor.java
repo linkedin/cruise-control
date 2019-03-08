@@ -101,7 +101,7 @@ public class Executor {
   private final ConcurrentMap<Integer, Long> _latestDemoteStartTimeMsByBrokerId;
   private final ConcurrentMap<Integer, Long> _latestRemoveStartTimeMsByBrokerId;
   private final ScheduledExecutorService _executionHistoryScannerExecutor;
-  private UserTaskManager _userTaskManager;
+  private UserTaskManager _userTaskManager = null;
   private Throwable _executionException;
   private long _executionStartMs;
 
@@ -913,7 +913,7 @@ public class Executor {
       _startedBy = "UNKNOWN";
       _operation = "UNKNOWN";
       _startedByUser = false;
-      if (_uuid != null) {
+      if (_userTaskManager != null && _uuid != null) {
         _userTaskInfo = _userTaskManager.getUserTaskById(_uuid);
         _actionUuid = _uuid;
         if (_userTaskInfo != null) {
