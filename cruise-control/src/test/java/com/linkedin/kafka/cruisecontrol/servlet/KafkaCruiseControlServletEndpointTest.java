@@ -131,7 +131,7 @@ public class KafkaCruiseControlServletEndpointTest {
 
     for (Object[] params : allParams) {
       OperationFuture future = userTaskManager.getOrCreateUserTask((HttpServletRequest) params[0], mockHttpServletResponse, FUTURE_CREATOR,
-              (int) params[1]).get((int) params[2]);
+                                                                   (int) params[1], true).get((int) params[2]);
       _populateUserTaskManagerOutput.add(outputCreateTaskInfo(future));
     }
   }
