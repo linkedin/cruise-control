@@ -365,7 +365,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   private <P extends CruiseControlParameters, R extends CruiseControlResponse> void syncRequest(Supplier<P> paramSupplier,
-                                                                                                Function<P, R> resultSupplier,
+                                                                                                Function<P, R> resultFunction,
                                                                                                 HttpServletRequest request,
                                                                                                 HttpServletResponse response,
                                                                                                 Timer successfulRequestExecutionTimer)
@@ -379,7 +379,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
       OperationFuture resultFuture = _userTaskManager.getOrCreateUserTask(request, response, uuid -> {
         OperationFuture future = new OperationFuture(String.format("%s request", parameters.endPoint().toString()));
-        future.complete(resultSupplier.apply(parameters));
+        future.complete(resultFunction.apply(parameters));
         return future;
       }, step, false).get(step);
 

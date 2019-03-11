@@ -36,12 +36,12 @@ import org.slf4j.LoggerFactory;
 
 
 /**
- * {@link UserTaskManager} keeps track of Sync and Async user tasks. When a {@link HttpServletRequest} comes in, the servlets
+ * {@link UserTaskManager} keeps track of Sync and Async user tasks. When a {@link HttpServletRequest} comes in, the servlet
  * creates the tasks to track the corresponding request and results.
  *
  * Some {@link HttpServletRequest} can execute for long durations, the servlet submits the asynchronous tasks and returns the
  * progress of the operation instead of blocking for the operation to complete. {@link UserTaskManager} maintains the
- * mapping of Request URL and {@link HttpSession} to UserTaskID({@link UUID}) for async requests. To fetch the status of a async
+ * mapping of Request URL and {@link HttpSession} to UserTaskID({@link UUID}) for async requests. To fetch the status of an async
  * request, the client can use the same Request ULR along with session cookie to retrieve the current status. The status of the
  * request can also be fetched using the UserTaskID. '/user_tasks' endpoint can be used to fetch all the active and
  * recently completed UserTasks. For sync requests, only UserTaskID can be used to fetch their status.
@@ -145,7 +145,7 @@ public class UserTaskManager implements Closeable {
 
   /**
    * This method creates a {@link UserTaskInfo} reference for a new sync or async request and a UUID to map to it. For async request
-   * a {@link SessionKey} is also created to map to the UUID. For async request, both UUID and @{link HttpSession} can be used to fetch
+   * a {@link SessionKey} is also created to map to the UUID. For async request, both UUID and {@link HttpSession} can be used to fetch
    * {@link OperationFuture} for the in-progress/completed UserTask. If the UserTaskId is passed in the httpServletRequest
    * header then that takes precedence over {@link HttpSession}. For sync task, only UUID can be used to fetch {@link OperationFuture},
    * which already contains the finished result.
@@ -158,7 +158,8 @@ public class UserTaskManager implements Closeable {
    * @param isAsyncRequest Indicate whether the task is async or sync.
    * @return The list of {@link OperationFuture} for the linked UserTask.
    */
-  public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse,
+  public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest,
+                                                   HttpServletResponse httpServletResponse,
                                                    Function<String, OperationFuture> function,
                                                    int step,
                                                    boolean isAsyncRequest) {
@@ -479,7 +480,7 @@ public class UserTaskManager implements Closeable {
            httpServletRequest.getParameterMap(), ParameterUtils.endPoint(httpServletRequest), state);
     }
 
-    UserTaskInfo(List<OperationFuture> futures,
+    public UserTaskInfo(List<OperationFuture> futures,
                  String requestUrl,
                  String clientIdentity,
                  long startMs,
@@ -500,11 +501,11 @@ public class UserTaskManager implements Closeable {
       _state = state;
     }
 
-    List<OperationFuture> futures() {
+    public List<OperationFuture> futures() {
       return _futures;
     }
 
-    String requestUrl() {
+    public String requestUrl() {
       return _requestUrl;
     }
 
@@ -520,7 +521,7 @@ public class UserTaskManager implements Closeable {
       return _userTaskId;
     }
 
-    Map<String, String[]> queryParams() {
+    public Map<String, String[]> queryParams() {
       return _queryParams;
     }
 
@@ -528,7 +529,7 @@ public class UserTaskManager implements Closeable {
       return _endPoint;
     }
 
-    long executionTimeNs() {
+    public long executionTimeNs() {
       return _futures.get(_futures.size() - 1).finishTimeNs() - TimeUnit.MILLISECONDS.toNanos(_startMs);
     }
 
@@ -581,8 +582,7 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * TODO We currently accept {@link TaskState#ACTIVE}, {@link TaskState#COMPLETED} and {@link COMPLETED_WITH_ERROR}, in the
-   * future we could also add other states as specified in Cruise Control ticket: https://github.com/linkedin/cruise-control/issues/571
+   * Possible state of tasks.
    */
   public enum TaskState {
     ACTIVE("Active"),
