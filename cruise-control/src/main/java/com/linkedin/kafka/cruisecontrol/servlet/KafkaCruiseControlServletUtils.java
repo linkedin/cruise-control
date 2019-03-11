@@ -4,18 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
-import com.codahale.metrics.Timer;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.Supplier;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
@@ -104,33 +98,5 @@ public class KafkaCruiseControlServletUtils {
                                         request.getMethod(), request.getPathInfo(), e.getMessage());
     writeErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
     return errorMessage;
-  }
-
-  static <P extends CruiseControlParameters, R extends CruiseControlResponse> void syncRequest(Supplier<P> paramSupplier,
-                                                                                               Supplier<R> resultSupplier,
-                                                                                               HttpServletResponse response,
-                                                                                               Timer successfulRequestExecutionTimer)
-      throws IOException {
-    long requestExecutionStartTime = System.nanoTime();
-    P parameters = paramSupplier.get();
-    if (!parameters.parseParameters(response)) {
-      // Successfully parsed parameters.
-      resultSupplier.get().writeSuccessResponse(parameters, response);
-      successfulRequestExecutionTimer.update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
-    }
-  }
-
-  static <P extends CruiseControlParameters, R extends CruiseControlResponse> void syncRequest(Supplier<P> paramSupplier,
-                                                                                               Function<P, R> resultSupplier,
-                                                                                               HttpServletResponse response,
-                                                                                               Timer successfulRequestExecutionTimer)
-      throws IOException {
-    long requestExecutionStartTime = System.nanoTime();
-    P parameters = paramSupplier.get();
-    if (!parameters.parseParameters(response)) {
-      // Successfully parsed parameters.
-      resultSupplier.apply(parameters).writeSuccessResponse(parameters, response);
-      successfulRequestExecutionTimer.update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
-    }
   }
 }

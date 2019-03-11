@@ -136,11 +136,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         switch (endPoint) {
           case BOOTSTRAP:
             syncRequest(() -> new BootstrapParameters(request), _asyncKafkaCruiseControl::bootstrapLoadMonitor,
-                        response, _successfulRequestExecutionTimer.get(endPoint));
+                        request, response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case TRAIN:
             syncRequest(() -> new TrainParameters(request), _asyncKafkaCruiseControl::trainLoadModel,
-                        response, _successfulRequestExecutionTimer.get(endPoint));
+                        request, response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case LOAD:
             getClusterLoad(request, response);
@@ -156,11 +156,11 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             break;
           case KAFKA_CLUSTER_STATE:
             syncRequest(() -> new KafkaClusterStateParameters(request), _asyncKafkaCruiseControl::kafkaClusterState,
-                        response, _successfulRequestExecutionTimer.get(endPoint));
+                        request, response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case USER_TASKS:
             syncRequest(() -> new UserTasksParameters(request), this::userTaskState,
-                        response, _successfulRequestExecutionTimer.get(endPoint));
+                        request, response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           default:
             throw new UserRequestException("Invalid URL for GET");
@@ -212,22 +212,22 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             break;
           case STOP_PROPOSAL_EXECUTION:
             syncRequest(() -> new BaseParameters(request), _asyncKafkaCruiseControl::stopProposalExecution,
-                        response, _successfulRequestExecutionTimer.get(endPoint));
+                        request, response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case PAUSE_SAMPLING:
             syncRequest(() -> new PauseResumeParameters(request), _asyncKafkaCruiseControl::pauseLoadMonitorActivity,
-                        response, _successfulRequestExecutionTimer.get(endPoint));
+                        request, response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case RESUME_SAMPLING:
             syncRequest(() -> new PauseResumeParameters(request), _asyncKafkaCruiseControl::resumeLoadMonitorActivity,
-                        response, _successfulRequestExecutionTimer.get(endPoint));
+                        request, response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           case DEMOTE_BROKER:
             demoteBroker(request, response);
             break;
           case ADMIN:
             syncRequest(() -> new AdminParameters(request), _asyncKafkaCruiseControl::handleAdminRequest,
-                        response, _successfulRequestExecutionTimer.get(endPoint));
+                        request, response, _successfulRequestExecutionTimer.get(endPoint));
             break;
           default:
             throw new UserRequestException("Invalid URL for POST");
@@ -336,12 +336,68 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     LOG.info("Computation is completed for async request: {}.", request.getPathInfo());
   }
 
+  private <P extends CruiseControlParameters, R extends CruiseControlResponse> void syncRequest(Supplier<P> paramSupplier,
+                                                                                                Supplier<R> resultSupplier,
+                                                                                                HttpServletRequest request,
+                                                                                                HttpServletResponse response,
+                                                                                                Timer successfulRequestExecutionTimer)
+      throws ExecutionException, InterruptedException, IOException {
+    long requestExecutionStartTime = System.nanoTime();
+    P parameters = paramSupplier.get();
+
+    if (!parameters.parseParameters(response)) {
+      // Successfully parsed parameters.
+      int step = 0;
+
+      OperationFuture resultFuture = _userTaskManager.getOrCreateUserTask(request, response, uuid -> {
+        OperationFuture future = new OperationFuture(String.format("%s request", parameters.endPoint().toString()));
+        future.complete(resultSupplier.get());
+        return future;
+      }, step, false).get(step);
+
+      CruiseControlResponse result = resultFuture.get();
+
+      result.writeSuccessResponse(parameters, response);
+      successfulRequestExecutionTimer.update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+    } else {
+      LOG.warn("Failed to parse parameters: {} for sync request: {}.", request.getParameterMap(), request.getPathInfo());
+    }
+  }
+
+  private <P extends CruiseControlParameters, R extends CruiseControlResponse> void syncRequest(Supplier<P> paramSupplier,
+                                                                                                Function<P, R> resultFunction,
+                                                                                                HttpServletRequest request,
+                                                                                                HttpServletResponse response,
+                                                                                                Timer successfulRequestExecutionTimer)
+      throws ExecutionException, InterruptedException, IOException {
+    long requestExecutionStartTime = System.nanoTime();
+    P parameters = paramSupplier.get();
+
+    if (!parameters.parseParameters(response)) {
+      // Successfully parsed parameters.
+      int step = 0;
+
+      OperationFuture resultFuture = _userTaskManager.getOrCreateUserTask(request, response, uuid -> {
+        OperationFuture future = new OperationFuture(String.format("%s request", parameters.endPoint().toString()));
+        future.complete(resultFunction.apply(parameters));
+        return future;
+      }, step, false).get(step);
+
+      CruiseControlResponse result = resultFuture.get();
+
+      result.writeSuccessResponse(parameters, response);
+      successfulRequestExecutionTimer.update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
+    } else {
+      LOG.warn("Failed to parse parameters: {} for sync request: {}.", request.getParameterMap(), request.getPathInfo());
+    }
+  }
+
   private CruiseControlResponse getAndMaybeReturnProgress(HttpServletRequest request,
                                                           HttpServletResponse response,
                                                           Function<String, OperationFuture> function)
       throws ExecutionException, InterruptedException, IOException {
     int step = _asyncOperationStep.get();
-    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, function, step);
+    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, function, step, true);
     _asyncOperationStep.set(step + 1);
     try {
       return futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);
