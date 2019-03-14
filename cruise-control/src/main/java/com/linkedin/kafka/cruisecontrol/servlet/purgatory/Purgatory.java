@@ -115,11 +115,11 @@ public class Purgatory implements Closeable {
     }
 
     if (requestInfo.status() == ReviewStatus.SUBMITTED && LOG.isDebugEnabled()) {
-        LOG.info("Request {} has already been submitted for execution.", requestInfo.endpointWithParams());
+        LOG.info("Request {} has already been submitted (review: {}).", requestInfo.endpointWithParams(), reviewId);
     } else {
       // 3. Ensure that the request with the given review id is approved in the purgatory, and mark the status as submitted.
-      requestInfo.applyReview(ReviewStatus.SUBMITTED, FINAL_REASON);
-      LOG.info("Submitted request {} for execution.", requestInfo.endpointWithParams());
+      requestInfo.submitReview(reviewId, FINAL_REASON);
+      LOG.info("Submitted request {} for execution (review: {}).", requestInfo.endpointWithParams(), reviewId);
     }
     return requestInfo;
   }

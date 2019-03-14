@@ -24,30 +24,26 @@ public class PauseResumeParameters extends AbstractParameters {
   private String _reason;
   private Integer _reviewId;
   private boolean _twoStepVerificationEnabled;
-  private final PauseResumeParameters _reviewedParams;
 
   public PauseResumeParameters(HttpServletRequest request, boolean twoStepVerificationEnabled) {
     super(request);
     _twoStepVerificationEnabled = twoStepVerificationEnabled;
-    _reviewedParams = null;
-  }
-
-  public PauseResumeParameters(HttpServletRequest request, boolean twoStepVerificationEnabled, PauseResumeParameters reviewedParams) {
-    super(request, reviewedParams);
-    _twoStepVerificationEnabled = twoStepVerificationEnabled;
-    _reviewedParams = reviewedParams;
   }
 
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _reason = _reviewedParams == null ? ParameterUtils.reason(_request) : _reviewedParams.reason();
-    // Review id is always retrieved from the current parameters.
+    _reason = ParameterUtils.reason(_request);
     _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
   }
 
   public String reason() {
     return _reason;
+  }
+
+  @Override
+  public void setReviewId(int reviewId) {
+    _reviewId = reviewId;
   }
 
   public Integer reviewId() {

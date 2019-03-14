@@ -25,16 +25,15 @@ public class StopProposalParameters extends AbstractParameters {
     _twoStepVerificationEnabled = twoStepVerificationEnabled;
   }
 
-  public StopProposalParameters(HttpServletRequest request, boolean twoStepVerificationEnabled, StopProposalParameters reviewedParams) {
-    super(request);
-    _twoStepVerificationEnabled = twoStepVerificationEnabled;
-  }
-
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    // Review id is always retrieved from the current parameters.
     _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
+  }
+
+  @Override
+  public void setReviewId(int reviewId) {
+    _reviewId = reviewId;
   }
 
   public Integer reviewId() {

@@ -109,6 +109,17 @@ public class RequestInfo {
   }
 
   /**
+   * Submit review and the corresponding reason for change.
+   *
+   * @param reviewId The review id for which the corresponding request is requested to be submitted.
+   * @param reason The reason for the submission of review.
+   */
+  void submitReview(int reviewId, String reason) {
+    applyReview(SUBMITTED, reason);
+    _parameters.setReviewId(reviewId);
+  }
+
+  /**
    * Check if the status transfer is possible.
    *
    * @param targetStatus The status to transfer to.

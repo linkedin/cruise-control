@@ -27,37 +27,26 @@ public class AdminParameters extends AbstractParameters {
   private Integer _concurrentLeaderMovements;
   private Integer _reviewId;
   private boolean _twoStepVerificationEnabled;
-  private final AdminParameters _reviewedParams;
 
   public AdminParameters(HttpServletRequest request, boolean twoStepVerificationEnabled) {
     super(request);
     _twoStepVerificationEnabled = twoStepVerificationEnabled;
-    _reviewedParams = null;
-  }
-
-  public AdminParameters(HttpServletRequest request, boolean twoStepVerificationEnabled, AdminParameters reviewedParams) {
-    super(request, reviewedParams);
-    _twoStepVerificationEnabled = twoStepVerificationEnabled;
-    _reviewedParams = reviewedParams;
   }
 
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    if (_reviewedParams == null) {
-      Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_request);
-      _enableSelfHealingFor = selfHealingFor.get(true);
-      _disableSelfHealingFor = selfHealingFor.get(false);
-      _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
-      _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
-    } else {
-      _enableSelfHealingFor = _reviewedParams.enableSelfHealingFor();
-      _disableSelfHealingFor = _reviewedParams.disableSelfHealingFor();
-      _concurrentPartitionMovements = _reviewedParams.concurrentPartitionMovements();
-      _concurrentLeaderMovements = _reviewedParams.concurrentLeaderMovements();
-    }
-    // Review id is always retrieved from the current parameters.
+    Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_request);
+    _enableSelfHealingFor = selfHealingFor.get(true);
+    _disableSelfHealingFor = selfHealingFor.get(false);
+    _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
+  }
+
+  @Override
+  public void setReviewId(int reviewId) {
+    _reviewId = reviewId;
   }
 
   public Integer reviewId() {

@@ -44,39 +44,29 @@ public class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParamet
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private Integer _reviewId;
   private final KafkaCruiseControlConfig _config;
-  private final AddedOrRemovedBrokerParameters _reviewedParams;
 
   public AddedOrRemovedBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request);
     _config = config;
-    _reviewedParams = null;
-  }
-
-  public AddedOrRemovedBrokerParameters(HttpServletRequest request,
-                                        KafkaCruiseControlConfig config,
-                                        AddedOrRemovedBrokerParameters reviewedParams) {
-    super(request, reviewedParams);
-    _config = config;
-    _reviewedParams = reviewedParams;
   }
 
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _brokerIds = _reviewedParams == null ? ParameterUtils.brokerIds(_request) : _reviewedParams.brokerIds();
-    _dryRun = _reviewedParams == null ? ParameterUtils.getDryRun(_request) : _reviewedParams.dryRun();
-    _throttleAddedOrRemovedBrokers = _reviewedParams == null ? ParameterUtils.throttleAddedOrRemovedBrokers(_request, _endPoint)
-                                                             : _reviewedParams.throttleAddedOrRemovedBrokers();
-    _concurrentPartitionMovements = _reviewedParams == null ? ParameterUtils.concurrentMovements(_request, true)
-                                                            : _reviewedParams.concurrentPartitionMovements();
-    _concurrentLeaderMovements = _reviewedParams == null ? ParameterUtils.concurrentMovements(_request, false)
-                                                         : _reviewedParams.concurrentLeaderMovements();
-    _skipHardGoalCheck = _reviewedParams == null ? ParameterUtils.skipHardGoalCheck(_request) : _reviewedParams.skipHardGoalCheck();
-    _replicaMovementStrategy = _reviewedParams == null ? ParameterUtils.getReplicaMovementStrategy(_request, _config)
-                                                       : _reviewedParams.replicaMovementStrategy();
-    // Review id is always retrieved from the current parameters.
+    _brokerIds = ParameterUtils.brokerIds(_request);
+    _dryRun = ParameterUtils.getDryRun(_request);
+    _throttleAddedOrRemovedBrokers = ParameterUtils.throttleAddedOrRemovedBrokers(_request, _endPoint);
+    _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
+    _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+  }
+
+  @Override
+  public void setReviewId(int reviewId) {
+    _reviewId = reviewId;
   }
 
   public Integer reviewId() {
