@@ -367,18 +367,18 @@ public class UserTaskManager implements Closeable {
 
   @Override
   public String toString() {
-    Map<UUID, UserTaskInfo> completedUserTaskIdToFuturesMap = new LinkedHashMap<>();
+    Map<UUID, UserTaskInfo> completedWithSuccessUserTaskIdToFuturesMap = new LinkedHashMap<>();
     Map<UUID, UserTaskInfo> completedWithErrorUserTaskIdToFuturesMap = new LinkedHashMap<>();
     _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).forEach((k, v) -> {
       if (v.state() == TaskState.COMPLETED) {
-        completedUserTaskIdToFuturesMap.put(k, v);
+        completedWithSuccessUserTaskIdToFuturesMap.put(k, v);
       } else {
         completedWithErrorUserTaskIdToFuturesMap.put(k, v);
       }
     });
     return "UserTaskManager{_sessionKeyToUserTaskIdMap=" + _sessionKeyToUserTaskIdMap
            + ", _activeUserTaskIdToFuturesMap=" + _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE)
-           + ", _completedUserTaskIdToFuturesMap=" + _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED)
+           + ", _completedWithSuccessUserTaskIdToFuturesMap=" + completedWithSuccessUserTaskIdToFuturesMap
            + ", _completedWithErrorUserTaskIdToFuturesMap=" + completedWithErrorUserTaskIdToFuturesMap + '}';
   }
 
