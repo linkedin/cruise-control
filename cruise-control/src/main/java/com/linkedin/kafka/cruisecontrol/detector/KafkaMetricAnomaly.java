@@ -15,6 +15,8 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
+
 
 /**
  * A class that holds Kafka metric anomalies.
@@ -103,7 +105,8 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
 
   @Override
   public String toString() {
-    return String.format("{%nMetric Anomaly windows: %s description: %s%n}", _windows, _description);
+    return String.format("%s anomaly with id: %s Metric Anomaly windows: %s description: %s",
+                         getAnomalyType(this), anomalyId(), _windows, _description);
   }
 
   /**

@@ -26,4 +26,11 @@ public interface CruiseControlResponse {
    * @param response HTTP response to return to user.
    */
   void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException;
+
+  /**
+   * Get response with the given parameters directly.
+   * @param parameters Parameters to determine the format of response to return.
+   * @return String containing response.
+   */
+  String cachedResponse(CruiseControlParameters parameters);
 }

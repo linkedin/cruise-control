@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
@@ -42,6 +43,7 @@ public class AnomalyDetector {
   private static final String METRIC_REGISTRY_NAME = "AnomalyDetector";
   private static final int INIT_JITTER_BOUND = 10000;
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
+  private static final Logger RESULT_LOG = LoggerFactory.getLogger("com.linkedin.kafka.cruisecontrol.CruiseControlResultLog");
   private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
                                                                      Collections.emptyMap(),
                                                                      true,
@@ -63,7 +65,7 @@ public class AnomalyDetector {
   private final AnomalyDetectorState _anomalyDetectorState;
   // TODO: Make this configurable.
   private final List<String> _selfHealingGoals;
-
+  private final ExecutorService _loggerExecutor;    // TODO upgrade log4j to log4j2 to use async logger
   public AnomalyDetector(KafkaCruiseControlConfig config,
                          LoadMonitor loadMonitor,
                          KafkaCruiseControl kafkaCruiseControl,
@@ -93,6 +95,8 @@ public class AnomalyDetector {
     // Add anomaly detector state
     int numCachedRecentAnomalyStates = config.getInt(KafkaCruiseControlConfig.NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG);
     _anomalyDetectorState = new AnomalyDetectorState(_anomalyNotifier.selfHealingEnabled(), numCachedRecentAnomalyStates);
+    _loggerExecutor = Executors.newFixedThreadPool(1, new KafkaCruiseControlThreadFactory("AnomalyDetectorLoggerExecutor",
+                                                                                          true, null));
   }
 
   /**
@@ -122,6 +126,8 @@ public class AnomalyDetector {
     // Add anomaly detector state
     _anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()), 10);
     _selfHealingGoals = Collections.emptyList();
+    _loggerExecutor = Executors.newFixedThreadPool(1, new KafkaCruiseControlThreadFactory("AnomalyDetectorLoggerExecutor",
+                                                                                          true, null));
   }
 
   public void startDetection() {
@@ -301,6 +307,18 @@ public class AnomalyDetector {
       return false;
     }
 
+    private void persistSelfHealingInfo(Anomaly anomaly, boolean selfHealingStarted) {
+      RESULT_LOG.info("Self-healing {} for anomaly: {}.", selfHealingStarted ? "started successfully" : "failed to start", anomaly);
+      if (selfHealingStarted) {
+        // Either KafkaAnomaly or KafkaMetricAnomaly may have optimization result
+        if (anomaly instanceof KafkaAnomaly) {
+          RESULT_LOG.info("Optimization Result:%n{}", ((KafkaAnomaly) anomaly).optimizationResult(false));
+        } else if (anomaly instanceof KafkaMetricAnomaly) {
+          RESULT_LOG.info("Optimization Result:%n{}", ((KafkaMetricAnomaly) anomaly).optimizationResult(false));
+        }
+      }
+    }
+
     private void fixAnomaly(Anomaly anomaly) throws Exception {
       boolean isReadyToFix = isReadyToFix(anomaly);
       if (isReadyToFix) {
@@ -312,6 +330,8 @@ public class AnomalyDetector {
           _anomalyDetectorState.onAnomalyHandle(anomaly, startedSuccessfully ? AnomalyState.Status.FIX_STARTED
                                                                              : AnomalyState.Status.FIX_FAILED_TO_START);
           LOG.info("Self-healing {}.", startedSuccessfully ? "started successfully" : "failed to start");
+          boolean isSuccessful = startedSuccessfully;
+          _loggerExecutor.submit(() -> persistSelfHealingInfo(anomaly, isSuccessful));
         }
       }
 

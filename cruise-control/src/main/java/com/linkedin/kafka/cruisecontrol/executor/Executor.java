@@ -55,6 +55,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.Exe
  */
 public class Executor {
   private static final Logger LOG = LoggerFactory.getLogger(Executor.class);
+  private static final Logger RESULT_LOG = LoggerFactory.getLogger("com.linkedin.kafka.cruisecontrol.CruiseControlResultLog");
   private static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
   private static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
   // The maximum time to wait for a leader movement to finish. A leader movement will be marked as failed if
@@ -521,6 +522,7 @@ public class Executor {
     private void execute() {
       _state = STARTING_EXECUTION;
       _executorState = ExecutorState.executionStarted(_uuid, _recentlyDemotedBrokers, _recentlyRemovedBrokers);
+      RESULT_LOG.info("Proposal execution:[{}] started.", _uuid);
       try {
         // Pause the metric sampling to avoid the loss of accuracy during execution.
         while (true) {
@@ -578,6 +580,7 @@ public class Executor {
                                                                      _executionStoppedByUser.get(),
                                                                      _executionException, executionSucceeded);
         _executorNotifier.sendNotification(notification);
+        RESULT_LOG.info("Proposal execution with UUID:[{}] ended.", _uuid);
         // Clear completed execution.
         clearCompletedExecution();
       }

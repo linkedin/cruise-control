@@ -464,7 +464,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       return;
     }
 
-    CruiseControlResponse ccResponse = getAndMaybeReturnProgress(request, response, function.apply(parameters));
+    CruiseControlResponse ccResponse = getAndMaybeReturnProgress(request, response, function.apply(parameters), parameters);
     if (ccResponse == null) {
       LOG.info("Computation is in progress for async request: {}.", request.getPathInfo());
       return;
@@ -491,7 +491,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         OperationFuture future = new OperationFuture(String.format("%s request", parameters.endPoint().toString()));
         future.complete(resultFunction.apply(parameters));
         return future;
-      }, step, false).get(step);
+      }, step, false, parameters).get(step);
 
       CruiseControlResponse result = resultFuture.get();
 
@@ -504,10 +504,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private CruiseControlResponse getAndMaybeReturnProgress(HttpServletRequest request,
                                                           HttpServletResponse response,
-                                                          Function<String, OperationFuture> function)
+                                                          Function<String, OperationFuture> function,
+                                                          CruiseControlParameters parameters)
       throws ExecutionException, InterruptedException, IOException {
     int step = _asyncOperationStep.get();
-    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, function, step, true);
+    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, function, step,
+                                                                         true, parameters);
     _asyncOperationStep.set(step + 1);
     try {
       return futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);
