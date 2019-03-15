@@ -619,10 +619,6 @@ public class UserTaskManager implements Closeable {
       _type = type;
     }
 
-    public String type() {
-      return _type;
-    }
-
     @Override
     public String toString() {
       return _type;

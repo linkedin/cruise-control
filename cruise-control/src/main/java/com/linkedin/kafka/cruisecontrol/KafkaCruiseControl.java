@@ -32,7 +32,9 @@ import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.BootstrapResult;
@@ -843,9 +845,10 @@ public class KafkaCruiseControl {
   /**
    * Stop the executor if it is executing the proposals.
    *
+   * @param parameters Stop proposal parameters (not used -- added for standardization and for extensibility).
    * @return Stop proposal execution result.
    */
-  public StopProposalResult stopProposalExecution() {
+  public StopProposalResult stopProposalExecution(StopProposalParameters parameters) {
     _executor.userTriggeredStopExecution();
     return new StopProposalResult();
   }
@@ -872,8 +875,11 @@ public class KafkaCruiseControl {
 
   /**
    * Get the cluster state for Kafka.
+   *
+   * @param parameters Kafka cluster state parameters (not used -- added for standardization and for extensibility).
+   * @return Kafka cluster state.
    */
-  public KafkaClusterState kafkaClusterState() {
+  public KafkaClusterState kafkaClusterState(KafkaClusterStateParameters parameters) {
     return new KafkaClusterState(_loadMonitor.kafkaCluster());
   }
 

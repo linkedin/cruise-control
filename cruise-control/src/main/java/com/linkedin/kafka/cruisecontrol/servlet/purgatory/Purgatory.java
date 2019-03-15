@@ -176,6 +176,7 @@ public class Purgatory implements Closeable {
   @Override
   public void close() {
     _purgatoryCleaner.shutdownNow();
+    _requestInfoById.clear();
   }
 
   /**
