@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
-import com.linkedin.kafka.cruisecontrol.common.ExecutorNotifier;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
@@ -540,7 +539,12 @@ public class Executor {
       } finally {
         _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
         // If we are here, either we succeeded, or we are stopped or had exception. Send notification to user.
-        _executorNotifier.sendNotification(new ExecutionNotifierPayload());
+        UserTaskManager.UserTaskInfo userTaskInfo = _userTaskManager == null ? null : _userTaskManager.getUserTaskById(_uuid);
+        ExecutionNotifierPayload payload = new ExecutionNotifierPayload(_executionStartMs, _time.milliseconds(),
+                                                                        userTaskInfo, _uuid, _stopRequested.get(),
+                                                                        _executionStoppedByUser.get(),
+                                                                        _executionException, executionSucceeded());
+        _executorNotifier.sendNotification(payload);
         // Clear completed execution.
         clearCompletedExecution();
       }
@@ -893,29 +897,47 @@ public class Executor {
     }
   }
 
-  public class ExecutionNotifierPayload {
-    private String _startedBy;
-    private String _endedBy;
+  /**
+   * We finish execution after Step. 2: moving leadership. Checking pending leadership or partition movement ascertains
+   * that execution is really done (instead of quitting due to Exception).
+   * @return true if execution for proposal is done.
+   */
+  private boolean executionSucceeded() {
+    return _executorState.state() == LEADER_MOVEMENT_TASK_IN_PROGRESS;
+  }
+
+  /**
+   * A class to encapsulate notification information sent to requester associated with an execution.
+   */
+  public static class ExecutionNotifierPayload {
+    private String _startedBy;      // Indicate origin of the execution, could be User or Cruise Control
+    private String _endedBy;        // An executions can be ended by Cruise Control (e.g. due to Exception) or by User
     private long _startMs;
     private long _endMs;
     private UserTaskManager.UserTaskInfo _userTaskInfo;
     private boolean _executionSucceeded;
-    private String _operation;
+    private String _operation;      // Maybe UserTask Endpoint or Self-healing action
     private boolean _startedByUser;
-    private Throwable _exception = null;
-    private String _actionUuid = null;
+    private Throwable _exception = null;  // The Exception that ended the execution
+    private String _actionUuid = null;    // UUID associated with execution, could be for UserTask for Self-healing
 
-    public ExecutionNotifierPayload() {
-      _startMs = _executionStartMs;
-      _endMs = _time.milliseconds();
-      _userTaskInfo = null;
-
+    public ExecutionNotifierPayload(long executionStartMs,
+                                    long endMs,
+                                    UserTaskManager.UserTaskInfo userTaskInfo,
+                                    String uuid,
+                                    boolean stopRequested,
+                                    boolean executionStoppedByUser,
+                                    Throwable executionException,
+                                    boolean executionSucceeded) {
+      _startMs = executionStartMs;
+      _endMs = endMs;
+      _userTaskInfo = userTaskInfo;
       _startedBy = "UNKNOWN";
       _operation = "UNKNOWN";
       _startedByUser = false;
-      if (_userTaskManager != null && _uuid != null) {
-        _userTaskInfo = _userTaskManager.getUserTaskById(_uuid);
-        _actionUuid = _uuid;
+
+      if (uuid != null) {
+        _actionUuid = uuid;
         if (_userTaskInfo != null) {
           // UUID with anomaly prefix are not present in {@link UserTaskManager}
           _startedBy = "USER";
@@ -923,7 +945,7 @@ public class Executor {
           _operation = _userTaskInfo.endPoint().toString();
         } else {
           for (AnomalyType type : AnomalyType.cachedValues()) {
-            if (_uuid.startsWith(type.toString())) {
+            if (_actionUuid.startsWith(type.toString())) {
               _startedBy = "Cruise-Control";
               _operation = type.toString() + " Fix Action";
             }
@@ -932,17 +954,17 @@ public class Executor {
       }
 
       _endedBy = "UNKNOWN";
-      if (_stopRequested.get()) {
-        if (_executionStoppedByUser.get()) {
+      if (stopRequested) {
+        if (executionStoppedByUser) {
           _endedBy = "USER";
         } else {
           _endedBy = "Cruise-Control";
         }
-      } else if (_executionException != null) {
+      } else if (executionException != null) {
         _endedBy = "Exception";
-        _exception = _executionException;
+        _exception = executionException;
       }
-      _executionSucceeded = _executorState.state() == LEADER_MOVEMENT_TASK_IN_PROGRESS;
+      _executionSucceeded = executionSucceeded;
     }
 
     public String startedBy() {

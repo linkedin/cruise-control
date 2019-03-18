@@ -2,7 +2,7 @@
  * Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol.common;
+package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
@@ -18,5 +18,5 @@ public interface ExecutorNotifier extends CruiseControlConfigurable {
    * When an execution completes successfully or is stopped this method should be called
    * @param payload Information to be sent.
    */
-  public void sendNotification(Executor.ExecutionNotifierPayload payload);
+  void sendNotification(Executor.ExecutionNotifierPayload payload);
 }

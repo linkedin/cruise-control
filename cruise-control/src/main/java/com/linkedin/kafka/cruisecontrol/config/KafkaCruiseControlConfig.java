@@ -19,8 +19,12 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
+<<<<<<< HEAD
 import com.linkedin.kafka.cruisecontrol.common.KafkaNetworkClientProvider;
 import com.linkedin.kafka.cruisecontrol.common.ExecutorNoopNotifier;
+=======
+import com.linkedin.kafka.cruisecontrol.executor.ExecutorNoopNotifier;
+>>>>>>> Addressed review comments 1
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
@@ -1167,14 +1171,21 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         .define(ANOMALY_NOTIFIER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS,
                 DEFAULT_ANOMALY_NOTIFIER_CLASS,
+<<<<<<< HEAD
                 ConfigDef.Importance.LOW, ANOMALY_NOTIFIER_CLASS_DOC)
         .define(NETWORK_CLIENT_PROVIDER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS, DEFAULT_NETWORK_CLIENT_PROVIDER_CLASS,
                 ConfigDef.Importance.LOW,
                 NETWORK_CLIENT_PROVIDER_CLASS_DOC)
+=======
+                ConfigDef.Importance.LOW,
+                ANOMALY_NOTIFIER_CLASS_DOC)
+>>>>>>> Addressed review comments 1
         .define(EXECUTOR_NOTIFIER_CLASS_CONFIG,
-                ConfigDef.Type.CLASS, DEFAULT_EXECUTOR_NOTIFIER_CLASS,
-                ConfigDef.Importance.LOW, EXECUTOR_NOTIFIER_CLASS_DOC)
+                ConfigDef.Type.CLASS,
+                DEFAULT_EXECUTOR_NOTIFIER_CLASS,
+                ConfigDef.Importance.LOW,
+                EXECUTOR_NOTIFIER_CLASS_DOC)
         .define(ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 300000L,
