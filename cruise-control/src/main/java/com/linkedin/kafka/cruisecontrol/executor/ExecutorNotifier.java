@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
-import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import org.apache.kafka.common.annotation.InterfaceStability;
 
 
