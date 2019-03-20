@@ -14,12 +14,15 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#DEMOTE_BROKER}
  *
+ * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ *
  * <pre>
  * Demote a broker
  *    POST /kafkacruisecontrol/demote_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]
  *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
  *    &amp;skip_urp_demotion=[true/false]&amp;exclude_follower_demotion=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
+ *    &amp;review_id=[id]
  * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
@@ -30,6 +33,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   private boolean _excludeFollowerDemotion;
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private KafkaCruiseControlConfig _config;
+  private Integer _reviewId;
 
   public DemoteBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request);
@@ -46,6 +50,17 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     _skipUrpDemotion = ParameterUtils.skipUrpDemotion(_request);
     _excludeFollowerDemotion = ParameterUtils.excludeFollowerDemotion(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
+    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+  }
+
+  @Override
+  public void setReviewId(int reviewId) {
+    _reviewId = reviewId;
+  }
+
+  public Integer reviewId() {
+    return _reviewId;
   }
 
   public boolean dryRun() {

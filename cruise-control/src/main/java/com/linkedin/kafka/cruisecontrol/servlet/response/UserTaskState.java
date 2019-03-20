@@ -20,16 +20,13 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
 
 public class UserTaskState extends AbstractCruiseControlResponse {
-  private static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
-  private static final String TIME_ZONE = "UTC";
-  private static final String ACTIVE_TASK_LABEL_VALUE = UserTaskManager.TaskState.ACTIVE.type();
-  private static final String COMPLETED_TASK_LABEL_VALUE = UserTaskManager.TaskState.COMPLETED.type();
-  private static final String COMPLETED_WITH_ERROR_TASK_LABEL_VALUE = UserTaskManager.TaskState.COMPLETED_WITH_ERROR.type();
   private static final String USER_TASK_ID = "UserTaskId";
   private static final String REQUEST_URL = "RequestURL";
   private static final String CLIENT_ID = "ClientIdentity";
@@ -38,11 +35,10 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   private static final String USER_TASKS = "userTasks";
   private final Map<UserTaskManager.TaskState, List<UserTaskManager.UserTaskInfo>> _userTasksByTaskState;
 
-  public UserTaskState(List<UserTaskManager.UserTaskInfo> activeUserTasks,
-                       List<UserTaskManager.UserTaskInfo> completedUserTasks) {
+  public UserTaskState(UserTaskManager userTaskManager) {
     _userTasksByTaskState = new HashMap<>(2);
-    _userTasksByTaskState.put(UserTaskManager.TaskState.ACTIVE, activeUserTasks);
-    _userTasksByTaskState.put(UserTaskManager.TaskState.COMPLETED, completedUserTasks);
+    _userTasksByTaskState.put(UserTaskManager.TaskState.ACTIVE, userTaskManager.getActiveUserTasks());
+    _userTasksByTaskState.put(UserTaskManager.TaskState.COMPLETED, userTaskManager.getCompletedUserTasks());
   }
 
   private String getJSONString(CruiseControlParameters parameters) {
@@ -69,23 +65,10 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     return resultList.subList(0, Math.min(entries, resultList.size()));
   }
 
-  private static String getStatus(UserTaskManager.UserTaskInfo userTaskInfo) {
-    switch (userTaskInfo.state()) {
-      case ACTIVE:
-        return ACTIVE_TASK_LABEL_VALUE;
-      case COMPLETED:
-        return COMPLETED_TASK_LABEL_VALUE;
-      case COMPLETED_WITH_ERROR:
-        return COMPLETED_WITH_ERROR_TASK_LABEL_VALUE;
-      default:
-        throw new IllegalStateException("Unrecognized state " + userTaskInfo.state());
-    }
-  }
-
   private void addJSONTask(List<Map<String, Object>> jsonUserTaskList,
                            UserTaskManager.UserTaskInfo userTaskInfo) {
     Map<String, Object> jsonObjectMap = new HashMap<>();
-    String status = getStatus(userTaskInfo);
+    String status = userTaskInfo.state().toString();
     jsonObjectMap.put(USER_TASK_ID, userTaskInfo.userTaskId().toString());
     jsonObjectMap.put(REQUEST_URL, userTaskInfo.requestWithParams());
     jsonObjectMap.put(CLIENT_ID, userTaskInfo.clientIdentity());

@@ -704,6 +704,25 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String WEBSERVER_ACCESSLOG_RETENTION_DAYS = "webserver.accesslog.retention.days";
   private static final String WEBSERVER_ACCESSLOG_RETENTION_DAYS_DOC = "HTTP Request log retention days";
 
+  /**
+   * <code>two.step.verification.enabled</code>
+   */
+  public static final String TWO_STEP_VERIFICATION_ENABLED_CONFIG = "two.step.verification.enabled";
+  private static final String TWO_STEP_VERIFICATION_ENABLED_DOC = "Enable two-step verification for processing POST requests.";
+
+  /**
+   * <code>two.step.purgatory.retention.time.ms</code>
+   */
+  public static final String TWO_STEP_PURGATORY_RETENTION_TIME_MS_CONFIG = "two.step.purgatory.retention.time.ms";
+  private static final String TWO_STEP_PURGATORY_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to "
+      + "retain the requests in two-step (verification) purgatory.";
+
+  /**
+   * <code>two.step.purgatory.max.requests</code>
+   */
+  public static final String TWO_STEP_PURGATORY_MAX_REQUESTS_CONFIG = "two.step.purgatory.max.requests";
+  private static final String TWO_STEP_PURGATORY_MAX_REQUESTS_DOC = "The maximum number of requests in two-step "
+      + "(verification) purgatory.";
 
   static {
     CONFIG = new ConfigDef()
@@ -713,6 +732,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 WEBSERVER_HTTP_ADDRESS_DOC)
         .define(WEBSERVER_HTTP_CORS_ENABLED_CONFIG, ConfigDef.Type.BOOLEAN, false, ConfigDef.Importance.LOW,
                 WEBSERVER_HTTP_CORS_ENABLED_DOC)
+        .define(TWO_STEP_VERIFICATION_ENABLED_CONFIG, ConfigDef.Type.BOOLEAN, false, ConfigDef.Importance.MEDIUM,
+                TWO_STEP_VERIFICATION_ENABLED_DOC)
         .define(WEBSERVER_HTTP_CORS_ORIGIN_CONFIG, ConfigDef.Type.STRING, "*", ConfigDef.Importance.LOW,
                 WEBSERVER_HTTP_CORS_ORIGIN_DOC)
         .define(WEBSERVER_HTTP_CORS_ALLOWMETHODS_CONFIG, ConfigDef.Type.STRING, "OPTIONS, GET, POST", ConfigDef.Importance.HIGH,
@@ -814,6 +835,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 REMOVAL_HISTORY_RETENTION_TIME_MS_DOC)
+        .define(TWO_STEP_PURGATORY_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                TimeUnit.HOURS.toMillis(336),
+                atLeast(TimeUnit.HOURS.toMillis(1)),
+                ConfigDef.Importance.MEDIUM, TWO_STEP_PURGATORY_RETENTION_TIME_MS_DOC)
+        .define(TWO_STEP_PURGATORY_MAX_REQUESTS_CONFIG,
+                ConfigDef.Type.INT,
+                25,
+                atLeast(1),
+                ConfigDef.Importance.MEDIUM, TWO_STEP_PURGATORY_MAX_REQUESTS_DOC)
         .define(MAX_CACHED_COMPLETED_USER_TASKS_CONFIG,
                 ConfigDef.Type.INT,
                 100,

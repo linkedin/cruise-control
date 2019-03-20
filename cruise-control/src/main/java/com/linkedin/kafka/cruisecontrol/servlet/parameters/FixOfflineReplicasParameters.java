@@ -13,13 +13,15 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#FIX_OFFLINE_REPLICAS}
  *
+ * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ *
  * <pre>
  * Fix offline replicas
  *    POST /kafkacruisecontrol/fix_offline_replicas?dryrun=[true/false]&amp;goals=[goal1,goal2...]
  *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]
  *    &amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;data_from=[valid_windows/valid_partitions]
- *    &amp;replica_movement_strategies=[strategy1,strategy2...]
+ *    &amp;replica_movement_strategies=[strategy1,strategy2...]&amp;review_id=[id]
  * </pre>
  */
 public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameters {
@@ -28,6 +30,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   private Integer _concurrentLeaderMovements;
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
+  private Integer _reviewId;
   private final KafkaCruiseControlConfig _config;
 
   public FixOfflineReplicasParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
@@ -43,6 +46,17 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
+    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+  }
+
+  @Override
+  public void setReviewId(int reviewId) {
+    _reviewId = reviewId;
+  }
+
+  public Integer reviewId() {
+    return _reviewId;
   }
 
   public boolean dryRun() {

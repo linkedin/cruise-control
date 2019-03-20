@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrateg
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
+import com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
@@ -40,6 +41,8 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUt
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
+import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.APPROVED;
+import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.DISCARDED;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 
@@ -64,6 +67,7 @@ public class ParameterUtils {
   public static final String MAX_LOAD_PARAM = "max_load";
   public static final String GOALS_PARAM = "goals";
   public static final String BROKER_ID_PARAM = "brokerid";
+  public static final String REVIEW_ID_PARAM = "review_id";
   public static final String TOPIC_PARAM = "topic";
   public static final String PARTITION_PARAM = "partition";
   public static final String DRY_RUN_PARAM = "dryrun";
@@ -89,6 +93,9 @@ public class ParameterUtils {
   public static final String EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM = "exclude_recently_demoted_brokers";
   public static final String EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM = "exclude_recently_removed_brokers";
   public static final String REPLICA_MOVEMENT_STRATEGIES_PARAM = "replica_movement_strategies";
+  public static final String APPROVE_PARAM = "approve";
+  public static final String DISCARD_PARAM = "discard";
+  private static final int MAX_REASON_LENGTH = 50;
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
 
@@ -158,6 +165,7 @@ public class ParameterUtils {
     addRemoveOrFixBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
     addRemoveOrFixBroker.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
     addRemoveOrFixBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    addRemoveOrFixBroker.add(REVIEW_ID_PARAM);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     addBroker.add(THROTTLE_ADDED_BROKER_PARAM);
@@ -184,6 +192,7 @@ public class ParameterUtils {
     demoteBroker.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
     demoteBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
     demoteBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    demoteBroker.add(REVIEW_ID_PARAM);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
@@ -202,19 +211,25 @@ public class ParameterUtils {
     rebalance.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
     rebalance.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
     rebalance.add(IGNORE_PROPOSAL_CACHE_PARAM);
+    rebalance.add(REVIEW_ID_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
     kafkaClusterState.add(JSON_PARAM);
 
     Set<String> pauseSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    pauseSampling.add(REASON_PARAM);
     pauseSampling.add(JSON_PARAM);
+    pauseSampling.add(REVIEW_ID_PARAM);
 
     Set<String> resumeSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    resumeSampling.add(REASON_PARAM);
     resumeSampling.add(JSON_PARAM);
+    resumeSampling.add(REVIEW_ID_PARAM);
 
     Set<String> stopProposalExecution = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     stopProposalExecution.add(JSON_PARAM);
+    stopProposalExecution.add(REVIEW_ID_PARAM);
 
     Set<String> userTasks = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     userTasks.add(JSON_PARAM);
@@ -230,6 +245,14 @@ public class ParameterUtils {
     admin.add(ENABLE_SELF_HEALING_FOR_PARAM);
     admin.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     admin.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    admin.add(REVIEW_ID_PARAM);
+
+    Set<String> review = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    review.add(APPROVE_PARAM);
+    review.add(DISCARD_PARAM);
+    review.add(REASON_PARAM);
+    review.add(JSON_PARAM);
+    // TODO: Add support to filter reviews by reviewID
 
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
@@ -248,6 +271,7 @@ public class ParameterUtils {
     validParamNames.put(KAFKA_CLUSTER_STATE, Collections.unmodifiableSet(kafkaClusterState));
     validParamNames.put(USER_TASKS, Collections.unmodifiableSet(userTasks));
     validParamNames.put(ADMIN, Collections.unmodifiableSet(admin));
+    validParamNames.put(REVIEW, Collections.unmodifiableSet(review));
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
@@ -306,17 +330,17 @@ public class ParameterUtils {
   /**
    * Returns the case sensitive request parameter name, or <code>null</code> if the parameter does not exist.
    */
-  private static String caseSensitiveParameterName(HttpServletRequest request, String parameter) {
-    return request.getParameterMap().keySet().stream().filter(parameter::equalsIgnoreCase).findFirst().orElse(null);
+  public static String caseSensitiveParameterName(Map<String, String[]> parameterMap, String parameter) {
+    return parameterMap.keySet().stream().filter(parameter::equalsIgnoreCase).findFirst().orElse(null);
   }
 
   private static boolean getBooleanParam(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
-    String parameterString = caseSensitiveParameterName(request, parameter);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
     return parameterString == null ? defaultIfMissing : Boolean.parseBoolean(request.getParameter(parameterString));
   }
 
   private static List<String> getListParam(HttpServletRequest request, String parameter) throws UnsupportedEncodingException {
-    String parameterString = caseSensitiveParameterName(request, parameter);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), parameter);
     List<String> retList = parameterString == null ? new ArrayList<>()
                                                    : Arrays.asList(urlDecode(request.getParameter(parameterString)).split(","));
     retList.removeIf(String::isEmpty);
@@ -343,7 +367,7 @@ public class ParameterUtils {
 
   private static boolean getBooleanExcludeGiven(HttpServletRequest request, String getParameter, String excludeParameter) {
     boolean booleanParam = getBooleanParam(request, getParameter, false);
-    if (booleanParam && caseSensitiveParameterName(request, excludeParameter) != null) {
+    if (booleanParam && caseSensitiveParameterName(request.getParameterMap(), excludeParameter) != null) {
       throw new UserRequestException("Cannot set " + getParameter + " parameter to true when explicitly specifying "
                                      + excludeParameter + " in the request.");
     }
@@ -402,7 +426,7 @@ public class ParameterUtils {
   }
 
   static long time(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request, TIME_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), TIME_PARAM);
     if (parameterString == null) {
       return System.currentTimeMillis();
     }
@@ -412,22 +436,22 @@ public class ParameterUtils {
   }
 
   static Long startMs(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request, START_MS_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), START_MS_PARAM);
     return parameterString == null ? null : Long.valueOf(request.getParameter(parameterString));
   }
 
   static Long endMs(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request, END_MS_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), END_MS_PARAM);
     return parameterString == null ? null : Long.valueOf(request.getParameter(parameterString));
   }
 
   static Pattern topic(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request, TOPIC_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), TOPIC_PARAM);
     return parameterString == null ? null : Pattern.compile(request.getParameter(parameterString));
   }
 
   static Double minValidPartitionRatio(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request, MIN_VALID_PARTITION_RATIO_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), MIN_VALID_PARTITION_RATIO_PARAM);
     if (parameterString == null) {
       return null;
     } else {
@@ -441,24 +465,36 @@ public class ParameterUtils {
   }
 
   static String resourceString(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request, RESOURCE_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), RESOURCE_PARAM);
     return parameterString == null ? DEFAULT_PARTITION_LOAD_RESOURCE : request.getParameter(parameterString);
   }
 
-  static String reason(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request, REASON_PARAM);
+  public static String reason(HttpServletRequest request) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), REASON_PARAM);
+    if (parameterString != null && parameterString.length() > MAX_REASON_LENGTH) {
+      throw new IllegalArgumentException(String.format("Reason cannot be longer than %d characters (attempted: %d).",
+                                                       MAX_REASON_LENGTH, parameterString.length()));
+    }
     String ip = getClientIpAddress(request);
     return String.format("%s (Client: %s, Date: %s)", parameterString == null ? "No reason provided"
                                                                               : request.getParameter(parameterString), ip, currentUtcDate());
   }
 
   private static Set<String> parseParamToStringSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
-    String parameterString = caseSensitiveParameterName(request, param);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), param);
     Set<String> paramsString = parameterString == null
                                ? new HashSet<>(0)
                                : new HashSet<>(Arrays.asList(urlDecode(request.getParameter(parameterString)).split(",")));
     paramsString.removeIf(String::isEmpty);
     return paramsString;
+  }
+
+  private static Set<Integer> parseParamToIntegerSet(HttpServletRequest request, String param) throws UnsupportedEncodingException {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), param);
+
+    return parameterString == null ? new HashSet<>(0)
+                                   : Arrays.stream(urlDecode(request.getParameter(parameterString)).split(","))
+                                           .map(Integer::parseInt).collect(Collectors.toSet());
   }
 
   /**
@@ -481,7 +517,8 @@ public class ParameterUtils {
   }
 
   private static Set<AnomalyType> anomalyTypes(HttpServletRequest request, boolean isEnable) throws UnsupportedEncodingException {
-    String parameterString = caseSensitiveParameterName(request, isEnable ? ENABLE_SELF_HEALING_FOR_PARAM : DISABLE_SELF_HEALING_FOR_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), isEnable ? ENABLE_SELF_HEALING_FOR_PARAM
+                                                                                            : DISABLE_SELF_HEALING_FOR_PARAM);
     Set<String> selfHealingForString = parameterString == null
                                        ? new HashSet<>(0)
                                        : new HashSet<>(Arrays.asList(urlDecode(request.getParameter(parameterString)).split(",")));
@@ -514,7 +551,7 @@ public class ParameterUtils {
     intersection.retainAll(disableSelfHealingFor);
     if (!intersection.isEmpty()) {
       throw new IllegalArgumentException(String.format("The same anomaly cannot be specified in both disable and"
-                                                       + "enable parameters. Intersection: %s", intersection));
+                                                       + "enable parameters. Intersection: %s.", intersection));
     }
 
     Map<Boolean, Set<AnomalyType>> selfHealingFor = new HashMap<>(2);
@@ -580,16 +617,40 @@ public class ParameterUtils {
   }
 
   public static int entries(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request, ENTRIES_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), ENTRIES_PARAM);
     return parameterString == null ? Integer.MAX_VALUE : Integer.parseInt(request.getParameter(parameterString));
+  }
+
+  /**
+   * Mutually exclusive with the other parameters and can only be used if two step verification is enabled.
+   */
+  public static Integer reviewId(HttpServletRequest request, boolean twoStepVerificationEnabled) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), REVIEW_ID_PARAM);
+    if (parameterString == null) {
+      return null;
+    } else if (!twoStepVerificationEnabled) {
+      throw new UserRequestException(
+          String.format("%s parameter is not relevant when two-step verification is disabled.", REVIEW_ID_PARAM));
+    }
+
+    Integer reviewId = Integer.parseInt(request.getParameter(parameterString));
+    // Sanity check: Ensure that if a review id is provided, no other parameter is in the request.
+    if (request.getParameterMap().size() != 1) {
+      throw new UserRequestException(
+          String.format("%s parameter must be mutually exclusive with other parameters (Request parameters: %s).",
+                        REVIEW_ID_PARAM, request.getParameterMap()));
+    }
+
+    return reviewId;
   }
 
   /**
    * @param isPartitionMovement True if partition movement per broker, false if the total leader movement.
    */
   static Integer concurrentMovements(HttpServletRequest request, boolean isPartitionMovement) {
-    String parameterString = caseSensitiveParameterName(request, isPartitionMovement ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM
-                                                                                     : CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), isPartitionMovement
+                                                                                   ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM
+                                                                                   : CONCURRENT_LEADER_MOVEMENTS_PARAM);
     if (parameterString == null) {
       return null;
     }
@@ -603,7 +664,7 @@ public class ParameterUtils {
   }
 
   static Pattern excludedTopics(HttpServletRequest request) {
-    String parameterString = caseSensitiveParameterName(request, EXCLUDED_TOPICS_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), EXCLUDED_TOPICS_PARAM);
     return parameterString == null ? null : Pattern.compile(request.getParameter(parameterString));
   }
 
@@ -611,7 +672,7 @@ public class ParameterUtils {
    * @param isUpperBound True if upper bound, false if lower bound.
    */
   static int partitionBoundary(HttpServletRequest request, boolean isUpperBound) {
-    String parameterString = caseSensitiveParameterName(request, PARTITION_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), PARTITION_PARAM);
     if (parameterString == null) {
       return isUpperBound ? Integer.MAX_VALUE : Integer.MIN_VALUE;
     }
@@ -628,22 +689,51 @@ public class ParameterUtils {
   }
 
   static List<Integer> brokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
-    List<Integer> brokerIds = new ArrayList<>();
-    String parameterString = caseSensitiveParameterName(request, BROKER_ID_PARAM);
-    if (parameterString != null) {
-      brokerIds = Arrays.stream(urlDecode(request.getParameter(parameterString)).split(",")).map(Integer::parseInt).collect(Collectors.toList());
-    }
+    Set<Integer> brokerIds = parseParamToIntegerSet(request, BROKER_ID_PARAM);
     if (endPoint(request) != FIX_OFFLINE_REPLICAS && brokerIds.isEmpty()) {
       throw new IllegalArgumentException("Target broker ID is not provided.");
     }
-    return Collections.unmodifiableList(brokerIds);
+    return Collections.unmodifiableList(new ArrayList<>(brokerIds));
+  }
+
+  /**
+   * Default: An empty set.
+   */
+  private static Set<Integer> review(HttpServletRequest request, boolean isApprove) throws UnsupportedEncodingException {
+    Set<Integer> parsedReview = parseParamToIntegerSet(request, isApprove ? APPROVE_PARAM : DISCARD_PARAM);
+    return Collections.unmodifiableSet(parsedReview);
+  }
+
+  /**
+   * Get {@link ReviewStatus#APPROVED} and {@link ReviewStatus#DISCARDED} requests via {@link #APPROVE_PARAM} and
+   * {@link #DISCARD_PARAM}.
+   *
+   * Sanity check ensures that the same request cannot be specified in both configs.
+   */
+  static Map<ReviewStatus, Set<Integer>> reviewRequests(HttpServletRequest request) throws UnsupportedEncodingException {
+    Set<Integer> approve = review(request, true);
+    Set<Integer> discard = review(request, false);
+
+    // Sanity check: Ensure that the same
+    Set<Integer> intersection = new HashSet<>(approve);
+    intersection.retainAll(discard);
+    if (!intersection.isEmpty()) {
+      throw new IllegalArgumentException(String.format("The same request cannot be specified in both approve and"
+                                                       + "discard parameters. Intersection: %s.", intersection));
+    }
+
+    Map<ReviewStatus, Set<Integer>> reviewRequest = new HashMap<>(2);
+    reviewRequest.put(APPROVED, approve);
+    reviewRequest.put(DISCARDED, discard);
+
+    return reviewRequest;
   }
 
   /**
    * Default: An empty set.
    */
   public static Set<UUID> userTaskIds(HttpServletRequest request) throws UnsupportedEncodingException {
-    String parameterString = caseSensitiveParameterName(request, USER_TASK_IDS_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), USER_TASK_IDS_PARAM);
     return parameterString == null
            ? Collections.emptySet()
            : Arrays.stream(urlDecode(request.getParameter(parameterString)).split(",")).map(UUID::fromString).collect(Collectors.toSet());
@@ -693,7 +783,7 @@ public class ParameterUtils {
    */
   static DataFrom getDataFrom(HttpServletRequest request) {
     DataFrom dataFrom = DataFrom.VALID_WINDOWS;
-    String parameterString = caseSensitiveParameterName(request, DATA_FROM_PARAM);
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), DATA_FROM_PARAM);
     if (parameterString != null) {
       dataFrom = DataFrom.valueOf(request.getParameter(parameterString).toUpperCase());
     }
