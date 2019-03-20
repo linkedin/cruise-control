@@ -288,7 +288,6 @@ public class Executor {
     setRequestedInterBrokerPartitionMovementConcurrency(requestedInterBrokerPartitionMovementConcurrency);
     setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
     _uuid = uuid;
-    _executionStoppedByUser.set(false);
   }
 
   /**
@@ -377,10 +376,10 @@ public class Executor {
    */
   private void startExecution(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers, Collection<Integer> removedBrokers) {
     // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
+    _executionStoppedByUser.set(false);
     if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
       _executionTaskManager.clear();
       _uuid = null;
-      _executionStoppedByUser.set(false);
       // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
       throw new IllegalStateException("There are ongoing inter-broker partition reassignments.");
     }
