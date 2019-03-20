@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParamete
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.getBaseJSONString;
 
 
-public class StopProposalExecutionResult extends AbstractCruiseControlResponse {
+public class StopProposalResult extends AbstractCruiseControlResponse {
 
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {

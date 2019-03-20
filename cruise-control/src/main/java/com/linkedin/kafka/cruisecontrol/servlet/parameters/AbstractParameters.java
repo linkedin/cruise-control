@@ -56,6 +56,11 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   }
 
   @Override
+  public void setReviewId(int reviewId) {
+    // Relevant to parameters with review process.
+  }
+
+  @Override
   public EndPoint endPoint() {
     return _endPoint;
   }

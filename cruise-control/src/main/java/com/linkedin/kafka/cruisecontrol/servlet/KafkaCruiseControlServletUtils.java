@@ -99,4 +99,8 @@ public class KafkaCruiseControlServletUtils {
     writeErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
     return errorMessage;
   }
+
+  public static String httpServletRequestToString(HttpServletRequest request) {
+    return String.format("%s %s", request.getMethod(), request.getRequestURI());
+  }
 }

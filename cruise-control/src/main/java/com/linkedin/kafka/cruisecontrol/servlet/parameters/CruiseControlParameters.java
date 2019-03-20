@@ -25,4 +25,9 @@ public interface CruiseControlParameters {
    * @return True if requested response is in JSON, false otherwise.
    */
   boolean json();
+
+  /**
+   * @param reviewId The review id.
+   */
+  void setReviewId(int reviewId);
 }

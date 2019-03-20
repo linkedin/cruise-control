@@ -14,10 +14,12 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#ADMIN}
  *
+ * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ *
  * <pre>
  *    POST /kafkacruisecontrol/admin?json=[true/false]&amp;disable_self_healing_for=[Set-of-{@link AnomalyType}]
  *    &amp;enable_self_healing_for=[Set-of-{@link AnomalyType}]&amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]
- *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]
+ *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;review_id=[id]
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
@@ -25,9 +27,12 @@ public class AdminParameters extends AbstractParameters {
   private Set<AnomalyType> _enableSelfHealingFor;
   private Integer _concurrentPartitionMovements;
   private Integer _concurrentLeaderMovements;
+  private Integer _reviewId;
+  private boolean _twoStepVerificationEnabled;
 
-  public AdminParameters(HttpServletRequest request) {
+  public AdminParameters(HttpServletRequest request, boolean twoStepVerificationEnabled) {
     super(request);
+    _twoStepVerificationEnabled = twoStepVerificationEnabled;
   }
 
   @Override
@@ -38,6 +43,16 @@ public class AdminParameters extends AbstractParameters {
     _disableSelfHealingFor = selfHealingFor.get(false);
     _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
+  }
+
+  @Override
+  public void setReviewId(int reviewId) {
+    _reviewId = reviewId;
+  }
+
+  public Integer reviewId() {
+    return _reviewId;
   }
 
   public Set<AnomalyType> disableSelfHealingFor() {

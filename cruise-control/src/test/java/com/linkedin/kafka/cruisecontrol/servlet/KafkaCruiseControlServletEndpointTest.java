@@ -144,7 +144,7 @@ public class KafkaCruiseControlServletEndpointTest {
     EasyMock.replay(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
     populateUserTaskManager(_mockHttpServletResponse, _userTaskManager);
 
-    UserTaskState userTaskState = new UserTaskState(_userTaskManager.getActiveUserTasks(), _userTaskManager.getCompletedUserTasks());
+    UserTaskState userTaskState = new UserTaskState(_userTaskManager);
 
     // Test Case 1: Get all PROPOSAL or REBALANCE tasks
     Map<String,  String []> answerQueryParam1 = new HashMap<>();
@@ -202,7 +202,7 @@ public class KafkaCruiseControlServletEndpointTest {
     // Update task manager active vs completed state
     _userTaskManager.checkActiveUserTasks();
     // Now the UserTaskManager state has changed, so we reload the states
-    UserTaskState userTaskState2 = new UserTaskState(_userTaskManager.getActiveUserTasks(), _userTaskManager.getCompletedUserTasks());
+    UserTaskState userTaskState2 = new UserTaskState(_userTaskManager);
 
     // Test Case 5: Get all LOAD or REMOVE_BROKER tasks that's completed and with user task id repeatUUID
     Map<String,  String []> answerQueryParam5 = new HashMap<>();

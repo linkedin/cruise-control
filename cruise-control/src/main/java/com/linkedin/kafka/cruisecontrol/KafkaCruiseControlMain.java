@@ -104,11 +104,9 @@ public class KafkaCruiseControlMain {
     context.addServlet(holderWebapp, webuiPathPrefix);
 
     // Kafka Cruise Control servlet data
-    long maxBlockMs = config.getLong(KafkaCruiseControlConfig.WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS);
-    long sessionExpiryMs = config.getLong(KafkaCruiseControlConfig.WEBSERVER_SESSION_EXPIRY_MS);
     String apiUrlPrefix = config.getString(KafkaCruiseControlConfig.WEBSERVER_API_URLPREFIX);
-    KafkaCruiseControlServlet kafkaCruiseControlServlet =
-        new KafkaCruiseControlServlet(kafkaCruiseControl, maxBlockMs, sessionExpiryMs, dropwizardMetricsRegistry, config);
+    KafkaCruiseControlServlet kafkaCruiseControlServlet = new KafkaCruiseControlServlet(kafkaCruiseControl,
+                                                                                        dropwizardMetricsRegistry);
     ServletHolder servletHolder = new ServletHolder(kafkaCruiseControlServlet);
     context.addServlet(servletHolder, apiUrlPrefix);
 

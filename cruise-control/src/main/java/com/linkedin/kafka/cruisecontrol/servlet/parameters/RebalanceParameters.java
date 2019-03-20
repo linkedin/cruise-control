@@ -13,6 +13,8 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#REBALANCE}
  *
+ * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ *
  * <pre>
  * Trigger a workload balance.
  *    POST /kafkacruisecontrol/rebalance?dryRun=[true/false]&amp;goals=[goal1,goal2...]
@@ -21,7 +23,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
  *    &amp;replica_movement_strategies=[strategy1,strategy2...]
- *    &amp;ignore_proposal_cache=[true/false]
+ *    &amp;ignore_proposal_cache=[true/false]&amp;review_id=[id]
  * </pre>
  */
 public class RebalanceParameters extends GoalBasedOptimizationParameters {
@@ -32,6 +34,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private final KafkaCruiseControlConfig _config;
   private boolean _ignoreProposalCache;
+  private Integer _reviewId;
 
   public RebalanceParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request);
@@ -47,6 +50,17 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_request);
+    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+  }
+
+  @Override
+  public void setReviewId(int reviewId) {
+    _reviewId = reviewId;
+  }
+
+  public Integer reviewId() {
+    return _reviewId;
   }
 
   public boolean dryRun() {
