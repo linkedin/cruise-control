@@ -28,6 +28,7 @@ import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.Purgatory;
+import com.linkedin.kafka.cruisecontrol.servlet.purgatory.RequestInfo;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PurgatoryOrReviewResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
@@ -181,6 +182,17 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
   }
 
+  private void sanityCheckSubmittedRequest(HttpServletRequest request, RequestInfo requestInfo) {
+    if (requestInfo.accessToAlreadySubmittedRequest()
+        && _userTaskManager.getUserTaskByUserTaskId(_userTaskManager.getUserTaskId(request), request) == null) {
+     throw new UserRequestException(
+         String.format("Attempt to start a new user task with an already submitted review. If you are trying to retrieve"
+                       + " the result of a submitted execution, please use its UUID in your request header via %s flag."
+                       + " If you are starting a new execution with the same parameters, please submit a new review "
+                       + "request and get approval for it.", UserTaskManager.USER_TASK_HEADER_NAME));
+    }
+  }
+
   @SuppressWarnings("unchecked")
   private <P extends CruiseControlParameters> P maybeAddToPurgatory(HttpServletRequest request,
                                                                     HttpServletResponse response,
@@ -188,7 +200,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     Integer reviewId = ParameterUtils.reviewId(request, _twoStepVerification);
     if (reviewId != null) {
       // Submit the request with reviewId that should already be in the purgatory associated with the request endpoint.
-      return (P) _purgatory.submit(reviewId, request).parameters();
+      RequestInfo requestInfo = _purgatory.submit(reviewId, request);
+      // Ensure that if the request has already been submitted, the user is not attempting to create another user task
+      // with the same parameters and endpoint.
+      sanityCheckSubmittedRequest(request, requestInfo);
+
+      return (P) requestInfo.parameters();
     } else {
       P parameters = paramSupplier.get();
       if (!parameters.parseParameters(response)) {

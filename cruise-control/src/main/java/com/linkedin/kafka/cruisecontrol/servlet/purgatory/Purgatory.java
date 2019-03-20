@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.PurgatoryOrReviewResult
 import java.io.Closeable;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -34,7 +35,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
  * The Purgatory is thread-safe.
  */
 public class Purgatory implements Closeable {
-  private static final String FINAL_REASON = "Submitted approved request.";
   private static final Logger LOG = LoggerFactory.getLogger(Purgatory.class);
   private static final long PURGATORY_CLEANER_PERIOD_SECONDS = 10;
   private static final long PURGATORY_CLEANER_INITIAL_DELAY_SECONDS = 0;
@@ -63,12 +63,13 @@ public class Purgatory implements Closeable {
   }
 
   /**
-   * Add request to the purgatory and return the request info that has been added to the purgatory by its id.
+   * Add request to the purgatory and return the {@link PurgatoryOrReviewResult} for the request that has been added to
+   * the purgatory.
    *
    * @param request Http Servlet Request to add to the purgatory.
    * @param parameters Request parameters.
    * @param <P> Type corresponding to the request parameters.
-   * @return The result showing the request info that has been added to the purgatory by its id.
+   * @return The result showing the {@link PurgatoryOrReviewResult} for the request that has been added to the purgatory.
    */
   public synchronized <P extends CruiseControlParameters> PurgatoryOrReviewResult addRequest(HttpServletRequest request,
                                                                                              P parameters) {
@@ -79,7 +80,10 @@ public class Purgatory implements Closeable {
     RequestInfo requestInfo = new RequestInfo(request, parameters);
     _requestInfoById.put(_requestId, requestInfo);
 
-    return new PurgatoryOrReviewResult(Collections.singletonMap(_requestId++, requestInfo));
+    PurgatoryOrReviewResult result = new PurgatoryOrReviewResult(Collections.singletonMap(_requestId, requestInfo),
+                                                                 Collections.singleton(_requestId));
+    _requestId++;
+    return result;
   }
 
   /**
@@ -114,11 +118,12 @@ public class Purgatory implements Closeable {
                         reviewId, requestInfo.endPoint(), endpoint, REVIEW));
     }
 
-    if (requestInfo.status() == ReviewStatus.SUBMITTED && LOG.isDebugEnabled()) {
+    if (requestInfo.status() == ReviewStatus.SUBMITTED) {
         LOG.info("Request {} has already been submitted (review: {}).", requestInfo.endpointWithParams(), reviewId);
+        requestInfo.setAccessToAlreadySubmittedRequest();
     } else {
       // 3. Ensure that the request with the given review id is approved in the purgatory, and mark the status as submitted.
-      requestInfo.submitReview(reviewId, FINAL_REASON);
+      requestInfo.submitReview(reviewId);
       LOG.info("Submitted request {} for execution (review: {}).", requestInfo.endpointWithParams(), reviewId);
     }
     return requestInfo;
@@ -152,6 +157,7 @@ public class Purgatory implements Closeable {
    */
   public synchronized PurgatoryOrReviewResult applyReview(Map<ReviewStatus, Set<Integer>> requestIdsByTargetState, String reason) {
     // Sanity check if all request ids in the review exists in the purgatory.
+    Set<Integer> reviewedRequestIds = new HashSet<>();
     for (Map.Entry<ReviewStatus, Set<Integer>> entry : requestIdsByTargetState.entrySet()) {
       Set<Integer> requestIds = entry.getValue();
       if (!_requestInfoById.keySet().containsAll(requestIds)) {
@@ -161,10 +167,11 @@ public class Purgatory implements Closeable {
       // Apply review to each Request Info
       ReviewStatus targetReviewStatus = entry.getKey();
       requestIds.forEach(requestId -> _requestInfoById.get(requestId).applyReview(targetReviewStatus, reason));
+      reviewedRequestIds.addAll(requestIds);
     }
 
     // Return the post-review result of the purgatory.
-    return new PurgatoryOrReviewResult(new HashMap<>(_requestInfoById));
+    return new PurgatoryOrReviewResult(new HashMap<>(_requestInfoById), reviewedRequestIds);
   }
 
   private synchronized void removeOldRequests() {

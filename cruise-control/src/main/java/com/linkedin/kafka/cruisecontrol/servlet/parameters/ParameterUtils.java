@@ -629,7 +629,7 @@ public class ParameterUtils {
 
     Integer reviewId = Integer.parseInt(request.getParameter(parameterString));
     // Sanity check: Ensure that if a review id is provided, no other parameter is in the request.
-    if (request.getParameterMap().keySet().size() != 1) {
+    if (request.getParameterMap().size() != 1) {
       throw new UserRequestException(
           String.format("%s parameter must be mutually exclusive with other parameters (Request parameters: %s).",
                         REVIEW_ID_PARAM, request.getParameterMap()));

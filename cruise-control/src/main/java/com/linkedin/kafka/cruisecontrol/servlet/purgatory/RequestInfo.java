@@ -28,6 +28,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.*;
  */
 public class RequestInfo {
   private static final String INIT_REASON = "Awaiting review.";
+  private static final String FINAL_REASON = "Submitted approved request.";
   private static final Map<ReviewStatus, Set<ReviewStatus>> VALID_TRANSFER = new HashMap<>();
   static {
     VALID_TRANSFER.put(PENDING_REVIEW, new HashSet<>(Arrays.asList(APPROVED, DISCARDED)));
@@ -40,6 +41,7 @@ public class RequestInfo {
   private final CruiseControlParameters _parameters;
   private volatile ReviewStatus _status;
   private volatile String _reason;
+  private volatile boolean _accessToAlreadySubmittedRequest;
 
   public <P extends CruiseControlParameters> RequestInfo(HttpServletRequest request, P parameters) {
     _submitterAddress = getClientIpAddress(request);
@@ -49,6 +51,7 @@ public class RequestInfo {
     _parameters = parameters;
     _status = PENDING_REVIEW;
     _reason = INIT_REASON;
+    _accessToAlreadySubmittedRequest = false;
   }
 
   public CruiseControlParameters parameters() {
@@ -109,14 +112,21 @@ public class RequestInfo {
   }
 
   /**
-   * Submit review and the corresponding reason for change.
+   * Submit the review to indicate that it is .
    *
    * @param reviewId The review id for which the corresponding request is requested to be submitted.
-   * @param reason The reason for the submission of review.
    */
-  void submitReview(int reviewId, String reason) {
-    applyReview(SUBMITTED, reason);
+  void submitReview(int reviewId) {
+    applyReview(SUBMITTED, FINAL_REASON);
     _parameters.setReviewId(reviewId);
+  }
+
+  public void setAccessToAlreadySubmittedRequest() {
+    _accessToAlreadySubmittedRequest = true;
+  }
+
+  public boolean accessToAlreadySubmittedRequest() {
+    return _accessToAlreadySubmittedRequest;
   }
 
   /**

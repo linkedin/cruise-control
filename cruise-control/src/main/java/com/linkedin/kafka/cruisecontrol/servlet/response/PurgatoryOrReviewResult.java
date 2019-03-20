@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
@@ -28,9 +29,15 @@ public class PurgatoryOrReviewResult extends AbstractCruiseControlResponse {
   private static final String REASON = "Reason";
   private static final String REQUEST_INFO = "RequestInfo";
   private final Map<Integer, RequestInfo> _requestInfoById;
+  private final Set<Integer> _filteredRequestIds;
 
-  public PurgatoryOrReviewResult(Map<Integer, RequestInfo> requestInfoById) {
+  /**
+   * @param requestInfoById Request info by Id.
+   * @param filteredRequestIds Requests for which the result is requested, empty set implies all requests in purgatory
+   */
+  public PurgatoryOrReviewResult(Map<Integer, RequestInfo> requestInfoById, Set<Integer> filteredRequestIds) {
     _requestInfoById = requestInfoById;
+    _filteredRequestIds = filteredRequestIds.isEmpty() ? _requestInfoById.keySet() : filteredRequestIds;
   }
 
   private String getPlaintext() {
@@ -44,20 +51,22 @@ public class PurgatoryOrReviewResult extends AbstractCruiseControlResponse {
     int reasonLabelSize = REASON.length();
 
     for (Map.Entry<Integer, RequestInfo> entry : _requestInfoById.entrySet()) {
-      // ID
-      idLabelSize = Math.max(idLabelSize, (int) (Math.log10(entry.getKey()) + 1));
-      RequestInfo requestInfo = entry.getValue();
-      // SUBMITTER_ADDRESS
-      submitterAddressLabelSize = Math.max(submitterAddressLabelSize, requestInfo.submitterAddress().length());
-      // SUBMISSION_TIME_MS
-      String dateFormatted = KafkaCruiseControlUtils.toDateString(requestInfo.submissionTimeMs(), DATE_FORMAT, TIME_ZONE);
-      submissionTimeLabelSize = Math.max(submissionTimeLabelSize, dateFormatted.length());
-      // STATUS
-      statusLabelSize = Math.max(statusLabelSize, requestInfo.status().toString().length());
-      // ENDPOINT_WITH_PARAMS
-      endpointWithParamsLabelSize = Math.max(endpointWithParamsLabelSize, requestInfo.endpointWithParams().length());
-      // REASON
-      reasonLabelSize = Math.max(reasonLabelSize, requestInfo.reason().length());
+      if (_filteredRequestIds.contains(entry.getKey())) {
+        // ID
+        idLabelSize = Math.max(idLabelSize, (int) (Math.log10(entry.getKey()) + 1));
+        RequestInfo requestInfo = entry.getValue();
+        // SUBMITTER_ADDRESS
+        submitterAddressLabelSize = Math.max(submitterAddressLabelSize, requestInfo.submitterAddress().length());
+        // SUBMISSION_TIME_MS
+        String dateFormatted = KafkaCruiseControlUtils.toDateString(requestInfo.submissionTimeMs(), DATE_FORMAT, TIME_ZONE);
+        submissionTimeLabelSize = Math.max(submissionTimeLabelSize, dateFormatted.length());
+        // STATUS
+        statusLabelSize = Math.max(statusLabelSize, requestInfo.status().toString().length());
+        // ENDPOINT_WITH_PARAMS
+        endpointWithParamsLabelSize = Math.max(endpointWithParamsLabelSize, requestInfo.endpointWithParams().length());
+        // REASON
+        reasonLabelSize = Math.max(reasonLabelSize, requestInfo.reason().length());
+      }
     }
 
     // Populate header.
@@ -79,19 +88,23 @@ public class PurgatoryOrReviewResult extends AbstractCruiseControlResponse {
 
     // Populate values.
     for (Map.Entry<Integer, RequestInfo> entry : _requestInfoById.entrySet()) {
-      RequestInfo requestInfo = entry.getValue();
-      String dateFormatted = KafkaCruiseControlUtils.toDateString(requestInfo.submissionTimeMs(), DATE_FORMAT, TIME_ZONE);
-      sb.append(String.format(formattingStringBuilder.toString(), entry.getKey(), requestInfo.submitterAddress(),
-                              dateFormatted, requestInfo.status(), requestInfo.endpointWithParams(), requestInfo.reason()));
+      if (_filteredRequestIds.contains(entry.getKey())) {
+        RequestInfo requestInfo = entry.getValue();
+        String dateFormatted = KafkaCruiseControlUtils.toDateString(requestInfo.submissionTimeMs(), DATE_FORMAT, TIME_ZONE);
+        sb.append(String.format(formattingStringBuilder.toString(), entry.getKey(), requestInfo.submitterAddress(),
+                                dateFormatted, requestInfo.status(), requestInfo.endpointWithParams(), requestInfo.reason()));
+      }
     }
 
     return sb.toString();
   }
 
   private String getJSONString() {
-    List<Map<String, Object>> jsonRequestInfoList = new ArrayList<>();
+    List<Map<String, Object>> jsonRequestInfoList = new ArrayList<>(_filteredRequestIds.size());
     for (Map.Entry<Integer, RequestInfo> entry : _requestInfoById.entrySet()) {
-      addJSONRequestInfo(jsonRequestInfoList, entry);
+      if (_filteredRequestIds.contains(entry.getKey())) {
+        addJSONRequestInfo(jsonRequestInfoList, entry);
+      }
     }
     Map<String, Object> jsonResponse = new HashMap<>(2);
     jsonResponse.put(REQUEST_INFO, jsonRequestInfoList);
@@ -117,5 +130,6 @@ public class PurgatoryOrReviewResult extends AbstractCruiseControlResponse {
     _cachedResponse = parameters.json() ? getJSONString() : getPlaintext();
     // Discard irrelevant response.
     _requestInfoById.clear();
+    _filteredRequestIds.clear();
   }
 }

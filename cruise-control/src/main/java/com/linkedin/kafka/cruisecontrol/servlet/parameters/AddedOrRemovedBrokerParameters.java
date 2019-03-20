@@ -15,6 +15,8 @@ import javax.servlet.http.HttpServletRequest;
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#ADD_BROKER} and
  * {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#REMOVE_BROKER}.
  *
+ * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ *
  * <pre>
  * 1. Decommission a broker
  *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]
@@ -23,6 +25,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
  *    &amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]&amp;exclude_recently_demoted_brokers=[true/false]
  *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
+ *    &amp;review_id=[id]
  *
  * 2. Add a broker
  *    POST /kafkacruisecontrol/add_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]
