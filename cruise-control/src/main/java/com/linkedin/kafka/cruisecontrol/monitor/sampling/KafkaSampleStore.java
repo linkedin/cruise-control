@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -233,13 +234,14 @@ public class KafkaSampleStore implements SampleStore {
                          replicationFactor, _partitionSampleStoreTopicPartitionCount);
       ensureTopicCreated(zkUtils, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor, _brokerSampleStoreTopicPartitionCount);
+      maybeIncreaseTopicReplicationFactor(zkUtils, replicationFactor, Arrays.asList(_partitionMetricSampleStoreTopic, _brokerMetricSampleStoreTopic));
     } finally {
       KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
     }
   }
 
   /**
-   * Increase the replication factor of a Kafka topic through adding new replicas in a rack-aware, round-robin way.
+   * Increase the replication factor of Kafka topics through adding new replicas in a rack-aware, round-robin way.
    * There are two scenarios that rack awareness property is not guaranteed.
    * <ul>
    *   <li> If Zookeeper does not have rack information about brokers, then it is only guaranteed that new replicas are
@@ -249,16 +251,14 @@ public class KafkaSampleStore implements SampleStore {
    * </ul>
    *
    * @param zkUtils ZkUtils class to use to increase replication factor.
-   * @param topicMetadata Topic metadata stored in Zookeeper.
    * @param replicationFactor The replication factor to set for the topic.
-   * @param topic The topic to apply the change.
+   * @param topics The topics to check.
    */
   private void maybeIncreaseTopicReplicationFactor(ZkUtils zkUtils,
-                                                   MetadataResponse.TopicMetadata topicMetadata,
                                                    int replicationFactor,
-                                                   String topic) {
+                                                   Collection<String> topics) {
     if (!ensureNoPartitionUnderPartitionReassignment(zkUtils)) {
-      LOG.warn("There are ongoing partition reassignments, skip checking replication factor of topic {}.", topic);
+      LOG.warn("There are ongoing partition reassignments, skip checking replication factor of topics {}.", topics);
       return;
     }
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
@@ -274,45 +274,51 @@ public class KafkaSampleStore implements SampleStore {
 
     if (replicationFactor > brokersByRack.size()) {
       if (_skipSampleStoreTopicRackAwarenessCheck) {
-        LOG.warn("Target replication factor for topic " + topic + " is larger than number of racks in cluster, new replica maybe"
+        LOG.warn("Target replication factor for topics " + topics + " is larger than number of racks in cluster, new replica maybe"
                  + " added in none rack-aware way.");
       } else {
-        throw new RuntimeException("Unable to increase topic " + topic + " replica factor to " + replicationFactor
+        throw new RuntimeException("Unable to increase topics " + topics + " replica factor to " + replicationFactor
                                    + " since there are only " + brokersByRack.size() + " racks in the cluster.");
       }
     }
 
     scala.collection.mutable.Map<TopicAndPartition, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
-    List<String> racks = new ArrayList<>(brokersByRack.keySet());
-    int [] cursors = new int[racks.size()];
-    int rackCursor = 0;
-    for (MetadataResponse.PartitionMetadata pm : topicMetadata.partitionMetadata()) {
-      if (pm.replicas().size() < replicationFactor) {
-        List<Object> newAssignedReplica = new ArrayList<>();
-        Set<String> currentOccupiedRack = new HashSet<>();
-        // Make sure the current replicas are in new replica list.
-        pm.replicas().forEach(node -> {
-          newAssignedReplica.add(node.id());
-          currentOccupiedRack.add(rackByBroker.get(node.id()));
-        });
-        // Add new replica to partition in rack-aware(if possible), round-robin way.
-        while (newAssignedReplica.size() < replicationFactor) {
-          if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
-            String rack = racks.get(rackCursor);
-            int cursor = cursors[rackCursor];
-            newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
-            currentOccupiedRack.add(rack);
-            cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+    for (String topic : topics) {
+      MetadataResponse.TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(JavaConversions.asScalaSet(Collections.singleton(topic)),
+                                                                                         zkUtils,
+                                                                                         ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
+      List<String> racks = new ArrayList<>(brokersByRack.keySet());
+      int[] cursors = new int[racks.size()];
+      int rackCursor = 0;
+      for (MetadataResponse.PartitionMetadata pm : topicMetadata.partitionMetadata()) {
+        if (pm.replicas().size() < replicationFactor) {
+          List<Object> newAssignedReplica = new ArrayList<>();
+          Set<String> currentOccupiedRack = new HashSet<>();
+          // Make sure the current replicas are in new replica list.
+          pm.replicas().forEach(node -> {
+            newAssignedReplica.add(node.id());
+            currentOccupiedRack.add(rackByBroker.get(node.id()));
+          });
+          // Add new replica to partition in rack-aware(if possible), round-robin way.
+          while (newAssignedReplica.size() < replicationFactor) {
+            if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
+              String rack = racks.get(rackCursor);
+              int cursor = cursors[rackCursor];
+              newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
+              currentOccupiedRack.add(rack);
+              cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+            }
+            rackCursor = (rackCursor + 1) % racks.size();
           }
-          rackCursor = (rackCursor + 1) % racks.size();
+          newReplicaAssignment.put(new TopicAndPartition(topic, pm.partition()),
+              JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
         }
-        newReplicaAssignment.put(new TopicAndPartition(topic, pm.partition()),
-                                 JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
       }
     }
     if (newReplicaAssignment.nonEmpty()) {
       zkUtils.updatePartitionReassignmentData(newReplicaAssignment);
-      LOG.info("The replication factor of Kafka topic " + topic + " has increased to " + replicationFactor + ".");
+      LOG.info(String.format("The replication factor of topic partition %s is increased to %d.",
+                             newReplicaAssignment.keySet(), replicationFactor));
     }
   }
 
@@ -355,7 +361,6 @@ public class KafkaSampleStore implements SampleStore {
         MetadataResponse.TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(JavaConversions.asScalaSet(Collections.singleton(topic)),
                                                        zkUtils,
                                                        ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
-        maybeIncreaseTopicReplicationFactor(zkUtils, topicMetadata, replicationFactor, topic);
         maybeIncreaseTopicPartitionCount(zkUtils, topic, topicMetadata, partitionCount);
       }  catch (RuntimeException re) {
         LOG.error("Skip updating topic " +  topic + " configuration due to failure:" + re.getMessage() + ".");
