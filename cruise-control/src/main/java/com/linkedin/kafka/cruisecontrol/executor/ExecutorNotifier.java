@@ -15,7 +15,7 @@ import org.apache.kafka.common.annotation.InterfaceStability;
 public interface ExecutorNotifier extends CruiseControlConfigurable {
   /**
    * When an execution completes successfully or is stopped this method should be called
-   * @param payload Information to be sent.
+   * @param notification Information to be sent.
    */
-  void sendNotification(Executor.ExecutionNotifierPayload payload);
+  void sendNotification(ExecutorNotification notification);
 }

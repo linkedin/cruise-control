@@ -330,7 +330,7 @@ public class UserTaskManager implements Closeable {
   /**
    * Allow other subsystems to retrieve {@link UserTaskInfo} using uuid. This method assumes uuid comes from some internal book
    * keeping state, not an external http request. Thus it does not check request parameters like
-   * {@link UserTaskManager#getUserTaskByUserTaskId} below does.
+   * {@link UserTaskManager#getUserTaskByUserTaskId} does.
    * @param uuid UUID associated with a user request or execution.
    * @return {@link UserTaskInfo} which contains information about a user request.
    */

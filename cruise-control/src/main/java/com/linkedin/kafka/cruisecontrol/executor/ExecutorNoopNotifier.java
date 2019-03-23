@@ -11,7 +11,7 @@ import java.util.Map;
  */
 public class ExecutorNoopNotifier implements ExecutorNotifier {
   @Override
-  public void sendNotification(Executor.ExecutionNotifierPayload payload) { }
+  public void sendNotification(ExecutorNotification notification) { }
   @Override
   public void configure(Map<String, ?> configs) { }
 }
