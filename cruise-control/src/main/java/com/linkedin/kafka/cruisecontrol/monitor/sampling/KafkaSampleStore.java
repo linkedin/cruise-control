@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -58,6 +57,8 @@ import scala.collection.Seq;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureNoPartitionUnderPartitionReassignment;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicNotUnderPartitionReassignment;
+import static org.apache.kafka.common.requests.MetadataResponse.TopicMetadata;
+import static org.apache.kafka.common.requests.MetadataResponse.PartitionMetadata;
 
 /**
  * The sample store that implements the {@link SampleStore}. It stores the partition metric samples and broker metric
@@ -234,7 +235,8 @@ public class KafkaSampleStore implements SampleStore {
                          replicationFactor, _partitionSampleStoreTopicPartitionCount);
       ensureTopicCreated(zkUtils, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor, _brokerSampleStoreTopicPartitionCount);
-      maybeIncreaseTopicReplicationFactor(zkUtils, replicationFactor, Arrays.asList(_partitionMetricSampleStoreTopic, _brokerMetricSampleStoreTopic));
+      maybeIncreaseTopicReplicationFactor(zkUtils, replicationFactor,
+                                          new HashSet<>(Arrays.asList(_partitionMetricSampleStoreTopic, _brokerMetricSampleStoreTopic)));
     } finally {
       KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
     }
@@ -256,7 +258,7 @@ public class KafkaSampleStore implements SampleStore {
    */
   private void maybeIncreaseTopicReplicationFactor(ZkUtils zkUtils,
                                                    int replicationFactor,
-                                                   Collection<String> topics) {
+                                                   Set<String> topics) {
     if (!ensureNoPartitionUnderPartitionReassignment(zkUtils)) {
       LOG.warn("There are ongoing partition reassignments, skip checking replication factor of topics {}.", topics);
       return;
@@ -283,14 +285,15 @@ public class KafkaSampleStore implements SampleStore {
     }
 
     scala.collection.mutable.Map<TopicAndPartition, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
-    for (String topic : topics) {
-      MetadataResponse.TopicMetadata topicMetadata = AdminUtils.fetchTopicMetadataFromZk(JavaConversions.asScalaSet(Collections.singleton(topic)),
-                                                                                         zkUtils,
-                                                                                         ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
+    scala.collection.Set<TopicMetadata> topicMetadatas = AdminUtils.fetchTopicMetadataFromZk(JavaConversions.asScalaSet(topics), zkUtils,
+                                                                                             ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT));
+    for (scala.collection.Iterator<TopicMetadata> iter = topicMetadatas.iterator(); iter.hasNext();) {
+      TopicMetadata topicMetadata = iter.next();
+      String topic = topicMetadata.topic();
       List<String> racks = new ArrayList<>(brokersByRack.keySet());
       int[] cursors = new int[racks.size()];
       int rackCursor = 0;
-      for (MetadataResponse.PartitionMetadata pm : topicMetadata.partitionMetadata()) {
+      for (PartitionMetadata pm : topicMetadata.partitionMetadata()) {
         if (pm.replicas().size() < replicationFactor) {
           List<Object> newAssignedReplica = new ArrayList<>();
           Set<String> currentOccupiedRack = new HashSet<>();
