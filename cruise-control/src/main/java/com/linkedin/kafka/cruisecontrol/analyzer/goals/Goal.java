@@ -37,40 +37,6 @@ import org.apache.kafka.common.annotation.InterfaceStability;
 @InterfaceStability.Evolving
 public interface Goal extends CruiseControlConfigurable {
   /**
-   * @deprecated
-   * Please use {@link #optimize(ClusterModel, Set, OptimizationOptions)} instead.
-   *
-   * Optimize the given cluster model as needed for this goal.
-   * <p>
-   *   The method will be given a cluster model. The goal can try to optimize the cluster model by performing some
-   *   admin operations (e.g. move replicas or leadership of partitions).
-   * </p>
-   * <p>
-   *   During the optimization, the implementation should make sure that all the previously optimized goals
-   *   are still satisfied after this method completes its execution. The implementation can use
-   *   {@link #actionAcceptance(BalancingAction, ClusterModel)} to check whether an admin operation
-   *   is allowed by a previously optimized goal.
-   * </p>
-   * <p>
-   *   The implementation of a soft goal should return a boolean indicating whether the goal has been met
-   *   after the optimization or not.
-   * </p>
-   * <p>
-   *   The implementation of a hard goal should throw an {@link OptimizationFailureException} when the goal
-   *   cannot be met. This will then fail the entire optimization attempt.
-   * </p>
-   * @param clusterModel   The cluster model reflecting the current state of the cluster. It is a result of the
-   *                       optimization of the previously optimized goals.
-   * @param optimizedGoals Goals that have already been optimized. These goals cannot be violated.
-   * @param excludedTopics The topics that should be excluded from the optimization action.
-   * @return true if the goal is met after the optimization, false otherwise. Note that for hard goals,
-   * the implementation should just throw exceptions if the goal is not met.
-   * @throws KafkaCruiseControlException
-   */
-  boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
-      throws KafkaCruiseControlException;
-
-  /**
    * Optimize the given cluster model as needed for this goal.
    * <p>
    *   The method will be given a cluster model. The goal can try to optimize the cluster model by performing some
