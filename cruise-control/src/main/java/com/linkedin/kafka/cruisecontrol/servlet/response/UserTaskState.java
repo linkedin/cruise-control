@@ -124,7 +124,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     int userTaskIdLabelSize = 20;
     int clientAddressLabelSize = 20;
     int startMsLabelSize = 20;
-    int statusLabelSize = 10;
+    int statusLabelSize = 20;
     int requestURLLabelSize = 20;
 
 
