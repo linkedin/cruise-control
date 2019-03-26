@@ -33,9 +33,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA
 
 
 /**
- * Class for achieving the following soft goal:
- * <p>
- * SOFT GOAL#1: Generate proposals to keep the outbound network utilization on a broker such that even if all partitions
+ * SOFT GOAL: Generate proposals to keep the outbound network utilization on a broker such that even if all partitions
  * within the broker become the leader, the outbound network utilization would not exceed the corresponding broker
  * capacity threshold. This goal can be interpreted as keeping the potential outbound network utilization under a threshold.
  */
@@ -144,6 +142,11 @@ public class PotentialNwOutGoal extends AbstractGoal {
   @Override
   public String name() {
     return PotentialNwOutGoal.class.getSimpleName();
+  }
+
+  @Override
+  public boolean isHardGoal() {
+    return false;
   }
 
   /**

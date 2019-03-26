@@ -525,6 +525,11 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
     return KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName();
   }
 
+  @Override
+  public boolean isHardGoal() {
+    return true;
+  }
+
   private double diskUsage(BrokerAndSortedReplicas bas) {
     // Ensure that if the disk capacity is non-positive, we do not report a positive disk usage.
     double diskCapacity = bas.broker().capacityFor(DISK);
