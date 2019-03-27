@@ -112,15 +112,6 @@ public class PreferredLeaderElectionGoal implements Goal {
     return relocatedLeadership;
   }
 
-  /**
-   * @deprecated
-   * Please use {@link #optimize(ClusterModel, Set, OptimizationOptions)} instead.
-   */
-  @Override
-  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics) {
-    return optimize(clusterModel, optimizedGoals, new OptimizationOptions(excludedTopics));
-  }
-
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     return ACCEPT;

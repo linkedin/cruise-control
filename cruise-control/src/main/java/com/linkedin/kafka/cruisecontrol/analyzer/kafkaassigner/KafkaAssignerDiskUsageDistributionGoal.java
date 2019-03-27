@@ -124,15 +124,6 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   }
 
   /**
-   * @deprecated
-   * Please use {@link #optimize(ClusterModel, Set, OptimizationOptions)} instead.
-   */
-  @Override
-  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics) {
-    return optimize(clusterModel, optimizedGoals, new OptimizationOptions(excludedTopics));
-  }
-
-  /**
    * Check whether the cluster model still has brokers whose disk usage are above upper threshold or below lower
    * threshold.
    *
