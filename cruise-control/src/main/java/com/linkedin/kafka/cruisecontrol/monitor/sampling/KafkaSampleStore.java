@@ -44,6 +44,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
@@ -91,7 +92,6 @@ public class KafkaSampleStore implements SampleStore {
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
   private static final long SAMPLE_POLL_TIMEOUT = 1000L;
-  private static final long ZK_UTILS_CLOSE_TIMEOUT_MS = 10000L;
 
   protected static final int DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final int DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;
@@ -238,6 +238,8 @@ public class KafkaSampleStore implements SampleStore {
                          replicationFactor, _partitionSampleStoreTopicPartitionCount);
       ensureTopicCreated(kafkaZkClient, adminZkClient, adminClient, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor, _brokerSampleStoreTopicPartitionCount);
+      maybeIncreaseTopicReplicationFactor(kafkaZkClient, adminClient, replicationFactor,
+                                          new HashSet<>(Arrays.asList(_partitionMetricSampleStoreTopic, _brokerMetricSampleStoreTopic)));
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
       KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
@@ -245,7 +247,7 @@ public class KafkaSampleStore implements SampleStore {
   }
 
   /**
-   * Increase the replication factor of a Kafka topic through adding new replicas in a rack-aware, round-robin way.
+   * Increase the replication factor of Kafka topics through adding new replicas in a rack-aware, round-robin way.
    * There are two scenarios that rack awareness property is not guaranteed.
    * <ul>
    *   <li> If Zookeeper does not have rack information about brokers, then it is only guaranteed that new replicas are
@@ -256,18 +258,16 @@ public class KafkaSampleStore implements SampleStore {
    *
    * @param kafkaZkClient KafkaZkClient class to use to increase replication factor.
    * @param adminClient AdminClient class to use to increase replication factor.
-   * @param topicDescription The description of the topic ot apply the change.
    * @param replicationFactor The replication factor to set for the topic.
-   * @param topic The topic to apply the change.
+   * @param topics The topics to check.
    */
   @SuppressWarnings("unchecked")
   private void maybeIncreaseTopicReplicationFactor(KafkaZkClient kafkaZkClient,
                                                    AdminClient adminClient,
-                                                   TopicDescription topicDescription,
                                                    int replicationFactor,
-                                                   String topic) {
+                                                   Set<String> topics) {
     if (!ensureNoPartitionUnderPartitionReassignment(kafkaZkClient)) {
-      LOG.warn("There are ongoing partition reassignments, skip checking replication factor of topic {}.", topic);
+      LOG.warn("There are ongoing partition reassignments, skip checking replication factor of topic {}.", topics);
       return;
     }
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
@@ -289,40 +289,48 @@ public class KafkaSampleStore implements SampleStore {
 
     if (replicationFactor > brokersByRack.size()) {
       if (_skipSampleStoreTopicRackAwarenessCheck) {
-        LOG.warn("Target replication factor for topic " + topic + " is larger than number of racks in cluster, new replica maybe"
+        LOG.warn("Target replication factor for topics " + topics + " is larger than number of racks in cluster, new replica maybe"
                  + " added in none rack-aware way.");
       } else {
-        throw new RuntimeException("Unable to increase topic " + topic + " replica factor to " + replicationFactor
+        throw new RuntimeException("Unable to increase topics " + topics + " replica factor to " + replicationFactor
                                    + " since there are only " + brokersByRack.size() + " racks in the cluster.");
       }
     }
 
     Map<TopicPartition, Seq<Object>> newReplicaAssignment = new HashMap<>();
-    List<String> racks = new ArrayList<>(brokersByRack.keySet());
-    int [] cursors = new int[racks.size()];
-    int rackCursor = 0;
-    for (TopicPartitionInfo tp : topicDescription.partitions()) {
-      if (tp.replicas().size() < replicationFactor) {
-        List<Object> newAssignedReplica = new ArrayList<>();
-        Set<String> currentOccupiedRack = new HashSet<>();
-        // Make sure the current replicas are in new replica list.
-        tp.replicas().forEach(node -> {
-          newAssignedReplica.add(node.id());
-          currentOccupiedRack.add(rackByBroker.get(node.id()));
-        });
-        // Add new replica to partition in rack-aware(if possible), round-robin way.
-        while (newAssignedReplica.size() < replicationFactor) {
-          if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
-            String rack = racks.get(rackCursor);
-            int cursor = cursors[rackCursor];
-            newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
-            currentOccupiedRack.add(rack);
-            cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+    for (Map.Entry<String, KafkaFuture<TopicDescription>> entry : adminClient.describeTopics(topics).values().entrySet()) {
+      String topic = entry.getKey();
+      TopicDescription topicDescription;
+      try {
+        topicDescription = entry.getValue().get();
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(e.getMessage());
+      }
+      List<String> racks = new ArrayList<>(brokersByRack.keySet());
+      int[] cursors = new int[racks.size()];
+      int rackCursor = 0;
+      for (TopicPartitionInfo tp : topicDescription.partitions()) {
+        if (tp.replicas().size() < replicationFactor) {
+          List<Object> newAssignedReplica = new ArrayList<>();
+          Set<String> currentOccupiedRack = new HashSet<>();
+          // Make sure the current replicas are in new replica list.
+          tp.replicas().forEach(node -> {
+            newAssignedReplica.add(node.id());
+            currentOccupiedRack.add(rackByBroker.get(node.id()));
+          });
+          // Add new replica to partition in rack-aware(if possible), round-robin way.
+          while (newAssignedReplica.size() < replicationFactor) {
+            if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
+              String rack = racks.get(rackCursor);
+              int cursor = cursors[rackCursor];
+              newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
+              currentOccupiedRack.add(rack);
+              cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+              newReplicaAssignment.put(new TopicPartition(topic, tp.partition()),
+                                       JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
+            }
           }
-          rackCursor = (rackCursor + 1) % racks.size();
         }
-        newReplicaAssignment.put(new TopicPartition(topic, tp.partition()),
-                                 JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
       }
     }
     if (!newReplicaAssignment.isEmpty()) {
@@ -332,7 +340,8 @@ public class KafkaSampleStore implements SampleStore {
                                                                          .collect(Collectors.toList())).asScala().toSeq();
       kafkaZkClient.createPartitionReassignment((scala.collection.immutable.Map<TopicPartition, Seq<Object>>)
                                                 scala.collection.immutable.Map$.MODULE$.apply(newReplicaAssignmentSeq));
-      LOG.info("The replication factor of Kafka topic " + topic + " has increased to " + replicationFactor + ".");
+      LOG.info(String.format("The replication factor of topic partition %s is increased to %d.",
+                             newReplicaAssignment.keySet(), replicationFactor));
     }
   }
 
@@ -389,7 +398,6 @@ public class KafkaSampleStore implements SampleStore {
         } catch (InterruptedException | ExecutionException e) {
           throw new RuntimeException(e.getMessage());
         }
-        maybeIncreaseTopicReplicationFactor(kafkaZkClient, adminClient, topicDescription, replicationFactor, topic);
         maybeIncreaseTopicPartitionCount(kafkaZkClient, adminZkClient, topic, topicDescription, partitionCount);
       }  catch (RuntimeException re) {
         LOG.error("Skip updating topic " +  topic + "configuration due to failure:" + re.getMessage() + ".");
