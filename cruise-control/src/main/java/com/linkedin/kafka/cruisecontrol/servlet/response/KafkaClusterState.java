@@ -199,10 +199,10 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   private List<Object> getJsonPartitions(Set<PartitionInfo> partitions) {
     List<Object> partitionList = new ArrayList<>();
     for (PartitionInfo partitionInfo : partitions) {
-      Set<Integer> replicas =
-          Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toSet());
-      Set<Integer> inSyncReplicas =
-          Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::id).collect(Collectors.toSet());
+      List<Integer> replicas =
+          Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toList());
+      List<Integer> inSyncReplicas =
+          Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::id).collect(Collectors.toList());
       Set<Integer> outOfSyncReplicas = new HashSet<>(replicas);
       outOfSyncReplicas.removeAll(inSyncReplicas);
       Set<Integer> offlineReplicas =
@@ -286,10 +286,10 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
 
   private void writeKafkaPartitionState(StringBuilder sb, SortedSet<PartitionInfo> partitions, int topicNameLength) {
     for (PartitionInfo partitionInfo : partitions) {
-      Set<String> replicas =
-          Arrays.stream(partitionInfo.replicas()).map(Node::idString).collect(Collectors.toSet());
-      Set<String> inSyncReplicas =
-          Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::idString).collect(Collectors.toSet());
+      List<String> replicas =
+          Arrays.stream(partitionInfo.replicas()).map(Node::idString).collect(Collectors.toList());
+      List<String> inSyncReplicas =
+          Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::idString).collect(Collectors.toList());
       Set<String> outOfSyncReplicas = new HashSet<>(replicas);
       outOfSyncReplicas.removeAll(inSyncReplicas);
       Set<String> offlineReplicas =
