@@ -24,6 +24,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORM
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
+import static java.lang.Math.max;
 
 
 public class UserTaskState extends AbstractCruiseControlResponse {
@@ -130,20 +131,12 @@ public class UserTaskState extends AbstractCruiseControlResponse {
 
     for (List<UserTaskManager.UserTaskInfo> taskList : _userTasksByTaskState.values()) {
       for (UserTaskManager.UserTaskInfo userTaskInfo : taskList) {
-        userTaskIdLabelSize =
-            userTaskIdLabelSize < userTaskInfo.userTaskId().toString().length() ? userTaskInfo.userTaskId()
-                                                                                              .toString()
-                                                                                              .length()
-                                                                                : userTaskIdLabelSize;
-        clientAddressLabelSize =
-            clientAddressLabelSize < userTaskInfo.clientIdentity().length() ? userTaskInfo.clientIdentity().length()
-                                                                            : clientAddressLabelSize;
+        userTaskIdLabelSize = max(userTaskIdLabelSize, userTaskInfo.userTaskId().toString().length());
+        clientAddressLabelSize = max(clientAddressLabelSize, userTaskInfo.clientIdentity().length());
         String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATE_FORMAT, TIME_ZONE);
-        startMsLabelSize = startMsLabelSize < dateFormatted.length() ? dateFormatted.length() : startMsLabelSize;
-        requestURLLabelSize =
-            requestURLLabelSize < userTaskInfo.requestWithParams().length() ? userTaskInfo.requestWithParams()
-                                                                                          .length()
-                                                                            : requestURLLabelSize;
+        startMsLabelSize = max(startMsLabelSize, dateFormatted.length());
+        statusLabelSize = max(statusLabelSize, userTaskInfo.state().toString().length());
+        requestURLLabelSize = max(requestURLLabelSize, userTaskInfo.requestWithParams().length());
       }
     }
 
