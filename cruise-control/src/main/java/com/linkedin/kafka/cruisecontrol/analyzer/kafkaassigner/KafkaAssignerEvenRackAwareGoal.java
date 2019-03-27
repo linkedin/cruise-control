@@ -144,16 +144,6 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   }
 
   /**
-   * @deprecated
-   * Please use {@link #optimize(ClusterModel, Set, OptimizationOptions)} instead.
-   */
-  @Override
-  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
-      throws KafkaCruiseControlException {
-    return optimize(clusterModel, optimizedGoals, new OptimizationOptions(excludedTopics));
-  }
-
-  /**
    * Apply the move to the first eligible destination broker selected from _aliveBrokerReplicaCountByPosition for the
    * relevant replica position.
    *

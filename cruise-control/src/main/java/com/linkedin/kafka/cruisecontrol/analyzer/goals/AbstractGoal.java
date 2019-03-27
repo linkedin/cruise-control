@@ -63,16 +63,6 @@ public abstract class AbstractGoal implements Goal {
     _minMonitoredPartitionPercentage = parsedConfig.getDouble(KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
   }
 
-  /**
-   * @deprecated
-   * Please use {@link #optimize(ClusterModel, Set, OptimizationOptions)} instead.
-   */
-  @Override
-  public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, Set<String> excludedTopics)
-      throws OptimizationFailureException {
-    return optimize(clusterModel, optimizedGoals, new OptimizationOptions(excludedTopics));
-  }
-
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
