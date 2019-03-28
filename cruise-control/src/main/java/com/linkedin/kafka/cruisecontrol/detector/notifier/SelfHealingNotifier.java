@@ -27,7 +27,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateStr
  * <li>The broker failures are handled in the following way:
  *   <ol>
  *     <li>If a broker disappears from a cluster at timestamp <b>T</b>, the detector will start down counting.</li>
- *     <li>If the broker did not re-join the cluster within broker.failure.detection.threshold.ms since <b>T</b>,
+ *     <li>If the broker did not re-join the cluster within broker.failure.alert.threshold.ms since <b>T</b>,
  *      the broker will be defined as dead and an alert will be triggered.</li>
  *     <li>If the broker did not re-join the cluster within broker.failure.self.healing.threshold.ms since <b>T</b>, an auto
  *      remediation will be performed.</li>
