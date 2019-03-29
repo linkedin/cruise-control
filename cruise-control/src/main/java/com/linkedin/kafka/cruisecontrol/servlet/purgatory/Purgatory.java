@@ -12,7 +12,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParamete
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PurgatoryOrReviewResult;
 import java.io.Closeable;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -80,8 +79,12 @@ public class Purgatory implements Closeable {
     RequestInfo requestInfo = new RequestInfo(request, parameters);
     _requestInfoById.put(_requestId, requestInfo);
 
-    PurgatoryOrReviewResult result = new PurgatoryOrReviewResult(Collections.singletonMap(_requestId, requestInfo),
-                                                                 Collections.singleton(_requestId));
+    Map<Integer, RequestInfo> requestInfoById = new HashMap<>();
+    requestInfoById.put(_requestId, requestInfo);
+    Set<Integer> filteredRequestIds = new HashSet<>();
+    filteredRequestIds.add(_requestId);
+
+    PurgatoryOrReviewResult result = new PurgatoryOrReviewResult(requestInfoById, filteredRequestIds);
     _requestId++;
     return result;
   }
