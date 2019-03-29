@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.linkedin.cruisecontrol.common.config.ConfigException;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
@@ -16,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameter
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewBoardParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
@@ -30,7 +32,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.Purgatory;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.RequestInfo;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
-import com.linkedin.kafka.cruisecontrol.servlet.response.PurgatoryOrReviewResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.ReviewResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
 import java.io.IOException;
 import java.util.HashMap;
@@ -125,6 +127,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * 6. Get the state of Cruise Control (See {@link CruiseControlStateParameters}).
    * 7. Get the Kafka cluster state (See {@link KafkaClusterStateParameters}).
    * 8. Get active user tasks (See {@link UserTasksParameters}).
+   * 9. Get reviews in the review board (See {@link ReviewBoardParameters}).
    * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
    * </pre>
    */
@@ -163,6 +166,13 @@ public class KafkaCruiseControlServlet extends HttpServlet {
           case USER_TASKS:
             syncRequest(() -> new UserTasksParameters(request), this::userTaskState, request, response, endPoint);
             break;
+          case REVIEW_BOARD:
+            if (!_twoStepVerification) {
+              throw new ConfigException(String.format("Please enable '%s' config to use %s endpoint.",
+                                                      KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG, endPoint));
+            }
+            syncRequest(() -> new ReviewBoardParameters(request), this::handleReviewBoardRequest, request, response, endPoint);
+            break;
           default:
             throw new UserRequestException("Invalid URL for GET");
         }
@@ -170,6 +180,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } catch (UserRequestException ure) {
       String errorMessage = handleUserRequestException(ure, request, response);
       LOG.error(errorMessage, ure);
+    } catch (ConfigException ce) {
+      String errorMessage = handleConfigException(ce, request, response);
+      LOG.error(errorMessage, ce);
     } catch (Exception e) {
       String errorMessage = handleException(e, request, response);
       LOG.error(errorMessage, e);
@@ -209,9 +222,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } else {
       P parameters = paramSupplier.get();
       if (!parameters.parseParameters(response)) {
-        // Add request to purgatory and return PurgatoryOrReviewResult.
-        PurgatoryOrReviewResult purgatoryOrReviewResult = _purgatory.addRequest(request, parameters);
-        purgatoryOrReviewResult.writeSuccessResponse(parameters, response);
+        // Add request to purgatory and return ReviewResult.
+        ReviewResult reviewResult = _purgatory.addRequest(request, parameters);
+        reviewResult.writeSuccessResponse(parameters, response);
         LOG.info("Added request {} (parameters: {}) to purgatory.", request.getPathInfo(), request.getParameterMap());
       }
 
@@ -304,6 +317,10 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             }
             break;
           case REVIEW:
+            if (!_twoStepVerification) {
+              throw new ConfigException(String.format("Please enable '%s' config to use %s endpoint.",
+                                                      KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG, endPoint));
+            }
             syncRequest(() -> new ReviewParameters(request), this::handleReviewRequest, request, response, endPoint);
             break;
           default:
@@ -313,6 +330,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     } catch (UserRequestException ure) {
       String errorMessage = handleUserRequestException(ure, request, response);
       LOG.error(errorMessage, ure);
+    } catch (ConfigException ce) {
+      String errorMessage = handleConfigException(ce, request, response);
+      LOG.error(errorMessage, ce);
     } catch (Exception e) {
       String errorMessage = handleException(e, request, response);
       LOG.error(errorMessage, e);
@@ -335,8 +355,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return new UserTaskState(_userTaskManager);
   }
 
-  private synchronized PurgatoryOrReviewResult handleReviewRequest(ReviewParameters parameters) {
+  private synchronized ReviewResult handleReviewRequest(ReviewParameters parameters) {
     return _purgatory.applyReview(parameters.reviewRequests(), parameters.reason());
+  }
+
+  private ReviewResult handleReviewBoardRequest(ReviewBoardParameters parameters) {
+    return _purgatory.reviewBoard(parameters.reviewIds());
   }
 
   private void getClusterLoad(HttpServletRequest request, HttpServletResponse response)

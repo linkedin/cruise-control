@@ -20,7 +20,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 
 
-public class PurgatoryOrReviewResult extends AbstractCruiseControlResponse {
+public class ReviewResult extends AbstractCruiseControlResponse {
   private static final String ID = "Id";
   private static final String SUBMITTER_ADDRESS = "SubmitterAddress";
   private static final String SUBMISSION_TIME_MS = "SubmissionTimeMs";
@@ -33,9 +33,9 @@ public class PurgatoryOrReviewResult extends AbstractCruiseControlResponse {
 
   /**
    * @param requestInfoById Request info by Id.
-   * @param filteredRequestIds Requests for which the result is requested, empty set implies all requests in purgatory
+   * @param filteredRequestIds Requests for which the result is requested, empty set implies all requests in review board
    */
-  public PurgatoryOrReviewResult(Map<Integer, RequestInfo> requestInfoById, Set<Integer> filteredRequestIds) {
+  public ReviewResult(Map<Integer, RequestInfo> requestInfoById, Set<Integer> filteredRequestIds) {
     _requestInfoById = requestInfoById;
     _filteredRequestIds = filteredRequestIds.isEmpty() ? _requestInfoById.keySet() : filteredRequestIds;
   }
