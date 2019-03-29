@@ -4,9 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
-import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
-
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.util.Collection;
 import java.util.HashMap;
@@ -18,7 +16,9 @@ import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
 
-
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
 /**
  * The class that helps track the execution status for the balancing.
  * It does the following things:
@@ -41,32 +41,7 @@ public class ExecutionTaskManager {
   private Integer _requestedPartitionMovementConcurrency;
   private Integer _requestedLeadershipMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
-  private final Time _time;
-  private volatile long _inExecutionDataToMove;
   private boolean _isKafkaAssignerMode;
-
-  private static final String REPLICA_ACTION = "replica-action";
-  private static final String LEADERSHIP_ACTION = "leadership-action";
-  private static final String IN_PROGRESS = "in-progress";
-  private static final String PENDING = "pending";
-  private static final String ABORTING = "aborting";
-  private static final String ABORTED = "aborted";
-  private static final String DEAD = "dead";
-  private static final String ONGOING_EXECUTION = "ongoing-execution";
-  private static final String KAFKA_ASSIGNER_MODE = "kafka_assigner";
-
-  private static final String GAUGE_REPLICA_ACTION_IN_PROGRESS = REPLICA_ACTION + "-" + IN_PROGRESS;
-  private static final String GAUGE_LEADERSHIP_ACTION_IN_PROGRESS = LEADERSHIP_ACTION + "-" + IN_PROGRESS;
-  private static final String GAUGE_REPLICA_ACTION_PENDING = REPLICA_ACTION + "-" + PENDING;
-  private static final String GAUGE_LEADERSHIP_ACTION_PENDING = LEADERSHIP_ACTION + "-" + PENDING;
-  private static final String GAUGE_REPLICA_ACTION_ABORTING = REPLICA_ACTION + "-" + ABORTING;
-  private static final String GAUGE_LEADERSHIP_ACTION_ABORTING = LEADERSHIP_ACTION + "-" + ABORTING;
-  private static final String GAUGE_REPLICA_ACTION_ABORTED = REPLICA_ACTION + "-" + ABORTED;
-  private static final String GAUGE_LEADERSHIP_ACTION_ABORTED = LEADERSHIP_ACTION + "-" + ABORTED;
-  private static final String GAUGE_REPLICA_ACTION_DEAD = REPLICA_ACTION + "-" + DEAD;
-  private static final String GAUGE_LEADERSHIP_ACTION_DEAD = LEADERSHIP_ACTION + "-" + DEAD;
-  private static final String GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE = ONGOING_EXECUTION + "-"  + KAFKA_ASSIGNER_MODE;
-  private static final String GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE = ONGOING_EXECUTION + "-non-"  + KAFKA_ASSIGNER_MODE;
 
   /**
    * The constructor of The Execution task manager.
@@ -86,19 +61,14 @@ public class ExecutionTaskManager {
                               Time time) {
     _inProgressReplicaMovementsByBrokerId = new HashMap<>();
     _inProgressPartitions = new HashSet<>();
-    _executionTaskTracker = new ExecutionTaskTracker();
+    _executionTaskTracker = new ExecutionTaskTracker(dropwizardMetricRegistry, time);
     _executionTaskPlanner = new ExecutionTaskPlanner(replicaMovementStrategies);
     _defaultPartitionMovementConcurrency = defaultPartitionMovementConcurrency;
     _defaultLeadershipMovementConcurrency = defaultLeadershipMovementConcurrency;
     _brokersToSkipConcurrencyCheck = new HashSet<>();
-    _inExecutionDataToMove = 0L;
-    _time = time;
     _isKafkaAssignerMode = false;
     _requestedPartitionMovementConcurrency = null;
     _requestedLeadershipMovementConcurrency = null;
-
-    // Register gauge sensors.
-    registerGaugeSensors(dropwizardMetricRegistry);
   }
 
   /**
@@ -132,53 +102,29 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Register gauge sensors.
-   */
-  private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
-    String metricName = "Executor";
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_ACTION_IN_PROGRESS),
-                                      (Gauge<Integer>) _executionTaskTracker::numInProgressReplicaAction);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_ACTION_IN_PROGRESS),
-                                      (Gauge<Integer>) _executionTaskTracker::numInProgressLeadershipAction);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_ACTION_PENDING),
-                                      (Gauge<Integer>) _executionTaskTracker::numPendingReplicaAction);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_ACTION_PENDING),
-                                      (Gauge<Integer>) _executionTaskTracker::numPendingLeadershipAction);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_ACTION_ABORTING),
-                                      (Gauge<Integer>) _executionTaskTracker::numAbortingReplicaAction);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_ACTION_ABORTING),
-                                      (Gauge<Integer>) _executionTaskTracker::numAbortingLeadershipAction);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_ACTION_ABORTED),
-                                      (Gauge<Integer>) _executionTaskTracker::numAbortedReplicaAction);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_ACTION_ABORTED),
-                                      (Gauge<Integer>) _executionTaskTracker::numAbortedLeadershipAction);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_REPLICA_ACTION_DEAD),
-                                      (Gauge<Integer>) _executionTaskTracker::numDeadReplicaAction);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_LEADERSHIP_ACTION_DEAD),
-                                      (Gauge<Integer>) _executionTaskTracker::numDeadLeadershipAction);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE),
-                                      (Gauge<Integer>) _executionTaskTracker::isOngoingExecutionInKafkaAssignerMode);
-    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE),
-                                      (Gauge<Integer>) _executionTaskTracker::isOngoingExecutionInNonKafkaAssignerMode);
-  }
-
-  /**
    * Returns a list of execution proposal that moves the partitions.
    */
   public synchronized List<ExecutionTask> getReplicaMovementTasks() {
-    Map<Integer, Integer> readyBrokers = new HashMap<>();
-    int partitionMovementConcurrency = partitionMovementConcurrency();
-    for (Map.Entry<Integer, Integer> entry : _inProgressReplicaMovementsByBrokerId.entrySet()) {
+    Map<Integer, Integer> readyBrokers = getReadyBrokers(_inProgressReplicaMovementsByBrokerId,
+                                                         partitionMovementConcurrency());
+    return _executionTaskPlanner.getReplicaMovementTasks(readyBrokers, _inProgressPartitions);
+
+  }
+
+  private Map<Integer, Integer> getReadyBrokers(Map<Integer, Integer> inProgressReplicaMovementsByBrokerId,
+                                                int movementConcurrency) {
+    Map<Integer, Integer> readyBrokers = new HashMap<>(inProgressReplicaMovementsByBrokerId.size());
+    for (Map.Entry<Integer, Integer> entry : inProgressReplicaMovementsByBrokerId.entrySet()) {
       // We skip the concurrency level check if caller requested so.
       // This is useful when we detected a broker failure and want to move all its partitions to the
       // rest of the brokers.
       if (_brokersToSkipConcurrencyCheck.contains(entry.getKey())) {
         readyBrokers.put(entry.getKey(), Integer.MAX_VALUE);
       } else {
-        readyBrokers.put(entry.getKey(), Math.max(0, partitionMovementConcurrency - entry.getValue()));
+        readyBrokers.put(entry.getKey(), Math.max(0, movementConcurrency - entry.getValue()));
       }
     }
-    return _executionTaskPlanner.getReplicaMovementTasks(readyBrokers, _inProgressPartitions);
+    return readyBrokers;
   }
 
   /**
@@ -186,93 +132,6 @@ public class ExecutionTaskManager {
    */
   public synchronized List<ExecutionTask> getLeadershipMovementTasks() {
     return _executionTaskPlanner.getLeadershipMovementTasks(leadershipMovementConcurrency());
-  }
-
-  /**
-   * Returns the remaining partition movement tasks.
-   */
-  public synchronized Set<ExecutionTask> remainingPartitionMovements() {
-    return _executionTaskPlanner.remainingReplicaMovements();
-  }
-
-  /**
-   * Returns the remaining leadership movement tasks;
-   */
-  public synchronized Collection<ExecutionTask> remainingLeadershipMovements() {
-    return _executionTaskPlanner.remainingLeadershipMovements();
-  }
-
-  /**
-   * Returns the remaining data to move in MB.
-   */
-  public synchronized long remainingDataToMoveInMB() {
-    return _executionTaskPlanner.remainingDataToMoveInMB();
-  }
-
-  /**
-   * Returns the in execution data to move in MB -- i.e. data to move for in progress or aborting tasks.
-   */
-  public synchronized long inExecutionDataToMoveInMB() {
-    return _inExecutionDataToMove;
-  }
-
-  /**
-   * Get all the tasks that are not completed yet.
-   * The uncompleted tasks include tasks in IN_PROGRESS and ABORTING state.
-   */
-  public synchronized Set<ExecutionTask> inExecutionTasks() {
-    Set<ExecutionTask> inExecution = new HashSet<>();
-    inExecution.addAll(_executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS));
-    inExecution.addAll(_executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING));
-    return inExecution;
-  }
-
-  /**
-   * Get all the tasks that are not completed yet.
-   * The uncompleted tasks include tasks in IN_PROGRESS and ABORTING state.
-   * @param type the task type to get.
-   */
-  public synchronized Set<ExecutionTask> inExecutionTasks(ExecutionTask.TaskType type) {
-    Set<ExecutionTask> inExecution = new HashSet<>();
-    _executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS).forEach(t -> {
-      if (t.type() == type) {
-        inExecution.add(t);
-      }
-    });
-    _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING).forEach(t -> {
-      if (t.type() == type) {
-        inExecution.add(t);
-      }
-    });
-    return inExecution;
-  }
-
-  /**
-   * Get all the in-progress execution tasks.
-   */
-  public synchronized Set<ExecutionTask> inProgressTasks() {
-    return _executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS);
-  }
-
-  /**
-   * @return the aborting tasks.
-   */
-  public synchronized Set<ExecutionTask> abortingTasks() {
-    return _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING);
-  }
-
-  /**
-   * @return the aborted tasks.
-   */
-  public synchronized Set<ExecutionTask> abortedTasks() {
-    return _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTED);
-  }
-
-  /**
-   * @return the dead tasks.
-   */
-  public synchronized Set<ExecutionTask> deadTasks() {
-    return _executionTaskTracker.tasksInState(ExecutionTask.State.DEAD);
   }
 
   /**
@@ -300,10 +159,8 @@ public class ExecutionTaskManager {
     _executionTaskTracker.setExecutionMode(_isKafkaAssignerMode);
 
     // Add pending proposals to indicate the phase before they become an executable task.
-    _executionTaskTracker.taskForReplicaAction(ExecutionTask.State.PENDING)
-                         .addAll(_executionTaskPlanner.remainingReplicaMovements());
-    _executionTaskTracker.taskForLeaderAction(ExecutionTask.State.PENDING)
-                         .addAll(_executionTaskPlanner.remainingLeadershipMovements());
+    _executionTaskTracker.initializeTask(_executionTaskPlanner.remainingReplicaMovements(), TaskType.REPLICA_ACTION);
+    _executionTaskTracker.initializeTask(_executionTaskPlanner.remainingLeadershipMovements(), TaskType.LEADER_ACTION);
     _brokersToSkipConcurrencyCheck.clear();
     if (brokersToSkipConcurrencyCheck != null) {
       _brokersToSkipConcurrencyCheck.addAll(brokersToSkipConcurrencyCheck);
@@ -325,18 +182,14 @@ public class ExecutionTaskManager {
   public synchronized void markTasksInProgress(List<ExecutionTask> tasks) {
     if (!tasks.isEmpty()) {
       for (ExecutionTask task : tasks) {
-        // Add task to the relevant task in progress.
-        markTaskState(task, ExecutionTask.State.IN_PROGRESS);
-        _inProgressPartitions.add(task.proposal().topicPartition());
-        if (task.type() == ExecutionTask.TaskType.REPLICA_ACTION) {
+        _executionTaskTracker.markTaskState(task, State.IN_PROGRESS);
+        if (task.type() == TaskType.REPLICA_ACTION) {
+          _inProgressPartitions.add(task.proposal().topicPartition());
           int oldLeader = task.proposal().oldLeader();
-          // Negative oldLeader means new partition creation.
-          if (oldLeader >= 0) {
-            _inProgressReplicaMovementsByBrokerId.put(oldLeader, _inProgressReplicaMovementsByBrokerId.get(oldLeader) + 1);
-          }
-          for (int broker : task.proposal().replicasToAdd()) {
-            _inProgressReplicaMovementsByBrokerId.put(broker, _inProgressReplicaMovementsByBrokerId.get(broker) + 1);
-          }
+          _inProgressReplicaMovementsByBrokerId.put(oldLeader, _inProgressReplicaMovementsByBrokerId.get(oldLeader) + 1);
+          task.proposal()
+              .replicasToAdd()
+              .forEach(r -> _inProgressReplicaMovementsByBrokerId.put(r, _inProgressReplicaMovementsByBrokerId.get(r) + 1));
         }
       }
     }
@@ -347,11 +200,11 @@ public class ExecutionTaskManager {
    * Aborting execution will yield Aborted completion.
    */
   public synchronized void markTaskDone(ExecutionTask task) {
-    if (task.state() == ExecutionTask.State.IN_PROGRESS) {
-      markTaskState(task, ExecutionTask.State.COMPLETED);
+    if (task.state() == State.IN_PROGRESS) {
+      _executionTaskTracker.markTaskState(task, State.COMPLETED);
       completeTask(task);
-    } else if (task.state() == ExecutionTask.State.ABORTING) {
-      markTaskState(task, ExecutionTask.State.ABORTED);
+    } else if (task.state() == State.ABORTING) {
+      _executionTaskTracker.markTaskState(task, State.ABORTED);
       completeTask(task);
     }
   }
@@ -360,8 +213,8 @@ public class ExecutionTaskManager {
    * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is possible.
    */
   public synchronized void markTaskAborting(ExecutionTask task) {
-    if (task.state() != ExecutionTask.State.ABORTING) {
-      markTaskState(task, ExecutionTask.State.ABORTING);
+    if (task.state() == State.IN_PROGRESS) {
+      _executionTaskTracker.markTaskState(task, State.ABORTING);
     }
   }
 
@@ -369,51 +222,9 @@ public class ExecutionTaskManager {
    * Mark an in-progress task as aborting (1) if an error is encountered and (2) the rollback is not possible.
    */
   public synchronized void markTaskDead(ExecutionTask task) {
-    if (task.state() != ExecutionTask.State.DEAD) {
-      markTaskState(task, ExecutionTask.State.DEAD);
+    if (task.state() != State.DEAD) {
+      _executionTaskTracker.markTaskState(task, State.DEAD);
       completeTask(task);
-    }
-  }
-
-  private void markTaskState(ExecutionTask task, ExecutionTask.State targetState) {
-    if (task.canTransferToState(targetState)) {
-      ExecutionTask.State currentState = task.state();
-      if (task.type() == ExecutionTask.TaskType.REPLICA_ACTION) {
-        _executionTaskTracker.taskForReplicaAction(currentState).remove(task);
-        _executionTaskTracker.taskForReplicaAction(targetState).add(task);
-      } else {
-        _executionTaskTracker.taskForLeaderAction(currentState).remove(task);
-        _executionTaskTracker.taskForLeaderAction(targetState).add(task);
-      }
-
-      if (currentState == ExecutionTask.State.IN_PROGRESS || currentState == ExecutionTask.State.ABORTING) {
-        _inExecutionDataToMove -= task.proposal().dataToMoveInMB();
-      }
-
-      switch (targetState) {
-        case IN_PROGRESS:
-          task.inProgress(_time.milliseconds());
-          _inExecutionDataToMove += task.proposal().dataToMoveInMB();
-          break;
-        case ABORTING:
-          task.abort();
-          _inExecutionDataToMove += task.proposal().dataToMoveInMB();
-          break;
-        case DEAD:
-          task.kill(_time.milliseconds());
-          break;
-        case ABORTED:
-          task.aborted(_time.milliseconds());
-          break;
-        case COMPLETED:
-          task.completed(_time.milliseconds());
-          break;
-        default:
-          throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state");
-      }
-    } else {
-      throw new IllegalStateException("Cannot mark a task in " + task.state() + " to " + targetState + " state. The "
-                                          + "valid target states are " + task.validTargetState());
     }
   }
 
@@ -421,16 +232,50 @@ public class ExecutionTaskManager {
    * Mark a given tasks as completed.
    */
   private void completeTask(ExecutionTask task) {
-    if (task.type() == ExecutionTask.TaskType.REPLICA_ACTION) {
-      int oldLeader = task.proposal().oldLeader();
-      // When old leader is negative the task is a partition creation. (not supported yet)
-      if (oldLeader >= 0) {
+    if (task.type() ==  TaskType.REPLICA_ACTION) {
+        _inProgressPartitions.remove(task.proposal().topicPartition());
+        int oldLeader = task.proposal().oldLeader();
         _inProgressReplicaMovementsByBrokerId.put(oldLeader, _inProgressReplicaMovementsByBrokerId.get(oldLeader) - 1);
-      }
-      for (int broker : task.proposal().replicasToAdd()) {
-        _inProgressReplicaMovementsByBrokerId.put(broker, _inProgressReplicaMovementsByBrokerId.get(broker) - 1);
-      }
+        task.proposal()
+            .replicasToAdd()
+            .forEach(r -> _inProgressReplicaMovementsByBrokerId.put(r, _inProgressReplicaMovementsByBrokerId.get(r) - 1));
     }
+  }
+
+  public synchronized int numRemainingPartitionMovements() {
+    return _executionTaskTracker.numRemainingPartitionMovements();
+  }
+
+  public synchronized long remainingDataToMoveInMB() {
+    return _executionTaskTracker.remainingDataToMoveInMB();
+  }
+
+  public synchronized int numFinishedPartitionMovements() {
+    return _executionTaskTracker.numFinishedPartitionMovements();
+  }
+
+  public synchronized long finishedDataMovementInMB() {
+    return _executionTaskTracker.finishedDataMovementInMB();
+  }
+
+  public synchronized Set<ExecutionTask> inExecutionTasks() {
+    return inExecutionTasks(TaskType.cachedValues());
+  }
+
+  public synchronized Set<ExecutionTask> inExecutionTasks(Collection<TaskType> types) {
+    return _executionTaskTracker.inExecutionTasks(types);
+  }
+
+  public synchronized long inExecutionDataToMoveInMB() {
+    return _executionTaskTracker.inExecutionDataMovementInMB();
+  }
+
+  public synchronized int numRemainingLeadershipMovements() {
+    return _executionTaskTracker.numRemainingLeadershipMovements();
+  }
+
+  public synchronized int numFinishedLeadershipMovements() {
+    return _executionTaskTracker.numFinishedLeadershipMovements();
   }
 
   public synchronized void clear() {
@@ -441,88 +286,8 @@ public class ExecutionTaskManager {
     _executionTaskTracker.clear();
   }
 
-  public synchronized ExecutionTasksSummary getExecutionTasksSummary() {
-    return new ExecutionTasksSummary(_executionTaskPlanner.remainingReplicaMovements(),
-                              _executionTaskPlanner.remainingLeadershipMovements(),
-                              _executionTaskTracker.tasksInState(ExecutionTask.State.IN_PROGRESS),
-                              _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTING),
-                              _executionTaskTracker.tasksInState(ExecutionTask.State.ABORTED),
-                              _executionTaskTracker.tasksInState(ExecutionTask.State.DEAD),
-                              _executionTaskPlanner.remainingDataToMoveInMB());
-  }
-
-  static class ExecutionTasksSummary {
-    private final Set<ExecutionTask> _remainingPartitionMovements;
-    private final Collection<ExecutionTask> _remainingLeadershipMovements;
-    private final Set<ExecutionTask> _inProgressTasks;
-    private final Set<ExecutionTask> _abortingTasks;
-    private final Set<ExecutionTask> _abortedTasks;
-    private final Set<ExecutionTask> _deadTasks;
-    private final long _remainingDataToMoveInMB;
-
-    ExecutionTasksSummary(Set<ExecutionTask> remainingPartitionMovements,
-                          Collection<ExecutionTask> remainingLeadershipMovements,
-                          Set<ExecutionTask> inProgressTasks,
-                          Set<ExecutionTask> abortingTasks,
-                          Set<ExecutionTask> abortedTasks,
-                          Set<ExecutionTask> deadTasks,
-                          long remainingDataToMoveInMB) {
-      _remainingPartitionMovements = remainingPartitionMovements;
-      _remainingLeadershipMovements = remainingLeadershipMovements;
-      _inProgressTasks = inProgressTasks;
-      _abortingTasks = abortingTasks;
-      _abortedTasks = abortedTasks;
-      _deadTasks = deadTasks;
-      _remainingDataToMoveInMB = remainingDataToMoveInMB;
-    }
-
-    /**
-     * Returns the remaining partition movement tasks.
-     */
-    public Set<ExecutionTask> remainingPartitionMovements() {
-      return _remainingPartitionMovements;
-    }
-
-    /**
-     * Returns the remaining leadership movement tasks.
-     */
-    public Collection<ExecutionTask> remainingLeadershipMovements() {
-      return _remainingLeadershipMovements;
-    }
-
-    /**
-     * Get all the in-progress execution tasks.
-     */
-    public Set<ExecutionTask> inProgressTasks() {
-      return _inProgressTasks;
-    }
-
-    /**
-     * @return the aborting tasks.
-     */
-    public Set<ExecutionTask> abortingTasks() {
-      return _abortingTasks;
-    }
-
-    /**
-     * @return the aborted tasks.
-     */
-    public Set<ExecutionTask> abortedTasks() {
-      return _abortedTasks;
-    }
-
-    /**
-     * @return the dead tasks.
-     */
-    public Set<ExecutionTask> deadTasks() {
-      return _deadTasks;
-    }
-
-    /**
-     * Returns the remaining data to move in MB.
-     */
-    public long remainingDataToMoveInMB() {
-      return _remainingDataToMoveInMB;
-    }
+  public synchronized ExecutionTasksSummary getExecutionTasksSummary(List<TaskType> taskTypesToGetSnapshot,
+                                                                     boolean inProgressOnly) {
+    return _executionTaskTracker.getExecutionTasksSummary(taskTypesToGetSnapshot, inProgressOnly);
   }
 }

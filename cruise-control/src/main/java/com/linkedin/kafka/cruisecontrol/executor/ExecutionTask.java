@@ -210,7 +210,13 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   }
 
   public enum TaskType {
-    REPLICA_ACTION, LEADER_ACTION
+    REPLICA_ACTION, LEADER_ACTION;
+
+    private static final List<TaskType> CACHED_VALUES = Arrays.asList(REPLICA_ACTION, LEADER_ACTION);
+
+    public static List<TaskType> cachedValues() {
+      return CACHED_VALUES;
+    }
   }
 
   public enum State {

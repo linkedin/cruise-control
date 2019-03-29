@@ -19,11 +19,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import com.google.gson.Gson;
+import java.util.Set;
 import java.util.StringJoiner;
 import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
 
 
 public class CruiseControlState extends AbstractCruiseControlResponse {
@@ -118,35 +121,33 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
 
   private void writeVerboseExecutorState(StringBuilder sb) {
     if (_executorState != null) {
-      if (_executorState.state() == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS
-          || _executorState.state() == ExecutorState.State.STOPPING_EXECUTION) {
-        sb.append(String.format("%n%nIn progress %s:%n", PARTITION_MOVEMENTS));
-        for (ExecutionTask task : _executorState.inProgressPartitionMovements()) {
+      Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot = _executorState.executionTasksSummary().taskSnapshot();
+      taskSnapshot.forEach((type, taskMap) -> {
+        String taskTypeString = type == TaskType.REPLICA_ACTION ? PARTITION_MOVEMENTS :
+                                                                  LEADERSHIP_MOVEMENTS;
+        sb.append(String.format("%n%n%s %s:%n",
+                                _executorState.state() == ExecutorState.State.STOPPING_EXECUTION ? "Cancelled" : "Pending",
+                                taskTypeString));
+        for (ExecutionTask task :  taskMap.get(State.PENDING)) {
           sb.append(String.format("%s%n", task));
         }
-        sb.append(String.format("%n%nAborting %s:%n", PARTITION_MOVEMENTS));
-        for (ExecutionTask task : _executorState.abortingPartitionMovements()) {
+        sb.append(String.format("%n%nIn progress %s:%n", taskTypeString));
+        for (ExecutionTask task : taskMap.get(State.IN_PROGRESS)) {
           sb.append(String.format("%s%n", task));
         }
-        sb.append(String.format("%n%nAborted %s:%n", PARTITION_MOVEMENTS));
-        for (ExecutionTask task : _executorState.abortedPartitionMovements()) {
+        sb.append(String.format("%n%nAborting %s:%n", taskTypeString));
+        for (ExecutionTask task :  taskMap.get(State.ABORTING)) {
           sb.append(String.format("%s%n", task));
         }
-        sb.append(String.format("%n%nDead %s:%n", PARTITION_MOVEMENTS));
-        for (ExecutionTask task : _executorState.deadPartitionMovements()) {
+        sb.append(String.format("%n%nAborted %s:%n", taskTypeString));
+        for (ExecutionTask task :  taskMap.get(State.ABORTED)) {
           sb.append(String.format("%s%n", task));
         }
-        sb.append(String.format("%n%n%s %s:%n", _executorState.state() == ExecutorState.State.STOPPING_EXECUTION
-                                                ? "Cancelled" : "Pending", PARTITION_MOVEMENTS));
-        for (ExecutionTask task : _executorState.pendingPartitionMovements()) {
+        sb.append(String.format("%n%nDead %s:%n", taskTypeString));
+        for (ExecutionTask task :  taskMap.get(State.DEAD)) {
           sb.append(String.format("%s%n", task));
         }
-      } else if (_executorState.state() == ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS) {
-        sb.append(String.format("%n%nPending %s:%n", LEADERSHIP_MOVEMENTS));
-        for (ExecutionTask task : _executorState.pendingLeadershipMovements()) {
-          sb.append(String.format("%s%n", task));
-        }
-      }
+      });
     }
   }
 

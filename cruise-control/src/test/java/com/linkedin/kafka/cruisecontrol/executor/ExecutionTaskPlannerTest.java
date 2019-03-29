@@ -218,11 +218,9 @@ public class ExecutionTaskPlannerTest {
                                           Collections.<String>emptySet());
 
     planner.addExecutionProposals(proposals, expectedCluster, null);
-    assertEquals(4, planner.remainingDataToMoveInMB());
     assertEquals(2, planner.remainingLeadershipMovements().size());
     assertEquals(2, planner.remainingReplicaMovements().size());
     planner.clear();
-    assertEquals(0, planner.remainingDataToMoveInMB());
     assertEquals(0, planner.remainingLeadershipMovements().size());
     assertEquals(0, planner.remainingReplicaMovements().size());
   }

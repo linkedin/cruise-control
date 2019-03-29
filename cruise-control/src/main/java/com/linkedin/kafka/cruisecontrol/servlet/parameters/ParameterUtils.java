@@ -355,7 +355,7 @@ public class ParameterUtils {
   }
 
   private static boolean excludeBrokers(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
-    boolean isKafkaAssignerMode = getMode(request);
+    boolean isKafkaAssignerMode = isKafkaAssignerMode(request);
     boolean excludeBrokers = getBooleanParam(request, parameter, defaultIfMissing);
     if (isKafkaAssignerMode && excludeBrokers) {
       throw new UserRequestException("Kafka assigner mode does not support excluding brokers.");
@@ -403,7 +403,7 @@ public class ParameterUtils {
     return getBooleanParam(request, CLEAR_METRICS_PARAM, true);
   }
 
-  private static boolean getMode(HttpServletRequest request) {
+  private static boolean isKafkaAssignerMode(HttpServletRequest request) {
     return getBooleanParam(request, KAFKA_ASSIGNER_MODE_PARAM, false);
   }
 
@@ -601,7 +601,7 @@ public class ParameterUtils {
   }
 
   static List<String> getGoals(HttpServletRequest request) throws UnsupportedEncodingException {
-    boolean isKafkaAssignerMode = getMode(request);
+    boolean isKafkaAssignerMode = isKafkaAssignerMode(request);
     List<String> goals = getListParam(request, GOALS_PARAM);
 
     // KafkaAssigner mode is assumed to use two KafkaAssigner goals, if client specifies goals in request, throw exception.
@@ -804,7 +804,7 @@ public class ParameterUtils {
    * Skip hard goal check in kafka_assigner mode,
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
-    return getMode(request) || getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
+    return isKafkaAssignerMode(request) || getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
   }
 
   static boolean skipUrpDemotion(HttpServletRequest request) {

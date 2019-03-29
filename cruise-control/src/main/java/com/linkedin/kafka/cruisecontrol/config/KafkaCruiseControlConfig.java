@@ -424,7 +424,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String ZOOKEEPER_CONNECT_DOC = "The zookeeper path used by the Kafka cluster.";
 
   /**
-   * <code>num.concurrent.partition.movements</code>
+   * <code>num.concurrent.partition.movements.per.broker</code>
    */
   public static final String NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG =
       "num.concurrent.partition.movements.per.broker";

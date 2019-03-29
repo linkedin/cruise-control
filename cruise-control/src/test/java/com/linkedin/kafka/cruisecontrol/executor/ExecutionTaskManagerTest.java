@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
@@ -81,44 +82,53 @@ public class ExecutionTaskManagerTest {
   }
 
   private void changeTaskState(ExecutionTask.State state, ExecutionTask task, ExecutionTaskManager taskManager) {
+    Map<ExecutionTask.State, Integer> taskStat;
     switch (state) {
       case IN_PROGRESS:
         taskManager.markTasksInProgress(Collections.singletonList(task));
-        assertEquals(0, taskManager.remainingPartitionMovements().size());
-        assertEquals(0, taskManager.remainingLeadershipMovements().size());
-        assertEquals(1, taskManager.inProgressTasks().size());
-        assertEquals(0, taskManager.abortingTasks().size());
-        assertEquals(0, taskManager.abortedTasks().size());
-        assertEquals(0, taskManager.deadTasks().size());
+        taskStat = taskManager.getExecutionTasksSummary(Collections.emptyList(), false).taskStat()
+                              .get(ExecutionTask.TaskType.REPLICA_ACTION);
+        assertEquals(0, (int) taskStat.get(PENDING));
+        assertEquals(1, (int) taskStat.get(IN_PROGRESS));
+        assertEquals(0, (int) taskStat.get(ABORTING));
+        assertEquals(0, (int) taskStat.get(ABORTED));
+        assertEquals(0, (int) taskStat.get(COMPLETED));
+        assertEquals(0, (int) taskStat.get(DEAD));
         break;
       case ABORTING:
         taskManager.markTaskAborting(task);
-        assertEquals(0, taskManager.remainingPartitionMovements().size());
-        assertEquals(0, taskManager.remainingLeadershipMovements().size());
-        assertEquals(0, taskManager.inProgressTasks().size());
-        assertEquals(1, taskManager.abortingTasks().size());
-        assertEquals(0, taskManager.abortedTasks().size());
-        assertEquals(0, taskManager.deadTasks().size());
+        taskStat = taskManager.getExecutionTasksSummary(Collections.emptyList(), false).taskStat()
+                              .get(ExecutionTask.TaskType.REPLICA_ACTION);
+        assertEquals(0, (int) taskStat.get(PENDING));
+        assertEquals(0, (int) taskStat.get(IN_PROGRESS));
+        assertEquals(1, (int) taskStat.get(ABORTING));
+        assertEquals(0, (int) taskStat.get(ABORTED));
+        assertEquals(0, (int) taskStat.get(COMPLETED));
+        assertEquals(0, (int) taskStat.get(DEAD));
         break;
       case DEAD:
         taskManager.markTaskDead(task);
-        assertEquals(0, taskManager.remainingPartitionMovements().size());
-        assertEquals(0, taskManager.remainingLeadershipMovements().size());
-        assertEquals(0, taskManager.inProgressTasks().size());
-        assertEquals(0, taskManager.abortingTasks().size());
-        assertEquals(0, taskManager.abortedTasks().size());
-        assertEquals(1, taskManager.deadTasks().size());
+        taskStat = taskManager.getExecutionTasksSummary(Collections.emptyList(), false).taskStat()
+                              .get(ExecutionTask.TaskType.REPLICA_ACTION);
+        assertEquals(0, (int) taskStat.get(PENDING));
+        assertEquals(0, (int) taskStat.get(IN_PROGRESS));
+        assertEquals(0, (int) taskStat.get(ABORTING));
+        assertEquals(0, (int) taskStat.get(ABORTED));
+        assertEquals(0, (int) taskStat.get(COMPLETED));
+        assertEquals(1, (int) taskStat.get(DEAD));
         break;
       case ABORTED:
       case COMPLETED:
         ExecutionTask.State origState = task.state();
         taskManager.markTaskDone(task);
-        assertEquals(0, taskManager.remainingPartitionMovements().size());
-        assertEquals(0, taskManager.remainingLeadershipMovements().size());
-        assertEquals(0, taskManager.inProgressTasks().size());
-        assertEquals(0, taskManager.abortingTasks().size());
-        assertEquals(origState == ExecutionTask.State.ABORTING ? 1 : 0, taskManager.abortedTasks().size());
-        assertEquals(0, taskManager.deadTasks().size());
+        taskStat = taskManager.getExecutionTasksSummary(Collections.emptyList(), false).taskStat()
+                              .get(ExecutionTask.TaskType.REPLICA_ACTION);
+        assertEquals(0, (int) taskStat.get(PENDING));
+        assertEquals(0, (int) taskStat.get(IN_PROGRESS));
+        assertEquals(0, (int) taskStat.get(ABORTING));
+        assertEquals(origState == ExecutionTask.State.ABORTING ? 1 : 0, (int) taskStat.get(ABORTED));
+        assertEquals(origState == ExecutionTask.State.ABORTING ? 0 : 1, (int) taskStat.get(COMPLETED));
+        assertEquals(0, (int) taskStat.get(DEAD));
         break;
       default:
         throw new IllegalArgumentException("Invalid state " + state);

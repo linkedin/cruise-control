@@ -41,7 +41,9 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.ABOR
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.ABORTING;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.DEAD;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.IN_PROGRESS;
-
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
 
 /**
  * Executor for Kafka GoalOptimizer.
@@ -72,9 +74,6 @@ public class Executor {
   private final AtomicBoolean _stopRequested;
   private final Time _time;
   private volatile boolean _hasOngoingExecution;
-  private volatile int _numFinishedPartitionMovements;
-  private volatile int _numFinishedLeadershipMovements;
-  private volatile long _finishedDataMovementInMB;
   private volatile ExecutorState _executorState;
   private volatile String _uuid;
 
@@ -87,11 +86,15 @@ public class Executor {
   private static final String EXECUTION_STARTED = "execution-started";
   private static final String KAFKA_ASSIGNER_MODE = "kafka_assigner";
   private static final String EXECUTION_STOPPED = "execution-stopped";
+  private static final String STOPPED = "stopped";
+  private static final String FINISHED = "finished";
+  private static final String CANCELLED = "cancelled";
+  private static final String PENDING = "pending";
 
   private static final String GAUGE_EXECUTION_STOPPED = EXECUTION_STOPPED;
   private static final String GAUGE_EXECUTION_STOPPED_BY_USER = EXECUTION_STOPPED + "-by-user";
-  private static final String GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-"  + KAFKA_ASSIGNER_MODE;
-  private static final String GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-non-"  + KAFKA_ASSIGNER_MODE;
+  private static final String GAUGE_EXECUTION_STARTED_IN_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-" + KAFKA_ASSIGNER_MODE;
+  private static final String GAUGE_EXECUTION_STARTED_IN_NON_KAFKA_ASSIGNER_MODE = EXECUTION_STARTED + "-non-" + KAFKA_ASSIGNER_MODE;
   // TODO: Execution history is currently kept in memory, but ideally we should move it to a persistent store.
   private final long _demotionHistoryRetentionTimeMs;
   private final long _removalHistoryRetentionTimeMs;
@@ -141,12 +144,11 @@ public class Executor {
                                  config.getList(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG),
                                  dropwizardMetricRegistry,
                                  time);
-    _metadataClient = metadataClient != null
-                      ? metadataClient
-                      : new MetadataClient(config,
-                                           new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),
-                                           -1L,
-                                           time);
+    _metadataClient = metadataClient != null ? metadataClient
+                                             : new MetadataClient(config,
+                                                                  new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),
+                                                                  -1L,
+                                                                  time);
     _statusCheckingIntervalMs = config.getLong(KafkaCruiseControlConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     _proposalExecutor =
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("ProposalExecutor", false, LOG));
@@ -461,7 +463,7 @@ public class Executor {
      * Start the actual execution of the proposals in order: First move replicas, then transfer leadership.
      */
     private void execute() {
-      _state = ExecutorState.State.STARTING_EXECUTION;
+      _state = STARTING_EXECUTION;
       _executorState = ExecutorState.executionStarted(_uuid, _recentlyDemotedBrokers, _recentlyRemovedBrokers);
       try {
         // Pause the metric sampling to avoid the loss of accuracy during execution.
@@ -477,35 +479,35 @@ public class Executor {
         }
 
         // 1. Move replicas if possible.
-        if (_state == ExecutorState.State.STARTING_EXECUTION) {
-          _state = ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS;
+        if (_state == STARTING_EXECUTION) {
+          _state = REPLICA_MOVEMENT_TASK_IN_PROGRESS;
           // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
-          _executorState = ExecutorState.replicaMovementInProgress(_numFinishedPartitionMovements,
-                                                                   _executionTaskManager.getExecutionTasksSummary(),
-                                                                   _finishedDataMovementInMB,
-                                                                   _executionTaskManager.partitionMovementConcurrency(),
-                                                                   _executionTaskManager.leadershipMovementConcurrency(),
-                                                                   _uuid,
-                                                                   _recentlyDemotedBrokers,
-                                                                   _recentlyRemovedBrokers);
+          _executorState = ExecutorState.operationInProgress(REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+                                                             _executionTaskManager.getExecutionTasksSummary(Collections.singletonList(REPLICA_ACTION),
+                                                                                                            false),
+                                                             _executionTaskManager.partitionMovementConcurrency(),
+                                                             _executionTaskManager.leadershipMovementConcurrency(),
+                                                             _uuid,
+                                                             _recentlyDemotedBrokers,
+                                                             _recentlyRemovedBrokers);
           moveReplicas();
           updateOngoingExecutionState();
         }
         // 2. Transfer leadership if possible.
-        if (_state == ExecutorState.State.REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
-          _state = ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS;
+        if (_state == REPLICA_MOVEMENT_TASK_IN_PROGRESS) {
+          _state = LEADER_MOVEMENT_TASK_IN_PROGRESS;
           // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
-          _executorState = ExecutorState.leaderMovementInProgress(_numFinishedLeadershipMovements,
-                                                                  _executionTaskManager.getExecutionTasksSummary(),
-                                                                  _executionTaskManager.partitionMovementConcurrency(),
-                                                                  _executionTaskManager.leadershipMovementConcurrency(),
-                                                                  _uuid,
-                                                                  _recentlyDemotedBrokers,
-                                                                  _recentlyRemovedBrokers);
+          _executorState = ExecutorState.operationInProgress(LEADER_MOVEMENT_TASK_IN_PROGRESS,
+                                                             _executionTaskManager.getExecutionTasksSummary(Collections.singletonList(LEADER_ACTION),
+                                                                                                            false),
+                                                             _executionTaskManager.partitionMovementConcurrency(),
+                                                             _executionTaskManager.leadershipMovementConcurrency(),
+                                                             _uuid,
+                                                             _recentlyDemotedBrokers,
+                                                             _recentlyRemovedBrokers);
           moveLeaderships();
           updateOngoingExecutionState();
         }
-
       } catch (Throwable t) {
         LOG.error("Executor got exception during execution", t);
       } finally {
@@ -523,51 +525,49 @@ public class Executor {
       _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers, _recentlyRemovedBrokers);
       _hasOngoingExecution = false;
       _stopRequested.set(false);
-      _numFinishedPartitionMovements = 0;
-      _numFinishedLeadershipMovements = 0;
-      _finishedDataMovementInMB = 0L;
     }
 
     private void updateOngoingExecutionState() {
       if (!_stopRequested.get()) {
         switch (_state) {
           case LEADER_MOVEMENT_TASK_IN_PROGRESS:
-            _executorState = ExecutorState.leaderMovementInProgress(_numFinishedLeadershipMovements,
-                                                                    _executionTaskManager.getExecutionTasksSummary(),
-                                                                    _executionTaskManager.partitionMovementConcurrency(),
-                                                                    _executionTaskManager.leadershipMovementConcurrency(),
-                                                                    _uuid,
-                                                                    _recentlyDemotedBrokers,
-                                                                    _recentlyRemovedBrokers);
+            _executorState = ExecutorState.operationInProgress(LEADER_MOVEMENT_TASK_IN_PROGRESS,
+                                                               _executionTaskManager.getExecutionTasksSummary(Collections.singletonList(LEADER_ACTION),
+                                                                                                              false),
+                                                               _executionTaskManager.partitionMovementConcurrency(),
+                                                               _executionTaskManager.leadershipMovementConcurrency(),
+                                                               _uuid,
+                                                               _recentlyDemotedBrokers,
+                                                               _recentlyRemovedBrokers);
             break;
           case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
-            _executorState = ExecutorState.replicaMovementInProgress(_numFinishedPartitionMovements,
-                                                                     _executionTaskManager.getExecutionTasksSummary(),
-                                                                     _finishedDataMovementInMB,
-                                                                     _executionTaskManager.partitionMovementConcurrency(),
-                                                                     _executionTaskManager.leadershipMovementConcurrency(),
-                                                                     _uuid,
-                                                                     _recentlyDemotedBrokers,
-                                                                     _recentlyRemovedBrokers);
+            _executorState = ExecutorState.operationInProgress(REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+                                                               _executionTaskManager.getExecutionTasksSummary(Collections.singletonList(REPLICA_ACTION),
+                                                                                                              false),
+                                                               _executionTaskManager.partitionMovementConcurrency(),
+                                                               _executionTaskManager.leadershipMovementConcurrency(),
+                                                               _uuid,
+                                                               _recentlyDemotedBrokers,
+                                                               _recentlyRemovedBrokers);
             break;
           default:
             throw new IllegalStateException("Unexpected ongoing execution state " + _state);
         }
       } else {
         _state = ExecutorState.State.STOPPING_EXECUTION;
-        _executorState = ExecutorState.stopping(_numFinishedPartitionMovements,
-                                                _numFinishedLeadershipMovements,
-                                                _executionTaskManager.getExecutionTasksSummary(),
-                                                _finishedDataMovementInMB,
-                                                _executionTaskManager.partitionMovementConcurrency(),
-                                                _executionTaskManager.leadershipMovementConcurrency(), _uuid,
-                                                _recentlyDemotedBrokers,
-                                                _recentlyRemovedBrokers);
+        _executorState = ExecutorState.operationInProgress(STOPPING_EXECUTION,
+                                                           _executionTaskManager.getExecutionTasksSummary(ExecutionTask.TaskType.cachedValues(),
+                                                                                                          false),
+                                                           _executionTaskManager.partitionMovementConcurrency(),
+                                                           _executionTaskManager.leadershipMovementConcurrency(),
+                                                           _uuid,
+                                                           _recentlyDemotedBrokers,
+                                                           _recentlyRemovedBrokers);
       }
     }
 
     private void moveReplicas() {
-      int numTotalPartitionMovements = _executionTaskManager.remainingPartitionMovements().size();
+      int numTotalPartitionMovements = _executionTaskManager.numRemainingPartitionMovements();
       long totalDataToMoveInMB = _executionTaskManager.remainingDataToMoveInMB();
       LOG.info("Starting {} partition movements.", numTotalPartitionMovements);
 
@@ -585,18 +585,16 @@ public class Executor {
         }
         // Wait indefinitely for partition movements to finish.
         waitForExecutionTaskToFinish();
-        partitionsToMove = _executionTaskManager.remainingPartitionMovements().size();
-        long dataToMove = _executionTaskManager.remainingDataToMoveInMB();
-        Set<ExecutionTask> inExecutionTasks = _executionTaskManager.inExecutionTasks();
-        _numFinishedPartitionMovements = numTotalPartitionMovements - partitionsToMove - inExecutionTasks.size();
-        _finishedDataMovementInMB = totalDataToMoveInMB - dataToMove - _executionTaskManager.inExecutionDataToMoveInMB();
+        partitionsToMove = _executionTaskManager.numRemainingPartitionMovements();
+        int numFinishedPartitionMovements = _executionTaskManager.numFinishedPartitionMovements();
+        long finishedDataMovementInMB = _executionTaskManager.finishedDataMovementInMB();
         LOG.info("{}/{} ({}%) partition movements completed. {}/{} ({}%) MB have been moved.",
-                 _numFinishedPartitionMovements, numTotalPartitionMovements,
+                 numFinishedPartitionMovements, numTotalPartitionMovements,
                  String.format(java.util.Locale.US, "%.2f",
-                               _numFinishedPartitionMovements * 100.0 / numTotalPartitionMovements),
-                 _finishedDataMovementInMB, totalDataToMoveInMB,
+                               numFinishedPartitionMovements * 100.0 / numTotalPartitionMovements),
+                 finishedDataMovementInMB, totalDataToMoveInMB,
                  totalDataToMoveInMB == 0 ? 100 : String.format(java.util.Locale.US, "%.2f",
-                                                                (_finishedDataMovementInMB * 100.0) / totalDataToMoveInMB));
+                                                  (finishedDataMovementInMB * 100.0) / totalDataToMoveInMB));
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
       // ensures a clean stop when the execution is stopped in the middle.
@@ -607,30 +605,27 @@ public class Executor {
         waitForExecutionTaskToFinish();
         inExecutionTasks = _executionTaskManager.inExecutionTasks();
       }
-      if (_executionTaskManager.inProgressTasks().isEmpty()) {
-        LOG.info("Partition movements finished.");
-      } else if (_stopRequested.get()) {
-        ExecutionTaskManager.ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary();
-        LOG.info("Partition movements stopped. {} in-progress, {} pending, {} aborting, {} aborted, {} dead, "
-                 + "{} remaining data to move.",
-                 executionTasksSummary.inProgressTasks().size(),
-                 executionTasksSummary.remainingPartitionMovements().size(),
-                 executionTasksSummary.abortingTasks(),
-                 executionTasksSummary.abortedTasks().size(),
-                 executionTasksSummary.deadTasks().size(),
-                 executionTasksSummary.remainingDataToMoveInMB());
-      }
+      ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptyList(), false);
+      LOG.info("Partition movements {} with {} tasks {}, {} tasks in-progress, {} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed.",
+               _stopRequested.get() ? STOPPED : FINISHED,
+               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.PENDING),
+               _stopRequested.get() ? CANCELLED : PENDING,
+               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.IN_PROGRESS),
+               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.ABORTING),
+               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.ABORTED),
+               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.DEAD),
+               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.COMPLETED));
     }
 
     private void moveLeaderships() {
-      int numTotalLeadershipMovements = _executionTaskManager.remainingLeadershipMovements().size();
+      int numTotalLeadershipMovements = _executionTaskManager.numRemainingLeadershipMovements();
       LOG.info("Starting {} leadership movements.", numTotalLeadershipMovements);
-      _numFinishedLeadershipMovements = 0;
-      while (!_executionTaskManager.remainingLeadershipMovements().isEmpty() && !_stopRequested.get()) {
+      while (_executionTaskManager.numRemainingLeadershipMovements() != 0 && !_stopRequested.get()) {
         updateOngoingExecutionState();
-        _numFinishedLeadershipMovements += moveLeadershipInBatch();
-        LOG.info("{}/{} ({}%) leadership movements completed.", _numFinishedLeadershipMovements,
-                 numTotalLeadershipMovements, _numFinishedLeadershipMovements * 100 / numTotalLeadershipMovements);
+        moveLeadershipInBatch();
+        int numFinishedLeadershipMovements = _executionTaskManager.numFinishedLeadershipMovements();
+        LOG.info("{}/{} ({}%) leadership movements completed.", numFinishedLeadershipMovements,
+            numTotalLeadershipMovements, numFinishedLeadershipMovements * 100 / numTotalLeadershipMovements);
       }
       LOG.info("Leadership movements finished.");
     }
@@ -647,7 +642,7 @@ public class Executor {
         // Run preferred leader election.
         ExecutorUtils.executePreferredLeaderElection(_zkUtils, leadershipMovementTasks);
         LOG.trace("Waiting for leadership movement batch to finish.");
-        while (!_executionTaskManager.inProgressTasks().isEmpty() && !_stopRequested.get()) {
+        while (!_executionTaskManager.inExecutionTasks().isEmpty() && !_stopRequested.get()) {
           waitForExecutionTaskToFinish();
         }
       }
@@ -707,7 +702,6 @@ public class Executor {
         }
         updateOngoingExecutionState();
       } while (!_executionTaskManager.inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
-      // Some tasks have finished, remove them from in progress task map.
       LOG.info("Completed tasks: {}", finishedTasks);
     }
 
@@ -769,7 +763,6 @@ public class Executor {
         default:
           throw new IllegalStateException("Should never be here.");
       }
-
     }
 
     /**
@@ -819,7 +812,6 @@ public class Executor {
 
           default:
             throw new IllegalStateException("Unknown task type " + task.type());
-
         }
       }
       return false;
@@ -831,7 +823,7 @@ public class Executor {
      */
     private void maybeReexecuteTasks() {
       List<ExecutionTask> replicaActionsToReexecute =
-          new ArrayList<>(_executionTaskManager.inExecutionTasks(ExecutionTask.TaskType.REPLICA_ACTION));
+          new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(REPLICA_ACTION)));
       if (replicaActionsToReexecute.size() > ExecutorUtils.partitionsBeingReassigned(_zkUtils).size()) {
         LOG.info("Reexecuting tasks {}", replicaActionsToReexecute);
         ExecutorUtils.executeReplicaReassignmentTasks(_zkUtils, replicaActionsToReexecute);
@@ -840,7 +832,7 @@ public class Executor {
       // Only reexecute leader actions if there is no replica actions running.
       if (replicaActionsToReexecute.isEmpty() && ExecutorUtils.ongoingLeaderElection(_zkUtils).isEmpty()) {
         List<ExecutionTask> leaderActionsToReexecute =
-            new ArrayList<>(_executionTaskManager.inExecutionTasks(ExecutionTask.TaskType.LEADER_ACTION));
+            new ArrayList<>(_executionTaskManager.inExecutionTasks(Collections.singleton(LEADER_ACTION)));
         if (!leaderActionsToReexecute.isEmpty()) {
           LOG.info("Reexecuting tasks {}", leaderActionsToReexecute);
           ExecutorUtils.executePreferredLeaderElection(_zkUtils, leaderActionsToReexecute);
