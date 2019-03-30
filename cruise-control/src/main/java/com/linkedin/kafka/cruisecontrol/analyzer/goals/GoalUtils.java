@@ -272,7 +272,6 @@ public class GoalUtils {
     } else {
       filteredReplicas = immigrantsOnly ? broker.immigrantReplicas() : broker.replicas();
     }
-
     return filteredReplicas;
   }
 
