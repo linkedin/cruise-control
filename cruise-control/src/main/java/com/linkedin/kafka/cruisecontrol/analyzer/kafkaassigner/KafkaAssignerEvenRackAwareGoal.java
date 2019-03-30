@@ -418,6 +418,11 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   }
 
   @Override
+  public boolean isHardGoal() {
+    return true;
+  }
+
+  @Override
   public ClusterModelStatsComparator clusterModelStatsComparator() {
     return new EvenRackAwareGoalStatsComparator();
   }

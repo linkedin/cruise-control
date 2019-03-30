@@ -111,6 +111,11 @@ public interface Goal extends CruiseControlConfigurable {
   String name();
 
   /**
+   * True if this is a hard goal, false otherwise.
+   */
+  boolean isHardGoal();
+
+  /**
    * A comparator that compares two cluster model stats.
    */
   interface ClusterModelStatsComparator extends Comparator<ClusterModelStats>, Serializable {

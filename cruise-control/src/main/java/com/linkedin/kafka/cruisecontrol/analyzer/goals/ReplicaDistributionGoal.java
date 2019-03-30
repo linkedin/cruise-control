@@ -42,8 +42,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
 
 
 /**
- * Class for achieving the following soft goal:
- * Generate replica movement proposals to ensure that the number of replicas on each broker is
+ * SOFT GOAL: Generate replica movement proposals to ensure that the number of replicas on each broker is
  * <ul>
  * <li>Under: (the average number of replicas per broker) * (1 + replica count balance percentage)</li>
  * <li>Above: (the average number of replicas per broker) * Math.max(0, 1 - replica count balance percentage)</li>
@@ -156,6 +155,11 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   @Override
   public String name() {
     return ReplicaDistributionGoal.class.getSimpleName();
+  }
+
+  @Override
+  public boolean isHardGoal() {
+    return false;
   }
 
   /**

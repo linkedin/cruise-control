@@ -10,9 +10,12 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import com.google.gson.Gson;
+import java.util.Set;
+import org.apache.kafka.common.TopicPartition;
 
 
 public class ClusterModelStats {
@@ -22,6 +25,7 @@ public class ClusterModelStats {
   private final Map<Statistic, Number> _topicReplicaStats;
   private int _numBrokers;
   private int _numReplicasInCluster;
+  private int _numPartitionsWithOfflineReplicas;
   private int _numTopics;
   private Map<Resource, Integer> _numBalancedBrokersByResource;
   private int _numBrokersUnderPotentialNwOut;
@@ -40,6 +44,7 @@ public class ClusterModelStats {
     _topicReplicaStats = new HashMap<>();
     _numBrokers = 0;
     _numReplicasInCluster = 0;
+    _numPartitionsWithOfflineReplicas = 0;
     _numTopics = 0;
     _numBrokersUnderPotentialNwOut = 0;
     _numBalancedBrokersByResource = new HashMap<>();
@@ -106,6 +111,13 @@ public class ClusterModelStats {
    */
   public int numReplicasInCluster() {
     return _numReplicasInCluster;
+  }
+
+  /**
+   * Get number of number of partitions with offline replicas in the cluster.
+   */
+  public int numPartitionsWithOfflineReplicas() {
+    return _numPartitionsWithOfflineReplicas;
   }
 
   /**
@@ -323,6 +335,13 @@ public class ClusterModelStats {
     _replicaStats.put(Statistic.MAX, maxReplicasInBroker);
     _replicaStats.put(Statistic.MIN, minReplicasInBroker);
     _replicaStats.put(Statistic.ST_DEV, Math.sqrt(varianceForReplicas));
+
+    // Set the number of partitions with offline replicas.
+    Set<TopicPartition> partitionsWithOfflineReplicas = new HashSet<>();
+    for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
+      partitionsWithOfflineReplicas.add(replica.topicPartition());
+    }
+    _numPartitionsWithOfflineReplicas = partitionsWithOfflineReplicas.size();
   }
 
   /**

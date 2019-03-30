@@ -32,7 +32,6 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
 
 
 /**
- * Class for achieving the following hard goal:
  * HARD GOAL: Generate replica movement proposals to ensure that each broker has less than the given number of replicas.
  */
 public class ReplicaCapacityGoal extends AbstractGoal {
@@ -92,6 +91,11 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   @Override
   public String name() {
     return ReplicaCapacityGoal.class.getSimpleName();
+  }
+
+  @Override
+  public boolean isHardGoal() {
+    return true;
   }
 
   /**

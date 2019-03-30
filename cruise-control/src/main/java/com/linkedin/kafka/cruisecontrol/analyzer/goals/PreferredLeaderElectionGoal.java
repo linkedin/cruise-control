@@ -28,7 +28,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
 
 
 /**
- * This is a goal that simply move the leaders to the first replica of each partition.
+ * SOFT GOAL: Simply move the leaders to the first replica of each partition.
  */
 public class PreferredLeaderElectionGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(PreferredLeaderElectionGoal.class);
@@ -136,6 +136,11 @@ public class PreferredLeaderElectionGoal implements Goal {
   @Override
   public String name() {
     return PreferredLeaderElectionGoal.class.getSimpleName();
+  }
+
+  @Override
+  public boolean isHardGoal() {
+    return false;
   }
 
   @Override

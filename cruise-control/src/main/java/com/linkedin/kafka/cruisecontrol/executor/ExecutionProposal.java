@@ -169,10 +169,10 @@ public class ExecutionProposal {
   }
 
   /**
-   * @return whether the proposal involves a replica action. (replica movement, addition, deletion, reorder)
+   * @return Whether the proposal involves a replica action. (replica movement, addition, deletion, or swap -- exclude reorder)
    */
   public boolean hasReplicaAction() {
-    return !_oldReplicas.equals(_newReplicas);
+    return !new HashSet<>(_oldReplicas).equals(new HashSet<>(_newReplicas));
   }
 
   /**

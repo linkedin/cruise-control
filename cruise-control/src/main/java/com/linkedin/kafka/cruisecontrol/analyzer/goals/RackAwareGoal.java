@@ -35,7 +35,6 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
 
 
 /**
- * Class for achieving the following hard goal:
  * HARD GOAL: Generate replica movement proposals to provide rack-aware replica distribution.
  */
 public class RackAwareGoal extends AbstractGoal {
@@ -126,6 +125,11 @@ public class RackAwareGoal extends AbstractGoal {
   @Override
   public String name() {
     return RackAwareGoal.class.getSimpleName();
+  }
+
+  @Override
+  public boolean isHardGoal() {
+    return true;
   }
 
   /**
