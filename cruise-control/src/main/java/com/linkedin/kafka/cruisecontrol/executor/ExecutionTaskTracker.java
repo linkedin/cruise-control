@@ -222,6 +222,7 @@ public class ExecutionTaskTracker {
   public long finishedDataMovementInMB() {
     return _finishedDataMovementInMB;
   }
+
   public Set<ExecutionTask> inExecutionTasks(Collection<TaskType> types) {
     Set<ExecutionTask> inExecutionTasks = new HashSet<>();
     for (TaskType type : types) {
@@ -250,8 +251,7 @@ public class ExecutionTaskTracker {
                                      _inExecutionDataMovementInMB,
                                      _remainingDataToMoveInMB,
                                      taskStat(),
-                                     taskSnapshot(taskTypesToGetSnapshot, inExecutionOnly)
-                                    );
+                                     taskSnapshot(taskTypesToGetSnapshot, inExecutionOnly));
   }
 
   public static class ExecutionTasksSummary {
@@ -261,11 +261,11 @@ public class ExecutionTaskTracker {
     private Map<TaskType, Map<State, Integer>> _taskStat;
     private Map<TaskType, Map<State, Set<ExecutionTask>>> _taskSnapshot;
 
-    ExecutionTasksSummary(long finishedInterBrokerDataMovementInMB,
-        long inExecutionInterBrokerDataMovementInMB,
-        long remainingInterBrokerDataToMoveInMB,
-        Map<TaskType, Map<State, Integer>> taskStat,
-        Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot) {
+    private ExecutionTasksSummary(long finishedInterBrokerDataMovementInMB,
+                                  long inExecutionInterBrokerDataMovementInMB,
+                                  long remainingInterBrokerDataToMoveInMB,
+                                  Map<TaskType, Map<State, Integer>> taskStat,
+                                  Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot) {
       _finishedDataMovementInMB = finishedInterBrokerDataMovementInMB;
       _inExecutionDataMovementInMB = inExecutionInterBrokerDataMovementInMB;
       _remainingDataToMoveInMB = remainingInterBrokerDataToMoveInMB;

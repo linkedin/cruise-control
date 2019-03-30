@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -37,10 +38,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.ABORTED;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.ABORTING;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.DEAD;
-import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.IN_PROGRESS;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
@@ -86,10 +84,6 @@ public class Executor {
   private static final String EXECUTION_STARTED = "execution-started";
   private static final String KAFKA_ASSIGNER_MODE = "kafka_assigner";
   private static final String EXECUTION_STOPPED = "execution-stopped";
-  private static final String STOPPED = "stopped";
-  private static final String FINISHED = "finished";
-  private static final String CANCELLED = "cancelled";
-  private static final String PENDING = "pending";
 
   private static final String GAUGE_EXECUTION_STOPPED = EXECUTION_STOPPED;
   private static final String GAUGE_EXECUTION_STOPPED_BY_USER = EXECUTION_STOPPED + "-by-user";
@@ -439,7 +433,7 @@ public class Executor {
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers, Collection<Integer> removedBrokers) {
       _loadMonitor = loadMonitor;
-      _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
+      _state = NO_TASK_IN_PROGRESS;
 
       if (demotedBrokers != null) {
         // Add/overwrite the latest demotion time of demoted brokers (if any).
@@ -520,7 +514,7 @@ public class Executor {
     private void clearCompletedExecution() {
       _executionTaskManager.clear();
       _uuid = null;
-      _state = ExecutorState.State.NO_TASK_IN_PROGRESS;
+      _state = NO_TASK_IN_PROGRESS;
       // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
       _executorState = ExecutorState.noTaskInProgress(_recentlyDemotedBrokers, _recentlyRemovedBrokers);
       _hasOngoingExecution = false;
@@ -605,29 +599,49 @@ public class Executor {
         waitForExecutionTaskToFinish();
         inExecutionTasks = _executionTaskManager.inExecutionTasks();
       }
-      ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptyList(), false);
-      LOG.info("Partition movements {} with {} tasks {}, {} tasks in-progress, {} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed.",
-               _stopRequested.get() ? STOPPED : FINISHED,
-               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.PENDING),
-               _stopRequested.get() ? CANCELLED : PENDING,
-               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.IN_PROGRESS),
-               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.ABORTING),
-               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.ABORTED),
-               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.DEAD),
-               executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ExecutionTask.State.COMPLETED));
+      if (_executionTaskManager.inExecutionTasks().isEmpty()) {
+        LOG.info("Partition movements finished.");
+      } else if (_stopRequested.get()) {
+        ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptyList(), false);
+        Map<ExecutionTask.State, Integer> partitionMovementTasksByState =  executionTasksSummary.taskStat().get(REPLICA_ACTION);
+        LOG.info("Partition movements stopped. For partition movements {} tasks cancelled, {} tasks in-progress, "
+                 + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; "
+                 + "For leadership movements {} task cancelled.",
+                 partitionMovementTasksByState.get(PENDING),
+                 partitionMovementTasksByState.get(IN_PROGRESS),
+                 partitionMovementTasksByState.get(ABORTING),
+                 partitionMovementTasksByState.get(ABORTED),
+                 partitionMovementTasksByState.get(DEAD),
+                 partitionMovementTasksByState.get(COMPLETED),
+                 executionTasksSummary.remainingDataToMoveInMB(),
+                 executionTasksSummary.taskStat().get(LEADER_ACTION).get(PENDING));
+      }
     }
 
     private void moveLeaderships() {
       int numTotalLeadershipMovements = _executionTaskManager.numRemainingLeadershipMovements();
       LOG.info("Starting {} leadership movements.", numTotalLeadershipMovements);
+      int numFinishedLeadershipMovements = 0;
       while (_executionTaskManager.numRemainingLeadershipMovements() != 0 && !_stopRequested.get()) {
         updateOngoingExecutionState();
-        moveLeadershipInBatch();
-        int numFinishedLeadershipMovements = _executionTaskManager.numFinishedLeadershipMovements();
+        numFinishedLeadershipMovements += moveLeadershipInBatch();
         LOG.info("{}/{} ({}%) leadership movements completed.", numFinishedLeadershipMovements,
-            numTotalLeadershipMovements, numFinishedLeadershipMovements * 100 / numTotalLeadershipMovements);
+                 numTotalLeadershipMovements, numFinishedLeadershipMovements * 100 / numTotalLeadershipMovements);
       }
-      LOG.info("Leadership movements finished.");
+      if (_executionTaskManager.inExecutionTasks().isEmpty()) {
+        LOG.info("Leadership movements finished.");
+      } else if (_stopRequested.get()) {
+        Map<ExecutionTask.State, Integer> leadershipMovementTasksByState =
+            _executionTaskManager.getExecutionTasksSummary(Collections.emptyList(), false).taskStat().get(LEADER_ACTION);
+        LOG.info("Leadership movements stopped. {} tasks cancelled, {} tasks in-progress, {} tasks aborting, {} tasks aborted, "
+                 + "{} tasks dead, {} tasks completed.",
+                 leadershipMovementTasksByState.get(PENDING),
+                 leadershipMovementTasksByState.get(IN_PROGRESS),
+                 leadershipMovementTasksByState.get(ABORTING),
+                 leadershipMovementTasksByState.get(ABORTED),
+                 leadershipMovementTasksByState.get(DEAD),
+                 leadershipMovementTasksByState.get(COMPLETED));
+      }
     }
 
     private int moveLeadershipInBatch() {
@@ -682,7 +696,7 @@ public class Executor {
             _executionTaskManager.markTaskDone(task);
           } else if (maybeMarkTaskAsDeadOrAborting(cluster, task)) {
             // Only add the dead or aborted tasks to execute if it is not a leadership movement.
-            if (task.type() != ExecutionTask.TaskType.LEADER_ACTION) {
+            if (task.type() != LEADER_ACTION) {
               deadOrAbortingTasks.add(task);
             }
             // A dead or aborted task is considered as finished.
@@ -709,7 +723,7 @@ public class Executor {
      * Check if a task is done.
      */
     private boolean isTaskDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
-      if (task.type() == ExecutionTask.TaskType.REPLICA_ACTION) {
+      if (task.type() == REPLICA_ACTION) {
         return isReplicaActionDone(cluster, tp, task);
       } else {
         return isLeadershipMovementDone(cluster, tp, task);

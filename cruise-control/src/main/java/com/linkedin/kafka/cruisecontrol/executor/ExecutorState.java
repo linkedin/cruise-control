@@ -121,6 +121,9 @@ public class ExecutorState {
                                                   String uuid,
                                                   Set<Integer> recentlyDemotedBrokers,
                                                   Set<Integer> recentlyRemovedBrokers) {
+    if (state == State.NO_TASK_IN_PROGRESS || state == State.STARTING_EXECUTION) {
+      throw new IllegalArgumentException(String.format("%s in not an operation-in-progress executor state.", state));
+    }
     return new ExecutorState(state,
                              executionTasksSummary,
                              maximumConcurrentPartitionMovementsPerBroker,

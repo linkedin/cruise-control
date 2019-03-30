@@ -31,7 +31,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.L
 /**
  * The class holds the execution of balance proposals for rebalance.
  * <p>
- * Each proposal is processed and generate zero or one leadership movement task and partition movement task.
+ * Each proposal is processed and may generate a leadership movement task and partition movement task.
  * Each task is assigned an execution id and managed in two ways.
  * <ul>
  * <li>All leadership movement tasks are put into the same list and will be executed together.
