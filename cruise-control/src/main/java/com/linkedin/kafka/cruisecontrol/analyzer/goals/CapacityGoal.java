@@ -33,7 +33,6 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
 
 
 /**
- * Class for achieving the following hard goal:
  * HARD GOAL: Generate leadership and replica movement proposals to push the load on brokers and/or hosts under the
  * capacity limit.
  */
@@ -45,6 +44,11 @@ public abstract class CapacityGoal extends AbstractGoal {
    */
   public CapacityGoal() {
 
+  }
+
+  @Override
+  public boolean isHardGoal() {
+    return true;
   }
 
   /**

@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -142,7 +143,8 @@ class OptimizationVerifier {
           }
           break;
         case BROKEN_BROKERS:
-          if (!clusterModel.brokenBrokers().isEmpty() && !verifyBrokenBrokers(clusterModel)) {
+          if (!clusterModel.deadBrokers().isEmpty() && !(verifyBrokenBrokers(clusterModel)
+              && verifyPartitionsWithOfflineReplicas(optimizerResult, preOptimizedStats, goalByPriority))) {
             return false;
           }
           break;
@@ -188,6 +190,23 @@ class OptimizationVerifier {
       }
       return false;
     }
+    return true;
+  }
+
+  private static boolean verifyPartitionsWithOfflineReplicas(GoalOptimizer.OptimizerResult optimizerResult,
+                                                             ClusterModelStats preOptimizedStats,
+                                                             List<Goal> goalByPriority) {
+    if (goalByPriority.stream().noneMatch(Goal::isHardGoal)) {
+      int numReplicaMovementProposals =
+          (int) optimizerResult.goalProposals().stream().filter(ExecutionProposal::hasReplicaAction).count();
+      if (numReplicaMovementProposals != preOptimizedStats.numPartitionsWithOfflineReplicas()) {
+        LOG.error("Self-healing replica movement must be limited to number of partitions with offline replicas (current: "
+                  + "{}, expected: {} with goals: {}).", numReplicaMovementProposals,
+                  preOptimizedStats.numPartitionsWithOfflineReplicas(), goalByPriority);
+        return false;
+      }
+    }
+
     return true;
   }
 

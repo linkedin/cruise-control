@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.SortedSet;
@@ -254,6 +255,49 @@ public class GoalUtils {
         }
       }
     }
+  }
+
+  /**
+   * Get a filtered set of leaders from the given broker based on given filtering requirements.
+   *
+   * @param broker Broker whose replicas will be filters.
+   * @param immigrantsOnly True if replicas should be filtered to ensure that they contain only the immigrants.
+   * @return A filtered set of leaders from the given broker based on given filtering requirements.
+   */
+  private static Set<Replica> filterLeaders(Broker broker, boolean immigrantsOnly) {
+    Set<Replica> filteredLeaders;
+    if (immigrantsOnly) {
+      filteredLeaders = new HashSet<>(broker.immigrantReplicas());
+      filteredLeaders.removeIf(replica -> !replica.isLeader());
+    } else {
+      filteredLeaders = broker.leaderReplicas();
+    }
+    return filteredLeaders;
+  }
+
+  /**
+   * Get a filtered set of replicas from the given broker based on given filtering requirements.
+   *
+   * @param broker Broker whose replicas will be filters.
+   * @param followersOnly True if replicas should be filtered to ensure that they contain only the followers.
+   * @param leadersOnly True if replicas should be filtered to ensure that they contain only the leaders.
+   * @param immigrantsOnly True if replicas should be filtered to ensure that they contain only the immigrants.
+   * @return A filtered set of replicas from the given broker.
+   */
+  public static Set<Replica> filterReplicas(Broker broker, boolean followersOnly, boolean leadersOnly, boolean immigrantsOnly) {
+    if (leadersOnly) {
+      // Get filtered leaders on the given broker.
+      return followersOnly ? Collections.emptySet() : filterLeaders(broker, immigrantsOnly);
+    }
+
+    Set<Replica> filteredReplicas;
+    if (followersOnly) {
+      filteredReplicas = new HashSet<>(immigrantsOnly ? broker.immigrantReplicas() : broker.replicas());
+      filteredReplicas.removeAll(broker.leaderReplicas());
+    } else {
+      filteredReplicas = immigrantsOnly ? broker.immigrantReplicas() : broker.replicas();
+    }
+    return filteredReplicas;
   }
 
   /**

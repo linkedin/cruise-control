@@ -220,7 +220,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * Get the immigrant replicas (The replicas that are moved here).
    */
   public Set<Replica> immigrantReplicas() {
-    return _immigrantReplicas;
+    return Collections.unmodifiableSet(_immigrantReplicas);
   }
 
   /**

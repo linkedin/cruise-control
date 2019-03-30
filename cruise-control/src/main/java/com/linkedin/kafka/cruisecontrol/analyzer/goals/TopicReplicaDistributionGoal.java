@@ -37,9 +37,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
 
 
 /**
- * Class for achieving the following soft goal:
- * <p>
- * SOFT GOAL#2: Balance collocations of replicas of the same topic.
+ * SOFT GOAL: Balance collocations of replicas of the same topic.
  */
 public class TopicReplicaDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(TopicReplicaDistributionGoal.class);
@@ -160,6 +158,11 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   @Override
   public String name() {
     return TopicReplicaDistributionGoal.class.getSimpleName();
+  }
+
+  @Override
+  public boolean isHardGoal() {
+    return false;
   }
 
   /**

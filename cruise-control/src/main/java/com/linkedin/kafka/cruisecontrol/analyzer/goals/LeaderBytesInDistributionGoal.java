@@ -130,6 +130,11 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   @Override
+  public boolean isHardGoal() {
+    return false;
+  }
+
+  @Override
   protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
     // Brokers having inbound network traffic over the balance threshold for inbound traffic are eligible for balancing.
     SortedSet<Broker> brokersToBalance = clusterModel.brokers();
