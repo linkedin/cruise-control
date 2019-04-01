@@ -1,3 +1,7 @@
+/*
+ * Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ */
+
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
@@ -21,13 +25,13 @@ public class SlackSelfHealingNotifierTest {
 
     private static BrokerFailures failures;
     private static KafkaCruiseControl mockKafkaCruiseControl;
-    private static MockSlackSelfHealingNotifier notifier;
+    private MockSlackSelfHealingNotifier notifier;
+    private static Time mockTime;
 
     @BeforeClass
     public static void setup() {
         final long startTime = 500L;
-        Time mockTime = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
-        notifier = new MockSlackSelfHealingNotifier(mockTime);
+        mockTime = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
         mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
         Map<Integer, Long> failedBrokers = new HashMap<>();
         failedBrokers.put(1, 200L);
@@ -37,12 +41,14 @@ public class SlackSelfHealingNotifierTest {
 
     @Test
     public void testSlackAlertWithNoWebhook() {
+        notifier = new MockSlackSelfHealingNotifier(mockTime);
         notifier.alert(failures, false, 1L, AnomalyType.BROKER_FAILURE);
         assertEquals(0, notifier.getSlackMessageList().size());
     }
 
     @Test
     public void testSlackAlertWithNoChannel() {
+        notifier = new MockSlackSelfHealingNotifier(mockTime);
         notifier._slackWebhook = "http://dummy.slack.webhook";
         notifier.alert(failures, false, 1L, AnomalyType.BROKER_FAILURE);
         assertEquals(0, notifier.getSlackMessageList().size());
@@ -50,6 +56,7 @@ public class SlackSelfHealingNotifierTest {
 
     @Test
     public void testSlackAlertWithDefaultOptions() {
+        notifier = new MockSlackSelfHealingNotifier(mockTime);
         notifier._slackWebhook = "http://dummy.slack.webhook";
         notifier._slackChannel = "#dummy-channel";
         notifier.alert(failures, false, 1L, AnomalyType.BROKER_FAILURE);
@@ -59,7 +66,7 @@ public class SlackSelfHealingNotifierTest {
     }
 
     private static class MockSlackSelfHealingNotifier extends SlackSelfHealingNotifier {
-        private static List<SlackMessage> slackMessageList = new ArrayList<>();
+        private List<SlackMessage> _slackMessageList;
 
         final Map<AnomalyType, Boolean> _alertCalled;
         final Map<AnomalyType, Boolean> _autoFixTriggered;
@@ -73,16 +80,17 @@ public class SlackSelfHealingNotifierTest {
                 _autoFixTriggered.put(alertType, false);
             }
             _selfHealingEnabled.put(AnomalyType.BROKER_FAILURE, true);
+            _slackMessageList = new ArrayList<>();
         }
 
 
         @Override
         protected void sendSlackMessage(SlackMessage slackMessage, String slackWebhookUrl) throws IOException {
-            slackMessageList.add(slackMessage);
+            _slackMessageList.add(slackMessage);
         }
 
         List<SlackMessage> getSlackMessageList() {
-            return slackMessageList;
+            return _slackMessageList;
         }
     }
 
