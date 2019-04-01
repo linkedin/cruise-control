@@ -168,8 +168,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             break;
           case REVIEW_BOARD:
             if (!_twoStepVerification) {
-              throw new ConfigException(String.format("Please enable '%s' config to use %s endpoint.",
-                                                      KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG, endPoint));
+              throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
+                                                      endPoint, KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
             }
             syncRequest(() -> new ReviewBoardParameters(request), this::handleReviewBoardRequest, request, response, endPoint);
             break;
@@ -318,8 +318,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             break;
           case REVIEW:
             if (!_twoStepVerification) {
-              throw new ConfigException(String.format("Please enable '%s' config to use %s endpoint.",
-                                                      KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG, endPoint));
+              throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
+                                                      endPoint, KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
             }
             syncRequest(() -> new ReviewParameters(request), this::handleReviewRequest, request, response, endPoint);
             break;
@@ -355,7 +355,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     return new UserTaskState(_userTaskManager);
   }
 
-  private synchronized ReviewResult handleReviewRequest(ReviewParameters parameters) {
+  private ReviewResult handleReviewRequest(ReviewParameters parameters) {
     return _purgatory.applyReview(parameters.reviewRequests(), parameters.reason());
   }
 
