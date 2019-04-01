@@ -80,12 +80,12 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
 
   private String getJSONString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
-    Map<String, Object> jsonStructure = null;
+    Map<String, Object> jsonStructure;
     try {
       jsonStructure = getJsonStructure(((KafkaClusterStateParameters) parameters).isVerbose());
       jsonStructure.put(VERSION, JSON_VERSION);
-    }  catch (TimeoutException | InterruptedException | ExecutionException e) {
-      LOG.error("Failed to populate broker logDir state.", e);
+    }  catch (InterruptedException | ExecutionException e) {
+      throw new RuntimeException("Failed to populate broker logDir state.", e);
     }
     return gson.toJson(jsonStructure);
   }
@@ -228,7 +228,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * @param verbose True if verbose, false otherwise.
    */
   public Map<String, Object> getJsonStructure(boolean verbose)
-      throws ExecutionException, InterruptedException, TimeoutException {
+      throws ExecutionException, InterruptedException {
     // Gather the broker state.
     Map<Integer, Integer> leaderCountByBrokerId = new HashMap<>();
     Map<Integer, Integer> outOfSyncCountByBrokerId = new HashMap<>();
@@ -442,7 +442,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
       // Partition summary.
       writePartitionSummary(sb, parameters);
     } catch (InterruptedException | ExecutionException e) {
-      LOG.error("Failed to populate broker logDir state.", e);
+      throw new RuntimeException("Failed to populate broker logDir state.", e);
     }
 
     return sb.toString();
