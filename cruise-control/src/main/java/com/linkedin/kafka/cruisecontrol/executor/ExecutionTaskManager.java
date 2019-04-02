@@ -105,9 +105,9 @@ public class ExecutionTaskManager {
    * Returns a list of execution proposal that moves the partitions.
    */
   public synchronized List<ExecutionTask> getReplicaMovementTasks() {
-    Map<Integer, Integer> getBrokersReadyForReplicaMovement = getBrokersReadyForReplicaMovement(_inProgressReplicaMovementsByBrokerId,
-                                                                                                partitionMovementConcurrency());
-    return _executionTaskPlanner.getReplicaMovementTasks(getBrokersReadyForReplicaMovement, _inProgressPartitions);
+    Map<Integer, Integer> brokersReadyForReplicaMovement = brokersReadyForReplicaMovement(_inProgressReplicaMovementsByBrokerId,
+                                                                                          partitionMovementConcurrency());
+    return _executionTaskPlanner.getReplicaMovementTasks(brokersReadyForReplicaMovement, _inProgressPartitions);
 
   }
 
@@ -119,8 +119,8 @@ public class ExecutionTaskManager {
    * @param movementConcurrency The required per-broker replica movement concurrency.
    * @return A map of how many new replica movements can be triggered for each broker.
    */
-  private Map<Integer, Integer> getBrokersReadyForReplicaMovement(Map<Integer, Integer> inProgressReplicaMovementsByBrokerId,
-                                                                  int movementConcurrency) {
+  private Map<Integer, Integer> brokersReadyForReplicaMovement(Map<Integer, Integer> inProgressReplicaMovementsByBrokerId,
+                                                               int movementConcurrency) {
     Map<Integer, Integer> readyBrokers = new HashMap<>(inProgressReplicaMovementsByBrokerId.size());
     for (Map.Entry<Integer, Integer> entry : inProgressReplicaMovementsByBrokerId.entrySet()) {
       // We skip the concurrency level check if caller requested so.
