@@ -10,7 +10,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
-import com.linkedin.kafka.cruisecontrol.servlet.response.PurgatoryOrReviewResult;
+import com.linkedin.kafka.cruisecontrol.servlet.response.ReviewResult;
 import java.io.Closeable;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -62,16 +62,16 @@ public class Purgatory implements Closeable {
   }
 
   /**
-   * Add request to the purgatory and return the {@link PurgatoryOrReviewResult} for the request that has been added to
+   * Add request to the purgatory and return the {@link ReviewResult} for the request that has been added to
    * the purgatory.
    *
    * @param request Http Servlet Request to add to the purgatory.
    * @param parameters Request parameters.
    * @param <P> Type corresponding to the request parameters.
-   * @return The result showing the {@link PurgatoryOrReviewResult} for the request that has been added to the purgatory.
+   * @return The result showing the {@link ReviewResult} for the request that has been added to the purgatory.
    */
-  public synchronized <P extends CruiseControlParameters> PurgatoryOrReviewResult addRequest(HttpServletRequest request,
-                                                                                             P parameters) {
+  public synchronized <P extends CruiseControlParameters> ReviewResult addRequest(HttpServletRequest request,
+                                                                                  P parameters) {
     if (!request.getMethod().equals("POST")) {
       throw new IllegalArgumentException(String.format("Purgatory can only contain POST request (Attempted to add: %s).",
                                                        httpServletRequestToString(request)));
@@ -84,7 +84,7 @@ public class Purgatory implements Closeable {
     Set<Integer> filteredRequestIds = new HashSet<>();
     filteredRequestIds.add(_requestId);
 
-    PurgatoryOrReviewResult result = new PurgatoryOrReviewResult(requestInfoById, filteredRequestIds);
+    ReviewResult result = new ReviewResult(requestInfoById, filteredRequestIds);
     _requestId++;
     return result;
   }
@@ -152,13 +152,23 @@ public class Purgatory implements Closeable {
   }
 
   /**
+   * Get requested reviews from the review board.
+   *
+   * @param reviewIds Requests for which the result is requested, empty set implies all requests in the review board.
+   * @return The requested reviews from the review board.
+   */
+  public synchronized ReviewResult reviewBoard(Set<Integer> reviewIds) {
+    return new ReviewResult(new HashMap<>(_requestInfoById), reviewIds);
+  }
+
+  /**
    * Apply the given target states to review the corresponding requests. Get the post-review result of the purgatory.
    *
    * @param requestIdsByTargetState Request Ids by target review state for requests in purgatory.
    * @param reason Common reason for applying the review to the requests.
    * @return The result showing the current purgatory state after the review.
    */
-  public synchronized PurgatoryOrReviewResult applyReview(Map<ReviewStatus, Set<Integer>> requestIdsByTargetState, String reason) {
+  public synchronized ReviewResult applyReview(Map<ReviewStatus, Set<Integer>> requestIdsByTargetState, String reason) {
     // Sanity check if all request ids in the review exists in the purgatory.
     Set<Integer> reviewedRequestIds = new HashSet<>();
     for (Map.Entry<ReviewStatus, Set<Integer>> entry : requestIdsByTargetState.entrySet()) {
@@ -174,7 +184,7 @@ public class Purgatory implements Closeable {
     }
 
     // Return the post-review result of the purgatory.
-    return new PurgatoryOrReviewResult(new HashMap<>(_requestInfoById), reviewedRequestIds);
+    return new ReviewResult(new HashMap<>(_requestInfoById), reviewedRequestIds);
   }
 
   private synchronized void removeOldRequests() {

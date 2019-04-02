@@ -29,6 +29,7 @@ public enum EndPoint {
   KAFKA_CLUSTER_STATE,
   DEMOTE_BROKER,
   USER_TASKS,
+  REVIEW_BOARD,
   ADMIN,
   REVIEW;
 
@@ -39,7 +40,8 @@ public enum EndPoint {
                                                                    PROPOSALS,
                                                                    STATE,
                                                                    KAFKA_CLUSTER_STATE,
-                                                                   USER_TASKS);
+                                                                   USER_TASKS,
+                                                                   REVIEW_BOARD);
   private static final List<EndPoint> POST_ENDPOINT = Arrays.asList(ADD_BROKER,
                                                                     REMOVE_BROKER,
                                                                     FIX_OFFLINE_REPLICAS,

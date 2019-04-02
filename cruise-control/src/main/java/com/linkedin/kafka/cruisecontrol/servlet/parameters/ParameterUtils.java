@@ -68,6 +68,7 @@ public class ParameterUtils {
   public static final String GOALS_PARAM = "goals";
   public static final String BROKER_ID_PARAM = "brokerid";
   public static final String REVIEW_ID_PARAM = "review_id";
+  public static final String REVIEW_IDS_PARAM = "review_ids";
   public static final String TOPIC_PARAM = "topic";
   public static final String PARTITION_PARAM = "partition";
   public static final String DRY_RUN_PARAM = "dryrun";
@@ -252,7 +253,10 @@ public class ParameterUtils {
     review.add(DISCARD_PARAM);
     review.add(REASON_PARAM);
     review.add(JSON_PARAM);
-    // TODO: Add support to filter reviews by reviewID
+
+    Set<String> reviewBoard = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    reviewBoard.add(JSON_PARAM);
+    reviewBoard.add(REVIEW_IDS_PARAM);
 
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
@@ -272,6 +276,7 @@ public class ParameterUtils {
     validParamNames.put(USER_TASKS, Collections.unmodifiableSet(userTasks));
     validParamNames.put(ADMIN, Collections.unmodifiableSet(admin));
     validParamNames.put(REVIEW, Collections.unmodifiableSet(review));
+    validParamNames.put(REVIEW_BOARD, Collections.unmodifiableSet(reviewBoard));
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
@@ -622,6 +627,14 @@ public class ParameterUtils {
   }
 
   /**
+   * Default: An empty set.
+   */
+  public static Set<Integer> reviewIds(HttpServletRequest request) throws UnsupportedEncodingException {
+    Set<Integer> reviewIds = parseParamToIntegerSet(request, REVIEW_IDS_PARAM);
+    return Collections.unmodifiableSet(reviewIds);
+  }
+
+  /**
    * Mutually exclusive with the other parameters and can only be used if two step verification is enabled.
    */
   public static Integer reviewId(HttpServletRequest request, boolean twoStepVerificationEnabled) {
@@ -720,6 +733,9 @@ public class ParameterUtils {
     if (!intersection.isEmpty()) {
       throw new IllegalArgumentException(String.format("The same request cannot be specified in both approve and"
                                                        + "discard parameters. Intersection: %s.", intersection));
+    } else if (approve.isEmpty() && discard.isEmpty()) {
+      throw new IllegalArgumentException(String.format("%s endpoint requires at least one of '%s' or '%s' parameter.",
+                                                       REVIEW, APPROVE_PARAM, DISCARD_PARAM));
     }
 
     Map<ReviewStatus, Set<Integer>> reviewRequest = new HashMap<>(2);
