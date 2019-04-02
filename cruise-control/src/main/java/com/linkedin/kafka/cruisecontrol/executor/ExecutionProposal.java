@@ -28,7 +28,9 @@ public class ExecutionProposal {
   private final int _oldLeader;
   private final List<Integer> _oldReplicas;
   private final List<Integer> _newReplicas;
+  // Replicas to add are the replicas which are originally not hosted by the broker.
   private final Set<Integer> _replicasToAdd;
+  // Replicas to remove are the replicas which are no longer hosted by the broker.
   private final Set<Integer> _replicasToRemove;
 
   /**
@@ -192,7 +194,7 @@ public class ExecutionProposal {
   private void validate() {
     // Verify old leader exists.
     if (_oldLeader >= 0 && !_oldReplicas.contains(_oldLeader)) {
-      throw new IllegalArgumentException(String.format("The old leader %d does not exit in the old replica list %s",
+      throw new IllegalArgumentException(String.format("The old leader %d does not exist in the old replica list %s",
                                                        _oldLeader, _oldReplicas));
     }
     // verify empty new replica list.

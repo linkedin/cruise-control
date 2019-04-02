@@ -26,7 +26,7 @@ import java.util.function.Function;
  *      <tt>ScoreFunction</tt>: the score function generates a score for each replica to sort. The replicas are
  *      sorted based on their score in ascending order. Those who want a descending order need to use
  *      the descending iterator of {@link #sortedReplicas()}. As alternatives, {@link #reverselySortedReplicas()}
- *      and {@link #reverselySortedReplicaWrappers()} are provided for convenience.
+ *      are provided for convenience.
  *    </li>
  *    <li>
  *      <tt>SelectionFunction</tt>(optional): the selection function decides which replicas to include in the sorted
@@ -43,7 +43,7 @@ import java.util.function.Function;
  *
  * <p>
  *   The SortedReplicas are initialized lazily, i.e. until one of {@link #sortedReplicas()},
- *   {@link #reverselySortedReplicas()} and {@link #reverselySortedReplicaWrappers()} is invoked, the sorted replicas
+ *   {@link #reverselySortedReplicas()} and {@link #sortedReplicas()} is invoked, the sorted replicas
  *   will not be populated.
  * </p>
  */
@@ -81,29 +81,27 @@ public class SortedReplicas {
   }
 
   /**
-   * Get the sorted replicas in the ascending order of their priority and score.
+   * Get the sorted replica wrappers in the ascending order of their priority and score.
    * This method initialize the sorted replicas if it hasn't been initialized.
+   * This method is package accessible for testing.
    *
-   * @return the sorted replicas in the ascending order of their priority and score.
+   * @return the sorted replicas wrappers in the ascending order of their priority and score.
    */
-  public NavigableSet<ReplicaWrapper> sortedReplicas() {
+  NavigableSet<ReplicaWrapper> sortedReplicaWrappers() {
     ensureInitialize();
     return Collections.unmodifiableNavigableSet(_sortedReplicas);
   }
 
   /**
-   * Get a list of replica wrappers in the descending order of their priority and score.
+   * Get a list of in the ascending order of their priority and score.
    * This method initialize the sorted replicas if it hasn't been initialized.
    *
-   * @return a list of replica wrappers in the descending order of their priority and score.
+   * @return the sorted replicas in the ascending order of their priority and score.
    */
-  public List<ReplicaWrapper> reverselySortedReplicaWrappers() {
+  public List<Replica> sortedReplicas() {
     ensureInitialize();
-    List<ReplicaWrapper> result = new ArrayList<>(_sortedReplicas.size());
-    Iterator<ReplicaWrapper> reverseIter = _sortedReplicas.descendingIterator();
-    while (reverseIter.hasNext()) {
-      result.add(reverseIter.next());
-    }
+    List<Replica> result = new ArrayList<>(_sortedReplicas.size());
+    _sortedReplicas.forEach(rw -> result.add(rw.replica()));
     return result;
   }
 

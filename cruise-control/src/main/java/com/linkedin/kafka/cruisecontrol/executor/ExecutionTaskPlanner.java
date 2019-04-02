@@ -31,24 +31,23 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.L
 /**
  * The class holds the execution of balance proposals for rebalance.
  * <p>
- * Each proposal is assigned an execution id and managed in two ways.
+ * Each proposal is processed and may generate a leadership movement task and partition movement task.
+ * Each task is assigned an execution id and managed in two ways.
  * <ul>
- * <li>All proposals of leadership movements are put into the same list and will be executed together.
- * <li>Proposals of partition movements are tracked by broker and execution Id.
+ * <li>All leadership movement tasks are put into the same list and will be executed together.
+ * <li>Partition movement tasks are tracked by broker and execution Id.
  * </ul>
  * <p>
- * This class tracks the execution proposals for each broker using a sorted Set. The proposal's position in this set
- * represents its execution order and is determined by the passed in {@link ReplicaMovementStrategy} or
- * {@link #_defaultReplicaMovementTaskStrategy}. The proposal is tracked both under source broker and
- * destination broker's plan. Once a proposal is fulfilled, the proposal will be removed from both source broker and destination
- * broker's execution plan.
+ * This class tracks the partition movements for each broker using a sorted Set.
+ * The task's position in this set represents its execution order and is determined by the passed in {@link ReplicaMovementStrategy}
+ * or {@link #_defaultReplicaMovementTaskStrategy}. The task is tracked both under source broker and destination broker's plan.
+ * Once a task is fulfilled, the task will be removed from both source broker and destination broker's execution plan.
  * <p>
  * This class is not thread safe.
  */
 public class ExecutionTaskPlanner {
   private final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
   private Map<Integer, SortedSet<ExecutionTask>> _partMoveTaskByBrokerId;
-  private long _remainingDataToMove;
   private final Set<ExecutionTask> _remainingReplicaMovements;
   private final Map<Long, ExecutionTask> _remainingLeadershipMovements;
   private long _executionId;
@@ -58,7 +57,6 @@ public class ExecutionTaskPlanner {
     _executionId = 0L;
     _partMoveTaskByBrokerId = new HashMap<>();
     _remainingReplicaMovements = new TreeSet<>();
-    _remainingDataToMove = 0L;
     _remainingLeadershipMovements = new HashMap<>();
     if (defaultReplicaMovementStrategies == null || defaultReplicaMovementStrategies.isEmpty()) {
       _defaultReplicaMovementTaskStrategy = new BaseReplicaMovementStrategy();
@@ -121,7 +119,6 @@ public class ExecutionTaskPlanner {
         long replicaActionExecutionId = _executionId++;
         ExecutionTask executionTask = new ExecutionTask(replicaActionExecutionId, proposal, REPLICA_ACTION);
         _remainingReplicaMovements.add(executionTask);
-        _remainingDataToMove += proposal.dataToMoveInMB();
         LOG.trace("Added action {} as replica proposal {}", replicaActionExecutionId, proposal);
       }
     }
@@ -158,13 +155,6 @@ public class ExecutionTaskPlanner {
    */
   public Set<ExecutionTask> remainingReplicaMovements() {
     return _remainingReplicaMovements;
-  }
-
-  /**
-   * Get the remaining data to move in MB.
-   */
-  public long remainingDataToMoveInMB() {
-    return _remainingDataToMove;
   }
 
   /**
@@ -271,7 +261,6 @@ public class ExecutionTaskPlanner {
     _remainingLeadershipMovements.clear();
     _partMoveTaskByBrokerId.clear();
     _remainingReplicaMovements.clear();
-    _remainingDataToMove = 0L;
   }
 
   /**
@@ -297,7 +286,6 @@ public class ExecutionTaskPlanner {
       _partMoveTaskByBrokerId.get(destinationBroker).remove(task);
     }
     _remainingReplicaMovements.remove(task);
-    _remainingDataToMove -= task.proposal().dataToMoveInMB();
   }
 
 }

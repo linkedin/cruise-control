@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 
@@ -27,10 +28,7 @@ public enum ActionType {
   REPLICA_DELETION("DELETE"),
   REPLICA_SWAP("SWAP");
 
-  private static final List<ActionType> CACHED_VALUES;
-  static {
-    CACHED_VALUES = Arrays.asList(REPLICA_MOVEMENT, LEADERSHIP_MOVEMENT, REPLICA_ADDITION, REPLICA_DELETION, REPLICA_SWAP);
-  }
+  private static final List<ActionType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
   public static List<ActionType> cachedValues() {
     return CACHED_VALUES;

@@ -12,6 +12,7 @@ import java.util.Map;
 
 /**
  * Represents the load balancing operation over a replica for Kafka Load GoalOptimizer.
+ * Note {@link this#_destinationTp} is only relevant in replica swap operation, for other operations, it will be null.
  */
 public class BalancingAction {
   private static final String TOPIC_PARTITION = "topicPartition";
@@ -26,7 +27,7 @@ public class BalancingAction {
   private final TopicPartition _destinationTp;
 
   /**
-   * Constructor for creating a balancing proposal with given topic partition, source broker and destination id, and
+   * Constructor for creating a balancing proposal with given topic partition, source and destination broker id, and
    * balancing action.
    *
    * @param tp                  Topic partition of the replica.
@@ -68,25 +69,25 @@ public class BalancingAction {
     switch (_actionType) {
       case REPLICA_ADDITION:
         if (_destinationBrokerId == null) {
-          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + _actionType);
+          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + this);
         } else if (_sourceBrokerId != null) {
-          throw new IllegalArgumentException("The source broker should be null for balancing action " + _actionType);
+          throw new IllegalArgumentException("The source broker should be null for balancing action " + this);
         }
         break;
       case REPLICA_DELETION:
         if (_destinationBrokerId != null) {
-          throw new IllegalArgumentException("The destination broker should be null for balancing action " + _actionType);
+          throw new IllegalArgumentException("The destination broker should be null for balancing action " + this);
         } else if (_sourceBrokerId == null) {
-          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + _actionType);
+          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + this);
         }
         break;
       case REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
       case REPLICA_SWAP:
         if (_destinationBrokerId == null) {
-          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + _actionType);
+          throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + this);
         } else if (_sourceBrokerId == null) {
-          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + _actionType);
+          throw new IllegalArgumentException("The source broker cannot be null for balancing action " + this);
         }
         break;
       default:
@@ -191,23 +192,11 @@ public class BalancingAction {
     }
 
     BalancingAction otherAction = (BalancingAction) other;
-    if (_sourceBrokerId == null) {
-      if (otherAction._sourceBrokerId != null) {
-        return false;
-      }
-    } else if (!_sourceBrokerId.equals(otherAction._sourceBrokerId)) {
-      return false;
-    }
-
-    if (_destinationBrokerId == null) {
-      if (otherAction._destinationBrokerId != null) {
-        return false;
-      }
-    } else if (!_destinationBrokerId.equals(otherAction._destinationBrokerId)) {
-      return false;
-    }
-
-    return _tp.equals(otherAction._tp) && _actionType == otherAction._actionType && _destinationTp.equals(otherAction._destinationTp);
+    return Objects.equals(_sourceBrokerId, otherAction._sourceBrokerId)
+           && Objects.equals(_tp, otherAction._tp)
+           && Objects.equals(_destinationBrokerId, otherAction._destinationBrokerId)
+           && Objects.equals(_destinationTp, otherAction._destinationTp)
+           && Objects.equals(_actionType, otherAction._actionType);
   }
 
   @Override

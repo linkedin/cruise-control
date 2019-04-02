@@ -427,7 +427,7 @@ public class LoadMonitor {
    * @param requirements the load completeness requirements.
    * @param operationProgress the progress of the job to report.
    * @return A cluster model with the available snapshots whose timestamp is in the given window.
-   * @throws NotEnoughValidWindowsException
+   * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
    */
   public ClusterModel clusterModel(long from,
                                    long to,
@@ -475,7 +475,7 @@ public class LoadMonitor {
         clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity);
       }
 
-      // populate snapshots for the cluster model.
+      // Populate snapshots for the cluster model.
       for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : loadSnapshots.entrySet()) {
         TopicPartition tp = entry.getKey().tp();
         ValuesAndExtrapolations leaderLoad = entry.getValue();
