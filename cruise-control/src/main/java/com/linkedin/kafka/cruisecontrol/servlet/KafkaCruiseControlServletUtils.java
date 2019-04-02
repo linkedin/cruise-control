@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
+import com.linkedin.cruisecontrol.common.config.ConfigException;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -19,6 +20,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.wr
 import static javax.servlet.http.HttpServletResponse.SC_NOT_FOUND;
 import static javax.servlet.http.HttpServletResponse.SC_BAD_REQUEST;
 import static javax.servlet.http.HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+import static javax.servlet.http.HttpServletResponse.SC_FORBIDDEN;
 
 
 /**
@@ -82,6 +84,9 @@ public class KafkaCruiseControlServletUtils {
     return endPoint;
   }
 
+  /**
+   * Creates a {@link HttpServletResponse#SC_BAD_REQUEST} Http servlet response.
+   */
   static String handleUserRequestException(UserRequestException ure, HttpServletRequest request, HttpServletResponse response)
       throws IOException {
     String errorMessage = String.format("Bad %s request '%s'", request.getMethod(), request.getPathInfo());
@@ -91,6 +96,22 @@ public class KafkaCruiseControlServletUtils {
     return errorMessage;
   }
 
+  /**
+   * Creates a {@link HttpServletResponse#SC_FORBIDDEN} Http servlet response.
+   */
+  static String handleConfigException(ConfigException ce, HttpServletRequest request, HttpServletResponse response)
+      throws IOException {
+    StringWriter sw = new StringWriter();
+    ce.printStackTrace(new PrintWriter(sw));
+    String errorMessage = String.format("Cannot process %s request '%s' due to: '%s'.",
+                                        request.getMethod(), request.getPathInfo(), ce.getMessage());
+    writeErrorResponse(response, sw.toString(), errorMessage, SC_FORBIDDEN, wantJSON(request));
+    return errorMessage;
+  }
+
+  /**
+   * Creates a {@link HttpServletResponse#SC_INTERNAL_SERVER_ERROR} Http servlet response.
+   */
   static String handleException(Exception e, HttpServletRequest request, HttpServletResponse response) throws IOException {
     StringWriter sw = new StringWriter();
     e.printStackTrace(new PrintWriter(sw));
