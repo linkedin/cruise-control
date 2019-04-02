@@ -15,6 +15,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -477,8 +478,7 @@ public class Executor {
           _state = REPLICA_MOVEMENT_TASK_IN_PROGRESS;
           // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
           _executorState = ExecutorState.operationInProgress(REPLICA_MOVEMENT_TASK_IN_PROGRESS,
-                                                             _executionTaskManager.getExecutionTasksSummary(Collections.singletonList(REPLICA_ACTION),
-                                                                                                            false),
+                                                             _executionTaskManager.getExecutionTasksSummary(Collections.singleton(REPLICA_ACTION)),
                                                              _executionTaskManager.partitionMovementConcurrency(),
                                                              _executionTaskManager.leadershipMovementConcurrency(),
                                                              _uuid,
@@ -492,8 +492,7 @@ public class Executor {
           _state = LEADER_MOVEMENT_TASK_IN_PROGRESS;
           // The _executorState might be inconsistent with _state if the user checks it between the two assignments.
           _executorState = ExecutorState.operationInProgress(LEADER_MOVEMENT_TASK_IN_PROGRESS,
-                                                             _executionTaskManager.getExecutionTasksSummary(Collections.singletonList(LEADER_ACTION),
-                                                                                                            false),
+                                                             _executionTaskManager.getExecutionTasksSummary(Collections.singleton(LEADER_ACTION)),
                                                              _executionTaskManager.partitionMovementConcurrency(),
                                                              _executionTaskManager.leadershipMovementConcurrency(),
                                                              _uuid,
@@ -526,8 +525,7 @@ public class Executor {
         switch (_state) {
           case LEADER_MOVEMENT_TASK_IN_PROGRESS:
             _executorState = ExecutorState.operationInProgress(LEADER_MOVEMENT_TASK_IN_PROGRESS,
-                                                               _executionTaskManager.getExecutionTasksSummary(Collections.singletonList(LEADER_ACTION),
-                                                                                                              false),
+                                                               _executionTaskManager.getExecutionTasksSummary(Collections.singleton(LEADER_ACTION)),
                                                                _executionTaskManager.partitionMovementConcurrency(),
                                                                _executionTaskManager.leadershipMovementConcurrency(),
                                                                _uuid,
@@ -536,8 +534,7 @@ public class Executor {
             break;
           case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
             _executorState = ExecutorState.operationInProgress(REPLICA_MOVEMENT_TASK_IN_PROGRESS,
-                                                               _executionTaskManager.getExecutionTasksSummary(Collections.singletonList(REPLICA_ACTION),
-                                                                                                              false),
+                                                               _executionTaskManager.getExecutionTasksSummary(Collections.singleton(REPLICA_ACTION)),
                                                                _executionTaskManager.partitionMovementConcurrency(),
                                                                _executionTaskManager.leadershipMovementConcurrency(),
                                                                _uuid,
@@ -550,8 +547,7 @@ public class Executor {
       } else {
         _state = ExecutorState.State.STOPPING_EXECUTION;
         _executorState = ExecutorState.operationInProgress(STOPPING_EXECUTION,
-                                                           _executionTaskManager.getExecutionTasksSummary(ExecutionTask.TaskType.cachedValues(),
-                                                                                                          false),
+                                                           _executionTaskManager.getExecutionTasksSummary(new HashSet<>(ExecutionTask.TaskType.cachedValues())),
                                                            _executionTaskManager.partitionMovementConcurrency(),
                                                            _executionTaskManager.leadershipMovementConcurrency(),
                                                            _uuid,
@@ -602,7 +598,7 @@ public class Executor {
       if (_executionTaskManager.inExecutionTasks().isEmpty()) {
         LOG.info("Partition movements finished.");
       } else if (_stopRequested.get()) {
-        ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptyList(), false);
+        ExecutionTasksSummary executionTasksSummary = _executionTaskManager.getExecutionTasksSummary(Collections.emptySet());
         Map<ExecutionTask.State, Integer> partitionMovementTasksByState =  executionTasksSummary.taskStat().get(REPLICA_ACTION);
         LOG.info("Partition movements stopped. For partition movements {} tasks cancelled, {} tasks in-progress, "
                  + "{} tasks aborting, {} tasks aborted, {} tasks dead, {} tasks completed, {} remaining data to move; "
@@ -632,7 +628,7 @@ public class Executor {
         LOG.info("Leadership movements finished.");
       } else if (_stopRequested.get()) {
         Map<ExecutionTask.State, Integer> leadershipMovementTasksByState =
-            _executionTaskManager.getExecutionTasksSummary(Collections.emptyList(), false).taskStat().get(LEADER_ACTION);
+            _executionTaskManager.getExecutionTasksSummary(Collections.emptySet()).taskStat().get(LEADER_ACTION);
         LOG.info("Leadership movements stopped. {} tasks cancelled, {} tasks in-progress, {} tasks aborting, {} tasks aborted, "
                  + "{} tasks dead, {} tasks completed.",
                  leadershipMovementTasksByState.get(PENDING),

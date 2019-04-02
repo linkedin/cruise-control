@@ -137,12 +137,13 @@ public class ExecutionTaskTracker {
   }
 
   /**
-   * Add new tasks to ExecutionTaskTracker to track their execution state.
+   * Add new tasks to ExecutionTaskTracker to trace their execution.
+   * Tasks are added homogeneously -- all tasks have the same task type.
    *
    * @param tasks    New tasks to add.
    * @param taskType Task type of new tasks.
    */
-  public void initializeTask(Collection<ExecutionTask> tasks, TaskType taskType) {
+  public void addTasksToTrace(Collection<ExecutionTask> tasks, TaskType taskType) {
     _tasksByType.get(taskType).get(State.PENDING).addAll(tasks);
     if (taskType == TaskType.REPLICA_ACTION) {
       _remainingDataToMoveInMB += tasks.stream().mapToLong(t -> t.proposal().dataToMoveInMB()).sum();
@@ -173,25 +174,20 @@ public class ExecutionTaskTracker {
   }
 
   /**
-   * Get a snapshot of task execution state.The snapshot would contain list of tasks of different {@link TaskType} in
-   * different {@link State}.
+   * Get a filtered list of tasks of different {@link TaskType} and in different {@link State}.
    *
-   * @param taskTypesToGetSnapshot Task type to populate snapshot.
-   * @param inExecutionOnly        Whether only populate in-progress and aborting tasks.
-   * @return                       A snapshot of task execution state.
+   * @param taskTypesToGetFullList  Task types to return complete list of tasks.
+   * @return                        A filtered list of tasks.
    */
-  private Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot(List<TaskType> taskTypesToGetSnapshot,
-                                                                     boolean inExecutionOnly) {
-    Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot = new HashMap<>(taskTypesToGetSnapshot.size());
-    for (TaskType type : taskTypesToGetSnapshot) {
-      taskSnapshot.put(type, new HashMap<>());
+  private Map<TaskType, Map<State, Set<ExecutionTask>>> filteredTasksByState(Set<TaskType> taskTypesToGetFullList) {
+    Map<TaskType, Map<State, Set<ExecutionTask>>> tasksByState = new HashMap<>(taskTypesToGetFullList.size());
+    for (TaskType type : taskTypesToGetFullList) {
+      tasksByState.put(type, new HashMap<>());
       _tasksByType.get(type).forEach((k, v) -> {
-        if (!inExecutionOnly || k == State.IN_PROGRESS || k == State.ABORTING) {
-          taskSnapshot.get(type).put(k, new HashSet<>(v));
-        }
+          tasksByState.get(type).put(k, new HashSet<>(v));
       });
     }
-    return taskSnapshot;
+    return tasksByState;
   }
 
   /**
@@ -246,12 +242,12 @@ public class ExecutionTaskTracker {
            _tasksByType.get(TaskType.LEADER_ACTION).get(State.ABORTED).size();
   }
 
-  public ExecutionTasksSummary getExecutionTasksSummary(List<TaskType> taskTypesToGetSnapshot, boolean inExecutionOnly) {
+  public ExecutionTasksSummary getExecutionTasksSummary(Set<TaskType> taskTypesToGetFullList) {
     return new ExecutionTasksSummary(_finishedDataMovementInMB,
                                      _inExecutionDataMovementInMB,
                                      _remainingDataToMoveInMB,
                                      taskStat(),
-                                     taskSnapshot(taskTypesToGetSnapshot, inExecutionOnly));
+                                     filteredTasksByState(taskTypesToGetFullList));
   }
 
   public static class ExecutionTasksSummary {
@@ -259,18 +255,18 @@ public class ExecutionTaskTracker {
     private long _inExecutionDataMovementInMB;
     private final long _remainingDataToMoveInMB;
     private Map<TaskType, Map<State, Integer>> _taskStat;
-    private Map<TaskType, Map<State, Set<ExecutionTask>>> _taskSnapshot;
+    private Map<TaskType, Map<State, Set<ExecutionTask>>> _filteredTasksByState;
 
     private ExecutionTasksSummary(long finishedInterBrokerDataMovementInMB,
                                   long inExecutionInterBrokerDataMovementInMB,
                                   long remainingInterBrokerDataToMoveInMB,
                                   Map<TaskType, Map<State, Integer>> taskStat,
-                                  Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot) {
+                                  Map<TaskType, Map<State, Set<ExecutionTask>>> filteredTasksByState) {
       _finishedDataMovementInMB = finishedInterBrokerDataMovementInMB;
       _inExecutionDataMovementInMB = inExecutionInterBrokerDataMovementInMB;
       _remainingDataToMoveInMB = remainingInterBrokerDataToMoveInMB;
       _taskStat = taskStat;
-      _taskSnapshot = taskSnapshot;
+      _filteredTasksByState = filteredTasksByState;
     }
 
     public long finishedDataMovementInMB() {
@@ -289,8 +285,8 @@ public class ExecutionTaskTracker {
       return _taskStat;
     }
 
-    public Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot() {
-      return _taskSnapshot;
+    public Map<TaskType, Map<State, Set<ExecutionTask>>> filteredTasksByState() {
+      return _filteredTasksByState;
     }
   }
 }

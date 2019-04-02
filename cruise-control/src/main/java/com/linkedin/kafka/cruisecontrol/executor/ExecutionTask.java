@@ -212,7 +212,8 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   public enum TaskType {
     REPLICA_ACTION, LEADER_ACTION;
 
-    private static final List<TaskType> CACHED_VALUES = Arrays.asList(REPLICA_ACTION, LEADER_ACTION);
+    private static final List<TaskType> CACHED_VALUES =
+        Collections.unmodifiableList(Arrays.asList(REPLICA_ACTION, LEADER_ACTION));
 
     public static List<TaskType> cachedValues() {
       return CACHED_VALUES;
@@ -223,7 +224,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED;
 
     private static final List<State> CACHED_VALUES =
-        Arrays.asList(PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED);
+        Collections.unmodifiableList(Arrays.asList(PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED));
 
     public static List<State> cachedValues() {
       return CACHED_VALUES;

@@ -121,8 +121,8 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
 
   private void writeVerboseExecutorState(StringBuilder sb) {
     if (_executorState != null) {
-      Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot = _executorState.executionTasksSummary().taskSnapshot();
-      taskSnapshot.forEach((type, taskMap) -> {
+      Map<TaskType, Map<State, Set<ExecutionTask>>> filteredTasksByState = _executorState.executionTasksSummary().filteredTasksByState();
+      filteredTasksByState.forEach((type, taskMap) -> {
         String taskTypeString = type == TaskType.REPLICA_ACTION ? PARTITION_MOVEMENTS :
                                                                   LEADERSHIP_MOVEMENTS;
         sb.append(String.format("%n%n%s %s:%n",

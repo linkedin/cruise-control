@@ -105,14 +105,22 @@ public class ExecutionTaskManager {
    * Returns a list of execution proposal that moves the partitions.
    */
   public synchronized List<ExecutionTask> getReplicaMovementTasks() {
-    Map<Integer, Integer> readyBrokers = getReadyBrokers(_inProgressReplicaMovementsByBrokerId,
-                                                         partitionMovementConcurrency());
-    return _executionTaskPlanner.getReplicaMovementTasks(readyBrokers, _inProgressPartitions);
+    Map<Integer, Integer> getBrokersReadyForReplicaMovement = getBrokersReadyForReplicaMovement(_inProgressReplicaMovementsByBrokerId,
+                                                                                                partitionMovementConcurrency());
+    return _executionTaskPlanner.getReplicaMovementTasks(getBrokersReadyForReplicaMovement, _inProgressPartitions);
 
   }
 
-  private Map<Integer, Integer> getReadyBrokers(Map<Integer, Integer> inProgressReplicaMovementsByBrokerId,
-                                                int movementConcurrency) {
+  /**
+   * Based on replica movement concurrency requirement and number of ongoing replica movements, calculate how many
+   * new replica movements can be triggered on each broker.
+   *
+   * @param inProgressReplicaMovementsByBrokerId Number of ongoing replica movements in each broker.
+   * @param movementConcurrency The required per-broker replica movement concurrency.
+   * @return A map of how many new replica movements can be triggered for each broker.
+   */
+  private Map<Integer, Integer> getBrokersReadyForReplicaMovement(Map<Integer, Integer> inProgressReplicaMovementsByBrokerId,
+                                                                  int movementConcurrency) {
     Map<Integer, Integer> readyBrokers = new HashMap<>(inProgressReplicaMovementsByBrokerId.size());
     for (Map.Entry<Integer, Integer> entry : inProgressReplicaMovementsByBrokerId.entrySet()) {
       // We skip the concurrency level check if caller requested so.
@@ -158,9 +166,9 @@ public class ExecutionTaskManager {
     // Set the execution mode for tasks.
     _executionTaskTracker.setExecutionMode(_isKafkaAssignerMode);
 
-    // Add pending proposals to indicate the phase before they become an executable task.
-    _executionTaskTracker.initializeTask(_executionTaskPlanner.remainingReplicaMovements(), TaskType.REPLICA_ACTION);
-    _executionTaskTracker.initializeTask(_executionTaskPlanner.remainingLeadershipMovements(), TaskType.LEADER_ACTION);
+    // Populate the generated tasks to tracker to trace their execution.
+    _executionTaskTracker.addTasksToTrace(_executionTaskPlanner.remainingReplicaMovements(), TaskType.REPLICA_ACTION);
+    _executionTaskTracker.addTasksToTrace(_executionTaskPlanner.remainingLeadershipMovements(), TaskType.LEADER_ACTION);
     _brokersToSkipConcurrencyCheck.clear();
     if (brokersToSkipConcurrencyCheck != null) {
       _brokersToSkipConcurrencyCheck.addAll(brokersToSkipConcurrencyCheck);
@@ -187,9 +195,9 @@ public class ExecutionTaskManager {
           _inProgressPartitions.add(task.proposal().topicPartition());
           int oldLeader = task.proposal().oldLeader();
           _inProgressReplicaMovementsByBrokerId.put(oldLeader, _inProgressReplicaMovementsByBrokerId.get(oldLeader) + 1);
-          task.proposal()
-              .replicasToAdd()
-              .forEach(r -> _inProgressReplicaMovementsByBrokerId.put(r, _inProgressReplicaMovementsByBrokerId.get(r) + 1));
+          for (int broker : task.proposal().replicasToAdd()) {
+            _inProgressReplicaMovementsByBrokerId.put(broker, _inProgressReplicaMovementsByBrokerId.get(broker) + 1);
+          }
         }
       }
     }
@@ -286,8 +294,7 @@ public class ExecutionTaskManager {
     _executionTaskTracker.clear();
   }
 
-  public synchronized ExecutionTasksSummary getExecutionTasksSummary(List<TaskType> taskTypesToGetSnapshot,
-                                                                     boolean inProgressOnly) {
-    return _executionTaskTracker.getExecutionTasksSummary(taskTypesToGetSnapshot, inProgressOnly);
+  public synchronized ExecutionTasksSummary getExecutionTasksSummary(Set<TaskType> taskTypesToGetFullList) {
+    return _executionTaskTracker.getExecutionTasksSummary(taskTypesToGetFullList);
   }
 }

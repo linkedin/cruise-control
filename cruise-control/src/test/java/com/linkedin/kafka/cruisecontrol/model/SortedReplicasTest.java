@@ -5,7 +5,6 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
-import java.util.List;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
@@ -71,8 +70,8 @@ public class SortedReplicasTest {
     assertEquals("The replicas should be sorted lazily", 0, sr.numReplicas());
     sr.remove(replica);
     assertEquals("The replicas should be sorted lazily", 0, sr.numReplicas());
-    List<Replica> sortedReplicas = sr.sortedReplicas();
-    assertEquals("There should be ", NUM_REPLICAS, sortedReplicas.size());
+    NavigableSet<ReplicaWrapper> sortedReplicaWrapperss = sr.sortedReplicaWrappers();
+    assertEquals("There should be ", NUM_REPLICAS, sortedReplicaWrapperss.size());
     assertEquals("The replicas should now be sorted", NUM_REPLICAS, sr.numReplicas());
   }
 

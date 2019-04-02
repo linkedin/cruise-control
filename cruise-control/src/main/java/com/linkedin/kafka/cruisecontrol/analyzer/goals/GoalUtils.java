@@ -160,9 +160,7 @@ public class GoalUtils {
    * @param actionType Action type.
    * @return True if the move is legit, false otherwise.
    */
-  static boolean legitMove(Replica replica,
-                           Broker destinationBroker,
-                           ActionType actionType) {
+  static boolean legitMove(Replica replica, Broker destinationBroker, ActionType actionType) {
     switch (actionType) {
       case REPLICA_MOVEMENT:
         return destinationBroker.replica(replica.topicPartition()) == null;
@@ -281,9 +279,8 @@ public class GoalUtils {
 
   /**
    * Get the utilization percentage of the broker for the given resource, or {@link #DEAD_BROKER_UTILIZATION} if the
-   * broker is dead.
-   * The utilization percentage for inbound network, outbound network, and cpu resource is based on the average
-   * of the recent resource utilization; for disk resource, the percentage is based on the latest resource utilization.
+   * broker is dead. The utilization percentage for resources is calculated from broker capacity and
+   * {@link com.linkedin.kafka.cruisecontrol.model.Load#expectedUtilizationFor(Resource)} .
    *
    * @param broker Broker for which the resource utilization percentage has been queried.
    * @param resource Resource for the utilization percentage.

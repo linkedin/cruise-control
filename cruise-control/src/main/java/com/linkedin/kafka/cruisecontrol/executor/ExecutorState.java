@@ -122,7 +122,7 @@ public class ExecutorState {
                                                   Set<Integer> recentlyDemotedBrokers,
                                                   Set<Integer> recentlyRemovedBrokers) {
     if (state == State.NO_TASK_IN_PROGRESS || state == State.STARTING_EXECUTION) {
-      throw new IllegalArgumentException(String.format("%s in not an operation-in-progress executor state.", state));
+      throw new IllegalArgumentException(String.format("%s is not an operation-in-progress executor state.", state));
     }
     return new ExecutorState(state,
                              executionTasksSummary,
@@ -189,7 +189,7 @@ public class ExecutorState {
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
         if (verbose) {
           List<Object> pendingLeadershipMovementList = new ArrayList<>();
-          for (ExecutionTask task : _executionTasksSummary.taskSnapshot().get(LEADER_ACTION).get(PENDING)) {
+          for (ExecutionTask task : _executionTasksSummary.filteredTasksByState().get(LEADER_ACTION).get(PENDING)) {
             pendingLeadershipMovementList.add(task.getJsonStructure());
           }
           execState.put(PENDING_LEADERSHIP_MOVEMENT, pendingLeadershipMovementList);
@@ -214,7 +214,7 @@ public class ExecutorState {
         execState.put(MAXIMUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentPartitionMovementsPerBroker);
         execState.put(TRIGGERED_USER_TASK_ID, _uuid);
         if (verbose) {
-          Map<ExecutionTask.State, Set<ExecutionTask>> partitionMovementsByState = _executionTasksSummary.taskSnapshot().get(REPLICA_ACTION);
+          Map<ExecutionTask.State, Set<ExecutionTask>> partitionMovementsByState = _executionTasksSummary.filteredTasksByState().get(REPLICA_ACTION);
           List<Object> inProgressPartitionMovementList = new ArrayList<>(partitionMovementsByState.get(IN_PROGRESS).size());
           List<Object> abortingPartitionMovementList = new ArrayList<>(partitionMovementsByState.get(ABORTING).size());
           List<Object> abortedPartitionMovementList = new ArrayList<>(partitionMovementsByState.get(ABORTED).size());

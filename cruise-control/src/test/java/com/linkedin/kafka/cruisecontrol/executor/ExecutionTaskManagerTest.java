@@ -59,7 +59,7 @@ public class ExecutionTaskManagerTest {
       taskManager.clear();
       // Make sure the proposal does not involve leader movement.
       ExecutionProposal proposal =
-          new ExecutionProposal(tp, 0, 2, Arrays.asList(0, 2), Arrays.asList(2, 1));
+          new ExecutionProposal(tp, 10, 2, Arrays.asList(0, 2), Arrays.asList(2, 1));
 
       taskManager.setExecutionModeForTaskTracker(false);
       taskManager.addExecutionProposals(Collections.singletonList(proposal),
@@ -82,53 +82,66 @@ public class ExecutionTaskManagerTest {
   }
 
   private void changeTaskState(ExecutionTask.State state, ExecutionTask task, ExecutionTaskManager taskManager) {
+    ExecutionTaskTracker.ExecutionTasksSummary executionTasksSummary;
     Map<ExecutionTask.State, Integer> taskStat;
     switch (state) {
       case IN_PROGRESS:
         taskManager.markTasksInProgress(Collections.singletonList(task));
-        taskStat = taskManager.getExecutionTasksSummary(Collections.emptyList(), false).taskStat()
-                              .get(ExecutionTask.TaskType.REPLICA_ACTION);
+        executionTasksSummary = taskManager.getExecutionTasksSummary(Collections.emptySet());
+        taskStat = executionTasksSummary.taskStat().get(ExecutionTask.TaskType.REPLICA_ACTION);
         assertEquals(0, (int) taskStat.get(PENDING));
         assertEquals(1, (int) taskStat.get(IN_PROGRESS));
         assertEquals(0, (int) taskStat.get(ABORTING));
         assertEquals(0, (int) taskStat.get(ABORTED));
         assertEquals(0, (int) taskStat.get(COMPLETED));
         assertEquals(0, (int) taskStat.get(DEAD));
+        assertEquals(0, executionTasksSummary.remainingDataToMoveInMB());
+        assertEquals(10, executionTasksSummary.inExecutionDataMovementInMB());
+        assertEquals(0, executionTasksSummary.finishedDataMovementInMB());
         break;
       case ABORTING:
         taskManager.markTaskAborting(task);
-        taskStat = taskManager.getExecutionTasksSummary(Collections.emptyList(), false).taskStat()
-                              .get(ExecutionTask.TaskType.REPLICA_ACTION);
+        executionTasksSummary = taskManager.getExecutionTasksSummary(Collections.emptySet());
+        taskStat = executionTasksSummary.taskStat().get(ExecutionTask.TaskType.REPLICA_ACTION);
         assertEquals(0, (int) taskStat.get(PENDING));
         assertEquals(0, (int) taskStat.get(IN_PROGRESS));
         assertEquals(1, (int) taskStat.get(ABORTING));
         assertEquals(0, (int) taskStat.get(ABORTED));
         assertEquals(0, (int) taskStat.get(COMPLETED));
         assertEquals(0, (int) taskStat.get(DEAD));
+        assertEquals(0, executionTasksSummary.remainingDataToMoveInMB());
+        assertEquals(10, executionTasksSummary.inExecutionDataMovementInMB());
+        assertEquals(0, executionTasksSummary.finishedDataMovementInMB());
         break;
       case DEAD:
         taskManager.markTaskDead(task);
-        taskStat = taskManager.getExecutionTasksSummary(Collections.emptyList(), false).taskStat()
-                              .get(ExecutionTask.TaskType.REPLICA_ACTION);
+        executionTasksSummary = taskManager.getExecutionTasksSummary(Collections.emptySet());
+        taskStat = executionTasksSummary.taskStat().get(ExecutionTask.TaskType.REPLICA_ACTION);
         assertEquals(0, (int) taskStat.get(PENDING));
         assertEquals(0, (int) taskStat.get(IN_PROGRESS));
         assertEquals(0, (int) taskStat.get(ABORTING));
         assertEquals(0, (int) taskStat.get(ABORTED));
         assertEquals(0, (int) taskStat.get(COMPLETED));
         assertEquals(1, (int) taskStat.get(DEAD));
+        assertEquals(0, executionTasksSummary.remainingDataToMoveInMB());
+        assertEquals(0, executionTasksSummary.inExecutionDataMovementInMB());
+        assertEquals(10, executionTasksSummary.finishedDataMovementInMB());
         break;
       case ABORTED:
       case COMPLETED:
         ExecutionTask.State origState = task.state();
         taskManager.markTaskDone(task);
-        taskStat = taskManager.getExecutionTasksSummary(Collections.emptyList(), false).taskStat()
-                              .get(ExecutionTask.TaskType.REPLICA_ACTION);
+        executionTasksSummary = taskManager.getExecutionTasksSummary(Collections.emptySet());
+        taskStat = executionTasksSummary.taskStat().get(ExecutionTask.TaskType.REPLICA_ACTION);
         assertEquals(0, (int) taskStat.get(PENDING));
         assertEquals(0, (int) taskStat.get(IN_PROGRESS));
         assertEquals(0, (int) taskStat.get(ABORTING));
         assertEquals(origState == ExecutionTask.State.ABORTING ? 1 : 0, (int) taskStat.get(ABORTED));
         assertEquals(origState == ExecutionTask.State.ABORTING ? 0 : 1, (int) taskStat.get(COMPLETED));
         assertEquals(0, (int) taskStat.get(DEAD));
+        assertEquals(0, executionTasksSummary.remainingDataToMoveInMB());
+        assertEquals(0, executionTasksSummary.inExecutionDataMovementInMB());
+        assertEquals(10, executionTasksSummary.finishedDataMovementInMB());
         break;
       default:
         throw new IllegalArgumentException("Invalid state " + state);
