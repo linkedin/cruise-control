@@ -190,7 +190,7 @@ public abstract class AbstractGoal implements Goal {
    * @param action          Balancing action.
    * @param optimizedGoals  Optimized goals.
    * @param optimizationOptions Options to take into account during optimization -- e.g. excluded brokers for leadership.
-   * @return Broker id of the destination if the movement attempt succeeds, null otherwise.
+   * @return Destination broker if the movement attempt succeeds, null otherwise.
    */
   protected Broker maybeApplyBalancingAction(ClusterModel clusterModel,
                                              Replica replica,
@@ -212,7 +212,7 @@ public abstract class AbstractGoal implements Goal {
       // 2. The movement is acceptable by the previously optimized goals.
 
       if (!legitMove(replica, broker, action)) {
-        LOG.trace("Replica move is not legit for {}.", proposal);
+        LOG.trace("Replica move to broker is not legit for {}.", proposal);
         continue;
       }
 
@@ -244,7 +244,7 @@ public abstract class AbstractGoal implements Goal {
    * @param sourceReplica Replica to be swapped with.
    * @param cb Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
    * @param optimizedGoals Optimized goals.
-   * @return True the swapped in replica if succeeded, null otherwise.
+   * @return The swapped in replica if succeeded, null otherwise.
    */
   Replica maybeApplySwapAction(ClusterModel clusterModel,
                                Replica sourceReplica,
@@ -267,12 +267,12 @@ public abstract class AbstractGoal implements Goal {
       // 2. The goal requirements are not violated if this action is applied to the given cluster state.
       // 3. The movement is acceptable by the previously optimized goals.
       if (!legitMove(sourceReplica, destinationBroker, ActionType.REPLICA_MOVEMENT)) {
-        LOG.trace("Swap from source to destination is not legit for {}.", swapProposal);
+        LOG.trace("Swap from source to destination broker is not legit for {}.", swapProposal);
         return null;
       }
 
       if (!legitMove(destinationReplica, sourceReplica.broker(), ActionType.REPLICA_MOVEMENT)) {
-        LOG.trace("Swap from destination to source is not legit for {}.", swapProposal);
+        LOG.trace("Swap from destination to source broker is not legit for {}.", swapProposal);
         continue;
       }
 

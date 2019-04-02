@@ -108,7 +108,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * Get broker capacity for the requested resource.
    *
    * @param resource Resource for which the capacity will be provided.
-   * @return If broker is alive, the capacity of the requested resource, -1.0 otherwise.
+   * @return If broker is alive, the capacity of the requested resource, {@link this#DEAD_BROKER_CAPACITY} otherwise.
    */
   public double capacityFor(Resource resource) {
     if (isAlive()) {
@@ -218,7 +218,7 @@ public class Broker implements Serializable, Comparable<Broker> {
     SortedReplicas sortedReplicas = _sortedReplicas.get(sortName);
     if (sortedReplicas == null) {
       throw new IllegalStateException("The sort name " + sortName + "  is not found. Make sure trackSortedReplicas() " +
-                                          "has been called for the sort name");
+                                      "has been called for the sort name");
     }
     return sortedReplicas;
   }

@@ -210,14 +210,19 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   }
 
   public enum TaskType {
-    REPLICA_ACTION, LEADER_ACTION
+    REPLICA_ACTION, LEADER_ACTION;
+
+    private static final List<TaskType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+
+    public static List<TaskType> cachedValues() {
+      return CACHED_VALUES;
+    }
   }
 
   public enum State {
     PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED;
 
-    private static final List<State> CACHED_VALUES =
-        Arrays.asList(PENDING, IN_PROGRESS, ABORTING, ABORTED, DEAD, COMPLETED);
+    private static final List<State> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
     public static List<State> cachedValues() {
       return CACHED_VALUES;

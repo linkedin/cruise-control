@@ -4,51 +4,150 @@
 
 package com.linkedin.kafka.cruisecontrol.executor;
 
+import com.codahale.metrics.Gauge;
+import com.codahale.metrics.MetricRegistry;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.common.utils.Time;
 
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
 
 /**
- * A class for tracking the (1) dead tasks, (2) aborting/aborted tasks, (3) in progress tasks, and (4) pending proposals.
+ * A class for tracking the (1) dead tasks, (2) aborting/aborted tasks, (3) in progress tasks, and (4) pending tasks.
  *
  * This class is not thread-safe.
  */
 public class ExecutionTaskTracker {
-  private final Map<ExecutionTask.State, Set<ExecutionTask>> _replicaActionTasks;
-  private final Map<ExecutionTask.State, Set<ExecutionTask>> _leaderActionTasks;
+  private final Map<TaskType, Map<State, Set<ExecutionTask>>> _tasksByType;
+  private long _remainingDataToMoveInMB;
+  private long _inExecutionDataMovementInMB;
+  private long _finishedDataMovementInMB;
   private boolean _isKafkaAssignerMode;
+  private final Time _time;
 
-  ExecutionTaskTracker() {
-    List<ExecutionTask.State> states = ExecutionTask.State.cachedValues();
-    _replicaActionTasks = new HashMap<>(states.size());
-    _leaderActionTasks = new HashMap<>(states.size());
+  private static final String REPLICA_ACTION = "replica-action";
+  private static final String LEADERSHIP_ACTION = "leadership-action";
+  private static final String IN_PROGRESS = "in-progress";
+  private static final String PENDING = "pending";
+  private static final String ABORTING = "aborting";
+  private static final String ABORTED = "aborted";
+  private static final String DEAD = "dead";
+  private static final String COMPLETED = "completed";
+  private static final String GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE = "ongoing-execution-kafka_assigner";
+  private static final String GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE = "ongoing-execution-non_kafka_assigner";
 
-    for (ExecutionTask.State state : states) {
-      _replicaActionTasks.put(state, new HashSet<>());
-      _leaderActionTasks.put(state, new HashSet<>());
+  ExecutionTaskTracker(MetricRegistry dropwizardMetricRegistry, Time time) {
+    List<State> states = State.cachedValues();
+    List<TaskType> taskTypes = TaskType.cachedValues();
+    _tasksByType = new HashMap<>(taskTypes.size());
+    for (TaskType type : taskTypes) {
+      Map<State, Set<ExecutionTask>> taskMap = new HashMap<>(states.size());
+      for (State state : states) {
+        taskMap.put(state, new HashSet<>());
+      }
+      _tasksByType.put(type, taskMap);
     }
+    _remainingDataToMoveInMB = 0L;
+    _inExecutionDataMovementInMB = 0L;
+    _finishedDataMovementInMB = 0L;
     _isKafkaAssignerMode = false;
+    _time = time;
+
+    // Register gauge sensors.
+    registerGaugeSensors(dropwizardMetricRegistry);
+  }
+
+  private void registerGaugeSensors(MetricRegistry dropwizardMetricRegistry) {
+    String metricName = "Executor";
+    for (TaskType type : TaskType.cachedValues()) {
+      for (State state : State.cachedValues()) {
+        String typeString =  type == TaskType.REPLICA_ACTION ? REPLICA_ACTION :
+                                                               LEADERSHIP_ACTION;
+        String stateString =  state == State.PENDING     ? PENDING :
+                              state == State.IN_PROGRESS ? IN_PROGRESS :
+                              state == State.ABORTING    ? ABORTING :
+                              state == State.ABORTED     ? ABORTED :
+                              state == State.COMPLETED   ? COMPLETED :
+                                                           DEAD;
+        dropwizardMetricRegistry.register(MetricRegistry.name(metricName, typeString + "-" + stateString),
+                                          (Gauge<Integer>) () -> _tasksByType.get(type).get(state).size());
+      }
+    }
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE),
+                                      (Gauge<Integer>) () -> _isKafkaAssignerMode
+                                                             && !inExecutionTasks(TaskType.cachedValues()).isEmpty() ? 1 : 0);
+    dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_ONGOING_EXECUTION_IN_NON_KAFKA_ASSIGNER_MODE),
+                                      (Gauge<Integer>) () -> !_isKafkaAssignerMode
+                                                             && !inExecutionTasks(TaskType.cachedValues()).isEmpty() ? 1 : 0);
   }
 
   /**
-   * Get the execution task with replica action set with the given task state.
-   * @param taskState the task state to get the execution task for.
-   * @return the replica action execution task set with the given task state.
+   * Update the execution state of the task.
+   *
+   * @param task The task to update.
+   * @param newState New execution state of the task.
    */
-  public Set<ExecutionTask> taskForReplicaAction(ExecutionTask.State taskState) {
-    return _replicaActionTasks.get(taskState);
+  public void markTaskState(ExecutionTask task, State newState) {
+    _tasksByType.get(task.type()).get(task.state()).remove(task);
+    switch (newState) {
+      case PENDING:
+        break; // Let it go.
+      case IN_PROGRESS:
+        task.inProgress(_time.milliseconds());
+        updateDataMovement(task);
+        break;
+      case ABORTING:
+        task.abort();
+        break;
+      case ABORTED:
+        task.aborted(_time.milliseconds());
+        updateDataMovement(task);
+        break;
+      case COMPLETED:
+        task.completed(_time.milliseconds());
+        updateDataMovement(task);
+        break;
+      case DEAD:
+        task.kill(_time.milliseconds());
+        updateDataMovement(task);
+        break;
+      default:
+        break;
+    }
+    _tasksByType.get(task.type()).get(newState).add(task);
+  }
+
+  private void updateDataMovement(ExecutionTask task) {
+    if (task.type() == TaskType.LEADER_ACTION) {
+      return;
+    }
+    long dataToMove = task.proposal().dataToMoveInMB();
+    if (task.state() == State.IN_PROGRESS) {
+      _remainingDataToMoveInMB -= dataToMove;
+      _inExecutionDataMovementInMB += dataToMove;
+    } else if (task.state() == State.ABORTED || task.state() == State.DEAD || task.state() == State.COMPLETED) {
+      _inExecutionDataMovementInMB -= dataToMove;
+      _finishedDataMovementInMB += dataToMove;
+    }
   }
 
   /**
-   * Get the execution task with leader action set with the given task state.
-   * @param taskState the task state to get the execution task for.
-   * @return the leader action execution task set with the given task state.
+   * Add new tasks to ExecutionTaskTracker to trace their execution.
+   * Tasks are added homogeneously -- all tasks have the same task type.
+   *
+   * @param tasks    New tasks to add.
+   * @param taskType Task type of new tasks.
    */
-  public Set<ExecutionTask> taskForLeaderAction(ExecutionTask.State taskState) {
-    return _replicaActionTasks.get(taskState);
+  public void addTasksToTrace(Collection<ExecutionTask> tasks, TaskType taskType) {
+    _tasksByType.get(taskType).get(State.PENDING).addAll(tasks);
+    if (taskType == TaskType.REPLICA_ACTION) {
+      _remainingDataToMoveInMB += tasks.stream().mapToLong(t -> t.proposal().dataToMoveInMB()).sum();
+    }
   }
 
   /**
@@ -61,70 +160,133 @@ public class ExecutionTaskTracker {
   }
 
   /**
-   * Get all the in progress execution tasks.
+   * Get the statistic of task execution state.
+   *
+   * @return The statistic of task execution state.
    */
-  public Set<ExecutionTask> tasksInState(ExecutionTask.State state) {
-    Set<ExecutionTask> tasksInProgress = new HashSet<>();
-    tasksInProgress.addAll(_replicaActionTasks.get(state));
-    tasksInProgress.addAll(_leaderActionTasks.get(state));
-    return tasksInProgress;
+  private Map<TaskType, Map<State, Integer>> taskStat() {
+    Map<TaskType, Map<State, Integer>> taskStatMap = new HashMap<>(TaskType.cachedValues().size());
+    for (TaskType type : TaskType.cachedValues()) {
+      taskStatMap.put(type, new HashMap<>());
+      _tasksByType.get(type).forEach((k, v) -> taskStatMap.get(type).put(k, v.size()));
+    }
+    return taskStatMap;
   }
 
-  public int numDeadReplicaAction() {
-    return _replicaActionTasks.get(ExecutionTask.State.DEAD).size();
-  }
-
-  public int numDeadLeadershipAction() {
-    return _leaderActionTasks.get(ExecutionTask.State.DEAD).size();
-  }
-
-  public int numAbortingReplicaAction() {
-    return _replicaActionTasks.get(ExecutionTask.State.ABORTING).size();
-  }
-
-  public int numAbortingLeadershipAction() {
-    return _leaderActionTasks.get(ExecutionTask.State.ABORTING).size();
-  }
-
-  public int numAbortedReplicaAction() {
-    return _replicaActionTasks.get(ExecutionTask.State.ABORTED).size();
-  }
-
-  public int numAbortedLeadershipAction() {
-    return _leaderActionTasks.get(ExecutionTask.State.ABORTED).size();
-  }
-
-  public int numInProgressReplicaAction() {
-    return _replicaActionTasks.get(ExecutionTask.State.IN_PROGRESS).size();
-  }
-
-  public int isOngoingExecutionInKafkaAssignerMode() {
-    // 1: execution in progress, 0 otherwise
-    return _isKafkaAssignerMode && !_replicaActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty() ? 1 : 0;
-  }
-
-  public int isOngoingExecutionInNonKafkaAssignerMode() {
-    // 1: execution in progress, 0 otherwise
-    return !_isKafkaAssignerMode && !_replicaActionTasks.get(ExecutionTask.State.IN_PROGRESS).isEmpty() ? 1 : 0;
-  }
-
-  public int numInProgressLeadershipAction() {
-    return _leaderActionTasks.get(ExecutionTask.State.IN_PROGRESS).size();
-  }
-
-  public int numPendingReplicaAction() {
-    return _replicaActionTasks.get(ExecutionTask.State.PENDING).size();
-  }
-
-  public int numPendingLeadershipAction() {
-    return _leaderActionTasks.get(ExecutionTask.State.PENDING).size();
+  /**
+   * Get a filtered list of tasks of different {@link TaskType} and in different {@link State}.
+   *
+   * @param taskTypesToGetFullList  Task types to return complete list of tasks.
+   * @return                        A filtered list of tasks.
+   */
+  private Map<TaskType, Map<State, Set<ExecutionTask>>> filteredTasksByState(Set<TaskType> taskTypesToGetFullList) {
+    Map<TaskType, Map<State, Set<ExecutionTask>>> tasksByState = new HashMap<>(taskTypesToGetFullList.size());
+    for (TaskType type : taskTypesToGetFullList) {
+      tasksByState.put(type, new HashMap<>());
+      _tasksByType.get(type).forEach((k, v) -> {
+          tasksByState.get(type).put(k, new HashSet<>(v));
+      });
+    }
+    return tasksByState;
   }
 
   /**
    * Clear the replica action and leader action tasks.
    */
   public void clear() {
-    _replicaActionTasks.values().forEach(Set::clear);
-    _leaderActionTasks.values().forEach(Set::clear);
+    _tasksByType.values().forEach(m -> m.values().forEach(Set::clear));
+    _remainingDataToMoveInMB = 0L;
+    _inExecutionDataMovementInMB = 0L;
+    _finishedDataMovementInMB = 0L;
+  }
+
+  // Internal query APIs.
+  public int numRemainingPartitionMovements() {
+    return _tasksByType.get(TaskType.REPLICA_ACTION).get(State.PENDING).size();
+  }
+
+  public long remainingDataToMoveInMB() {
+    return _remainingDataToMoveInMB;
+  }
+
+  public int numFinishedPartitionMovements() {
+    return _tasksByType.get(TaskType.REPLICA_ACTION).get(State.COMPLETED).size() +
+           _tasksByType.get(TaskType.REPLICA_ACTION).get(State.DEAD).size() +
+           _tasksByType.get(TaskType.REPLICA_ACTION).get(State.ABORTED).size();
+  }
+
+  public long finishedDataMovementInMB() {
+    return _finishedDataMovementInMB;
+  }
+
+  public Set<ExecutionTask> inExecutionTasks(Collection<TaskType> types) {
+    Set<ExecutionTask> inExecutionTasks = new HashSet<>();
+    for (TaskType type : types) {
+      inExecutionTasks.addAll(_tasksByType.get(type).get(State.IN_PROGRESS));
+      inExecutionTasks.addAll(_tasksByType.get(type).get(State.ABORTING));
+    }
+    return inExecutionTasks;
+  }
+
+  public long inExecutionDataMovementInMB() {
+    return _inExecutionDataMovementInMB;
+  }
+
+  public int numRemainingLeadershipMovements() {
+    return _tasksByType.get(TaskType.LEADER_ACTION).get(State.PENDING).size();
+  }
+
+  public int numFinishedLeadershipMovements() {
+    return _tasksByType.get(TaskType.LEADER_ACTION).get(State.COMPLETED).size() +
+           _tasksByType.get(TaskType.LEADER_ACTION).get(State.DEAD).size() +
+           _tasksByType.get(TaskType.LEADER_ACTION).get(State.ABORTED).size();
+  }
+
+  public ExecutionTasksSummary getExecutionTasksSummary(Set<TaskType> taskTypesToGetFullList) {
+    return new ExecutionTasksSummary(_finishedDataMovementInMB,
+                                     _inExecutionDataMovementInMB,
+                                     _remainingDataToMoveInMB,
+                                     taskStat(),
+                                     filteredTasksByState(taskTypesToGetFullList));
+  }
+
+  public static class ExecutionTasksSummary {
+    private long _finishedDataMovementInMB;
+    private long _inExecutionDataMovementInMB;
+    private final long _remainingDataToMoveInMB;
+    private Map<TaskType, Map<State, Integer>> _taskStat;
+    private Map<TaskType, Map<State, Set<ExecutionTask>>> _filteredTasksByState;
+
+    private ExecutionTasksSummary(long finishedInterBrokerDataMovementInMB,
+                                  long inExecutionInterBrokerDataMovementInMB,
+                                  long remainingInterBrokerDataToMoveInMB,
+                                  Map<TaskType, Map<State, Integer>> taskStat,
+                                  Map<TaskType, Map<State, Set<ExecutionTask>>> filteredTasksByState) {
+      _finishedDataMovementInMB = finishedInterBrokerDataMovementInMB;
+      _inExecutionDataMovementInMB = inExecutionInterBrokerDataMovementInMB;
+      _remainingDataToMoveInMB = remainingInterBrokerDataToMoveInMB;
+      _taskStat = taskStat;
+      _filteredTasksByState = filteredTasksByState;
+    }
+
+    public long finishedDataMovementInMB() {
+      return _finishedDataMovementInMB;
+    }
+
+    public long inExecutionDataMovementInMB() {
+      return _inExecutionDataMovementInMB;
+    }
+
+    public long remainingDataToMoveInMB() {
+      return _remainingDataToMoveInMB;
+    }
+
+    public Map<TaskType, Map<State, Integer>> taskStat() {
+      return _taskStat;
+    }
+
+    public Map<TaskType, Map<State, Set<ExecutionTask>>> filteredTasksByState() {
+      return _filteredTasksByState;
+    }
   }
 }

@@ -70,8 +70,8 @@ public class SortedReplicasTest {
     assertEquals("The replicas should be sorted lazily", 0, sr.numReplicas());
     sr.remove(replica);
     assertEquals("The replicas should be sorted lazily", 0, sr.numReplicas());
-    NavigableSet<ReplicaWrapper> sortedReplicas = sr.sortedReplicas();
-    assertEquals("There should be ", NUM_REPLICAS, sortedReplicas.size());
+    NavigableSet<ReplicaWrapper> sortedReplicaWrapperss = sr.sortedReplicaWrappers();
+    assertEquals("There should be ", NUM_REPLICAS, sortedReplicaWrapperss.size());
     assertEquals("The replicas should now be sorted", NUM_REPLICAS, sr.numReplicas());
   }
 
@@ -82,7 +82,7 @@ public class SortedReplicasTest {
     SortedReplicas sr = broker.trackedSortedReplicas(SORT_NAME);
 
     double lastScore = Double.NEGATIVE_INFINITY;
-    for (ReplicaWrapper rw : sr.sortedReplicas()) {
+    for (ReplicaWrapper rw : sr.sortedReplicaWrappers()) {
       assertTrue(rw.score() >= lastScore);
     }
   }
@@ -113,7 +113,7 @@ public class SortedReplicasTest {
     int lastPriority = -1;
     double lastScore = Double.NEGATIVE_INFINITY;
     int totalNumPriorities = 0;
-    NavigableSet<ReplicaWrapper> sortedReplicas = sr.sortedReplicas();
+    NavigableSet<ReplicaWrapper> sortedReplicas = sr.sortedReplicaWrappers();
     for (ReplicaWrapper rw : sortedReplicas) {
       // Check the selection correctness.
       if (sr.selectionFunction() != null) {
