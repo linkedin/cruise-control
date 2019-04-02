@@ -17,7 +17,6 @@ import org.apache.kafka.clients.NetworkClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.metrics.Metrics;
 import org.apache.kafka.common.network.ChannelBuilder;
-import org.apache.kafka.common.network.Selector;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,19 +44,25 @@ public class MetadataClient {
         ClientUtils.parseAndValidateAddresses(config.getList(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
     _metadata.update(Cluster.bootstrap(addresses), Collections.emptySet(), time.milliseconds());
     ChannelBuilder channelBuilder = ClientUtils.createChannelBuilder(config);
-    _networkClient = new NetworkClient(
-        new Selector(config.getLong(KafkaCruiseControlConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG), new Metrics(), time, "load-monitor", channelBuilder),
-        _metadata,
-        config.getString(KafkaCruiseControlConfig.CLIENT_ID_CONFIG),
-        DEFAULT_MAX_IN_FLIGHT_REQUEST,
-        config.getLong(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG),
-        config.getLong(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG),
-        config.getInt(KafkaCruiseControlConfig.SEND_BUFFER_CONFIG),
-        config.getInt(KafkaCruiseControlConfig.RECEIVE_BUFFER_CONFIG),
-        config.getInt(KafkaCruiseControlConfig.REQUEST_TIMEOUT_MS_CONFIG),
-        _time,
-        true,
-        new ApiVersions());
+
+    NetworkClientProvider provider = config.getConfiguredInstance(KafkaCruiseControlConfig.NETWORK_CLIENT_PROVIDER_CLASS_CONFIG,
+                                                                  NetworkClientProvider.class);
+
+    _networkClient = provider.createNetworkClient(config.getLong(KafkaCruiseControlConfig.CONNECTIONS_MAX_IDLE_MS_CONFIG),
+                                                  new Metrics(),
+                                                  time,
+                                                  "load-monitor",
+                                                  channelBuilder,
+                                                  _metadata,
+                                                  config.getString(KafkaCruiseControlConfig.CLIENT_ID_CONFIG),
+                                                  DEFAULT_MAX_IN_FLIGHT_REQUEST,
+                                                  config.getLong(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG),
+                                                  config.getLong(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG),
+                                                  config.getInt(KafkaCruiseControlConfig.SEND_BUFFER_CONFIG),
+                                                  config.getInt(KafkaCruiseControlConfig.RECEIVE_BUFFER_CONFIG),
+                                                  config.getInt(KafkaCruiseControlConfig.REQUEST_TIMEOUT_MS_CONFIG),
+                                                  true,
+                                                  new ApiVersions());
     _metadataTTL = metadataTTL;
     // This is a super confusing interface in the Metadata. If we don't set this to false, the metadata.update()
     // will remove all the topics that are not in the metadata interested topics list.
