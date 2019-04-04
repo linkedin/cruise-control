@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
@@ -23,8 +24,8 @@ public class TrainParameters extends AbstractParameters {
   private Long _startMs;
   private Long _endMs;
 
-  public TrainParameters(HttpServletRequest request) {
-    super(request);
+  public TrainParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
   }
 
   @Override

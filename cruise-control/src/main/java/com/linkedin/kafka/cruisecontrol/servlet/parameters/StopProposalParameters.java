@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
 
@@ -22,9 +23,9 @@ public class StopProposalParameters extends AbstractParameters {
   private Integer _reviewId;
   private boolean _twoStepVerificationEnabled;
 
-  public StopProposalParameters(HttpServletRequest request, boolean twoStepVerificationEnabled) {
-    super(request);
-    _twoStepVerificationEnabled = twoStepVerificationEnabled;
+  public StopProposalParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
+    _twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
   }
 
   @Override

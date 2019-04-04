@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.linkedin.cruisecontrol.common.config.ConfigException;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -68,17 +69,19 @@ public class KafkaCruiseControlServletUtils {
    *
    * @param request HTTP request received by Cruise Control.
    * @param response HTTP response of Cruise Control.
+   * @param config The config of Cruise Control.
    * @return The endpoint if the request contains a valid one, otherwise (1) writes the error response to the given HTTP
    * response and (2) returns null.
    */
-  static EndPoint getValidEndpoint(HttpServletRequest request, HttpServletResponse response) throws IOException {
+  static EndPoint getValidEndpoint(HttpServletRequest request, HttpServletResponse response, KafkaCruiseControlConfig config)
+      throws IOException {
     EndPoint endPoint = endPoint(request);
     if (endPoint == null) {
       String method = request.getMethod();
       String errorMessage = String.format("Unrecognized endpoint in request '%s'%nSupported %s endpoints: %s",
                                           request.getPathInfo(), method, method.equals("GET") ? EndPoint.getEndpoint()
                                                                                               : EndPoint.postEndpoint());
-      writeErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request));
+      writeErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request), config);
       return null;
     }
     return endPoint;
@@ -87,37 +90,41 @@ public class KafkaCruiseControlServletUtils {
   /**
    * Creates a {@link HttpServletResponse#SC_BAD_REQUEST} Http servlet response.
    */
-  static String handleUserRequestException(UserRequestException ure, HttpServletRequest request, HttpServletResponse response)
+  static String handleUserRequestException(UserRequestException ure, HttpServletRequest request,
+                                           HttpServletResponse response, KafkaCruiseControlConfig config)
       throws IOException {
     String errorMessage = String.format("Bad %s request '%s' due to '%s'.", request.getMethod(), request.getPathInfo(), ure.getMessage());
     StringWriter sw = new StringWriter();
     ure.printStackTrace(new PrintWriter(sw));
-    writeErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));
+    writeErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request), config);
     return errorMessage;
   }
 
   /**
    * Creates a {@link HttpServletResponse#SC_FORBIDDEN} Http servlet response.
    */
-  static String handleConfigException(ConfigException ce, HttpServletRequest request, HttpServletResponse response)
+  static String handleConfigException(ConfigException ce, HttpServletRequest request,
+                                      HttpServletResponse response, KafkaCruiseControlConfig config)
       throws IOException {
     StringWriter sw = new StringWriter();
     ce.printStackTrace(new PrintWriter(sw));
     String errorMessage = String.format("Cannot process %s request '%s' due to: '%s'.",
                                         request.getMethod(), request.getPathInfo(), ce.getMessage());
-    writeErrorResponse(response, sw.toString(), errorMessage, SC_FORBIDDEN, wantJSON(request));
+    writeErrorResponse(response, sw.toString(), errorMessage, SC_FORBIDDEN, wantJSON(request), config);
     return errorMessage;
   }
 
   /**
    * Creates a {@link HttpServletResponse#SC_INTERNAL_SERVER_ERROR} Http servlet response.
    */
-  static String handleException(Exception e, HttpServletRequest request, HttpServletResponse response) throws IOException {
+  static String handleException(Exception e, HttpServletRequest request,
+                                HttpServletResponse response, KafkaCruiseControlConfig config)
+      throws IOException {
     StringWriter sw = new StringWriter();
     e.printStackTrace(new PrintWriter(sw));
     String errorMessage = String.format("Error processing %s request '%s' due to: '%s'.",
                                         request.getMethod(), request.getPathInfo(), e.getMessage());
-    writeErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request));
+    writeErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request), config);
     return errorMessage;
   }
 

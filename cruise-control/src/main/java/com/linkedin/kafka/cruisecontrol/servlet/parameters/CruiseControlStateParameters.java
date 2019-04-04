@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import java.io.UnsupportedEncodingException;
 import java.util.Set;
@@ -23,8 +24,8 @@ public class CruiseControlStateParameters extends AbstractParameters {
   private boolean _isVerbose;
   private boolean _isSuperVerbose;
 
-  public CruiseControlStateParameters(HttpServletRequest request) {
-    super(request);
+  public CruiseControlStateParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
   }
 
   @Override

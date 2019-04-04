@@ -111,11 +111,11 @@ public class SessionManagerTest {
       // Create the first future.
       OperationFuture firstFuture = sessionManager.getAndCreateSessionIfNotExist(request, () -> future1, 0);
       assertSame(firstFuture, future1);
-      future1.complete(new PauseSamplingResult());
+      future1.complete(new PauseSamplingResult(null));
       // create the second future.
       OperationFuture secondFuture = sessionManager.getAndCreateSessionIfNotExist(request, () -> future2, 1);
       assertSame(secondFuture, future2);
-      future2.complete(new ResumeSamplingResult());
+      future2.complete(new ResumeSamplingResult(null));
     }
   }
 

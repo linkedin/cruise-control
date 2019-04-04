@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionTask;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
@@ -44,7 +45,9 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
   public CruiseControlState(ExecutorState executionState,
                             LoadMonitorState monitorState,
                             AnalyzerState analyzerState,
-                            AnomalyDetectorState anomalyDetectorState) {
+                            AnomalyDetectorState anomalyDetectorState,
+                            KafkaCruiseControlConfig config) {
+    super(config);
     _executorState = executionState;
     _monitorState = monitorState;
     _analyzerState = analyzerState;

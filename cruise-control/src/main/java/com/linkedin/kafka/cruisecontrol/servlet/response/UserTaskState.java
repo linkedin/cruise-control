@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
@@ -36,7 +37,8 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   private static final String USER_TASKS = "userTasks";
   private final Map<UserTaskManager.TaskState, List<UserTaskManager.UserTaskInfo>> _userTasksByTaskState;
 
-  public UserTaskState(UserTaskManager userTaskManager) {
+  public UserTaskState(UserTaskManager userTaskManager, KafkaCruiseControlConfig config) {
+    super(config);
     _userTasksByTaskState = new HashMap<>(2);
     _userTasksByTaskState.put(UserTaskManager.TaskState.ACTIVE, userTaskManager.getActiveUserTasks());
     _userTasksByTaskState.put(UserTaskManager.TaskState.COMPLETED, userTaskManager.getCompletedUserTasks());

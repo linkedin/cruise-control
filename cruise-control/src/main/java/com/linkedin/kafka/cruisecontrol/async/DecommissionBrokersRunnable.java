@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
@@ -34,11 +35,13 @@ class DecommissionBrokersRunnable extends OperationRunnable {
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
   private final ReplicaMovementStrategy _replicaMovementStrategy;
+  private final KafkaCruiseControlConfig _config;
 
   DecommissionBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                               OperationFuture future,
                               AddedOrRemovedBrokerParameters parameters,
-                              String uuid) {
+                              String uuid,
+                              KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
     _brokerIds = parameters.brokerIds();
     _dryRun = parameters.dryRun();
@@ -54,6 +57,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
     _uuid = uuid;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
+    _config = config;
   }
 
   @Override
@@ -72,6 +76,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
                                                                           _replicaMovementStrategy,
                                                                           _uuid,
                                                                           _excludeRecentlyDemotedBrokers,
-                                                                          _excludeRecentlyRemovedBrokers));
+                                                                          _excludeRecentlyRemovedBrokers),
+                                  _config);
   }
 }

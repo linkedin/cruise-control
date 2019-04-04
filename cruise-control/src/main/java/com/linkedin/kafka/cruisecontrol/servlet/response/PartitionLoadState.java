@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
@@ -41,7 +42,9 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
                             int partitionUpperBoundary,
                             int partitionLowerBoundary,
                             Pattern topic,
-                            int topicNameLength) {
+                            int topicNameLength,
+                            KafkaCruiseControlConfig config) {
+    super(config);
     _sortedPartitions = sortedPartitions;
     _wantMaxLoad = wantMaxLoad;
     _entries = entries;

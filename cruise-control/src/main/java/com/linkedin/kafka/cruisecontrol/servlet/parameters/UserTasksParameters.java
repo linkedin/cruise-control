@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.io.UnsupportedEncodingException;
@@ -28,8 +29,8 @@ public class UserTasksParameters extends AbstractParameters {
   private Set<UserTaskManager.TaskState> _types;
   private int _entries;
 
-  public UserTasksParameters(HttpServletRequest request) {
-    super(request);
+  public UserTasksParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
   }
 
   @Override

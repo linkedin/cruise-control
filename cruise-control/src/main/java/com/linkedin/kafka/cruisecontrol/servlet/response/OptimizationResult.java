@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
@@ -42,7 +43,9 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   private String _cachedJSONResponse;
   private String _cachedPlaintextResponse;
 
-  public OptimizationResult(GoalOptimizer.OptimizerResult optimizerResult) {
+  public OptimizationResult(GoalOptimizer.OptimizerResult optimizerResult,
+                            KafkaCruiseControlConfig config) {
+    super(config);
     _optimizerResult = optimizerResult;
     _cachedJSONResponse = null;
     _cachedPlaintextResponse = null;

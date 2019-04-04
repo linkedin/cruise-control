@@ -135,16 +135,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
     try {
       _asyncOperationStep.set(0);
-      EndPoint endPoint = getValidEndpoint(request, response);
-      if (endPoint != null && hasValidParameters(request, response)) {
+      EndPoint endPoint = getValidEndpoint(request, response, _config);
+      if (endPoint != null && hasValidParameters(request, response, _config)) {
         _requestMeter.get(endPoint).mark();
         switch (endPoint) {
           case BOOTSTRAP:
-            syncRequest(() -> new BootstrapParameters(request), _asyncKafkaCruiseControl::bootstrapLoadMonitor,
+            syncRequest(() -> new BootstrapParameters(request, _config), _asyncKafkaCruiseControl::bootstrapLoadMonitor,
                         request, response, endPoint);
             break;
           case TRAIN:
-            syncRequest(() -> new TrainParameters(request), _asyncKafkaCruiseControl::trainLoadModel,
+            syncRequest(() -> new TrainParameters(request, _config), _asyncKafkaCruiseControl::trainLoadModel,
                         request, response, endPoint);
             break;
           case LOAD:
@@ -160,31 +160,31 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             getState(request, response);
             break;
           case KAFKA_CLUSTER_STATE:
-            syncRequest(() -> new KafkaClusterStateParameters(request), _asyncKafkaCruiseControl::kafkaClusterState,
+            syncRequest(() -> new KafkaClusterStateParameters(request, _config), _asyncKafkaCruiseControl::kafkaClusterState,
                         request, response, endPoint);
             break;
           case USER_TASKS:
-            syncRequest(() -> new UserTasksParameters(request), this::userTaskState, request, response, endPoint);
+            syncRequest(() -> new UserTasksParameters(request, _config), this::userTaskState, request, response, endPoint);
             break;
           case REVIEW_BOARD:
             if (!_twoStepVerification) {
               throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
                                                       endPoint, KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
             }
-            syncRequest(() -> new ReviewBoardParameters(request), this::handleReviewBoardRequest, request, response, endPoint);
+            syncRequest(() -> new ReviewBoardParameters(request, _config), this::handleReviewBoardRequest, request, response, endPoint);
             break;
           default:
             throw new UserRequestException("Invalid URL for GET");
         }
       }
     } catch (UserRequestException ure) {
-      String errorMessage = handleUserRequestException(ure, request, response);
+      String errorMessage = handleUserRequestException(ure, request, response, _config);
       LOG.error(errorMessage, ure);
     } catch (ConfigException ce) {
-      String errorMessage = handleConfigException(ce, request, response);
+      String errorMessage = handleConfigException(ce, request, response, _config);
       LOG.error(errorMessage, ce);
     } catch (Exception e) {
-      String errorMessage = handleException(e, request, response);
+      String errorMessage = handleException(e, request, response, _config);
       LOG.error(errorMessage, e);
     } finally {
       try {
@@ -259,8 +259,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
     try {
       _asyncOperationStep.set(0);
-      EndPoint endPoint = getValidEndpoint(request, response);
-      if (endPoint != null && hasValidParameters(request, response)) {
+      EndPoint endPoint = getValidEndpoint(request, response, _config);
+      if (endPoint != null && hasValidParameters(request, response, _config)) {
         _requestMeter.get(endPoint).mark();
         CruiseControlParameters reviewableParams;
         switch (endPoint) {
@@ -280,7 +280,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             break;
           case STOP_PROPOSAL_EXECUTION:
             reviewableParams = evaluateReviewableParams(request, response,
-                                                        () -> new StopProposalParameters(request, _twoStepVerification));
+                                                        () -> new StopProposalParameters(request, _config));
             if (reviewableParams != null) {
               syncRequest(() -> (StopProposalParameters) reviewableParams, _asyncKafkaCruiseControl::stopProposalExecution,
                           request, response, endPoint);
@@ -288,7 +288,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             break;
           case PAUSE_SAMPLING:
             reviewableParams = evaluateReviewableParams(request, response,
-                                                        () -> new PauseResumeParameters(request, _twoStepVerification));
+                                                        () -> new PauseResumeParameters(request, _config));
             if (reviewableParams != null) {
               syncRequest(() -> (PauseResumeParameters) reviewableParams, _asyncKafkaCruiseControl::pauseLoadMonitorActivity,
                           request, response, endPoint);
@@ -296,7 +296,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             break;
           case RESUME_SAMPLING:
             reviewableParams = evaluateReviewableParams(request, response,
-                                                        () -> new PauseResumeParameters(request, _twoStepVerification));
+                                                        () -> new PauseResumeParameters(request, _config));
             if (reviewableParams != null) {
               syncRequest(() -> (PauseResumeParameters) reviewableParams, _asyncKafkaCruiseControl::resumeLoadMonitorActivity,
                           request, response, endPoint);
@@ -310,7 +310,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             break;
           case ADMIN:
             reviewableParams = evaluateReviewableParams(request, response,
-                                                        () -> new AdminParameters(request, _twoStepVerification));
+                                                        () -> new AdminParameters(request, _config));
             if (reviewableParams != null) {
               syncRequest(() -> (AdminParameters) reviewableParams, _asyncKafkaCruiseControl::handleAdminRequest,
                           request, response, endPoint);
@@ -321,20 +321,20 @@ public class KafkaCruiseControlServlet extends HttpServlet {
               throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
                                                       endPoint, KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
             }
-            syncRequest(() -> new ReviewParameters(request), this::handleReviewRequest, request, response, endPoint);
+            syncRequest(() -> new ReviewParameters(request, _config), this::handleReviewRequest, request, response, endPoint);
             break;
           default:
             throw new UserRequestException("Invalid URL for POST");
         }
       }
     } catch (UserRequestException ure) {
-      String errorMessage = handleUserRequestException(ure, request, response);
+      String errorMessage = handleUserRequestException(ure, request, response, _config);
       LOG.error(errorMessage, ure);
     } catch (ConfigException ce) {
-      String errorMessage = handleConfigException(ce, request, response);
+      String errorMessage = handleConfigException(ce, request, response, _config);
       LOG.error(errorMessage, ce);
     } catch (Exception e) {
-      String errorMessage = handleException(e, request, response);
+      String errorMessage = handleException(e, request, response, _config);
       LOG.error(errorMessage, e);
     } finally {
       try {
@@ -352,7 +352,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * @return User task state.
    */
   private UserTaskState userTaskState(UserTasksParameters parameters) {
-    return new UserTaskState(_userTaskManager);
+    return new UserTaskState(_userTaskManager, _config);
   }
 
   private ReviewResult handleReviewRequest(ReviewParameters parameters) {
@@ -365,28 +365,28 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   private void getClusterLoad(HttpServletRequest request, HttpServletResponse response)
       throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(() -> new ClusterLoadParameters(request),
+    asyncRequest(() -> new ClusterLoadParameters(request, _config),
                  parameters -> (uuid -> _asyncKafkaCruiseControl.getBrokerStats(parameters)),
                  request, response);
   }
 
   private void getPartitionLoad(HttpServletRequest request, HttpServletResponse response)
       throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(() -> new PartitionLoadParameters(request),
+    asyncRequest(() -> new PartitionLoadParameters(request, _config),
                  parameters -> (uuid -> _asyncKafkaCruiseControl.partitionLoadState(parameters)),
                  request, response);
   }
 
   private void getProposals(HttpServletRequest request, HttpServletResponse response)
       throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(() -> new ProposalsParameters(request),
+    asyncRequest(() -> new ProposalsParameters(request, _config),
                  parameters -> (uuid -> _asyncKafkaCruiseControl.getProposals(parameters)),
                  request, response);
   }
 
   private void getState(HttpServletRequest request, HttpServletResponse response)
       throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(() -> new CruiseControlStateParameters(request),
+    asyncRequest(() -> new CruiseControlStateParameters(request, _config),
                  parameters -> (uuid -> _asyncKafkaCruiseControl.state(parameters)),
                  request, response);
   }

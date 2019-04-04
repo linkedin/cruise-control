@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
@@ -31,8 +32,8 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
   protected boolean _excludeRecentlyRemovedBrokers;
   protected GoalsAndRequirements _goalsAndRequirements;
 
-  GoalBasedOptimizationParameters(HttpServletRequest request) {
-    super(request);
+  GoalBasedOptimizationParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
   }
 
   @Override

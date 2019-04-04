@@ -45,7 +45,7 @@ public class ResponseUtils {
     if (corsEnabled) {
       // These headers are exposed to the browser
       response.setHeader("Access-Control-Expose-Headers",
-            config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
+                         config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
 
     }
   }
@@ -109,7 +109,8 @@ public class ResponseUtils {
                                         String stackTrace,
                                         String errorMessage,
                                         int responseCode,
-                                        boolean json
+                                        boolean json,
+                                        KafkaCruiseControlConfig config
                                         )
       throws IOException {
     String responseMsg;
@@ -125,6 +126,6 @@ public class ResponseUtils {
     }
     // We don't need to send the CORS Task ID header as part of this
     // error response
-    writeResponseToOutputStream(response, responseCode, json, responseMsg, null);
+    writeResponseToOutputStream(response, responseCode, json, responseMsg, config);
   }
 }

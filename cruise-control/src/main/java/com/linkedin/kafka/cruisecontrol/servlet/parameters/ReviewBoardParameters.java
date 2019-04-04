@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.UnsupportedEncodingException;
 import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
@@ -19,8 +20,8 @@ import javax.servlet.http.HttpServletRequest;
 public class ReviewBoardParameters extends AbstractParameters {
   private Set<Integer> _reviewIds;
 
-  public ReviewBoardParameters(HttpServletRequest request) {
-    super(request);
+  public ReviewBoardParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
   }
 
   @Override
