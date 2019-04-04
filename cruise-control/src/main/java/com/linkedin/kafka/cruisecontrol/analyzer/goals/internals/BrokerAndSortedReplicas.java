@@ -20,15 +20,15 @@ import java.util.TreeSet;
  */
 public class BrokerAndSortedReplicas {
   private final Broker _broker;
-  private final NavigableSet<Replica> sortedReplicas;
+  private final NavigableSet<Replica> _sortedReplicas;
 
   public BrokerAndSortedReplicas(Broker broker, Comparator<Replica> comparator) {
     _broker = broker;
-    sortedReplicas = new TreeSet<>((r1, r2) -> {
+    _sortedReplicas = new TreeSet<>((r1, r2) -> {
       int result = comparator.compare(r1, r2);
       return result == 0 ? r1.compareTo(r2) : result;
     });
-    sortedReplicas.addAll(broker.replicas());
+    _sortedReplicas.addAll(broker.replicas());
   }
 
   public Broker broker() {
@@ -36,7 +36,7 @@ public class BrokerAndSortedReplicas {
   }
 
   public NavigableSet<Replica> sortedReplicas() {
-    return sortedReplicas;
+    return _sortedReplicas;
   }
 
   /**

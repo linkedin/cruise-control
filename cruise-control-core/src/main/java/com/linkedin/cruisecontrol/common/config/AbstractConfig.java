@@ -28,18 +28,18 @@ public class AbstractConfig {
 
   public static final String NL = System.getProperty("line.separator");
 
-  private final Logger log = LoggerFactory.getLogger(getClass());
+  private final Logger _log = LoggerFactory.getLogger(getClass());
 
   /* configs for which values have been requested, used to detect unused configs */
-  private final Set<String> used;
+  private final Set<String> _used;
 
   /* the original values passed in by the user */
-  private final Map<String, ?> originals;
+  private final Map<String, ?> _originals;
 
   /* the parsed values */
-  private final Map<String, Object> values;
+  private final Map<String, Object> _values;
 
-  private final ConfigDef definition;
+  private final ConfigDef _definition;
 
   @SuppressWarnings("unchecked")
   public AbstractConfig(ConfigDef definition, Map<?, ?> originals, boolean doLog) {
@@ -49,15 +49,15 @@ public class AbstractConfig {
         throw new ConfigException(entry.getKey().toString(), entry.getValue(), "Key must be a string.");
       }
     }
-    this.originals = (Map<String, ?>) originals;
-    this.values = definition.parse(this.originals);
-    Map<String, Object> configUpdates = postProcessParsedConfig(Collections.unmodifiableMap(this.values));
+    _originals = (Map<String, ?>) originals;
+    _values = definition.parse(this._originals);
+    Map<String, Object> configUpdates = postProcessParsedConfig(Collections.unmodifiableMap(_values));
     for (Map.Entry<String, Object> update : configUpdates.entrySet()) {
-      this.values.put(update.getKey(), update.getValue());
+      _values.put(update.getKey(), update.getValue());
     }
-    definition.parse(this.values);
-    this.used = Collections.synchronizedSet(new HashSet<String>());
-    this.definition = definition;
+    definition.parse(_values);
+    _used = Collections.synchronizedSet(new HashSet<String>());
+    this._definition = definition;
     if (doLog) {
       logAll();
     }
@@ -79,15 +79,15 @@ public class AbstractConfig {
   }
 
   protected Object get(String key) {
-    if (!values.containsKey(key)) {
+    if (!_values.containsKey(key)) {
       throw new ConfigException(String.format("Unknown configuration '%s'", key));
     }
-    used.add(key);
-    return values.get(key);
+    _used.add(key);
+    return _values.get(key);
   }
 
   public void ignore(String key) {
-    used.add(key);
+    _used.add(key);
   }
 
   public Short getShort(String key) {
@@ -120,11 +120,11 @@ public class AbstractConfig {
   }
 
   public ConfigDef.Type typeOf(String key) {
-    ConfigDef.ConfigKey configKey = definition.configKeys().get(key);
+    ConfigDef.ConfigKey configKey = _definition.configKeys().get(key);
     if (configKey == null) {
       return null;
     }
-    return configKey.type;
+    return configKey._type;
   }
 
   public Password getPassword(String key) {
@@ -136,14 +136,14 @@ public class AbstractConfig {
   }
 
   public Set<String> unused() {
-    Set<String> keys = new HashSet<>(originals.keySet());
-    keys.removeAll(used);
+    Set<String> keys = new HashSet<>(_originals.keySet());
+    keys.removeAll(_used);
     return keys;
   }
 
   public Map<String, Object> originals() {
     Map<String, Object> copy = new RecordingMap<>();
-    copy.putAll(originals);
+    copy.putAll(_originals);
     return copy;
   }
 
@@ -154,7 +154,7 @@ public class AbstractConfig {
    */
   public Map<String, String> originalsStrings() {
     Map<String, String> copy = new RecordingMap<>();
-    for (Map.Entry<String, ?> entry : originals.entrySet()) {
+    for (Map.Entry<String, ?> entry : _originals.entrySet()) {
       if (!(entry.getValue() instanceof String)) {
         throw new ClassCastException(
             "Non-string value found in original settings for key " + entry.getKey() + ": "
@@ -173,7 +173,7 @@ public class AbstractConfig {
    */
   public Map<String, Object> originalsWithPrefix(String prefix) {
     Map<String, Object> result = new RecordingMap<>(prefix, false);
-    for (Map.Entry<String, ?> entry : originals.entrySet()) {
+    for (Map.Entry<String, ?> entry : _originals.entrySet()) {
       if (entry.getKey().startsWith(prefix) && entry.getKey().length() > prefix.length()) {
         result.put(entry.getKey().substring(prefix.length()), entry.getValue());
       }
@@ -189,12 +189,12 @@ public class AbstractConfig {
    */
   public Map<String, Object> valuesWithPrefixOverride(String prefix) {
     Map<String, Object> result = new RecordingMap<>(values(), prefix, true);
-    for (Map.Entry<String, ?> entry : originals.entrySet()) {
+    for (Map.Entry<String, ?> entry : _originals.entrySet()) {
       if (entry.getKey().startsWith(prefix) && entry.getKey().length() > prefix.length()) {
         String keyWithNoPrefix = entry.getKey().substring(prefix.length());
-        ConfigDef.ConfigKey configKey = definition.configKeys().get(keyWithNoPrefix);
+        ConfigDef.ConfigKey configKey = _definition.configKeys().get(keyWithNoPrefix);
         if (configKey != null) {
-          result.put(keyWithNoPrefix, definition.parseValue(configKey, entry.getValue(), true));
+          result.put(keyWithNoPrefix, _definition.parseValue(configKey, entry.getValue(), true));
         }
       }
     }
@@ -202,7 +202,7 @@ public class AbstractConfig {
   }
 
   public Map<String, ?> values() {
-    return new RecordingMap<>(values);
+    return new RecordingMap<>(_values);
   }
 
   private void logAll() {
@@ -211,14 +211,14 @@ public class AbstractConfig {
     b.append(" values: ");
     b.append(NL);
 
-    for (Map.Entry<String, Object> entry : new TreeMap<>(this.values).entrySet()) {
+    for (Map.Entry<String, Object> entry : new TreeMap<>(_values).entrySet()) {
       b.append('\t');
       b.append(entry.getKey());
       b.append(" = ");
       b.append(entry.getValue());
       b.append(NL);
     }
-    log.info(b.toString());
+    _log.info(b.toString());
   }
 
   /**
@@ -226,7 +226,7 @@ public class AbstractConfig {
    */
   public void logUnused() {
     for (String key : unused()) {
-      log.warn("The configuration '{}' was supplied but isn't a known config.", key);
+      _log.warn("The configuration '{}' was supplied but isn't a known config.", key);
     }
   }
 
@@ -320,12 +320,12 @@ public class AbstractConfig {
 
     AbstractConfig that = (AbstractConfig) o;
 
-    return originals.equals(that.originals);
+    return _originals.equals(that._originals);
   }
 
   @Override
   public int hashCode() {
-    return originals.hashCode();
+    return _originals.hashCode();
   }
 
   /**
@@ -334,16 +334,16 @@ public class AbstractConfig {
    */
   private class RecordingMap<V> extends HashMap<String, V> {
 
-    private final String prefix;
-    private final boolean withIgnoreFallback;
+    private final String _prefix;
+    private final boolean _withIgnoreFallback;
 
     RecordingMap() {
       this("", false);
     }
 
     RecordingMap(String prefix, boolean withIgnoreFallback) {
-      this.prefix = prefix;
-      this.withIgnoreFallback = withIgnoreFallback;
+      _prefix = prefix;
+      _withIgnoreFallback = withIgnoreFallback;
     }
 
     RecordingMap(Map<String, ? extends V> m) {
@@ -352,8 +352,8 @@ public class AbstractConfig {
 
     RecordingMap(Map<String, ? extends V> m, String prefix, boolean withIgnoreFallback) {
       super(m);
-      this.prefix = prefix;
-      this.withIgnoreFallback = withIgnoreFallback;
+      _prefix = prefix;
+      _withIgnoreFallback = withIgnoreFallback;
     }
 
     @Override
@@ -361,13 +361,13 @@ public class AbstractConfig {
       if (key instanceof String) {
         String stringKey = (String) key;
         String keyWithPrefix;
-        if (prefix.isEmpty()) {
+        if (_prefix.isEmpty()) {
           keyWithPrefix = stringKey;
         } else {
-          keyWithPrefix = prefix + stringKey;
+          keyWithPrefix = _prefix + stringKey;
         }
         ignore(keyWithPrefix);
-        if (withIgnoreFallback) {
+        if (_withIgnoreFallback) {
           ignore(stringKey);
         }
       }

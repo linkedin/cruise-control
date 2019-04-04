@@ -14,7 +14,7 @@ import org.junit.Test;
  * Unit test for execution proposals.
  */
 public class ExecutionProposalTest {
-  private final TopicPartition TP = new TopicPartition("topic", 0);
+  private static final TopicPartition TP = new TopicPartition("topic", 0);
 
   @Test (expected = IllegalArgumentException.class)
   public void testNullNewReplicaList() {

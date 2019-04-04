@@ -18,7 +18,7 @@ public class ModelGeneration implements Serializable {
 
   private final int _clusterGeneration;
   private final long _loadGeneration;
-  private int hash = 0;
+  private int _hash = 0;
 
   public ModelGeneration(int clusterGeneration, long loadGeneration) {
     _clusterGeneration = clusterGeneration;
@@ -57,14 +57,14 @@ public class ModelGeneration implements Serializable {
 
   @Override
   public int hashCode() {
-    if (hash != 0) {
-      return hash;
+    if (_hash != 0) {
+      return _hash;
     }
     final int prime = 31;
     int result = 1;
     result = prime * result + _clusterGeneration;
     result = prime * result + (int) _loadGeneration;
-    this.hash = result;
+    this._hash = result;
     return result;
   }
 

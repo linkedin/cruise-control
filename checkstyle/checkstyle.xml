@@ -124,6 +124,9 @@ LinkedIn Java style.
         <!-- Local variables must be camel case starting with lowercase letter -->
         <module name="LocalFinalVariableName"/>
         <module name="LocalVariableName"/>
+        <module name="MemberName">
+            <property name="format" value="^_[a-z][a-zA-Z0-9]*$"/>
+        </module>
         <!-- Method name must be camel case starting with a lowercase letter -->
         <module name="MethodName"/>
         <!-- Generic parameters for a method must be uppercase letters (e.g. <V>, <NEW>) -->

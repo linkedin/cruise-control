@@ -8,39 +8,39 @@ import java.io.Serializable;
 
 public final class SlackMessage implements Serializable {
 
-    private String username;
-    private String text;
-    private String iconEmoji;
-    private String channel;
+    private String _username;
+    private String _text;
+    private String _iconEmoji;
+    private String _channel;
 
     public SlackMessage(String username, String text, String iconEmoji, String channel) {
-        this.username = username;
-        this.text = text;
-        this.iconEmoji = iconEmoji;
-        this.channel = channel;
+        _username = username;
+        _text = text;
+        _iconEmoji = iconEmoji;
+        _channel = channel;
     }
 
     public String getUsername() {
-        return username;
+        return _username;
     }
 
     public String getText() {
-        return text;
+        return _text;
     }
 
     public String getIconEmoji() {
-        return iconEmoji;
+        return _iconEmoji;
     }
 
     public String getChannel() {
-        return channel;
+        return _channel;
     }
 
     @Override
     public String toString() {
-        return "{\"username\" : " + (username == null ? null : "\"" + username + "\"")
-                + ",\"text\" : " + (text == null ? null : "\"" + text + "\"")
-                + ",\"icon_emoji\" : " + (iconEmoji == null ? null : "\"" + iconEmoji + "\"")
-                + ",\"channel\" : " + (channel == null ? null : "\"" + channel + "\"") + "}";
+        return "{\"username\" : " + (_username == null ? null : "\"" + _username + "\"")
+                + ",\"text\" : " + (_text == null ? null : "\"" + _text + "\"")
+                + ",\"icon_emoji\" : " + (_iconEmoji == null ? null : "\"" + _iconEmoji + "\"")
+                + ",\"channel\" : " + (_channel == null ? null : "\"" + _channel + "\"") + "}";
     }
 }

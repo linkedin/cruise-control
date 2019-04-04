@@ -30,7 +30,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMet
  * A metric fetcher that is responsible for fetching the metric samples to monitor the cluster load.
  */
 class SamplingFetcher extends MetricFetcher {
-  private final Logger LOG = LoggerFactory.getLogger(SamplingFetcher.class);
+  private static final Logger LOG = LoggerFactory.getLogger(SamplingFetcher.class);
   // The metadata of the cluster this metric fetcher is fetching from.
   private final MetricSampler _metricSampler;
   private final Cluster _cluster;

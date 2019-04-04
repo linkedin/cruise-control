@@ -60,7 +60,7 @@ import static org.junit.Assert.fail;
 public class ExcludedBrokersForReplicaMoveTest {
 
   @Rule
-  public ExpectedException expected = ExpectedException.none();
+  public ExpectedException _expected = ExpectedException.none();
 
   @Parameterized.Parameters(name = "{1}-{0}")
   public static Collection<Object[]> data() throws Exception {
@@ -258,7 +258,7 @@ public class ExcludedBrokersForReplicaMoveTest {
         }
       }
     } else {
-      expected.expect(_exceptionClass);
+      _expected.expect(_exceptionClass);
       assertTrue("Failed to optimize with excluded brokers for replica move.",
                  _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
     }

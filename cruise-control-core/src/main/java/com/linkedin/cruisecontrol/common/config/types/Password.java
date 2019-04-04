@@ -10,19 +10,19 @@ public class Password {
 
     public static final String HIDDEN = "[hidden]";
 
-    private final String value;
+    private final String _value;
 
     /**
      * Construct a new Password object
      * @param value The value of a password
      */
     public Password(String value) {
-        this.value = value;
+        _value = value;
     }
 
     @Override
     public int hashCode() {
-        return value.hashCode();
+        return _value.hashCode();
     }
 
     @Override
@@ -31,7 +31,7 @@ public class Password {
             return false;
         }
         Password other = (Password) obj;
-        return value.equals(other.value);
+        return _value.equals(other._value);
     }
 
     /**
@@ -50,6 +50,6 @@ public class Password {
      * @return real password string
      */
     public String value() {
-        return value;
+        return _value;
     }
 }
