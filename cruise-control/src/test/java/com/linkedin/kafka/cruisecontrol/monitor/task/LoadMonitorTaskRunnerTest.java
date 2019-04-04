@@ -247,18 +247,18 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
    */
   private static class MockTime implements Time {
 
-    private long nanos = 0;
-    private long autoTickMs = 0;
+    private long _nanos = 0;
+    private long _autoTickMs = 0;
 
     public MockTime(long autoTickMs) {
-      this.nanos = 0;
-      this.autoTickMs = autoTickMs;
+      _nanos = 0;
+      _autoTickMs = autoTickMs;
     }
 
     @Override
     public long milliseconds() {
-      this.sleep(autoTickMs);
-      return TimeUnit.MILLISECONDS.convert(this.nanos, TimeUnit.NANOSECONDS);
+      this.sleep(_autoTickMs);
+      return TimeUnit.MILLISECONDS.convert(this._nanos, TimeUnit.NANOSECONDS);
     }
 
     @Override
@@ -268,13 +268,13 @@ public class LoadMonitorTaskRunnerTest extends CCKafkaIntegrationTestHarness {
 
     @Override
     public long nanoseconds() {
-      this.sleep(autoTickMs);
-      return nanos;
+      this.sleep(_autoTickMs);
+      return _nanos;
     }
 
     @Override
     public void sleep(long ms) {
-      this.nanos += TimeUnit.NANOSECONDS.convert(ms, TimeUnit.MILLISECONDS);
+      this._nanos += TimeUnit.NANOSECONDS.convert(ms, TimeUnit.MILLISECONDS);
     }
 
   }

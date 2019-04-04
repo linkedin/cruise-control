@@ -38,13 +38,13 @@ public class KafkaMetricAnomalyFinderTest {
   private final BrokerEntity _brokerEntity = new BrokerEntity("test-host", 0);
 
   @Rule
-  public ExpectedException expected = ExpectedException.none();
+  public ExpectedException _expected = ExpectedException.none();
 
   @Test
   public void testMetricAnomaliesWithNullArguments() {
     MetricAnomalyFinder<BrokerEntity> anomalyFinder = createKafkaMetricAnomalyFinder();
 
-    expected.expect(IllegalArgumentException.class);
+    _expected.expect(IllegalArgumentException.class);
     assertTrue("IllegalArgumentException is expected for null history or null current metrics.",
                anomalyFinder.metricAnomalies(null, null).isEmpty());
   }

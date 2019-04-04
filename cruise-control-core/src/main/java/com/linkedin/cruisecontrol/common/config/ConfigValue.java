@@ -10,58 +10,58 @@ import java.util.Objects;
 
 public class ConfigValue {
 
-    private final String name;
-    private Object value;
-    private List<Object> recommendedValues;
-    private final List<String> errorMessages;
-    private boolean visible;
+    private final String _name;
+    private Object _value;
+    private List<Object> _recommendedValues;
+    private final List<String> _errorMessages;
+    private boolean _visible;
 
     public ConfigValue(String name) {
         this(name, null, new ArrayList<>(), new ArrayList<String>());
     }
 
     public ConfigValue(String name, Object value, List<Object> recommendedValues, List<String> errorMessages) {
-        this.name = name;
-        this.value = value;
-        this.recommendedValues = recommendedValues;
-        this.errorMessages = errorMessages;
-        this.visible = true;
+        _name = name;
+        _value = value;
+        _recommendedValues = recommendedValues;
+        _errorMessages = errorMessages;
+        _visible = true;
     }
 
     public String name() {
-        return name;
+        return _name;
     }
 
     public Object value() {
-        return value;
+        return _value;
     }
 
     public List<Object> recommendedValues() {
-        return recommendedValues;
+        return _recommendedValues;
     }
 
     public List<String> errorMessages() {
-        return errorMessages;
+        return _errorMessages;
     }
 
     public boolean visible() {
-        return visible;
+        return _visible;
     }
 
     public void value(Object value) {
-        this.value = value;
+        this._value = value;
     }
 
     public void recommendedValues(List<Object> recommendedValues) {
-        this.recommendedValues = recommendedValues;
+        this._recommendedValues = recommendedValues;
     }
 
     public void addErrorMessage(String errorMessage) {
-        this.errorMessages.add(errorMessage);
+        this._errorMessages.add(errorMessage);
     }
 
     public void visible(boolean visible) {
-        this.visible = visible;
+        this._visible = visible;
     }
 
     @Override
@@ -73,31 +73,31 @@ public class ConfigValue {
             return false;
         }
         ConfigValue that = (ConfigValue) o;
-        return Objects.equals(name, that.name) &&
-               Objects.equals(value, that.value) &&
-               Objects.equals(recommendedValues, that.recommendedValues) &&
-               Objects.equals(errorMessages, that.errorMessages) &&
-               Objects.equals(visible, that.visible);
+        return Objects.equals(_name, that._name) &&
+               Objects.equals(_value, that._value) &&
+               Objects.equals(_recommendedValues, that._recommendedValues) &&
+               Objects.equals(_errorMessages, that._errorMessages) &&
+               Objects.equals(_visible, that._visible);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(name, value, recommendedValues, errorMessages, visible);
+        return Objects.hash(_name, _value, _recommendedValues, _errorMessages, _visible);
     }
 
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append("[")
-            .append(name)
+            .append(_name)
             .append(",")
-            .append(value)
+            .append(_value)
             .append(",")
-            .append(recommendedValues)
+            .append(_recommendedValues)
             .append(",")
-            .append(errorMessages)
+            .append(_errorMessages)
             .append(",")
-            .append(visible)
+            .append(_visible)
             .append("]");
         return sb.toString();
     }

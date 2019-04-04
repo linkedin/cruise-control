@@ -7,14 +7,14 @@ import java.util.List;
 
 
 public class Config {
-    private final List<ConfigValue> configValues;
+    private final List<ConfigValue> _configValues;
 
     public Config(List<ConfigValue> configValues) {
-        this.configValues = configValues;
+        this._configValues = configValues;
     }
 
     public List<ConfigValue> configValues() {
-        return configValues;
+        return _configValues;
     }
 
 }

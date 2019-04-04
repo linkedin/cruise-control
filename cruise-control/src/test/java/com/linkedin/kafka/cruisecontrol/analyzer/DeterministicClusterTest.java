@@ -60,7 +60,7 @@ public class DeterministicClusterTest {
   private List<OptimizationVerifier.Verification> _verifications;
 
   @Rule
-  public ExpectedException expected = ExpectedException.none();
+  public ExpectedException _expected = ExpectedException.none();
 
   /**
    * Constructor for Deterministic Cluster Test.
@@ -79,7 +79,7 @@ public class DeterministicClusterTest {
     _goalNameByPriority = goalNameByPriority;
     _verifications = verifications;
     if (expectedException != null) {
-      expected.expect(expectedException);
+      _expected.expect(expectedException);
     }
   }
 

@@ -4,4 +4,5 @@
     "http://www.puppycrawl.com/dtds/suppressions_1_1.dtd">
 <suppressions>
   <suppress checks="RegexpHeader" files="com[\\/]linkedin[\\/]kafka[\\/]cruisecontrol[\\/]testutils"/>
+  <suppress checks="MemberName" files="BrokerCapacityConfigFileResolver.java"/>
 </suppressions>

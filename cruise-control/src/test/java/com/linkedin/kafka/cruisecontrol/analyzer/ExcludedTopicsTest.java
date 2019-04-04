@@ -63,7 +63,7 @@ import static org.junit.Assert.fail;
 public class ExcludedTopicsTest {
 
   @Rule
-  public ExpectedException expected = ExpectedException.none();
+  public ExpectedException _expected = ExpectedException.none();
 
   @Parameterized.Parameters(name = "{1}-{0}")
   public static Collection<Object[]> data() throws Exception {
@@ -275,7 +275,7 @@ public class ExcludedTopicsTest {
         }
       }
     } else {
-      expected.expect(_exceptionClass);
+      _expected.expect(_exceptionClass);
       assertTrue("Excluded Topics Test failed to optimize with excluded topics.",
           _goal.optimize(_clusterModel, Collections.emptySet(), _optimizationOptions));
     }

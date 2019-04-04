@@ -23,7 +23,7 @@ public class CCEmbeddedBroker implements AutoCloseable {
   private final Map<SecurityProtocol, String> _hosts;
   private final KafkaServer _kafkaServer;
   private int _id;
-  private File logDir;
+  private File _logDir;
 
   public CCEmbeddedBroker(Map<Object, Object> config) {
     _ports = new HashMap<>();
@@ -48,7 +48,7 @@ public class CCEmbeddedBroker implements AutoCloseable {
 
   private void parseConfigs(Map<Object, Object> config) {
     _id = Integer.parseInt((String) config.get(KafkaConfig.BrokerIdProp()));
-    logDir = new File((String) config.get(KafkaConfig.LogDirProp()));
+    _logDir = new File((String) config.get(KafkaConfig.LogDirProp()));
 
     //bind addresses
     String listenersString = (String) config.get(KafkaConfig.ListenersProp());
@@ -99,7 +99,7 @@ public class CCEmbeddedBroker implements AutoCloseable {
   public void close() {
     CCKafkaTestUtils.quietly(this::shutdown);
     CCKafkaTestUtils.quietly(this::awaitShutdown);
-    CCKafkaTestUtils.quietly(() -> FileUtils.forceDelete(logDir));
+    CCKafkaTestUtils.quietly(() -> FileUtils.forceDelete(_logDir));
   }
 
   public static CCEmbeddedBrokerBuilder newServer() {

@@ -25,7 +25,7 @@ public class SlackSelfHealingNotifierTest {
 
     private static BrokerFailures failures;
     private static KafkaCruiseControl mockKafkaCruiseControl;
-    private MockSlackSelfHealingNotifier notifier;
+    private MockSlackSelfHealingNotifier _notifier;
     private static Time mockTime;
 
     @BeforeClass
@@ -41,27 +41,27 @@ public class SlackSelfHealingNotifierTest {
 
     @Test
     public void testSlackAlertWithNoWebhook() {
-        notifier = new MockSlackSelfHealingNotifier(mockTime);
-        notifier.alert(failures, false, 1L, AnomalyType.BROKER_FAILURE);
-        assertEquals(0, notifier.getSlackMessageList().size());
+        _notifier = new MockSlackSelfHealingNotifier(mockTime);
+        _notifier.alert(failures, false, 1L, AnomalyType.BROKER_FAILURE);
+        assertEquals(0, _notifier.getSlackMessageList().size());
     }
 
     @Test
     public void testSlackAlertWithNoChannel() {
-        notifier = new MockSlackSelfHealingNotifier(mockTime);
-        notifier._slackWebhook = "http://dummy.slack.webhook";
-        notifier.alert(failures, false, 1L, AnomalyType.BROKER_FAILURE);
-        assertEquals(0, notifier.getSlackMessageList().size());
+        _notifier = new MockSlackSelfHealingNotifier(mockTime);
+        _notifier._slackWebhook = "http://dummy.slack.webhook";
+        _notifier.alert(failures, false, 1L, AnomalyType.BROKER_FAILURE);
+        assertEquals(0, _notifier.getSlackMessageList().size());
     }
 
     @Test
     public void testSlackAlertWithDefaultOptions() {
-        notifier = new MockSlackSelfHealingNotifier(mockTime);
-        notifier._slackWebhook = "http://dummy.slack.webhook";
-        notifier._slackChannel = "#dummy-channel";
-        notifier.alert(failures, false, 1L, AnomalyType.BROKER_FAILURE);
-        assertEquals(1, notifier.getSlackMessageList().size());
-        SlackMessage message = notifier.getSlackMessageList().get(0);
+        _notifier = new MockSlackSelfHealingNotifier(mockTime);
+        _notifier._slackWebhook = "http://dummy.slack.webhook";
+        _notifier._slackChannel = "#dummy-channel";
+        _notifier.alert(failures, false, 1L, AnomalyType.BROKER_FAILURE);
+        assertEquals(1, _notifier.getSlackMessageList().size());
+        SlackMessage message = _notifier.getSlackMessageList().get(0);
         assertEquals("#dummy-channel", message.getChannel());
     }
 

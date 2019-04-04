@@ -46,7 +46,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.L
  * This class is not thread safe.
  */
 public class ExecutionTaskPlanner {
-  private final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
+  private static final Logger LOG = LoggerFactory.getLogger(ExecutionTaskPlanner.class);
   private Map<Integer, SortedSet<ExecutionTask>> _partMoveTaskByBrokerId;
   private final Set<ExecutionTask> _remainingReplicaMovements;
   private final Map<Long, ExecutionTask> _remainingLeadershipMovements;
