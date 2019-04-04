@@ -9,16 +9,16 @@ package com.linkedin.kafka.cruisecontrol.async.progress;
  */
 public class OptimizationForGoal implements OperationStep {
   private final String _goalName;
-  private volatile boolean completed = false;
-  
+  private volatile boolean _completed = false;
+
   public OptimizationForGoal(String goalName) {
     _goalName = goalName;
   }
-  
+
   public void done() {
-    completed = true;
+    _completed = true;
   }
-  
+
   @Override
   public String name() {
     return "OPTIMIZING " + _goalName;
@@ -26,7 +26,7 @@ public class OptimizationForGoal implements OperationStep {
 
   @Override
   public float completionPercentage() {
-    return completed ? 1.0f : 0.0f;
+    return _completed ? 1.0f : 0.0f;
   }
 
   @Override

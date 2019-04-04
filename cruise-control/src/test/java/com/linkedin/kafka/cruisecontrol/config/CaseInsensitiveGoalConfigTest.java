@@ -27,7 +27,7 @@ public class CaseInsensitiveGoalConfigTest {
   private static final Logger LOG = LoggerFactory.getLogger(CaseInsensitiveGoalConfigTest.class);
 
   @Rule
-  public ExpectedException expected = ExpectedException.none();
+  public ExpectedException _expected = ExpectedException.none();
 
   @Parameterized.Parameters
   public static Collection<Object[]> data() {
@@ -110,7 +110,7 @@ public class CaseInsensitiveGoalConfigTest {
     LOG.debug("Testing case insensitive goal configuration: {}.", _properties);
 
     if (_exceptionClass != null) {
-      expected.expect(_exceptionClass);
+      _expected.expect(_exceptionClass);
     }
 
     new KafkaCruiseControlConfig(_properties);
