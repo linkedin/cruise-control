@@ -24,6 +24,7 @@ import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SslConfigs;
+import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.SystemTime;
 
@@ -209,6 +210,8 @@ public class KafkaCruiseControlUtils {
     try {
       String securityProtocol = configs.getString(AdminClientConfig.SECURITY_PROTOCOL_CONFIG);
       adminClientConfigs.put(AdminClientConfig.SECURITY_PROTOCOL_CONFIG, securityProtocol);
+      setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_MECHANISM);
+      setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_JAAS_CONFIG);
 
       // Configure SSL configs (if security protocol is SSL)
       if (securityProtocol.equals(SecurityProtocol.SSL.name)) {

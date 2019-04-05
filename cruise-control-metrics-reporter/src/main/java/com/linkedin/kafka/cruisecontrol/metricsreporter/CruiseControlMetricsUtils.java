@@ -7,6 +7,7 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.config.SslConfigs;
+import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import java.util.Properties;
 
@@ -65,7 +66,10 @@ public class CruiseControlMetricsUtils {
   public static Properties addSslConfigs(Properties adminClientConfigs, CruiseControlMetricsReporterConfig configs) {
     // Add security protocol (if specified).
     try {
-      String securityProtocol = adminClientConfigs.get(AdminClientConfig.SECURITY_PROTOCOL_CONFIG).toString();
+      String securityProtocol = configs.getString(AdminClientConfig.SECURITY_PROTOCOL_CONFIG);
+      adminClientConfigs.put(AdminClientConfig.SECURITY_PROTOCOL_CONFIG, securityProtocol);
+      setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_MECHANISM);
+      setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_JAAS_CONFIG);
 
       // Configure SSL configs (if security protocol is SSL)
       if (securityProtocol.equals(SecurityProtocol.SSL.name)) {
