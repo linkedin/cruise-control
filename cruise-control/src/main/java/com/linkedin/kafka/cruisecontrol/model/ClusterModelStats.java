@@ -358,7 +358,7 @@ public class ClusterModelStats {
       int maxTopicReplicasInBroker = 0;
       int minTopicReplicasInBroker = Integer.MAX_VALUE;
       for (Broker broker : clusterModel.brokers()) {
-        int numTopicReplicasInBroker = broker.replicasOfTopicInBroker(topic).size();
+        int numTopicReplicasInBroker = broker.numReplicasOfTopicInBroker(topic);
         maxTopicReplicasInBroker = Math.max(maxTopicReplicasInBroker, numTopicReplicasInBroker);
         minTopicReplicasInBroker = Math.min(minTopicReplicasInBroker, numTopicReplicasInBroker);
       }
@@ -367,7 +367,7 @@ public class ClusterModelStats {
       // Standard deviation of replicas in brokers.
       double variance = 0.0;
       for (Broker broker : clusterModel.brokers()) {
-        variance += (Math.pow(broker.replicasOfTopicInBroker(topic).size() - avgTopicReplicas, 2)
+        variance += (Math.pow(broker.numReplicasOfTopicInBroker(topic) - avgTopicReplicas, 2)
             / (double) _numBrokers);
       }
 

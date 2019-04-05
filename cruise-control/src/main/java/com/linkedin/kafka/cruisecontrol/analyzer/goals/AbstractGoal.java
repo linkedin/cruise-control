@@ -144,9 +144,7 @@ public abstract class AbstractGoal implements Goal {
   }
 
   /**
-   * (1) Initialize states that this goal requires -- e.g. in TopicReplicaDistributionGoal and ReplicaDistributionGoal,
-   * this method is used to populate the ReplicaDistributionTarget(s). (2) Run sanity checks regarding minimum
-   * requirements of hard goals.
+   * (1) Initialize states that this goal requires -- e.g. run sanity checks regarding hard goals requirements.
    *
    * @param clusterModel The state of the cluster.
    * @param excludedTopics The topics that should be excluded from the optimization proposals.

@@ -137,7 +137,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       }
       int excludedReplicasInBroker = 0;
       for (String topic : excludedTopics) {
-        excludedReplicasInBroker += broker.replicasOfTopicInBroker(topic).size();
+        excludedReplicasInBroker += broker.numReplicasOfTopicInBroker(topic);
       }
 
       if (excludedReplicasInBroker > _balancingConstraint.maxReplicasPerBroker()) {

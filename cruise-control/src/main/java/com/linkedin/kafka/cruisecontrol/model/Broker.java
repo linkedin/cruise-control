@@ -20,6 +20,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.function.Function;
 
 import org.apache.kafka.common.TopicPartition;
@@ -49,7 +51,7 @@ public class Broker implements Serializable, Comparable<Broker> {
   /** Set of immigrant replicas */
   private final Set<Replica> _immigrantReplicas;
   /** A map for tracking topic -&gt; (partitionId -&gt; replica). */
-  private final Map<String, Map<Integer, Replica>> _topicReplicas;
+  private final Map<String, SortedMap<Integer, Replica>> _topicReplicas;
   private final Load _load;
   private final Load _leadershipLoadForNwResources;
   private State _state;
@@ -160,9 +162,20 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return Replicas in this broker sharing the given topic.
    */
   public Collection<Replica> replicasOfTopicInBroker(String topic) {
-    Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
+    SortedMap<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
 
-    return (topicReplicas == null) ? Collections.emptyList() : topicReplicas.values();
+    return topicReplicas == null ? Collections.emptySet() : topicReplicas.values();
+  }
+
+  /**
+   * Get number of replicas from the given topic in this broker.
+   *
+   * @param topic Topic for which the replica count will be returned.
+   * @return The number of replicas from the given topic in this broker.
+   */
+  public int numReplicasOfTopicInBroker(String topic) {
+    Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
+    return topicReplicas == null ? 0 : topicReplicas.size();
   }
 
   /**
@@ -293,12 +306,8 @@ public class Broker implements Serializable, Comparable<Broker> {
     }
 
     // Add topic replica.
-    Map<Integer, Replica> topicReplicas = _topicReplicas.get(replica.topicPartition().topic());
-    if (topicReplicas == null) {
-      topicReplicas = new HashMap<>();
-      _topicReplicas.put(replica.topicPartition().topic(), topicReplicas);
-    }
-    topicReplicas.put(replica.topicPartition().partition(), replica);
+    _topicReplicas.computeIfAbsent(replica.topicPartition().topic(), t -> new TreeMap<>())
+                  .put(replica.topicPartition().partition(), replica);
 
     // Add leader replica.
     if (replica.isLeader()) {

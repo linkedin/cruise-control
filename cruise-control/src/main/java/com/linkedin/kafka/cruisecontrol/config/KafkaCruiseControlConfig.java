@@ -318,9 +318,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public static final String REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "replica.count.balance.threshold";
   private static final String REPLICA_COUNT_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for replica "
-                                                                    + "distribution. For example, 1.10 means the highest "
-                                                                    + "replica count of a broker should not be above "
-                                                                    + "1.10x of average replica count of all brokers.";
+      + "distribution. For example, 1.10 means the highest replica count of a broker should not be above 1.10x of "
+      + "average replica count of all brokers.";
+
+  /**
+   * <code>topic.replica.count.balance.threshold</code>
+   */
+  public static final String TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "topic.replica.count.balance.threshold";
+  private static final String TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for "
+      + "replica distribution from each topic. For example, 1.80 means the highest topic replica count of a broker "
+      + "should not be above 1.80x of average replica count of all brokers for the same topic.";
 
   /**
    * <code>cpu.capacity.threshold</code>
@@ -991,6 +998,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.HIGH,
                 REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
+        .define(TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                1.80,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
         .define(CPU_CAPACITY_THRESHOLD_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 0.8,

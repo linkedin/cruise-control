@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 
@@ -23,6 +24,7 @@ public class BalancingConstraint {
   private final List<Resource> _resources;
   private final Map<Resource, Double> _resourceBalancePercentage;
   private final Double _replicaBalancePercentage;
+  private final Double _topicReplicaBalancePercentage;
   private final Map<Resource, Double> _capacityThreshold;
   private final Map<Resource, Double> _lowUtilizationThreshold;
   private final Long _maxReplicasPerBroker;
@@ -56,8 +58,9 @@ public class BalancingConstraint {
     _lowUtilizationThreshold.put(Resource.NW_OUT, config.getDouble(KafkaCruiseControlConfig.NETWORK_OUTBOUND_LOW_UTILIZATION_THRESHOLD_CONFIG));
     // Set default value for the maximum number of replicas per broker.
     _maxReplicasPerBroker = config.getLong(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG);
-    // Set default value for the balance percentage of replica distribution.
+    // Set default value for the balance percentage of (1) replica and (2) topic replica distribution.
     _replicaBalancePercentage = config.getDouble(KafkaCruiseControlConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
+    _topicReplicaBalancePercentage = config.getDouble(KafkaCruiseControlConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
   }
 
   Properties setProps(Properties props) {
@@ -78,6 +81,7 @@ public class BalancingConstraint {
 
     props.put(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, _maxReplicasPerBroker.toString());
     props.put(KafkaCruiseControlConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _replicaBalancePercentage.toString());
+    props.put(KafkaCruiseControlConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _topicReplicaBalancePercentage.toString());
     return props;
   }
 
@@ -96,10 +100,17 @@ public class BalancingConstraint {
   }
 
   /**
-   * Get replica balance percentage for replica distribution goal.
+   * Get replica balance percentage for {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal}.
    */
   public Double replicaBalancePercentage() {
     return _replicaBalancePercentage;
+  }
+
+  /**
+   * Get topic replica balance percentage for {@link TopicReplicaDistributionGoal}.
+   */
+  public Double topicReplicaBalancePercentage() {
+    return _topicReplicaBalancePercentage;
   }
 
   /**
@@ -181,18 +192,18 @@ public class BalancingConstraint {
   }
 
   /**
-   * Get string representation of Balancing Constraint in XML format.
+   * Get string representation of {@link BalancingConstraint}.
    */
   @Override
   public String toString() {
-    return String.format("<BalancingConstraint cpuBalancePercentage=\"%.4f\" diskBalancePercentage=\"%.4f\" " +
-            "inboundNwBalancePercentage=\"%.4f\" outboundNwBalancePercentage=\"%.4f\" cpuCapacityThreshold=\"%.4f\" "
-            + "diskCapacityThreshold=\"%.4f\" inboundNwCapacityThreshold=\"%.4f\" outboundNwCapacityThreshold=\"%.4f\""
-            + " maxReplicasPerBroker=\"%d\" replicaBalancePercentage=\"%.4f\">%n</BalancingConstraint>%n",
-        _resourceBalancePercentage.get(Resource.CPU), _resourceBalancePercentage.get(Resource.DISK),
-        _resourceBalancePercentage.get(Resource.NW_IN), _resourceBalancePercentage.get(Resource.NW_OUT),
-        _capacityThreshold.get(Resource.CPU), _capacityThreshold.get(Resource.DISK),
-        _capacityThreshold.get(Resource.NW_IN), _capacityThreshold.get(Resource.NW_OUT),
-        _maxReplicasPerBroker, _replicaBalancePercentage);
+    return String.format("BalancingConstraint[cpuBalancePercentage=%.4f,diskBalancePercentage=%.4f,"
+                         + "inboundNwBalancePercentage=%.4f,outboundNwBalancePercentage=%.4f,cpuCapacityThreshold=%.4f,"
+                         + "diskCapacityThreshold=%.4f,inboundNwCapacityThreshold=%.4f,outboundNwCapacityThreshold=%.4f,"
+                         + "maxReplicasPerBroker=%d,replicaBalancePercentage=%.4f,topicReplicaBalancePercentage=%.4f]",
+                         _resourceBalancePercentage.get(Resource.CPU), _resourceBalancePercentage.get(Resource.DISK),
+                         _resourceBalancePercentage.get(Resource.NW_IN), _resourceBalancePercentage.get(Resource.NW_OUT),
+                         _capacityThreshold.get(Resource.CPU), _capacityThreshold.get(Resource.DISK),
+                         _capacityThreshold.get(Resource.NW_IN), _capacityThreshold.get(Resource.NW_OUT),
+                         _maxReplicasPerBroker, _replicaBalancePercentage, _topicReplicaBalancePercentage);
   }
 }
