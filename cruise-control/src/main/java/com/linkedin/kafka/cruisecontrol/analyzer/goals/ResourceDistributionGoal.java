@@ -38,7 +38,8 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
-import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.REPLICA_MOVEMENT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.INTER_BROKER_REPLICA_SWAP;
+import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.INTER_BROKER_REPLICA_MOVEMENT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionType.LEADERSHIP_MOVEMENT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.utilizationPercentage;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.filterReplicas;
@@ -92,7 +93,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
     switch (action.balancingAction()) {
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_SWAP:
         Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
         double sourceUtilizationDelta = destinationReplica.load().expectedUtilizationFor(resource())
                                         - sourceReplica.load().expectedUtilizationFor(resource());
@@ -118,7 +119,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         }
         // Ensure that the swap does not increase the utilization difference between brokers.
         return isSelfSatisfiedAfterSwap(sourceReplica, destinationReplica) ? ACCEPT : REPLICA_REJECT;
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
         if (isLoadAboveBalanceLowerLimit(sourceReplica.broker())
             && isLoadUnderBalanceUpperLimit(destinationBroker)) {
@@ -187,17 +188,17 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // The action must be executed if currently fixing offline replicas only and the offline source replica is proposed
     // to be moved to another broker.
     if (_fixOfflineReplicasOnly && sourceReplica.broker().replica(action.topicPartition()).isCurrentOffline()) {
-      return action.balancingAction() == ActionType.REPLICA_MOVEMENT;
+      return action.balancingAction() == ActionType.INTER_BROKER_REPLICA_MOVEMENT;
     }
 
     switch (action.balancingAction()) {
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_SWAP:
         Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
         double sourceUtilizationDelta = destinationReplica.load().expectedUtilizationFor(resource())
                                         - sourceReplica.load().expectedUtilizationFor(resource());
 
         return sourceUtilizationDelta != 0 && !isSwapViolatingLimit(sourceReplica, destinationReplica);
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
         //Check that current destination would not become more unbalanced.
         return isLoadUnderBalanceUpperLimitAfterChange(sourceReplica.load(), destinationBroker, ADD) &&
@@ -342,12 +343,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // Update broker ids over the balance limit for logging purposes.
     boolean unbalanced = false;
     if (requireLessLoad) {
-      if (rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals, REPLICA_MOVEMENT, optimizationOptions)) {
+      if (rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals, INTER_BROKER_REPLICA_MOVEMENT, optimizationOptions)) {
         unbalanced = rebalanceBySwappingLoadOut(broker, clusterModel, optimizedGoals, optimizationOptions, moveImmigrantsOnly);
       }
     }
     if (requireMoreLoad) {
-      if (rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals, REPLICA_MOVEMENT, optimizationOptions, moveImmigrantsOnly)) {
+      if (rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals, INTER_BROKER_REPLICA_MOVEMENT, optimizationOptions, moveImmigrantsOnly)) {
         unbalanced = unbalanced || rebalanceBySwappingLoadIn(broker, clusterModel, optimizedGoals, optimizationOptions, moveImmigrantsOnly);
       }
     }
@@ -399,7 +400,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
     // Stop when all the replicas are leaders for leader movement or there is no replicas can be moved in anymore
     // for replica movement.
-    while (!candidateBrokerPQ.isEmpty() && (actionType == REPLICA_MOVEMENT ||
+    while (!candidateBrokerPQ.isEmpty() && (actionType == INTER_BROKER_REPLICA_MOVEMENT ||
         (actionType == LEADERSHIP_MOVEMENT && broker.leaderReplicas().size() != broker.replicas().size()))) {
       CandidateBroker cb = candidateBrokerPQ.poll();
       SortedSet<Replica> candidateReplicasToReceive = cb.replicas();
@@ -416,7 +417,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
             return false;
           }
           // Remove the replica from its source broker if it was a replica movement.
-          if (actionType == REPLICA_MOVEMENT) {
+          if (actionType == INTER_BROKER_REPLICA_MOVEMENT) {
             iterator.remove();
           }
 

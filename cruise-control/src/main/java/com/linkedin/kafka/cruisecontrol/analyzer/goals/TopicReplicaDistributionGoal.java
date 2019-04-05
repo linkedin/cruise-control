@@ -72,7 +72,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     switch (action.balancingAction()) {
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_SWAP:
         if (action.topic().equals(action.destinationTopic())) {
           return ACCEPT;
         }
@@ -80,7 +80,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                >= varianceSum(clusterModel, action, false) ? ACCEPT : REPLICA_REJECT;
       case LEADERSHIP_MOVEMENT:
         return ACCEPT;
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_MOVEMENT:
         String sourceTopic = action.topic();
         Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
         Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());

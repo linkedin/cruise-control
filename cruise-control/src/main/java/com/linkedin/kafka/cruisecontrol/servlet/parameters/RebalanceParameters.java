@@ -22,13 +22,13 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
- *    &amp;replica_movement_strategies=[strategy1,strategy2...]
- *    &amp;ignore_proposal_cache=[true/false]&amp;review_id=[id]
+ *    &amp;replica_movement_strategies=[strategy1,strategy2...]&amp;ignore_proposal_cache=[true/false]
+ *    &amp;kafka_assigner=[true/false]&amp;review_id=[id]
  * </pre>
  */
 public class RebalanceParameters extends GoalBasedOptimizationParameters {
   private boolean _dryRun;
-  private Integer _concurrentPartitionMovements;
+  private Integer _concurrentInterBrokerPartitionMovements;
   private Integer _concurrentLeaderMovements;
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
@@ -45,7 +45,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     _dryRun = ParameterUtils.getDryRun(_request);
-    _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
@@ -67,8 +67,8 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
     return _dryRun;
   }
 
-  public Integer concurrentPartitionMovements() {
-    return _concurrentPartitionMovements;
+  public Integer concurrentInterBrokerPartitionMovements() {
+    return _concurrentInterBrokerPartitionMovements;
   }
 
   public Integer concurrentLeaderMovements() {

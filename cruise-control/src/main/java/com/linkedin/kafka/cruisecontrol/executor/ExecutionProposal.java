@@ -13,7 +13,6 @@ import java.util.Set;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
 
-
 /**
  * The execution proposal corresponding to a particular partition.
  */
@@ -65,7 +64,7 @@ public class ExecutionProposal {
     _replicasToRemove.removeAll(newReplicas);
   }
 
-  private boolean orderMatched(Node[] currentOrderedReplicas, List<Integer> replicas) {
+  private boolean brokerOrderMatched(Node[] currentOrderedReplicas, List<Integer> replicas) {
     if (replicas.size() != currentOrderedReplicas.length) {
       return false;
     }
@@ -79,25 +78,27 @@ public class ExecutionProposal {
   }
 
   /**
-   * Check whether the successful proposal completion is reflected in the current ordered replicas in the given cluster.
+   * Check whether the successful completion of inter-broker replica movement from this proposal is reflected in the current
+   * ordered replicas in the given cluster.
    *
    * @param currentOrderedReplicas Current ordered replica list from the cluster.
    * @return True if successfully completed, false otherwise.
    */
-  public boolean isCompletedSuccessfully(Node[] currentOrderedReplicas) {
-    return orderMatched(currentOrderedReplicas, _newReplicas);
+  public boolean isInterBrokerMovementCompleted(Node[] currentOrderedReplicas) {
+    return brokerOrderMatched(currentOrderedReplicas, _newReplicas);
   }
 
   /**
-   * Check whether the proposal abortion is reflected in the current ordered replicas in the given cluster.
+   * Check whether the abortion of inter-broker replica movement from this proposal is reflected in the current ordered
+   * replicas in the given cluster.
    * There could be a race condition that when we abort a task, it is already completed.
    * In that case, we treat it as aborted as well.
    *
    * @param currentOrderedReplicas Current ordered replica list from the cluster.
    * @return True if aborted, false otherwise.
    */
-  public boolean isAborted(Node[] currentOrderedReplicas) {
-    return isCompletedSuccessfully(currentOrderedReplicas) || orderMatched(currentOrderedReplicas, _oldReplicas);
+  public boolean isInterBrokerMovementAborted(Node[] currentOrderedReplicas) {
+    return isInterBrokerMovementCompleted(currentOrderedReplicas) || brokerOrderMatched(currentOrderedReplicas, _oldReplicas);
   }
 
   /**
@@ -119,13 +120,6 @@ public class ExecutionProposal {
    */
   public TopicPartition topicPartition() {
     return _tp;
-  }
-
-  /**
-   * @return the partition size of the partition this proposal is about.
-   */
-  public long partitionSize() {
-    return _partitionSize;
   }
 
   /**

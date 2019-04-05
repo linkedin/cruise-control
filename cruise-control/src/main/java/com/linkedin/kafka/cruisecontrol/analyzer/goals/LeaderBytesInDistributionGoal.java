@@ -68,13 +68,13 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
 
     if (!sourceReplica.isLeader()) {
       switch (action.balancingAction()) {
-        case REPLICA_SWAP:
+        case INTER_BROKER_REPLICA_SWAP:
           if (!destinationBroker.replica(action.destinationTopicPartition()).isLeader()) {
             // No leadership bytes are being swapped between source and destination.
             return ACCEPT;
           }
           break;
-        case REPLICA_MOVEMENT:
+        case INTER_BROKER_REPLICA_MOVEMENT:
           // No leadership bytes are being moved to destination.
           return ACCEPT;
         case LEADERSHIP_MOVEMENT:
@@ -88,7 +88,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     double newDestLeaderBytesIn;
 
     switch (action.balancingAction()) {
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_SWAP:
         double destinationReplicaUtilization = destinationBroker.replica(action.destinationTopicPartition()).load()
             .expectedUtilizationFor(Resource.NW_IN);
         newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
@@ -102,7 +102,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
           return REPLICA_REJECT;
         }
         break;
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
         newDestLeaderBytesIn = destinationBroker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN)
                                + sourceReplicaUtilization;

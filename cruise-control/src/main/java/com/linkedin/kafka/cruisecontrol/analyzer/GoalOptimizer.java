@@ -56,8 +56,8 @@ import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunne
  * A class for optimizing goals in the given order of priority.
  */
 public class GoalOptimizer implements Runnable {
-  private static final String NUM_REPLICA_MOVEMENTS = "numReplicaMovements";
-  private static final String DATA_TO_MOVE_MB = "dataToMoveMB";
+  private static final String NUM_INTER_BROKER_REPLICA_MOVEMENTS = "numReplicaMovements";
+  private static final String INTER_BROKER_DATA_TO_MOVE_MB = "dataToMoveMB";
   private static final String NUM_LEADER_MOVEMENTS = "numLeaderMovements";
   private static final String RECENT_WINDOWS = "recentWindows";
   private static final String MONITORED_PARTITIONS_PERCENTAGE = "monitoredPartitionsPercentage";
@@ -601,23 +601,24 @@ public class GoalOptimizer implements Runnable {
     }
 
     private List<Number> getMovementStats() {
-      Integer numReplicaMovements = 0;
+      Integer numInterBrokerReplicaMovements = 0;
       Integer numLeaderMovements = 0;
-      long dataToMove = 0L;
+      long interBrokerDataToMove = 0L;
       for (ExecutionProposal p : _proposals) {
         if (!p.replicasToAdd().isEmpty() || !p.replicasToRemove().isEmpty()) {
-          numReplicaMovements++;
-          dataToMove += p.dataToMoveInMB();
+          numInterBrokerReplicaMovements++;
+          interBrokerDataToMove += p.dataToMoveInMB();
         } else {
           numLeaderMovements++;
         }
       }
-      return Arrays.asList(numReplicaMovements, dataToMove, numLeaderMovements);
+      return Arrays.asList(numInterBrokerReplicaMovements, interBrokerDataToMove,
+                           numLeaderMovements);
     }
 
     public String getProposalSummary() {
       List<Number> moveStats = getMovementStats();
-      return String.format("%n%nThe optimization proposal has %d replica(%d MB) movements and %d leadership movements "
+      return String.format("%n%nThe optimization proposal has %d inter-broker replica(%d MB) movements and %d leadership movements "
                            + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions "
                            + "covered.%nExcluded Topics: %s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers "
                            + "For Replica Move: %s.",
@@ -629,8 +630,8 @@ public class GoalOptimizer implements Runnable {
     public Map<String, Object> getProposalSummaryForJson() {
       List<Number> moveStats = getMovementStats();
       Map<String, Object> ret = new HashMap<>();
-      ret.put(NUM_REPLICA_MOVEMENTS, moveStats.get(0).intValue());
-      ret.put(DATA_TO_MOVE_MB, moveStats.get(1).longValue());
+      ret.put(NUM_INTER_BROKER_REPLICA_MOVEMENTS, moveStats.get(0).intValue());
+      ret.put(INTER_BROKER_DATA_TO_MOVE_MB, moveStats.get(1).longValue());
       ret.put(NUM_LEADER_MOVEMENTS, moveStats.get(2).intValue());
       ret.put(RECENT_WINDOWS, _clusterModelStats.numSnapshotWindows());
       ret.put(MONITORED_PARTITIONS_PERCENTAGE, _clusterModelStats.monitoredPartitionsPercentage() * 100.0);

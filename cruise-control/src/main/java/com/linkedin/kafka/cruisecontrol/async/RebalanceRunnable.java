@@ -23,7 +23,7 @@ class RebalanceRunnable extends OperationRunnable {
   private final boolean _dryRun;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
-  private final Integer _concurrentPartitionMovements;
+  private final Integer _concurrentInterBrokerPartitionMovements;
   private final Integer _concurrentLeaderMovements;
   private final boolean _skipHardGoalCheck;
   private final Pattern _excludedTopics;
@@ -42,7 +42,7 @@ class RebalanceRunnable extends OperationRunnable {
     _dryRun = parameters.dryRun();
     _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
-    _concurrentPartitionMovements = parameters.concurrentPartitionMovements();
+    _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
@@ -60,7 +60,7 @@ class RebalanceRunnable extends OperationRunnable {
                                                                 _modelCompletenessRequirements,
                                                                 _future.operationProgress(),
                                                                 _allowCapacityEstimation,
-                                                                _concurrentPartitionMovements,
+                                                                _concurrentInterBrokerPartitionMovements,
                                                                 _concurrentLeaderMovements,
                                                                 _skipHardGoalCheck,
                                                                 _excludedTopics,

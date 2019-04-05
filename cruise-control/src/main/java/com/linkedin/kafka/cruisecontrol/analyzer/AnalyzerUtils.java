@@ -84,8 +84,7 @@ public class AnalyzerUtils {
         finalReplicas.set(0, finalLeaderId);
       }
       Double partitionSize = optimizedClusterModel.partition(tp).leader().load().expectedUtilizationFor(Resource.DISK);
-      diff.add(new ExecutionProposal(tp, partitionSize.intValue(), initialLeaderDistribution.get(tp),
-                                     initialReplicas, finalReplicas));
+      diff.add(new ExecutionProposal(tp, partitionSize.intValue(), initialLeaderDistribution.get(tp), initialReplicas, finalReplicas));
     }
     return diff;
   }

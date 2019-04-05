@@ -81,9 +81,9 @@ public class BalancingAction {
           throw new IllegalArgumentException("The source broker cannot be null for balancing action " + this);
         }
         break;
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_SWAP:
         if (_destinationBrokerId == null) {
           throw new IllegalArgumentException("The destination broker cannot be null for balancing action " + this);
         } else if (_sourceBrokerId == null) {
@@ -170,7 +170,7 @@ public class BalancingAction {
    */
   @Override
   public String toString() {
-    String actSymbol = _actionType.equals(ActionType.REPLICA_SWAP) ? "<->" : "->";
+    String actSymbol = _actionType.equals(ActionType.INTER_BROKER_REPLICA_SWAP) ? "<->" : "->";
     return String.format("(%s%s%s, %d%s%d, %s)",
                          _tp, actSymbol, _destinationTp, _sourceBrokerId, actSymbol, _destinationBrokerId, _actionType);
   }

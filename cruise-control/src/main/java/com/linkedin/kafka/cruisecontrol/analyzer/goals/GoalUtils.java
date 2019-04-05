@@ -35,7 +35,7 @@ public class GoalUtils {
   }
 
   /**
-   * Check whether the execution of a {@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#REPLICA_MOVEMENT}
+   * Check whether the execution of a {@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT}
    * action is eligible for the given replica in the given clusterModel to the given candidate broker.
    *
    * Invariant-1: If there are new brokers, an eligible candidate that triggers an action must be a new broker.
@@ -75,7 +75,7 @@ public class GoalUtils {
    * <ul>
    * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#LEADERSHIP_MOVEMENT}, then brokers excluded for
    * leadership are not eligible.</li>
-   * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#REPLICA_MOVEMENT} for a leader replica, then unless
+   * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT} for a leader replica, then unless
    * the source leader replica is dead, brokers excluded for leadership are not eligible.</li>
    * </ul>
    *
@@ -99,7 +99,7 @@ public class GoalUtils {
   /**
    * Filter out the given excluded brokers from the original brokers (if needed). If the action is:
    * <ul>
-   * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#REPLICA_MOVEMENT}, then unless the source replica
+   * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT}, then unless the source replica
    * is dead, brokers excluded for replica move are not eligible.</li>
    * </ul>
    *
@@ -112,14 +112,14 @@ public class GoalUtils {
                                                              Set<Integer> excludedBrokers,
                                                              Replica replica,
                                                              ActionType action) {
-    if (!excludedBrokers.isEmpty() && action == ActionType.REPLICA_MOVEMENT && replica.originalBroker().isAlive()) {
+    if (!excludedBrokers.isEmpty() && action == ActionType.INTER_BROKER_REPLICA_MOVEMENT && replica.originalBroker().isAlive()) {
       originalBrokers.removeIf(broker -> excludedBrokers.contains(broker.id()));
     }
   }
 
   /**
    * Filter the given candidate brokers in the given clusterModel to retrieve the eligible ones for execution of a
-   * {@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#REPLICA_MOVEMENT} or
+   * {@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT} or
    * {@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#LEADERSHIP_MOVEMENT} action for the given replica.
    *
    * Invariant-1: If there are new brokers, an eligible candidate that triggers an action must be a new broker.
@@ -151,9 +151,9 @@ public class GoalUtils {
   }
 
   /**
-   * Check whether the proposed action is legit. An action is legit if it is:
-   * (1) a replica movement and the destination does not have a replica of the same partition and is allowed to have a
-   * replica from the partition, or
+   * Check whether the proposed inter-broker action is legit. An action is legit if it is:
+   * (1) a replica movement across brokers, the destination broker does not have a replica of the same partition and is
+   * allowed to have a replica from the partition
    * (2) a leadership movement, the replica is a leader and the destination broker has a follower of the same partition.
    *
    * @param replica Replica that is affected from the given action type.
@@ -164,7 +164,7 @@ public class GoalUtils {
    */
   static boolean legitMove(Replica replica, Broker destinationBroker, ClusterModel clusterModel, ActionType actionType) {
     switch (actionType) {
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_MOVEMENT:
         return clusterModel.partition(replica.topicPartition()).canAssignReplicaToBroker(destinationBroker)
                && destinationBroker.replica(replica.topicPartition()) == null;
       case LEADERSHIP_MOVEMENT:

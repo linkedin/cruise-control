@@ -26,7 +26,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
   private final List<String> _goals;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
-  private final Integer _concurrentPartitionMovements;
+  private final Integer _concurrentInterBrokerPartitionMovements;
   private final Integer _concurrentLeaderMovements;
   private final boolean _skipHardGoalCheck;
   private final Pattern _excludedTopics;
@@ -46,7 +46,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
     _goals = parameters.goals();
     _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
-    _concurrentPartitionMovements = parameters.concurrentPartitionMovements();
+    _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
@@ -65,7 +65,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
                                                                           _modelCompletenessRequirements,
                                                                           _future.operationProgress(),
                                                                           _allowCapacityEstimation,
-                                                                          _concurrentPartitionMovements,
+                                                                          _concurrentInterBrokerPartitionMovements,
                                                                           _concurrentLeaderMovements,
                                                                           _skipHardGoalCheck,
                                                                           _excludedTopics,

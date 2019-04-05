@@ -66,11 +66,11 @@ public class ReplicaCapacityGoal extends AbstractGoal {
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     switch (action.balancingAction()) {
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_MOVEMENT:
       case REPLICA_ADDITION:
         Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
         return destinationBroker.replicas().size() < _balancingConstraint.maxReplicasPerBroker() ? ACCEPT : REPLICA_REJECT;
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_SWAP:
       case LEADERSHIP_MOVEMENT:
       case REPLICA_DELETION:
         return ACCEPT;
@@ -246,7 +246,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       List<Broker> eligibleBrokers =
           eligibleBrokers(replica, clusterModel).stream().map(BrokerReplicaCount::broker).collect(Collectors.toList());
 
-      Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.REPLICA_MOVEMENT,
+      Broker b = maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,
                                            optimizedGoals, optimizationOptions);
       if (b == null) {
         if (!broker.isAlive()) {

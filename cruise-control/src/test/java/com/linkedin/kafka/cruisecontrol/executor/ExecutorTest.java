@@ -202,8 +202,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     while (executor.state().state() != ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS) {
       Thread.sleep(10);
     }
-    // Sleep over 180000 (the hard coded timeout)
-    time.sleep(180001);
+    // Sleep over 180000 (the hard coded timeout) with some margin for inter-thread synchronization.
+    time.sleep(200000);
     // The execution should finish.
     waitUntilExecutionFinishes(executor);
   }

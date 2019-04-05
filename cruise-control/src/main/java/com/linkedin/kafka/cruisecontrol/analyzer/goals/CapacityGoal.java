@@ -88,10 +88,10 @@ public abstract class CapacityGoal extends AbstractGoal {
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
     switch (action.balancingAction()) {
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_SWAP:
         Replica destinationReplica = destinationBroker.replica(action.destinationTopicPartition());
         return isSwapAcceptableForCapacity(sourceReplica, destinationReplica) ? ACCEPT : REPLICA_REJECT;
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_MOVEMENT:
       case LEADERSHIP_MOVEMENT:
         return isMovementAcceptableForCapacity(sourceReplica, destinationBroker) ? ACCEPT : REPLICA_REJECT;
       default:
@@ -323,7 +323,7 @@ public abstract class CapacityGoal extends AbstractGoal {
         // Unless the target broker would go over the host- and/or broker-level capacity,
         // the movement will be successful.
         Broker b = maybeApplyBalancingAction(clusterModel, replica, sortedAliveBrokersUnderCapacityLimit,
-                                             ActionType.REPLICA_MOVEMENT, optimizedGoals, optimizationOptions);
+                                             ActionType.INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals, optimizationOptions);
         if (b == null) {
           LOG.debug("Failed to move replica {} to any broker in {}", replica, sortedAliveBrokersUnderCapacityLimit);
         }
