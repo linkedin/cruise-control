@@ -22,9 +22,8 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.Exe
 /**
  * The class that helps track the execution status for the balancing.
  * It does the following things:
- * 1. Keep track of the in progress partition movements between each pair of source-destination broker.
- * 2. When one partition movement finishes, it check the involved source and destination broker to see
- * if we can run more partition movements.
+ * 1. Keep track of the in progress partition movements between each pair of source-destination disk or broker.
+ * 2. When one partition movement finishes, it checks the involved brokers to see if we can run more partition movements.
  * We only keep track of the number of concurrent partition movements but not the sizes of the partitions.
  * Because the concurrent level determines how much impact the balancing process would have on the involved
  * brokers. And the size of partitions only affect how long the impact would last.
@@ -32,13 +31,13 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.Exe
  * The execution task manager is thread-safe.
  */
 public class ExecutionTaskManager {
-  private final Map<Integer, Integer> _inProgressReplicaMovementsByBrokerId;
+  private final Map<Integer, Integer> _inProgressInterBrokerReplicaMovementsByBrokerId;
+  private final Set<TopicPartition> _inProgressPartitionsForInterBrokerMovement;
   private final ExecutionTaskTracker _executionTaskTracker;
-  private final Set<TopicPartition> _inProgressPartitions;
   private final ExecutionTaskPlanner _executionTaskPlanner;
-  private final int _defaultPartitionMovementConcurrency;
+  private final int _defaultInterBrokerPartitionMovementConcurrency;
   private final int _defaultLeadershipMovementConcurrency;
-  private Integer _requestedPartitionMovementConcurrency;
+  private Integer _requestedInterBrokerPartitionMovementConcurrency;
   private Integer _requestedLeadershipMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
   private boolean _isKafkaAssignerMode;
@@ -46,39 +45,39 @@ public class ExecutionTaskManager {
   /**
    * The constructor of The Execution task manager.
    *
-   * @param defaultPartitionMovementConcurrency The maximum number of concurrent partition movements per broker. It can
-   *                                            be overwritten by user parameter upon post request.
+   * @param defaultInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements per broker.
+   *                                                       It can be overwritten by user parameter upon post request.
    * @param defaultLeadershipMovementConcurrency The maximum number of concurrent leadership movements per batch. It can
    *                                             be overwritten by user parameter upon post request.
-   * @param replicaMovementStrategies The strategies used to determine the execution order of replica movement tasks.
+   * @param replicaMovementStrategies The strategies used to determine the execution order of inter-broker replica movement tasks.
    * @param dropwizardMetricRegistry The metric registry.
    * @param time The time object to get the time.
    */
-  public ExecutionTaskManager(int defaultPartitionMovementConcurrency,
+  public ExecutionTaskManager(int defaultInterBrokerPartitionMovementConcurrency,
                               int defaultLeadershipMovementConcurrency,
                               List<String> replicaMovementStrategies,
                               MetricRegistry dropwizardMetricRegistry,
                               Time time) {
-    _inProgressReplicaMovementsByBrokerId = new HashMap<>();
-    _inProgressPartitions = new HashSet<>();
+    _inProgressInterBrokerReplicaMovementsByBrokerId = new HashMap<>();
+    _inProgressPartitionsForInterBrokerMovement = new HashSet<>();
     _executionTaskTracker = new ExecutionTaskTracker(dropwizardMetricRegistry, time);
     _executionTaskPlanner = new ExecutionTaskPlanner(replicaMovementStrategies);
-    _defaultPartitionMovementConcurrency = defaultPartitionMovementConcurrency;
+    _defaultInterBrokerPartitionMovementConcurrency = defaultInterBrokerPartitionMovementConcurrency;
     _defaultLeadershipMovementConcurrency = defaultLeadershipMovementConcurrency;
     _brokersToSkipConcurrencyCheck = new HashSet<>();
     _isKafkaAssignerMode = false;
-    _requestedPartitionMovementConcurrency = null;
+    _requestedInterBrokerPartitionMovementConcurrency = null;
     _requestedLeadershipMovementConcurrency = null;
   }
 
   /**
-   * Dynamically set the partition movement concurrency per broker.
+   * Dynamically set the inter-broker partition movement concurrency per broker.
    *
-   * @param requestedPartitionMovementConcurrency The maximum number of concurrent partition movements per broker
-   *                                              (if null, use {@link #_defaultPartitionMovementConcurrency}).
+   * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements per broker
+   *                                                         (if null, use {@link #_defaultInterBrokerPartitionMovementConcurrency}).
    */
-  public synchronized void setRequestedPartitionMovementConcurrency(Integer requestedPartitionMovementConcurrency) {
-    _requestedPartitionMovementConcurrency = requestedPartitionMovementConcurrency;
+  public synchronized void setRequestedInterBrokerPartitionMovementConcurrency(Integer requestedInterBrokerPartitionMovementConcurrency) {
+    _requestedInterBrokerPartitionMovementConcurrency = requestedInterBrokerPartitionMovementConcurrency;
   }
 
   /**
@@ -91,9 +90,9 @@ public class ExecutionTaskManager {
     _requestedLeadershipMovementConcurrency = requestedLeadershipMovementConcurrency;
   }
 
-  public synchronized int partitionMovementConcurrency() {
-    return _requestedPartitionMovementConcurrency == null ? _defaultPartitionMovementConcurrency
-                                                          : _requestedPartitionMovementConcurrency;
+  public synchronized int interBrokerPartitionMovementConcurrency() {
+    return _requestedInterBrokerPartitionMovementConcurrency == null ? _defaultInterBrokerPartitionMovementConcurrency
+                                                                     : _requestedInterBrokerPartitionMovementConcurrency;
   }
 
   public synchronized int leadershipMovementConcurrency() {
@@ -102,13 +101,12 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Returns a list of execution proposal that moves the partitions.
+   * Returns a list of execution tasks that move the replicas cross brokers.
    */
-  public synchronized List<ExecutionTask> getReplicaMovementTasks() {
-    Map<Integer, Integer> brokersReadyForReplicaMovement = brokersReadyForReplicaMovement(_inProgressReplicaMovementsByBrokerId,
-                                                                                          partitionMovementConcurrency());
-    return _executionTaskPlanner.getReplicaMovementTasks(brokersReadyForReplicaMovement, _inProgressPartitions);
-
+  public synchronized List<ExecutionTask> getInterBrokerReplicaMovementTasks() {
+    Map<Integer, Integer> brokersReadyForReplicaMovement = brokersReadyForReplicaMovement(_inProgressInterBrokerReplicaMovementsByBrokerId,
+                                                                                          interBrokerPartitionMovementConcurrency());
+    return _executionTaskPlanner.getInterBrokerReplicaMovementTasks(brokersReadyForReplicaMovement, _inProgressPartitionsForInterBrokerMovement);
   }
 
   /**
@@ -136,7 +134,7 @@ public class ExecutionTaskManager {
   }
 
   /**
-   * Returns a list of proposals that move the leadership.
+   * Returns a list of execution tasks that move the leadership.
    */
   public synchronized List<ExecutionTask> getLeadershipMovementTasks() {
     return _executionTaskPlanner.getLeadershipMovementTasks(leadershipMovementConcurrency());
@@ -158,16 +156,14 @@ public class ExecutionTaskManager {
                                                  ReplicaMovementStrategy replicaMovementStrategy) {
     _executionTaskPlanner.addExecutionProposals(proposals, cluster, replicaMovementStrategy);
     for (ExecutionProposal p : proposals) {
-      _inProgressReplicaMovementsByBrokerId.putIfAbsent(p.oldLeader(), 0);
-      for (int broker : p.replicasToAdd()) {
-        _inProgressReplicaMovementsByBrokerId.putIfAbsent(broker, 0);
-      }
+      _inProgressInterBrokerReplicaMovementsByBrokerId.putIfAbsent(p.oldLeader(), 0);
+      p.replicasToAdd().forEach(r -> _inProgressInterBrokerReplicaMovementsByBrokerId.putIfAbsent(r, 0));
     }
     // Set the execution mode for tasks.
     _executionTaskTracker.setExecutionMode(_isKafkaAssignerMode);
 
     // Populate the generated tasks to tracker to trace their execution.
-    _executionTaskTracker.addTasksToTrace(_executionTaskPlanner.remainingReplicaMovements(), TaskType.REPLICA_ACTION);
+    _executionTaskTracker.addTasksToTrace(_executionTaskPlanner.remainingInterBrokerReplicaMovements(), TaskType.INTER_BROKER_REPLICA_ACTION);
     _executionTaskTracker.addTasksToTrace(_executionTaskPlanner.remainingLeadershipMovements(), TaskType.LEADER_ACTION);
     _brokersToSkipConcurrencyCheck.clear();
     if (brokersToSkipConcurrencyCheck != null) {
@@ -191,12 +187,14 @@ public class ExecutionTaskManager {
     if (!tasks.isEmpty()) {
       for (ExecutionTask task : tasks) {
         _executionTaskTracker.markTaskState(task, State.IN_PROGRESS);
-        if (task.type() == TaskType.REPLICA_ACTION) {
-          _inProgressPartitions.add(task.proposal().topicPartition());
+        if (task.type() == TaskType.INTER_BROKER_REPLICA_ACTION) {
+          _inProgressPartitionsForInterBrokerMovement.add(task.proposal().topicPartition());
           int oldLeader = task.proposal().oldLeader();
-          _inProgressReplicaMovementsByBrokerId.put(oldLeader, _inProgressReplicaMovementsByBrokerId.get(oldLeader) + 1);
+          _inProgressInterBrokerReplicaMovementsByBrokerId.put(oldLeader,
+                                                               _inProgressInterBrokerReplicaMovementsByBrokerId.get(oldLeader) + 1);
           for (int broker : task.proposal().replicasToAdd()) {
-            _inProgressReplicaMovementsByBrokerId.put(broker, _inProgressReplicaMovementsByBrokerId.get(broker) + 1);
+            _inProgressInterBrokerReplicaMovementsByBrokerId.put(broker,
+                                                                 _inProgressInterBrokerReplicaMovementsByBrokerId.get(broker) + 1);
           }
         }
       }
@@ -240,30 +238,32 @@ public class ExecutionTaskManager {
    * Mark a given tasks as completed.
    */
   private void completeTask(ExecutionTask task) {
-    if (task.type() ==  TaskType.REPLICA_ACTION) {
-        _inProgressPartitions.remove(task.proposal().topicPartition());
-        int oldLeader = task.proposal().oldLeader();
-        _inProgressReplicaMovementsByBrokerId.put(oldLeader, _inProgressReplicaMovementsByBrokerId.get(oldLeader) - 1);
-        task.proposal()
-            .replicasToAdd()
-            .forEach(r -> _inProgressReplicaMovementsByBrokerId.put(r, _inProgressReplicaMovementsByBrokerId.get(r) - 1));
+    if (task.type() ==  TaskType.INTER_BROKER_REPLICA_ACTION) {
+      _inProgressPartitionsForInterBrokerMovement.remove(task.proposal().topicPartition());
+      int oldLeader = task.proposal().oldLeader();
+      _inProgressInterBrokerReplicaMovementsByBrokerId.put(oldLeader,
+                                                           _inProgressInterBrokerReplicaMovementsByBrokerId.get(oldLeader) - 1);
+      task.proposal()
+          .replicasToAdd()
+          .forEach(r -> _inProgressInterBrokerReplicaMovementsByBrokerId.put(r,
+                        _inProgressInterBrokerReplicaMovementsByBrokerId.get(r) - 1));
     }
   }
 
-  public synchronized int numRemainingPartitionMovements() {
-    return _executionTaskTracker.numRemainingPartitionMovements();
+  public synchronized int numRemainingInterBrokerPartitionMovements() {
+    return _executionTaskTracker.numRemainingInterBrokerPartitionMovements();
   }
 
-  public synchronized long remainingDataToMoveInMB() {
-    return _executionTaskTracker.remainingDataToMoveInMB();
+  public synchronized long remainingInterBrokerDataToMoveInMB() {
+    return _executionTaskTracker.remainingInterBrokerDataToMoveInMB();
   }
 
-  public synchronized int numFinishedPartitionMovements() {
-    return _executionTaskTracker.numFinishedPartitionMovements();
+  public synchronized int numFinishedInterBrokerPartitionMovements() {
+    return _executionTaskTracker.numFinishedInterBrokerPartitionMovements();
   }
 
-  public synchronized long finishedDataMovementInMB() {
-    return _executionTaskTracker.finishedDataMovementInMB();
+  public synchronized long finishedInterBrokerDataMovementInMB() {
+    return _executionTaskTracker.finishedInterBrokerDataMovementInMB();
   }
 
   public synchronized Set<ExecutionTask> inExecutionTasks() {
@@ -274,8 +274,8 @@ public class ExecutionTaskManager {
     return _executionTaskTracker.inExecutionTasks(types);
   }
 
-  public synchronized long inExecutionDataToMoveInMB() {
-    return _executionTaskTracker.inExecutionDataMovementInMB();
+  public synchronized long inExecutionInterBrokerDataToMoveInMB() {
+    return _executionTaskTracker.inExecutionInterBrokerDataMovementInMB();
   }
 
   public synchronized int numRemainingLeadershipMovements() {
@@ -288,8 +288,8 @@ public class ExecutionTaskManager {
 
   public synchronized void clear() {
     _brokersToSkipConcurrencyCheck.clear();
-    _inProgressReplicaMovementsByBrokerId.clear();
-    _inProgressPartitions.clear();
+    _inProgressInterBrokerReplicaMovementsByBrokerId.clear();
+    _inProgressPartitionsForInterBrokerMovement.clear();
     _executionTaskPlanner.clear();
     _executionTaskTracker.clear();
   }

@@ -234,8 +234,8 @@ class ReplicaDistributionTarget {
       // goals if for each optimized goal accepts the replica movement action.
       BalancingAction proposal =
           new BalancingAction(replicaToMove.topicPartition(), replicaToMove.broker().id(), candidateBrokerId,
-                              ActionType.REPLICA_MOVEMENT);
-      if (!legitMove(replicaToMove, clusterModel.broker(candidateBrokerId), ActionType.REPLICA_MOVEMENT)) {
+                              ActionType.INTER_BROKER_REPLICA_MOVEMENT);
+      if (!legitMove(replicaToMove, clusterModel.broker(candidateBrokerId), ActionType.INTER_BROKER_REPLICA_MOVEMENT)) {
         continue;
       }
 

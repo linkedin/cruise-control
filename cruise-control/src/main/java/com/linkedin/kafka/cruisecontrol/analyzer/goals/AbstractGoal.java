@@ -226,7 +226,7 @@ public abstract class AbstractGoal implements Goal {
       if (acceptance == ACCEPT) {
         if (action == ActionType.LEADERSHIP_MOVEMENT) {
           clusterModel.relocateLeadership(replica.topicPartition(), replica.broker().id(), broker.id());
-        } else if (action == ActionType.REPLICA_MOVEMENT) {
+        } else if (action == ActionType.INTER_BROKER_REPLICA_MOVEMENT) {
           clusterModel.relocateReplica(replica.topicPartition(), replica.broker().id(), broker.id());
         }
         return broker;
@@ -260,18 +260,18 @@ public abstract class AbstractGoal implements Goal {
     for (Replica destinationReplica : eligibleReplicas) {
       BalancingAction swapProposal = new BalancingAction(sourceReplica.topicPartition(),
                                                          sourceReplica.broker().id(), destinationBroker.id(),
-                                                         ActionType.REPLICA_SWAP, destinationReplica.topicPartition());
+                                                         ActionType.INTER_BROKER_REPLICA_SWAP, destinationReplica.topicPartition());
       // A sourceReplica should be swapped with a replicaToSwapWith if:
       // 0. The swap from source to destination is legit.
       // 1. The swap from destination to source is legit.
       // 2. The goal requirements are not violated if this action is applied to the given cluster state.
       // 3. The movement is acceptable by the previously optimized goals.
-      if (!legitMove(sourceReplica, destinationBroker, ActionType.REPLICA_MOVEMENT)) {
+      if (!legitMove(sourceReplica, destinationBroker, ActionType.INTER_BROKER_REPLICA_MOVEMENT)) {
         LOG.trace("Swap from source to destination broker is not legit for {}.", swapProposal);
         return null;
       }
 
-      if (!legitMove(destinationReplica, sourceReplica.broker(), ActionType.REPLICA_MOVEMENT)) {
+      if (!legitMove(destinationReplica, sourceReplica.broker(), ActionType.INTER_BROKER_REPLICA_MOVEMENT)) {
         LOG.trace("Swap from destination to source broker is not legit for {}.", swapProposal);
         continue;
       }

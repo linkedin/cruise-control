@@ -24,13 +24,13 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
  */
 public class ExecutionTaskTracker {
   private final Map<TaskType, Map<State, Set<ExecutionTask>>> _tasksByType;
-  private long _remainingDataToMoveInMB;
-  private long _inExecutionDataMovementInMB;
-  private long _finishedDataMovementInMB;
+  private long _remainingInterBrokerDataToMoveInMB;
+  private long _inExecutionInterBrokerDataMovementInMB;
+  private long _finishedInterBrokerDataMovementInMB;
   private boolean _isKafkaAssignerMode;
   private final Time _time;
 
-  private static final String REPLICA_ACTION = "replica-action";
+  private static final String INTER_BROKER_REPLICA_ACTION = "replica-action";
   private static final String LEADERSHIP_ACTION = "leadership-action";
   private static final String IN_PROGRESS = "in-progress";
   private static final String PENDING = "pending";
@@ -52,9 +52,9 @@ public class ExecutionTaskTracker {
       }
       _tasksByType.put(type, taskMap);
     }
-    _remainingDataToMoveInMB = 0L;
-    _inExecutionDataMovementInMB = 0L;
-    _finishedDataMovementInMB = 0L;
+    _remainingInterBrokerDataToMoveInMB = 0L;
+    _inExecutionInterBrokerDataMovementInMB = 0L;
+    _finishedInterBrokerDataMovementInMB = 0L;
     _isKafkaAssignerMode = false;
     _time = time;
 
@@ -66,8 +66,8 @@ public class ExecutionTaskTracker {
     String metricName = "Executor";
     for (TaskType type : TaskType.cachedValues()) {
       for (State state : State.cachedValues()) {
-        String typeString =  type == TaskType.REPLICA_ACTION ? REPLICA_ACTION :
-                                                               LEADERSHIP_ACTION;
+        String typeString =  type == TaskType.INTER_BROKER_REPLICA_ACTION ? INTER_BROKER_REPLICA_ACTION :
+                                                                            LEADERSHIP_ACTION;
         String stateString =  state == State.PENDING     ? PENDING :
                               state == State.IN_PROGRESS ? IN_PROGRESS :
                               state == State.ABORTING    ? ABORTING :
@@ -128,11 +128,11 @@ public class ExecutionTaskTracker {
     }
     long dataToMove = task.proposal().dataToMoveInMB();
     if (task.state() == State.IN_PROGRESS) {
-      _remainingDataToMoveInMB -= dataToMove;
-      _inExecutionDataMovementInMB += dataToMove;
+      _remainingInterBrokerDataToMoveInMB -= dataToMove;
+      _inExecutionInterBrokerDataMovementInMB += dataToMove;
     } else if (task.state() == State.ABORTED || task.state() == State.DEAD || task.state() == State.COMPLETED) {
-      _inExecutionDataMovementInMB -= dataToMove;
-      _finishedDataMovementInMB += dataToMove;
+      _inExecutionInterBrokerDataMovementInMB -= dataToMove;
+      _finishedInterBrokerDataMovementInMB += dataToMove;
     }
   }
 
@@ -145,8 +145,8 @@ public class ExecutionTaskTracker {
    */
   public void addTasksToTrace(Collection<ExecutionTask> tasks, TaskType taskType) {
     _tasksByType.get(taskType).get(State.PENDING).addAll(tasks);
-    if (taskType == TaskType.REPLICA_ACTION) {
-      _remainingDataToMoveInMB += tasks.stream().mapToLong(t -> t.proposal().dataToMoveInMB()).sum();
+    if (taskType == TaskType.INTER_BROKER_REPLICA_ACTION) {
+      _remainingInterBrokerDataToMoveInMB += tasks.stream().mapToLong(t -> t.proposal().dataToMoveInMB()).sum();
     }
   }
 
@@ -195,28 +195,28 @@ public class ExecutionTaskTracker {
    */
   public void clear() {
     _tasksByType.values().forEach(m -> m.values().forEach(Set::clear));
-    _remainingDataToMoveInMB = 0L;
-    _inExecutionDataMovementInMB = 0L;
-    _finishedDataMovementInMB = 0L;
+    _remainingInterBrokerDataToMoveInMB = 0L;
+    _inExecutionInterBrokerDataMovementInMB = 0L;
+    _finishedInterBrokerDataMovementInMB = 0L;
   }
 
   // Internal query APIs.
-  public int numRemainingPartitionMovements() {
-    return _tasksByType.get(TaskType.REPLICA_ACTION).get(State.PENDING).size();
+  public int numRemainingInterBrokerPartitionMovements() {
+    return _tasksByType.get(TaskType.INTER_BROKER_REPLICA_ACTION).get(State.PENDING).size();
   }
 
-  public long remainingDataToMoveInMB() {
-    return _remainingDataToMoveInMB;
+  public long remainingInterBrokerDataToMoveInMB() {
+    return _remainingInterBrokerDataToMoveInMB;
   }
 
-  public int numFinishedPartitionMovements() {
-    return _tasksByType.get(TaskType.REPLICA_ACTION).get(State.COMPLETED).size() +
-           _tasksByType.get(TaskType.REPLICA_ACTION).get(State.DEAD).size() +
-           _tasksByType.get(TaskType.REPLICA_ACTION).get(State.ABORTED).size();
+  public int numFinishedInterBrokerPartitionMovements() {
+    return _tasksByType.get(TaskType.INTER_BROKER_REPLICA_ACTION).get(State.COMPLETED).size() +
+           _tasksByType.get(TaskType.INTER_BROKER_REPLICA_ACTION).get(State.DEAD).size() +
+           _tasksByType.get(TaskType.INTER_BROKER_REPLICA_ACTION).get(State.ABORTED).size();
   }
 
-  public long finishedDataMovementInMB() {
-    return _finishedDataMovementInMB;
+  public long finishedInterBrokerDataMovementInMB() {
+    return _finishedInterBrokerDataMovementInMB;
   }
 
   public Set<ExecutionTask> inExecutionTasks(Collection<TaskType> types) {
@@ -228,8 +228,8 @@ public class ExecutionTaskTracker {
     return inExecutionTasks;
   }
 
-  public long inExecutionDataMovementInMB() {
-    return _inExecutionDataMovementInMB;
+  public long inExecutionInterBrokerDataMovementInMB() {
+    return _inExecutionInterBrokerDataMovementInMB;
   }
 
   public int numRemainingLeadershipMovements() {
@@ -243,17 +243,17 @@ public class ExecutionTaskTracker {
   }
 
   public ExecutionTasksSummary getExecutionTasksSummary(Set<TaskType> taskTypesToGetFullList) {
-    return new ExecutionTasksSummary(_finishedDataMovementInMB,
-                                     _inExecutionDataMovementInMB,
-                                     _remainingDataToMoveInMB,
+    return new ExecutionTasksSummary(_finishedInterBrokerDataMovementInMB,
+                                     _inExecutionInterBrokerDataMovementInMB,
+                                     _remainingInterBrokerDataToMoveInMB,
                                      taskStat(),
                                      filteredTasksByState(taskTypesToGetFullList));
   }
 
   public static class ExecutionTasksSummary {
-    private long _finishedDataMovementInMB;
-    private long _inExecutionDataMovementInMB;
-    private final long _remainingDataToMoveInMB;
+    private long _finishedInterBrokerDataMovementInMB;
+    private long _inExecutionInterBrokerDataMovementInMB;
+    private final long _remainingInterBrokerDataToMoveInMB;
     private Map<TaskType, Map<State, Integer>> _taskStat;
     private Map<TaskType, Map<State, Set<ExecutionTask>>> _filteredTasksByState;
 
@@ -262,23 +262,23 @@ public class ExecutionTaskTracker {
                                   long remainingInterBrokerDataToMoveInMB,
                                   Map<TaskType, Map<State, Integer>> taskStat,
                                   Map<TaskType, Map<State, Set<ExecutionTask>>> filteredTasksByState) {
-      _finishedDataMovementInMB = finishedInterBrokerDataMovementInMB;
-      _inExecutionDataMovementInMB = inExecutionInterBrokerDataMovementInMB;
-      _remainingDataToMoveInMB = remainingInterBrokerDataToMoveInMB;
+      _finishedInterBrokerDataMovementInMB = finishedInterBrokerDataMovementInMB;
+      _inExecutionInterBrokerDataMovementInMB = inExecutionInterBrokerDataMovementInMB;
+      _remainingInterBrokerDataToMoveInMB = remainingInterBrokerDataToMoveInMB;
       _taskStat = taskStat;
       _filteredTasksByState = filteredTasksByState;
     }
 
-    public long finishedDataMovementInMB() {
-      return _finishedDataMovementInMB;
+    public long finishedInterBrokerDataMovementInMB() {
+      return _finishedInterBrokerDataMovementInMB;
     }
 
-    public long inExecutionDataMovementInMB() {
-      return _inExecutionDataMovementInMB;
+    public long inExecutionInterBrokerDataMovementInMB() {
+      return _inExecutionInterBrokerDataMovementInMB;
     }
 
-    public long remainingDataToMoveInMB() {
-      return _remainingDataToMoveInMB;
+    public long remainingInterBrokerDataToMoveInMB() {
+      return _remainingInterBrokerDataToMoveInMB;
     }
 
     public Map<TaskType, Map<State, Integer>> taskStat() {

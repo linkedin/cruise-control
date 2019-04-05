@@ -174,8 +174,8 @@ public class KafkaCruiseControl {
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
-   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
-   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
+   *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
@@ -196,7 +196,7 @@ public class KafkaCruiseControl {
                                                            ModelCompletenessRequirements requirements,
                                                            OperationProgress operationProgress,
                                                            boolean allowCapacityEstimation,
-                                                           Integer concurrentPartitionMovements,
+                                                           Integer concurrentInterBrokerPartitionMovements,
                                                            Integer concurrentLeaderMovements,
                                                            boolean skipHardGoalCheck,
                                                            Pattern excludedTopics,
@@ -223,7 +223,7 @@ public class KafkaCruiseControl {
                                                           excludeRecentlyRemovedBrokers);
       if (!dryRun) {
         executeRemoval(result.goalProposals(), throttleDecommissionedBroker, brokerIds, isKafkaAssignerMode(goals),
-                       concurrentPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
+                       concurrentInterBrokerPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
       }
       return result;
     } catch (KafkaCruiseControlException kcce) {
@@ -261,8 +261,8 @@ public class KafkaCruiseControl {
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to update.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
-   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
-   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
+   *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
@@ -282,7 +282,7 @@ public class KafkaCruiseControl {
                                                   ModelCompletenessRequirements requirements,
                                                   OperationProgress operationProgress,
                                                   boolean allowCapacityEstimation,
-                                                  Integer concurrentPartitionMovements,
+                                                  Integer concurrentInterBrokerPartitionMovements,
                                                   Integer concurrentLeaderMovements,
                                                   boolean skipHardGoalCheck,
                                                   Pattern excludedTopics,
@@ -312,7 +312,7 @@ public class KafkaCruiseControl {
         executeProposals(result.goalProposals(),
                          throttleAddedBrokers ? Collections.emptyList() : brokerIds,
                          isKafkaAssignerMode(goals),
-                         concurrentPartitionMovements,
+                         concurrentInterBrokerPartitionMovements,
                          concurrentLeaderMovements,
                          replicaMovementStrategy,
                          uuid);
@@ -344,8 +344,8 @@ public class KafkaCruiseControl {
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
-   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
-   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
+   *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
@@ -363,7 +363,7 @@ public class KafkaCruiseControl {
                                                  ModelCompletenessRequirements requirements,
                                                  OperationProgress operationProgress,
                                                  boolean allowCapacityEstimation,
-                                                 Integer concurrentPartitionMovements,
+                                                 Integer concurrentInterBrokerPartitionMovements,
                                                  Integer concurrentLeaderMovements,
                                                  boolean skipHardGoalCheck,
                                                  Pattern excludedTopics,
@@ -380,7 +380,7 @@ public class KafkaCruiseControl {
                                                         ignoreProposalCache);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
-                       concurrentPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
+                       concurrentInterBrokerPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
     }
     return result;
   }
@@ -576,12 +576,13 @@ public class KafkaCruiseControl {
    */
   public synchronized AdminResult handleAdminRequest(AdminParameters parameters) {
     String ongoingConcurrencyChangeRequest = "";
-    // 1.1. Change partition concurrency.
-    Integer concurrentPartitionMovements = parameters.concurrentPartitionMovements();
-    if (concurrentPartitionMovements != null) {
-      _executor.setRequestedPartitionMovementConcurrency(concurrentPartitionMovements);
-      ongoingConcurrencyChangeRequest += String.format("Partition movement concurrency is set to %d%n", concurrentPartitionMovements);
-      LOG.warn("Partition movement concurrency is set to: {} by user.", concurrentPartitionMovements);
+    // 1.1. Change inter-broker partition concurrency.
+    Integer concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
+    if (concurrentInterBrokerPartitionMovements != null) {
+      _executor.setRequestedInterBrokerPartitionMovementConcurrency(concurrentInterBrokerPartitionMovements);
+      ongoingConcurrencyChangeRequest += String.format("Inter-broker partition movement concurrency is set to %d%n",
+                                                       concurrentInterBrokerPartitionMovements);
+      LOG.warn("Inter-broker partition movement concurrency is set to: {} by user.", concurrentInterBrokerPartitionMovements);
     }
     // 1.2. Change leadership concurrency.
     Integer concurrentLeaderMovements = parameters.concurrentLeaderMovements();
@@ -765,8 +766,8 @@ public class KafkaCruiseControl {
    * @param proposals the given balancing proposals
    * @param unthrottledBrokers Brokers for which the rate of replica movements from/to will not be throttled.
    * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
-   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
-   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
+   *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
@@ -776,13 +777,13 @@ public class KafkaCruiseControl {
   private void executeProposals(Collection<ExecutionProposal> proposals,
                                 Collection<Integer> unthrottledBrokers,
                                 boolean isKafkaAssignerMode,
-                                Integer concurrentPartitionMovements,
+                                Integer concurrentInterBrokerPartitionMovements,
                                 Integer concurrentLeaderMovements,
                                 ReplicaMovementStrategy replicaMovementStrategy,
                                 String uuid) {
     // Set the execution mode, add execution proposals, and start execution.
     _executor.setExecutionMode(isKafkaAssignerMode);
-    _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentPartitionMovements,
+    _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentInterBrokerPartitionMovements,
                                concurrentLeaderMovements, replicaMovementStrategy, uuid);
   }
 
@@ -792,8 +793,8 @@ public class KafkaCruiseControl {
    * @param throttleDecommissionedBroker Whether throttle the brokers that are being decommissioned.
    * @param removedBrokers Brokers to be removed, null if no brokers has been removed.
    * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
-   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
-   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
+   *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
@@ -804,15 +805,15 @@ public class KafkaCruiseControl {
                               boolean throttleDecommissionedBroker,
                               Collection<Integer> removedBrokers,
                               boolean isKafkaAssignerMode,
-                              Integer concurrentPartitionMovements,
+                              Integer concurrentInterBrokerPartitionMovements,
                               Integer concurrentLeaderMovements,
                               ReplicaMovementStrategy replicaMovementStrategy,
                               String uuid) {
     // Set the execution mode, add execution proposals, and start execution.
     _executor.setExecutionMode(isKafkaAssignerMode);
     _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptyList() : removedBrokers,
-                               removedBrokers, _loadMonitor, concurrentPartitionMovements, concurrentLeaderMovements,
-                               replicaMovementStrategy, uuid);
+                               removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements,
+                               concurrentLeaderMovements, replicaMovementStrategy, uuid);
   }
 
   /**

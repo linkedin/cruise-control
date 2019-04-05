@@ -25,7 +25,7 @@ import javax.servlet.http.HttpServletRequest;
 public class AdminParameters extends AbstractParameters {
   private Set<AnomalyType> _disableSelfHealingFor;
   private Set<AnomalyType> _enableSelfHealingFor;
-  private Integer _concurrentPartitionMovements;
+  private Integer _concurrentInterBrokerPartitionMovements;
   private Integer _concurrentLeaderMovements;
   private Integer _reviewId;
   private boolean _twoStepVerificationEnabled;
@@ -41,7 +41,7 @@ public class AdminParameters extends AbstractParameters {
     Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_request);
     _enableSelfHealingFor = selfHealingFor.get(true);
     _disableSelfHealingFor = selfHealingFor.get(false);
-    _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
   }
@@ -63,8 +63,8 @@ public class AdminParameters extends AbstractParameters {
     return _enableSelfHealingFor;
   }
 
-  public Integer concurrentPartitionMovements() {
-    return _concurrentPartitionMovements;
+  public Integer concurrentInterBrokerPartitionMovements() {
+    return _concurrentInterBrokerPartitionMovements;
   }
 
   public Integer concurrentLeaderMovements() {
