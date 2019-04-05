@@ -186,7 +186,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
         // The destination broker has no replica from the source partition: move the source replica to the destination broker.
         LOG.trace("Destination broker {} has no other replica from the same partition, move the replica {} to there.",
                   destinationBroker, replicaAtPosition);
-        applyBalancingAction(clusterModel, replicaAtPosition, destinationBroker, ActionType.REPLICA_MOVEMENT);
+        applyBalancingAction(clusterModel, replicaAtPosition, destinationBroker, ActionType.INTER_BROKER_REPLICA_MOVEMENT);
       } else if (destinationBroker.id() != replicaAtPosition.broker().id() && replicaAtPosition.broker().isAlive()) {
         // The destination broker contains a replica from the source partition AND the destination broker is different
         // from the source replica broker AND the source broker is alive. Hence, we can safely swap replica positions.
@@ -258,7 +258,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
 
     if (action == ActionType.LEADERSHIP_MOVEMENT) {
       clusterModel.relocateLeadership(sourceReplica.topicPartition(), sourceReplica.broker().id(), destinationBroker.id());
-    } else if (action == ActionType.REPLICA_MOVEMENT) {
+    } else if (action == ActionType.INTER_BROKER_REPLICA_MOVEMENT) {
       clusterModel.relocateReplica(sourceReplica.topicPartition(), sourceReplica.broker().id(), destinationBroker.id());
     }
   }
@@ -364,15 +364,15 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
     switch (action.balancingAction()) {
       case LEADERSHIP_MOVEMENT:
         return ACCEPT;
-      case REPLICA_MOVEMENT:
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_SWAP:
         if (isReplicaMoveViolateRackAwareness(clusterModel,
                                               c -> c.broker(action.sourceBrokerId()).replica(action.topicPartition()),
                                               c -> c.broker(action.destinationBrokerId()))) {
           return BROKER_REJECT;
         }
 
-        if (action.balancingAction() == ActionType.REPLICA_SWAP
+        if (action.balancingAction() == ActionType.INTER_BROKER_REPLICA_SWAP
             && isReplicaMoveViolateRackAwareness(clusterModel,
                                                  c -> c.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
                                                  c -> c.broker(action.sourceBrokerId()))) {

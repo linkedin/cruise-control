@@ -389,6 +389,7 @@ public class LoadMonitor {
    * @param requirements the load requirements for getting the cluster model.
    * @param operationProgress the progress to report.
    * @return A cluster model with the configured number of windows whose timestamp is before given timestamp.
+   * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
    */
   public ClusterModel clusterModel(long now,
                                    ModelCompletenessRequirements requirements,

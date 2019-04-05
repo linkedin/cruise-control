@@ -200,7 +200,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
       Thread.sleep(10);
     }
     // Sleep over 180000 (the hard coded timeout)
-    time.sleep(180001);
+    time.sleep(200000);
     // The execution should finish.
     waitUntilExecutionFinishes(executor);
   }

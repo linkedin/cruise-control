@@ -43,7 +43,7 @@ import java.util.function.Function;
  *
  * <p>
  *   The SortedReplicas are initialized lazily, i.e. until one of {@link #sortedReplicas()},
- *   {@link #reverselySortedReplicas()} and {@link #sortedReplicas()} is invoked, the sorted replicas
+ *   {@link #reverselySortedReplicas()} and {@link #sortedReplicaWrappers()} is invoked, the sorted replicas
  *   will not be populated.
  * </p>
  */

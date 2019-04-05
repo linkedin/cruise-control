@@ -113,10 +113,10 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   @Override
   public ActionAcceptance actionAcceptance(BalancingAction action, ClusterModel clusterModel) {
     switch (action.balancingAction()) {
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_SWAP:
       case LEADERSHIP_MOVEMENT:
         return ACCEPT;
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_MOVEMENT:
         Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
         Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
@@ -333,7 +333,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
         continue;
       }
 
-      Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.REPLICA_MOVEMENT,
+      Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,
                                            optimizedGoals, optimizationOptions);
       // Only check if we successfully moved something.
       if (b != null) {
@@ -386,7 +386,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
         if (shouldExclude(replica, excludedTopics)) {
           continue;
         }
-        Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.REPLICA_MOVEMENT,
+        Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,
                                              optimizedGoals, optimizationOptions);
         // Only need to check status if the action is taken. This will also handle the case that the source broker
         // has nothing to move in. In that case we will never reenqueue that source broker.

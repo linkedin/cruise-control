@@ -74,8 +74,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
       case LEADERSHIP_MOVEMENT:
         // it is a leadership movement,
         return ACCEPT;
-      case REPLICA_SWAP:
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_MOVEMENT:
         return isReplicaRelocationAcceptable(action, clusterModel);
       default:
         throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
@@ -110,7 +110,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
     double maxUtilization = Math.max(destinationBrokerUtilization, sourceBrokerUtilization);
 
     switch (action.balancingAction()) {
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_SWAP:
         double destinationReplicaUtilization = clusterModel.partition(action.destinationTopicPartition())
             .leader().load().expectedUtilizationFor(Resource.NW_OUT);
         // Check source broker potential NW_OUT violation.
@@ -119,7 +119,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
         }
         return destinationBrokerUtilization + sourceReplicaUtilization - destinationReplicaUtilization <= maxUtilization
                ? ACCEPT : REPLICA_REJECT;
-      case REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_MOVEMENT:
         return destinationBrokerUtilization + sourceReplicaUtilization <= maxUtilization ? ACCEPT : REPLICA_REJECT;
       default:
         throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
@@ -179,7 +179,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
     ActionType actionType = action.balancingAction();
     Broker sourceBroker = sourceReplica.broker();
     // If the source broker is dead and currently self healing dead brokers only, then the action must be executed.
-    if (!sourceBroker.isAlive() && _selfHealingDeadBrokersOnly && actionType != ActionType.REPLICA_SWAP) {
+    if (!sourceBroker.isAlive() && _selfHealingDeadBrokersOnly && actionType != ActionType.INTER_BROKER_REPLICA_SWAP) {
       return true;
     }
     Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
@@ -188,7 +188,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
     double sourceReplicaUtilization = clusterModel.partition(sourceReplica.topicPartition()).leader().load()
                                                   .expectedUtilizationFor(Resource.NW_OUT);
 
-    if (actionType != ActionType.REPLICA_SWAP) {
+    if (actionType != ActionType.INTER_BROKER_REPLICA_SWAP) {
       // Check whether replica or leadership transfer leads to violation of capacity limit requirement.
       return destinationCapacity >= destinationBrokerUtilization + sourceReplicaUtilization;
     }
@@ -281,7 +281,7 @@ public class PotentialNwOutGoal extends AbstractGoal {
       eligibleBrokers.sort((b1, b2) -> Double.compare(b2.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_OUT),
                                                       b1.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_OUT)));
       Broker destinationBroker =
-          maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.REPLICA_MOVEMENT,
+          maybeApplyBalancingAction(clusterModel, replica, eligibleBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,
                                     optimizedGoals, optimizationOptions);
       if (destinationBroker != null) {
         int destinationBrokerId = destinationBroker.id();

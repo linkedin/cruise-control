@@ -69,15 +69,15 @@ public class RackAwareGoal extends AbstractGoal {
     switch (action.balancingAction()) {
       case LEADERSHIP_MOVEMENT:
         return ACCEPT;
-      case REPLICA_MOVEMENT:
-      case REPLICA_SWAP:
+      case INTER_BROKER_REPLICA_MOVEMENT:
+      case INTER_BROKER_REPLICA_SWAP:
         if (isReplicaMoveViolateRackAwareness(clusterModel,
                                               c -> c.broker(action.sourceBrokerId()).replica(action.topicPartition()),
                                               c -> c.broker(action.destinationBrokerId()))) {
           return BROKER_REJECT;
         }
 
-        if (action.balancingAction() == ActionType.REPLICA_SWAP
+        if (action.balancingAction() == ActionType.INTER_BROKER_REPLICA_SWAP
             && isReplicaMoveViolateRackAwareness(clusterModel,
                                                  c -> c.broker(action.destinationBrokerId()).replica(action.destinationTopicPartition()),
                                                  c -> c.broker(action.sourceBrokerId()))) {
@@ -237,7 +237,7 @@ public class RackAwareGoal extends AbstractGoal {
       }
       // Rack awareness is violated. Move replica to a broker in another rack.
       if (maybeApplyBalancingAction(clusterModel, replica, rackAwareEligibleBrokers(replica, clusterModel),
-                                    ActionType.REPLICA_MOVEMENT, optimizedGoals, optimizationOptions) == null) {
+                                    ActionType.INTER_BROKER_REPLICA_MOVEMENT, optimizedGoals, optimizationOptions) == null) {
         throw new OptimizationFailureException(
             String.format("[%s] Violated rack-awareness requirement for broker with id %d.", name(), broker.id()));
       }

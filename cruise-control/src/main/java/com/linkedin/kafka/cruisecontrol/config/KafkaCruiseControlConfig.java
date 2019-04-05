@@ -429,12 +429,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   /**
    * <code>num.concurrent.partition.movements.per.broker</code>
    */
-  public static final String NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG =
-      "num.concurrent.partition.movements.per.broker";
+  public static final String NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG = "num.concurrent.partition.movements.per.broker";
   private static final String NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_DOC = "The maximum number of partitions " +
       "the executor will move to or out of a broker at the same time. e.g. setting the value to 10 means that the " +
       "executor will at most allow 10 partitions move out of a broker and 10 partitions move into a broker at any " +
-      "given point. This is to avoid overwhelming the cluster by partition movements.";
+      "given point. This is to avoid overwhelming the cluster by inter-broker partition movements.";
 
   /**
    * <code>num.concurrent.leader.movements</code>

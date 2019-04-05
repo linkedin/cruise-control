@@ -19,28 +19,38 @@ public class ExecutorState {
   private static final String STATE = "state";
   private static final String RECENTLY_DEMOTED_BROKERS = "recentlyDemotedBrokers";
   private static final String RECENTLY_REMOVED_BROKERS = "recentlyRemovedBrokers";
-  private static final String PENDING_LEADERSHIP_MOVEMENT = "pendingLeadershipMovement";
-  private static final String NUM_FINISHED_LEADERSHIP_MOVEMENTS = "numFinishedLeadershipMovements";
+
   private static final String NUM_TOTAL_LEADERSHIP_MOVEMENTS = "numTotalLeadershipMovements";
+  private static final String NUM_PENDING_LEADERSHIP_MOVEMENTS = "numPendingLeadershipMovements";
+  private static final String NUM_CANCELLED_LEADERSHIP_MOVEMENTS = "numCancelledLeadershipMovements";
+  private static final String NUM_FINISHED_LEADERSHIP_MOVEMENTS = "numFinishedLeadershipMovements";
+  private static final String PENDING_LEADERSHIP_MOVEMENT = "pendingLeadershipMovement";
+  private static final String CANCELLED_LEADERSHIP_MOVEMENT = "cancelledLeadershipMovement";
   private static final String MAXIMUM_CONCURRENT_LEADER_MOVEMENTS = "maximumConcurrentLeaderMovements";
-  private static final String NUM_TOTAL_PARTITION_MOVEMENTS = "numTotalPartitionMovements";
-  private static final String TOTAL_DATA_TO_MOVE = "totalDataToMove";
-  private static final String NUM_FINISHED_PARTITION_MOVEMENTS = "numFinishedPartitionMovements";
-  private static final String FINISHED_DATA_MOVEMENT = "finishedDataMovement";
-  private static final String ABORTING_PARTITIONS = "abortingPartitions";
-  private static final String ABORTED_PARTITIONS = "abortedPartitions";
-  private static final String DEAD_PARTITIONS = "deadPartitions";
-  private static final String MAXIMUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER = "maximumConcurrentPartitionMovementsPerBroker";
-  private static final String IN_PROGRESS_PARTITION_MOVEMENT = "inProgressPartitionMovement";
-  private static final String ABORTING_PARTITION_MOVEMENT = "abortingPartitionMovement";
-  private static final String ABORTED_PARTITION_MOVEMENT = "abortedPartitionMovement";
-  private static final String DEAD_PARTITION_MOVEMENT = "deadPartitionMovement";
+
+  private static final String NUM_TOTAL_INTER_BROKER_PARTITION_MOVEMENTS = "numTotalPartitionMovements";
+  private static final String NUM_PENDING_INTER_BROKER_PARTITION_MOVEMENTS = "numPendingPartitionMovements";
+  private static final String NUM_CANCELLED_INTER_BROKER_PARTITION_MOVEMENTS = "numCancelledPartitionMovements";
+  private static final String NUM_IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENTS = "numInProgressPartitionMovements";
+  private static final String NUM_ABORTING_INTER_BROKER_PARTITION_MOVEMENTS = "abortingPartitions";
+  private static final String NUM_FINISHED_INTER_BROKER_PARTITION_MOVEMENTS = "numFinishedPartitionMovements";
+  private static final String IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENT = "inProgressPartitionMovement";
+  private static final String PENDING_INTER_BROKER_PARTITION_MOVEMENT = "pendingPartitionMovement";
+  private static final String CANCELLED_INTER_BROKER_PARTITION_MOVEMENT = "cancelledPartitionMovement";
+  private static final String DEAD_INTER_BROKER_PARTITION_MOVEMENT = "deadPartitionMovement";
+  private static final String COMPLETED_INTER_BROKER_PARTITION_MOVEMENT = "completedPartitionMovement";
+  private static final String ABORTING_INTER_BROKER_PARTITION_MOVEMENT = "abortingPartitionMovement";
+  private static final String ABORTED_INTER_BROKER_PARTITION_MOVEMENT = "abortedPartitionMovement";
+  private static final String FINISHED_INTER_BROKER_DATA_MOVEMENT = "finishedDataMovement";
+  private static final String TOTAL_INTER_BROKER_DATA_TO_MOVE = "totalDataToMove";
+  private static final String MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER = "maximumConcurrentPartitionMovementsPerBroker";
+
   private static final String ERROR = "error";
 
   public enum State {
     NO_TASK_IN_PROGRESS,
     STARTING_EXECUTION,
-    REPLICA_MOVEMENT_TASK_IN_PROGRESS,
+    INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
     LEADER_MOVEMENT_TASK_IN_PROGRESS,
     STOPPING_EXECUTION
   }
@@ -49,7 +59,7 @@ public class ExecutorState {
   // Execution task statistics to report.
   private ExecutionTaskTracker.ExecutionTasksSummary _executionTasksSummary;
   // Configs to report.
-  private final int _maximumConcurrentPartitionMovementsPerBroker;
+  private final int _maximumConcurrentInterBrokerPartitionMovementsPerBroker;
   private final int _maximumConcurrentLeaderMovements;
   private final String _uuid;
   private final Set<Integer> _recentlyDemotedBrokers;
@@ -57,14 +67,14 @@ public class ExecutorState {
 
   private ExecutorState(State state,
                         ExecutionTasksSummary executionTasksSummary,
-                        int maximumConcurrentPartitionMovementsPerBroker,
+                        int maximumConcurrentInterBrokerPartitionMovementsPerBroker,
                         int maximumConcurrentLeaderMovements,
                         String uuid,
                         Set<Integer> recentlyDemotedBrokers,
                         Set<Integer> recentlyRemovedBrokers) {
     _state = state;
     _executionTasksSummary = executionTasksSummary;
-    _maximumConcurrentPartitionMovementsPerBroker = maximumConcurrentPartitionMovementsPerBroker;
+    _maximumConcurrentInterBrokerPartitionMovementsPerBroker = maximumConcurrentInterBrokerPartitionMovementsPerBroker;
     _maximumConcurrentLeaderMovements = maximumConcurrentLeaderMovements;
     _uuid = uuid;
     _recentlyDemotedBrokers = recentlyDemotedBrokers;
@@ -107,7 +117,8 @@ public class ExecutorState {
 
   /**
    * @param state State of executor.
-   * @param maximumConcurrentPartitionMovementsPerBroker Maximum concurrent partition movements per broker.
+   * @param executionTasksSummary Summary of the execution tasks.
+   * @param maximumConcurrentInterBrokerPartitionMovementsPerBroker Maximum concurrent inter-broker partition movement per broker.
    * @param maximumConcurrentLeaderMovements Maximum concurrent leader movements.
    * @param uuid UUID of the current execution.
    * @param recentlyDemotedBrokers Recently demoted broker IDs.
@@ -116,7 +127,7 @@ public class ExecutorState {
    */
   public static ExecutorState operationInProgress(State state,
                                                   ExecutionTasksSummary executionTasksSummary,
-                                                  int maximumConcurrentPartitionMovementsPerBroker,
+                                                  int maximumConcurrentInterBrokerPartitionMovementsPerBroker,
                                                   int maximumConcurrentLeaderMovements,
                                                   String uuid,
                                                   Set<Integer> recentlyDemotedBrokers,
@@ -126,7 +137,7 @@ public class ExecutorState {
     }
     return new ExecutorState(state,
                              executionTasksSummary,
-                             maximumConcurrentPartitionMovementsPerBroker,
+                             maximumConcurrentInterBrokerPartitionMovementsPerBroker,
                              maximumConcurrentLeaderMovements,
                              uuid,
                              recentlyDemotedBrokers,
@@ -142,14 +153,15 @@ public class ExecutorState {
   }
 
   public int numFinishedMovements(ExecutionTask.TaskType type) {
-    return _executionTasksSummary.taskStat().get(type).get(ExecutionTask.State.DEAD) +
-           _executionTasksSummary.taskStat().get(type).get(ExecutionTask.State.COMPLETED) +
-           _executionTasksSummary.taskStat().get(type).get(ExecutionTask.State.ABORTED);
+    return _executionTasksSummary.taskStat().get(type).get(DEAD) +
+           _executionTasksSummary.taskStat().get(type).get(COMPLETED) +
+           _executionTasksSummary.taskStat().get(type).get(ABORTED);
   }
-  public long totalDataToMoveInMB() {
-    return _executionTasksSummary.inExecutionDataMovementInMB() +
-           _executionTasksSummary.finishedDataMovementInMB() +
-           _executionTasksSummary.remainingDataToMoveInMB();
+
+  public long numTotalInterBrokerDataToMove() {
+    return _executionTasksSummary.inExecutionInterBrokerDataMovementInMB() +
+           _executionTasksSummary.finishedInterBrokerDataMovementInMB() +
+           _executionTasksSummary.remainingInterBrokerDataToMoveInMB();
   }
 
   public String uuid() {
@@ -168,6 +180,14 @@ public class ExecutorState {
     return _executionTasksSummary;
   }
 
+  private List<Object> getTaskDetails(ExecutionTask.TaskType type, ExecutionTask.State state) {
+    List<Object> taskList = new ArrayList<>();
+    for (ExecutionTask task : _executionTasksSummary.filteredTasksByState().get(type).get(state)) {
+      taskList.add(task.getJsonStructure());
+    }
+    return taskList;
+  }
+
   /*
    * Return an object that can be further used to encode into JSON
    */
@@ -180,6 +200,7 @@ public class ExecutorState {
     if (_recentlyRemovedBrokers != null && !_recentlyRemovedBrokers.isEmpty()) {
       execState.put(RECENTLY_REMOVED_BROKERS, _recentlyRemovedBrokers);
     }
+    Map<ExecutionTask.State, Integer> interBrokerPartitionMovementStats;
     switch (_state) {
       case NO_TASK_IN_PROGRESS:
         break;
@@ -187,66 +208,55 @@ public class ExecutorState {
         execState.put(TRIGGERED_USER_TASK_ID, _uuid);
         break;
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
+        execState.put(TRIGGERED_USER_TASK_ID, _uuid);
+        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _maximumConcurrentLeaderMovements);
+        execState.put(NUM_PENDING_LEADERSHIP_MOVEMENTS, _executionTasksSummary.taskStat().get(LEADER_ACTION).get(PENDING));
+        execState.put(NUM_FINISHED_LEADERSHIP_MOVEMENTS, numFinishedMovements(LEADER_ACTION));
+        execState.put(NUM_TOTAL_LEADERSHIP_MOVEMENTS, numTotalMovements(LEADER_ACTION));
         if (verbose) {
-          List<Object> pendingLeadershipMovementList = new ArrayList<>();
-          for (ExecutionTask task : _executionTasksSummary.filteredTasksByState().get(LEADER_ACTION).get(PENDING)) {
-            pendingLeadershipMovementList.add(task.getJsonStructure());
-          }
-          execState.put(PENDING_LEADERSHIP_MOVEMENT, pendingLeadershipMovementList);
+          execState.put(PENDING_LEADERSHIP_MOVEMENT, getTaskDetails(LEADER_ACTION, PENDING));
         }
-        execState.put(NUM_FINISHED_LEADERSHIP_MOVEMENTS, numFinishedMovements(LEADER_ACTION));
-        execState.put(NUM_TOTAL_LEADERSHIP_MOVEMENTS, numTotalMovements(LEADER_ACTION));
-        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _maximumConcurrentLeaderMovements);
-        execState.put(TRIGGERED_USER_TASK_ID, _uuid);
         break;
-      case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
-      case STOPPING_EXECUTION:
-        execState.put(NUM_TOTAL_PARTITION_MOVEMENTS, numTotalMovements(REPLICA_ACTION));
-        execState.put(NUM_TOTAL_LEADERSHIP_MOVEMENTS, numTotalMovements(LEADER_ACTION));
-        execState.put(TOTAL_DATA_TO_MOVE, totalDataToMoveInMB());
-        execState.put(NUM_FINISHED_PARTITION_MOVEMENTS, numFinishedMovements(REPLICA_ACTION));
-        execState.put(NUM_FINISHED_LEADERSHIP_MOVEMENTS, numFinishedMovements(LEADER_ACTION));
-        execState.put(FINISHED_DATA_MOVEMENT, _executionTasksSummary.finishedDataMovementInMB());
-        execState.put(ABORTING_PARTITIONS, _executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ABORTING));
-        execState.put(ABORTED_PARTITIONS, _executionTasksSummary.taskStat().get(REPLICA_ACTION).get(ABORTED));
-        execState.put(DEAD_PARTITIONS, _executionTasksSummary.taskStat().get(REPLICA_ACTION).get(DEAD));
-        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _maximumConcurrentLeaderMovements);
-        execState.put(MAXIMUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentPartitionMovementsPerBroker);
+      case INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
+        interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
         execState.put(TRIGGERED_USER_TASK_ID, _uuid);
+        execState.put(MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentInterBrokerPartitionMovementsPerBroker);
+        execState.put(NUM_IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(IN_PROGRESS));
+        execState.put(NUM_ABORTING_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(ABORTING));
+        execState.put(NUM_PENDING_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(PENDING));
+        execState.put(NUM_FINISHED_INTER_BROKER_PARTITION_MOVEMENTS, numFinishedMovements(INTER_BROKER_REPLICA_ACTION));
+        execState.put(NUM_TOTAL_INTER_BROKER_PARTITION_MOVEMENTS, numTotalMovements(INTER_BROKER_REPLICA_ACTION));
+        execState.put(FINISHED_INTER_BROKER_DATA_MOVEMENT, _executionTasksSummary.finishedInterBrokerDataMovementInMB());
+        execState.put(TOTAL_INTER_BROKER_DATA_TO_MOVE, numTotalInterBrokerDataToMove());
         if (verbose) {
-          Map<ExecutionTask.State, Set<ExecutionTask>> partitionMovementsByState = _executionTasksSummary.filteredTasksByState().get(REPLICA_ACTION);
-          List<Object> inProgressPartitionMovementList = new ArrayList<>(partitionMovementsByState.get(IN_PROGRESS).size());
-          List<Object> abortingPartitionMovementList = new ArrayList<>(partitionMovementsByState.get(ABORTING).size());
-          List<Object> abortedPartitionMovementList = new ArrayList<>(partitionMovementsByState.get(ABORTED).size());
-          List<Object> deadPartitionMovementList = new ArrayList<>(partitionMovementsByState.get(DEAD).size());
-          List<Object> pendingPartitionMovementList = new ArrayList<>(partitionMovementsByState.get(PENDING).size());
-          for (ExecutionTask task : partitionMovementsByState.get(IN_PROGRESS)) {
-            inProgressPartitionMovementList.add(task.getJsonStructure());
-          }
-          for (ExecutionTask task : partitionMovementsByState.get(ABORTING)) {
-            abortingPartitionMovementList.add(task.getJsonStructure());
-          }
-          for (ExecutionTask task : partitionMovementsByState.get(ABORTED)) {
-            abortedPartitionMovementList.add(task.getJsonStructure());
-          }
-          for (ExecutionTask task : partitionMovementsByState.get(DEAD)) {
-            deadPartitionMovementList.add(task.getJsonStructure());
-          }
-          for (ExecutionTask task : partitionMovementsByState.get(PENDING)) {
-            pendingPartitionMovementList.add(task.getJsonStructure());
-          }
-          execState.put(IN_PROGRESS_PARTITION_MOVEMENT, inProgressPartitionMovementList);
-          execState.put(ABORTING_PARTITION_MOVEMENT, abortingPartitionMovementList);
-          execState.put(ABORTED_PARTITION_MOVEMENT, abortedPartitionMovementList);
-          execState.put(DEAD_PARTITION_MOVEMENT, deadPartitionMovementList);
-          execState.put(_state == State.STOPPING_EXECUTION ? "CancelledPartitionMovement" : "PendingPartitionMovement",
-                        pendingPartitionMovementList);
+          execState.put(IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENT, getTaskDetails(INTER_BROKER_REPLICA_ACTION, IN_PROGRESS));
+          execState.put(PENDING_INTER_BROKER_PARTITION_MOVEMENT, getTaskDetails(INTER_BROKER_REPLICA_ACTION, PENDING));
+          execState.put(ABORTING_INTER_BROKER_PARTITION_MOVEMENT, getTaskDetails(INTER_BROKER_REPLICA_ACTION, ABORTING));
+          execState.put(ABORTED_INTER_BROKER_PARTITION_MOVEMENT, getTaskDetails(INTER_BROKER_REPLICA_ACTION, ABORTED));
+          execState.put(DEAD_INTER_BROKER_PARTITION_MOVEMENT, getTaskDetails(INTER_BROKER_REPLICA_ACTION, DEAD));
+          execState.put(COMPLETED_INTER_BROKER_PARTITION_MOVEMENT, getTaskDetails(INTER_BROKER_REPLICA_ACTION, COMPLETED));
+        }
+        break;
+      case STOPPING_EXECUTION:
+        interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
+        execState.put(TRIGGERED_USER_TASK_ID, _uuid);
+        execState.put(MAXIMUM_CONCURRENT_INTER_BROKER_PARTITION_MOVEMENTS_PER_BROKER, _maximumConcurrentInterBrokerPartitionMovementsPerBroker);
+        execState.put(MAXIMUM_CONCURRENT_LEADER_MOVEMENTS, _maximumConcurrentLeaderMovements);
+        execState.put(NUM_CANCELLED_LEADERSHIP_MOVEMENTS,
+                      _executionTasksSummary.taskStat().get(LEADER_ACTION).get(PENDING));
+        execState.put(NUM_IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(IN_PROGRESS));
+        execState.put(NUM_ABORTING_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(ABORTING));
+        execState.put(NUM_CANCELLED_INTER_BROKER_PARTITION_MOVEMENTS, interBrokerPartitionMovementStats.get(PENDING));
+        if (verbose) {
+          execState.put(CANCELLED_LEADERSHIP_MOVEMENT, getTaskDetails(LEADER_ACTION, ExecutionTask.State.PENDING));
+          execState.put(CANCELLED_INTER_BROKER_PARTITION_MOVEMENT, getTaskDetails(INTER_BROKER_REPLICA_ACTION, PENDING));
+          execState.put(IN_PROGRESS_INTER_BROKER_PARTITION_MOVEMENT, getTaskDetails(INTER_BROKER_REPLICA_ACTION, IN_PROGRESS));
+          execState.put(ABORTING_INTER_BROKER_PARTITION_MOVEMENT, getTaskDetails(INTER_BROKER_REPLICA_ACTION, ABORTING));
         }
         break;
       default:
+        execState.clear();
         execState.put(ERROR, "ILLEGAL_STATE_EXCEPTION");
-        execState.remove(RECENTLY_DEMOTED_BROKERS);
-        execState.remove(RECENTLY_REMOVED_BROKERS);
         break;
     }
 
@@ -259,6 +269,7 @@ public class ExecutorState {
     String recentlyRemovedBrokers = (_recentlyRemovedBrokers != null && !_recentlyRemovedBrokers.isEmpty())
                                     ? String.format(", %s: %s", RECENTLY_REMOVED_BROKERS, _recentlyRemovedBrokers) : "";
 
+    Map<ExecutionTask.State, Integer> interBrokerPartitionMovementStats;
     switch (_state) {
       case NO_TASK_IN_PROGRESS:
         return String.format("{%s: %s%s%s}", STATE, _state, recentlyDemotedBrokers, recentlyRemovedBrokers);
@@ -266,21 +277,36 @@ public class ExecutorState {
         return String.format("{%s: %s, %s: %s%s%s}", STATE, _state, TRIGGERED_USER_TASK_ID,
                              _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case LEADER_MOVEMENT_TASK_IN_PROGRESS:
-        return String.format("{%s: %s, finished/total leadership movements: %d/%d, "
-                             + "maximum concurrent leadership movements: %d, %s: %s%s%s}", STATE, _state, numFinishedMovements(LEADER_ACTION),
-                             numTotalMovements(LEADER_ACTION), _maximumConcurrentLeaderMovements, TRIGGERED_USER_TASK_ID,
-                             _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
-      case REPLICA_MOVEMENT_TASK_IN_PROGRESS:
+        return String.format("{%s: %s, finished/total leadership movements: %d/%d, maximum concurrent leadership movements: %d, %s: %s%s%s}",
+                             STATE, _state, numFinishedMovements(LEADER_ACTION), numTotalMovements(LEADER_ACTION),
+                             _maximumConcurrentLeaderMovements, TRIGGERED_USER_TASK_ID, _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
+      case INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS:
+        interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
+        return String.format("{%s: %s, pending/in-progress/aborting/finished/total inter-broker partition movement %d/%d/%d/%d/%d," +
+                             " completed/total bytes(MB): %d/%d, maximum concurrent inter-broker partition movements per-broker: %d, %s: %s%s%s}",
+                             STATE, _state,
+                             interBrokerPartitionMovementStats.get(PENDING),
+                             interBrokerPartitionMovementStats.get(IN_PROGRESS),
+                             interBrokerPartitionMovementStats.get(ABORTING),
+                             numFinishedMovements(INTER_BROKER_REPLICA_ACTION),
+                             numTotalMovements(INTER_BROKER_REPLICA_ACTION),
+                             _executionTasksSummary.finishedInterBrokerDataMovementInMB(),
+                             numTotalInterBrokerDataToMove(), _maximumConcurrentInterBrokerPartitionMovementsPerBroker,
+                             TRIGGERED_USER_TASK_ID, _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
       case STOPPING_EXECUTION:
-        Map<ExecutionTask.State, Integer> partitionMovementStats = _executionTasksSummary.taskStat().get(REPLICA_ACTION);
-        return String.format("{%s: %s, in-progress/aborting partitions: %d/%d, completed/total bytes(MB): %d/%d, "
-                             + "finished/aborted/dead/total partitions: %d/%d/%d/%d, finished leadership movements: %d/%d, "
-                             + "maximum concurrent leadership/per-broker partition movements: %d/%d, %s: %s%s%s}",
-                             STATE, _state, partitionMovementStats.get(IN_PROGRESS), partitionMovementStats.get(ABORTING),
-                             _executionTasksSummary.finishedDataMovementInMB(), totalDataToMoveInMB(), numFinishedMovements(REPLICA_ACTION),
-                             partitionMovementStats.get(ABORTED), partitionMovementStats.get(DEAD),
-                             numTotalMovements(REPLICA_ACTION), numFinishedMovements(LEADER_ACTION), numTotalMovements(LEADER_ACTION),
-                             _maximumConcurrentLeaderMovements, _maximumConcurrentPartitionMovementsPerBroker,
+        interBrokerPartitionMovementStats = _executionTasksSummary.taskStat().get(INTER_BROKER_REPLICA_ACTION);
+        return String.format("{%s: %s, cancelled/in-progress/aborting/total inter-broker partition movements movements: %d/%d/%d/%d,"
+                             + "cancelled/total leadership movements: %d/%d, maximum concurrent inter-broker partition movements "
+                             + "per-broker: %d, maximum concurrent leadership movements: %d, %s: %s%s%s}",
+                             STATE, _state,
+                             interBrokerPartitionMovementStats.get(PENDING),
+                             interBrokerPartitionMovementStats.get(IN_PROGRESS),
+                             interBrokerPartitionMovementStats.get(ABORTING),
+                             numTotalMovements(INTER_BROKER_REPLICA_ACTION),
+                             _executionTasksSummary.taskStat().get(LEADER_ACTION).get(ExecutionTask.State.PENDING),
+                             numTotalMovements(LEADER_ACTION),
+                             _maximumConcurrentInterBrokerPartitionMovementsPerBroker,
+                             _maximumConcurrentLeaderMovements,
                              TRIGGERED_USER_TASK_ID, _uuid, recentlyDemotedBrokers, recentlyRemovedBrokers);
       default:
         throw new IllegalStateException("This should never happen");

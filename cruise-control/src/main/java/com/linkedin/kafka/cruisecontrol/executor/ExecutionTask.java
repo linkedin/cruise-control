@@ -210,7 +210,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   }
 
   public enum TaskType {
-    REPLICA_ACTION, LEADER_ACTION;
+    INTER_BROKER_REPLICA_ACTION, LEADER_ACTION;
 
     private static final List<TaskType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 

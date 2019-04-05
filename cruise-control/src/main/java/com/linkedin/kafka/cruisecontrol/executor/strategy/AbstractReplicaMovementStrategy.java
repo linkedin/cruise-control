@@ -14,7 +14,6 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import org.apache.kafka.common.Cluster;
 
-
 /**
  * An abstract class for replica movement strategy. This class will be extended to create custom strategy to determine the
  * execution order the replica movement tasks.
