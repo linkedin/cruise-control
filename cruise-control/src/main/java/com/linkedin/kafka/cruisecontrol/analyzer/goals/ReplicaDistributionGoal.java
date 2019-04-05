@@ -364,7 +364,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
                                               OptimizationOptions optimizationOptions) {
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
-      int result = Double.compare(b2.replicas().size(), b1.replicas().size());
+      int result = Integer.compare(b2.replicas().size(), b1.replicas().size());
       return result == 0 ? Integer.compare(b1.id(), b2.id()) : result;
     });
 

@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 
@@ -107,7 +106,8 @@ public class BalancingConstraint {
   }
 
   /**
-   * Get topic replica balance percentage for {@link TopicReplicaDistributionGoal}.
+   * Get topic replica balance percentage for
+   * {@link import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal}.
    */
   public Double topicReplicaBalancePercentage() {
     return _topicReplicaBalancePercentage;

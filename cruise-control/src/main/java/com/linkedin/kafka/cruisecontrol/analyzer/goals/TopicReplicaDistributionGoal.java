@@ -34,7 +34,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
-import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils.*;
+import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils.EPSILON;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal.ChangeType.ADD;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal.ChangeType.REMOVE;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
@@ -97,7 +97,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * @param topic Topic for which the upper limit is requested.
+   * @param topic Topic for which the lower limit is requested.
    * @return The replica balance lower threshold in number of topic replicas.
    */
   private int balanceLowerLimit(String topic) {
@@ -429,7 +429,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
 
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
-      int result = Double.compare(b2.numReplicasOfTopicInBroker(topic), b1.numReplicasOfTopicInBroker(topic));
+      int result = Integer.compare(b2.numReplicasOfTopicInBroker(topic), b1.numReplicasOfTopicInBroker(topic));
       return result == 0 ? Integer.compare(b1.id(), b2.id()) : result;
     });
 
@@ -446,7 +446,6 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     while (!eligibleBrokers.isEmpty()) {
       Broker sourceBroker = eligibleBrokers.poll();
       SortedSet<Replica> replicasToMove = replicasToMoveOut(clusterModel, sourceBroker, topic);
-
 
       for (Replica replica : replicasToMove) {
         if (shouldExclude(replica, excludedTopics)) {

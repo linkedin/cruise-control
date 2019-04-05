@@ -20,8 +20,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.SortedMap;
-import java.util.TreeMap;
 import java.util.function.Function;
 
 import org.apache.kafka.common.TopicPartition;
@@ -51,7 +49,7 @@ public class Broker implements Serializable, Comparable<Broker> {
   /** Set of immigrant replicas */
   private final Set<Replica> _immigrantReplicas;
   /** A map for tracking topic -&gt; (partitionId -&gt; replica). */
-  private final Map<String, SortedMap<Integer, Replica>> _topicReplicas;
+  private final Map<String, Map<Integer, Replica>> _topicReplicas;
   private final Load _load;
   private final Load _leadershipLoadForNwResources;
   private State _state;
@@ -162,7 +160,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return Replicas in this broker sharing the given topic.
    */
   public Collection<Replica> replicasOfTopicInBroker(String topic) {
-    SortedMap<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
+    Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
 
     return topicReplicas == null ? Collections.emptySet() : topicReplicas.values();
   }
@@ -306,7 +304,7 @@ public class Broker implements Serializable, Comparable<Broker> {
     }
 
     // Add topic replica.
-    _topicReplicas.computeIfAbsent(replica.topicPartition().topic(), t -> new TreeMap<>())
+    _topicReplicas.computeIfAbsent(replica.topicPartition().topic(), t -> new HashMap<>())
                   .put(replica.topicPartition().partition(), replica);
 
     // Add leader replica.
