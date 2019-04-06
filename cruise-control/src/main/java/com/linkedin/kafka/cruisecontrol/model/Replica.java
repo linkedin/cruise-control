@@ -298,7 +298,7 @@ public class Replica implements Serializable, Comparable<Replica> {
   }
 
   /**
-   * Get string representation of Replica in XML format.
+   * Get string representation of the {@link Replica}.
    */
   @Override
   public String toString() {

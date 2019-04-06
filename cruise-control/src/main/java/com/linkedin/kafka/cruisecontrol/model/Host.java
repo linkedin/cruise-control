@@ -68,7 +68,7 @@ public class Host implements Serializable {
     int numTopicReplicas = 0;
 
     for (Broker broker : _brokers.values()) {
-      numTopicReplicas += broker.replicasOfTopicInBroker(topic).size();
+      numTopicReplicas += broker.numReplicasOfTopicInBroker(topic);
     }
     return numTopicReplicas;
   }

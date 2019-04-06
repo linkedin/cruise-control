@@ -254,7 +254,18 @@ public class Broker implements Serializable, Comparable<Broker> {
   public Collection<Replica> replicasOfTopicInBroker(String topic) {
     Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
 
-    return (topicReplicas == null) ? Collections.emptyList() : topicReplicas.values();
+    return topicReplicas == null ? Collections.emptySet() : topicReplicas.values();
+  }
+
+  /**
+   * Get number of replicas from the given topic in this broker.
+   *
+   * @param topic Topic for which the replica count will be returned.
+   * @return The number of replicas from the given topic in this broker.
+   */
+  public int numReplicasOfTopicInBroker(String topic) {
+    Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
+    return topicReplicas == null ? 0 : topicReplicas.size();
   }
 
   /**
@@ -325,8 +336,43 @@ public class Broker implements Serializable, Comparable<Broker> {
 
   /**
    * Get a comparator for the replicas in the broker. The comparisons performed are:
-   * 1. offline replicas has higher priority, i.e. comes before the immigrant and native replicas.
-   * 2. immigrant replicas has higher priority compared to the native replicas.
+   * 1. offline replicas have higher priority, i.e. comes before the immigrant and native replicas.
+   * 2. immigrant replicas have higher priority compared to the native replicas.
+   * 3. sort by partition id.
+   *
+   * @return a Comparator to compare the replicas for the given topic.
+   */
+  public Comparator<Replica> replicaComparator() {
+    return (r1, r2) -> {
+      boolean isR1Offline = _currentOfflineReplicas.contains(r1);
+      boolean isR2Offline = _currentOfflineReplicas.contains(r2);
+
+      if (isR1Offline && !isR2Offline) {
+        return -1;
+      } else if (!isR1Offline && isR2Offline) {
+        return 1;
+      } else {
+        boolean isR1Immigrant = _immigrantReplicas.contains(r1);
+        boolean isR2Immigrant = _immigrantReplicas.contains(r2);
+        int result = (isR1Immigrant && !isR2Immigrant) ? -1 : ((!isR1Immigrant && isR2Immigrant) ? 1 : 0);
+
+        if (result == 0) {
+          if (r1.topicPartition().partition() > r2.topicPartition().partition()) {
+            return 1;
+          } else if (r1.topicPartition().partition() < r2.topicPartition().partition()) {
+            return -1;
+          }
+        }
+
+        return result;
+      }
+    };
+  }
+
+  /**
+   * Get a comparator for the replicas in the broker. The comparisons performed are:
+   * 1. offline replicas have higher priority, i.e. comes before the immigrant and native replicas.
+   * 2. immigrant replicas have higher priority compared to the native replicas.
    * 3. the replicas with lower resource usage comes before those with higher resource usage.
    *
    * @param resource the resource for the comparator to use.
@@ -409,12 +455,8 @@ public class Broker implements Serializable, Comparable<Broker> {
     }
 
     // Add topic replica.
-    Map<Integer, Replica> topicReplicas = _topicReplicas.get(replica.topicPartition().topic());
-    if (topicReplicas == null) {
-      topicReplicas = new HashMap<>();
-      _topicReplicas.put(replica.topicPartition().topic(), topicReplicas);
-    }
-    topicReplicas.put(replica.topicPartition().partition(), replica);
+    _topicReplicas.computeIfAbsent(replica.topicPartition().topic(), t -> new HashMap<>())
+                  .put(replica.topicPartition().partition(), replica);
 
     // Add leader replica.
     if (replica.isLeader()) {

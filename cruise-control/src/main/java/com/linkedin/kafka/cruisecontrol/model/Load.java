@@ -312,11 +312,11 @@ public class Load implements Serializable {
   }
 
   /**
-   * Get string representation of Load in XML format.
+   * Get string representation of {@link Load}.
    */
   @Override
   public String toString() {
-    return "<Load>" + _metricValues.toString() + "</Load>%n";
+    return String.format("Load[metricValues=%s]", _metricValues);
   }
 
   /**

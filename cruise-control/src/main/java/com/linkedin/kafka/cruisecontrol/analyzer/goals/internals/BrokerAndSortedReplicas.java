@@ -51,7 +51,7 @@ public class BrokerAndSortedReplicas {
   public List<Replica> replicasToMoveOut(ClusterModel clusterModel) {
     // Cluster has offline replicas, but this broker is alive -- we can move out only the offline and immigrant replicas.
     if (!clusterModel.brokenBrokers().isEmpty() && _broker.isAlive()) {
-      // Return the sorted immigrant replicas.
+      // Return the sorted offline then immigrant replicas.
       for (Replica replica : sortedReplicas()) {
         if (!_broker.currentOfflineReplicas().contains(replica) && !_broker.immigrantReplicas().contains(replica)) {
           return new ArrayList<>(sortedReplicas().subSet(sortedReplicas().first(), replica));
