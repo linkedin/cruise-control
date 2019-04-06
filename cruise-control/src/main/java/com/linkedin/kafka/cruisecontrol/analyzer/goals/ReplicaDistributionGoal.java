@@ -60,8 +60,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   private final Set<Integer> _brokerIdsUnderBalanceLowerLimit;
   private final Map<Integer, BrokerAndSortedReplicas> _brokerAndReplicasMap;
   private double _avgReplicasOnAliveBroker;
-  private double _balanceUpperLimit;
-  private double _balanceLowerLimit;
+  private int _balanceUpperLimit;
+  private int _balanceLowerLimit;
 
   /**
    * Constructor for Replica Distribution Goal.
@@ -79,7 +79,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
 
   /**
    * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
-   * threshold to be replicaBalancePercentage, we use (replicaBalancePercentage-1)*balanceMargin instead.
+   * threshold to be {@link BalancingConstraint#replicaBalancePercentage()}, we use
+   * ({@link BalancingConstraint#replicaBalancePercentage()}-1)*{@link #BALANCE_MARGIN} instead.
    * @return the rebalance threshold with a margin.
    */
   private double balancePercentageWithMargin() {
@@ -87,17 +88,17 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   }
 
   /**
-   * @return The replica balance upper threshold in percent.
+   * @return The replica balance upper threshold in number of replicas.
    */
-  private double balanceUpperLimit() {
-    return _avgReplicasOnAliveBroker * (1 + balancePercentageWithMargin());
+  private int balanceUpperLimit() {
+    return (int) Math.ceil(_avgReplicasOnAliveBroker * (1 + balancePercentageWithMargin()));
   }
 
   /**
-   * @return The replica balance lower threshold in percent.
+   * @return The replica balance lower threshold in number of replicas.
    */
-  private double balanceLowerLimit() {
-    return _avgReplicasOnAliveBroker * Math.max(0, (1 - balancePercentageWithMargin()));
+  private int balanceLowerLimit() {
+    return (int) Math.floor(_avgReplicasOnAliveBroker * Math.max(0, (1 - balancePercentageWithMargin())));
   }
 
   /**
@@ -130,14 +131,14 @@ public class ReplicaDistributionGoal extends AbstractGoal {
 
   private boolean isReplicaCountUnderBalanceUpperLimitAfterChange(Broker broker, ChangeType changeType) {
     int numReplicas = broker.replicas().size();
-    double brokerBalanceUpperLimit = broker.isAlive() ? _balanceUpperLimit : 0;
+    int brokerBalanceUpperLimit = broker.isAlive() ? _balanceUpperLimit : 0;
 
     return changeType == ADD ? numReplicas + 1 <= brokerBalanceUpperLimit : numReplicas - 1 <= brokerBalanceUpperLimit;
   }
 
   private boolean isReplicaCountAboveBalanceLowerLimitAfterChange(Broker broker, ChangeType changeType) {
     int numReplicas = broker.replicas().size();
-    double brokerBalanceLowerLimit = broker.isAlive() ? _balanceLowerLimit : 0;
+    int brokerBalanceLowerLimit = broker.isAlive() ? _balanceLowerLimit : 0;
 
     return changeType == ADD ? numReplicas + 1 >= brokerBalanceLowerLimit : numReplicas - 1 >= brokerBalanceLowerLimit;
   }
@@ -206,7 +207,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    * false otherwise.
    *
    * @param clusterModel The state of the cluster.
-   * @param action     Proposal containing information about
+   * @param action Action containing information about potential modification to the given cluster model. Assumed to be
+   * of type {@link ActionType#REPLICA_MOVEMENT}.
    * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
    * false otherwise.
    */
@@ -286,7 +288,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
       // return if the broker is already within the limit.
       return;
     } else if (!clusterModel.newBrokers().isEmpty() && requireMoreReplicas && !broker.isNew()) {
-      // return if we have new brokers and the current broker is not a new broker but require more load.
+      // return if we have new brokers and the current broker is not a new broker but requires more load.
       return;
     } else if (!clusterModel.deadBrokers().isEmpty() && requireLessReplicas && broker.isAlive()
         && broker.immigrantReplicas().isEmpty()) {
@@ -362,7 +364,7 @@ public class ReplicaDistributionGoal extends AbstractGoal {
                                               OptimizationOptions optimizationOptions) {
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
-      int result = Double.compare(b2.replicas().size(), b1.replicas().size());
+      int result = Integer.compare(b2.replicas().size(), b1.replicas().size());
       return result == 0 ? Integer.compare(b1.id(), b2.id()) : result;
     });
 

@@ -168,7 +168,7 @@ public class ExcludedBrokersForLeadershipTest {
     // ============ReplicaDistributionGoal============
     // Test: With single excluded broker, satisfiable cluster, no dead broker (No exception, No proposal for
     // excluded broker, Expected to look optimized)
-    p.add(params(0, ReplicaDistributionGoal.class, excludeB1, null, unbalanced2(), noDeadBroker, false));
+    p.add(params(0, ReplicaDistributionGoal.class, excludeB1, null, unbalanced2(), noDeadBroker, true));
     // Test: With single excluded broker, satisfiable cluster, one dead broker (No exception, No proposal for
     // excluded broker, Expected to look optimized)
     p.add(params(1, ReplicaDistributionGoal.class, excludeB1, null, unbalanced2(), deadBroker0, true));

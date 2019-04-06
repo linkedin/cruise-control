@@ -308,18 +308,8 @@ public class Rack implements Serializable {
   }
 
   /**
-   * Get string representation of Rack in XML format.
+   * Get string representation of {@link Rack}.
    */
-  public String toXml() {
-    StringBuilder rack = new StringBuilder().append(String.format("<Rack id=\"%s\">%n", _id));
-
-    for (Host host : _hosts.values()) {
-      rack.append(host.toString());
-    }
-
-    return rack + "</Rack>%n";
-  }
-
   @Override
   public String toString() {
     return "Rack{" + "_id=\"" + _id + "\", _hosts=" + _hosts.size() + ", _brokers=" + _brokers.size() + ", _load=" + _load + '}';

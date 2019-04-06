@@ -162,7 +162,18 @@ public class Broker implements Serializable, Comparable<Broker> {
   public Collection<Replica> replicasOfTopicInBroker(String topic) {
     Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
 
-    return (topicReplicas == null) ? Collections.emptyList() : topicReplicas.values();
+    return topicReplicas == null ? Collections.emptySet() : topicReplicas.values();
+  }
+
+  /**
+   * Get number of replicas from the given topic in this broker.
+   *
+   * @param topic Topic for which the replica count will be returned.
+   * @return The number of replicas from the given topic in this broker.
+   */
+  public int numReplicasOfTopicInBroker(String topic) {
+    Map<Integer, Replica> topicReplicas = _topicReplicas.get(topic);
+    return topicReplicas == null ? 0 : topicReplicas.size();
   }
 
   /**
@@ -293,12 +304,8 @@ public class Broker implements Serializable, Comparable<Broker> {
     }
 
     // Add topic replica.
-    Map<Integer, Replica> topicReplicas = _topicReplicas.get(replica.topicPartition().topic());
-    if (topicReplicas == null) {
-      topicReplicas = new HashMap<>();
-      _topicReplicas.put(replica.topicPartition().topic(), topicReplicas);
-    }
-    topicReplicas.put(replica.topicPartition().partition(), replica);
+    _topicReplicas.computeIfAbsent(replica.topicPartition().topic(), t -> new HashMap<>())
+                  .put(replica.topicPartition().partition(), replica);
 
     // Add leader replica.
     if (replica.isLeader()) {
