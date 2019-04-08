@@ -72,7 +72,7 @@ public class ReviewResult extends AbstractCruiseControlResponse {
     // Populate header.
     StringBuilder formattingStringBuilder = new StringBuilder("%n%-");
     formattingStringBuilder.append(idLabelSize + padding)
-                           .append("d%-")
+                           .append("s%-")
                            .append(submitterAddressLabelSize + padding)
                            .append("s%-")
                            .append(submissionTimeLabelSize + padding)
