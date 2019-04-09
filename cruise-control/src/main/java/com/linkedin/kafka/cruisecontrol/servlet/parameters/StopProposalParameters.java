@@ -21,7 +21,7 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class StopProposalParameters extends AbstractParameters {
   private Integer _reviewId;
-  private boolean _twoStepVerificationEnabled;
+  private final boolean _twoStepVerificationEnabled;
 
   public StopProposalParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request, config);

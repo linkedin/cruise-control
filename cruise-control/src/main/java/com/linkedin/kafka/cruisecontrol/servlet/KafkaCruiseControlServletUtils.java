@@ -90,8 +90,10 @@ public class KafkaCruiseControlServletUtils {
   /**
    * Creates a {@link HttpServletResponse#SC_BAD_REQUEST} Http servlet response.
    */
-  static String handleUserRequestException(UserRequestException ure, HttpServletRequest request,
-                                           HttpServletResponse response, KafkaCruiseControlConfig config)
+  static String handleUserRequestException(UserRequestException ure,
+                                           HttpServletRequest request,
+                                           HttpServletResponse response,
+                                           KafkaCruiseControlConfig config)
       throws IOException {
     String errorMessage = String.format("Bad %s request '%s' due to '%s'.", request.getMethod(), request.getPathInfo(), ure.getMessage());
     StringWriter sw = new StringWriter();
@@ -103,8 +105,10 @@ public class KafkaCruiseControlServletUtils {
   /**
    * Creates a {@link HttpServletResponse#SC_FORBIDDEN} Http servlet response.
    */
-  static String handleConfigException(ConfigException ce, HttpServletRequest request,
-                                      HttpServletResponse response, KafkaCruiseControlConfig config)
+  static String handleConfigException(ConfigException ce,
+                                      HttpServletRequest request,
+                                      HttpServletResponse response,
+                                      KafkaCruiseControlConfig config)
       throws IOException {
     StringWriter sw = new StringWriter();
     ce.printStackTrace(new PrintWriter(sw));
@@ -117,8 +121,10 @@ public class KafkaCruiseControlServletUtils {
   /**
    * Creates a {@link HttpServletResponse#SC_INTERNAL_SERVER_ERROR} Http servlet response.
    */
-  static String handleException(Exception e, HttpServletRequest request,
-                                HttpServletResponse response, KafkaCruiseControlConfig config)
+  static String handleException(Exception e,
+                                HttpServletRequest request,
+                                HttpServletResponse response,
+                                KafkaCruiseControlConfig config)
       throws IOException {
     StringWriter sw = new StringWriter();
     e.printStackTrace(new PrintWriter(sw));

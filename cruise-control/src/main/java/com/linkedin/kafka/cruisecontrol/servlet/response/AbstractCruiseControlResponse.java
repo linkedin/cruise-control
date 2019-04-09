@@ -20,11 +20,9 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
   protected String _cachedResponse;
   protected KafkaCruiseControlConfig _config;
 
-  public AbstractCruiseControlResponse() {
-    _cachedResponse = null;
-    _config = null;
-  }
-
+  /**
+   * Note if the response corresponds to a request which is initiated by Cruise Control, the config passed in will be null.
+   */
   public AbstractCruiseControlResponse(KafkaCruiseControlConfig config) {
     _cachedResponse = null;
     _config = config;

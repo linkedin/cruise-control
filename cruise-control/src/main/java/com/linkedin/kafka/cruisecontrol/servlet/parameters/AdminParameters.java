@@ -29,7 +29,7 @@ public class AdminParameters extends AbstractParameters {
   private Integer _concurrentInterBrokerPartitionMovements;
   private Integer _concurrentLeaderMovements;
   private Integer _reviewId;
-  private boolean _twoStepVerificationEnabled;
+  private final boolean _twoStepVerificationEnabled;
 
   public AdminParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request, config);

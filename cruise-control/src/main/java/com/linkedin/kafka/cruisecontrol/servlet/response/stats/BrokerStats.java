@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
 import com.google.gson.Gson;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AbstractCruiseControlResponse;
@@ -33,7 +34,8 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   private String _cachedJSONResponse;
   private boolean _isBrokerStatsEstimated;
 
-  public BrokerStats() {
+  public BrokerStats(KafkaCruiseControlConfig config) {
+    super(config);
     _brokerStats = new ArrayList<>();
     _hostStats = new ConcurrentSkipListMap<>();
     _hostFieldLength = 0;

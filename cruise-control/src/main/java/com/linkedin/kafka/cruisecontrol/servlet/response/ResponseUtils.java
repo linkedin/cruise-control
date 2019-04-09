@@ -110,8 +110,7 @@ public class ResponseUtils {
                                         String errorMessage,
                                         int responseCode,
                                         boolean json,
-                                        KafkaCruiseControlConfig config
-                                        )
+                                        KafkaCruiseControlConfig config)
       throws IOException {
     String responseMsg;
     if (json) {
@@ -124,8 +123,7 @@ public class ResponseUtils {
     } else {
       responseMsg = errorMessage == null ? "" : errorMessage;
     }
-    // We don't need to send the CORS Task ID header as part of this
-    // error response
+    // Send the CORS Task ID header as part of this error response if 2-step verification is enabled.
     writeResponseToOutputStream(response, responseCode, json, responseMsg, config);
   }
 }

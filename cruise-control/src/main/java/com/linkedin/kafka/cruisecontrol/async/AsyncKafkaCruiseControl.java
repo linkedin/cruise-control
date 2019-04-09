@@ -117,7 +117,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   public OperationFuture getBrokerStats(ClusterLoadParameters parameters) {
     OperationFuture future = new OperationFuture("Get broker stats");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new GetBrokerStatsRunnable(this, future, parameters));
+    _sessionExecutor.submit(new GetBrokerStatsRunnable(this, future, parameters, _config));
     return future;
   }
 

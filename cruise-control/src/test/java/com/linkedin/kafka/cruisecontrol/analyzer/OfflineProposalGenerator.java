@@ -47,7 +47,7 @@ public class OfflineProposalGenerator {
 
     ClusterModelStats origStats = clusterModel.getClusterStats(balancingConstraint);
 
-    String loadBeforeOptimization = clusterModel.brokerStats().toString();
+    String loadBeforeOptimization = clusterModel.brokerStats(null).toString();
     // Instantiate the components.
     GoalOptimizer goalOptimizer = new GoalOptimizer(config,
                                                     null,
@@ -58,7 +58,7 @@ public class OfflineProposalGenerator {
     GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel, new OperationProgress());
     end = System.currentTimeMillis();
     duration = (end - start) / 1000.0;
-    String loadAfterOptimization = clusterModel.brokerStats().toString();
+    String loadAfterOptimization = clusterModel.brokerStats(null).toString();
     System.out.println("Optimize goals in " + duration + "s.");
     System.out.println(optimizerResult.goalProposals().size());
     System.out.println(loadBeforeOptimization);

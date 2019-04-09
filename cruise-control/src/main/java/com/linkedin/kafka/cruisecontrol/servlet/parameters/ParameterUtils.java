@@ -300,9 +300,11 @@ public class ParameterUtils {
     return null;
   }
 
-  static void handleParameterParseException(Exception e, HttpServletResponse response, String errorMsg,
-                                            boolean json, KafkaCruiseControlConfig config)
-      throws IOException {
+  static void handleParameterParseException(Exception e,
+                                            HttpServletResponse response,
+                                            String errorMsg,
+                                            boolean json,
+                                            KafkaCruiseControlConfig config) throws IOException {
     StringWriter sw = new StringWriter();
     e.printStackTrace(new PrintWriter(sw));
     writeErrorResponse(response, sw.toString(), errorMsg, SC_BAD_REQUEST, json, config);

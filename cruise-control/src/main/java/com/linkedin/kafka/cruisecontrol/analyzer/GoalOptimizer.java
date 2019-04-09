@@ -389,7 +389,7 @@ public class GoalOptimizer implements Runnable {
     }
 
     LOG.trace("Cluster before optimization is {}", clusterModel);
-    BrokerStats brokerStatsBeforeOptimization = clusterModel.brokerStats();
+    BrokerStats brokerStatsBeforeOptimization = clusterModel.brokerStats(null);
     Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
     Map<TopicPartition, Integer> initLeaderDistribution = clusterModel.getLeaderDistribution();
     boolean isSelfHealing = !clusterModel.selfHealingEligibleReplicas().isEmpty();
@@ -427,14 +427,14 @@ public class GoalOptimizer implements Runnable {
       logProgress(isSelfHealing, goal.name(), optimizedGoals.size(), goalProposals);
       step.done();
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Broker level stats after optimization: {}", clusterModel.brokerStats());
+        LOG.debug("Broker level stats after optimization: {}", clusterModel.brokerStats(null));
       }
     }
 
     clusterModel.sanityCheck();
     // Broker level stats in the final cluster state.
     if (LOG.isTraceEnabled()) {
-      LOG.trace("Broker level stats after optimization: {}%n", clusterModel.brokerStats());
+      LOG.trace("Broker level stats after optimization: {}%n", clusterModel.brokerStats(null));
     }
 
     Set<ExecutionProposal> proposals = AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
@@ -443,7 +443,7 @@ public class GoalOptimizer implements Runnable {
                                violatedGoalNamesAfterOptimization,
                                proposals,
                                brokerStatsBeforeOptimization,
-                               clusterModel.brokerStats(),
+                               clusterModel.brokerStats(null),
                                clusterModel.generation(),
                                clusterModel.getClusterStats(_balancingConstraint),
                                clusterModel.capacityEstimationInfoByBrokerId(),
