@@ -40,7 +40,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   @Override
   public boolean parseParameters(HttpServletResponse response) {
     if (_initialized) {
-      LOG.debug("Attempt to parse the request {} which has already been parsed.", _request);
+      LOG.trace("Attempt to parse an already parsed request {}.", _request);
       return false;
     }
     try {

@@ -43,12 +43,13 @@ public class ReviewResult extends AbstractCruiseControlResponse {
   private String getPlaintext() {
     StringBuilder sb = new StringBuilder();
     int padding = 2;
-    int idLabelSize = 2;
-    int submitterAddressLabelSize = 17;
-    int submissionTimeLabelSize = 15; // Plaintext response, returns submission time -- i.e. not submission time ms.
-    int statusLabelSize = 6;
-    int endpointWithParamsLabelSize = 20;
-    int reasonLabelSize = 6;
+    // Plaintext response, each column name will be underscore-separated instead of case-separated.
+    int idLabelSize = ID.length();
+    int submitterAddressLabelSize = SUBMITTER_ADDRESS.length() + 1;
+    int submissionTimeLabelSize = SUBMISSION_TIME_MS.length() - 2; // Returns submission_time -- i.e. not submission_time_ms.
+    int statusLabelSize = STATUS.length();
+    int endpointWithParamsLabelSize = ENDPOINT_WITH_PARAMS.length() + 2;
+    int reasonLabelSize = REASON.length();
 
     for (Map.Entry<Integer, RequestInfo> entry : _requestInfoById.entrySet()) {
       if (_filteredRequestIds.contains(entry.getKey())) {
