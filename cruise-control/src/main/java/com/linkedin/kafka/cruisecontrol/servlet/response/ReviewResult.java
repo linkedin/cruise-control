@@ -43,11 +43,12 @@ public class ReviewResult extends AbstractCruiseControlResponse {
   private String getPlaintext() {
     StringBuilder sb = new StringBuilder();
     int padding = 2;
+    // Plaintext response, each column name will be underscore-separated instead of case-separated.
     int idLabelSize = ID.length();
-    int submitterAddressLabelSize = SUBMITTER_ADDRESS.length();
-    int submissionTimeLabelSize = 15; // Plaintext response, returns submission time -- i.e. not submission time ms.
+    int submitterAddressLabelSize = SUBMITTER_ADDRESS.length() + 1;
+    int submissionTimeLabelSize = SUBMISSION_TIME_MS.length() - 2; // Returns submission_time -- i.e. not submission_time_ms.
     int statusLabelSize = STATUS.length();
-    int endpointWithParamsLabelSize = ENDPOINT_WITH_PARAMS.length();
+    int endpointWithParamsLabelSize = ENDPOINT_WITH_PARAMS.length() + 2;
     int reasonLabelSize = REASON.length();
 
     for (Map.Entry<Integer, RequestInfo> entry : _requestInfoById.entrySet()) {
@@ -83,8 +84,8 @@ public class ReviewResult extends AbstractCruiseControlResponse {
                            .append("s%-")
                            .append(reasonLabelSize + padding)
                            .append("s");
-    sb.append(String.format(formattingStringBuilder.toString(), "ID", "SUBMITTER ADDRESS", "SUBMISSION TIME", "STATUS",
-                            "ENDPOINT WITH PARAMS", "REASON"));
+    sb.append(String.format(formattingStringBuilder.toString(), "ID", "SUBMITTER_ADDRESS", "SUBMISSION_TIME", "STATUS",
+                            "ENDPOINT_WITH_PARAMS", "REASON"));
 
     // Populate values.
     for (Map.Entry<Integer, RequestInfo> entry : _requestInfoById.entrySet()) {

@@ -22,6 +22,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 public abstract class AbstractParameters implements CruiseControlParameters {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractParameters.class);
   protected final HttpServletRequest _request;
+  private boolean _initialized = false;
   // Common to all parameters, expected to be populated via initParameters.
   protected boolean _json = false;
   protected EndPoint _endPoint = null;
@@ -31,12 +32,17 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   }
 
   protected void initParameters() throws UnsupportedEncodingException {
+    _initialized = true;
     _endPoint = ParameterUtils.endPoint(_request);
     _json = ParameterUtils.wantJSON(_request);
   }
 
   @Override
   public boolean parseParameters(HttpServletResponse response) {
+    if (_initialized) {
+      LOG.trace("Attempt to parse an already parsed request {}.", _request);
+      return false;
+    }
     try {
       initParameters();
       return false;

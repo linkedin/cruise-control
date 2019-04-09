@@ -33,6 +33,8 @@ public class RequestInfo {
   static {
     VALID_TRANSFER.put(PENDING_REVIEW, new HashSet<>(Arrays.asList(APPROVED, DISCARDED)));
     VALID_TRANSFER.put(APPROVED, new HashSet<>(Arrays.asList(DISCARDED, SUBMITTED)));
+    VALID_TRANSFER.put(SUBMITTED, Collections.emptySet());
+    VALID_TRANSFER.put(DISCARDED, Collections.emptySet());
   }
   private final String _submitterAddress;
   private final long _submissionTimeMs;
