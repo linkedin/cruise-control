@@ -11,8 +11,11 @@ import javax.servlet.http.HttpServletResponse;
 public interface CruiseControlParameters {
 
   /**
+   * Parse the parameters set in HTTP request to initialize object.
+   *
    * @param response HTTP response of Cruise Control.
-   * @return True if there has been a failure to parse parameters, false otherwise.
+   * @return True if there has been a failure to parse parameters, false otherwise. If the object is already initialized,
+   *         directly return false.
    */
   boolean parseParameters(HttpServletResponse response);
 
