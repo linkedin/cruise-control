@@ -89,7 +89,7 @@ public class KafkaCruiseControlServletUtils {
    */
   static String handleUserRequestException(UserRequestException ure, HttpServletRequest request, HttpServletResponse response)
       throws IOException {
-    String errorMessage = String.format("Bad %s request '%s'", request.getMethod(), request.getPathInfo());
+    String errorMessage = String.format("Bad %s request '%s' due to '%s'.", request.getMethod(), request.getPathInfo(), ure.getMessage());
     StringWriter sw = new StringWriter();
     ure.printStackTrace(new PrintWriter(sw));
     writeErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request));

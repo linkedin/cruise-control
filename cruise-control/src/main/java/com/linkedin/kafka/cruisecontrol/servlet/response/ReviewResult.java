@@ -43,12 +43,12 @@ public class ReviewResult extends AbstractCruiseControlResponse {
   private String getPlaintext() {
     StringBuilder sb = new StringBuilder();
     int padding = 2;
-    int idLabelSize = ID.length();
-    int submitterAddressLabelSize = SUBMITTER_ADDRESS.length();
+    int idLabelSize = 2;
+    int submitterAddressLabelSize = 17;
     int submissionTimeLabelSize = 15; // Plaintext response, returns submission time -- i.e. not submission time ms.
-    int statusLabelSize = STATUS.length();
-    int endpointWithParamsLabelSize = ENDPOINT_WITH_PARAMS.length();
-    int reasonLabelSize = REASON.length();
+    int statusLabelSize = 6;
+    int endpointWithParamsLabelSize = 20;
+    int reasonLabelSize = 6;
 
     for (Map.Entry<Integer, RequestInfo> entry : _requestInfoById.entrySet()) {
       if (_filteredRequestIds.contains(entry.getKey())) {
@@ -83,8 +83,8 @@ public class ReviewResult extends AbstractCruiseControlResponse {
                            .append("s%-")
                            .append(reasonLabelSize + padding)
                            .append("s");
-    sb.append(String.format(formattingStringBuilder.toString(), "ID", "SUBMITTER ADDRESS", "SUBMISSION TIME", "STATUS",
-                            "ENDPOINT WITH PARAMS", "REASON"));
+    sb.append(String.format(formattingStringBuilder.toString(), "ID", "SUBMITTER_ADDRESS", "SUBMISSION_TIME", "STATUS",
+                            "ENDPOINT_WITH_PARAMS", "REASON"));
 
     // Populate values.
     for (Map.Entry<Integer, RequestInfo> entry : _requestInfoById.entrySet()) {
