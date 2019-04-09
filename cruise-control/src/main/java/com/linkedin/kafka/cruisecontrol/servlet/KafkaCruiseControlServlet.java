@@ -110,7 +110,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       response.setHeader("Access-Control-Allow-Origin",
                          _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
       // This is required only as part of pre-flight response
-      response.setHeader("Access-Control-Allow-Method",
+      response.setHeader("Access-Control-Allow-Methods",
                          _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ALLOWMETHODS_CONFIG));
       response.setHeader("Access-Control-Allow-Headers",
                          _config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
