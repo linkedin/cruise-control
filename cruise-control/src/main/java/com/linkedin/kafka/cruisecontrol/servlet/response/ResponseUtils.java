@@ -44,6 +44,8 @@ public class ResponseUtils {
     boolean corsEnabled = config == null ? false : config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
     if (corsEnabled) {
       // These headers are exposed to the browser
+      response.setHeader("Access-Control-Allow-Origin",
+                         config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
       response.setHeader("Access-Control-Expose-Headers",
                          config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
 
