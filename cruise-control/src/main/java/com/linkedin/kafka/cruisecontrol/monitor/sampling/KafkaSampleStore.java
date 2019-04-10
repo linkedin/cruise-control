@@ -326,10 +326,11 @@ public class KafkaSampleStore implements SampleStore {
               newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
               currentOccupiedRack.add(rack);
               cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
-              newReplicaAssignment.put(new TopicPartition(topic, tp.partition()),
-                                       JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
             }
+            rackCursor = (rackCursor + 1) % racks.size();
           }
+          newReplicaAssignment.put(new TopicPartition(topic, tp.partition()),
+                                   JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
         }
       }
     }
