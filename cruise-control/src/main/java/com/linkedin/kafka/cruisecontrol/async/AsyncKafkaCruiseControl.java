@@ -42,10 +42,11 @@ import java.util.concurrent.Executors;
  * <li>{@link KafkaCruiseControl#getProposals(OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
  * <li>{@link KafkaCruiseControl#getProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
- * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean)}</li>
+ * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean, boolean)}</li>
  * <li>{@link KafkaCruiseControl#rebalance(java.util.List, boolean, ModelCompletenessRequirements, OperationProgress,
  * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
- * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, boolean)}</li>
+ * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, boolean,
+ * boolean)}</li>
  * </ul>
  *
  * The other operations are non-blocking by default.
@@ -123,7 +124,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
 
   /**
    * @see KafkaCruiseControl#getProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
-   * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean)
+   * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean, boolean)
    */
   public OperationFuture getProposals(ProposalsParameters parameters) {
     OperationFuture future = new OperationFuture("Get customized proposals");
@@ -135,7 +136,8 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   /**
    * @see KafkaCruiseControl#rebalance(java.util.List, boolean, ModelCompletenessRequirements, OperationProgress,
    * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
-   * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, boolean)
+   * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, boolean,
+   * boolean)
    */
   public OperationFuture rebalance(RebalanceParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Rebalance");

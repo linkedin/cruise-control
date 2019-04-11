@@ -330,6 +330,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "should not be above 1.80x of average replica count of all brokers for the same topic.";
 
   /**
+   * <code>goal.violation.distribution.threshold.multiplier</code>
+   */
+  public static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG = "goal.violation.distribution.threshold.multiplier";
+  private static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_DOC = "The multiplier applied to the threshold"
+      + " of distribution goals used for detecting and fixing anomalies. For example, 2.50 means the threshold for each "
+      + "distribution goal will be 2.50x of the value used in manual goal optimization requests (e.g. rebalance).";
+
+  /**
    * <code>cpu.capacity.threshold</code>
    */
   public static final String CPU_CAPACITY_THRESHOLD_CONFIG = "cpu.capacity.threshold";
@@ -1004,6 +1012,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.HIGH,
                 TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
+        .define(GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                1.00,
+                atLeast(1),
+                ConfigDef.Importance.MEDIUM, GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_DOC)
         .define(CPU_CAPACITY_THRESHOLD_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 0.8,

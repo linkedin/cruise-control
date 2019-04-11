@@ -229,7 +229,8 @@ public class GoalViolationDetector implements Runnable {
     try {
       goal.optimize(clusterModel, new HashSet<>(), new OptimizationOptions(excludedTopics(clusterModel),
                                                                            excludedBrokersForLeadership,
-                                                                           excludedBrokersForReplicaMove));
+                                                                           excludedBrokersForReplicaMove,
+                                                                           true));
     } catch (OptimizationFailureException ofe) {
       // An OptimizationFailureException indicates (1) a hard goal violation that cannot be fixed typically due to
       // lack of physical hardware (e.g. insufficient number of racks to satisfy rack awareness, insufficient number

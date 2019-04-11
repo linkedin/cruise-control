@@ -215,13 +215,13 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * in its initial attempt. Since self healing has not been executed yet, this flag is false.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     _selfHealingDeadBrokersOnly = false;
-    _balanceUpperThreshold = computeBalanceUpperThreshold(clusterModel);
-    _balanceLowerThreshold = computeBalanceLowerThreshold(clusterModel);
+    _balanceUpperThreshold = computeBalanceUpperThreshold(clusterModel, optimizationOptions);
+    _balanceLowerThreshold = computeBalanceLowerThreshold(clusterModel, optimizationOptions);
     clusterModel.trackSortedReplicas(sortName(),
                                      ReplicaSortFunctionFactory.deprioritizeImmigrants(),
                                      ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
@@ -923,29 +923,41 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
   /**
    * @param clusterModel the cluster topology and load.
+   * @param optimizationOptions Options to adjust balance upper limit in case goal optimization is triggered by goal
+   * violation detector.
    * @return the utilization upper threshold in percent for the {@link #resource()}
    */
-  private double computeBalanceUpperThreshold(ClusterModel clusterModel) {
+  private double computeBalanceUpperThreshold(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     return (clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource()))
-        * (1 + balancePercentageWithMargin(resource()));
+           * (1 + balancePercentageWithMargin(optimizationOptions));
   }
 
   /**
    * @param clusterModel the cluster topology and load.
+   * @param optimizationOptions Options to adjust balance lower limit in case goal optimization is triggered by goal
+   * violation detector.
    * @return the utilization lower threshold in percent for the {@link #resource()}
    */
-  private double computeBalanceLowerThreshold(ClusterModel clusterModel) {
+  private double computeBalanceLowerThreshold(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     return (clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource()))
-        * Math.max(0, (1 - balancePercentageWithMargin(resource())));
+           * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions)));
   }
 
   /**
    * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
    * threshold to be resourceBalancePercentage, we use (resourceBalancePercentage-1)*balanceMargin instead.
+   *
+   * @param optimizationOptions Options to adjust balance percentage with margin in case goal optimization is triggered
+   * by goal violation detector.
    * @return the rebalance threshold with a margin.
    */
-  private double balancePercentageWithMargin(Resource resource) {
-    return (_balancingConstraint.resourceBalancePercentage(resource) - 1) * BALANCE_MARGIN;
+  private double balancePercentageWithMargin(OptimizationOptions optimizationOptions) {
+    double balancePercentage = optimizationOptions.isTriggeredByGoalViolation()
+                               ? _balancingConstraint.resourceBalancePercentage(resource())
+                                 * _balancingConstraint.goalViolationDistributionThresholdMultiplier()
+                               : _balancingConstraint.resourceBalancePercentage(resource());
+
+    return (balancePercentage - 1) * BALANCE_MARGIN;
   }
 
   private String sortName() {

@@ -15,6 +15,7 @@ public class OptimizationOptions {
   private final Set<String> _excludedTopics;
   private final Set<Integer> _excludedBrokersForLeadership;
   private final Set<Integer> _excludedBrokersForReplicaMove;
+  private final boolean _isTriggeredByGoalViolation;
 
   /**
    * Default value for {@link #_excludedBrokersForLeadership} is an empty set.
@@ -30,9 +31,17 @@ public class OptimizationOptions {
   public OptimizationOptions(Set<String> excludedTopics,
                              Set<Integer> excludedBrokersForLeadership,
                              Set<Integer> excludedBrokersForReplicaMove) {
+    this(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove, false);
+  }
+
+  public OptimizationOptions(Set<String> excludedTopics,
+                             Set<Integer> excludedBrokersForLeadership,
+                             Set<Integer> excludedBrokersForReplicaMove,
+                             boolean isTriggeredByGoalViolation) {
     _excludedTopics = excludedTopics;
     _excludedBrokersForLeadership = excludedBrokersForLeadership;
     _excludedBrokersForReplicaMove = excludedBrokersForReplicaMove;
+    _isTriggeredByGoalViolation = isTriggeredByGoalViolation;
   }
 
   public Set<String> excludedTopics() {
@@ -47,9 +56,14 @@ public class OptimizationOptions {
     return Collections.unmodifiableSet(_excludedBrokersForReplicaMove);
   }
 
+  public boolean isTriggeredByGoalViolation() {
+    return _isTriggeredByGoalViolation;
+  }
+
   @Override
   public String toString() {
-    return String.format("{excludedTopics: %s, excludedBrokersForLeadership: %s, excludedBrokersForReplicaMove: %s}",
-                         _excludedTopics, _excludedBrokersForLeadership, _excludedBrokersForReplicaMove);
+    return String.format("[excludedTopics=%s,excludedBrokersForLeadership=%s,excludedBrokersForReplicaMove=%s,"
+                         + "isTriggeredByGoalViolation=%s}", _excludedTopics, _excludedBrokersForLeadership,
+                         _excludedBrokersForReplicaMove, _isTriggeredByGoalViolation);
   }
 }
