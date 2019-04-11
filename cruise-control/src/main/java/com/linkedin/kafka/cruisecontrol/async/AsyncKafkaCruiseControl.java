@@ -84,7 +84,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   public OperationFuture decommissionBrokers(AddedOrRemovedBrokerParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Decommission brokers");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new DecommissionBrokersRunnable(this, future, parameters, uuid));
+    _sessionExecutor.submit(new DecommissionBrokersRunnable(this, future, parameters, uuid, _config));
     return future;
   }
 
@@ -96,7 +96,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   public OperationFuture addBrokers(AddedOrRemovedBrokerParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Add brokers");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new AddBrokerRunnable(this, future, parameters, uuid));
+    _sessionExecutor.submit(new AddBrokerRunnable(this, future, parameters, uuid, _config));
     return future;
   }
 
@@ -107,7 +107,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
     OperationFuture future =
         new OperationFuture(String.format("Get partition load from %d to %d", parameters.startMs(), parameters.endMs()));
     pending(future.operationProgress());
-    _sessionExecutor.submit(new GetClusterModelInRangeRunnable(this, future, parameters));
+    _sessionExecutor.submit(new GetClusterModelInRangeRunnable(this, future, parameters, _config));
     return future;
   }
 
@@ -117,7 +117,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   public OperationFuture getBrokerStats(ClusterLoadParameters parameters) {
     OperationFuture future = new OperationFuture("Get broker stats");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new GetBrokerStatsRunnable(this, future, parameters));
+    _sessionExecutor.submit(new GetBrokerStatsRunnable(this, future, parameters, _config));
     return future;
   }
 
@@ -128,7 +128,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   public OperationFuture getProposals(ProposalsParameters parameters) {
     OperationFuture future = new OperationFuture("Get customized proposals");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new GetProposalsRunnable(this, future, parameters));
+    _sessionExecutor.submit(new GetProposalsRunnable(this, future, parameters, _config));
     return future;
   }
 
@@ -140,7 +140,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   public OperationFuture rebalance(RebalanceParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Rebalance");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new RebalanceRunnable(this, future, parameters, uuid));
+    _sessionExecutor.submit(new RebalanceRunnable(this, future, parameters, uuid, _config));
     return future;
   }
 
@@ -151,7 +151,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   public OperationFuture demoteBrokers(String uuid, DemoteBrokerParameters parameters) {
     OperationFuture future = new OperationFuture("Demote");
     pending(future.operationProgress());
-    _sessionExecutor.submit(new DemoteBrokerRunnable(this, future, uuid, parameters));
+    _sessionExecutor.submit(new DemoteBrokerRunnable(this, future, uuid, parameters, _config));
     return future;
   }
 

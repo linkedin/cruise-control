@@ -46,11 +46,9 @@ public class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParamet
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private Integer _reviewId;
-  private final KafkaCruiseControlConfig _config;
 
   public AddedOrRemovedBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request);
-    _config = config;
+    super(request, config);
   }
 
   @Override

@@ -42,9 +42,11 @@ public class Purgatory implements Closeable {
   private final Map<Integer, RequestInfo> _requestInfoById;
   private final ScheduledExecutorService _purgatoryCleaner =
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("PurgatoryCleaner", true, null));
+  private final KafkaCruiseControlConfig _config;
 
   public Purgatory(KafkaCruiseControlConfig config) {
     _requestId = 0;
+    _config = config;
     _purgatoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.TWO_STEP_PURGATORY_RETENTION_TIME_MS_CONFIG);
     int purgatoryMaxCachedRequests = config.getInt(KafkaCruiseControlConfig.TWO_STEP_PURGATORY_MAX_REQUESTS_CONFIG);
 
@@ -84,7 +86,7 @@ public class Purgatory implements Closeable {
     Set<Integer> filteredRequestIds = new HashSet<>();
     filteredRequestIds.add(_requestId);
 
-    ReviewResult result = new ReviewResult(requestInfoById, filteredRequestIds);
+    ReviewResult result = new ReviewResult(requestInfoById, filteredRequestIds, _config);
     _requestId++;
     return result;
   }
@@ -158,7 +160,7 @@ public class Purgatory implements Closeable {
    * @return The requested reviews from the review board.
    */
   public synchronized ReviewResult reviewBoard(Set<Integer> reviewIds) {
-    return new ReviewResult(new HashMap<>(_requestInfoById), reviewIds);
+    return new ReviewResult(new HashMap<>(_requestInfoById), reviewIds, _config);
   }
 
   /**
@@ -184,7 +186,7 @@ public class Purgatory implements Closeable {
     }
 
     // Return the post-review result of the purgatory.
-    return new ReviewResult(new HashMap<>(_requestInfoById), reviewedRequestIds);
+    return new ReviewResult(new HashMap<>(_requestInfoById), reviewedRequestIds, _config);
   }
 
   private synchronized void removeOldRequests() {

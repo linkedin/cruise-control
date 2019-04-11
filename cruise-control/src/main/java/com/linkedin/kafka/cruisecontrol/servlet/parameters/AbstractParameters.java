@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -23,12 +24,14 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractParameters.class);
   protected final HttpServletRequest _request;
   private boolean _initialized = false;
+  protected final KafkaCruiseControlConfig _config;
   // Common to all parameters, expected to be populated via initParameters.
   protected boolean _json = false;
   protected EndPoint _endPoint = null;
 
-  public AbstractParameters(HttpServletRequest request) {
+  public AbstractParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     _request = request;
+    _config = config;
   }
 
   protected void initParameters() throws UnsupportedEncodingException {
@@ -48,7 +51,7 @@ public abstract class AbstractParameters implements CruiseControlParameters {
       return false;
     } catch (Exception e) {
       try {
-        handleParameterParseException(e, response, e.getMessage(), _json);
+        handleParameterParseException(e, response, e.getMessage(), _json, _config);
       } catch (IOException ioe) {
         LOG.error(String.format("Failed to write parse parameter exception to output stream. Endpoint: %s.", _endPoint), ioe);
       }

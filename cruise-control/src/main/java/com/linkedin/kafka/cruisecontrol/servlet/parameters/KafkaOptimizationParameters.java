@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
 
@@ -13,8 +14,8 @@ public abstract class KafkaOptimizationParameters extends AbstractParameters {
   protected boolean _isVerbose;
   protected boolean _excludeRecentlyDemotedBrokers;
 
-  KafkaOptimizationParameters(HttpServletRequest request) {
-    super(request);
+  KafkaOptimizationParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
   }
 
   @Override

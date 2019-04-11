@@ -44,8 +44,10 @@ public class ResponseUtils {
     boolean corsEnabled = config == null ? false : config.getBoolean(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ENABLED_CONFIG);
     if (corsEnabled) {
       // These headers are exposed to the browser
+      response.setHeader("Access-Control-Allow-Origin",
+                         config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
       response.setHeader("Access-Control-Expose-Headers",
-            config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
+                         config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
 
     }
   }
@@ -109,8 +111,8 @@ public class ResponseUtils {
                                         String stackTrace,
                                         String errorMessage,
                                         int responseCode,
-                                        boolean json
-                                        )
+                                        boolean json,
+                                        KafkaCruiseControlConfig config)
       throws IOException {
     String responseMsg;
     if (json) {
@@ -123,8 +125,7 @@ public class ResponseUtils {
     } else {
       responseMsg = errorMessage == null ? "" : errorMessage;
     }
-    // We don't need to send the CORS Task ID header as part of this
-    // error response
-    writeResponseToOutputStream(response, responseCode, json, responseMsg, null);
+    // Send the CORS Task ID header as part of this error response if 2-step verification is enabled.
+    writeResponseToOutputStream(response, responseCode, json, responseMsg, config);
   }
 }

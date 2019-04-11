@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PartitionLoadState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
@@ -15,12 +16,15 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
  */
 class GetClusterModelInRangeRunnable extends OperationRunnable {
   private final PartitionLoadParameters _parameters;
+  private final KafkaCruiseControlConfig _config;
 
   GetClusterModelInRangeRunnable(KafkaCruiseControl kafkaCruiseControl,
                                  OperationFuture future,
-                                 PartitionLoadParameters parameters) {
+                                 PartitionLoadParameters parameters,
+                                 KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
     _parameters = parameters;
+    _config = config;
   }
 
   @Override
@@ -37,6 +41,7 @@ class GetClusterModelInRangeRunnable extends OperationRunnable {
                                   _parameters.partitionUpperBoundary(),
                                   _parameters.partitionLowerBoundary(),
                                   _parameters.topic(),
-                                  topicNameLength);
+                                  topicNameLength,
+                                  _config);
   }
 }

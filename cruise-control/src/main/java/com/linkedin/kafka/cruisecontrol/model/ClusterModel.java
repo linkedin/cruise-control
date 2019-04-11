@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.IOException;
@@ -991,8 +992,8 @@ public class ClusterModel implements Serializable {
   /**
    * Get broker return the broker stats.
    */
-  public BrokerStats brokerStats() {
-    BrokerStats brokerStats = new BrokerStats();
+  public BrokerStats brokerStats(KafkaCruiseControlConfig config) {
+    BrokerStats brokerStats = new BrokerStats(config);
     brokers().forEach(broker -> {
       double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
       brokerStats.addSingleBrokerStats(broker.host().name(),

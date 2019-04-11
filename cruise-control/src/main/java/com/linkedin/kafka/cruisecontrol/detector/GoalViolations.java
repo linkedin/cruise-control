@@ -87,7 +87,8 @@ public class GoalViolations extends KafkaAnomaly {
                                                                                    _anomalyId,
                                                                                    _excludeRecentlyDemotedBrokers,
                                                                                    _excludeRecentlyRemovedBrokers,
-                                                                                   false));
+                                                                                   false),
+                                                     null);
         // Ensure that only the relevant response is cached to avoid memory pressure.
         _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
         return true;

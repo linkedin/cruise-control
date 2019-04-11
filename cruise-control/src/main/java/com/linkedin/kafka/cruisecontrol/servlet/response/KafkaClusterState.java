@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import java.util.ArrayList;
@@ -27,7 +28,6 @@ import org.apache.kafka.common.PartitionInfo;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
-
 public class KafkaClusterState extends AbstractCruiseControlResponse {
   private static final String TOPIC = "topic";
   private static final String PARTITION = "partition";
@@ -45,7 +45,8 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   private static final String REPLICA_COUNT = "ReplicaCountByBrokerId";
   private Cluster _kafkaCluster;
 
-  public KafkaClusterState(Cluster kafkaCluster) {
+  public KafkaClusterState(Cluster kafkaCluster, KafkaCruiseControlConfig config) {
+    super(config);
     _kafkaCluster = kafkaCluster;
   }
 

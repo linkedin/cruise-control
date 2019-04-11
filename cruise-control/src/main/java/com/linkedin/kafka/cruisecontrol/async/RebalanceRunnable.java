@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
@@ -32,11 +33,13 @@ class RebalanceRunnable extends OperationRunnable {
   private final boolean _excludeRecentlyRemovedBrokers;
   private final ReplicaMovementStrategy _replicaMovementStrategy;
   private final boolean _ignoreProposalCache;
+  private final KafkaCruiseControlConfig _config;
 
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture future,
                     RebalanceParameters parameters,
-                    String uuid) {
+                    String uuid,
+                    KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
     _goals = parameters.goals();
     _dryRun = parameters.dryRun();
@@ -51,6 +54,7 @@ class RebalanceRunnable extends OperationRunnable {
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
     _ignoreProposalCache = parameters.ignoreProposalCache();
+    _config = config;
   }
 
   @Override
@@ -68,6 +72,7 @@ class RebalanceRunnable extends OperationRunnable {
                                                                 _uuid,
                                                                 _excludeRecentlyDemotedBrokers,
                                                                 _excludeRecentlyRemovedBrokers,
-                                                                _ignoreProposalCache));
+                                                                _ignoreProposalCache),
+                                  _config);
   }
 }

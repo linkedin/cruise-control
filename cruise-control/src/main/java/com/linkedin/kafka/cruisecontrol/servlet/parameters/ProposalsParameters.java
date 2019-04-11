@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
 
@@ -22,8 +23,8 @@ import javax.servlet.http.HttpServletRequest;
 public class ProposalsParameters extends GoalBasedOptimizationParameters {
   private boolean _ignoreProposalCache;
 
-  public ProposalsParameters(HttpServletRequest request) {
-    super(request);
+  public ProposalsParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
   }
 
   @Override

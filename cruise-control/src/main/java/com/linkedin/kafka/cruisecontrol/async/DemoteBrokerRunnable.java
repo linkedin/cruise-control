@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
@@ -26,11 +27,13 @@ public class DemoteBrokerRunnable extends OperationRunnable {
   private final String _uuid;
   private final boolean _excludeRecentlyDemotedBrokers;
   private final ReplicaMovementStrategy _replicaMovementStrategy;
+  private final KafkaCruiseControlConfig _config;
 
   DemoteBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                        OperationFuture future,
                        String uuid,
-                       DemoteBrokerParameters parameters) {
+                       DemoteBrokerParameters parameters,
+                       KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
     _brokerIds = parameters.brokerIds();
     _dryRun = parameters.dryRun();
@@ -41,6 +44,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
     _uuid = uuid;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
+    _config = config;
   }
 
   @Override
@@ -54,6 +58,7 @@ public class DemoteBrokerRunnable extends OperationRunnable {
                                                                     _excludeFollowerDemotion,
                                                                     _replicaMovementStrategy,
                                                                     _uuid,
-                                                                    _excludeRecentlyDemotedBrokers));
+                                                                    _excludeRecentlyDemotedBrokers),
+                                  _config);
   }
 }

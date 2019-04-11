@@ -300,14 +300,18 @@ public class ParameterUtils {
     return null;
   }
 
-  static void handleParameterParseException(Exception e, HttpServletResponse response, String errorMsg, boolean json)
-      throws IOException {
+  static void handleParameterParseException(Exception e,
+                                            HttpServletResponse response,
+                                            String errorMsg,
+                                            boolean json,
+                                            KafkaCruiseControlConfig config) throws IOException {
     StringWriter sw = new StringWriter();
     e.printStackTrace(new PrintWriter(sw));
-    writeErrorResponse(response, sw.toString(), errorMsg, SC_BAD_REQUEST, json);
+    writeErrorResponse(response, sw.toString(), errorMsg, SC_BAD_REQUEST, json, config);
   }
 
-  public static boolean hasValidParameters(HttpServletRequest request, HttpServletResponse response) throws IOException {
+  public static boolean hasValidParameters(HttpServletRequest request, HttpServletResponse response, KafkaCruiseControlConfig config)
+      throws IOException {
     EndPoint endPoint = endPoint(request);
     Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
     Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -320,7 +324,7 @@ public class ParameterUtils {
       // User request specifies parameters that are not a subset of the valid parameters.
       String errorResp = String.format("Unrecognized endpoint parameters in %s %s request: %s.",
                                        endPoint, request.getMethod(), userParams.toString());
-      writeErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request));
+      writeErrorResponse(response, "", errorResp, SC_BAD_REQUEST, wantJSON(request), config);
       return false;
     }
     return true;
