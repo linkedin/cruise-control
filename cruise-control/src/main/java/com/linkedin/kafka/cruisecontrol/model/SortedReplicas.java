@@ -93,7 +93,7 @@ public class SortedReplicas {
   }
 
   /**
-   * Get a list of in the ascending order of their priority and score.
+   * Get the sorted replicas in the ascending order of their priority and score.
    * This method initialize the sorted replicas if it hasn't been initialized.
    *
    * @return the sorted replicas in the ascending order of their priority and score.

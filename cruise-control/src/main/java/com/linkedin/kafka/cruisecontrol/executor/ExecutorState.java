@@ -188,7 +188,7 @@ public class ExecutorState {
     return taskList;
   }
 
-  /*
+  /**
    * Return an object that can be further used to encode into JSON
    */
   public Map<String, Object> getJsonStructure(boolean verbose) {
