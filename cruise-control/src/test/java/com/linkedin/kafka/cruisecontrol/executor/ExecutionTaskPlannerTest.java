@@ -32,29 +32,33 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
  * Unit test class for execution task planner
  */
 public class ExecutionTaskPlannerTest {
+  private Integer _r0 = 0;
+  private Integer _r1 = 1;
+  private Integer _r2 = 2;
+  private Integer _r3 = 3;
+
   private final ExecutionProposal _leaderMovement1 =
-      new ExecutionProposal(new TopicPartition(TOPIC1, 0), 0, 1, Arrays.asList(1, 0), Arrays.asList(0, 1));
+      new ExecutionProposal(new TopicPartition(TOPIC1, 0), 0, _r1, Arrays.asList(_r1, _r0), Arrays.asList(_r0, _r1));
   private final ExecutionProposal _leaderMovement2 =
-      new ExecutionProposal(new TopicPartition(TOPIC1, 1), 0, 1, Arrays.asList(1, 0), Arrays.asList(0, 1));
+      new ExecutionProposal(new TopicPartition(TOPIC1, 1), 0, _r1, Arrays.asList(_r1, _r0), Arrays.asList(_r0, _r1));
   private final ExecutionProposal _leaderMovement3 =
-      new ExecutionProposal(new TopicPartition(TOPIC1, 2), 0, 1, Arrays.asList(1, 2), Arrays.asList(2, 1));
+      new ExecutionProposal(new TopicPartition(TOPIC1, 2), 0, _r1, Arrays.asList(_r1, _r2), Arrays.asList(_r2, _r1));
   private final ExecutionProposal _leaderMovement4 =
-      new ExecutionProposal(new TopicPartition(TOPIC1, 3), 0, 3, Arrays.asList(3, 2), Arrays.asList(2, 3));
+      new ExecutionProposal(new TopicPartition(TOPIC1, 3), 0, _r3, Arrays.asList(_r3, _r2), Arrays.asList(_r2, _r3));
 
   private final ExecutionProposal _partitionMovement1 =
-      new ExecutionProposal(new TopicPartition(TOPIC2, 0), 4, 0, Arrays.asList(0, 2), Arrays.asList(2, 1));
+      new ExecutionProposal(new TopicPartition(TOPIC2, 0), 4, _r0, Arrays.asList(_r0, _r2), Arrays.asList(_r2, _r1));
   private final ExecutionProposal _partitionMovement2 =
-      new ExecutionProposal(new TopicPartition(TOPIC2, 1), 3, 1, Arrays.asList(1, 3), Arrays.asList(3, 2));
+      new ExecutionProposal(new TopicPartition(TOPIC2, 1), 3, _r1, Arrays.asList(_r1, _r3), Arrays.asList(_r3, _r2));
   private final ExecutionProposal _partitionMovement3 =
-      new ExecutionProposal(new TopicPartition(TOPIC2, 2), 2, 2, Arrays.asList(2, 1), Arrays.asList(1, 3));
+      new ExecutionProposal(new TopicPartition(TOPIC2, 2), 2, _r2, Arrays.asList(_r2, _r1), Arrays.asList(_r1, _r3));
   private final ExecutionProposal _partitionMovement4 =
-      new ExecutionProposal(new TopicPartition(TOPIC2, 3), 1, 3, Arrays.asList(3, 2), Arrays.asList(2, 0));
+      new ExecutionProposal(new TopicPartition(TOPIC2, 3), 1, _r3, Arrays.asList(_r3, _r2), Arrays.asList(_r2, _r0));
 
-  private final List<Node> _expectedNodes = new ArrayList<>(Arrays.asList(
-      new Node(0, "null", -1),
-      new Node(1, "null", -1),
-      new Node(2, "null", -1),
-      new Node(3, "null", -1)));
+  private final List<Node> _expectedNodes = new ArrayList<>(Arrays.asList(new Node(0, "null", -1),
+                                                                          new Node(1, "null", -1),
+                                                                          new Node(2, "null", -1),
+                                                                          new Node(3, "null", -1)));
 
   @Test
   public void testGetLeaderMovementTasks() {

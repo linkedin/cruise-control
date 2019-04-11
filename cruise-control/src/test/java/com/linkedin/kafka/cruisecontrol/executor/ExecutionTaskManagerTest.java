@@ -55,11 +55,14 @@ public class ExecutionTaskManagerTest {
     // Cannot rollback.
     testSequences.add(Arrays.asList(IN_PROGRESS, DEAD));
 
+    Integer r0 = 0;
+    Integer r1 = 1;
+    Integer r2 = 2;
     for (List<ExecutionTask.State> sequence : testSequences) {
       taskManager.clear();
       // Make sure the proposal does not involve leader movement.
       ExecutionProposal proposal =
-          new ExecutionProposal(tp, 10, 2, Arrays.asList(0, 2), Arrays.asList(2, 1));
+          new ExecutionProposal(tp, 10, r2, Arrays.asList(r0, r2), Arrays.asList(r2, r1));
 
       taskManager.setExecutionModeForTaskTracker(false);
       taskManager.addExecutionProposals(Collections.singletonList(proposal),

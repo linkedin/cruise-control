@@ -15,24 +15,27 @@ import org.junit.Test;
  */
 public class ExecutionProposalTest {
   private static final TopicPartition TP = new TopicPartition("topic", 0);
+  private final Integer _r0 =  0;
+  private final Integer _r1 =  1;
+  private final Integer _r2 =  2;
 
   @Test (expected = IllegalArgumentException.class)
   public void testNullNewReplicaList() {
-    new ExecutionProposal(TP, 0, 1, Arrays.asList(0, 1), null);
+    new ExecutionProposal(TP, 0, _r1, Arrays.asList(_r0, _r1), null);
   }
 
   @Test (expected = IllegalArgumentException.class)
   public void testEmptyNewReplicaList() {
-    new ExecutionProposal(TP, 0, 1, Arrays.asList(0, 1), Collections.emptyList());
+    new ExecutionProposal(TP, 0, _r1, Arrays.asList(_r0, _r1), Collections.emptyList());
   }
 
   @Test (expected = IllegalArgumentException.class)
   public void testDuplicateReplicaInNewReplicaList() {
-    new ExecutionProposal(TP, 0, 1, Arrays.asList(0, 1), Arrays.asList(2, 2));
+    new ExecutionProposal(TP, 0, _r1, Arrays.asList(_r0, _r1), Arrays.asList(_r2, _r2));
   }
 
   @Test (expected = IllegalArgumentException.class)
   public void testOldLeaderMissingFromOldReplicas() {
-    new ExecutionProposal(TP, 0, 2, Arrays.asList(0, 1), Arrays.asList(2, 2));
+    new ExecutionProposal(TP, 0, _r2, Arrays.asList(_r0, _r1), Arrays.asList(_r2, _r2));
   }
 }
