@@ -835,6 +835,14 @@ public class KafkaCruiseControl {
     return _config;
   }
 
+  private static boolean hasProposalsToExecute(Collection<ExecutionProposal> proposals, String uuid) {
+    if (proposals.isEmpty()) {
+      LOG.info("Goals used in proposal generation for UUID {} are already satisfied.", uuid);
+      return false;
+    }
+    return true;
+  }
+
   /**
    * Execute the given balancing proposals for non-(demote/remove) operations.
    * @param proposals the given balancing proposals
@@ -855,10 +863,12 @@ public class KafkaCruiseControl {
                                 Integer concurrentLeaderMovements,
                                 ReplicaMovementStrategy replicaMovementStrategy,
                                 String uuid) {
-    // Set the execution mode, add execution proposals, and start execution.
-    _executor.setExecutionMode(isKafkaAssignerMode);
-    _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentInterBrokerPartitionMovements,
-                               concurrentLeaderMovements, replicaMovementStrategy, uuid);
+    if (hasProposalsToExecute(proposals, uuid)) {
+      // Set the execution mode, add execution proposals, and start execution.
+      _executor.setExecutionMode(isKafkaAssignerMode);
+      _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentInterBrokerPartitionMovements,
+                                 concurrentLeaderMovements, replicaMovementStrategy, uuid);
+    }
   }
 
   /**
@@ -883,11 +893,13 @@ public class KafkaCruiseControl {
                               Integer concurrentLeaderMovements,
                               ReplicaMovementStrategy replicaMovementStrategy,
                               String uuid) {
-    // Set the execution mode, add execution proposals, and start execution.
-    _executor.setExecutionMode(isKafkaAssignerMode);
-    _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptyList() : removedBrokers,
-                               removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements,
-                               concurrentLeaderMovements, replicaMovementStrategy, uuid);
+    if (hasProposalsToExecute(proposals, uuid)) {
+      // Set the execution mode, add execution proposals, and start execution.
+      _executor.setExecutionMode(isKafkaAssignerMode);
+      _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptyList() : removedBrokers,
+                                 removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements,
+                                 concurrentLeaderMovements, replicaMovementStrategy, uuid);
+    }
   }
 
   /**
@@ -905,16 +917,18 @@ public class KafkaCruiseControl {
                                Integer concurrentLeaderMovements,
                                ReplicaMovementStrategy replicaMovementStrategy,
                                String uuid) {
-    // (1) Kafka Assigner mode is irrelevant for demoting. (2) Ensure that replica swaps within partitions, which are
-    // prerequisites for broker demotion and does not trigger data move, are throttled by concurrentLeaderMovements.
-    int concurrentSwaps = concurrentLeaderMovements != null
-                          ? concurrentLeaderMovements
-                          : _config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
+    if (hasProposalsToExecute(proposals, uuid)) {
+      // (1) Kafka Assigner mode is irrelevant for demoting. (2) Ensure that replica swaps within partitions, which are
+      // prerequisites for broker demotion and does not trigger data move, are throttled by concurrentLeaderMovements.
+      int concurrentSwaps = concurrentLeaderMovements != null
+                            ? concurrentLeaderMovements
+                            : _config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG);
 
-    // Set the execution mode, add execution proposals, and start execution.
-    _executor.setExecutionMode(false);
-    _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
-                                     replicaMovementStrategy, uuid);
+      // Set the execution mode, add execution proposals, and start execution.
+      _executor.setExecutionMode(false);
+      _executor.executeDemoteProposals(proposals, demotedBrokers, _loadMonitor, concurrentSwaps, concurrentLeaderMovements,
+                                       replicaMovementStrategy, uuid);
+    }
   }
 
   /**
