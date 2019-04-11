@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.RequestInfo;
 import java.util.ArrayList;
@@ -35,7 +36,10 @@ public class ReviewResult extends AbstractCruiseControlResponse {
    * @param requestInfoById Request info by Id.
    * @param filteredRequestIds Requests for which the result is requested, empty set implies all requests in review board
    */
-  public ReviewResult(Map<Integer, RequestInfo> requestInfoById, Set<Integer> filteredRequestIds) {
+  public ReviewResult(Map<Integer, RequestInfo> requestInfoById,
+                      Set<Integer> filteredRequestIds,
+                      KafkaCruiseControlConfig config) {
+    super(config);
     _requestInfoById = requestInfoById;
     _filteredRequestIds = filteredRequestIds.isEmpty() ? _requestInfoById.keySet() : filteredRequestIds;
   }

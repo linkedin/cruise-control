@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
 import java.util.regex.Pattern;
@@ -36,8 +37,8 @@ public class PartitionLoadParameters extends AbstractParameters {
   private boolean _wantMaxLoad;
 
 
-  public PartitionLoadParameters(HttpServletRequest request) {
-    super(request);
+  public PartitionLoadParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
   }
 
   @Override

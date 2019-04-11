@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.util.HashMap;
@@ -24,7 +25,9 @@ public class AdminResult extends AbstractCruiseControlResponse {
 
   public AdminResult(Map<AnomalyType, Boolean> selfHealingEnabledBefore,
                      Map<AnomalyType, Boolean> selfHealingEnabledAfter,
-                     String ongoingConcurrencyChangeRequest) {
+                     String ongoingConcurrencyChangeRequest,
+                     KafkaCruiseControlConfig config) {
+    super(config);
     _selfHealingEnabledBefore = selfHealingEnabledBefore;
     _selfHealingEnabledAfter = selfHealingEnabledAfter;
     _ongoingConcurrencyChangeRequest = ongoingConcurrencyChangeRequest;

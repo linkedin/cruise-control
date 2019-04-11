@@ -32,13 +32,11 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   private Integer _concurrentLeaderMovements;
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
-  private final KafkaCruiseControlConfig _config;
   private boolean _ignoreProposalCache;
   private Integer _reviewId;
 
   public RebalanceParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request);
-    _config = config;
+    super(request, config);
   }
 
   @Override

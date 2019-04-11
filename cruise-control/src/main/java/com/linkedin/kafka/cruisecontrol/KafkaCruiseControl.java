@@ -76,7 +76,7 @@ public class KafkaCruiseControl {
   private static final Set<String> KAFKA_ASSIGNER_GOALS =
       Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                                                               KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
-  private final KafkaCruiseControlConfig _config;
+  protected final KafkaCruiseControlConfig _config;
   private final LoadMonitor _loadMonitor;
   private final GoalOptimizer _goalOptimizer;
   private final ExecutorService _goalOptimizerExecutor;
@@ -611,7 +611,7 @@ public class KafkaCruiseControl {
       // Bootstrap the load monitor with the most recent metric samples until it catches up -- clears all metric samples.
       _loadMonitor.bootstrap(clearMetrics);
     }
-    return new BootstrapResult();
+    return new BootstrapResult(_config);
   }
 
   /**
@@ -622,7 +622,7 @@ public class KafkaCruiseControl {
    */
   public TrainResult trainLoadModel(TrainParameters parameters) {
     _loadMonitor.train(parameters.startMs(), parameters.endMs());
-    return new TrainResult();
+    return new TrainResult(_config);
   }
 
   /**
@@ -633,7 +633,7 @@ public class KafkaCruiseControl {
    */
   public PauseSamplingResult pauseLoadMonitorActivity(PauseResumeParameters parameters) {
     _loadMonitor.pauseMetricSampling(parameters.reason());
-    return new PauseSamplingResult();
+    return new PauseSamplingResult(_config);
   }
 
   /**
@@ -688,7 +688,8 @@ public class KafkaCruiseControl {
 
     return new AdminResult(selfHealingBefore,
                            selfHealingAfter,
-                           ongoingConcurrencyChangeRequest.isEmpty() ? null : ongoingConcurrencyChangeRequest);
+                           ongoingConcurrencyChangeRequest.isEmpty() ? null : ongoingConcurrencyChangeRequest,
+                           _config);
   }
 
   /**
@@ -699,7 +700,7 @@ public class KafkaCruiseControl {
    */
   public ResumeSamplingResult resumeLoadMonitorActivity(PauseResumeParameters parameters) {
     _loadMonitor.resumeMetricSampling(parameters.reason());
-    return new ResumeSamplingResult();
+    return new ResumeSamplingResult(_config);
   }
 
   /**
@@ -939,7 +940,7 @@ public class KafkaCruiseControl {
    */
   public StopProposalResult stopProposalExecution(StopProposalParameters parameters) {
     _executor.userTriggeredStopExecution();
-    return new StopProposalResult();
+    return new StopProposalResult(_config);
   }
 
   /**
@@ -959,7 +960,8 @@ public class KafkaCruiseControl {
     return new CruiseControlState(substates.contains(EXECUTOR) ? _executor.state() : null,
                                   substates.contains(MONITOR) ? _loadMonitor.state(operationProgress, clusterAndGeneration) : null,
                                   substates.contains(ANALYZER) ? _goalOptimizer.state(clusterAndGeneration) : null,
-                                  substates.contains(ANOMALY_DETECTOR) ? _anomalyDetector.anomalyDetectorState() : null);
+                                  substates.contains(ANOMALY_DETECTOR) ? _anomalyDetector.anomalyDetectorState() : null,
+                                  _config);
   }
 
   /**
@@ -970,7 +972,7 @@ public class KafkaCruiseControl {
    */
   public KafkaClusterState kafkaClusterState(KafkaClusterStateParameters parameters) {
     Map<String, Object> adminClientConfigs = KafkaCruiseControlUtils.parseAdminClientConfigs(_config);
-    return new KafkaClusterState(_loadMonitor.kafkaCluster(), _loadMonitor.topicConfigProvider(), adminClientConfigs);
+    return new KafkaClusterState(_loadMonitor.kafkaCluster(), _loadMonitor.topicConfigProvider(), adminClientConfigs, _config);
   }
 
   /**

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.io.UnsupportedEncodingException;
 import javax.servlet.http.HttpServletRequest;
@@ -22,8 +23,8 @@ public class ClusterLoadParameters extends AbstractParameters {
   private ModelCompletenessRequirements _requirements;
   private boolean _allowCapacityEstimation;
 
-  public ClusterLoadParameters(HttpServletRequest request) {
-    super(request);
+  public ClusterLoadParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
   }
 
   @Override

@@ -4,12 +4,17 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.getBaseJSONString;
 
 
 public class PauseSamplingResult extends AbstractCruiseControlResponse {
+
+  public PauseSamplingResult(KafkaCruiseControlConfig config) {
+    super(config);
+  }
 
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {

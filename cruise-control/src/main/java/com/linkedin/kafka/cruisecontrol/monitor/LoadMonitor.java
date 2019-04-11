@@ -80,6 +80,7 @@ public class LoadMonitor {
   private final KafkaBrokerMetricSampleAggregator _brokerMetricSampleAggregator;
   // A semaphore to help throttle the simultaneous cluster model creation
   private final Semaphore _clusterModelSemaphore;
+  private final KafkaCruiseControlConfig _config;
   private final MetadataClient _metadataClient;
   private final BrokerCapacityConfigResolver _brokerCapacityConfigResolver;
   private final TopicConfigProvider _topicConfigProvider;
@@ -132,6 +133,8 @@ public class LoadMonitor {
               Time time,
               MetricRegistry dropwizardMetricRegistry,
               MetricDef metricDef) {
+    _config = config;
+
     _metadataClient = metadataClient;
 
     _brokerCapacityConfigResolver = config.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
@@ -411,7 +414,7 @@ public class LoadMonitor {
       throws NotEnoughValidWindowsException {
     ClusterModel clusterModel = clusterModel(-1L, now, requirements, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
-    BrokerStats brokerStats = clusterModel.brokerStats();
+    BrokerStats brokerStats = clusterModel.brokerStats(_config);
     // update the cached brokerLoadStats
     synchronized (this) {
       _cachedBrokerLoadStats = brokerStats;

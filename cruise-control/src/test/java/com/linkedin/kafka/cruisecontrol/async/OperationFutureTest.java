@@ -21,14 +21,14 @@ import static org.junit.Assert.assertFalse;
 
 
 public class OperationFutureTest {
-  private static CruiseControlResponse DEFAULT_RESULT = new PauseSamplingResult();
+  private static CruiseControlResponse DEFAULT_RESULT = new PauseSamplingResult(null);
 
   @Test
   public void testGetCompleted() throws InterruptedException {
     OperationFuture future = new OperationFuture("testGetCompleted");
     TestThread t = new TestThread(future);
     t.start();
-    CruiseControlResponse expectedResponse = new ResumeSamplingResult();
+    CruiseControlResponse expectedResponse = new ResumeSamplingResult(null);
     future.complete(expectedResponse);
     t.join();
     assertTrue(future.isDone());
@@ -78,7 +78,7 @@ public class OperationFutureTest {
               this.wait();
             }
           }
-          return new ResumeSamplingResult();
+          return new ResumeSamplingResult(null);
         } catch (InterruptedException ie) {
           interrupted.set(true);
           throw ie;

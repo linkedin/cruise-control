@@ -31,11 +31,9 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private Integer _reviewId;
-  private final KafkaCruiseControlConfig _config;
 
   public FixOfflineReplicasParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request);
-    _config = config;
+    super(request, config);
   }
 
   @Override

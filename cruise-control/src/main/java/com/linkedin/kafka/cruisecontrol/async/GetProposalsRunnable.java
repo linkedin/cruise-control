@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
@@ -26,10 +27,12 @@ class GetProposalsRunnable extends OperationRunnable {
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
   private final boolean _ignoreProposalCache;
+  private final KafkaCruiseControlConfig _config;
 
   GetProposalsRunnable(KafkaCruiseControl kafkaCruiseControl,
                        OperationFuture future,
-                       ProposalsParameters parameters) {
+                       ProposalsParameters parameters,
+                       KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
     _goals = parameters.goals();
     _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
@@ -38,6 +41,7 @@ class GetProposalsRunnable extends OperationRunnable {
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
     _ignoreProposalCache = parameters.ignoreProposalCache();
+    _config = config;
   }
 
   @Override
@@ -50,6 +54,7 @@ class GetProposalsRunnable extends OperationRunnable {
                                                                    _excludedTopics,
                                                                    _excludeRecentlyDemotedBrokers,
                                                                    _excludeRecentlyRemovedBrokers,
-                                                                   _ignoreProposalCache));
+                                                                   _ignoreProposalCache),
+                                  _config);
   }
 }

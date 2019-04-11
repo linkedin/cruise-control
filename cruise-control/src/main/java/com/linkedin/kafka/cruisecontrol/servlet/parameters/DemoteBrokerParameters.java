@@ -32,12 +32,10 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   private boolean _skipUrpDemotion;
   private boolean _excludeFollowerDemotion;
   private ReplicaMovementStrategy _replicaMovementStrategy;
-  private KafkaCruiseControlConfig _config;
   private Integer _reviewId;
 
   public DemoteBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request);
-    _config = config;
+    super(request, config);
   }
 
   @Override

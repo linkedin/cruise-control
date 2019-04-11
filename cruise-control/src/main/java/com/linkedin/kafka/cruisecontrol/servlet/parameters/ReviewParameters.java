@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
@@ -23,8 +24,8 @@ public class ReviewParameters extends AbstractParameters {
   private String _reason;
   private Map<ReviewStatus, Set<Integer>> _reviewRequests;
 
-  public ReviewParameters(HttpServletRequest request) {
-    super(request);
+  public ReviewParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    super(request, config);
   }
 
   @Override

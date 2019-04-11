@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 
@@ -11,6 +12,10 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.ge
 
 
 public class BootstrapResult extends AbstractCruiseControlResponse {
+
+  public BootstrapResult(KafkaCruiseControlConfig config) {
+    super(config);
+  }
 
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {

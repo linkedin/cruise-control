@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import java.util.ArrayList;
@@ -39,7 +40,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JS
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.describeLogDirs;
 
-
 public class KafkaClusterState extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterState.class);
   private static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
@@ -71,7 +71,9 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
 
   public KafkaClusterState(Cluster kafkaCluster,
                            TopicConfigProvider topicConfigProvider,
-                           Map<String, Object> adminClientConfigs) {
+                           Map<String, Object> adminClientConfigs,
+                           KafkaCruiseControlConfig config) {
+    super(config);
     _kafkaCluster = kafkaCluster;
     _allTopicConfigs = topicConfigProvider.allTopicConfigs();
     _clusterConfigs = topicConfigProvider.clusterConfigs();
