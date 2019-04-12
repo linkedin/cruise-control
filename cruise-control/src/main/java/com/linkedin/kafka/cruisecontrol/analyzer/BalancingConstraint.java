@@ -83,8 +83,8 @@ public class BalancingConstraint {
     props.put(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, _maxReplicasPerBroker.toString());
     props.put(KafkaCruiseControlConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _replicaBalancePercentage.toString());
     props.put(KafkaCruiseControlConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _topicReplicaBalancePercentage.toString());
-    props.put(KafkaCruiseControlConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG, _goalViolationDistributionThresholdMultiplier
-        .toString());
+    props.put(KafkaCruiseControlConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
+              _goalViolationDistributionThresholdMultiplier.toString());
     return props;
   }
 

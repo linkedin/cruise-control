@@ -335,7 +335,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG = "goal.violation.distribution.threshold.multiplier";
   private static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_DOC = "The multiplier applied to the threshold"
       + " of distribution goals used for detecting and fixing anomalies. For example, 2.50 means the threshold for each "
-      + "distribution goal will be 2.50x of the value used in manual goal optimization requests (e.g. rebalance).";
+      + "distribution goal (i.e. Replica Distribution, Resource Distribution, and Topic Replica Distribution Goals) will "
+      + "be 2.50x of the value used in manual goal optimization requests (e.g. rebalance).";
 
   /**
    * <code>cpu.capacity.threshold</code>
