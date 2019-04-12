@@ -557,8 +557,8 @@ public class ParameterUtils {
     Set<AnomalyType> intersection = new HashSet<>(enableSelfHealingFor);
     intersection.retainAll(disableSelfHealingFor);
     if (!intersection.isEmpty()) {
-      throw new IllegalArgumentException(String.format("The same anomaly cannot be specified in both disable and"
-                                                       + "enable parameters. Intersection: %s.", intersection));
+      throw new UserRequestException(String.format("The same anomaly cannot be specified in both disable and"
+                                                   + "enable parameters. Intersection: %s.", intersection));
     }
 
     Map<Boolean, Set<AnomalyType>> selfHealingFor = new HashMap<>(2);
@@ -716,10 +716,18 @@ public class ParameterUtils {
    */
   static Set<Integer> destinationBrokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<Integer> brokerIds = Collections.unmodifiableSet(parseParamToIntegerSet(request, DESTINATION_BROKER_IDS_PARAM));
-    if (!brokerIds.isEmpty() && isKafkaAssignerMode(request)) {
-      throw new UserRequestException("Kafka assigner mode does not support explicitly specifying destination broker ids.");
+    if (!brokerIds.isEmpty()) {
+      if (isKafkaAssignerMode(request)) {
+        throw new UserRequestException("Kafka assigner mode does not support explicitly specifying destination broker ids.");
+      }
+
+      Set<Integer> intersection = new HashSet<>(parseParamToIntegerSet(request, BROKER_ID_PARAM));
+      intersection.retainAll(brokerIds);
+      if (!intersection.isEmpty()) {
+        throw new UserRequestException("No overlap is allowed between the specified destination broker ids and broker ids.");
+      }
     }
-    
+
     return brokerIds;
   }
 
@@ -745,11 +753,11 @@ public class ParameterUtils {
     Set<Integer> intersection = new HashSet<>(approve);
     intersection.retainAll(discard);
     if (!intersection.isEmpty()) {
-      throw new IllegalArgumentException(String.format("The same request cannot be specified in both approve and"
-                                                       + "discard parameters. Intersection: %s.", intersection));
+      throw new UserRequestException(String.format("The same request cannot be specified in both approve and"
+                                                   + "discard parameters. Intersection: %s.", intersection));
     } else if (approve.isEmpty() && discard.isEmpty()) {
-      throw new IllegalArgumentException(String.format("%s endpoint requires at least one of '%s' or '%s' parameter.",
-                                                       REVIEW, APPROVE_PARAM, DISCARD_PARAM));
+      throw new UserRequestException(String.format("%s endpoint requires at least one of '%s' or '%s' parameter.",
+                                                   REVIEW, APPROVE_PARAM, DISCARD_PARAM));
     }
 
     Map<ReviewStatus, Set<Integer>> reviewRequest = new HashMap<>(2);

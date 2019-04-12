@@ -21,7 +21,7 @@ import java.util.regex.Pattern;
  * Integer, Integer, boolean, Pattern, ReplicaMovementStrategy, String, boolean, boolean, Set)}
  */
 class DecommissionBrokersRunnable extends OperationRunnable {
-  private final Set<Integer> _removedBrokers;
+  private final Set<Integer> _removedBrokerIds;
   private final Set<Integer> _destinationBrokerIds;
   private final boolean _dryRun;
   private final boolean _throttleRemovedBrokers;
@@ -44,7 +44,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
                               String uuid,
                               KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
-    _removedBrokers = parameters.brokerIds();
+    _removedBrokerIds = parameters.brokerIds();
     _dryRun = parameters.dryRun();
     _throttleRemovedBrokers = parameters.throttleRemovedBrokers();
     _destinationBrokerIds = parameters.destinationBrokerIds();
@@ -64,7 +64,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
 
   @Override
   protected OptimizationResult getResult() throws Exception {
-    return new OptimizationResult(_kafkaCruiseControl.decommissionBrokers(_removedBrokers,
+    return new OptimizationResult(_kafkaCruiseControl.decommissionBrokers(_removedBrokerIds,
                                                                           _dryRun,
                                                                           _throttleRemovedBrokers,
                                                                           _goals,

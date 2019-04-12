@@ -669,6 +669,7 @@ public class KafkaCruiseControl {
    * 2. Provided completeness requirements contain a weaker requirement than what is used by the cached proposal.
    * 3. There is an ongoing execution.
    * 4. The request is triggered by goal violation detector.
+   * 5. The request involves explicitly requested destination broker Ids.
    *
    * @param goals A list of goals to optimize. When empty all goals will be used.
    * @param requirements Model completeness requirements.
@@ -676,6 +677,8 @@ public class KafkaCruiseControl {
    * @param excludeBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param ignoreProposalCache True to explicitly ignore the proposal cache, false otherwise.
    * @param isTriggeredByGoalViolation True if proposals is triggered by goal violation, false otherwise.
+   * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
+   *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
    * @return True to ignore proposal cache, false otherwise.
    */
   private boolean ignoreProposalCache(List<String> goals,
@@ -683,7 +686,8 @@ public class KafkaCruiseControl {
                                       Pattern excludedTopics,
                                       boolean excludeBrokers,
                                       boolean ignoreProposalCache,
-                                      boolean isTriggeredByGoalViolation) {
+                                      boolean isTriggeredByGoalViolation,
+                                      Set<Integer> requestedDestinationBrokerIds) {
     ModelCompletenessRequirements requirementsForCache = _goalOptimizer.modelCompletenessRequirementsForPrecomputing();
     boolean hasWeakerRequirement =
         requirementsForCache.minMonitoredPartitionsPercentage() > requirements.minMonitoredPartitionsPercentage()
@@ -691,7 +695,8 @@ public class KafkaCruiseControl {
         || (requirementsForCache.includeAllTopics() && !requirements.includeAllTopics());
 
     return _executor.hasOngoingExecution() || ignoreProposalCache || (goals != null && !goals.isEmpty())
-           || hasWeakerRequirement || excludedTopics != null || excludeBrokers || isTriggeredByGoalViolation;
+           || hasWeakerRequirement || excludedTopics != null || excludeBrokers || isTriggeredByGoalViolation
+           || !requestedDestinationBrokerIds.isEmpty();
   }
 
   /**
@@ -733,7 +738,8 @@ public class KafkaCruiseControl {
                             excludedTopics,
                             excludeBrokers,
                             ignoreProposalCache,
-                            isTriggeredByGoalViolation)) {
+                            isTriggeredByGoalViolation,
+                            requestedDestinationBrokerIds)) {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         ClusterModel clusterModel = _loadMonitor.clusterModel(-1,
                                                               _time.milliseconds(),

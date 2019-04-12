@@ -93,13 +93,13 @@ public class GoalUtils {
                                                             Replica replica,
                                                             ActionType action) {
     Set<Integer> requestedDestinationBrokerIds = optimizationOptions.requestedDestinationBrokerIds();
-    if (requestedDestinationBrokerIds.isEmpty()) {
+    if (requestedDestinationBrokerIds.isEmpty() || (action == ActionType.LEADERSHIP_MOVEMENT)) {
       Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForLeadership();
       if (!excludedBrokers.isEmpty()
           && (action == ActionType.LEADERSHIP_MOVEMENT || (replica.originalBroker().isAlive() && replica.isLeader()))) {
         originalBrokers.removeIf(broker -> excludedBrokers.contains(broker.id()));
       }
-    } else if (action != ActionType.LEADERSHIP_MOVEMENT) {
+    } else {
       // Retain only the brokers that are in the requested destination brokers.
       originalBrokers.removeIf(b -> !requestedDestinationBrokerIds.contains(b.id()));
     }
