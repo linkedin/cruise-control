@@ -17,8 +17,8 @@ import java.util.regex.Pattern;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern,
- * ReplicaMovementStrategy, String, boolean, boolean, boolean, boolean, Set)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, Integer, boolean,
+ * Pattern, ReplicaMovementStrategy, String, boolean, boolean, boolean, boolean, Set, boolean)}
  */
 class RebalanceRunnable extends OperationRunnable {
   private final List<String> _goals;
@@ -26,6 +26,7 @@ class RebalanceRunnable extends OperationRunnable {
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
   private final Integer _concurrentInterBrokerPartitionMovements;
+  private final Integer _concurrentIntraBrokerPartitionMovements;
   private final Integer _concurrentLeaderMovements;
   private final boolean _skipHardGoalCheck;
   private final Pattern _excludedTopics;
@@ -36,6 +37,7 @@ class RebalanceRunnable extends OperationRunnable {
   private final boolean _ignoreProposalCache;
   private final Set<Integer> _destinationBrokerIds;
   private final KafkaCruiseControlConfig _config;
+  private final boolean _isRebalanceDiskMode;
 
   RebalanceRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture future,
@@ -48,6 +50,7 @@ class RebalanceRunnable extends OperationRunnable {
     _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
+    _concurrentIntraBrokerPartitionMovements = parameters.concurrentIntraBrokerPartitionMovements();
     _concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
@@ -58,6 +61,7 @@ class RebalanceRunnable extends OperationRunnable {
     _ignoreProposalCache = parameters.ignoreProposalCache();
     _destinationBrokerIds = parameters.destinationBrokerIds();
     _config = config;
+    _isRebalanceDiskMode =  parameters.isRebalanceDiskMode();
   }
 
   @Override
@@ -68,6 +72,7 @@ class RebalanceRunnable extends OperationRunnable {
                                                                 _future.operationProgress(),
                                                                 _allowCapacityEstimation,
                                                                 _concurrentInterBrokerPartitionMovements,
+                                                                _concurrentIntraBrokerPartitionMovements,
                                                                 _concurrentLeaderMovements,
                                                                 _skipHardGoalCheck,
                                                                 _excludedTopics,
@@ -77,7 +82,8 @@ class RebalanceRunnable extends OperationRunnable {
                                                                 _excludeRecentlyRemovedBrokers,
                                                                 _ignoreProposalCache,
                                                                 false,
-                                                                _destinationBrokerIds),
+                                                                _destinationBrokerIds,
+                                                                _isRebalanceDiskMode),
                                   _config);
   }
 }

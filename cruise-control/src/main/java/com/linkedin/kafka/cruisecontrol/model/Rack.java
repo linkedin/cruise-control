@@ -21,6 +21,7 @@ import java.util.Set;
 
 import org.apache.kafka.common.TopicPartition;
 
+import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 
 /**
  * A class that holds the information of the rack, including its topology, liveness and load for brokers, and
@@ -281,6 +282,18 @@ public class Rack implements Serializable {
       }
       _rackCapacity[r.id()] = capacity;
     }
+  }
+
+  /**
+   * Mark specified disk dead and update the capacity.
+   *
+   * @param brokerId The id of broker which host the disk.
+   * @param logdir Log directory of the disk.
+   */
+  void markDiskDead(int brokerId, String logdir) {
+    Broker broker = broker(brokerId);
+    double capacityLost = broker.host().markDiskDead(brokerId, logdir);
+    _rackCapacity[DISK.id()] -= capacityLost;
   }
 
   /*

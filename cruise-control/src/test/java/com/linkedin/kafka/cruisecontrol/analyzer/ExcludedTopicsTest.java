@@ -29,6 +29,7 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
+import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -247,8 +248,8 @@ public class ExcludedTopicsTest {
   @Test
   public void test() throws Exception {
     if (_exceptionClass == null) {
-      Map<TopicPartition, List<Integer>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
-      Map<TopicPartition, Integer> initLeaderDistribution = _clusterModel.getLeaderDistribution();
+      Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
+      Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
 
       Set<String> excludedTopics = _optimizationOptions.excludedTopics();
       if (_expectedToOptimize) {
@@ -265,10 +266,10 @@ public class ExcludedTopicsTest {
 
         for (ExecutionProposal proposal : goalProposals) {
           if (excludedTopics.contains(proposal.topic())) {
-            for (int brokerId : proposal.replicasToRemove()) {
-              if (_clusterModel.broker(brokerId).isAlive()) {
+            for (ReplicaPlacementInfo r : proposal.replicasToRemove()) {
+              if (_clusterModel.broker(r.brokerId()).isAlive()) {
                 fail(String.format("Proposal %s contains excluded topic %s, but the broker %d is still alive.",
-                                   proposal, proposal.topic(), brokerId));
+                                   proposal, proposal.topic(), r.brokerId()));
               }
             }
           }

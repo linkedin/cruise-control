@@ -29,6 +29,7 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
+import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -227,8 +228,8 @@ public class ExcludedBrokersForLeadershipTest {
   @Test
   public void test() throws Exception {
     if (_exceptionClass == null) {
-      Map<TopicPartition, List<Integer>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
-      Map<TopicPartition, Integer> initLeaderDistribution = _clusterModel.getLeaderDistribution();
+      Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
+      Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
 
       Set<Integer> excludedBrokersForLeadership = _optimizationOptions.excludedBrokersForLeadership();
       if (_expectedToOptimize) {
@@ -243,8 +244,8 @@ public class ExcludedBrokersForLeadershipTest {
         Set<ExecutionProposal> goalProposals =
             AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, _clusterModel);
         for (ExecutionProposal proposal : goalProposals) {
-          if (proposal.hasLeaderAction() && excludedBrokersForLeadership.contains(proposal.newLeader())
-              && _clusterModel.broker(proposal.oldLeader()).isAlive()) {
+          if (proposal.hasLeaderAction() && excludedBrokersForLeadership.contains(proposal.newLeader().brokerId())
+              && _clusterModel.broker(proposal.oldLeader().brokerId()).isAlive()) {
             fail(String.format("Leadership move in %s from an online replica to an excluded broker for leadership %s.",
                                proposal, excludedBrokersForLeadership));
           }

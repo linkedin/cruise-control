@@ -26,7 +26,7 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameters {
   private boolean _dryRun;
-  private Integer _concurrentPartitionMovements;
+  private Integer _concurrentInterBrokerPartitionMovements;
   private Integer _concurrentLeaderMovements;
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
@@ -40,8 +40,8 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     _dryRun = ParameterUtils.getDryRun(_request);
-    _concurrentPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
@@ -61,8 +61,8 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     return _dryRun;
   }
 
-  public Integer concurrentPartitionMovements() {
-    return _concurrentPartitionMovements;
+  public Integer concurrentInterBrokerPartitionMovements() {
+    return _concurrentInterBrokerPartitionMovements;
   }
 
   public Integer concurrentLeaderMovements() {

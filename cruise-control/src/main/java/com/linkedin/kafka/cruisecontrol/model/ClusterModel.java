@@ -134,15 +134,18 @@ public class ClusterModel implements Serializable {
    *
    * @return The replica distribution of leader and follower replicas in the cluster at the point of call.
    */
-  public Map<TopicPartition, List<Integer>> getReplicaDistribution() {
-    Map<TopicPartition, List<Integer>> replicaDistribution = new HashMap<>(_partitionsByTopicPartition.size());
+  public Map<TopicPartition, List<ReplicaPlacementInfo>> getReplicaDistribution() {
+    Map<TopicPartition, List<ReplicaPlacementInfo>> replicaDistribution = new HashMap<>(_partitionsByTopicPartition.size());
 
     for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
       TopicPartition tp = entry.getKey();
       Partition partition = entry.getValue();
-      List<Integer> brokerIds = partition.replicas().stream().map(r -> r.broker().id()).collect(Collectors.toList());
+      List<ReplicaPlacementInfo> replicaPlacementInfos = partition.replicas().stream()
+                                                         .map(r -> r.disk() == null ? new ReplicaPlacementInfo(r.broker().id()) :
+                                                                                      new ReplicaPlacementInfo(r.broker().id(), r.disk().logDir()))
+                                                         .collect(Collectors.toList());
       // Add distribution of replicas in the partition.
-      replicaDistribution.put(tp, brokerIds);
+      replicaDistribution.put(tp, replicaPlacementInfos);
     }
 
     return replicaDistribution;
@@ -151,10 +154,15 @@ public class ClusterModel implements Serializable {
   /**
    * Get leader broker ids for each partition.
    */
-  public Map<TopicPartition, Integer> getLeaderDistribution() {
-    Map<TopicPartition, Integer> leaders = new HashMap<>(_partitionsByTopicPartition.size());
+  public Map<TopicPartition, ReplicaPlacementInfo> getLeaderDistribution() {
+    Map<TopicPartition, ReplicaPlacementInfo> leaders = new HashMap<>(_partitionsByTopicPartition.size());
     for (Map.Entry<TopicPartition, Partition> entry : _partitionsByTopicPartition.entrySet()) {
-      leaders.put(entry.getKey(), entry.getValue().leader().broker().id());
+      Replica leaderReplica = entry.getValue().leader();
+      if (leaderReplica.disk() == null) {
+        leaders.put(entry.getKey(), new ReplicaPlacementInfo(leaderReplica.broker().id()));
+      } else {
+        leaders.put(entry.getKey(), new ReplicaPlacementInfo(leaderReplica.broker().id(), leaderReplica.disk().logDir()));
+      }
     }
     return leaders;
   }
@@ -281,15 +289,46 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * (1) Remove the replica from the source broker,
-   * (2) Set the broker of the removed replica as the destination broker,
-   * (3) Add this replica to the destination broker.
-   * * There is no need to make any modifications to _partitionsByTopicPartition because even after the move,
+   * Set the given disk to dead state.
+   * This method is for testing only.
+   *
+   * @param brokerId Id of the broker on which the disk resides.
+   * @param logdir   Log directory of the disk.
+   */
+  void markDiskDead(int brokerId, String logdir) {
+    Broker broker = broker(brokerId);
+    if (broker == null) {
+      throw new IllegalArgumentException("Broker " + brokerId + " does not exist.");
+    }
+    broker.rack().markDiskDead(brokerId, logdir);
+    _selfHealingEligibleReplicas.addAll(broker.currentOfflineReplicas());
+    refreshCapacity();
+  }
+
+  /**
+   * For replica movement across the disks of the same broker.
+   *
+   * @param tp                Partition Info of the replica to be relocated.
+   * @param brokerId          Broker id.
+   * @param destinationLogdir Destination logdir.
+   */
+  public void relocateReplica(TopicPartition tp, int brokerId, String destinationLogdir) {
+    Replica replicaToMove =  _partitionsByTopicPartition.get(tp).replica(brokerId);
+    // Move replica from the source disk to destination disk on the same broker.
+    replicaToMove.broker().moveReplicaBetweenDisks(tp, replicaToMove.disk().logDir(), destinationLogdir);
+  }
+
+  /**
+   * For replica movement across the broker:
+   *    (1) Remove the replica from the source broker,
+   *    (2) Set the broker of the removed replica as the destination broker,
+   *    (3) Add this replica to the destination broker.
+   * There is no need to make any modifications to _partitionsByTopicPartition because even after the move,
    * partitions will contain the same replicas.
    *
-   * @param tp      Partition Info of the replica to be relocated.
-   * @param sourceBrokerId      Source broker id.
-   * @param destinationBrokerId Destination broker id.
+   * @param tp                      Partition Info of the replica to be relocated.
+   * @param sourceBrokerId          Source broker id.
+   * @param destinationBrokerId     Destination broker id.
    */
   public void relocateReplica(TopicPartition tp, int sourceBrokerId, int destinationBrokerId) {
     // Removes the replica and related load from the source broker / source rack / cluster.
@@ -689,7 +728,7 @@ public class ClusterModel implements Serializable {
       createRack(rackId);
     }
     if (broker(brokerId) == null) {
-      createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacityInfo);
+      createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacityInfo, false);
     }
   }
 
@@ -698,7 +737,7 @@ public class ClusterModel implements Serializable {
    * created replica. Set the replica as offline if it is on a dead broker.
    *
    * The {@link com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor} uses {@link #createReplica(String, int,
-   * TopicPartition, int, boolean, boolean)} while setting the replica offline status, and it considers the broken disks,
+   * TopicPartition, int, boolean, boolean, String)} while setting the replica offline status, and it considers the broken disks,
    * as well. Whereas, this method is used only by the unit tests. The relevant unit tests may use
    * {@link Replica#markOriginalOffline()} to mark offline replicas on broken disks.
    *
@@ -713,7 +752,7 @@ public class ClusterModel implements Serializable {
    * @return Created replica.
    */
   public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader) {
-    return createReplica(rackId, brokerId, tp, index, isLeader, !broker(brokerId).isAlive());
+    return createReplica(rackId, brokerId, tp, index, isLeader, !broker(brokerId).isAlive(), null);
   }
 
   /**
@@ -726,10 +765,31 @@ public class ClusterModel implements Serializable {
    * @param index          The index of the replica in the replica list.
    * @param isLeader       True if the replica is a leader, false otherwise.
    * @param isOffline      True if the replica is offline in its original location, false otherwise.
+   * @param logdir         The logdir of replica's hosting disk. If replica placement over disk information is not populated,
+   *                       this parameter is null.
    * @return Created replica.
    */
-  public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader, boolean isOffline) {
-    Replica replica = new Replica(tp, broker(brokerId), isLeader, isOffline);
+  public Replica createReplica(String rackId,
+                               int brokerId,
+                               TopicPartition tp,
+                               int index,
+                               boolean isLeader,
+                               boolean isOffline,
+                               String logdir) {
+    Broker broker = broker(brokerId);
+    Disk disk = null;
+    if (logdir != null) {
+      disk = broker.disk(logdir);
+      if (disk == null) {
+        // If dead disk information is not reported by BrokerCapacityConfigResolver, add dead disk information to cluster model..
+        if (isOffline) {
+          disk = broker.addDeadDisk(logdir);
+        } else {
+          throw new IllegalStateException("Missing disk information for disk " + logdir + " on broker " + this);
+        }
+      }
+    }
+    Replica replica = new Replica(tp, broker, isLeader, isOffline, disk);
     rack(rackId).addReplica(replica);
 
     // Add replica to its partition.
@@ -771,9 +831,14 @@ public class ClusterModel implements Serializable {
    * @param host The host of this broker
    * @param brokerId Id of the broker to be created.
    * @param brokerCapacityInfo Capacity information of the created broker.
+   * @param populateReplicaPlacementInfo Whether populate replica placement over disk information or not.
    * @return Created broker.
    */
-  public Broker createBroker(String rackId, String host, int brokerId, BrokerCapacityInfo brokerCapacityInfo) {
+  public Broker createBroker(String rackId,
+                             String host,
+                             int brokerId,
+                             BrokerCapacityInfo brokerCapacityInfo,
+                             boolean populateReplicaPlacementInfo) {
     _potentialLeadershipLoadByBrokerId.putIfAbsent(brokerId, new Load());
     Rack rack = rack(rackId);
     _brokerIdToRack.put(brokerId, rack);
@@ -781,7 +846,8 @@ public class ClusterModel implements Serializable {
     if (brokerCapacityInfo.isEstimated()) {
       _capacityEstimationInfoByBrokerId.put(brokerId, brokerCapacityInfo.estimationInfo());
     }
-    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo.capacity(), brokerCapacityInfo.diskCapacityByLogDir());
+    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo.capacity(),
+                                      populateReplicaPlacementInfo ? brokerCapacityInfo.diskCapacityByLogDir() : null);
     _aliveBrokers.add(broker);
     _brokers.add(broker);
     refreshCapacity();
@@ -1077,7 +1143,9 @@ public class ClusterModel implements Serializable {
                                        potentialLeadershipLoadFor(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
                                        broker.replicas().size(), broker.leaderReplicas().size(),
                                        _capacityEstimationInfoByBrokerId.get(broker.id()) != null,
-                                        broker.capacityFor(Resource.DISK));
+                                       broker.capacityFor(Resource.DISK),
+                                       broker.aliveDiskUtils(),
+                                       broker.diskCapacities());
     });
     return brokerStats;
   }

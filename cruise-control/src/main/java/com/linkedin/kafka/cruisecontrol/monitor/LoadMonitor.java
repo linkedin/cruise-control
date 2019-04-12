@@ -14,9 +14,11 @@ import com.linkedin.cruisecontrol.monitor.sampling.aggregator.Extrapolation;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleCompleteness;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -46,22 +48,32 @@ import java.util.Map;
 import java.util.Set;
 import java.util.SortedMap;
 import java.util.SortedSet;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.apache.kafka.clients.Metadata;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.internals.ClusterResourceListeners;
+import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEAD;
+import static org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
+import static org.apache.kafka.common.requests.DescribeLogDirsResponse.ReplicaInfo;
 
 /**
  * The LoadMonitor monitors the workload of a Kafka cluster. It periodically triggers the metric sampling and
@@ -82,6 +94,7 @@ public class LoadMonitor {
   private final Semaphore _clusterModelSemaphore;
   private final KafkaCruiseControlConfig _config;
   private final MetadataClient _metadataClient;
+  private final AdminClient _adminClient;
   private final BrokerCapacityConfigResolver _brokerCapacityConfigResolver;
   private final TopicConfigProvider _topicConfigProvider;
   private final ScheduledExecutorService _loadMonitorExecutor;
@@ -120,6 +133,7 @@ public class LoadMonitor {
                                          new ClusterResourceListeners()),
                             METADATA_TTL,
                             time),
+         KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config)),
          time,
          dropwizardMetricRegistry,
          metricDef);
@@ -130,12 +144,15 @@ public class LoadMonitor {
    */
   LoadMonitor(KafkaCruiseControlConfig config,
               MetadataClient metadataClient,
+              AdminClient adminClient,
               Time time,
               MetricRegistry dropwizardMetricRegistry,
               MetricDef metricDef) {
     _config = config;
 
     _metadataClient = metadataClient;
+
+    _adminClient = adminClient;
 
     _brokerCapacityConfigResolver = config.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_CONFIG,
                                                                  BrokerCapacityConfigResolver.class);
@@ -199,6 +216,7 @@ public class LoadMonitor {
     }
     _loadMonitorTaskRunner.shutdown();
     _metadataClient.close();
+    KafkaCruiseControlUtils.closeAdminClientWithTimeout(_adminClient);
     LOG.info("Load Monitor shutdown completed.");
   }
 
@@ -438,6 +456,26 @@ public class LoadMonitor {
                                    ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException {
+    return clusterModel(from, to, requirements, false, operationProgress);
+  }
+
+  /**
+   * Get the cluster load model for a time range.
+   *
+   * @param from start of the time window
+   * @param to end of the time window
+   * @param requirements the load completeness requirements.
+   * @param populateReplicaPlacementInfo whether populate replica placement information.
+   * @param operationProgress the progress of the job to report.
+   * @return A cluster model with the available snapshots whose timestamp is in the given window.
+   * @throws NotEnoughValidWindowsException If there is not enough sample to generate cluster model.
+   */
+  public ClusterModel clusterModel(long from,
+                                   long to,
+                                   ModelCompletenessRequirements requirements,
+                                   boolean populateReplicaPlacementInfo,
+                                   OperationProgress operationProgress)
+      throws NotEnoughValidWindowsException {
     long start = System.currentTimeMillis();
 
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
@@ -476,14 +514,22 @@ public class LoadMonitor {
         clusterModel.createRack(rack);
         BrokerCapacityInfo brokerCapacity =
             _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
-        clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity);
+        LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.",
+                  node.id(), brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
+        clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity, populateReplicaPlacementInfo);
+      }
+
+      // Populate replica placement information for the cluster model if requested.
+      Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo = null;
+      if (populateReplicaPlacementInfo) {
+        replicaPlacementInfo = getReplicaPlacementInfo(clusterModel, kafkaCluster);
       }
 
       // Populate snapshots for the cluster model.
       for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : loadSnapshots.entrySet()) {
         TopicPartition tp = entry.getKey().tp();
         ValuesAndExtrapolations leaderLoad = entry.getValue();
-        populateLoad(kafkaCluster, clusterModel, tp, leaderLoad);
+        populateLoad(kafkaCluster, clusterModel, tp, leaderLoad, replicaPlacementInfo);
       }
 
       // Get the dead brokers and mark them as dead.
@@ -494,6 +540,7 @@ public class LoadMonitor {
           clusterModel.setBrokerState(brokerId, Broker.State.BAD_DISKS);
         }
       }
+
       if (LOG.isDebugEnabled()) {
         LOG.debug("Generated cluster model in {} ms", System.currentTimeMillis() - start);
       }
@@ -501,6 +548,46 @@ public class LoadMonitor {
       ctx.stop();
     }
     return clusterModel;
+  }
+
+  /**
+   * Get replica placement information, i.e. each replica resides on which disk of the broker.
+   *
+   * @param clusterModel The cluster model to populate replica placement information.
+   * @param cluster The cluster metadata.
+   * @return A map from topic partition to replica placement information.
+   *
+   */
+  private Map<TopicPartition, Map<Integer, String>> getReplicaPlacementInfo(ClusterModel clusterModel, Cluster cluster) {
+    Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo = new HashMap<>();
+    Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId =
+        _adminClient.describeLogDirs(cluster.nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toList())).values();
+    for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
+      Integer brokerId =  entry.getKey();
+      try {
+        entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
+          if (info.error == Errors.NONE) {
+            for (Map.Entry<TopicPartition, ReplicaInfo> e : info.replicaInfos.entrySet()) {
+              if (!e.getValue().isFuture) {
+                replicaPlacementInfo.putIfAbsent(e.getKey(), new HashMap<>());
+                replicaPlacementInfo.get(e.getKey()).put(brokerId, logdir);
+              } else {
+                LOG.trace("Topic partition {}'s replica is moving to {} on broker {} ", e.getKey(), logdir, brokerId);
+              }
+            }
+          } else {
+            clusterModel.broker(brokerId).disk(logdir).setState(DEAD);
+          }
+        });
+      } catch (TimeoutException te) {
+        throw new RuntimeException(String.format("Getting logdir information for broker %d encountered TimeoutException %s.",
+                                                 entry.getKey(), te));
+      } catch (InterruptedException | ExecutionException e) {
+        throw new RuntimeException(String.format("Populating logdir information for broker %d encountered Exception %s.",
+                                                 entry.getKey(), e));
+      }
+    }
+    return replicaPlacementInfo;
   }
 
   /**
@@ -584,7 +671,8 @@ public class LoadMonitor {
   private void populateLoad(Cluster kafkaCluster,
                             ClusterModel clusterModel,
                             TopicPartition tp,
-                            ValuesAndExtrapolations valuesAndExtrapolations) {
+                            ValuesAndExtrapolations valuesAndExtrapolations,
+                            Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo) {
     PartitionInfo partitionInfo = kafkaCluster.partition(tp);
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
@@ -606,7 +694,10 @@ public class LoadMonitor {
         boolean isOffline = Arrays.stream(partitionInfo.offlineReplicas())
                                   .anyMatch(offlineReplica -> offlineReplica.id() == replica.id());
 
-        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader, isOffline);
+        String logdir = replicaPlacementInfo == null ? null : replicaPlacementInfo.get(tp).get(replica.id());
+        // If the replica's logdir is null, it is either because replica placement information is not populated for the cluster
+        // model or this replica is hosted on a dead disk and is not considered for intra-broker replica operations.
+        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader, isOffline, logdir);
         clusterModel.setReplicaLoad(rack,
                                     replica.id(),
                                     tp,

@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.Disk;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -29,6 +30,7 @@ import java.util.stream.Collectors;
 public class GoalUtils {
   public static final int MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING = 1;
   private static final double DEAD_BROKER_UTILIZATION = 1.0;
+  private static final double DEAD_DISK_UTILIZATION = 1.0;
 
   private GoalUtils() {
 
@@ -184,7 +186,10 @@ public class GoalUtils {
    * @param actionType Action type.
    * @return True if the move is legit, false otherwise.
    */
-  static boolean legitMove(Replica replica, Broker destinationBroker, ClusterModel clusterModel, ActionType actionType) {
+  static boolean legitMove(Replica replica,
+                           Broker destinationBroker,
+                           ClusterModel clusterModel,
+                           ActionType actionType) {
     switch (actionType) {
       case INTER_BROKER_REPLICA_MOVEMENT:
         return clusterModel.partition(replica.topicPartition()).canAssignReplicaToBroker(destinationBroker)
@@ -194,6 +199,24 @@ public class GoalUtils {
       default:
         return false;
     }
+  }
+
+  /**
+   * Check whether the proposed intra-broker action is legit. An action is legit if it is a replica movement across the
+   * disks of the same broker, and the destination disk is alive.
+   *
+   * @param replica Replica that is affected from the given action type.
+   * @param destinationDisk Destination disk.
+   * @param actionType Action type.
+   * @return True if the move is legit, false otherwise.
+   */
+  static boolean legitMoveBetweenDisks(Replica replica,
+                                       Disk destinationDisk,
+                                       ActionType actionType) {
+    return actionType == ActionType.INTRA_BROKER_REPLICA_MOVEMENT
+           && destinationDisk != null
+           && destinationDisk.broker() == replica.broker()
+           && destinationDisk.isAlive();
   }
 
   /**
@@ -335,5 +358,34 @@ public class GoalUtils {
   public static double utilizationPercentage(Broker broker, Resource resource) {
     double brokerCapacity = broker.capacityFor(resource);
     return brokerCapacity > 0 ? broker.load().expectedUtilizationFor(resource) / brokerCapacity : DEAD_BROKER_UTILIZATION;
+  }
+
+  /**
+   * Get the latest average utilization percentage of all the alive disks on the broker.
+   *
+   * @param broker Broker for which the average disk utilization percentage has been queried.
+   * @return Latest average utilization percentage of all the alive disks on the broker.
+   */
+  public static double averageDiskUtilizationPercentage(Broker broker) {
+    double totalAliveDiskCapacity = 0;
+    double totalAliveDiskUtilization = 0;
+    for (Disk disk : broker.disks()) {
+      if (disk.isAlive()) {
+        totalAliveDiskCapacity += disk.capacity();
+        totalAliveDiskUtilization += disk.utilization();
+      }
+    }
+    return totalAliveDiskCapacity > 0 ? totalAliveDiskUtilization / totalAliveDiskCapacity : DEAD_BROKER_UTILIZATION;
+  }
+
+  /**
+   * Get the latest utilization percentage of the disk, or {@link #DEAD_DISK_UTILIZATION} if the disk is dead.
+   *
+   * @param disk Disk to query.
+   * @return Latest utilization percentage of the disk.
+   */
+  public static double diskUtilizationPercentage(Disk disk) {
+    double diskCapacity = disk.capacity();
+    return diskCapacity > 0 ? disk.utilization() / diskCapacity : DEAD_DISK_UTILIZATION;
   }
 }

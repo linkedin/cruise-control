@@ -43,7 +43,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     super.initParameters();
     _brokerIds = ParameterUtils.brokerIds(_request);
     _dryRun = ParameterUtils.getDryRun(_request);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
     _skipUrpDemotion = ParameterUtils.skipUrpDemotion(_request);
     _excludeFollowerDemotion = ParameterUtils.excludeFollowerDemotion(_request);

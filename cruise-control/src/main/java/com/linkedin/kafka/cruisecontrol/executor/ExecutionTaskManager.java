@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.Time;
@@ -32,12 +33,15 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.Exe
  */
 public class ExecutionTaskManager {
   private final Map<Integer, Integer> _inProgressInterBrokerReplicaMovementsByBrokerId;
+  private final Map<Integer, Integer> _inProgressIntraBrokerReplicaMovementsByBrokerId;
   private final Set<TopicPartition> _inProgressPartitionsForInterBrokerMovement;
   private final ExecutionTaskTracker _executionTaskTracker;
   private final ExecutionTaskPlanner _executionTaskPlanner;
   private final int _defaultInterBrokerPartitionMovementConcurrency;
-  private final int _defaultLeadershipMovementConcurrency;
   private Integer _requestedInterBrokerPartitionMovementConcurrency;
+  private final int _defaultIntraBrokerPartitionMovementConcurrency;
+  private Integer _requestedIntraBrokerPartitionMovementConcurrency;
+  private final int _defaultLeadershipMovementConcurrency;
   private Integer _requestedLeadershipMovementConcurrency;
   private final Set<Integer> _brokersToSkipConcurrencyCheck;
   private boolean _isKafkaAssignerMode;
@@ -47,26 +51,34 @@ public class ExecutionTaskManager {
    *
    * @param defaultInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements per broker.
    *                                                       It can be overwritten by user parameter upon post request.
+   * @param defaultIntraBrokerPartitionMovementConcurrency The maximum number of concurrent intra-broker partition movements.
+   *                                                       It can be overwritten by user parameter upon post request.
    * @param defaultLeadershipMovementConcurrency The maximum number of concurrent leadership movements per batch. It can
    *                                             be overwritten by user parameter upon post request.
    * @param replicaMovementStrategies The strategies used to determine the execution order of inter-broker replica movement tasks.
+   * @param adminClient The adminClient use to query logdir information of replicas.
    * @param dropwizardMetricRegistry The metric registry.
    * @param time The time object to get the time.
    */
   public ExecutionTaskManager(int defaultInterBrokerPartitionMovementConcurrency,
+                              int defaultIntraBrokerPartitionMovementConcurrency,
                               int defaultLeadershipMovementConcurrency,
                               List<String> replicaMovementStrategies,
+                              AdminClient adminClient,
                               MetricRegistry dropwizardMetricRegistry,
                               Time time) {
     _inProgressInterBrokerReplicaMovementsByBrokerId = new HashMap<>();
+    _inProgressIntraBrokerReplicaMovementsByBrokerId = new HashMap<>();
     _inProgressPartitionsForInterBrokerMovement = new HashSet<>();
     _executionTaskTracker = new ExecutionTaskTracker(dropwizardMetricRegistry, time);
-    _executionTaskPlanner = new ExecutionTaskPlanner(replicaMovementStrategies);
+    _executionTaskPlanner = new ExecutionTaskPlanner(adminClient, replicaMovementStrategies);
     _defaultInterBrokerPartitionMovementConcurrency = defaultInterBrokerPartitionMovementConcurrency;
+    _defaultIntraBrokerPartitionMovementConcurrency = defaultIntraBrokerPartitionMovementConcurrency;
     _defaultLeadershipMovementConcurrency = defaultLeadershipMovementConcurrency;
     _brokersToSkipConcurrencyCheck = new HashSet<>();
     _isKafkaAssignerMode = false;
     _requestedInterBrokerPartitionMovementConcurrency = null;
+    _requestedIntraBrokerPartitionMovementConcurrency = null;
     _requestedLeadershipMovementConcurrency = null;
   }
 
@@ -78,6 +90,16 @@ public class ExecutionTaskManager {
    */
   public synchronized void setRequestedInterBrokerPartitionMovementConcurrency(Integer requestedInterBrokerPartitionMovementConcurrency) {
     _requestedInterBrokerPartitionMovementConcurrency = requestedInterBrokerPartitionMovementConcurrency;
+  }
+
+  /**
+   * Dynamically set the intra-broker partition movement concurrency.
+   *
+   * @param requestedIntraBrokerPartitionMovementConcurrency The maximum number of concurrent intra-broker partition movements
+   *                                                         (if null, use {@link #_defaultIntraBrokerPartitionMovementConcurrency}).
+   */
+  public synchronized void setRequestedIntraBrokerPartitionMovementConcurrency(Integer requestedIntraBrokerPartitionMovementConcurrency) {
+    _requestedIntraBrokerPartitionMovementConcurrency = requestedIntraBrokerPartitionMovementConcurrency;
   }
 
   /**
@@ -95,6 +117,11 @@ public class ExecutionTaskManager {
                                                                      : _requestedInterBrokerPartitionMovementConcurrency;
   }
 
+  public synchronized int intraBrokerPartitionMovementConcurrency() {
+    return _requestedIntraBrokerPartitionMovementConcurrency == null ? _defaultIntraBrokerPartitionMovementConcurrency
+                                                                     : _requestedIntraBrokerPartitionMovementConcurrency;
+  }
+
   public synchronized int leadershipMovementConcurrency() {
     return _requestedLeadershipMovementConcurrency == null ? _defaultLeadershipMovementConcurrency
                                                            : _requestedLeadershipMovementConcurrency;
@@ -107,6 +134,15 @@ public class ExecutionTaskManager {
     Map<Integer, Integer> brokersReadyForReplicaMovement = brokersReadyForReplicaMovement(_inProgressInterBrokerReplicaMovementsByBrokerId,
                                                                                           interBrokerPartitionMovementConcurrency());
     return _executionTaskPlanner.getInterBrokerReplicaMovementTasks(brokersReadyForReplicaMovement, _inProgressPartitionsForInterBrokerMovement);
+  }
+
+  /**
+   * Returns a list of execution tasks that move the replicas cross disks of the same broker.
+   */
+  public synchronized List<ExecutionTask> getIntraBrokerReplicaMovementTasks() {
+    Map<Integer, Integer> brokersReadyForReplicaMovement = brokersReadyForReplicaMovement(_inProgressIntraBrokerReplicaMovementsByBrokerId,
+                                                                                          intraBrokerPartitionMovementConcurrency());
+    return _executionTaskPlanner.getIntraBrokerReplicaMovementTasks(brokersReadyForReplicaMovement);
   }
 
   /**
@@ -156,14 +192,17 @@ public class ExecutionTaskManager {
                                                  ReplicaMovementStrategy replicaMovementStrategy) {
     _executionTaskPlanner.addExecutionProposals(proposals, cluster, replicaMovementStrategy);
     for (ExecutionProposal p : proposals) {
-      _inProgressInterBrokerReplicaMovementsByBrokerId.putIfAbsent(p.oldLeader(), 0);
-      p.replicasToAdd().forEach(r -> _inProgressInterBrokerReplicaMovementsByBrokerId.putIfAbsent(r, 0));
+      p.replicasToMoveBetweenDisksByBroker().keySet()
+                                            .forEach(broker -> _inProgressIntraBrokerReplicaMovementsByBrokerId.putIfAbsent(broker, 0));
+      _inProgressInterBrokerReplicaMovementsByBrokerId.putIfAbsent(p.oldLeader().brokerId(), 0);
+      p.replicasToAdd().forEach(r -> _inProgressInterBrokerReplicaMovementsByBrokerId.putIfAbsent(r.brokerId(), 0));
     }
     // Set the execution mode for tasks.
     _executionTaskTracker.setExecutionMode(_isKafkaAssignerMode);
 
     // Populate the generated tasks to tracker to trace their execution.
     _executionTaskTracker.addTasksToTrace(_executionTaskPlanner.remainingInterBrokerReplicaMovements(), TaskType.INTER_BROKER_REPLICA_ACTION);
+    _executionTaskTracker.addTasksToTrace(_executionTaskPlanner.remainingIntraBrokerReplicaMovements(), TaskType.INTRA_BROKER_REPLICA_ACTION);
     _executionTaskTracker.addTasksToTrace(_executionTaskPlanner.remainingLeadershipMovements(), TaskType.LEADER_ACTION);
     _brokersToSkipConcurrencyCheck.clear();
     if (brokersToSkipConcurrencyCheck != null) {
@@ -187,15 +226,23 @@ public class ExecutionTaskManager {
     if (!tasks.isEmpty()) {
       for (ExecutionTask task : tasks) {
         _executionTaskTracker.markTaskState(task, State.IN_PROGRESS);
-        if (task.type() == TaskType.INTER_BROKER_REPLICA_ACTION) {
-          _inProgressPartitionsForInterBrokerMovement.add(task.proposal().topicPartition());
-          int oldLeader = task.proposal().oldLeader();
-          _inProgressInterBrokerReplicaMovementsByBrokerId.put(oldLeader,
-                                                               _inProgressInterBrokerReplicaMovementsByBrokerId.get(oldLeader) + 1);
-          for (int broker : task.proposal().replicasToAdd()) {
-            _inProgressInterBrokerReplicaMovementsByBrokerId.put(broker,
-                                                                 _inProgressInterBrokerReplicaMovementsByBrokerId.get(broker) + 1);
-          }
+        switch (task.type()) {
+          case INTER_BROKER_REPLICA_ACTION:
+            _inProgressPartitionsForInterBrokerMovement.add(task.proposal().topicPartition());
+            int oldLeader = task.proposal().oldLeader().brokerId();
+            _inProgressInterBrokerReplicaMovementsByBrokerId.put(oldLeader,
+                                                                 _inProgressInterBrokerReplicaMovementsByBrokerId.get(oldLeader) + 1);
+            task.proposal()
+                .replicasToAdd()
+                .forEach(r -> _inProgressInterBrokerReplicaMovementsByBrokerId.put(r.brokerId(),
+                              _inProgressInterBrokerReplicaMovementsByBrokerId.get(r.brokerId()) + 1));
+            break;
+          case INTRA_BROKER_REPLICA_ACTION:
+            _inProgressIntraBrokerReplicaMovementsByBrokerId.put(task.brokerId(),
+                                                                 _inProgressIntraBrokerReplicaMovementsByBrokerId.get(task.brokerId()) + 1);
+            break;
+          default:
+            break;
         }
       }
     }
@@ -238,15 +285,24 @@ public class ExecutionTaskManager {
    * Mark a given tasks as completed.
    */
   private void completeTask(ExecutionTask task) {
-    if (task.type() ==  TaskType.INTER_BROKER_REPLICA_ACTION) {
-      _inProgressPartitionsForInterBrokerMovement.remove(task.proposal().topicPartition());
-      int oldLeader = task.proposal().oldLeader();
-      _inProgressInterBrokerReplicaMovementsByBrokerId.put(oldLeader,
-                                                           _inProgressInterBrokerReplicaMovementsByBrokerId.get(oldLeader) - 1);
-      task.proposal()
-          .replicasToAdd()
-          .forEach(r -> _inProgressInterBrokerReplicaMovementsByBrokerId.put(r,
-                        _inProgressInterBrokerReplicaMovementsByBrokerId.get(r) - 1));
+    switch (task.type()) {
+      case INTER_BROKER_REPLICA_ACTION:
+        _inProgressPartitionsForInterBrokerMovement.remove(task.proposal().topicPartition());
+        int oldLeader = task.proposal().oldLeader().brokerId();
+        _inProgressInterBrokerReplicaMovementsByBrokerId.put(oldLeader,
+                                                             _inProgressInterBrokerReplicaMovementsByBrokerId.get(oldLeader) - 1);
+        task.proposal()
+            .replicasToAdd()
+            .forEach(r -> _inProgressInterBrokerReplicaMovementsByBrokerId.put(r.brokerId(),
+                          _inProgressInterBrokerReplicaMovementsByBrokerId.get(r.brokerId()) - 1));
+        break;
+      case INTRA_BROKER_REPLICA_ACTION:
+        _inProgressIntraBrokerReplicaMovementsByBrokerId.put(task.brokerId(),
+                                                             _inProgressIntraBrokerReplicaMovementsByBrokerId.get(task.brokerId()) - 1);
+        break;
+      default:
+        // No-op for other type of task, i.e LEADER_ACTION.
+        break;
     }
   }
 
@@ -286,9 +342,30 @@ public class ExecutionTaskManager {
     return _executionTaskTracker.numFinishedLeadershipMovements();
   }
 
+  public synchronized int numRemainingIntraBrokerPartitionMovements() {
+    return _executionTaskTracker.numRemainingIntraBrokerPartitionMovements();
+  }
+
+  public synchronized long remainingIntraBrokerDataToMoveInMB() {
+    return _executionTaskTracker.remainingIntraBrokerDataToMoveInMB();
+  }
+
+  public synchronized int numFinishedIntraBrokerPartitionMovements() {
+    return _executionTaskTracker.numFinishedIntraBrokerPartitionMovements();
+  }
+
+  public synchronized long finishedIntraBrokerDataToMoveInMB() {
+    return _executionTaskTracker.finishedIntraBrokerDataToMoveInMB();
+  }
+
+  public long inExecutionIntraBrokerDataMovementInMB() {
+    return _executionTaskTracker.inExecutionIntraBrokerDataMovementInMB();
+  }
+
   public synchronized void clear() {
     _brokersToSkipConcurrencyCheck.clear();
     _inProgressInterBrokerReplicaMovementsByBrokerId.clear();
+    _inProgressIntraBrokerReplicaMovementsByBrokerId.clear();
     _inProgressPartitionsForInterBrokerMovement.clear();
     _executionTaskPlanner.clear();
     _executionTaskTracker.clear();

@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -42,8 +43,8 @@ public class ExecutionTaskManagerTest {
   @Test
   public void testStateChangeSequences() {
     TopicPartition tp = new TopicPartition("topic", 0);
-    ExecutionTaskManager taskManager = new ExecutionTaskManager(1, 1,
-                                                                null, new MetricRegistry(), new SystemTime());
+    ExecutionTaskManager taskManager = new ExecutionTaskManager(1, 1, 1,
+                                                                null, null, new MetricRegistry(), new SystemTime());
 
     List<List<ExecutionTask.State>> testSequences = new ArrayList<>();
     // Completed successfully.
@@ -55,9 +56,9 @@ public class ExecutionTaskManagerTest {
     // Cannot rollback.
     testSequences.add(Arrays.asList(IN_PROGRESS, DEAD));
 
-    Integer r0 = 0;
-    Integer r1 = 1;
-    Integer r2 = 2;
+    ReplicaPlacementInfo r0 = new ReplicaPlacementInfo(0);
+    ReplicaPlacementInfo r1 = new ReplicaPlacementInfo(1);
+    ReplicaPlacementInfo r2 = new ReplicaPlacementInfo(2);
     for (List<ExecutionTask.State> sequence : testSequences) {
       taskManager.clear();
       // Make sure the proposal does not involve leader movement.
@@ -70,6 +71,7 @@ public class ExecutionTaskManagerTest {
                                         generateExpectedCluster(proposal, tp),
                                         null);
       taskManager.setRequestedInterBrokerPartitionMovementConcurrency(null);
+      taskManager.setRequestedIntraBrokerPartitionMovementConcurrency(null);
       taskManager.setRequestedLeadershipMovementConcurrency(null);
       List<ExecutionTask> tasks = taskManager.getInterBrokerReplicaMovementTasks();
       assertEquals(1, tasks.size());

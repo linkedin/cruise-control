@@ -32,6 +32,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
 
 public class CruiseControlState extends AbstractCruiseControlResponse {
   private static final String INTER_BROKER_PARTITION_MOVEMENTS = "inter-broker partition movements";
+  private static final String INTRA_BROKER_PARTITION_MOVEMENTS = "intra-broker partition movements";
   private static final String LEADERSHIP_MOVEMENTS = "leadership movements";
   private static final String MONITOR_STATE = "MonitorState";
   private static final String EXECUTOR_STATE = "ExecutorState";
@@ -124,9 +125,10 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
 
   private void writeVerboseExecutorState(StringBuilder sb) {
     if (_executorState != null) {
-      Map<TaskType, Map<State, Set<ExecutionTask>>> filteredTasksByState = _executorState.executionTasksSummary().filteredTasksByState();
-      filteredTasksByState.forEach((type, taskMap) -> {
+      Map<TaskType, Map<State, Set<ExecutionTask>>> taskSnapshot = _executorState.executionTasksSummary().filteredTasksByState();
+      taskSnapshot.forEach((type, taskMap) -> {
         String taskTypeString = type == TaskType.INTER_BROKER_REPLICA_ACTION ? INTER_BROKER_PARTITION_MOVEMENTS :
+                                type == TaskType.INTRA_BROKER_REPLICA_ACTION ? INTRA_BROKER_PARTITION_MOVEMENTS :
                                                                                LEADERSHIP_MOVEMENTS;
         sb.append(String.format("%n%n%s %s:%n",
                                 _executorState.state() == ExecutorState.State.STOPPING_EXECUTION ? "Cancelled" : "Pending",

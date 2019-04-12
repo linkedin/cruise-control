@@ -20,13 +20,15 @@ import javax.servlet.http.HttpServletRequest;
  * <pre>
  *    POST /kafkacruisecontrol/admin?json=[true/false]&amp;disable_self_healing_for=[Set-of-{@link AnomalyType}]
  *    &amp;enable_self_healing_for=[Set-of-{@link AnomalyType}]&amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]
- *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;review_id=[id]
+ *    &amp;concurrent_intra_broker_partition_movements=[POSITIVE-INTEGER]&amp;concurrent_leader_movements=[POSITIVE-INTEGER]
+ *    &amp;review_id=[id]
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
   private Set<AnomalyType> _disableSelfHealingFor;
   private Set<AnomalyType> _enableSelfHealingFor;
   private Integer _concurrentInterBrokerPartitionMovements;
+  private Integer _concurrentIntraBrokerPartitionMovements;
   private Integer _concurrentLeaderMovements;
   private Integer _reviewId;
   private final boolean _twoStepVerificationEnabled;
@@ -42,8 +44,9 @@ public class AdminParameters extends AbstractParameters {
     Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_request);
     _enableSelfHealingFor = selfHealingFor.get(true);
     _disableSelfHealingFor = selfHealingFor.get(false);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
+    _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, false, true);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
     _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
   }
 
@@ -66,6 +69,10 @@ public class AdminParameters extends AbstractParameters {
 
   public Integer concurrentInterBrokerPartitionMovements() {
     return _concurrentInterBrokerPartitionMovements;
+  }
+
+  public Integer concurrentIntraBrokerPartitionMovements() {
+    return _concurrentIntraBrokerPartitionMovements;
   }
 
   public Integer concurrentLeaderMovements() {

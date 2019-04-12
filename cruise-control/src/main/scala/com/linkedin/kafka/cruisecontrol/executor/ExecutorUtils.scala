@@ -36,8 +36,8 @@ object ExecutorUtils {
       val newReplicaAssignment = scala.collection.mutable.Map(inProgressReplicaReassignment.toSeq: _*)
       reassignmentTasks.foreach({ task =>
         val tp = task.proposal.topicPartition()
-        val oldReplicas = asScalaBuffer(task.proposal.oldReplicas()).map(_.toInt)
-        val newReplicas = asScalaBuffer(task.proposal().newReplicas()).map(_.toInt)
+        val oldReplicas = asScalaBuffer(task.proposal.oldReplicas()).map(_.brokerId.toInt)
+        val newReplicas = asScalaBuffer(task.proposal().newReplicas()).map(_.brokerId.toInt)
 
         val inProgressReplicasOpt = newReplicaAssignment.get(tp)
         var addTask = true

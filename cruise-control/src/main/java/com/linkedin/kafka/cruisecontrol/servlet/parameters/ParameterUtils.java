@@ -4,6 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskCapacityGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
@@ -78,6 +80,7 @@ public class ParameterUtils {
   public static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
   public static final String USE_READY_DEFAULT_GOALS_PARAM = "use_ready_default_goals";
   public static final String CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM = "concurrent_partition_movements_per_broker";
+  public static final String CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM = "concurrent_intra_broker_partition_movements";
   public static final String CONCURRENT_LEADER_MOVEMENTS_PARAM = "concurrent_leader_movements";
   public static final String DEFAULT_PARTITION_LOAD_RESOURCE = "disk";
   public static final String SUBSTATES_PARAM = "substates";
@@ -97,6 +100,8 @@ public class ParameterUtils {
   public static final String REPLICA_MOVEMENT_STRATEGIES_PARAM = "replica_movement_strategies";
   public static final String APPROVE_PARAM = "approve";
   public static final String DISCARD_PARAM = "discard";
+  public static final String REBALANCE_DISK_MODE_PARAM = "rebalance_disk";
+  public static final String POPULATE_DISK_INFO_PARAM = "populate_disk_info";
   private static final int MAX_REASON_LENGTH = 50;
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
@@ -119,6 +124,7 @@ public class ParameterUtils {
     load.add(TIME_PARAM);
     load.add(JSON_PARAM);
     load.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    load.add(POPULATE_DISK_INFO_PARAM);
 
     Set<String> partitionLoad = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     partitionLoad.add(RESOURCE_PARAM);
@@ -145,6 +151,7 @@ public class ParameterUtils {
     proposals.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
     proposals.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
     proposals.add(DESTINATION_BROKER_IDS_PARAM);
+    proposals.add(REBALANCE_DISK_MODE_PARAM);
 
     Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     state.add(VERBOSE_PARAM);
@@ -206,6 +213,7 @@ public class ParameterUtils {
     rebalance.add(JSON_PARAM);
     rebalance.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     rebalance.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    rebalance.add(CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM);
     rebalance.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     rebalance.add(SKIP_HARD_GOAL_CHECK_PARAM);
     rebalance.add(EXCLUDED_TOPICS_PARAM);
@@ -217,6 +225,7 @@ public class ParameterUtils {
     rebalance.add(IGNORE_PROPOSAL_CACHE_PARAM);
     rebalance.add(REVIEW_ID_PARAM);
     rebalance.add(DESTINATION_BROKER_IDS_PARAM);
+    rebalance.add(REBALANCE_DISK_MODE_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
@@ -249,6 +258,7 @@ public class ParameterUtils {
     admin.add(DISABLE_SELF_HEALING_FOR_PARAM);
     admin.add(ENABLE_SELF_HEALING_FOR_PARAM);
     admin.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    admin.add(CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM);
     admin.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     admin.add(REVIEW_ID_PARAM);
 
@@ -419,6 +429,14 @@ public class ParameterUtils {
 
   private static boolean isKafkaAssignerMode(HttpServletRequest request) {
     return getBooleanParam(request, KAFKA_ASSIGNER_MODE_PARAM, false);
+  }
+
+  static boolean isRebalanceDiskMode(HttpServletRequest request) {
+    return getBooleanParam(request, REBALANCE_DISK_MODE_PARAM, false);
+  }
+
+  static boolean populateDiskInfo(HttpServletRequest request) {
+    return getBooleanParam(request, POPULATE_DISK_INFO_PARAM, false);
   }
 
   static boolean ignoreProposalCache(HttpServletRequest request) {
@@ -616,6 +634,11 @@ public class ParameterUtils {
 
   static List<String> getGoals(HttpServletRequest request) throws UnsupportedEncodingException {
     boolean isKafkaAssignerMode = isKafkaAssignerMode(request);
+    boolean isRebalanceDiskMode = isRebalanceDiskMode(request);
+    // Sanity check isKafkaAssignerMode and isRebalanceDiskMode are not both true at the same time.
+    if (isKafkaAssignerMode && isRebalanceDiskMode) {
+      throw new UserRequestException("Kafka assigner mode and rebalance disk mode cannot be set the at the same time.");
+    }
     List<String> goals = getListParam(request, GOALS_PARAM);
 
     // KafkaAssigner mode is assumed to use two KafkaAssigner goals, if client specifies goals in request, throw exception.
@@ -625,6 +648,13 @@ public class ParameterUtils {
       }
       return Collections.unmodifiableList(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                                                         KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName()));
+    }
+    if (isRebalanceDiskMode) {
+      if (!goals.isEmpty()) {
+        throw new UserRequestException("Rebalance disk mode does not support explicitly specifying goals in request.");
+      }
+      return Collections.unmodifiableList(Arrays.asList(IntraBrokerDiskCapacityGoal.class.getSimpleName(),
+                                                        IntraBrokerDiskUsageDistributionGoal.class.getSimpleName()));
     }
     return goals;
   }
@@ -666,12 +696,27 @@ public class ParameterUtils {
   }
 
   /**
-   * @param isPartitionMovement True if partition movement per broker, false if the total leader movement.
+   * Get the execution concurrency requirement dynamically set from the Http request.
+   * Based on value of isInterBrokerPartitionMovement and isIntraBrokerPartitionMovement, different type of concurrency
+   * requirement is set. The mapping is as follows.
+   * <ul>
+   *   <li>{false, false} -> leader movement concurrency requirement</li>
+   *   <li>{true , false} -> per-broker inter-broker partition movement concurrency requirement</li>
+   *   <li>{false, true}  -> intra-broker partition movement concurrency requirement</li>
+   *   <li>{true , true}  -> not defined</li>
+   * </ul>
+   *
+   * @param request                        The Http request.
+   * @param isInterBrokerPartitionMovement True if inter-broker partition movement per broker.
+   * @param isIntraBrokerPartitionMovement True if intra-broker partition movement.
    */
-  static Integer concurrentMovements(HttpServletRequest request, boolean isPartitionMovement) {
-    String parameterString = caseSensitiveParameterName(request.getParameterMap(), isPartitionMovement
-                                                                                   ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM
-                                                                                   : CONCURRENT_LEADER_MOVEMENTS_PARAM);
+  static Integer concurrentMovements(HttpServletRequest request,
+                                     boolean isInterBrokerPartitionMovement,
+                                     boolean isIntraBrokerPartitionMovement) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(),
+                                                        isInterBrokerPartitionMovement ? CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM :
+                                                        isIntraBrokerPartitionMovement ? CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM :
+                                                                                         CONCURRENT_LEADER_MOVEMENTS_PARAM);
     if (parameterString == null) {
       return null;
     }
@@ -838,7 +883,8 @@ public class ParameterUtils {
    * Skip hard goal check in kafka_assigner mode,
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
-    return isKafkaAssignerMode(request) || getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
+    return isKafkaAssignerMode(request) || isRebalanceDiskMode(request) ||
+           getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
   }
 
   static boolean skipUrpDemotion(HttpServletRequest request) {

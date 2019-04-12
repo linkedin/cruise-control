@@ -20,10 +20,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedMap;
+import java.util.TreeMap;
 import java.util.function.Function;
 
 import org.apache.kafka.common.TopicPartition;
-
 
 /**
  * A class that holds the information of the broker, including its liveness and load for replicas. A broker object is
@@ -42,9 +43,6 @@ public class Broker implements Serializable, Comparable<Broker> {
   private final int _id;
   private final Host _host;
   private final double[] _brokerCapacity;
-  // To reduce memory footprint, use arrays of logDirs and logDirCapacity rather than a map of diskCapacityByLogDir.
-  private final String[] _logDirs;
-  private final double[] _logDirCapacity;
   private final Set<Replica> _replicas;
   private final Set<Replica> _leaderReplicas;
   /** A map of cached sorted replicas using different user defined score functions. */
@@ -58,9 +56,10 @@ public class Broker implements Serializable, Comparable<Broker> {
   private final Load _load;
   private final Load _leadershipLoadForNwResources;
   private State _state;
+  private SortedMap<String, Disk> _diskByLogdir;
 
   /**
-   * Constructor for Broker class with no disk capacity specified per absolute logDir -- i.e. non-JBOD broker.
+   * Constructor for Broker class with no disk capacity specified per absolute logDir.
    *
    * @param host           The host this broker is on
    * @param id             The id of the broker.
@@ -78,7 +77,10 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param brokerCapacity The capacity of the broker.
    * @param diskCapacityByLogDir Disk capacity by absolute logDir.
    */
-  Broker(Host host, int id, Map<Resource, Double> brokerCapacity, Map<String, Double> diskCapacityByLogDir) {
+  Broker(Host host,
+         int id,
+         Map<Resource, Double> brokerCapacity,
+         Map<String, Double> diskCapacityByLogDir) {
     if (brokerCapacity == null) {
       throw new IllegalArgumentException("Attempt to create broker " + id + " on host " + host.name() + " with null capacity.");
     }
@@ -89,17 +91,11 @@ public class Broker implements Serializable, Comparable<Broker> {
       _brokerCapacity[entry.getKey().id()] = entry.getValue();
     }
 
-    if (diskCapacityByLogDir == null || diskCapacityByLogDir.isEmpty()) {
-      _logDirs = null;
-      _logDirCapacity = null;
+    if (diskCapacityByLogDir != null) {
+      _diskByLogdir = new TreeMap<>();
+      diskCapacityByLogDir.forEach((key, value) -> _diskByLogdir.put(key, new Disk(key, this, value)));
     } else {
-      _logDirs = new String[diskCapacityByLogDir.size()];
-      _logDirCapacity = new double[diskCapacityByLogDir.size()];
-      int logIndex = 0;
-      for (Map.Entry<String, Double> entry : diskCapacityByLogDir.entrySet()) {
-        _logDirs[logIndex] = entry.getKey();
-        _logDirCapacity[logIndex++] = entry.getValue();
-      }
+      _diskByLogdir = Collections.emptySortedMap();
     }
 
     _replicas = new HashSet<>();
@@ -143,63 +139,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return If broker is alive, the capacity of the requested resource, {@link this#DEAD_BROKER_CAPACITY} otherwise.
    */
   public double capacityFor(Resource resource) {
-    if (isAlive()) {
       return _brokerCapacity[resource.id()];
-    }
-    return DEAD_BROKER_CAPACITY;
-  }
-
-  /**
-   * Get logDir capacity for the requested logDir.
-   *
-   * @param logDir LogDir for which the capacity will be provided.
-   * @return The healthy capacity of the requested logDir. Note that if the broker is not alive or the disk is dead,
-   * this method still returns the healthy disk capacity.
-   */
-  public double logDirCapacityFor(String logDir) {
-    if (_logDirs == null) {
-      throw new IllegalStateException("No logDir capacity has been provided for broker:" + _id + ".");
-    }
-
-    for (int logDirIndex = 0; logDirIndex < _logDirs.length; logDirIndex++) {
-      if (logDir.equals(_logDirs[logDirIndex])) {
-        return _logDirCapacity[logDirIndex];
-      }
-    }
-    throw new IllegalArgumentException("Requested logDir:" + logDir + " does not exist in broker:" + _id + ".");
-  }
-
-  /**
-   * Get logDir for the requested logDirIndex.
-   *
-   * @param index Index of the queried logDir.
-   * @return LogDir for the requested logDirIndex.
-   */
-  public String logDirForIndex(int index) {
-    if (index >= numLogDirs() || index < 0) {
-      throw new IllegalArgumentException("Index(" + index + ") is out of range(" + numLogDirs() + ") for broker:" + _id + ".");
-    }
-    return _logDirs[index];
-  }
-
-  /**
-   * Get logDir capacity for the requested logDirIndex.
-   *
-   * @param index Index of the queried logDir capacity.
-   * @return LogDir capacity for the requested logDirIndex.
-   */
-  public double logDirCapacityForIndex(int index) {
-    if (index >= numLogDirs() || index < 0) {
-      throw new IllegalArgumentException("Index(" + index + ") is out of range(" + numLogDirs() + ") for broker:" + _id + ".");
-    }
-    return _logDirCapacity[index];
-  }
-
-  /**
-   * Get number of logDirs in the broker if provided, 0 otherwise.
-   */
-  public int numLogDirs() {
-    return _logDirs == null ? 0 : _logDirs.length;
   }
 
   /**
@@ -432,6 +372,8 @@ public class Broker implements Serializable, Comparable<Broker> {
     _state = newState;
     if (!isAlive()) {
       _currentOfflineReplicas.addAll(replicas());
+      _diskByLogdir.values().forEach(d -> d.setState(Disk.State.DEAD));
+      Resource.cachedValues().forEach(r -> _brokerCapacity[r.id()] =  DEAD_BROKER_CAPACITY);
     }
   }
 
@@ -467,6 +409,24 @@ public class Broker implements Serializable, Comparable<Broker> {
     // Add replica load to the broker load.
     _load.addLoad(replica.load());
     _sortedReplicas.values().forEach(sr -> sr.add(replica));
+
+    if (replica.disk() != null) {
+      _diskByLogdir.get(replica.disk().logDir()).addReplica(replica);
+    }
+  }
+
+  /**
+   * Add a dead disk to the broker.
+   * This is used in cluster model initialization. If a disk is dead, the
+   * {@link com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver} may not report the disk information,
+   * later populating replicas to cluster model will get some offline replicas' disk not found.
+   *
+   * @param logdir Logdir of the dead disk to be added to the current broker.
+   */
+  Disk addDeadDisk(String logdir) {
+    Disk disk = new Disk(logdir, this, -1);
+    _diskByLogdir.put(logdir, disk);
+    return disk;
   }
 
   /**
@@ -573,6 +533,34 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
+   * Move replica between the disks of the broker.
+   *
+   * @param tp                Topic partition of the replica to be moved.
+   * @param sourceLogdir      Log directory of the source disk.
+   * @param destinationLogdir Log directory of the destination disk.
+   */
+  void moveReplicaBetweenDisks(TopicPartition tp, String sourceLogdir, String destinationLogdir) {
+    Replica replica = replica(tp);
+    _diskByLogdir.get(sourceLogdir).removeReplica(replica);
+    _diskByLogdir.get(destinationLogdir).addReplica(replica);
+  }
+
+  /**
+   * Set the disk state to dead.
+   *
+   * @param logdir Log directory of the disk.
+   * @return Disk capacity due to disk death.
+   */
+  double markDiskDead(String logdir) {
+    Disk disk = _diskByLogdir.get(logdir);
+    double diskCapacity = disk.capacity();
+    _brokerCapacity[Resource.DISK.id()] -= diskCapacity;
+    disk.setState(Disk.State.DEAD);
+    disk.replicas().forEach(Replica::markOriginalOffline);
+    return diskCapacity;
+  }
+
+  /**
    * Clear the content of monitoring data at each replica in the broker.
    */
   void clearLoad() {
@@ -603,10 +591,32 @@ public class Broker implements Serializable, Comparable<Broker> {
   void setReplicaLoad(TopicPartition tp, AggregatedMetricValues aggregatedMetricValues, List<Long> windows) {
     Replica replica = replica(tp);
     replica.setMetricValues(aggregatedMetricValues, windows);
+    if (replica.disk() != null) {
+      replica.disk().addReplicaLoad(replica);
+    }
     if (replica.isLeader()) {
       _leadershipLoadForNwResources.addMetricValues(aggregatedMetricValues, windows);
     }
     _load.addMetricValues(aggregatedMetricValues, windows);
+  }
+
+  /**
+   * Get disk information that corresponds to the logdir.
+   *
+   * @param logdir The logdir of the disk to query.
+   * @return Disk information.
+   */
+  public Disk disk(String logdir) {
+    return _diskByLogdir.get(logdir);
+  }
+
+  /**
+   * Get all the disks of the broker.
+   *
+   * @return Collection of disk.
+   */
+  public Collection<Disk> disks() {
+    return _diskByLogdir.values();
   }
 
   /*
@@ -626,21 +636,65 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
+   * Get per-logdir disk utilization information for all alive disks of the broker.
+   *
+   * @return The per-logdir disk utilization information. This method is relevant only when the {@link ClusterModel} has
+   *         been created with a request to populate replica placement info, otherwise returns an empty map.
+   */
+  public Map<String, Double> aliveDiskUtils() {
+    if (_diskByLogdir.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Map<String, Double> diskUtilMap = new HashMap<>(_diskByLogdir.size());
+    for (Map.Entry<String, Disk> entry : _diskByLogdir.entrySet()) {
+      if (entry.getValue().isAlive()) {
+        diskUtilMap.put(entry.getKey(), entry.getValue().utilization());
+      }
+    }
+    return diskUtilMap;
+  }
+
+  /**
+   * Get per-logdir disk capacity information of the broker.
+   *
+   * @return The per-logdir disk capacity information. This method is relevant only when the {@link ClusterModel} has
+   *         been created with a request to populate replica placement info, otherwise returns an empty map.
+   */
+  public Map<String, Double> diskCapacities() {
+    if (_diskByLogdir.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    Map<String, Double> diskCapacityMap = new HashMap<>(_diskByLogdir.size());
+    for (Map.Entry<String, Disk> entry : _diskByLogdir.entrySet()) {
+      diskCapacityMap.put(entry.getKey(), entry.getValue().capacity());
+    }
+    return diskCapacityMap;
+  }
+
+  /**
    * Output writing string representation of this class to the stream.
    * @param out the output stream.
    */
   public void writeTo(OutputStream out) throws IOException {
     String broker = String.format("<Broker id=\"%d\" state=\"%s\">%n", _id, _state);
     out.write(broker.getBytes(StandardCharsets.UTF_8));
-    for (Replica replica : _replicas) {
-      replica.writeTo(out);
+    for (Disk disk : _diskByLogdir.values()) {
+      disk.writeTo(out);
+    }
+    // If information of replica placement over disk is not populated, write replica information to output stream;
+    // otherwise disk will write replica information to output stream.
+    if (_diskByLogdir.isEmpty()) {
+      for (Replica replica : _replicas) {
+        replica.writeTo(out);
+      }
     }
     out.write("</Broker>%n".getBytes(StandardCharsets.UTF_8));
   }
 
   @Override
   public String toString() {
-    return String.format("Broker[id=%d,rack=%s,state=%s,replicaCount=%d]", _id, rack().id(), _state, _replicas.size());
+    return String.format("Broker[id=%d,rack=%s,state=%s,replicaCount=%d,logdirs=%s]",
+                         _id, rack().id(), _state, _replicas.size(), _diskByLogdir.keySet());
   }
 
   /**

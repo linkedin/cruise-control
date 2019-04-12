@@ -452,6 +452,15 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       "given point. This is to avoid overwhelming the cluster by inter-broker partition movements.";
 
   /**
+   * <code>num.concurrent.intra.broker.partition.movements</code>
+   */
+  public static final String NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG = "num.concurrent.intra.broker.partition.movements";
+  private static final String NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_DOC = "The maximum number of partitions " +
+      "the executor will move across disks within a broker at the same time. e.g. setting the value to 10 means that the " +
+      "executor will at most allow 10 partitions to move across disks within a broker at any given point. This is to avoid " +
+      "overwhelming the cluster by intra-broker partition movements.";
+
+  /**
    * <code>num.concurrent.leader.movements</code>
    */
   public static final String NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG =
@@ -1101,6 +1110,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.MEDIUM,
                 NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_DOC)
+        .define(NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_CONFIG,
+                ConfigDef.Type.INT,
+                2,
+                atLeast(1),
+                ConfigDef.Importance.MEDIUM,
+                NUM_CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_DOC)
         .define(NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG,
                 ConfigDef.Type.INT,
                 1000,

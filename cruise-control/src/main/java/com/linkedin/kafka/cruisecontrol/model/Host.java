@@ -19,6 +19,7 @@ import java.util.Map;
 import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
 
+import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 
 public class Host implements Serializable {
   private static final String NAME = "name";
@@ -114,6 +115,20 @@ public class Host implements Serializable {
   }
 
   /**
+   * Mark specified disk dead and update the capacity
+   *
+   * @param brokerId The id of broker which host the disk.
+   * @param logdir Log directory of the disk.
+   * @return The disk capacity lost.
+   */
+  double markDiskDead(int brokerId, String logdir) {
+    Broker broker = broker(brokerId);
+    double capacityLost = broker.markDiskDead(logdir);
+    _hostCapacity[DISK.id()] -= capacityLost;
+    return capacityLost;
+  }
+
+  /**
    * The name of the host
    */
   public String name() {
@@ -121,7 +136,9 @@ public class Host implements Serializable {
   }
 
   // Model manipulation.
-  Broker createBroker(Integer brokerId, Map<Resource, Double> brokerCapacity, Map<String, Double> diskCapacityByLogDir) {
+  Broker createBroker(Integer brokerId,
+                      Map<Resource, Double> brokerCapacity,
+                      Map<String, Double> diskCapacityByLogDir) {
     Broker broker = new Broker(this, brokerId, brokerCapacity, diskCapacityByLogDir);
     _brokers.put(brokerId, broker);
     _aliveBrokers++;

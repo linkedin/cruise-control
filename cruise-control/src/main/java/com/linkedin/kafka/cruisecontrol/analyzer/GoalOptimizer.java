@@ -19,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.executor.Executor;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -58,6 +59,8 @@ import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunne
 public class GoalOptimizer implements Runnable {
   private static final String NUM_INTER_BROKER_REPLICA_MOVEMENTS = "numReplicaMovements";
   private static final String INTER_BROKER_DATA_TO_MOVE_MB = "dataToMoveMB";
+  private static final String NUM_INTRA_BROKER_REPLICA_MOVEMENTS = "numIntraBrokerReplicaMovements";
+  private static final String INTRA_BROKER_DATA_TO_MOVE_MB = "intraBrokerDataToMoveMB";
   private static final String NUM_LEADER_MOVEMENTS = "numLeaderMovements";
   private static final String RECENT_WINDOWS = "recentWindows";
   private static final String MONITORED_PARTITIONS_PERCENTAGE = "monitoredPartitionsPercentage";
@@ -398,8 +401,8 @@ public class GoalOptimizer implements Runnable {
 
     LOG.trace("Cluster before optimization is {}", clusterModel);
     BrokerStats brokerStatsBeforeOptimization = clusterModel.brokerStats(null);
-    Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
-    Map<TopicPartition, Integer> initLeaderDistribution = clusterModel.getLeaderDistribution();
+    Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
+    Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = clusterModel.getLeaderDistribution();
     boolean isSelfHealing = !clusterModel.selfHealingEligibleReplicas().isEmpty();
 
     // Set of balancing proposals that will be applied to the given cluster state to satisfy goals (leadership
@@ -408,8 +411,8 @@ public class GoalOptimizer implements Runnable {
     Set<String> violatedGoalNamesBeforeOptimization = new HashSet<>();
     Set<String> violatedGoalNamesAfterOptimization = new HashSet<>();
     Map<Goal, ClusterModelStats> statsByGoalPriority = new LinkedHashMap<>(goalsByPriority.size());
-    Map<TopicPartition, List<Integer>> preOptimizedReplicaDistribution = null;
-    Map<TopicPartition, Integer> preOptimizedLeaderDistribution = null;
+    Map<TopicPartition, List<ReplicaPlacementInfo>> preOptimizedReplicaDistribution = null;
+    Map<TopicPartition, ReplicaPlacementInfo> preOptimizedLeaderDistribution = null;
     Set<String> excludedTopics = excludedTopics(clusterModel, requestedExcludedTopics);
     LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
     OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
@@ -613,30 +616,37 @@ public class GoalOptimizer implements Runnable {
     }
 
     private List<Number> getMovementStats() {
-      Integer numInterBrokerReplicaMovements = 0;
-      Integer numLeaderMovements = 0;
+      int numInterBrokerReplicaMovements = 0;
+      int numIntraBrokerReplicaMovements = 0;
+      int numLeaderMovements = 0;
       long interBrokerDataToMove = 0L;
+      long intraBrokerDataToMove = 0L;
       for (ExecutionProposal p : _proposals) {
         if (!p.replicasToAdd().isEmpty() || !p.replicasToRemove().isEmpty()) {
           numInterBrokerReplicaMovements++;
-          interBrokerDataToMove += p.dataToMoveInMB();
+          interBrokerDataToMove += p.interBrokerDataToMoveInMB();
+        } else if (!p.replicasToMoveBetweenDisksByBroker().isEmpty()) {
+          numIntraBrokerReplicaMovements += p.replicasToMoveBetweenDisksByBroker().size();
+          intraBrokerDataToMove += p.intraBrokerDataToMoveInMB() * p.replicasToMoveBetweenDisksByBroker().size();
         } else {
           numLeaderMovements++;
         }
       }
       return Arrays.asList(numInterBrokerReplicaMovements, interBrokerDataToMove,
+                           numIntraBrokerReplicaMovements, intraBrokerDataToMove,
                            numLeaderMovements);
     }
 
     public String getProposalSummary() {
       List<Number> moveStats = getMovementStats();
-      return String.format("%n%nThe optimization proposal has %d inter-broker replica(%d MB) movements and %d leadership movements "
-                           + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions "
-                           + "covered.%nExcluded Topics: %s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers "
-                           + "For Replica Move: %s.",
+      return String.format("%n%nThe optimization proposal has %d inter-broker replica(%d MB) movements, %d intra-broker "
+                           + "replica(%d MB) movements and %d leadership movements based on the cluster model with %d "
+                           + "recent snapshot windows and %.3f%% of the partitions covered.%nExcluded Topics: %s.%n"
+                           + "Excluded Brokers For Leadership: %s.%nExcluded Brokers For Replica Move: %s.",
                            moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(),
-                           _clusterModelStats.numSnapshotWindows(), _clusterModelStats.monitoredPartitionsPercentage() * 100,
-                           excludedTopics(), excludedBrokersForLeadership(), excludedBrokersForReplicaMove());
+                           moveStats.get(3).longValue(), moveStats.get(4).intValue(), _clusterModelStats.numSnapshotWindows(),
+                           _clusterModelStats.monitoredPartitionsPercentage() * 100, excludedTopics(),
+                           excludedBrokersForLeadership(), excludedBrokersForReplicaMove());
     }
 
     public Map<String, Object> getProposalSummaryForJson() {
@@ -644,7 +654,9 @@ public class GoalOptimizer implements Runnable {
       Map<String, Object> ret = new HashMap<>();
       ret.put(NUM_INTER_BROKER_REPLICA_MOVEMENTS, moveStats.get(0).intValue());
       ret.put(INTER_BROKER_DATA_TO_MOVE_MB, moveStats.get(1).longValue());
-      ret.put(NUM_LEADER_MOVEMENTS, moveStats.get(2).intValue());
+      ret.put(NUM_INTRA_BROKER_REPLICA_MOVEMENTS, moveStats.get(2).intValue());
+      ret.put(INTRA_BROKER_DATA_TO_MOVE_MB, moveStats.get(3).longValue());
+      ret.put(NUM_LEADER_MOVEMENTS, moveStats.get(4).intValue());
       ret.put(RECENT_WINDOWS, _clusterModelStats.numSnapshotWindows());
       ret.put(MONITORED_PARTITIONS_PERCENTAGE, _clusterModelStats.monitoredPartitionsPercentage() * 100.0);
       ret.put(EXCLUDED_TOPICS, excludedTopics());
