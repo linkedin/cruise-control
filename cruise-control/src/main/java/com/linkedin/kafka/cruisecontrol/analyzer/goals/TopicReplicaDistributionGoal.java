@@ -46,8 +46,9 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
  * <li>Under: (the average number of topic replicas per broker) * (1 + topic replica count balance percentage)</li>
  * <li>Above: (the average number of topic replicas per broker) * Math.max(0, 1 - topic replica count balance percentage)</li>
  * </ul>
- * Also see: {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG}
- * and {@link #balancePercentageWithMargin()}.
+ * Also see: {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG},
+ * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG},
+ * and {@link #balancePercentageWithMargin(OptimizationOptions)}.
  */
 public class TopicReplicaDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(TopicReplicaDistributionGoal.class);
@@ -82,26 +83,40 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
    * threshold to be {@link BalancingConstraint#topicReplicaBalancePercentage()}, we use
    * ({@link BalancingConstraint#topicReplicaBalancePercentage()}-1)*{@link #BALANCE_MARGIN} instead.
+   *
+   * @param optimizationOptions Options to adjust balance percentage with margin in case goal optimization is triggered
+   * by goal violation detector.
    * @return the rebalance threshold with a margin.
    */
-  private double balancePercentageWithMargin() {
-    return (_balancingConstraint.topicReplicaBalancePercentage() - 1) * BALANCE_MARGIN;
+  private double balancePercentageWithMargin(OptimizationOptions optimizationOptions) {
+    double balancePercentage = optimizationOptions.isTriggeredByGoalViolation()
+                               ? _balancingConstraint.topicReplicaBalancePercentage()
+                                 * _balancingConstraint.goalViolationDistributionThresholdMultiplier()
+                               : _balancingConstraint.topicReplicaBalancePercentage();
+
+    return (balancePercentage - 1) * BALANCE_MARGIN;
   }
 
   /**
    * @param topic Topic for which the upper limit is requested.
+   * @param optimizationOptions Options to adjust balance upper limit in case goal optimization is triggered by goal
+   * violation detector.
    * @return The topic replica balance upper threshold in number of topic replicas.
    */
-  private int balanceUpperLimit(String topic) {
-    return (int) Math.ceil(_avgTopicReplicasOnAliveBroker.get(topic) * (1 + balancePercentageWithMargin()));
+  private int balanceUpperLimit(String topic, OptimizationOptions optimizationOptions) {
+    return (int) Math.ceil(_avgTopicReplicasOnAliveBroker.get(topic)
+                           * (1 + balancePercentageWithMargin(optimizationOptions)));
   }
 
   /**
    * @param topic Topic for which the lower limit is requested.
+   * @param optimizationOptions Options to adjust balance lower limit in case goal optimization is triggered by goal
+   * violation detector.
    * @return The replica balance lower threshold in number of topic replicas.
    */
-  private int balanceLowerLimit(String topic) {
-    return (int) Math.floor(_avgTopicReplicasOnAliveBroker.get(topic) * Math.max(0, (1 - balancePercentageWithMargin())));
+  private int balanceLowerLimit(String topic, OptimizationOptions optimizationOptions) {
+    return (int) Math.floor(_avgTopicReplicasOnAliveBroker.get(topic)
+                            * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions))));
   }
 
   /**
@@ -225,18 +240,18 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
    * Initiates this goal.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
-    Set<String> topicsToRebalance = topicsToRebalance(clusterModel, excludedTopics);
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
+    Set<String> topicsToRebalance = topicsToRebalance(clusterModel, optimizationOptions.excludedTopics());
 
     // Initialize the average replicas on an alive broker.
     for (String topic : topicsToRebalance) {
       int numTopicReplicas = clusterModel.numTopicReplicas(topic);
       _avgTopicReplicasOnAliveBroker.put(topic, (numTopicReplicas / (double) clusterModel.aliveBrokers().size()));
-      _balanceUpperLimitByTopic.put(topic, balanceUpperLimit(topic));
-      _balanceLowerLimitByTopic.put(topic, balanceLowerLimit(topic));
+      _balanceUpperLimitByTopic.put(topic, balanceUpperLimit(topic, optimizationOptions));
+      _balanceLowerLimitByTopic.put(topic, balanceLowerLimit(topic, optimizationOptions));
     }
 
     _selfHealingDeadBrokersOnly = false;

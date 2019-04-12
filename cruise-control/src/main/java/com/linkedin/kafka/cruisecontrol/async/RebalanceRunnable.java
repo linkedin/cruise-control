@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 /**
  * The async runnable for {@link KafkaCruiseControl#rebalance(List, boolean, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern,
- * ReplicaMovementStrategy, String, boolean, boolean, boolean)}
+ * ReplicaMovementStrategy, String, boolean, boolean, boolean, boolean)}
  */
 class RebalanceRunnable extends OperationRunnable {
   private final List<String> _goals;
@@ -72,7 +72,8 @@ class RebalanceRunnable extends OperationRunnable {
                                                                 _uuid,
                                                                 _excludeRecentlyDemotedBrokers,
                                                                 _excludeRecentlyRemovedBrokers,
-                                                                _ignoreProposalCache),
+                                                                _ignoreProposalCache,
+                                                                false),
                                   _config);
   }
 }
