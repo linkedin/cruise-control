@@ -16,6 +16,7 @@ public class OptimizationOptions {
   private final Set<Integer> _excludedBrokersForLeadership;
   private final Set<Integer> _excludedBrokersForReplicaMove;
   private final boolean _isTriggeredByGoalViolation;
+  private final Set<Integer> _requestedDestinationBrokerIds;
 
   /**
    * Default value for {@link #_excludedBrokersForLeadership} is an empty set.
@@ -24,24 +25,42 @@ public class OptimizationOptions {
     this(excludedTopics, Collections.emptySet());
   }
 
+  /**
+   * Default value for {@link #_excludedBrokersForReplicaMove} is an empty set.
+   */
   public OptimizationOptions(Set<String> excludedTopics, Set<Integer> excludedBrokersForLeadership) {
     this(excludedTopics, excludedBrokersForLeadership, Collections.emptySet());
   }
 
+  /**
+   * Default value for {@link #_isTriggeredByGoalViolation} is false.
+   */
   public OptimizationOptions(Set<String> excludedTopics,
                              Set<Integer> excludedBrokersForLeadership,
                              Set<Integer> excludedBrokersForReplicaMove) {
     this(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove, false);
   }
 
+  /**
+   * Default value for {@link #_requestedDestinationBrokerIds} is an empty set.
+   */
   public OptimizationOptions(Set<String> excludedTopics,
                              Set<Integer> excludedBrokersForLeadership,
                              Set<Integer> excludedBrokersForReplicaMove,
                              boolean isTriggeredByGoalViolation) {
+    this(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove, isTriggeredByGoalViolation, Collections.emptySet());
+  }
+
+  public OptimizationOptions(Set<String> excludedTopics,
+                             Set<Integer> excludedBrokersForLeadership,
+                             Set<Integer> excludedBrokersForReplicaMove,
+                             boolean isTriggeredByGoalViolation,
+                             Set<Integer> requestedDestinationBrokerIds) {
     _excludedTopics = excludedTopics;
     _excludedBrokersForLeadership = excludedBrokersForLeadership;
     _excludedBrokersForReplicaMove = excludedBrokersForReplicaMove;
     _isTriggeredByGoalViolation = isTriggeredByGoalViolation;
+    _requestedDestinationBrokerIds = requestedDestinationBrokerIds;
   }
 
   public Set<String> excludedTopics() {
@@ -60,10 +79,15 @@ public class OptimizationOptions {
     return _isTriggeredByGoalViolation;
   }
 
+  public Set<Integer> requestedDestinationBrokerIds() {
+    return Collections.unmodifiableSet(_requestedDestinationBrokerIds);
+  }
+
   @Override
   public String toString() {
     return String.format("[excludedTopics=%s,excludedBrokersForLeadership=%s,excludedBrokersForReplicaMove=%s,"
-                         + "isTriggeredByGoalViolation=%s}", _excludedTopics, _excludedBrokersForLeadership,
-                         _excludedBrokersForReplicaMove, _isTriggeredByGoalViolation);
+                         + "isTriggeredByGoalViolation=%s,requestedDestinationBrokerIds=%s}", _excludedTopics,
+                         _excludedBrokersForLeadership, _excludedBrokersForReplicaMove, _isTriggeredByGoalViolation,
+                         _requestedDestinationBrokerIds);
   }
 }

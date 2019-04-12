@@ -8,7 +8,7 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.common.config.ConfigException;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.FixOfflineReplicasPar
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewBoardParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters;
@@ -50,7 +51,6 @@ import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.ADD_BROKER;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.hasValidParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.wantJSON;
@@ -248,8 +248,8 @@ public class KafkaCruiseControlServlet extends HttpServlet {
    * The POST method allows user to perform the following actions:
    *
    * <pre>
-   * 1. Decommission a broker (See {@link AddedOrRemovedBrokerParameters}).
-   * 2. Add a broker (See {@link AddedOrRemovedBrokerParameters}).
+   * 1. Decommission a broker (See {@link RemoveBrokerParameters}).
+   * 2. Add a broker (See {@link AddBrokerParameters}).
    * 3. Trigger a workload balance (See {@link RebalanceParameters}).
    * 4. Stop the proposal execution (See {@link StopProposalParameters}).
    * 5. Pause metrics sampling (See {@link PauseResumeParameters}).
@@ -270,11 +270,15 @@ public class KafkaCruiseControlServlet extends HttpServlet {
         CruiseControlParameters reviewableParams;
         switch (endPoint) {
           case ADD_BROKER:
-          case REMOVE_BROKER:
-            reviewableParams = evaluateReviewableParams(request, response,
-                                                        () -> new AddedOrRemovedBrokerParameters(request, _config));
+            reviewableParams = evaluateReviewableParams(request, response, () -> new AddBrokerParameters(request, _config));
             if (reviewableParams != null) {
-              addOrRemoveBroker(request, response, endPoint, () -> (AddedOrRemovedBrokerParameters) reviewableParams);
+              addBroker(request, response, () -> (AddBrokerParameters) reviewableParams);
+            }
+            break;
+          case REMOVE_BROKER:
+            reviewableParams = evaluateReviewableParams(request, response, () -> new RemoveBrokerParameters(request, _config));
+            if (reviewableParams != null) {
+              removeBroker(request, response, () -> (RemoveBrokerParameters) reviewableParams);
             }
             break;
           case FIX_OFFLINE_REPLICAS:
@@ -415,17 +419,22 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                  request, response);
   }
 
-  private void addOrRemoveBroker(HttpServletRequest request,
-                                 HttpServletResponse response,
-                                 EndPoint endPoint,
-                                 Supplier<AddedOrRemovedBrokerParameters> paramSupplier)
+  private void addBroker(HttpServletRequest request,
+                         HttpServletResponse response,
+                         Supplier<AddBrokerParameters> paramSupplier)
       throws IOException, ExecutionException, InterruptedException {
-    Function<AddedOrRemovedBrokerParameters, Function<String, OperationFuture>> function;
-    if (endPoint == ADD_BROKER) {
-      function = parameters -> (uuid -> _asyncKafkaCruiseControl.addBrokers(parameters, uuid));
-    } else {
-      function = parameters -> (uuid -> _asyncKafkaCruiseControl.decommissionBrokers(parameters, uuid));
-    }
+    Function<AddBrokerParameters, Function<String, OperationFuture>> function;
+    function = parameters -> (uuid -> _asyncKafkaCruiseControl.addBrokers(parameters, uuid));
+
+    asyncRequest(paramSupplier, function, request, response);
+  }
+
+  private void removeBroker(HttpServletRequest request,
+                            HttpServletResponse response,
+                            Supplier<RemoveBrokerParameters> paramSupplier)
+      throws IOException, ExecutionException, InterruptedException {
+    Function<RemoveBrokerParameters, Function<String, OperationFuture>> function;
+    function = parameters -> (uuid -> _asyncKafkaCruiseControl.decommissionBrokers(parameters, uuid));
 
     asyncRequest(paramSupplier, function, request, response);
   }

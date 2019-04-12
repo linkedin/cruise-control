@@ -7,21 +7,22 @@ package com.linkedin.kafka.cruisecontrol.async;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 
 /**
- * The async runnable for {@link KafkaCruiseControl#decommissionBrokers(Collection, boolean, boolean, List,
+ * The async runnable for {@link KafkaCruiseControl#decommissionBrokers(Set, boolean, boolean, List,
  * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean,
- * Integer, Integer, boolean, Pattern, ReplicaMovementStrategy, String, boolean, boolean)}
+ * Integer, Integer, boolean, Pattern, ReplicaMovementStrategy, String, boolean, boolean, Set)}
  */
 class DecommissionBrokersRunnable extends OperationRunnable {
-  private final Collection<Integer> _brokerIds;
+  private final Set<Integer> _removedBrokerIds;
+  private final Set<Integer> _destinationBrokerIds;
   private final boolean _dryRun;
   private final boolean _throttleRemovedBrokers;
   private final List<String> _goals;
@@ -39,13 +40,14 @@ class DecommissionBrokersRunnable extends OperationRunnable {
 
   DecommissionBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                               OperationFuture future,
-                              AddedOrRemovedBrokerParameters parameters,
+                              RemoveBrokerParameters parameters,
                               String uuid,
                               KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
-    _brokerIds = parameters.brokerIds();
+    _removedBrokerIds = parameters.brokerIds();
     _dryRun = parameters.dryRun();
-    _throttleRemovedBrokers = parameters.throttleAddedOrRemovedBrokers();
+    _throttleRemovedBrokers = parameters.throttleRemovedBrokers();
+    _destinationBrokerIds = parameters.destinationBrokerIds();
     _goals = parameters.goals();
     _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
@@ -62,7 +64,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
 
   @Override
   protected OptimizationResult getResult() throws Exception {
-    return new OptimizationResult(_kafkaCruiseControl.decommissionBrokers(_brokerIds,
+    return new OptimizationResult(_kafkaCruiseControl.decommissionBrokers(_removedBrokerIds,
                                                                           _dryRun,
                                                                           _throttleRemovedBrokers,
                                                                           _goals,
@@ -76,7 +78,8 @@ class DecommissionBrokersRunnable extends OperationRunnable {
                                                                           _replicaMovementStrategy,
                                                                           _uuid,
                                                                           _excludeRecentlyDemotedBrokers,
-                                                                          _excludeRecentlyRemovedBrokers),
+                                                                          _excludeRecentlyRemovedBrokers,
+                                                                          _destinationBrokerIds),
                                   _config);
   }
 }

@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.io.UnsupportedEncodingException;
+import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
 
 
@@ -23,7 +24,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
  *    &amp;replica_movement_strategies=[strategy1,strategy2...]&amp;ignore_proposal_cache=[true/false]
- *    &amp;kafka_assigner=[true/false]&amp;review_id=[id]
+ *    &amp;destination_broker_ids=[id1,id2...]&amp;kafka_assigner=[true/false]&amp;review_id=[id]
  * </pre>
  */
 public class RebalanceParameters extends GoalBasedOptimizationParameters {
@@ -33,6 +34,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private boolean _ignoreProposalCache;
+  private Set<Integer> _destinationBrokerIds;
   private Integer _reviewId;
 
   public RebalanceParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
@@ -48,6 +50,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_request);
+    _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_request);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
   }
@@ -79,6 +82,10 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
 
   public ReplicaMovementStrategy replicaMovementStrategy() {
     return _replicaMovementStrategy;
+  }
+
+  public Set<Integer> destinationBrokerIds() {
+    return _destinationBrokerIds;
   }
 
   public boolean ignoreProposalCache() {

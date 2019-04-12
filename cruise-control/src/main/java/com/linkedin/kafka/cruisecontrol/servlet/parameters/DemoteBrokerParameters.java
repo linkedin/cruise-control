@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.io.UnsupportedEncodingException;
-import java.util.List;
+import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
 
 
@@ -27,7 +27,7 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   private boolean _dryRun;
-  private List<Integer> _brokerIds;
+  private Set<Integer> _brokerIds;
   private Integer _concurrentLeaderMovements;
   private boolean _skipUrpDemotion;
   private boolean _excludeFollowerDemotion;
@@ -65,7 +65,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     return _dryRun;
   }
 
-  public List<Integer> brokerIds() {
+  public Set<Integer> brokerIds() {
     return _brokerIds;
   }
 

@@ -7,21 +7,21 @@ package com.linkedin.kafka.cruisecontrol.async;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 
 /**
- * The async runnable for {@link KafkaCruiseControl#addBrokers(Collection, boolean, boolean, List,
- * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer,
- * Integer, boolean, Pattern, ReplicaMovementStrategy, String, boolean, boolean)}
+ * The async runnable for {@link KafkaCruiseControl#addBrokers(Set, boolean, boolean, List, ModelCompletenessRequirements,
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern,
+ * ReplicaMovementStrategy, String, boolean, boolean)}
  */
 class AddBrokerRunnable extends OperationRunnable {
-  private final Collection<Integer> _brokerIds;
+  private final Set<Integer> _brokerIds;
   private final boolean _dryRun;
   private final boolean _throttleAddedBrokers;
   private final List<String> _goals;
@@ -39,13 +39,13 @@ class AddBrokerRunnable extends OperationRunnable {
 
   AddBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture future,
-                    AddedOrRemovedBrokerParameters parameters,
+                    AddBrokerParameters parameters,
                     String uuid,
                     KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
     _brokerIds = parameters.brokerIds();
     _dryRun = parameters.dryRun();
-    _throttleAddedBrokers = parameters.throttleAddedOrRemovedBrokers();
+    _throttleAddedBrokers = parameters.throttleAddedBrokers();
     _goals = parameters.goals();
     _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
