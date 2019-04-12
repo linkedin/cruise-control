@@ -167,7 +167,7 @@ public class KafkaCruiseControl {
   /**
    * Decommission a broker.
    *
-   * @param brokerIds The brokers to decommission.
+   * @param removedBrokers The brokers to decommission.
    * @param dryRun Whether it is a dry run or not.
    * @param throttleDecommissionedBroker Whether throttle the brokers that are being decommissioned.
    * @param goals The goals to be met when decommissioning the brokers. When empty all goals will be used.
@@ -185,11 +185,13 @@ public class KafkaCruiseControl {
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
+   * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
+   *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
    * @return The optimization result.
    *
    * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
    */
-  public GoalOptimizer.OptimizerResult decommissionBrokers(Collection<Integer> brokerIds,
+  public GoalOptimizer.OptimizerResult decommissionBrokers(Set<Integer> removedBrokers,
                                                            boolean dryRun,
                                                            boolean throttleDecommissionedBroker,
                                                            List<String> goals,
@@ -203,7 +205,8 @@ public class KafkaCruiseControl {
                                                            ReplicaMovementStrategy replicaMovementStrategy,
                                                            String uuid,
                                                            boolean excludeRecentlyDemotedBrokers,
-                                                           boolean excludeRecentlyRemovedBrokers)
+                                                           boolean excludeRecentlyRemovedBrokers,
+                                                           Set<Integer> requestedDestinationBrokerIds)
       throws KafkaCruiseControlException {
     sanityCheckDryRun(dryRun);
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
@@ -213,7 +216,7 @@ public class KafkaCruiseControl {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), modelCompletenessRequirements,
                                                             operationProgress);
-      brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
+      removedBrokers.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
       GoalOptimizer.OptimizerResult result = getProposals(clusterModel,
                                                           goalsByPriority,
                                                           operationProgress,
@@ -221,9 +224,10 @@ public class KafkaCruiseControl {
                                                           excludedTopics,
                                                           excludeRecentlyDemotedBrokers,
                                                           excludeRecentlyRemovedBrokers,
-                                                          false);
+                                                          false,
+                                                          requestedDestinationBrokerIds);
       if (!dryRun) {
-        executeRemoval(result.goalProposals(), throttleDecommissionedBroker, brokerIds, isKafkaAssignerMode(goals),
+        executeRemoval(result.goalProposals(), throttleDecommissionedBroker, removedBrokers, isKafkaAssignerMode(goals),
                        concurrentInterBrokerPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
       }
       return result;
@@ -276,7 +280,7 @@ public class KafkaCruiseControl {
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the broker addition.
    */
-  public GoalOptimizer.OptimizerResult addBrokers(Collection<Integer> brokerIds,
+  public GoalOptimizer.OptimizerResult addBrokers(Set<Integer> brokerIds,
                                                   boolean dryRun,
                                                   boolean throttleAddedBrokers,
                                                   List<String> goals,
@@ -309,10 +313,11 @@ public class KafkaCruiseControl {
                                                           excludedTopics,
                                                           excludeRecentlyDemotedBrokers,
                                                           excludeRecentlyRemovedBrokers,
-                                                          false);
+                                                          false,
+                                                          Collections.emptySet());
       if (!dryRun) {
         executeProposals(result.goalProposals(),
-                         throttleAddedBrokers ? Collections.emptyList() : brokerIds,
+                         throttleAddedBrokers ? Collections.emptySet() : brokerIds,
                          isKafkaAssignerMode(goals),
                          concurrentInterBrokerPartitionMovements,
                          concurrentLeaderMovements,
@@ -358,6 +363,8 @@ public class KafkaCruiseControl {
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @param ignoreProposalCache True to explicitly ignore the proposal cache, false otherwise.
    * @param isTriggeredByGoalViolation True if rebalance is triggered by goal violation, false otherwise.
+   * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
+   *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
    * @return The optimization result.
    * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
@@ -375,14 +382,16 @@ public class KafkaCruiseControl {
                                                  boolean excludeRecentlyDemotedBrokers,
                                                  boolean excludeRecentlyRemovedBrokers,
                                                  boolean ignoreProposalCache,
-                                                 boolean isTriggeredByGoalViolation) throws KafkaCruiseControlException {
+                                                 boolean isTriggeredByGoalViolation,
+                                                 Set<Integer> requestedDestinationBrokerIds) throws KafkaCruiseControlException {
     sanityCheckDryRun(dryRun);
     GoalOptimizer.OptimizerResult result = getProposals(goals, requirements, operationProgress,
                                                         allowCapacityEstimation, skipHardGoalCheck,
                                                         excludedTopics, excludeRecentlyDemotedBrokers,
                                                         excludeRecentlyRemovedBrokers,
                                                         ignoreProposalCache,
-                                                        isTriggeredByGoalViolation);
+                                                        isTriggeredByGoalViolation,
+                                                        requestedDestinationBrokerIds);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
                        concurrentInterBrokerPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
@@ -417,7 +426,7 @@ public class KafkaCruiseControl {
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @return the optimization result.
    */
-  public GoalOptimizer.OptimizerResult demoteBrokers(Collection<Integer> brokerIds,
+  public GoalOptimizer.OptimizerResult demoteBrokers(Set<Integer> brokerIds,
                                                      boolean dryRun,
                                                      OperationProgress operationProgress,
                                                      boolean allowCapacityEstimation,
@@ -446,7 +455,8 @@ public class KafkaCruiseControl {
                                                           null,
                                                           excludeRecentlyDemotedBrokers,
                                                           false,
-                                                          false);
+                                                          false,
+                                                          Collections.emptySet());
       if (!dryRun) {
         executeDemotion(result.goalProposals(), brokerIds, concurrentLeaderMovements, replicaMovementStrategy, uuid);
       }
@@ -659,6 +669,7 @@ public class KafkaCruiseControl {
    * 2. Provided completeness requirements contain a weaker requirement than what is used by the cached proposal.
    * 3. There is an ongoing execution.
    * 4. The request is triggered by goal violation detector.
+   * 5. The request involves explicitly requested destination broker Ids.
    *
    * @param goals A list of goals to optimize. When empty all goals will be used.
    * @param requirements Model completeness requirements.
@@ -666,6 +677,8 @@ public class KafkaCruiseControl {
    * @param excludeBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param ignoreProposalCache True to explicitly ignore the proposal cache, false otherwise.
    * @param isTriggeredByGoalViolation True if proposals is triggered by goal violation, false otherwise.
+   * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
+   *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
    * @return True to ignore proposal cache, false otherwise.
    */
   private boolean ignoreProposalCache(List<String> goals,
@@ -673,7 +686,8 @@ public class KafkaCruiseControl {
                                       Pattern excludedTopics,
                                       boolean excludeBrokers,
                                       boolean ignoreProposalCache,
-                                      boolean isTriggeredByGoalViolation) {
+                                      boolean isTriggeredByGoalViolation,
+                                      Set<Integer> requestedDestinationBrokerIds) {
     ModelCompletenessRequirements requirementsForCache = _goalOptimizer.modelCompletenessRequirementsForPrecomputing();
     boolean hasWeakerRequirement =
         requirementsForCache.minMonitoredPartitionsPercentage() > requirements.minMonitoredPartitionsPercentage()
@@ -681,7 +695,8 @@ public class KafkaCruiseControl {
         || (requirementsForCache.includeAllTopics() && !requirements.includeAllTopics());
 
     return _executor.hasOngoingExecution() || ignoreProposalCache || (goals != null && !goals.isEmpty())
-           || hasWeakerRequirement || excludedTopics != null || excludeBrokers || isTriggeredByGoalViolation;
+           || hasWeakerRequirement || excludedTopics != null || excludeBrokers || isTriggeredByGoalViolation
+           || !requestedDestinationBrokerIds.isEmpty();
   }
 
   /**
@@ -696,6 +711,8 @@ public class KafkaCruiseControl {
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
    * @param ignoreProposalCache True to explicitly ignore the proposal cache, false otherwise.
    * @param isTriggeredByGoalViolation True if proposals is triggered by goal violation, false otherwise.
+   * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
+   *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    */
@@ -708,7 +725,8 @@ public class KafkaCruiseControl {
                                                     boolean excludeRecentlyDemotedBrokers,
                                                     boolean excludeRecentlyRemovedBrokers,
                                                     boolean ignoreProposalCache,
-                                                    boolean isTriggeredByGoalViolation)
+                                                    boolean isTriggeredByGoalViolation,
+                                                    Set<Integer> requestedDestinationBrokerIds)
       throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
@@ -720,7 +738,8 @@ public class KafkaCruiseControl {
                             excludedTopics,
                             excludeBrokers,
                             ignoreProposalCache,
-                            isTriggeredByGoalViolation)) {
+                            isTriggeredByGoalViolation,
+                            requestedDestinationBrokerIds)) {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         ClusterModel clusterModel = _loadMonitor.clusterModel(-1,
                                                               _time.milliseconds(),
@@ -733,7 +752,8 @@ public class KafkaCruiseControl {
                               excludedTopics,
                               excludeRecentlyDemotedBrokers,
                               excludeRecentlyRemovedBrokers,
-                              isTriggeredByGoalViolation);
+                              isTriggeredByGoalViolation,
+                              requestedDestinationBrokerIds);
       } catch (KafkaCruiseControlException kcce) {
         throw kcce;
       } catch (Exception e) {
@@ -752,9 +772,13 @@ public class KafkaCruiseControl {
                                                      Pattern requestedExcludedTopics,
                                                      boolean excludeRecentlyDemotedBrokers,
                                                      boolean excludeRecentlyRemovedBrokers,
-                                                     boolean isTriggeredByGoalViolation)
+                                                     boolean isTriggeredByGoalViolation,
+                                                     Set<Integer> requestedDestinationBrokerIds)
       throws KafkaCruiseControlException {
     sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
+    if (!requestedDestinationBrokerIds.isEmpty()) {
+      sanityCheckBrokerPresence(requestedDestinationBrokerIds);
+    }
     synchronized (this) {
       ExecutorState executorState = null;
       if (excludeRecentlyDemotedBrokers || excludeRecentlyRemovedBrokers) {
@@ -773,7 +797,8 @@ public class KafkaCruiseControl {
                                           requestedExcludedTopics,
                                           excludedBrokersForLeadership,
                                           excludedBrokersForReplicaMove,
-                                          isTriggeredByGoalViolation);
+                                          isTriggeredByGoalViolation,
+                                          requestedDestinationBrokerIds);
     }
   }
 
@@ -802,8 +827,8 @@ public class KafkaCruiseControl {
    *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
    */
-  private void executeProposals(Collection<ExecutionProposal> proposals,
-                                Collection<Integer> unthrottledBrokers,
+  private void executeProposals(Set<ExecutionProposal> proposals,
+                                Set<Integer> unthrottledBrokers,
                                 boolean isKafkaAssignerMode,
                                 Integer concurrentInterBrokerPartitionMovements,
                                 Integer concurrentLeaderMovements,
@@ -831,9 +856,9 @@ public class KafkaCruiseControl {
    *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
    */
-  private void executeRemoval(Collection<ExecutionProposal> proposals,
+  private void executeRemoval(Set<ExecutionProposal> proposals,
                               boolean throttleDecommissionedBroker,
-                              Collection<Integer> removedBrokers,
+                              Set<Integer> removedBrokers,
                               boolean isKafkaAssignerMode,
                               Integer concurrentInterBrokerPartitionMovements,
                               Integer concurrentLeaderMovements,
@@ -842,7 +867,7 @@ public class KafkaCruiseControl {
     if (hasProposalsToExecute(proposals, uuid)) {
       // Set the execution mode, add execution proposals, and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
-      _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptyList() : removedBrokers,
+      _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
                                  removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements,
                                  concurrentLeaderMovements, replicaMovementStrategy, uuid);
     }
@@ -858,8 +883,8 @@ public class KafkaCruiseControl {
    *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.
    */
-  private void executeDemotion(Collection<ExecutionProposal> proposals,
-                               Collection<Integer> demotedBrokers,
+  private void executeDemotion(Set<ExecutionProposal> proposals,
+                               Set<Integer> demotedBrokers,
                                Integer concurrentLeaderMovements,
                                ReplicaMovementStrategy replicaMovementStrategy,
                                String uuid) {
@@ -1014,9 +1039,9 @@ public class KafkaCruiseControl {
 
   /**
    * Sanity check whether the provided brokers exist in cluster or not.
-   * @param brokerIds A list of broker id.
+   * @param brokerIds A set of broker ids.
    */
-  private void sanityCheckBrokerPresence(Collection<Integer> brokerIds) {
+  private void sanityCheckBrokerPresence(Set<Integer> brokerIds) {
     Cluster cluster = _loadMonitor.refreshClusterAndGeneration().cluster();
     Set<Integer> invalidBrokerIds = brokerIds.stream().filter(id -> cluster.nodeById(id) == null).collect(Collectors.toSet());
     if (!invalidBrokerIds.isEmpty()) {

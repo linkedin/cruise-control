@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.UnsupportedEncodingException;
+import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
 
 
@@ -17,10 +18,11 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;goals=[goal1,goal2...]&amp;data_from=[valid_windows/valid_partitions]&amp;excluded_topics=[pattern]
  *    &amp;use_ready_default_goals=[true/false]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
- *    &amp;kafka_assigner=[true/false]
+ *    &amp;destination_broker_ids=[id1,id2...]&amp;kafka_assigner=[true/false]
  * </pre>
  */
 public class ProposalsParameters extends GoalBasedOptimizationParameters {
+  private Set<Integer> _destinationBrokerIds;
   private boolean _ignoreProposalCache;
 
   public ProposalsParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
@@ -30,7 +32,12 @@ public class ProposalsParameters extends GoalBasedOptimizationParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
+    _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_request);
     _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_request);
+  }
+
+  public Set<Integer> destinationBrokerIds() {
+    return _destinationBrokerIds;
   }
 
   public boolean ignoreProposalCache() {

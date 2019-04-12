@@ -73,7 +73,8 @@ public class BrokerFailures extends KafkaAnomaly {
                                                                                            null,
                                                                                            _anomalyId,
                                                                                            _excludeRecentlyDemotedBrokers,
-                                                                                           _excludeRecentlyRemovedBrokers),
+                                                                                           _excludeRecentlyRemovedBrokers,
+                                                                                           Collections.emptySet()),
                                                    null);
       // Ensure that only the relevant response is cached to avoid memory pressure.
       _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
