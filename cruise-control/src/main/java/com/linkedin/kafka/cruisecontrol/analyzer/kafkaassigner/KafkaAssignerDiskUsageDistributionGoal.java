@@ -87,6 +87,7 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
 
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions) {
+    KafkaAssignerUtils.sanityCheckOptimizationOptions(optimizationOptions);
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     double meanDiskUsage = clusterModel.load().expectedUtilizationFor(DISK) / clusterModel.capacityFor(DISK);
     double upperThreshold = meanDiskUsage * (1 + balancePercentageWithMargin());

@@ -154,10 +154,11 @@ public abstract class CapacityGoal extends AbstractGoal {
    * determined by the total capacity of alive cluster multiplied by the capacity threshold.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     // Sanity Check -- i.e. not enough resources.
     Load recentClusterLoad = clusterModel.load();
 

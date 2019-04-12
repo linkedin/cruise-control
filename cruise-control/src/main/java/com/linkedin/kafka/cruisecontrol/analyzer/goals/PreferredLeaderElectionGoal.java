@@ -51,8 +51,15 @@ public class PreferredLeaderElectionGoal implements Goal {
     _kafkaCluster = kafkaCluster;
   }
 
+  private void sanityCheckOptimizationOptions(OptimizationOptions optimizationOptions) {
+    if (optimizationOptions.isTriggeredByGoalViolation()) {
+      throw new IllegalArgumentException(String.format("%s goal does not support use by goal violation detector.", name()));
+    }
+  }
+
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions) {
+    sanityCheckOptimizationOptions(optimizationOptions);
     // First move the replica on the demoted brokers to the end of the replica list.
     // If all the replicas are demoted, no change is made to the leader.
     Set<TopicPartition> partitionsToMove = new HashSet<>();

@@ -217,10 +217,10 @@ public class PotentialNwOutGoal extends AbstractGoal {
    * or the corresponding dead disks in its initial attempt. Since self healing has not been executed yet, this flag is false.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     // While proposals exclude the excludedTopics, the potential nw_out still considers replicas of the excludedTopics.
     _fixOfflineReplicasOnly = false;
   }

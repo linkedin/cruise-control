@@ -99,6 +99,7 @@ public class KafkaAssignerEvenRackAwareGoal implements Goal {
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions)
       throws KafkaCruiseControlException {
+    KafkaAssignerUtils.sanityCheckOptimizationOptions(optimizationOptions);
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     LOG.debug("Starting {} with excluded topics = {}", name(), excludedTopics);
 

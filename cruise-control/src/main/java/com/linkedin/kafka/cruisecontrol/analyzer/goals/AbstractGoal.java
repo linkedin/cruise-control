@@ -66,7 +66,6 @@ public abstract class AbstractGoal implements Goal {
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     _succeeded = true;
     LOG.debug("Starting optimization for {}.", name());
     // Initialize pre-optimized stats.
@@ -74,9 +73,10 @@ public abstract class AbstractGoal implements Goal {
     LOG.trace("[PRE - {}] {}", name(), statsBeforeOptimization);
     _finished = false;
     long goalStartTime = System.currentTimeMillis();
-    initGoalState(clusterModel, excludedTopics);
+    initGoalState(clusterModel, optimizationOptions);
     SortedSet<Broker> brokenBrokers = clusterModel.brokenBrokers();
 
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     while (!_finished) {
       for (Broker broker : brokersToBalance(clusterModel)) {
         rebalanceForBroker(broker, clusterModel, optimizedGoals, optimizationOptions);
@@ -147,9 +147,9 @@ public abstract class AbstractGoal implements Goal {
    * Initialize states that this goal requires -- e.g. run sanity checks regarding hard goals requirements.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded topics.
    */
-  protected abstract void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+  protected abstract void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
       throws OptimizationFailureException;
 
   /**

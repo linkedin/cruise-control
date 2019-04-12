@@ -164,12 +164,14 @@ public class RackAwareGoal extends AbstractGoal {
    * Sanity Check: There exists sufficient number of racks for achieving rack-awareness.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     // Sanity Check: not enough racks to satisfy rack awareness.
     int numAliveRacks = clusterModel.numAliveRacks();
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     if (!excludedTopics.isEmpty()) {
       int maxReplicationFactorOfIncludedTopics = 1;
       Map<String, Integer> replicationFactorByTopic = clusterModel.replicationFactorByTopic();

@@ -17,7 +17,8 @@ import java.util.regex.Pattern;
  * The async runnable for {@link KafkaCruiseControl#getProposals(
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)} and
  * {@link KafkaCruiseControl#getProposals(List, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean, Pattern, boolean, boolean, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean, Pattern, boolean, boolean,
+ * boolean, boolean)}
  */
 class GetProposalsRunnable extends OperationRunnable {
   private final List<String> _goals;
@@ -54,7 +55,8 @@ class GetProposalsRunnable extends OperationRunnable {
                                                                    _excludedTopics,
                                                                    _excludeRecentlyDemotedBrokers,
                                                                    _excludeRecentlyRemovedBrokers,
-                                                                   _ignoreProposalCache),
+                                                                   _ignoreProposalCache,
+                                                                   false),
                                   _config);
   }
 }

@@ -47,8 +47,9 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
  * <li>Under: (the average number of replicas per broker) * (1 + replica count balance percentage)</li>
  * <li>Above: (the average number of replicas per broker) * Math.max(0, 1 - replica count balance percentage)</li>
  * </ul>
- * Also see: {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG}
- * and {@link #balancePercentageWithMargin()}.
+ * Also see: {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG},
+ * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG},
+ * and {@link #balancePercentageWithMargin(OptimizationOptions)}.
  */
 public class ReplicaDistributionGoal extends AbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicaDistributionGoal.class);
@@ -81,24 +82,36 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
    * threshold to be {@link BalancingConstraint#replicaBalancePercentage()}, we use
    * ({@link BalancingConstraint#replicaBalancePercentage()}-1)*{@link #BALANCE_MARGIN} instead.
+   *
+   * @param optimizationOptions Options to adjust balance percentage with margin in case goal optimization is triggered
+   * by goal violation detector.
    * @return the rebalance threshold with a margin.
    */
-  private double balancePercentageWithMargin() {
-    return (_balancingConstraint.replicaBalancePercentage() - 1) * BALANCE_MARGIN;
+  private double balancePercentageWithMargin(OptimizationOptions optimizationOptions) {
+    double balancePercentage = optimizationOptions.isTriggeredByGoalViolation()
+                               ? _balancingConstraint.replicaBalancePercentage()
+                                 * _balancingConstraint.goalViolationDistributionThresholdMultiplier()
+                               : _balancingConstraint.replicaBalancePercentage();
+
+    return (balancePercentage - 1) * BALANCE_MARGIN;
   }
 
   /**
+   * @param optimizationOptions Options to adjust balance upper limit in case goal optimization is triggered by goal
+   * violation detector.
    * @return The replica balance upper threshold in number of replicas.
    */
-  private int balanceUpperLimit() {
-    return (int) Math.ceil(_avgReplicasOnAliveBroker * (1 + balancePercentageWithMargin()));
+  private int balanceUpperLimit(OptimizationOptions optimizationOptions) {
+    return (int) Math.ceil(_avgReplicasOnAliveBroker * (1 + balancePercentageWithMargin(optimizationOptions)));
   }
 
   /**
+   * @param optimizationOptions Options to adjust balance lower limit in case goal optimization is triggered by goal
+   * violation detector.
    * @return The replica balance lower threshold in number of replicas.
    */
-  private int balanceLowerLimit() {
-    return (int) Math.floor(_avgReplicasOnAliveBroker * Math.max(0, (1 - balancePercentageWithMargin())));
+  private int balanceLowerLimit(OptimizationOptions optimizationOptions) {
+    return (int) Math.floor(_avgReplicasOnAliveBroker * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions))));
   }
 
   /**
@@ -179,16 +192,16 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    * Initiates replica distribution goal.
    *
    * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     // Initialize the average replicas on an alive broker.
     int numReplicasInCluster = clusterModel.getReplicaDistribution().values().stream().mapToInt(List::size).sum();
     _avgReplicasOnAliveBroker = (numReplicasInCluster / (double) clusterModel.aliveBrokers().size());
 
     // Log a warning if all replicas are excluded.
-    if (clusterModel.topics().equals(excludedTopics)) {
+    if (clusterModel.topics().equals(optimizationOptions.excludedTopics())) {
       LOG.warn("All replicas are excluded from {}.", name());
     }
 
@@ -198,8 +211,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     }
 
     _fixOfflineReplicasOnly = false;
-    _balanceUpperLimit = balanceUpperLimit();
-    _balanceLowerLimit = balanceLowerLimit();
+    _balanceUpperLimit = balanceUpperLimit(optimizationOptions);
+    _balanceLowerLimit = balanceLowerLimit(optimizationOptions);
   }
 
   /**

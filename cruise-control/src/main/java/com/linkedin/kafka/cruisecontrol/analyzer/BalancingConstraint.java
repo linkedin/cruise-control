@@ -16,14 +16,15 @@ import java.util.Properties;
 
 
 /**
- * A class that holds the information of balancing constraint of resources in descending order of balancing priority,
- * balance percentage and capacity threshold for each resource.
+ * A class that holds the information of balancing constraint of resources, balance and capacity thresholds, and self
+ * healing distribution threshold multiplier.
  */
 public class BalancingConstraint {
   private final List<Resource> _resources;
   private final Map<Resource, Double> _resourceBalancePercentage;
   private final Double _replicaBalancePercentage;
   private final Double _topicReplicaBalancePercentage;
+  private final Double _goalViolationDistributionThresholdMultiplier;
   private final Map<Resource, Double> _capacityThreshold;
   private final Map<Resource, Double> _lowUtilizationThreshold;
   private final Long _maxReplicasPerBroker;
@@ -60,6 +61,7 @@ public class BalancingConstraint {
     // Set default value for the balance percentage of (1) replica and (2) topic replica distribution.
     _replicaBalancePercentage = config.getDouble(KafkaCruiseControlConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
     _topicReplicaBalancePercentage = config.getDouble(KafkaCruiseControlConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG);
+    _goalViolationDistributionThresholdMultiplier = config.getDouble(KafkaCruiseControlConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG);
   }
 
   Properties setProps(Properties props) {
@@ -81,6 +83,8 @@ public class BalancingConstraint {
     props.put(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, _maxReplicasPerBroker.toString());
     props.put(KafkaCruiseControlConfig.REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _replicaBalancePercentage.toString());
     props.put(KafkaCruiseControlConfig.TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG, _topicReplicaBalancePercentage.toString());
+    props.put(KafkaCruiseControlConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG,
+              _goalViolationDistributionThresholdMultiplier.toString());
     return props;
   }
 
@@ -111,6 +115,13 @@ public class BalancingConstraint {
    */
   public Double topicReplicaBalancePercentage() {
     return _topicReplicaBalancePercentage;
+  }
+
+  /**
+   * Get goal violation distribution threshold multiplier to be used in detection and fixing goal violations.
+   */
+  public Double goalViolationDistributionThresholdMultiplier() {
+    return _goalViolationDistributionThresholdMultiplier;
   }
 
   /**
@@ -199,11 +210,13 @@ public class BalancingConstraint {
     return String.format("BalancingConstraint[cpuBalancePercentage=%.4f,diskBalancePercentage=%.4f,"
                          + "inboundNwBalancePercentage=%.4f,outboundNwBalancePercentage=%.4f,cpuCapacityThreshold=%.4f,"
                          + "diskCapacityThreshold=%.4f,inboundNwCapacityThreshold=%.4f,outboundNwCapacityThreshold=%.4f,"
-                         + "maxReplicasPerBroker=%d,replicaBalancePercentage=%.4f,topicReplicaBalancePercentage=%.4f]",
+                         + "maxReplicasPerBroker=%d,replicaBalancePercentage=%.4f,topicReplicaBalancePercentage=%.4f,"
+                         + "goalViolationDistributionThresholdMultiplier=%.4f]",
                          _resourceBalancePercentage.get(Resource.CPU), _resourceBalancePercentage.get(Resource.DISK),
                          _resourceBalancePercentage.get(Resource.NW_IN), _resourceBalancePercentage.get(Resource.NW_OUT),
                          _capacityThreshold.get(Resource.CPU), _capacityThreshold.get(Resource.DISK),
                          _capacityThreshold.get(Resource.NW_IN), _capacityThreshold.get(Resource.NW_OUT),
-                         _maxReplicasPerBroker, _replicaBalancePercentage, _topicReplicaBalancePercentage);
+                         _maxReplicasPerBroker, _replicaBalancePercentage, _topicReplicaBalancePercentage,
+                         _goalViolationDistributionThresholdMultiplier);
   }
 }

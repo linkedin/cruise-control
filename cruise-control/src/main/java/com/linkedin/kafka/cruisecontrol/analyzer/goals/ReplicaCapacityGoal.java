@@ -116,12 +116,14 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    * This is a hard goal; hence, the proposals are not limited to dead broker replicas in case of self-healing.
    * Sanity Check: Each node has sufficient number of replicas that can be moved to satisfy the replica capacity goal.
    *
-   *  @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
+   * @param clusterModel The state of the cluster.
+   * @param optimizationOptions Options to take into account during optimization.
    */
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions)
+      throws OptimizationFailureException {
     List<String> topicsToRebalance = new ArrayList<>(clusterModel.topics());
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     topicsToRebalance.removeAll(excludedTopics);
     if (topicsToRebalance.isEmpty()) {
       LOG.warn("All topics are excluded from {}.", name());

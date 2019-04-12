@@ -322,7 +322,6 @@ public class GoalOptimizer implements Runnable {
    * Depending the existence of dead/decommissioned brokers in the given cluster:
    * (1) Re-balance: Generates proposals to update the state of the cluster to achieve a final balanced state.
    * (2) Self-healing: Generates proposals to move replicas away from decommissioned brokers.
-   * Returns a map from goal names to stats. Initial stats are returned under goal name "init".
    *
    * @param clusterModel The state of the cluster over which the balancing proposal will be applied. Function execution
    *                     updates the cluster state with balancing proposals. If the cluster model is specified, the
@@ -340,8 +339,9 @@ public class GoalOptimizer implements Runnable {
    * (1) using {@link #_defaultExcludedTopics}, and
    * (2) does not exclude any brokers for receiving leadership.
    * (3) does not exclude any brokers for receiving replicas.
+   * (4) assumes that the optimization is not triggered by anomaly detector.
    *
-   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern, Set, Set)}.
+   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern, Set, Set, boolean)}.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        List<Goal> goalsByPriority,
@@ -352,7 +352,8 @@ public class GoalOptimizer implements Runnable {
                          operationProgress,
                          null,
                          Collections.emptySet(),
-                         Collections.emptySet());
+                         Collections.emptySet(),
+                         false);
   }
 
   /**
@@ -370,6 +371,7 @@ public class GoalOptimizer implements Runnable {
    *                                use {@link #_defaultExcludedTopics})
    * @param excludedBrokersForLeadership Brokers excluded from receiving leadership upon proposal generation.
    * @param excludedBrokersForReplicaMove Brokers excluded from receiving replicas upon proposal generation.
+   * @param isTriggeredByGoalViolation True if optimization of goals is triggered by goal violation, false otherwise.
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
@@ -377,7 +379,8 @@ public class GoalOptimizer implements Runnable {
                                        OperationProgress operationProgress,
                                        Pattern requestedExcludedTopics,
                                        Set<Integer> excludedBrokersForLeadership,
-                                       Set<Integer> excludedBrokersForReplicaMove)
+                                       Set<Integer> excludedBrokersForReplicaMove,
+                                       boolean isTriggeredByGoalViolation)
       throws KafkaCruiseControlException {
     if (clusterModel == null) {
       throw new IllegalArgumentException("The cluster model cannot be null");
@@ -404,7 +407,10 @@ public class GoalOptimizer implements Runnable {
     Map<TopicPartition, Integer> preOptimizedLeaderDistribution = null;
     Set<String> excludedTopics = excludedTopics(clusterModel, requestedExcludedTopics);
     LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove);
+    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
+                                                                      excludedBrokersForLeadership,
+                                                                      excludedBrokersForReplicaMove,
+                                                                      isTriggeredByGoalViolation);
     for (Goal goal : goalsByPriority) {
       preOptimizedReplicaDistribution = preOptimizedReplicaDistribution == null ? initReplicaDistribution : clusterModel.getReplicaDistribution();
       preOptimizedLeaderDistribution = preOptimizedLeaderDistribution == null ? initLeaderDistribution : clusterModel.getLeaderDistribution();

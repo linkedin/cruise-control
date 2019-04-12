@@ -48,7 +48,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
 
   /** Testing constructor */
   LeaderBytesInDistributionGoal(BalancingConstraint balancingConstraint) {
-    this._balancingConstraint = balancingConstraint;
+    _balancingConstraint = balancingConstraint;
   }
 
   /**
@@ -159,7 +159,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  protected void initGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
+  protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     // While proposals exclude the excludedTopics, the leader bytes in still considers replicas of the excludedTopics.
     _meanLeaderBytesIn = 0.0;
     _overLimitBrokerIds = new HashSet<>();
