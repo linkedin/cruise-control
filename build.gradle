@@ -71,7 +71,7 @@ subprojects {
 
   //code quality and inspections
   checkstyle {
-    toolVersion = '7.5.1'
+    toolVersion = '8.0'
     ignoreFailures = false
     configFile = rootProject.file('checkstyle/checkstyle.xml')
   }
@@ -117,7 +117,7 @@ project(':cruise-control-core') {
   }
 
   dependencies {
-    compile "org.slf4j:slf4j-api:1.7.25"
+    compile "org.slf4j:slf4j-api:1.7.26"
     compile 'junit:junit:4.12'
     compile 'org.apache.commons:commons-math3:3.6.1'
 
@@ -190,26 +190,26 @@ project(':cruise-control') {
   dependencies {
     compile project(':cruise-control-metrics-reporter')
     compile project(':cruise-control-core')
-    compile "org.slf4j:slf4j-api:1.7.25"
-    compile "org.apache.zookeeper:zookeeper:3.4.6"
+    compile "org.slf4j:slf4j-api:1.7.26"
+    compile "org.apache.zookeeper:zookeeper:3.4.14"
     compile "org.apache.kafka:kafka_2.11:2.0.0"
     compile 'org.apache.kafka:kafka-clients:2.0.0'
     compile "org.scala-lang:scala-library:2.11.11"
     compile 'junit:junit:4.12'
     compile 'org.apache.commons:commons-math3:3.6.1'
-    compile 'org.apache.httpcomponents:httpclient:4.5.6'
-    compile 'com.google.code.gson:gson:2.7'
-    compile 'org.eclipse.jetty:jetty-server:9.4.6.v20170531'
-    compile 'org.eclipse.jetty:jetty-servlet:9.4.6.v20170531'
-    compile 'io.dropwizard.metrics:metrics-core:3.2.2'
+    compile 'org.apache.httpcomponents:httpclient:4.5.8'
+    compile 'com.google.code.gson:gson:2.8.5'
+    compile 'org.eclipse.jetty:jetty-server:9.4.15.v20190215'
+    compile 'org.eclipse.jetty:jetty-servlet:9.4.15.v20190215'
+    compile 'io.dropwizard.metrics:metrics-core:3.2.6'
 
     testCompile project(path: ':cruise-control-metrics-reporter', configuration: 'testOutput')
     testCompile project(path: ':cruise-control-core', configuration: 'testOutput')
     testCompile "org.scala-lang:scala-library:2.11.11"
-    testCompile 'org.easymock:easymock:3.4'
+    testCompile 'org.easymock:easymock:4.0.2'
     testCompile 'org.apache.kafka:kafka_2.11:2.0.0:test'
     testCompile 'org.apache.kafka:kafka-clients:2.0.0:test'
-    testCompile 'commons-io:commons-io:2.5'
+    testCompile 'commons-io:commons-io:2.6'
   }
 
   publishing {
@@ -305,7 +305,7 @@ project(':cruise-control-metrics-reporter') {
   }
 
   dependencies {
-    compile "org.slf4j:slf4j-api:1.7.25"
+    compile "org.slf4j:slf4j-api:1.7.26"
     compile "org.apache.kafka:kafka_2.11:2.0.0"
     compile 'org.apache.kafka:kafka-clients:2.0.0'
     compile 'junit:junit:4.12'
@@ -314,7 +314,7 @@ project(':cruise-control-metrics-reporter') {
     testCompile 'org.bouncycastle:bcpkix-jdk15on:1.54'
     testCompile 'org.apache.kafka:kafka-clients:2.0.0:test'
     testCompile 'org.apache.kafka:kafka-clients:2.0.0'
-    testCompile 'commons-io:commons-io:2.5'
+    testCompile 'commons-io:commons-io:2.6'
     testOutput sourceSets.test.output
   }
 
