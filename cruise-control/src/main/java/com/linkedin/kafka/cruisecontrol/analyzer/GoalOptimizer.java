@@ -340,8 +340,9 @@ public class GoalOptimizer implements Runnable {
    * (2) does not exclude any brokers for receiving leadership.
    * (3) does not exclude any brokers for receiving replicas.
    * (4) assumes that the optimization is not triggered by anomaly detector.
+   * (5) does not specify the destination brokers for replica move explicitly.
    *
-   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern, Set, Set, boolean)}.
+   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern, Set, Set, boolean, Set)}.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        List<Goal> goalsByPriority,
@@ -353,7 +354,8 @@ public class GoalOptimizer implements Runnable {
                          null,
                          Collections.emptySet(),
                          Collections.emptySet(),
-                         false);
+                         false,
+                         Collections.emptySet());
   }
 
   /**
@@ -372,6 +374,8 @@ public class GoalOptimizer implements Runnable {
    * @param excludedBrokersForLeadership Brokers excluded from receiving leadership upon proposal generation.
    * @param excludedBrokersForReplicaMove Brokers excluded from receiving replicas upon proposal generation.
    * @param isTriggeredByGoalViolation True if optimization of goals is triggered by goal violation, false otherwise.
+   * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
+   *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
@@ -380,7 +384,8 @@ public class GoalOptimizer implements Runnable {
                                        Pattern requestedExcludedTopics,
                                        Set<Integer> excludedBrokersForLeadership,
                                        Set<Integer> excludedBrokersForReplicaMove,
-                                       boolean isTriggeredByGoalViolation)
+                                       boolean isTriggeredByGoalViolation,
+                                       Set<Integer> requestedDestinationBrokerIds)
       throws KafkaCruiseControlException {
     if (clusterModel == null) {
       throw new IllegalArgumentException("The cluster model cannot be null");
@@ -410,7 +415,8 @@ public class GoalOptimizer implements Runnable {
     OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
                                                                       excludedBrokersForLeadership,
                                                                       excludedBrokersForReplicaMove,
-                                                                      isTriggeredByGoalViolation);
+                                                                      isTriggeredByGoalViolation,
+                                                                      requestedDestinationBrokerIds);
     for (Goal goal : goalsByPriority) {
       preOptimizedReplicaDistribution = preOptimizedReplicaDistribution == null ? initReplicaDistribution : clusterModel.getReplicaDistribution();
       preOptimizedLeaderDistribution = preOptimizedLeaderDistribution == null ? initLeaderDistribution : clusterModel.getLeaderDistribution();

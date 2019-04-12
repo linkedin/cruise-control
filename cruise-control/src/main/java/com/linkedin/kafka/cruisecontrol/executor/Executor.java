@@ -245,8 +245,8 @@ public class Executor {
    * @param uuid UUID of the execution.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
-                                            Collection<Integer> unthrottledBrokers,
-                                            Collection<Integer> removedBrokers,
+                                            Set<Integer> unthrottledBrokers,
+                                            Set<Integer> removedBrokers,
                                             LoadMonitor loadMonitor,
                                             Integer requestedInterBrokerPartitionMovementConcurrency,
                                             Integer requestedLeadershipMovementConcurrency,

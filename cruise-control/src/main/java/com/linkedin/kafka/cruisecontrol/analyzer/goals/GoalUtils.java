@@ -71,49 +71,68 @@ public class GoalUtils {
   }
 
   /**
-   * Filter out the given excluded brokers from the original brokers (if needed). If the action is:
+   * Filter out the given excluded brokers from the original brokers (if needed). If the user explicitly specified the
+   * eligible destination brokers, and the action is not leadership movement, then retain only the brokers in the
+   * requested destination brokers. Otherwise, if the action is:
    * <ul>
    * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#LEADERSHIP_MOVEMENT}, then brokers excluded for
    * leadership are not eligible.</li>
-   * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT} for a leader replica, then unless
-   * the source leader replica is dead, brokers excluded for leadership are not eligible.</li>
+   * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT} for a leader replica,
+   * then unless the source leader replica is dead, brokers excluded for leadership are not eligible.</li>
    * </ul>
    *
    * Note that this function supports only the above actions.
    *
    * @param originalBrokers Original list of brokers to be filtered.
-   * @param excludedBrokers Brokers to be excluded from.
+   * @param optimizationOptions Options to take into account while filtering out brokers.
    * @param replica Replica affected from the action.
    * @param action Action that affects the given replica.
    */
   private static void filterOutBrokersExcludedForLeadership(List<Broker> originalBrokers,
-                                                            Set<Integer> excludedBrokers,
+                                                            OptimizationOptions optimizationOptions,
                                                             Replica replica,
                                                             ActionType action) {
-    if (!excludedBrokers.isEmpty()
-        && (action == ActionType.LEADERSHIP_MOVEMENT || (replica.originalBroker().isAlive() && replica.isLeader()))) {
-      originalBrokers.removeIf(broker -> excludedBrokers.contains(broker.id()));
+    Set<Integer> requestedDestinationBrokerIds = optimizationOptions.requestedDestinationBrokerIds();
+    if (requestedDestinationBrokerIds.isEmpty()) {
+      Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForLeadership();
+      if (!excludedBrokers.isEmpty()
+          && (action == ActionType.LEADERSHIP_MOVEMENT || (replica.originalBroker().isAlive() && replica.isLeader()))) {
+        originalBrokers.removeIf(broker -> excludedBrokers.contains(broker.id()));
+      }
+    } else if (action != ActionType.LEADERSHIP_MOVEMENT) {
+      // Retain only the brokers that are in the requested destination brokers.
+      originalBrokers.removeIf(b -> !requestedDestinationBrokerIds.contains(b.id()));
     }
   }
 
   /**
-   * Filter out the given excluded brokers from the original brokers (if needed). If the action is:
+   * Filter out the given excluded brokers from the original brokers (if needed). If the user explicitly specified the
+   * eligible destination brokers, and the action is not leadership movement, then retain only the brokers in the
+   * requested destination brokers. Otherwise, if the action is:
    * <ul>
    * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT}, then unless the source replica
    * is dead, brokers excluded for replica move are not eligible.</li>
    * </ul>
    *
    * @param originalBrokers Original list of brokers to be filtered.
-   * @param excludedBrokers Brokers to be excluded from.
+   * @param optimizationOptions Options to take into account while filtering out brokers.
    * @param replica Replica affected from the action.
    * @param action Action that affects the given replica.
    */
   private static void filterOutBrokersExcludedForReplicaMove(List<Broker> originalBrokers,
-                                                             Set<Integer> excludedBrokers,
+                                                             OptimizationOptions optimizationOptions,
                                                              Replica replica,
                                                              ActionType action) {
-    if (!excludedBrokers.isEmpty() && action == ActionType.INTER_BROKER_REPLICA_MOVEMENT && replica.originalBroker().isAlive()) {
-      originalBrokers.removeIf(broker -> excludedBrokers.contains(broker.id()));
+    Set<Integer> requestedDestinationBrokerIds = optimizationOptions.requestedDestinationBrokerIds();
+    if (requestedDestinationBrokerIds.isEmpty()) {
+      Set<Integer> excludedBrokers = optimizationOptions.excludedBrokersForReplicaMove();
+      if (!excludedBrokers.isEmpty() && action == ActionType.INTER_BROKER_REPLICA_MOVEMENT
+          && replica.originalBroker().isAlive()) {
+        originalBrokers.removeIf(broker -> excludedBrokers.contains(broker.id()));
+      }
+    } else if (action != ActionType.LEADERSHIP_MOVEMENT) {
+      // Retain only the brokers that are in the requested destination brokers.
+      originalBrokers.removeIf(b -> !requestedDestinationBrokerIds.contains(b.id()));
     }
   }
 
@@ -139,8 +158,11 @@ public class GoalUtils {
                                       OptimizationOptions optimizationOptions) {
 
     List<Broker> eligibleBrokers = new ArrayList<>(candidates);
-    filterOutBrokersExcludedForLeadership(eligibleBrokers, optimizationOptions.excludedBrokersForLeadership(), replica, action);
-    filterOutBrokersExcludedForReplicaMove(eligibleBrokers, optimizationOptions.excludedBrokersForReplicaMove(), replica, action);
+    filterOutBrokersExcludedForLeadership(eligibleBrokers, optimizationOptions, replica, action);
+    filterOutBrokersExcludedForReplicaMove(eligibleBrokers, optimizationOptions, replica, action);
+    if (!optimizationOptions.requestedDestinationBrokerIds().isEmpty()) {
+      return eligibleBrokers;
+    }
 
     if (clusterModel.newBrokers().isEmpty()) {
       return eligibleBrokers;

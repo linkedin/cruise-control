@@ -9,16 +9,16 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
-import java.util.Collection;
+import java.util.Set;
 
 
 /**
- * The async runnable for {@link KafkaCruiseControl#demoteBrokers(Collection, boolean,
+ * The async runnable for {@link KafkaCruiseControl#demoteBrokers(Set, boolean,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, boolean, boolean,
  * ReplicaMovementStrategy, String, boolean)}
  */
 public class DemoteBrokerRunnable extends OperationRunnable {
-  private final Collection<Integer> _brokerIds;
+  private final Set<Integer> _brokerIds;
   private final boolean _dryRun;
   private final boolean _allowCapacityEstimation;
   private final Integer _concurrentLeaderMovements;

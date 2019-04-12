@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.async.progress.Pending;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveBrokerParameters;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -29,24 +30,24 @@ import java.util.concurrent.Executors;
  * The following async methods are supported:
  *
  * <ul>
- * <li>{@link KafkaCruiseControl#decommissionBrokers(java.util.Collection, boolean, boolean, java.util.List,
- * ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
+ * <li>{@link KafkaCruiseControl#decommissionBrokers(Set, boolean, boolean, java.util.List, ModelCompletenessRequirements,
+ * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
+ * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, Set)}</li>
+ * <li>{@link KafkaCruiseControl#addBrokers(Set, boolean, boolean, java.util.List, ModelCompletenessRequirements,
+ * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)}</li>
- * <li>{@link KafkaCruiseControl#addBrokers(java.util.Collection, boolean, boolean, java.util.List,
- * ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
- * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)}</li>
- * <li>{@link KafkaCruiseControl#demoteBrokers(java.util.Collection, boolean, OperationProgress, boolean, Integer, boolean,
- * boolean, com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean)}</li>
+ * <li>{@link KafkaCruiseControl#demoteBrokers(Set, boolean, OperationProgress, boolean, Integer, boolean, boolean,
+ * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getProposals(OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
  * <li>{@link KafkaCruiseControl#getProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
- * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean, boolean)}</li>
+ * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean, boolean, Set)}</li>
  * <li>{@link KafkaCruiseControl#rebalance(java.util.List, boolean, ModelCompletenessRequirements, OperationProgress,
  * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, boolean,
- * boolean)}</li>
+ * boolean, Set)}</li>
  * </ul>
  *
  * The other operations are non-blocking by default.
@@ -78,11 +79,11 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#decommissionBrokers(java.util.Collection, boolean, boolean, java.util.List,
+   * @see KafkaCruiseControl#decommissionBrokers(Set, boolean, boolean, java.util.List,
    * ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
-   * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)
+   * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, Set)
    */
-  public OperationFuture decommissionBrokers(AddedOrRemovedBrokerParameters parameters, String uuid) {
+  public OperationFuture decommissionBrokers(RemoveBrokerParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Decommission brokers");
     pending(future.operationProgress());
     _sessionExecutor.submit(new DecommissionBrokersRunnable(this, future, parameters, uuid, _config));
@@ -90,11 +91,11 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#addBrokers(java.util.Collection, boolean, boolean, java.util.List,
-   * ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
+   * @see KafkaCruiseControl#addBrokers(Set, boolean, boolean, java.util.List, ModelCompletenessRequirements,
+   * OperationProgress, boolean, Integer, Integer, boolean, java.util.regex.Pattern,
    * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)
    */
-  public OperationFuture addBrokers(AddedOrRemovedBrokerParameters parameters, String uuid) {
+  public OperationFuture addBrokers(AddBrokerParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Add brokers");
     pending(future.operationProgress());
     _sessionExecutor.submit(new AddBrokerRunnable(this, future, parameters, uuid, _config));
@@ -124,7 +125,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
 
   /**
    * @see KafkaCruiseControl#getProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
-   * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean, boolean)
+   * boolean, boolean, java.util.regex.Pattern, boolean, boolean, boolean, boolean, Set)
    */
   public OperationFuture getProposals(ProposalsParameters parameters) {
     OperationFuture future = new OperationFuture("Get customized proposals");
@@ -137,7 +138,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
    * @see KafkaCruiseControl#rebalance(java.util.List, boolean, ModelCompletenessRequirements, OperationProgress,
    * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
    * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, boolean,
-   * boolean)
+   * boolean, Set)
    */
   public OperationFuture rebalance(RebalanceParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("Rebalance");
@@ -147,8 +148,8 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#demoteBrokers(java.util.Collection, boolean, OperationProgress, boolean, Integer, boolean,
-   * boolean, com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean)
+   * @see KafkaCruiseControl#demoteBrokers(Set, boolean, OperationProgress, boolean, Integer, boolean, boolean,
+   * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean)
    */
   public OperationFuture demoteBrokers(String uuid, DemoteBrokerParameters parameters) {
     OperationFuture future = new OperationFuture("Demote");

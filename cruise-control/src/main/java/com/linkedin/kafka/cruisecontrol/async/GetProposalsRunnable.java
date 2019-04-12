@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 
@@ -18,7 +19,7 @@ import java.util.regex.Pattern;
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)} and
  * {@link KafkaCruiseControl#getProposals(List, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean, Pattern, boolean, boolean,
- * boolean, boolean)}
+ * boolean, boolean, java.util.Set)}
  */
 class GetProposalsRunnable extends OperationRunnable {
   private final List<String> _goals;
@@ -28,6 +29,7 @@ class GetProposalsRunnable extends OperationRunnable {
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
   private final boolean _ignoreProposalCache;
+  private final Set<Integer> _destinationBrokerIds;
   private final KafkaCruiseControlConfig _config;
 
   GetProposalsRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -42,6 +44,7 @@ class GetProposalsRunnable extends OperationRunnable {
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
     _ignoreProposalCache = parameters.ignoreProposalCache();
+    _destinationBrokerIds = parameters.destinationBrokerIds();
     _config = config;
   }
 
@@ -56,7 +59,8 @@ class GetProposalsRunnable extends OperationRunnable {
                                                                    _excludeRecentlyDemotedBrokers,
                                                                    _excludeRecentlyRemovedBrokers,
                                                                    _ignoreProposalCache,
-                                                                   false),
+                                                                   false,
+                                                                   _destinationBrokerIds),
                                   _config);
   }
 }

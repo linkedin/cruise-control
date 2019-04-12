@@ -67,6 +67,7 @@ public class ParameterUtils {
   public static final String MAX_LOAD_PARAM = "max_load";
   public static final String GOALS_PARAM = "goals";
   public static final String BROKER_ID_PARAM = "brokerid";
+  public static final String DESTINATION_BROKER_IDS_PARAM = "destination_broker_ids";
   public static final String REVIEW_ID_PARAM = "review_id";
   public static final String REVIEW_IDS_PARAM = "review_ids";
   public static final String TOPIC_PARAM = "topic";
@@ -143,6 +144,7 @@ public class ParameterUtils {
     proposals.add(USE_READY_DEFAULT_GOALS_PARAM);
     proposals.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
     proposals.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
+    proposals.add(DESTINATION_BROKER_IDS_PARAM);
 
     Set<String> state = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     state.add(VERBOSE_PARAM);
@@ -175,6 +177,7 @@ public class ParameterUtils {
 
     Set<String> removeBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     removeBroker.add(THROTTLE_REMOVED_BROKER_PARAM);
+    removeBroker.add(DESTINATION_BROKER_IDS_PARAM);
     removeBroker.addAll(addOrRemoveBroker);
 
     Set<String> demoteBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -208,6 +211,7 @@ public class ParameterUtils {
     rebalance.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
     rebalance.add(IGNORE_PROPOSAL_CACHE_PARAM);
     rebalance.add(REVIEW_ID_PARAM);
+    rebalance.add(DESTINATION_BROKER_IDS_PARAM);
 
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
@@ -699,12 +703,24 @@ public class ParameterUtils {
     return Integer.parseInt(boundaries[isUpperBound ? 1 : 0]);
   }
 
-  static List<Integer> brokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
+  static Set<Integer> brokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<Integer> brokerIds = parseParamToIntegerSet(request, BROKER_ID_PARAM);
     if (brokerIds.isEmpty()) {
       throw new IllegalArgumentException("Target broker ID is not provided.");
     }
-    return Collections.unmodifiableList(new ArrayList<>(brokerIds));
+    return Collections.unmodifiableSet(brokerIds);
+  }
+
+  /**
+   * Default: An empty set.
+   */
+  static Set<Integer> destinationBrokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
+    Set<Integer> brokerIds = Collections.unmodifiableSet(parseParamToIntegerSet(request, DESTINATION_BROKER_IDS_PARAM));
+    if (!brokerIds.isEmpty() && isKafkaAssignerMode(request)) {
+      throw new UserRequestException("Kafka assigner mode does not support explicitly specifying destination broker ids.");
+    }
+    
+    return brokerIds;
   }
 
   /**
