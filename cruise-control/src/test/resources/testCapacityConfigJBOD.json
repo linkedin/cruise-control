@@ -33,7 +33,8 @@
     {
       "brokerId": "2",
       "capacity": {
-        "DISK": "2000000",
+        "DISK": {"/tmp/kafka-logs-1": "350000", "/tmp/kafka-logs-2": "550000", "/tmp/kafka-logs-3": "750000",
+                 "/tmp/kafka-logs-4": "950000"},
         "CPU": "300",
         "NW_IN": "300000",
         "NW_OUT": "200000"

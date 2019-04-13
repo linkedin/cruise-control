@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)} and
  * {@link KafkaCruiseControl#getProposals(List, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean, Pattern, boolean, boolean,
- * boolean, boolean, java.util.Set)}
+ * boolean, boolean, java.util.Set, boolean)}
  */
 class GetProposalsRunnable extends OperationRunnable {
   private final List<String> _goals;
@@ -31,6 +31,7 @@ class GetProposalsRunnable extends OperationRunnable {
   private final boolean _ignoreProposalCache;
   private final Set<Integer> _destinationBrokerIds;
   private final KafkaCruiseControlConfig _config;
+  private final boolean _isRebalanceDiskMode;
 
   GetProposalsRunnable(KafkaCruiseControl kafkaCruiseControl,
                        OperationFuture future,
@@ -46,6 +47,7 @@ class GetProposalsRunnable extends OperationRunnable {
     _ignoreProposalCache = parameters.ignoreProposalCache();
     _destinationBrokerIds = parameters.destinationBrokerIds();
     _config = config;
+    _isRebalanceDiskMode = parameters.isRebalanceDiskMode();
   }
 
   @Override
@@ -60,7 +62,8 @@ class GetProposalsRunnable extends OperationRunnable {
                                                                    _excludeRecentlyRemovedBrokers,
                                                                    _ignoreProposalCache,
                                                                    false,
-                                                                   _destinationBrokerIds),
+                                                                   _destinationBrokerIds,
+                                                                   _isRebalanceDiskMode),
                                   _config);
   }
 }

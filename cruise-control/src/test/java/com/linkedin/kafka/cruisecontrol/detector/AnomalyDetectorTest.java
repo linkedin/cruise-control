@@ -151,6 +151,7 @@ public class AnomalyDetectorTest {
                                                      EasyMock.eq(true),
                                                      EasyMock.eq(null),
                                                      EasyMock.eq(null),
+                                                     EasyMock.eq(null),
                                                      EasyMock.eq(false),
                                                      EasyMock.eq(null),
                                                      EasyMock.eq(null),
@@ -159,7 +160,8 @@ public class AnomalyDetectorTest {
                                                      EasyMock.eq(true),
                                                      EasyMock.eq(false),
                                                      EasyMock.eq(true),
-                                                     EasyMock.eq(Collections.emptySet())))
+                                                     EasyMock.eq(Collections.emptySet()),
+                                                     EasyMock.eq(false)))
             .andReturn(null);
     EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(EasyMock.anyObject())).andReturn(true);
 
@@ -231,6 +233,7 @@ public class AnomalyDetectorTest {
             .andReturn(new CruiseControlState(
                 ExecutorState.operationInProgress(ExecutorState.State.INTER_BROKER_REPLICA_MOVEMENT_TASK_IN_PROGRESS,
                                                   null,
+                                                  1,
                                                   1,
                                                   1,
                                                   null,

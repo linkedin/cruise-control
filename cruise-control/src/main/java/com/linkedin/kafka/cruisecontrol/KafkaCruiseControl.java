@@ -247,8 +247,8 @@ public class KafkaCruiseControl {
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress the progress to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
-   * @param concurrentPartitionMovements The maximum number of concurrent partition movements per broker
-   *                                     (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
+   *                                                (if null, use num.concurrent.partition.movements.per.broker).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
@@ -267,7 +267,7 @@ public class KafkaCruiseControl {
                                                           ModelCompletenessRequirements requirements,
                                                           OperationProgress operationProgress,
                                                           boolean allowCapacityEstimation,
-                                                          Integer concurrentPartitionMovements,
+                                                          Integer concurrentInterBrokerPartitionMovements,
                                                           Integer concurrentLeaderMovements,
                                                           boolean skipHardGoalCheck,
                                                           Pattern excludedTopics,
@@ -299,7 +299,8 @@ public class KafkaCruiseControl {
         executeProposals(result.goalProposals(),
                          Collections.emptySet(),
                          false,
-                         concurrentPartitionMovements,
+                         concurrentInterBrokerPartitionMovements,
+                         null,
                          concurrentLeaderMovements,
                          replicaMovementStrategy,
                          uuid);
@@ -395,6 +396,7 @@ public class KafkaCruiseControl {
                          throttleAddedBrokers ? Collections.emptySet() : brokerIds,
                          isKafkaAssignerMode(goals),
                          concurrentInterBrokerPartitionMovements,
+                         null,
                          concurrentLeaderMovements,
                          replicaMovementStrategy,
                          uuid);
@@ -428,6 +430,8 @@ public class KafkaCruiseControl {
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentIntraBrokerPartitionMovements The maximum number of concurrent intra-broker partition movements
+   *                                                (if null, use num.concurrent.intra.broker.partition.movements).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
@@ -440,6 +444,7 @@ public class KafkaCruiseControl {
    * @param isTriggeredByGoalViolation True if rebalance is triggered by goal violation, false otherwise.
    * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
    *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
+   * @param isRebalanceDiskMode Whether rebalance between brokers or disks within the brokers.
    * @return The optimization result.
    * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
@@ -449,6 +454,7 @@ public class KafkaCruiseControl {
                                                  OperationProgress operationProgress,
                                                  boolean allowCapacityEstimation,
                                                  Integer concurrentInterBrokerPartitionMovements,
+                                                 Integer concurrentIntraBrokerPartitionMovements,
                                                  Integer concurrentLeaderMovements,
                                                  boolean skipHardGoalCheck,
                                                  Pattern excludedTopics,
@@ -458,7 +464,8 @@ public class KafkaCruiseControl {
                                                  boolean excludeRecentlyRemovedBrokers,
                                                  boolean ignoreProposalCache,
                                                  boolean isTriggeredByGoalViolation,
-                                                 Set<Integer> requestedDestinationBrokerIds) throws KafkaCruiseControlException {
+                                                 Set<Integer> requestedDestinationBrokerIds,
+                                                 boolean isRebalanceDiskMode) throws KafkaCruiseControlException {
     sanityCheckDryRun(dryRun);
     GoalOptimizer.OptimizerResult result = getProposals(goals, requirements, operationProgress,
                                                         allowCapacityEstimation, skipHardGoalCheck,
@@ -466,10 +473,12 @@ public class KafkaCruiseControl {
                                                         excludeRecentlyRemovedBrokers,
                                                         ignoreProposalCache,
                                                         isTriggeredByGoalViolation,
-                                                        requestedDestinationBrokerIds);
+                                                        requestedDestinationBrokerIds,
+                                                        isRebalanceDiskMode);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
-                       concurrentInterBrokerPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
+                       concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements, concurrentLeaderMovements,
+                       replicaMovementStrategy, uuid);
     }
     return result;
   }
@@ -558,16 +567,18 @@ public class KafkaCruiseControl {
    * @param requirements the model completeness requirements.
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param populateDiskInfo Whether populate disk information for each broker or not.
    * @return the cluster workload model.
    * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
    */
   public ClusterModel clusterModel(long now,
                                    ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress,
-                                   boolean allowCapacityEstimation)
+                                   boolean allowCapacityEstimation,
+                                   boolean populateDiskInfo)
       throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      ClusterModel clusterModel = _loadMonitor.clusterModel(now, requirements, operationProgress);
+      ClusterModel clusterModel = _loadMonitor.clusterModel(-1, now, requirements, populateDiskInfo, operationProgress);
       sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
       return clusterModel;
     } catch (KafkaCruiseControlException kcce) {
@@ -675,7 +686,15 @@ public class KafkaCruiseControl {
                                                        concurrentInterBrokerPartitionMovements);
       LOG.warn("Inter-broker partition movement concurrency is set to: {} by user.", concurrentInterBrokerPartitionMovements);
     }
-    // 1.2. Change leadership concurrency.
+    // 1.2. Change intra-broker partition concurrency.
+    Integer concurrentIntraBrokerPartitionMovements = parameters.concurrentIntraBrokerPartitionMovements();
+    if (concurrentIntraBrokerPartitionMovements != null) {
+      _executor.setRequestedIntraBrokerPartitionMovementConcurrency(concurrentIntraBrokerPartitionMovements);
+      ongoingConcurrencyChangeRequest += String.format("Intra-broker partition movement concurrency is set to %d%n",
+                                                       concurrentIntraBrokerPartitionMovements);
+      LOG.warn("Intra-broker partition movement concurrency is set to: {} by user.", concurrentIntraBrokerPartitionMovements);
+    }
+    // 1.3. Change leadership concurrency.
     Integer concurrentLeaderMovements = parameters.concurrentLeaderMovements();
     if (concurrentLeaderMovements != null) {
       _executor.setRequestedLeadershipMovementConcurrency(concurrentLeaderMovements);
@@ -745,6 +764,7 @@ public class KafkaCruiseControl {
    * 3. There is an ongoing execution.
    * 4. The request is triggered by goal violation detector.
    * 5. The request involves explicitly requested destination broker Ids.
+   * 6. The caller wants to rebalance across disks within the brokers.
    *
    * @param goals A list of goals to optimize. When empty all goals will be used.
    * @param requirements Model completeness requirements.
@@ -754,6 +774,7 @@ public class KafkaCruiseControl {
    * @param isTriggeredByGoalViolation True if proposals is triggered by goal violation, false otherwise.
    * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
    *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
+   * @param isRebalanceDiskMode True to generate proposal to rebalance between disks within the brokers, false otherwise.
    * @return True to ignore proposal cache, false otherwise.
    */
   private boolean ignoreProposalCache(List<String> goals,
@@ -762,7 +783,8 @@ public class KafkaCruiseControl {
                                       boolean excludeBrokers,
                                       boolean ignoreProposalCache,
                                       boolean isTriggeredByGoalViolation,
-                                      Set<Integer> requestedDestinationBrokerIds) {
+                                      Set<Integer> requestedDestinationBrokerIds,
+                                      boolean isRebalanceDiskMode) {
     ModelCompletenessRequirements requirementsForCache = _goalOptimizer.modelCompletenessRequirementsForPrecomputing();
     boolean hasWeakerRequirement =
         requirementsForCache.minMonitoredPartitionsPercentage() > requirements.minMonitoredPartitionsPercentage()
@@ -771,7 +793,7 @@ public class KafkaCruiseControl {
 
     return _executor.hasOngoingExecution() || ignoreProposalCache || (goals != null && !goals.isEmpty())
            || hasWeakerRequirement || excludedTopics != null || excludeBrokers || isTriggeredByGoalViolation
-           || !requestedDestinationBrokerIds.isEmpty();
+           || !requestedDestinationBrokerIds.isEmpty() || isRebalanceDiskMode;
   }
 
   /**
@@ -788,6 +810,7 @@ public class KafkaCruiseControl {
    * @param isTriggeredByGoalViolation True if proposals is triggered by goal violation, false otherwise.
    * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
    *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
+   * @param isRebalanceDiskMode True to generate proposal to rebalance between disks within the brokers, false otherwise.
    * @return The optimization result.
    * @throws KafkaCruiseControlException
    */
@@ -801,7 +824,8 @@ public class KafkaCruiseControl {
                                                     boolean excludeRecentlyRemovedBrokers,
                                                     boolean ignoreProposalCache,
                                                     boolean isTriggeredByGoalViolation,
-                                                    Set<Integer> requestedDestinationBrokerIds)
+                                                    Set<Integer> requestedDestinationBrokerIds,
+                                                    boolean isRebalanceDiskMode)
       throws KafkaCruiseControlException {
     GoalOptimizer.OptimizerResult result;
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
@@ -814,11 +838,13 @@ public class KafkaCruiseControl {
                             excludeBrokers,
                             ignoreProposalCache,
                             isTriggeredByGoalViolation,
-                            requestedDestinationBrokerIds)) {
+                            requestedDestinationBrokerIds,
+                            isRebalanceDiskMode)) {
       try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
         ClusterModel clusterModel = _loadMonitor.clusterModel(-1,
                                                               _time.milliseconds(),
                                                               completenessRequirements,
+                                                              isRebalanceDiskMode,
                                                               operationProgress);
         sanityCheckBrokersHavingOfflineReplicasOnBadDisks(goals, clusterModel);
         result = getProposals(clusterModel,
@@ -897,6 +923,8 @@ public class KafkaCruiseControl {
    * @param isKafkaAssignerMode True if kafka assigner mode, false otherwise.
    * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
    *                                                (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentIntraBrokerPartitionMovements The maximum number of concurrent intra-broker partition movements
+   *                                                (if null, use num.concurrent.intra.broker.partition.movements).
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
@@ -907,13 +935,15 @@ public class KafkaCruiseControl {
                                 Set<Integer> unthrottledBrokers,
                                 boolean isKafkaAssignerMode,
                                 Integer concurrentInterBrokerPartitionMovements,
+                                Integer concurrentIntraBrokerPartitionMovements,
                                 Integer concurrentLeaderMovements,
                                 ReplicaMovementStrategy replicaMovementStrategy,
                                 String uuid) {
     if (hasProposalsToExecute(proposals, uuid)) {
       // Set the execution mode, add execution proposals, and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
-      _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor, concurrentInterBrokerPartitionMovements,
+      _executor.executeProposals(proposals, unthrottledBrokers, null, _loadMonitor,
+                                 concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements,
                                  concurrentLeaderMovements, replicaMovementStrategy, uuid);
     }
   }
@@ -944,7 +974,7 @@ public class KafkaCruiseControl {
       // Set the execution mode, add execution proposals, and start execution.
       _executor.setExecutionMode(isKafkaAssignerMode);
       _executor.executeProposals(proposals, throttleDecommissionedBroker ? Collections.emptySet() : removedBrokers,
-                                 removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements,
+                                 removedBrokers, _loadMonitor, concurrentInterBrokerPartitionMovements, 0,
                                  concurrentLeaderMovements, replicaMovementStrategy, uuid);
     }
   }

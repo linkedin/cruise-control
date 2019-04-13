@@ -15,13 +15,14 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
  * The async runnable to get the {@link BrokerStats} for the cluster model.
  *
  * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean)
  */
 class GetBrokerStatsRunnable extends OperationRunnable {
   private final long _time;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
   private final KafkaCruiseControlConfig _config;
+  private final boolean _populateDiskInfo;
 
   GetBrokerStatsRunnable(KafkaCruiseControl kafkaCruiseControl,
                          OperationFuture future,
@@ -32,18 +33,22 @@ class GetBrokerStatsRunnable extends OperationRunnable {
     _modelCompletenessRequirements = parameters.requirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _config = config;
+    _populateDiskInfo = parameters.populateDiskInfo();
   }
 
   @Override
   protected BrokerStats getResult() throws Exception {
-    // Check whether the cached broker stats is still valid.
-    BrokerStats cachedBrokerStats = _kafkaCruiseControl.cachedBrokerLoadStats(_allowCapacityEstimation);
-    if (cachedBrokerStats != null) {
-      return cachedBrokerStats;
+    if (!_populateDiskInfo) {
+      // Check whether the cached broker stats is still valid.
+      BrokerStats cachedBrokerStats = _kafkaCruiseControl.cachedBrokerLoadStats(_allowCapacityEstimation);
+      if (cachedBrokerStats != null) {
+        return cachedBrokerStats;
+      }
     }
     return _kafkaCruiseControl.clusterModel(_time,
                                             _modelCompletenessRequirements,
                                             _future.operationProgress(),
-                                            _allowCapacityEstimation).brokerStats(_config);
+                                            _allowCapacityEstimation,
+                                            _populateDiskInfo).brokerStats(_config);
   }
 }

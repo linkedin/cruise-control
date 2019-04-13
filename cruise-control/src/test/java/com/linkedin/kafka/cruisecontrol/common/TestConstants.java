@@ -66,6 +66,7 @@ public class TestConstants {
     properties.put(ClusterProperty.MEAN_DISK, 100.0);
     properties.put(ClusterProperty.MEAN_NW_IN, 100.0);
     properties.put(ClusterProperty.MEAN_NW_OUT, 100.0);
+    properties.put(ClusterProperty.POPULATE_REPLICA_PLACEMENT_INFO, 0);
     BASE_PROPERTIES = Collections.unmodifiableMap(properties);
 
   }
@@ -81,4 +82,8 @@ public class TestConstants {
     capacity.put(Resource.NW_OUT, TestConstants.MEDIUM_BROKER_CAPACITY);
     BROKER_CAPACITY = Collections.unmodifiableMap(capacity);
   }
+
+  // Broker capacity config file for test.
+  public static final String JBOD_BROKER_CAPACITY_CONFIG_FILE = "testCapacityConfigJBOD.json";
+  public static final String DEFAULT_BROKER_CAPACITY_CONFIG_FILE = "DefaultCapacityConfig.json";
 }

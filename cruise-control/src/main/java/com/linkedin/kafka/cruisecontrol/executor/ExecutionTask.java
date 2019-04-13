@@ -43,10 +43,13 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   private static final String TYPE = "type";
   private static final String STATE = "state";
   private static final String PROPOSAL = "proposal";
+  private static final String BROKER_ID = "brokerId";
   private static final Map<State, Set<State>> VALID_TRANSFER = new HashMap<>();
   private final TaskType _type;
   private final long _executionId;
   private final ExecutionProposal _proposal;
+  // _brokerId is only relevant for intra-broker replica action, otherwise it will be -1.
+  private final int _brokerId;
   private State _state;
   private long _startTime;
   private long _endTime;
@@ -65,16 +68,24 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    *
    * @param executionId The execution id of the proposal so we can keep track of the task when execute it.
    * @param proposal The corresponding balancing proposal of this task.
+   * @param brokerId The broker to operate on if the task is of type {@link TaskType#INTRA_BROKER_REPLICA_ACTION}.
    * @param type the {@link TaskType} of this task.
    */
-  public ExecutionTask(long executionId, ExecutionProposal proposal, TaskType type) {
+  public ExecutionTask(long executionId, ExecutionProposal proposal, Integer brokerId, TaskType type) {
+    if (type != TaskType.INTRA_BROKER_REPLICA_ACTION && brokerId != null) {
+      throw new IllegalArgumentException("Broker id is specified for non-intra-broker task.");
+    }
     _executionId = executionId;
     _proposal = proposal;
+    _brokerId =  brokerId == null ? -1 : brokerId;
     _state = State.PENDING;
     _type = type;
     _startTime = -1L;
     _endTime = -1L;
+  }
 
+  public ExecutionTask(long executionId, ExecutionProposal proposal, TaskType type) {
+    this(executionId, proposal, null, type);
   }
 
   /**
@@ -133,6 +144,13 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
    */
   public long endTime() {
     return _endTime;
+  }
+
+  /**
+   * @return The broker id for intra-broker replica movement task.
+   */
+  public int brokerId() {
+    return _brokerId;
   }
 
   /**
@@ -199,6 +217,9 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
     executionStatsMap.put(TYPE, _type);
     executionStatsMap.put(STATE, _state);
     executionStatsMap.put(PROPOSAL, _proposal.getJsonStructure());
+    if (_type == TaskType.INTRA_BROKER_REPLICA_ACTION) {
+      executionStatsMap.put(BROKER_ID, _brokerId);
+    }
     return executionStatsMap;
   }
 
@@ -210,7 +231,7 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
   }
 
   public enum TaskType {
-    INTER_BROKER_REPLICA_ACTION, LEADER_ACTION;
+    INTER_BROKER_REPLICA_ACTION, INTRA_BROKER_REPLICA_ACTION, LEADER_ACTION;
 
     private static final List<TaskType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
@@ -231,7 +252,15 @@ public class ExecutionTask implements Comparable<ExecutionTask> {
 
   @Override
   public String toString() {
-    return String.format("{EXE_ID: %d, %s, %s, %s}", _executionId, _type, _proposal, _state);
+    switch (_type) {
+      case INTRA_BROKER_REPLICA_ACTION:
+        return String.format("{EXE_ID: %d, %s(%d), %s, %s}", _executionId, _type,  _brokerId, _proposal, _state);
+      case INTER_BROKER_REPLICA_ACTION:
+      case LEADER_ACTION:
+        return String.format("{EXE_ID: %d, %s, %s, %s}", _executionId, _type, _proposal, _state);
+      default:
+        throw new IllegalStateException("Unknown task type " + _type);
+    }
   }
 
   @Override

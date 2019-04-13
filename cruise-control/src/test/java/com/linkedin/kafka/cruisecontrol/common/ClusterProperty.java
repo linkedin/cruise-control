@@ -16,7 +16,8 @@ public enum ClusterProperty {
   MEAN_CPU("meanCpu"),
   MEAN_DISK("meanDisk"),
   MEAN_NW_IN("meanNwIn"),
-  MEAN_NW_OUT("meanNwOut");
+  MEAN_NW_OUT("meanNwOut"),
+  POPULATE_REPLICA_PLACEMENT_INFO("populateReplicaPlacementInfo");
 
   private final String _clusterProperty;
 

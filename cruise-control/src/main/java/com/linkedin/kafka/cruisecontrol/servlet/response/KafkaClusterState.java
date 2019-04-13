@@ -36,13 +36,13 @@ import org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.describeLogDirs;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.describeLogDirs;
 
 public class KafkaClusterState extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterState.class);
-  private static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
   private static final String TOPIC = "topic";
   private static final String PARTITION = "partition";
   private static final String LEADER = "leader";

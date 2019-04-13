@@ -39,16 +39,18 @@ public class Replica implements Serializable, Comparable<Replica> {
   private boolean _isOriginalOffline;
   private Broker _broker;
   private boolean _isLeader;
+  private final Disk _originalDisk;
+  private Disk _disk;
 
   /**
-   * The constructor for an online replica.
+   * The constructor for an online replica without disk information.
    *
    * @param tp Topic partition information of the replica.
    * @param broker The broker of the replica.
    * @param isLeader A flag to represent whether the replica is the isLeader or not.
    */
   Replica(TopicPartition tp, Broker broker, boolean isLeader) {
-    this(tp, broker, isLeader, false);
+    this(tp, broker, isLeader, false, null);
   }
 
   /**
@@ -58,14 +60,17 @@ public class Replica implements Serializable, Comparable<Replica> {
    * @param broker The broker of the replica.
    * @param isLeader A flag to represent whether the replica is the isLeader or not.
    * @param isOriginalOffline True if the replica is offline in its original location, false otherwise.
+   * @param disk The disk of the replica. If replica placement over disk information is not populated, this parameter is null.
    */
-  Replica(TopicPartition tp, Broker broker, boolean isLeader, boolean isOriginalOffline) {
+  Replica(TopicPartition tp, Broker broker, boolean isLeader, boolean isOriginalOffline, Disk disk) {
     _tp = tp;
     _load = new Load();
     _originalBroker = broker;
     _broker = broker;
     _isLeader = isLeader;
     _isOriginalOffline = isOriginalOffline;
+    _originalDisk = disk;
+    _disk = disk;
   }
 
   /**
@@ -138,6 +143,31 @@ public class Replica implements Serializable, Comparable<Replica> {
    */
   void setBroker(Broker broker) {
     _broker = broker;
+  }
+
+  /**
+   * Set disk that the replica resides in.
+   *
+   * @param disk Disk that the replica resides in.
+   */
+  void setDisk(Disk disk) {
+    _disk = disk;
+  }
+
+  /**
+   * Get disk that the replica originally resides in. If the replica-over-disk placement information is not populated in
+   * {@link ClusterModel}, null will be returned.
+   */
+  public Disk originalDisk() {
+    return _originalDisk;
+  }
+
+  /**
+   * Get disk that the replica resides in. If the replica-over-disk placement information is not populated in
+   * {@link ClusterModel}, null will be returned.
+   */
+  public Disk disk() {
+    return _disk;
   }
 
   /**

@@ -34,8 +34,14 @@ public class ReplicaSortFunctionFactory {
   /** Deprioritize the (1) offline replicas, then (2) the immigrant replicas */
   private static final Function<Replica, Integer> DEPRIORITIZE_OFFLINE_REPLICAS_THEN_IMMIGRANTS = r ->
       r.isCurrentOffline() ? 1 : r.originalBroker() != r.broker() ? 0 : -1;
+  /** Prioritize the disk immigrant replicas */
+  private static final Function<Replica, Integer> PRIORITIZE_DISK_IMMIGRANTS = r -> r.originalDisk() != r.disk() ? 0 : 1;
+  /** De-prioritize the disk immigrant replicas */
+  private static final Function<Replica, Integer> DEPRIORITIZE_DISK_IMMIGRANTS = r -> r.originalDisk() != r.disk() ? 1 : 0;
   /** Select leaders only */
   private static final Function<Replica, Boolean> SELECT_LEADERS = Replica::isLeader;
+  /** Select online replicas only */
+  private static final Function<Replica, Boolean> SELECT_ONLINE_REPLICAS = r -> !r.isCurrentOffline();
 
   // Score functions
   /**
@@ -124,11 +130,35 @@ public class ReplicaSortFunctionFactory {
     return DEPRIORITIZE_OFFLINE_REPLICAS_THEN_IMMIGRANTS;
   }
 
+  /**
+   * @return a priority function that prioritize the immigrant replicas to the disk.
+   */
+  public static Function<Replica, Integer> prioritizeDiskImmigrants() {
+    return PRIORITIZE_DISK_IMMIGRANTS;
+  }
+
+  /**
+   * This priority function can be used together with {@link SortedReplicas#reverselySortedReplicas()}
+   * to provide sorted replicas in descending order of score and prioritize the immigrant replicas for the disk.
+   *
+   * @return a priority function that de-prioritize the immigrant replicas to the disk.
+   */
+  public static Function<Replica, Integer> deprioritizeDiskImmigrants() {
+    return DEPRIORITIZE_DISK_IMMIGRANTS;
+  }
+
   // Selection functions
   /**
    * @return a selection function that only includes leaders.
    */
   public static Function<Replica, Boolean> selectLeaders() {
     return SELECT_LEADERS;
+  }
+
+  /**
+   * @return a selection function that only includes online replicas.
+   */
+  public static Function<Replica, Boolean> selectOnlineReplicas() {
+    return SELECT_ONLINE_REPLICAS;
   }
 }

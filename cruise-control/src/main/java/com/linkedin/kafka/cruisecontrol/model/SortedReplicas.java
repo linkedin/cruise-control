@@ -17,10 +17,10 @@ import java.util.function.Function;
 
 /**
  * <p>
- * A class used by the brokers to host the replicas sorted in a certain order.
+ * A class used by the brokers/disks to host the replicas sorted in a certain order.
  * </p>
  *
- *  The SortedReplicas uses three functions to sort the replicas in the broker.
+ *  The SortedReplicas uses three functions to sort the replicas in the broker/disk.
  *  <ul>
  *     <li>
  *      <tt>ScoreFunction</tt>: the score function generates a score for each replica to sort. The replicas are
@@ -49,6 +49,7 @@ import java.util.function.Function;
  */
 public class SortedReplicas {
   private final Broker _broker;
+  private final Disk _disk;
   private final Map<Replica, ReplicaWrapper> _replicaWrapperMap;
   private final NavigableSet<ReplicaWrapper> _sortedReplicas;
   private final Function<Replica, Boolean> _selectionFunc;
@@ -60,15 +61,17 @@ public class SortedReplicas {
                  Function<Replica, Boolean> selectionFunc,
                  Function<Replica, Integer> priorityFunction,
                  Function<Replica, Double> scoreFunction) {
-    this(broker, selectionFunc, priorityFunction, scoreFunction, true);
+    this(broker, null, selectionFunc, priorityFunction, scoreFunction, true);
   }
 
   SortedReplicas(Broker broker,
+                 Disk disk,
                  Function<Replica, Boolean> selectionFunc,
                  Function<Replica, Integer> priorityFunc,
                  Function<Replica, Double> scoreFunc,
                  boolean initialize) {
     _broker = broker;
+    _disk = disk;
     _sortedReplicas = new TreeSet<>();
     _replicaWrapperMap = new HashMap<>();
     _selectionFunc = selectionFunc;
@@ -87,7 +90,7 @@ public class SortedReplicas {
    *
    * @return the sorted replicas wrappers in the ascending order of their priority and score.
    */
-  NavigableSet<ReplicaWrapper> sortedReplicaWrappers() {
+  public NavigableSet<ReplicaWrapper> sortedReplicaWrappers() {
     ensureInitialize();
     return Collections.unmodifiableNavigableSet(_sortedReplicas);
   }
@@ -148,7 +151,7 @@ public class SortedReplicas {
    *
    * @param replica the replica to add.
    */
-  void add(Replica replica) {
+  public void add(Replica replica) {
     if (_initialized) {
       if (_selectionFunc == null || _selectionFunc.apply(replica)) {
         double score = _scoreFunc.apply(replica);
@@ -181,7 +184,11 @@ public class SortedReplicas {
   private void ensureInitialize() {
     if (!_initialized) {
       _initialized = true;
-      _broker.replicas().forEach(this::add);
+      if (_disk != null) {
+        _disk.replicas().forEach(this::add);
+      } else {
+        _broker.replicas().forEach(this::add);
+      }
     }
   }
 

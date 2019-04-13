@@ -17,6 +17,8 @@ import com.google.gson.Gson;
 import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
 
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.averageDiskUtilizationPercentage;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.diskUtilizationPercentage;
 
 public class ClusterModelStats {
   private final Map<Statistic, Map<Resource, Double>> _resourceUtilizationStats;
@@ -33,6 +35,10 @@ public class ClusterModelStats {
   private double[][] _utilizationMatrix;
   private int _numSnapshotWindows;
   private double _monitoredPartitionsPercentage;
+  // Number of unbalanced disks in the cluster.
+  private int _numUnbalancedDisks;
+  // Aggregated standard deviation of disk utilization for the cluster.
+  private double _diskUtilizationStDev;
 
   /**
    * Constructor for analysis stats.
@@ -48,6 +54,8 @@ public class ClusterModelStats {
     _numTopics = 0;
     _numBrokersUnderPotentialNwOut = 0;
     _numBalancedBrokersByResource = new HashMap<>();
+    _numUnbalancedDisks = 0;
+    _diskUtilizationStDev = 0;
   }
 
   /**
@@ -68,6 +76,7 @@ public class ClusterModelStats {
     _utilizationMatrix = clusterModel.utilizationMatrix();
     _numSnapshotWindows = clusterModel.load().numWindows();
     _monitoredPartitionsPercentage = clusterModel.monitoredPartitionsPercentage();
+    populateStatsForDisks(clusterModel, balancingConstraint);
     return this;
   }
 
@@ -161,6 +170,23 @@ public class ClusterModelStats {
    */
   public int numSnapshotWindows() {
     return _numSnapshotWindows;
+  }
+
+  /**
+   * Get the number of unbalanced disk in this cluster model;
+   * A disk is taken as unbalanced if its utilization percentage is out of the range centered at its broker utilization
+   * percentage with boundary determined by
+   * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#DISK_BALANCE_THRESHOLD_CONFIG}.
+   */
+  public int numUnbalancedDisks() {
+    return _numUnbalancedDisks;
+  }
+
+  /**
+   * Get the standard deviation of disk utilization of this cluster model;
+   */
+  public double diskUtilizationStandardDeviation() {
+    return _diskUtilizationStDev;
   }
 
   /*
@@ -381,5 +407,40 @@ public class ClusterModelStats {
 
     _topicReplicaStats.put(Statistic.AVG, _topicReplicaStats.get(Statistic.AVG).doubleValue() / _numTopics);
     _topicReplicaStats.put(Statistic.ST_DEV, _topicReplicaStats.get(Statistic.ST_DEV).doubleValue() / _numTopics);
+  }
+
+  /**
+   * Generate statistics for disks in the given cluster.
+   * For each alive disk on disk broker in the cluster, check whether its utilization percentage is within the range centered
+   * at its broker utilization percentage with boundary determined by
+   * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#DISK_BALANCE_THRESHOLD_CONFIG}.
+   * If the disk utilization percentage is out of the boundary, the disk is counted as unbalanced.
+   * Also sum up the variance of utilization for each alive disk and get an aggregated standard deviation.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param balancingConstraint Balancing constraint.
+   */
+  private void populateStatsForDisks(ClusterModel clusterModel, BalancingConstraint balancingConstraint) {
+    double totalDiskUtilizationVariance = 0;
+    int numAliveDisks = 0;
+    for (Broker broker : clusterModel.aliveBrokers()) {
+      double brokerDiskUtilization = averageDiskUtilizationPercentage(broker);
+      double upperLimit = brokerDiskUtilization * balancingConstraint.resourceBalancePercentage(Resource.DISK);
+      double lowerLimit = brokerDiskUtilization * Math.max(0, (2 - balancingConstraint.resourceBalancePercentage(Resource.DISK)));
+      for (Disk disk : broker.disks()) {
+        if (!disk.isAlive()) {
+          continue;
+        }
+        double diskUtilizationPercentage = diskUtilizationPercentage(disk);
+        if (diskUtilizationPercentage > upperLimit || diskUtilizationPercentage < lowerLimit) {
+          _numUnbalancedDisks++;
+        }
+        totalDiskUtilizationVariance += Math.pow(diskUtilizationPercentage - brokerDiskUtilization, 2);
+        numAliveDisks++;
+      }
+    }
+    if (numAliveDisks > 0) {
+      _diskUtilizationStDev = Math.sqrt(totalDiskUtilizationVariance / numAliveDisks);
+    }
   }
 }

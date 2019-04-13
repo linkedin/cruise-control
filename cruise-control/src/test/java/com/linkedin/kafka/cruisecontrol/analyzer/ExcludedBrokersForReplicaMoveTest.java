@@ -28,6 +28,7 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
+import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -51,7 +52,6 @@ import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbal
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
-
 
 /**
  * Unit test for testing goals with excluded brokers for replica move under fixed cluster properties.
@@ -218,12 +218,12 @@ public class ExcludedBrokersForReplicaMoveTest {
   private boolean violatesExcludedBrokersForReplicaMove(Set<Integer> excludedBrokersForReplicaMove,
                                                         ExecutionProposal proposal) {
     int numOfflineOldReplicas =
-        (int) proposal.oldReplicas().stream().filter(brokerId -> !_clusterModel.broker(brokerId).isAlive()).count();
+        (int) proposal.oldReplicas().stream().filter(r -> !_clusterModel.broker(r.brokerId()).isAlive()).count();
 
     int numNewReplicasOnExcludedBrokers = 0;
     for (int i = 0; i < proposal.newReplicas().size(); i++) {
-      int oldBroker = proposal.oldReplicas().get(i);
-      int newBroker = proposal.newReplicas().get(i);
+      int oldBroker = proposal.oldReplicas().get(i).brokerId();
+      int newBroker = proposal.newReplicas().get(i).brokerId();
       if (oldBroker != newBroker && excludedBrokersForReplicaMove.contains(newBroker)) {
         numNewReplicasOnExcludedBrokers++;
       }
@@ -235,8 +235,8 @@ public class ExcludedBrokersForReplicaMoveTest {
   @Test
   public void test() throws Exception {
     if (_exceptionClass == null) {
-      Map<TopicPartition, List<Integer>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
-      Map<TopicPartition, Integer> initLeaderDistribution = _clusterModel.getLeaderDistribution();
+      Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
+      Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
 
       Set<Integer> excludedBrokersForReplicaMove = _optimizationOptions.excludedBrokersForReplicaMove();
       if (_expectedToOptimize) {

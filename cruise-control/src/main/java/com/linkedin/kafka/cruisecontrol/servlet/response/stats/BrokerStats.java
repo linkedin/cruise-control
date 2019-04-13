@@ -46,11 +46,12 @@ public class BrokerStats extends AbstractCruiseControlResponse {
 
   public void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                                    double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
-                                   int numReplicas, int numLeaders, boolean isEstimated, double capacity) {
+                                   int numReplicas, int numLeaders, boolean isEstimated, double capacity,
+                                   Map<String, Double> aliveDiskUtils, Map<String, Double> diskCapacities) {
 
     SingleBrokerStats singleBrokerStats =
         new SingleBrokerStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                              potentialBytesOutRate, numReplicas, numLeaders, isEstimated, capacity);
+                              potentialBytesOutRate, numReplicas, numLeaders, isEstimated, capacity, aliveDiskUtils, diskCapacities);
     _brokerStats.add(singleBrokerStats);
     _hostFieldLength = Math.max(_hostFieldLength, host.length());
     _hostStats.computeIfAbsent(host, h -> new BasicStats(0.0, 0.0, 0.0, 0.0,
@@ -121,29 +122,13 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    // put host stats.
-    sb.append(String.format("%n%" + _hostFieldLength + "s%26s%15s%25s%25s%20s%20s%20s%n",
-                            "HOST", "DISK(MB)/_(%)_", "CPU(%)", "LEADER_NW_IN(KB/s)",
-                            "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
-    for (Map.Entry<String, BasicStats> entry : _hostStats.entrySet()) {
-      BasicStats stats = entry.getValue();
-      sb.append(String.format("%" + _hostFieldLength + "s,%19.3f/%05.2f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
-                              entry.getKey(),
-                              stats.diskUtil(),
-                              stats.diskUtilPct(),
-                              stats.cpuUtil(),
-                              stats.leaderBytesInRate(),
-                              stats.followerBytesInRate(),
-                              stats.bytesOutRate(),
-                              stats.potentialBytesOutRate(),
-                              stats.numLeaders(),
-                              stats.numReplicas()));
-    }
+    boolean hasDiskInfo = !_brokerStats.get(0).capacityByDisk().isEmpty();
 
     // put broker stats.
-    sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%26s%15s%25s%25s%20s%20s%20s%n",
+    sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%26s%15s%25s%25s%20s%20s%20s%40s%n",
                             "HOST", "BROKER", "DISK(MB)/_(%)_", "CPU(%)", "LEADER_NW_IN(KB/s)",
-                            "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
+                            "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS",
+                            hasDiskInfo ? "LOGDIR -> DISK(MB)/_(%)_" : ""));
     for (SingleBrokerStats stats : _brokerStats) {
       sb.append(String.format("%" + _hostFieldLength + "s,%14d,%19.3f/%05.2f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
                               stats.host(),
@@ -157,8 +142,19 @@ public class BrokerStats extends AbstractCruiseControlResponse {
                               stats.basicStats().potentialBytesOutRate(),
                               stats.basicStats().numLeaders(),
                               stats.basicStats().numReplicas()));
+      // If disk information is populated, put disk stats.
+      if (hasDiskInfo) {
+        Map<String, Double> capacityByDisk =  stats.capacityByDisk();
+        Map<String, Double> utilByDisk =  stats.utilByDisk();
+        for (Map.Entry<String, Double> entry : capacityByDisk.entrySet()) {
+          Double util = utilByDisk.get(entry.getKey());
+          sb.append(String.format("%" + (_hostFieldLength + 166) + "s%23s -> " + (util == null ? "%s/%s%n" : "%.3f/%.2f%n"),
+                                  "", entry.getKey(),
+                                  (util == null ? "DEAD" : util),
+                                  (util == null ? "DEAD" : stats.utilPctFor(entry.getKey()))));
+        }
+      }
     }
-
     return sb.toString();
   }
 }

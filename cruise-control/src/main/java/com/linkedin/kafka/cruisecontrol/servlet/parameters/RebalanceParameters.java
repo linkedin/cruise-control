@@ -20,22 +20,25 @@ import javax.servlet.http.HttpServletRequest;
  * Trigger a workload balance.
  *    POST /kafkacruisecontrol/rebalance?dryRun=[true/false]&amp;goals=[goal1,goal2...]
  *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]
- *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]
- *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]
- *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;exclude_recently_removed_brokers=[true/false]
- *    &amp;replica_movement_strategies=[strategy1,strategy2...]&amp;ignore_proposal_cache=[true/false]
- *    &amp;destination_broker_ids=[id1,id2...]&amp;kafka_assigner=[true/false]&amp;review_id=[id]
+ *    &amp;concurrent_intra_broker_partition_movements=[POSITIVE-INTEGER]&amp;concurrent_leader_movements=[POSITIVE-INTEGER]
+ *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]
+ *    &amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]&amp;exclude_recently_demoted_brokers=[true/false]
+ *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
+ *    &amp;ignore_proposal_cache=[true/false]&amp;destination_broker_ids=[id1,id2...]&amp;kafka_assigner=[true/false]
+ *    &amp;rebalance_disk=[true/false]&amp;review_id=[id]
  * </pre>
  */
 public class RebalanceParameters extends GoalBasedOptimizationParameters {
   private boolean _dryRun;
   private Integer _concurrentInterBrokerPartitionMovements;
+  private Integer _concurrentIntraBrokerPartitionMovements;
   private Integer _concurrentLeaderMovements;
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private boolean _ignoreProposalCache;
   private Set<Integer> _destinationBrokerIds;
   private Integer _reviewId;
+  private boolean _isRebalanceDiskMode;
 
   public RebalanceParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request, config);
@@ -45,14 +48,16 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     _dryRun = ParameterUtils.getDryRun(_request);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
+    _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, false, true);
+    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_request);
     _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_request);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+    _isRebalanceDiskMode =  ParameterUtils.isRebalanceDiskMode(_request);
   }
 
   @Override
@@ -70,6 +75,10 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
 
   public Integer concurrentInterBrokerPartitionMovements() {
     return _concurrentInterBrokerPartitionMovements;
+  }
+
+  public Integer concurrentIntraBrokerPartitionMovements() {
+    return _concurrentIntraBrokerPartitionMovements;
   }
 
   public Integer concurrentLeaderMovements() {
@@ -90,5 +99,9 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
 
   public boolean ignoreProposalCache() {
     return _ignoreProposalCache;
+  }
+
+  public boolean isRebalanceDiskMode() {
+    return _isRebalanceDiskMode;
   }
 }
