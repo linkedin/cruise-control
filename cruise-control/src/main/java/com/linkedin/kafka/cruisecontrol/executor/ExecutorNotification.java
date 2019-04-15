@@ -13,13 +13,13 @@ import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 public class ExecutorNotification {
   private ActionAgent _startedBy;       // Indicate origin of the execution, could be User or Cruise Control
   private ActionAgent _endedBy;         // An executions can be ended by Cruise Control (due to Exception or completion) or by User
-  private long _startMs;
-  private long _endMs;
-  private UserTaskManager.UserTaskInfo _userTaskInfo;
-  private boolean _executionSucceeded;
+  private final long _startMs;
+  private final long _endMs;
+  private final UserTaskManager.UserTaskInfo _userTaskInfo;
+  private final boolean _executionSucceeded;
   private String _operation;            // Can be UserTask Endpoint or Self-healing action
   private Throwable _exception = null;  // The Exception that ended the execution
-  private String _actionUuid = null;    // UUID associated with execution, could be for UserTask for Self-healing
+  private final String _actionUuid;    // UUID associated with execution, could be for UserTask for Self-healing
 
   public ExecutorNotification(long executionStartMs,
                               long endMs,
@@ -34,18 +34,20 @@ public class ExecutorNotification {
     _userTaskInfo = userTaskInfo;
     _startedBy = ActionAgent.UNKNOWN;
     _operation = "UNKNOWN";
+    _actionUuid = uuid;
+    _executionSucceeded = executionSucceeded;
 
     if (uuid != null) {
-      _actionUuid = uuid;
       if (_userTaskInfo != null) {
-        // UUID with anomaly prefix are not present in {@link UserTaskManager}
         _startedBy = ActionAgent.USER;
         _operation = _userTaskInfo.endPoint().toString();
       } else {
+        // UUID with anomaly prefix are not present in link UserTaskManager
         for (AnomalyType type : AnomalyType.cachedValues()) {
           if (_actionUuid.startsWith(type.toString())) {
             _startedBy = ActionAgent.CRUISE_CONTROL;
             _operation = type.toString() + " Fix Action";
+            break;
           }
         }
       }
@@ -62,7 +64,6 @@ public class ExecutorNotification {
       _endedBy = ActionAgent.EXCEPTION;
       _exception = executionException;
     }
-    _executionSucceeded = executionSucceeded;
   }
 
   public ActionAgent startedBy() {

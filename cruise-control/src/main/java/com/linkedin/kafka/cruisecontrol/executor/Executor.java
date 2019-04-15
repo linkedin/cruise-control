@@ -160,10 +160,9 @@ public class Executor {
     _stopRequested = new AtomicBoolean(false);
     _hasOngoingExecution = false;
     _uuid = null;
-    _executorNotifier = executorNotifier != null
-                        ? executorNotifier
-                        : config.getConfiguredInstance(KafkaCruiseControlConfig.EXECUTOR_NOTIFIER_CLASS_CONFIG,
-                                                                         ExecutorNotifier.class);
+    _executorNotifier = executorNotifier != null ? executorNotifier
+                                                 : config.getConfiguredInstance(KafkaCruiseControlConfig.EXECUTOR_NOTIFIER_CLASS_CONFIG,
+                                                                                ExecutorNotifier.class);
     _userTaskManager = userTaskManager;
     _demotionHistoryRetentionTimeMs = demotionHistoryRetentionTimeMs;
     _removalHistoryRetentionTimeMs = removalHistoryRetentionTimeMs;
@@ -459,7 +458,7 @@ public class Executor {
     private Set<Integer> _recentlyRemovedBrokers;
     private final long _executionStartMs;
     private Throwable _executionException;
-    private UserTaskManager.UserTaskInfo _userTaskInfo;
+    private final UserTaskManager.UserTaskInfo _userTaskInfo;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers, Collection<Integer> removedBrokers) {
       _loadMonitor = loadMonitor;
@@ -543,11 +542,14 @@ public class Executor {
         _executionException = t;
       } finally {
         _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
+
+        // If execution encountered exception and isn't stopped, it's considered successful.
+        boolean executionSucceeded = _executorState.state() != STOPPING_EXECUTION && _executionException == null;
         // If we are here, either we succeeded, or we are stopped or had exception. Send notification to user.
         ExecutorNotification notification = new ExecutorNotification(_executionStartMs, _time.milliseconds(),
                                                                      _userTaskInfo, _uuid, _stopRequested.get(),
                                                                      _executionStoppedByUser.get(),
-                                                                     _executionException, executionSucceeded());
+                                                                     _executionException, executionSucceeded);
         _executorNotifier.sendNotification(notification);
         // Clear completed execution.
         clearCompletedExecution();
@@ -897,14 +899,5 @@ public class Executor {
         }
       }
     }
-  }
-
-  /**
-   * We finish execution after Step. 2: moving leadership. Checking pending leadership or partition movement ascertains
-   * that execution is really done (instead of quitting due to Exception).
-   * @return true if execution for proposal is done.
-   */
-  private boolean executionSucceeded() {
-    return _executorState.state() == LEADER_MOVEMENT_TASK_IN_PROGRESS;
   }
 }

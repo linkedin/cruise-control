@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.executor;
 import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import org.apache.kafka.common.annotation.InterfaceStability;
 
-
 /**
  * For sending notification about executor completion status.
  */
