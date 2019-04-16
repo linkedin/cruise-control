@@ -636,39 +636,18 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Get per-logdir disk utilization information for all alive disks of the broker.
+   * Get per-logdir disk statistics of the broker.
    *
-   * @return The per-logdir disk utilization information. This method is relevant only when the {@link ClusterModel} has
+   * @return The per-logdir disk statistics. This method is relevant only when the {@link ClusterModel} has
    *         been created with a request to populate replica placement info, otherwise returns an empty map.
    */
-  public Map<String, Double> aliveDiskUtils() {
+  public Map<String, Disk.DiskStats> diskStats() {
     if (_diskByLogdir.isEmpty()) {
       return Collections.emptyMap();
     }
-    Map<String, Double> diskUtilMap = new HashMap<>(_diskByLogdir.size());
-    for (Map.Entry<String, Disk> entry : _diskByLogdir.entrySet()) {
-      if (entry.getValue().isAlive()) {
-        diskUtilMap.put(entry.getKey(), entry.getValue().utilization());
-      }
-    }
-    return diskUtilMap;
-  }
-
-  /**
-   * Get per-logdir disk capacity information of the broker.
-   *
-   * @return The per-logdir disk capacity information. This method is relevant only when the {@link ClusterModel} has
-   *         been created with a request to populate replica placement info, otherwise returns an empty map.
-   */
-  public Map<String, Double> diskCapacities() {
-    if (_diskByLogdir.isEmpty()) {
-      return Collections.emptyMap();
-    }
-    Map<String, Double> diskCapacityMap = new HashMap<>(_diskByLogdir.size());
-    for (Map.Entry<String, Disk> entry : _diskByLogdir.entrySet()) {
-      diskCapacityMap.put(entry.getKey(), entry.getValue().capacity());
-    }
-    return diskCapacityMap;
+    Map<String, Disk.DiskStats> diskStatMap = new HashMap<>(_diskByLogdir.size());
+    _diskByLogdir.forEach((k, v) -> diskStatMap.put(k, v.diskStats()));
+    return diskStatMap;
   }
 
   /**

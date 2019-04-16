@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
+import com.linkedin.kafka.cruisecontrol.model.Disk;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
@@ -57,27 +58,50 @@ public class PreferredLeaderElectionGoal implements Goal {
     }
   }
 
+  private void maybeMoveReplicaToEndOfReplicaList(Replica replica, ClusterModel clusterModel) {
+    // There are two scenarios where replica swap operation is skipped:
+    // 1.the replica is not leader replica and _excludeFollowerDemotion is true.
+    // 2.the replica's partition is currently under replicated and _skipUrpDemotion is true.
+    if (!(_skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, replica.topicPartition()))
+        && !(_excludeFollowerDemotion && !replica.isLeader())) {
+      Partition p = clusterModel.partition(replica.topicPartition());
+      p.moveReplicaToEnd(replica);
+    }
+  }
+
   @Override
   public boolean optimize(ClusterModel clusterModel, Set<Goal> optimizedGoals, OptimizationOptions optimizationOptions) {
     sanityCheckOptimizationOptions(optimizationOptions);
     // First move the replica on the demoted brokers to the end of the replica list.
     // If all the replicas are demoted, no change is made to the leader.
+    boolean isBrokerOrDiskToBeDemoted = false;
     Set<TopicPartition> partitionsToMove = new HashSet<>();
-    for (Broker b : clusterModel.demotedBrokers()) {
-      for (Replica r : b.replicas()) {
-        // There are two scenarios where replica swap operation is skipped:
-        // 1.the replica is not leader replica and _excludeFollowerDemotion is true.
-        // 2.the replica's partition is currently under replicated and _skipUrpDemotion is true.
-        if (!(_skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, r.topicPartition()))
-            && !(_excludeFollowerDemotion && !r.isLeader())) {
-          Partition p = clusterModel.partition(r.topicPartition());
-          p.moveReplicaToEnd(r);
+    for (Broker b : clusterModel.aliveBrokers()) {
+      if (b.isDemoted()) {
+        isBrokerOrDiskToBeDemoted = true;
+        for (Replica r : b.replicas()) {
+          maybeMoveReplicaToEndOfReplicaList(r, clusterModel);
+        }
+        // If the leader replica's partition is currently under replicated and _skipUrpDemotion is true, skip leadership
+        // change operation.
+        b.leaderReplicas().stream()
+         .filter(r -> !(_skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, r.topicPartition())))
+         .forEach(r -> partitionsToMove.add(r.topicPartition()));
+      } else {
+        for (Disk d : b.disks()) {
+          if (d.state() == Disk.State.DEMOTED) {
+            isBrokerOrDiskToBeDemoted = true;
+            for (Replica r : d.replicas()) {
+              maybeMoveReplicaToEndOfReplicaList(r, clusterModel);
+            }
+            // If the leader replica's partition is currently under replicated and _skipUrpDemotion is true, skip leadership
+            // change operation.
+            d.leaderReplicas().stream()
+             .filter(r -> !(_skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, r.topicPartition())))
+             .forEach(r -> partitionsToMove.add(r.topicPartition()));
+          }
         }
       }
-      // If the leader replica's partition is currently under replicated and _skipUrpDemotion is true, skip leadership
-      // change operation.
-      b.leaderReplicas().stream().filter(r -> !(_skipUrpDemotion && isPartitionUnderReplicated(_kafkaCluster, r.topicPartition())))
-       .forEach(r -> partitionsToMove.add(r.topicPartition()));
     }
     // Check whether this goal has relocated any leadership.
     boolean relocatedLeadership = false;
@@ -85,7 +109,7 @@ public class PreferredLeaderElectionGoal implements Goal {
     // Ignore the excluded topics because this goal does not move partitions.
     for (List<Partition> partitions : clusterModel.getPartitionsByTopic().values()) {
       for (Partition p : partitions) {
-        if (!clusterModel.demotedBrokers().isEmpty() && !partitionsToMove.contains(p.topicPartition())) {
+        if (isBrokerOrDiskToBeDemoted && !partitionsToMove.contains(p.topicPartition())) {
           continue;
         }
         for (Replica r : p.replicas()) {
@@ -108,7 +132,11 @@ public class PreferredLeaderElectionGoal implements Goal {
             }
             if (clusterModel.demotedBrokers().contains(leaderCandidate)) {
               LOG.warn("The leader of partition {} has to be on a demoted broker {} because all the alive "
-                       + "replicas are demoted.", p.topicPartition(), leaderCandidate);
+                       + "replicas are demoted.", p.topicPartition(), leaderCandidate.id());
+            }
+            if (r.disk() != null && r.disk().state() == Disk.State.DEMOTED) {
+              LOG.warn("The leader of partition {} has to be on a demoted disk {} of broker {} because all the alive "
+                       + "replicas are demoted.", p.topicPartition(), r.disk().logDir(), leaderCandidate.id());
             }
             break;
           }

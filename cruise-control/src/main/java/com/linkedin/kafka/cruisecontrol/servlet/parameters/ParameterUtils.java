@@ -102,6 +102,7 @@ public class ParameterUtils {
   public static final String DISCARD_PARAM = "discard";
   public static final String REBALANCE_DISK_MODE_PARAM = "rebalance_disk";
   public static final String POPULATE_DISK_INFO_PARAM = "populate_disk_info";
+  public static final String BROKER_ID_AND_LOGDIRS_PARAM = "brokerid_and_logdirs";
   private static final int MAX_REASON_LENGTH = 50;
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
@@ -204,6 +205,7 @@ public class ParameterUtils {
     demoteBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
     demoteBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
     demoteBroker.add(REVIEW_ID_PARAM);
+    demoteBroker.add(BROKER_ID_AND_LOGDIRS_PARAM);
 
     Set<String> rebalance = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     rebalance.add(DRY_RUN_PARAM);
@@ -816,6 +818,23 @@ public class ParameterUtils {
     reviewRequest.put(DISCARDED, discard);
 
     return reviewRequest;
+  }
+
+  /**
+   * Default: An empty map.
+   */
+  static Map<Integer, Set<String>> brokerIdAndLogdirs(HttpServletRequest request) throws UnsupportedEncodingException {
+    final Map<Integer, Set<String>> brokerIdAndLogdirs = new HashMap<>();
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), BROKER_ID_AND_LOGDIRS_PARAM);
+    if (parameterString != null) {
+      Arrays.stream(urlDecode(request.getParameter(parameterString)).split(",")).forEach(e -> {
+        Integer index = e.indexOf("-");
+        Integer brokerId = Integer.parseInt(e.substring(0, index));
+        brokerIdAndLogdirs.putIfAbsent(brokerId, new HashSet<>());
+        brokerIdAndLogdirs.get(brokerId).add(e.substring(index + 1));
+      });
+    }
+    return Collections.unmodifiableMap(brokerIdAndLogdirs);
   }
 
   /**
