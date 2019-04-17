@@ -16,12 +16,14 @@ import java.util.List;
  * <li>{@link #GOAL_VIOLATION}: Violation of anomaly detection goals.</li>
  * <li>{@link #BROKER_FAILURE}: Fail-stop failure of brokers.</li>
  * <li>{@link #METRIC_ANOMALY}: Abnormal changes in broker metrics.</li>
+ * <li>{@link #DISK_FAILURE}: Fail-stop failure of disks.</li>
  * </ul>
  */
 public enum AnomalyType {
   GOAL_VIOLATION,
   BROKER_FAILURE,
-  METRIC_ANOMALY;
+  METRIC_ANOMALY,
+  DISK_FAILURE;
 
   private static final List<AnomalyType> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 

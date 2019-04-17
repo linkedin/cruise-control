@@ -777,10 +777,32 @@ public class LoadMonitor {
     return allBrokers;
   }
 
+  /**
+   * Get all the dead brokers in the cluster based on the partition assignment. If a metadata refresh failed due to
+   * timeout, the current metadata information will be used. This is to handle the case that all the brokers are down.
+   * @param timeout the timeout in milliseconds.
+   * @return All the dead brokers in the cluster.
+   */
+  public Set<Integer> deadBrokers(long timeout) {
+    Cluster kafkaCluster = _metadataClient.refreshMetadata(timeout).cluster();
+    return deadBrokers(kafkaCluster);
+  }
+
   private Set<Integer> deadBrokers(Cluster kafkaCluster) {
     Set<Integer> brokersWithPartitions = brokersWithPartitions(kafkaCluster);
     kafkaCluster.nodes().forEach(node -> brokersWithPartitions.remove(node.id()));
     return brokersWithPartitions;
+  }
+
+  /**
+   * Get all the brokers having offline replca in the cluster based on the partition assignment. If a metadata refresh failed
+   * due to timeout, the current metadata information will be used. This is to handle the case that all the brokers are down.
+   * @param timeout the timeout in milliseconds.
+   * @return All the brokers in the cluster that has at least one offline replica.
+   */
+  public Set<Integer> brokersWithOfflineReplicas(long timeout) {
+    Cluster kafkaCluster = _metadataClient.refreshMetadata(timeout).cluster();
+    return brokersWithOfflineReplicas(kafkaCluster);
   }
 
   private Set<Integer> brokersWithOfflineReplicas(Cluster kafkaCluster) {

@@ -37,6 +37,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
 
@@ -98,6 +99,8 @@ public class GoalViolationDetector implements Runnable {
    * Skip goal violation detection if any of the following is true:
    * <ul>
    * <li>Cluster model generation has not changed since the last goal violation check.</li>
+   * <li>There is offline replicas in the cluster, which means there is dead brokers/disks. In this case
+   * {@link BrokerFailureDetector} or {@link DiskFailureDetector} should take care of the anomaly.</li>
    * <li>Load monitor is not ready.</li>
    * <li>There is an ongoing execution.</li>
    * </ul>
@@ -109,6 +112,15 @@ public class GoalViolationDetector implements Runnable {
       if (LOG.isDebugEnabled()) {
         LOG.debug("Skipping goal violation detection because the model generation hasn't changed. Current model generation {}",
                   _loadMonitor.clusterModelGeneration());
+      }
+      return true;
+    }
+
+    Set<Integer> brokersWithOfflineReplicas = _loadMonitor.brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS);
+    if (!brokersWithOfflineReplicas.isEmpty()) {
+      if (LOG.isDebugEnabled()) {
+        LOG.debug("Skipping goal violation detection because there is dead broker/disk in the cluster, flawed broker: {}",
+                  brokersWithOfflineReplicas);
       }
       return true;
     }

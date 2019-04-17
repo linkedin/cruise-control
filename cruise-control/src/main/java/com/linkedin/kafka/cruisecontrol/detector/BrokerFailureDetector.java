@@ -30,6 +30,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static java.util.stream.Collectors.toSet;
 
 
@@ -38,7 +39,6 @@ import static java.util.stream.Collectors.toSet;
  */
 public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
-  private static final long MAX_METADATA_WAIT_MS = 60000L;
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
   private final KafkaCruiseControl _kafkaCruiseControl;

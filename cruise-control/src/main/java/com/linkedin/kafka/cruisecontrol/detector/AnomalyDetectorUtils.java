@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
  * A util class for Anomaly Detectors.
  */
 public class AnomalyDetectorUtils {
+  public static final long MAX_METADATA_WAIT_MS = 60000L;
 
   private AnomalyDetectorUtils() {
   }
@@ -23,6 +24,8 @@ public class AnomalyDetectorUtils {
       return AnomalyType.BROKER_FAILURE;
     } else if (anomaly instanceof KafkaMetricAnomaly) {
       return AnomalyType.METRIC_ANOMALY;
+    } else if (anomaly instanceof DiskFailures) {
+      return AnomalyType.DISK_FAILURE;
     } else {
       throw new IllegalStateException("Unrecognized type for anomaly " + anomaly);
     }

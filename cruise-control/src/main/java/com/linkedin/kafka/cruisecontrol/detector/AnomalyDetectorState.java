@@ -35,13 +35,15 @@ public class AnomalyDetectorState {
   private static final String STATUS_UPDATE_DATE = "statusUpdateDate";
   private static final String FIXABLE_VIOLATED_GOALS = "fixableViolatedGoals";
   private static final String UNFIXABLE_VIOLATED_GOALS = "unfixableViolatedGoals";
-  private static final String FAILED_BROKERS_BY_TIME_MS = "failedBrokersByTimeMs";
+  private static final String FAILED_BROKERS_AND_TIME_MS = "failedBrokersAndTimeMs";
+  private static final String FAILED_DISKS_AND_TIME_MS = "failedDisksAndTimeMs";
   private static final String DESCRIPTION = "description";
   private static final String SELF_HEALING_ENABLED = "selfHealingEnabled";
   private static final String SELF_HEALING_DISABLED = "selfHealingDisabled";
   private static final String RECENT_GOAL_VIOLATIONS = "recentGoalViolations";
   private static final String RECENT_BROKER_FAILURES = "recentBrokerFailures";
   private static final String RECENT_METRIC_ANOMALIES = "recentMetricAnomalies";
+  private static final String RECENT_DISK_FAILURES = "recentDiskFailures";
   private static final String OPTIMIZATION_RESULT = "optimizationResult";
 
   // Recent anomalies with anomaly state by the anomaly type.
@@ -92,13 +94,8 @@ public class AnomalyDetectorState {
     }
   }
 
-  public synchronized Map<AnomalyType, Boolean> selfHealingEnabled() {
-    return _selfHealingEnabled;
-  }
-
-  public synchronized boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
-    Boolean oldValue = _selfHealingEnabled.put(anomalyType, isSelfHealingEnabled);
-    return oldValue != null && oldValue;
+  public synchronized void setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
+    _selfHealingEnabled.put(anomalyType, isSelfHealingEnabled);
   }
 
   private static String getDateFormat(long timeMs) {
@@ -145,10 +142,28 @@ public class AnomalyDetectorState {
       boolean hasFixStarted = anomalyState.status() == AnomalyState.Status.FIX_STARTED;
       Map<String, Object> anomalyDetails = new HashMap<>(hasFixStarted ? 6 : 5);
       BrokerFailures brokerFailures = (BrokerFailures) anomalyState.anomaly();
-      anomalyDetails.put(FAILED_BROKERS_BY_TIME_MS, brokerFailures.failedBrokers());
+      anomalyDetails.put(FAILED_BROKERS_AND_TIME_MS, brokerFailures.failedBrokers());
       populateCommonDetails(anomalyState, anomalyDetails, isJson);
       if (hasFixStarted) {
         anomalyDetails.put(OPTIMIZATION_RESULT, brokerFailures.optimizationResult(isJson));
+      }
+      recentAnomalies.add(anomalyDetails);
+    }
+    return recentAnomalies;
+  }
+
+  private Set<Map<String, Object>> recentDiskFailures(boolean isJson) {
+    Map<String, AnomalyState> diskFailuresById = _recentAnomaliesByType.get(AnomalyType.DISK_FAILURE);
+    Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
+    for (Map.Entry<String, AnomalyState> entry: diskFailuresById.entrySet()) {
+      AnomalyState anomalyState = entry.getValue();
+      boolean hasFixStarted = anomalyState.status() == AnomalyState.Status.FIX_STARTED;
+      Map<String, Object> anomalyDetails = new HashMap<>(hasFixStarted ? 6 : 5);
+      DiskFailures diskFailures = (DiskFailures) anomalyState.anomaly();
+      anomalyDetails.put(FAILED_DISKS_AND_TIME_MS, diskFailures.failedDisks());
+      populateCommonDetails(anomalyState, anomalyDetails, isJson);
+      if (hasFixStarted) {
+        anomalyDetails.put(OPTIMIZATION_RESULT, diskFailures.optimizationResult(isJson));
       }
       recentAnomalies.add(anomalyDetails);
     }
@@ -191,6 +206,7 @@ public class AnomalyDetectorState {
     anomalyDetectorState.put(RECENT_GOAL_VIOLATIONS, recentGoalViolations(true));
     anomalyDetectorState.put(RECENT_BROKER_FAILURES, recentBrokerFailures(true));
     anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentMetricAnomalies(true));
+    anomalyDetectorState.put(RECENT_DISK_FAILURES, recentDiskFailures(true));
 
     return anomalyDetectorState;
   }
@@ -198,11 +214,12 @@ public class AnomalyDetectorState {
   @Override
   public String toString() {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
-    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s}%n",
+    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s}%n",
                          SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true),
                          SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false),
                          RECENT_GOAL_VIOLATIONS, recentGoalViolations(false),
                          RECENT_BROKER_FAILURES, recentBrokerFailures(false),
-                         RECENT_METRIC_ANOMALIES, recentMetricAnomalies(false));
+                         RECENT_METRIC_ANOMALIES, recentMetricAnomalies(false),
+                         RECENT_DISK_FAILURES, recentDiskFailures(false));
   }
 }

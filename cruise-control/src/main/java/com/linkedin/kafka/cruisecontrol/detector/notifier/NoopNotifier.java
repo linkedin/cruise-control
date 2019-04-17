@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
+import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import java.util.HashMap;
@@ -38,6 +39,11 @@ public class NoopNotifier implements AnomalyNotifier {
 
   @Override
   public AnomalyNotificationResult onMetricAnomaly(KafkaMetricAnomaly metricAnomaly) {
+    return AnomalyNotificationResult.ignore();
+  }
+
+  @Override
+  public AnomalyNotificationResult onDiskFailure(DiskFailures diskFailures) {
     return AnomalyNotificationResult.ignore();
   }
 
