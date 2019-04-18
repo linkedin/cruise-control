@@ -28,7 +28,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JS
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State;
-
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.NO_TASK_IN_PROGRESS;
+import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.STARTING_EXECUTION;
 
 public class CruiseControlState extends AbstractCruiseControlResponse {
   private static final String INTER_BROKER_PARTITION_MOVEMENTS = "inter-broker partition movements";
@@ -124,6 +125,10 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
 
   private void writeVerboseExecutorState(StringBuilder sb) {
     if (_executorState != null) {
+      // There is no execution task summary if executor is in idle state.
+      if (_executorState.state() == NO_TASK_IN_PROGRESS || _executorState.state() == STARTING_EXECUTION) {
+        return;
+      }
       Map<TaskType, Map<State, Set<ExecutionTask>>> filteredTasksByState = _executorState.executionTasksSummary().filteredTasksByState();
       filteredTasksByState.forEach((type, taskMap) -> {
         String taskTypeString = type == TaskType.INTER_BROKER_REPLICA_ACTION ? INTER_BROKER_PARTITION_MOVEMENTS :
