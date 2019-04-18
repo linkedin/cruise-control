@@ -48,7 +48,7 @@ public class ResponseUtils {
                          config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ORIGIN_CONFIG));
       response.setHeader("Access-Control-Expose-Headers",
                          config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
-
+      response.setHeader("Access-Control-Allow-Credentials", "true");
     }
   }
 
