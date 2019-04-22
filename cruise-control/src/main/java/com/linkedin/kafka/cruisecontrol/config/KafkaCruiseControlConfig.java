@@ -489,6 +489,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "priority goals will be executed first.";
 
   /**
+   * <code>intra.broker.goals</code>
+   */
+  public static final String INTRA_BROKER_GOALS_CONFIG = "intra.broker.goals";
+  private static final String INTRA_BROKER_GOALS_DOC = "A list of case insensitive intra-broker goals in the order of priority. "
+      + "The high priority goals will be executed first. The intra-broker goals are only relevant if intra-broker operation is "
+      + "supported(i.e. in migrate_to_kafka_2_0 branch), otherwise this list should be empty. ";
+
+  /**
    * <code>hard.goals</code>
    */
   public static final String HARD_GOALS_CONFIG = "hard.goals";
@@ -1140,6 +1148,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(TopicReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
                 GOALS_DOC)
+        .define(INTRA_BROKER_GOALS_CONFIG,
+                ConfigDef.Type.LIST,
+                "",
+                ConfigDef.Importance.HIGH,
+                INTRA_BROKER_GOALS_DOC)
         .define(HARD_GOALS_CONFIG,
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")
@@ -1277,6 +1290,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         throw new ConfigException("Attempt to configure goals with case sensitive names.");
       }
     }
+    // Check goal names are case insensitive for intra-broker goals.
+    for (String goalName: getList(KafkaCruiseControlConfig.INTRA_BROKER_GOALS_CONFIG)) {
+      if (!caseInsensitiveGoalNames.add(goalName.replaceAll(".*\\.", ""))) {
+        throw new ConfigException("Attempt to configure intra.broker.goals with case sensitive names.");
+      }
+    }
+
     // Ensure that default goals is non-empty.
     List<String> defaultGoalNames = getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG);
     if (defaultGoalNames.isEmpty()) {
