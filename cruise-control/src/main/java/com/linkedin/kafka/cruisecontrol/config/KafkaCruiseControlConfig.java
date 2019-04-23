@@ -29,6 +29,7 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeSmallReplica
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -487,6 +488,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String GOALS_CONFIG = "goals";
   private static final String GOALS_DOC = "A list of case insensitive goals in the order of priority. The high "
       + "priority goals will be executed first.";
+
+  /**
+   * <code>intra.broker.goals</code>
+   */
+  public static final String INTRA_BROKER_GOALS_CONFIG = "intra.broker.goals";
+  private static final String INTRA_BROKER_GOALS_DOC = "A list of case insensitive intra-broker goals in the order of priority. "
+      + "The high priority goals will be executed first. The intra-broker goals are only relevant if intra-broker operation is "
+      + "supported(i.e. in  Cruise Control versions above 2.*), otherwise this list should be empty.";
 
   /**
    * <code>hard.goals</code>
@@ -1140,6 +1149,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(TopicReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
                 GOALS_DOC)
+        .define(INTRA_BROKER_GOALS_CONFIG,
+                ConfigDef.Type.LIST,
+                Collections.emptyList(),
+                ConfigDef.Importance.HIGH,
+                INTRA_BROKER_GOALS_DOC)
         .define(HARD_GOALS_CONFIG,
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")
@@ -1277,6 +1291,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         throw new ConfigException("Attempt to configure goals with case sensitive names.");
       }
     }
+    // Check goal names are case insensitive for intra-broker goals.
+    for (String goalName: getList(KafkaCruiseControlConfig.INTRA_BROKER_GOALS_CONFIG)) {
+      if (!caseInsensitiveGoalNames.add(goalName.replaceAll(".*\\.", ""))) {
+        throw new ConfigException("Attempt to configure intra-broker goals with case sensitive names.");
+      }
+    }
+
     // Ensure that default goals is non-empty.
     List<String> defaultGoalNames = getList(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG);
     if (defaultGoalNames.isEmpty()) {
