@@ -157,6 +157,7 @@ public class AnalyzerUtils {
    */
   public static Map<String, Goal> getCaseInsensitiveGoalsByName(KafkaCruiseControlConfig config) {
     List<Goal> goals = config.getConfiguredInstances(KafkaCruiseControlConfig.GOALS_CONFIG, Goal.class);
+    goals.addAll(config.getConfiguredInstances(KafkaCruiseControlConfig.INTRA_BROKER_GOALS_CONFIG, Goal.class));
     Map<String, Goal> caseInsensitiveGoalsByName = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     for (Goal goal: goals) {
       caseInsensitiveGoalsByName.put(goal.name(), goal);
