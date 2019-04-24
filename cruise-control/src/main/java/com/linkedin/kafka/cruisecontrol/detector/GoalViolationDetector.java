@@ -20,7 +20,6 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
-import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,6 +37,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
 
@@ -101,8 +101,7 @@ public class GoalViolationDetector implements Runnable {
    * <li>Cluster model generation has not changed since the last goal violation check.</li>
    * <li>There is offline replicas in the cluster, which means there is dead brokers/disks. In this case
    * {@link BrokerFailureDetector} or {@link DiskFailureDetector} should take care of the anomaly.</li>
-   * <li>Load monitor is not ready.</li>
-   * <li>There is an ongoing execution.</li>
+   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(LoadMonitor, KafkaCruiseControl)} returns true.
    * </ul>
    *
    * @return True to skip goal violation detection based on the current state, false otherwise.
@@ -125,20 +124,7 @@ public class GoalViolationDetector implements Runnable {
       return true;
     }
 
-    LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
-    if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
-      LOG.info("Skipping goal violation detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
-      return true;
-    }
-
-    ExecutorState.State executorState = _kafkaCruiseControl.state(
-        new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
-    if (executorState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      LOG.info("Skipping goal violation detection because the executor is in {} state.", executorState);
-      return true;
-    }
-
-    return false;
+    return shouldSkipAnomalyDetection(_loadMonitor, _kafkaCruiseControl);
   }
 
   @Override

@@ -41,6 +41,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlSta
 public class AnomalyDetector {
   private static final String METRIC_REGISTRY_NAME = "AnomalyDetector";
   private static final int INIT_JITTER_BOUND = 10000;
+  private static final int NUM_ANOMALY_DETECTION_THREADS = 5;
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
   private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
                                                                      Collections.emptyMap(),
@@ -82,8 +83,8 @@ public class AnomalyDetector {
     _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl);
     _metricAnomalyDetector = new MetricAnomalyDetector(config, _loadMonitor, _anomalies, _kafkaCruiseControl);
     _diskFailureDetector = new DiskFailureDetector(config, _loadMonitor, _adminClient, _anomalies, time, _kafkaCruiseControl);
-    _detectorScheduler =
-        Executors.newScheduledThreadPool(5, new KafkaCruiseControlThreadFactory(METRIC_REGISTRY_NAME, false, LOG));
+    _detectorScheduler = Executors.newScheduledThreadPool(NUM_ANOMALY_DETECTION_THREADS,
+                                                          new KafkaCruiseControlThreadFactory(METRIC_REGISTRY_NAME, false, LOG));
     _shutdown = false;
     _brokerFailureRate = dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "broker-failure-rate"));
     _goalViolationRate = dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "goal-violation-rate"));
@@ -143,13 +144,13 @@ public class AnomalyDetector {
                                            _anomalyDetectionIntervalMs / 2 + jitter,
                                            _anomalyDetectionIntervalMs,
                                            TimeUnit.MILLISECONDS);
-    _detectorScheduler.submit(new AnomalyHandlerTask());
     jitter = new Random().nextInt(INIT_JITTER_BOUND);
     LOG.debug("Starting disk failure detector with delay of {} ms", jitter);
     _detectorScheduler.scheduleAtFixedRate(_diskFailureDetector,
                                           _anomalyDetectionIntervalMs / 2 + jitter,
                                            _anomalyDetectionIntervalMs,
                                            TimeUnit.MILLISECONDS);
+    _detectorScheduler.submit(new AnomalyHandlerTask());
   }
 
   /**

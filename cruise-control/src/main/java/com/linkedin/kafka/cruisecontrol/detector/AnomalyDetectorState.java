@@ -35,8 +35,8 @@ public class AnomalyDetectorState {
   private static final String STATUS_UPDATE_DATE = "statusUpdateDate";
   private static final String FIXABLE_VIOLATED_GOALS = "fixableViolatedGoals";
   private static final String UNFIXABLE_VIOLATED_GOALS = "unfixableViolatedGoals";
-  private static final String FAILED_BROKERS_AND_TIME_MS = "failedBrokersAndTimeMs";
-  private static final String FAILED_DISKS_AND_TIME_MS = "failedDisksAndTimeMs";
+  private static final String FAILED_BROKERS_BY_TIME_MS = "failedBrokersByTimeMs";
+  private static final String FAILED_DISKS_BY_TIME_MS = "failedDisksByTimeMs";
   private static final String DESCRIPTION = "description";
   private static final String SELF_HEALING_ENABLED = "selfHealingEnabled";
   private static final String SELF_HEALING_DISABLED = "selfHealingDisabled";
@@ -114,74 +114,47 @@ public class AnomalyDetectorState {
                        isJson ? anomalyState.statusUpdateMs() : getDateFormat(anomalyState.statusUpdateMs()));
   }
 
-  private Set<Map<String, Object>> recentGoalViolations(boolean isJson) {
-    Map<String, AnomalyState> goalViolationsById = _recentAnomaliesByType.get(AnomalyType.GOAL_VIOLATION);
+  private Set<Map<String, Object>> recentAnomalies(AnomalyType anomalyType, boolean isJson) {
+    Map<String, AnomalyState> anomaliesById = _recentAnomaliesByType.get(anomalyType);
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
-    for (Map.Entry<String, AnomalyState> entry: goalViolationsById.entrySet()) {
+    for (Map.Entry<String, AnomalyState> entry: anomaliesById.entrySet()) {
       AnomalyState anomalyState = entry.getValue();
-      GoalViolations goalViolations = (GoalViolations) anomalyState.anomaly();
-      Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
       boolean hasFixStarted = anomalyState.status() == AnomalyState.Status.FIX_STARTED;
       Map<String, Object> anomalyDetails = new HashMap<>(hasFixStarted ? 7 : 6);
-      anomalyDetails.put(FIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()));
-      anomalyDetails.put(UNFIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()));
       populateCommonDetails(anomalyState, anomalyDetails, isJson);
-      if (hasFixStarted) {
-        anomalyDetails.put(OPTIMIZATION_RESULT, goalViolations.optimizationResult(isJson));
-      }
-      recentAnomalies.add(anomalyDetails);
-    }
-    return recentAnomalies;
-  }
-
-  private Set<Map<String, Object>> recentBrokerFailures(boolean isJson) {
-    Map<String, AnomalyState> brokerFailuresById = _recentAnomaliesByType.get(AnomalyType.BROKER_FAILURE);
-    Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
-    for (Map.Entry<String, AnomalyState> entry : brokerFailuresById.entrySet()) {
-      AnomalyState anomalyState = entry.getValue();
-      boolean hasFixStarted = anomalyState.status() == AnomalyState.Status.FIX_STARTED;
-      Map<String, Object> anomalyDetails = new HashMap<>(hasFixStarted ? 6 : 5);
-      BrokerFailures brokerFailures = (BrokerFailures) anomalyState.anomaly();
-      anomalyDetails.put(FAILED_BROKERS_AND_TIME_MS, brokerFailures.failedBrokers());
-      populateCommonDetails(anomalyState, anomalyDetails, isJson);
-      if (hasFixStarted) {
-        anomalyDetails.put(OPTIMIZATION_RESULT, brokerFailures.optimizationResult(isJson));
-      }
-      recentAnomalies.add(anomalyDetails);
-    }
-    return recentAnomalies;
-  }
-
-  private Set<Map<String, Object>> recentDiskFailures(boolean isJson) {
-    Map<String, AnomalyState> diskFailuresById = _recentAnomaliesByType.get(AnomalyType.DISK_FAILURE);
-    Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
-    for (Map.Entry<String, AnomalyState> entry: diskFailuresById.entrySet()) {
-      AnomalyState anomalyState = entry.getValue();
-      boolean hasFixStarted = anomalyState.status() == AnomalyState.Status.FIX_STARTED;
-      Map<String, Object> anomalyDetails = new HashMap<>(hasFixStarted ? 6 : 5);
-      DiskFailures diskFailures = (DiskFailures) anomalyState.anomaly();
-      anomalyDetails.put(FAILED_DISKS_AND_TIME_MS, diskFailures.failedDisks());
-      populateCommonDetails(anomalyState, anomalyDetails, isJson);
-      if (hasFixStarted) {
-        anomalyDetails.put(OPTIMIZATION_RESULT, diskFailures.optimizationResult(isJson));
-      }
-      recentAnomalies.add(anomalyDetails);
-    }
-    return recentAnomalies;
-  }
-
-  private Set<Map<String, Object>> recentMetricAnomalies(boolean isJson) {
-    Map<String, AnomalyState> metricAnomaliesById = _recentAnomaliesByType.get(AnomalyType.METRIC_ANOMALY);
-    Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
-    for (Map.Entry<String, AnomalyState> entry: metricAnomaliesById.entrySet()) {
-      AnomalyState anomalyState = entry.getValue();
-      boolean hasFixStarted = anomalyState.status() == AnomalyState.Status.FIX_STARTED;
-      Map<String, Object> anomalyDetails = new HashMap<>(hasFixStarted ? 6 : 5);
-      KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomalyState.anomaly();
-      anomalyDetails.put(DESCRIPTION, metricAnomaly.description());
-      populateCommonDetails(anomalyState, anomalyDetails, isJson);
-      if (hasFixStarted) {
-        anomalyDetails.put(OPTIMIZATION_RESULT, metricAnomaly.optimizationResult(isJson));
+      switch (anomalyType) {
+        case GOAL_VIOLATION:
+          GoalViolations goalViolations = (GoalViolations) anomalyState.anomaly();
+          Map<Boolean, List<String>> violatedGoalsByFixability = goalViolations.violatedGoalsByFixability();
+          anomalyDetails.put(FIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(true, Collections.emptyList()));
+          anomalyDetails.put(UNFIXABLE_VIOLATED_GOALS, violatedGoalsByFixability.getOrDefault(false, Collections.emptyList()));
+          if (hasFixStarted) {
+            anomalyDetails.put(OPTIMIZATION_RESULT, goalViolations.optimizationResult(isJson));
+          }
+          break;
+        case BROKER_FAILURE:
+          BrokerFailures brokerFailures = (BrokerFailures) anomalyState.anomaly();
+          anomalyDetails.put(FAILED_BROKERS_BY_TIME_MS, brokerFailures.failedBrokers());
+          if (hasFixStarted) {
+            anomalyDetails.put(OPTIMIZATION_RESULT, brokerFailures.optimizationResult(isJson));
+          }
+          break;
+        case DISK_FAILURE:
+          DiskFailures diskFailures = (DiskFailures) anomalyState.anomaly();
+          anomalyDetails.put(FAILED_DISKS_BY_TIME_MS, diskFailures.failedDisks());
+          if (hasFixStarted) {
+            anomalyDetails.put(OPTIMIZATION_RESULT, diskFailures.optimizationResult(isJson));
+          }
+          break;
+        case METRIC_ANOMALY:
+          KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) anomalyState.anomaly();
+          anomalyDetails.put(DESCRIPTION, metricAnomaly.description());
+          if (hasFixStarted) {
+            anomalyDetails.put(OPTIMIZATION_RESULT, metricAnomaly.optimizationResult(isJson));
+          }
+          break;
+        default:
+          throw new IllegalStateException("Unrecognized anomaly type " + anomalyType);
       }
       recentAnomalies.add(anomalyDetails);
     }
@@ -203,10 +176,10 @@ public class AnomalyDetectorState {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
     anomalyDetectorState.put(SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true));
     anomalyDetectorState.put(SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false));
-    anomalyDetectorState.put(RECENT_GOAL_VIOLATIONS, recentGoalViolations(true));
-    anomalyDetectorState.put(RECENT_BROKER_FAILURES, recentBrokerFailures(true));
-    anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentMetricAnomalies(true));
-    anomalyDetectorState.put(RECENT_DISK_FAILURES, recentDiskFailures(true));
+    anomalyDetectorState.put(RECENT_GOAL_VIOLATIONS, recentAnomalies(AnomalyType.GOAL_VIOLATION, true));
+    anomalyDetectorState.put(RECENT_BROKER_FAILURES, recentAnomalies(AnomalyType.BROKER_FAILURE, true));
+    anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentAnomalies(AnomalyType.METRIC_ANOMALY, true));
+    anomalyDetectorState.put(RECENT_DISK_FAILURES, recentAnomalies(AnomalyType.DISK_FAILURE, true));
 
     return anomalyDetectorState;
   }
@@ -217,9 +190,9 @@ public class AnomalyDetectorState {
     return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s}%n",
                          SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true),
                          SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false),
-                         RECENT_GOAL_VIOLATIONS, recentGoalViolations(false),
-                         RECENT_BROKER_FAILURES, recentBrokerFailures(false),
-                         RECENT_METRIC_ANOMALIES, recentMetricAnomalies(false),
-                         RECENT_DISK_FAILURES, recentDiskFailures(false));
+                         RECENT_GOAL_VIOLATIONS, recentAnomalies(AnomalyType.GOAL_VIOLATION, false),
+                         RECENT_BROKER_FAILURES, recentAnomalies(AnomalyType.BROKER_FAILURE, false),
+                         RECENT_METRIC_ANOMALIES, recentAnomalies(AnomalyType.METRIC_ANOMALY, false),
+                         RECENT_DISK_FAILURES, recentAnomalies(AnomalyType.DISK_FAILURE, false));
   }
 }

@@ -9,13 +9,11 @@ import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
 
 /**
  * The broker failures that have been detected.
@@ -87,9 +85,7 @@ public class BrokerFailures extends KafkaAnomaly {
   public String toString() {
     StringBuilder sb = new StringBuilder().append("{\n");
     _failedBrokers.forEach((key, value) -> {
-      Date date = new Date(value);
-      DateFormat format = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-      sb.append("\tBroker ").append(key).append(" failed at ").append(format.format(date)).append("\n");
+      sb.append("\tBroker ").append(key).append(" failed at ").append(toDateString(value)).append("\n");
     });
     sb.append("}");
     return sb.toString();

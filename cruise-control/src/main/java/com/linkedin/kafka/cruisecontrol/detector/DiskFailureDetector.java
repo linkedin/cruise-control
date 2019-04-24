@@ -6,12 +6,8 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
-import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
@@ -30,11 +26,10 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
-import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
 
 /**
- * This class detects disk failures. This class will be scheduled to run periodically to check if there is bad disk on
- * any alive broker in the cluster.
+ * This class detects disk failures.
  **/
 public class DiskFailureDetector implements Runnable {
   private static final Logger LOG = LoggerFactory.getLogger(DiskFailureDetector.class);
@@ -66,82 +61,70 @@ public class DiskFailureDetector implements Runnable {
   }
 
   /**
-   * Skip bad disk detection if any of the following is true:
+   * Skip disk failure detection if any of the following is true:
    * <ul>
-   * <li>Cluster model generation has not changed since the last bad disk check.</li>
-   * <li>There is dead broker in the cluster, {@link BrokerFailureDetector} should take care of the anomaly.</li>
-   * <li>Load monitor is not ready.</li>
-   * <li>There is an ongoing execution.</li>
+   * <li>Cluster model generation has not changed since the last disk failure check.</li>
+   * <li>There are dead brokers in the cluster, {@link BrokerFailureDetector} should take care of the anomaly.</li>
+   * <li>{@link AnomalyDetectorUtils#shouldSkipAnomalyDetection(LoadMonitor, KafkaCruiseControl)} returns true.
    * </ul>
    *
-   * @return True to skip bad disk detection based on the current state, false otherwise.
+   * @return True to skip disk failure detection based on the current state, false otherwise.
    */
-  private boolean shouldSkipBadDiskDetection() {
-    int currentClusterGeneration =  _loadMonitor.clusterModelGeneration().clusterGeneration();
+  private boolean shouldSkipDiskFailureDetection() {
+    int currentClusterGeneration = _loadMonitor.clusterModelGeneration().clusterGeneration();
     if (currentClusterGeneration == _lastCheckedClusterGeneration) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Skipping bad disk detection because the model generation hasn't changed. Current model generation {}",
+        LOG.debug("Skipping disk failure detection because the model generation hasn't changed. Current model generation {}",
                   _loadMonitor.clusterModelGeneration());
       }
       return true;
     }
     _lastCheckedClusterGeneration = currentClusterGeneration;
 
-    Set<Integer> deadBrokers = _loadMonitor.deadBrokers(MAX_METADATA_WAIT_MS);
+    Set<Integer> deadBrokers = _loadMonitor.deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
     if (!deadBrokers.isEmpty()) {
       if (LOG.isDebugEnabled()) {
-        LOG.debug("Skipping goal violation detection because there are dead broker in the cluster, dead broker: {}",
-                  deadBrokers);
+        LOG.debug("Skipping disk failure detection because there are dead broker in the cluster, dead broker: {}",
+            deadBrokers);
       }
       return true;
     }
 
-    LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
-    if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
-      LOG.info("Skipping bad disk detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
-      return true;
-    }
-
-    ExecutorState.State executorState = _kafkaCruiseControl.state(
-        new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
-    if (executorState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      LOG.info("Skipping bad disk detection because the executor is in {} state.", executorState);
-      return true;
-    }
-
-    return false;
+    return shouldSkipAnomalyDetection(_loadMonitor, _kafkaCruiseControl);
   }
 
   @Override
   public void run() {
-    if (shouldSkipBadDiskDetection()) {
-      return;
-    }
-
-    Map<Integer, Map<String, Long>> failedDisksByBroker = new HashMap<>();
-    Set<Integer> aliveBrokers = _loadMonitor.kafkaCluster().nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toSet());
-    _adminClient.describeLogDirs(aliveBrokers).values().forEach((broker, future) -> {
-      try {
-        future.get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
-        if (info.error != Errors.NONE) {
+    try {
+      if (shouldSkipDiskFailureDetection()) {
+        return;
+      }
+      Map<Integer, Map<String, Long>> failedDisksByBroker = new HashMap<>();
+      Set<Integer> aliveBrokers = _loadMonitor.kafkaCluster().nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toSet());
+      _adminClient.describeLogDirs(aliveBrokers).values().forEach((broker, future) -> {
+        try {
+          future.get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
+            if (info.error != Errors.NONE) {
               failedDisksByBroker.putIfAbsent(broker, new HashMap<>());
               failedDisksByBroker.get(broker).put(logdir, _time.milliseconds());
             }
           });
         } catch (TimeoutException te) {
-          LOG.warn("Getting logdir information for broker {} timed out.", broker);
+          LOG.warn("Retrieving logdir information for broker {} encounter timeout exception {}.", broker, te);
         } catch (InterruptedException | ExecutionException e) {
-        LOG.warn("Getting logdir information for broker {} encounter exception {}.", broker, e);
+          LOG.warn("Retrieving logdir information for broker {} encounter exception {}.", broker, e);
+        }
+      });
+      if (!failedDisksByBroker.isEmpty()) {
+        _anomalies.add(new DiskFailures(_kafkaCruiseControl,
+                                        failedDisksByBroker,
+                                        _allowCapacityEstimation,
+                                        _excludeRecentlyDemotedBrokers,
+                                        _excludeRecentlyRemovedBrokers));
       }
-    });
-    if (!failedDisksByBroker.isEmpty()) {
-      _anomalies.add(new DiskFailures(_kafkaCruiseControl,
-                                      failedDisksByBroker,
-                                      _allowCapacityEstimation,
-                                      _excludeRecentlyDemotedBrokers,
-                                      _excludeRecentlyRemovedBrokers));
-    }
-    if (LOG.isDebugEnabled()) {
+    } catch (Exception e) {
+      LOG.error("Unexpected exception", e);
+    } finally {
       LOG.debug("Disk failure detection finished.");
     }
   }

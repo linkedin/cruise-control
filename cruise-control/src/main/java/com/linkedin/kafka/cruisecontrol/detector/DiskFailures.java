@@ -9,12 +9,11 @@ import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Collections;
-import java.util.Date;
 import java.util.Map;
 import java.util.UUID;
+
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
 
 /**
  * The disk failures that have been detected.
@@ -33,6 +32,9 @@ public class DiskFailures extends KafkaAnomaly {
                       boolean allowCapacityEstimation,
                       boolean excludeRecentlyDemotedBrokers,
                       boolean excludeRecentlyRemovedBrokers) {
+    if (failedDisksByBroker == null || failedDisksByBroker.isEmpty()) {
+      throw new IllegalArgumentException("Unable to create disk failure anomaly with no failed disk specified.");
+    }
     _kafkaCruiseControl = kafkaCruiseControl;
     _failedDisksByBroker = failedDisksByBroker;
     _allowCapacityEstimation = allowCapacityEstimation;
@@ -57,26 +59,23 @@ public class DiskFailures extends KafkaAnomaly {
   @Override
   public boolean fix() throws KafkaCruiseControlException {
     // Fix the cluster by moving replicas off the dead disks.
-    if (_failedDisksByBroker != null && !_failedDisksByBroker.isEmpty()) {
-      _optimizationResult = new OptimizationResult(_kafkaCruiseControl.fixOfflineReplicas(false,
-                                                                                          Collections.emptyList(),
-                                                                                          null,
-                                                                                          new OperationProgress(),
-                                                                                          _allowCapacityEstimation,
-                                                                                          null,
-                                                                                          null,
-                                                                                          false,
-                                                                                          null,
-                                                                                          null,
-                                                                                          _anomalyId,
-                                                                                          _excludeRecentlyDemotedBrokers,
-                                                                                          _excludeRecentlyRemovedBrokers),
-                                                   null);
-      // Ensure that only the relevant response is cached to avoid memory pressure.
-      _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
-      return true;
-    }
-    return false;
+    _optimizationResult = new OptimizationResult(_kafkaCruiseControl.fixOfflineReplicas(false,
+                                                 Collections.emptyList(),
+                                                 null,
+                                                 new OperationProgress(),
+                                                 _allowCapacityEstimation,
+                                                 null,
+                                                 null,
+                                                 false,
+                                                 null,
+                                                 null,
+                                                 _anomalyId,
+                                                 _excludeRecentlyDemotedBrokers,
+                                                 _excludeRecentlyRemovedBrokers),
+                                                 null);
+    // Ensure that only the relevant response is cached to avoid memory pressure.
+    _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
+    return true;
   }
 
   @Override
@@ -84,9 +83,7 @@ public class DiskFailures extends KafkaAnomaly {
     StringBuilder sb = new StringBuilder().append("{\n");
     _failedDisksByBroker.forEach((brokerId, failures) -> {
       failures.forEach((logdir, eventTime) -> {
-        Date date = new Date(eventTime);
-        DateFormat format = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-        sb.append(String.format("\tDisk %s on broker %d failed at %s\n ", logdir, brokerId, format.format(date)));
+        sb.append(String.format("\tDisk %s on broker %d failed at %s\n ", logdir, brokerId, toDateString(eventTime)));
       });
     });
     sb.append("}");
