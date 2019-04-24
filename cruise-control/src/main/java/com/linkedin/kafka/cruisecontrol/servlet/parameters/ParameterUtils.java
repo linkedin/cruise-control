@@ -104,6 +104,7 @@ public class ParameterUtils {
   public static final String POPULATE_DISK_INFO_PARAM = "populate_disk_info";
   public static final String BROKER_ID_AND_LOGDIRS_PARAM = "brokerid_and_logdirs";
   private static final int MAX_REASON_LENGTH = 50;
+  private static final String DELIMITER_BETWEEN_BROKER_ID_AND_LOGDIR = "-";
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
 
@@ -758,8 +759,16 @@ public class ParameterUtils {
 
   static Set<Integer> brokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<Integer> brokerIds = parseParamToIntegerSet(request, BROKER_ID_PARAM);
-    if (endPoint(request) != FIX_OFFLINE_REPLICAS && brokerIds.isEmpty()) {
-      throw new IllegalArgumentException("Target broker ID is not provided.");
+    if (brokerIds.isEmpty()) {
+      EndPoint endpoint = endPoint(request);
+      if (endpoint == DEMOTE_BROKER) {
+        // If it is a demote_broker request, either target broker or target disk should be specified in request.
+        if (brokerIdAndLogdirs(request).isEmpty()) {
+          throw new UserRequestException("No target broker ID or target disk logdir is specified to demote.");
+        }
+      } else if (endpoint != FIX_OFFLINE_REPLICAS) {
+        throw new IllegalArgumentException(String.format("Target broker ID is not provided for %s request", endpoint));
+      }
     }
     return Collections.unmodifiableSet(brokerIds);
   }
@@ -828,8 +837,8 @@ public class ParameterUtils {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), BROKER_ID_AND_LOGDIRS_PARAM);
     if (parameterString != null) {
       Arrays.stream(urlDecode(request.getParameter(parameterString)).split(",")).forEach(e -> {
-        Integer index = e.indexOf("-");
-        Integer brokerId = Integer.parseInt(e.substring(0, index));
+        int index = e.indexOf(DELIMITER_BETWEEN_BROKER_ID_AND_LOGDIR);
+        int brokerId = Integer.parseInt(e.substring(0, index));
         brokerIdAndLogdirs.putIfAbsent(brokerId, new HashSet<>());
         brokerIdAndLogdirs.get(brokerId).add(e.substring(index + 1));
       });

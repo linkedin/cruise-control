@@ -5,10 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 
 import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.DiskStats;
 import java.util.HashMap;
 import java.util.Map;
-
-import static com.linkedin.kafka.cruisecontrol.model.Disk.DiskStats;
 
 public class SingleBrokerStats {
   private static final String HOST = "Host";

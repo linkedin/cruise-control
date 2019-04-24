@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.DiskStats;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AbstractCruiseControlResponse;
 import java.util.ArrayList;
@@ -18,7 +19,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
-import static com.linkedin.kafka.cruisecontrol.model.Disk.DiskStats;
 
 
 /**
@@ -41,7 +41,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     _brokerStats = new ArrayList<>();
     _hostStats = new ConcurrentSkipListMap<>();
     _hostFieldLength = 0;
-    _logdirFieldLength = 0;
+    _logdirFieldLength = 1;
     _cachedPlainTextResponse = null;
     _cachedJSONResponse = null;
     _isBrokerStatsEstimated = false;
@@ -57,8 +57,10 @@ public class BrokerStats extends AbstractCruiseControlResponse {
                               potentialBytesOutRate, numReplicas, numLeaders, isEstimated, capacity, diskStatsByLogdir);
     _brokerStats.add(singleBrokerStats);
     _hostFieldLength = Math.max(_hostFieldLength, host.length());
+    // Calculate field length to print logdir name in plaintext response, a padding of 10 is added for this field.
+    // If there is no logdir information, this field will be of length of 1.
     _logdirFieldLength = Math.max(_logdirFieldLength,
-                                  diskStatsByLogdir.keySet().stream().mapToInt(String::length).max().orElse(-9) + 10);
+                                  diskStatsByLogdir.keySet().stream().mapToInt(String::length).max().orElse(-10) + 10);
     _hostStats.computeIfAbsent(host, h -> new BasicStats(0.0, 0.0, 0.0, 0.0,
                                                          0.0, 0.0, 0, 0, 0.0))
               .addBasicStats(singleBrokerStats.basicStats());
@@ -153,14 +155,14 @@ public class BrokerStats extends AbstractCruiseControlResponse {
         Map<String, DiskStats> capacityByDisk = stats.diskStatsByLogdir();
         for (Map.Entry<String, DiskStats> entry : capacityByDisk.entrySet()) {
           DiskStats diskStats = entry.getValue();
-          Double util = diskStats.utilzation();
+          Double util = diskStats.utilization();
           sb.append(String.format("%" + (_hostFieldLength + 15 + _logdirFieldLength) + "s,"
                                   + (util == null ? "%19s/%5s," : "%19.3f/%05.2f,") + "%119d/%d%n",
                                   entry.getKey(),
                                   util == null ? "DEAD" : util,
                                   util == null ? "DEAD" : diskStats.utilizationPercentage(),
-                                  diskStats.numLeaderReplica(),
-                                  diskStats.numReplica()));
+                                  diskStats.numLeaderReplicas(),
+                                  diskStats.numReplicas()));
         }
       }
     }

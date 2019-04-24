@@ -155,6 +155,48 @@ public class PreferredLeaderElectionGoalTest {
   }
 
   @Test
+  public void testOptimizeWithDemotedBrokersAndDisks() {
+    ClusterModel clusterModel = createClusterModel(true, true)._clusterModel;
+    clusterModel.setBrokerState(0, Broker.State.DEMOTED);
+    clusterModel.broker(1).disk(LOGDIR0).setState(Disk.State.DEMOTED);
+
+    Set<TopicPartition> leaderPartitionsToBeDemoted = new HashSet<>();
+    clusterModel.broker(0).leaderReplicas().forEach(r -> leaderPartitionsToBeDemoted.add(r.topicPartition()));
+    clusterModel.broker(1).disk(LOGDIR0).leaderReplicas()
+                .forEach(r -> leaderPartitionsToBeDemoted.add(r.topicPartition()));
+
+    Map<TopicPartition, Integer> leaderDistributionBeforeBrokerDemotion = new HashMap<>();
+    clusterModel.brokers().forEach(b -> {
+      b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
+    });
+
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+
+    for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
+      for (int p = 0; p < 3; p++) {
+        TopicPartition tp = new TopicPartition(t, p);
+        if (!leaderPartitionsToBeDemoted.contains(tp)) {
+          int oldLeaderBroker = leaderDistributionBeforeBrokerDemotion.get(tp);
+          assertEquals("Tp " + tp, oldLeaderBroker, clusterModel.partition(tp).leader().broker().id());
+        } else {
+          List<Replica> replicas = clusterModel.partition(tp).replicas();
+          for (int i = 0; i < 3; i++) {
+            Replica replica = replicas.get(i);
+            // only the first replica should be leader.
+            assertEquals(i == 0, replica.isLeader());
+            if (clusterModel.broker(0).replicas().contains(replica)
+                || clusterModel.broker(1).disk(LOGDIR0).replicas().contains(replica)) {
+              // The demoted replica should be in the last position.
+              assertEquals(replicas.size() - 1, i);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @Test
   public void testOptimizeWithDemotedBrokersAndSkipUrpDemotion() throws KafkaCruiseControlException {
     ClusterModelAndInfo clusterModelAndInfo = createClusterModel(false, false);
     ClusterModel clusterModel = clusterModelAndInfo._clusterModel;

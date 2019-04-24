@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
-import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.Set;
@@ -17,6 +16,8 @@ import javax.servlet.http.HttpServletRequest;
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#DEMOTE_BROKER}
  *
  * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ * <li>Note that "brokerid_and_logdirs" takes comma as delimiter between two broker id and logdir pairs -- i.e. we assume
+ * valid logdir name contains no comma.</li>
  *
  * <pre>
  * Demote a broker
@@ -54,10 +55,6 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
     _logdirByBrokerId = ParameterUtils.brokerIdAndLogdirs(_request);
-    // Ensure either target broker or target disk is specified in request.
-    if (_logdirByBrokerId.isEmpty() && _brokerIds.isEmpty()) {
-      throw new UserRequestException("No target broker ID or target disk logdir is specified to demote.");
-    }
   }
 
   @Override

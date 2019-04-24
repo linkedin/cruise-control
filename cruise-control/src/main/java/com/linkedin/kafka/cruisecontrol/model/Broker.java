@@ -641,11 +641,11 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @return The per-logdir disk statistics. This method is relevant only when the {@link ClusterModel} has
    *         been created with a request to populate replica placement info, otherwise returns an empty map.
    */
-  public Map<String, Disk.DiskStats> diskStats() {
+  public Map<String, DiskStats> diskStats() {
     if (_diskByLogdir.isEmpty()) {
       return Collections.emptyMap();
     }
-    Map<String, Disk.DiskStats> diskStatMap = new HashMap<>(_diskByLogdir.size());
+    Map<String, DiskStats> diskStatMap = new HashMap<>(_diskByLogdir.size());
     _diskByLogdir.forEach((k, v) -> diskStatMap.put(k, v.diskStats()));
     return diskStatMap;
   }

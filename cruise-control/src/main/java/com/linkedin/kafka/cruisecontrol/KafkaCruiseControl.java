@@ -529,8 +529,10 @@ public class KafkaCruiseControl {
                                                                        excludeFollowerDemotion,
                                                                        skipUrpDemotion ? _loadMonitor.kafkaCluster() : null);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      sanityCheckBrokerPresence(brokerIds);
-      sanityCheckBrokerPresence(brokerIdAndLogdirs.keySet());
+      sanityCheckNoOverlappingBtwDemoteBrokerAndDisk(brokerIds, brokerIdAndLogdirs);
+      Set<Integer> brokersToCheckPresence = new HashSet<>(brokerIds);
+      brokersToCheckPresence.addAll(brokerIdAndLogdirs.keySet());
+      sanityCheckBrokerPresence(brokersToCheckPresence);
       ClusterModel clusterModel = brokerIdAndLogdirs.isEmpty() ? _loadMonitor.clusterModel(_time.milliseconds(),
                                                                                            goal.clusterModelCompletenessRequirements(),
                                                                                            operationProgress) :
@@ -1200,6 +1202,21 @@ public class KafkaCruiseControl {
     Set<Integer> invalidBrokerIds = brokerIds.stream().filter(id -> cluster.nodeById(id) == null).collect(Collectors.toSet());
     if (!invalidBrokerIds.isEmpty()) {
       throw new IllegalArgumentException(String.format("Broker %s does not exist.", invalidBrokerIds));
+    }
+  }
+
+  /**
+   * Sanity check there is no overlap between set of brokers to be demoted and set of brokers of disk to be demoted.
+   * @param brokerIds The id of brokers to be demoted.
+   * @param brokerIdAndLogdirs The disks to be demoted by broker id.
+   */
+  private void sanityCheckNoOverlappingBtwDemoteBrokerAndDisk(Set<Integer> brokerIds,
+                                                              Map<Integer, Set<String>> brokerIdAndLogdirs) {
+    Set<Integer> brokersToDemoteDisk = brokerIdAndLogdirs.keySet();
+    brokersToDemoteDisk.retainAll(brokerIds);
+    if (!brokersToDemoteDisk.isEmpty()) {
+      throw new IllegalArgumentException(String.format("Attempt to demote brokers %s and their disks in the same request "
+                                                       + "is not allowed.", brokersToDemoteDisk));
     }
   }
 }
