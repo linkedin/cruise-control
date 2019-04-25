@@ -55,14 +55,14 @@ public class AnomalyDetectorUtils {
                                             KafkaCruiseControl kafkaCruiseControl) {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = loadMonitor.taskRunnerState();
     if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
-      LOG.info("Skipping disk failure detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
+      LOG.info("Skipping anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
       return true;
     }
 
     ExecutorState.State executorState = kafkaCruiseControl.state(
         new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
     if (executorState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      LOG.info("Skipping disk failure detection because the executor is in {} state.", executorState);
+      LOG.info("Skipping anomaly detection because the executor is in {} state.", executorState);
       return true;
     }
 

@@ -83,10 +83,7 @@ public class DiskFailureDetector implements Runnable {
 
     Set<Integer> deadBrokers = _loadMonitor.deadBrokersWithReplicas(MAX_METADATA_WAIT_MS);
     if (!deadBrokers.isEmpty()) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Skipping disk failure detection because there are dead broker in the cluster, dead broker: {}",
-            deadBrokers);
-      }
+      LOG.debug("Skipping disk failure detection because there are dead broker in the cluster, dead broker: {}", deadBrokers);
       return true;
     }
 
@@ -109,10 +106,8 @@ public class DiskFailureDetector implements Runnable {
               failedDisksByBroker.get(broker).put(logdir, _time.milliseconds());
             }
           });
-        } catch (TimeoutException te) {
-          LOG.warn("Retrieving logdir information for broker {} encounter timeout exception {}.", broker, te);
-        } catch (InterruptedException | ExecutionException e) {
-          LOG.warn("Retrieving logdir information for broker {} encounter exception {}.", broker, e);
+        } catch (TimeoutException | InterruptedException | ExecutionException e) {
+          LOG.warn("Retrieving logdir information for broker {} encountered exception {}.", broker, e);
         }
       });
       if (!failedDisksByBroker.isEmpty()) {

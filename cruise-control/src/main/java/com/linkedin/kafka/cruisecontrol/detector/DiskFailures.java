@@ -60,18 +60,18 @@ public class DiskFailures extends KafkaAnomaly {
   public boolean fix() throws KafkaCruiseControlException {
     // Fix the cluster by moving replicas off the dead disks.
     _optimizationResult = new OptimizationResult(_kafkaCruiseControl.fixOfflineReplicas(false,
-                                                 Collections.emptyList(),
-                                                 null,
-                                                 new OperationProgress(),
-                                                 _allowCapacityEstimation,
-                                                 null,
-                                                 null,
-                                                 false,
-                                                 null,
-                                                 null,
-                                                 _anomalyId,
-                                                 _excludeRecentlyDemotedBrokers,
-                                                 _excludeRecentlyRemovedBrokers),
+                                                                                        Collections.emptyList(),
+                                                                                        null,
+                                                                                        new OperationProgress(),
+                                                                                        _allowCapacityEstimation,
+                                                                                        null,
+                                                                                        null,
+                                                                                        false,
+                                                                                        null,
+                                                                                        null,
+                                                                                        _anomalyId,
+                                                                                        _excludeRecentlyDemotedBrokers,
+                                                                                        _excludeRecentlyRemovedBrokers),
                                                  null);
     // Ensure that only the relevant response is cached to avoid memory pressure.
     _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
