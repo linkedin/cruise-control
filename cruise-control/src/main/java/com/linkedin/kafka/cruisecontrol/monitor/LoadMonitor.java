@@ -533,7 +533,7 @@ public class LoadMonitor {
       }
 
       // Get the dead brokers and mark them as dead.
-      deadBrokers(kafkaCluster).forEach(brokerId -> clusterModel.setBrokerState(brokerId, Broker.State.DEAD));
+      deadBrokersWithReplicas(kafkaCluster).forEach(brokerId -> clusterModel.setBrokerState(brokerId, Broker.State.DEAD));
       // Get the alive brokers with bad disks and mark them accordingly.
       for (Integer brokerId : brokersWithOfflineReplicas(kafkaCluster)) {
         if (clusterModel.broker(brokerId).isAlive()) {
@@ -777,10 +777,32 @@ public class LoadMonitor {
     return allBrokers;
   }
 
-  private Set<Integer> deadBrokers(Cluster kafkaCluster) {
+  /**
+   * Get all the dead brokers in the cluster based on the partition assignment. If a metadata refresh failed due to
+   * timeout, the current metadata information will be used. This is to handle the case that all the brokers are down.
+   * @param timeout the timeout in milliseconds.
+   * @return All the dead brokers which host some replicas in the cluster.
+   */
+  public Set<Integer> deadBrokersWithReplicas(long timeout) {
+    Cluster kafkaCluster = _metadataClient.refreshMetadata(timeout).cluster();
+    return deadBrokersWithReplicas(kafkaCluster);
+  }
+
+  private Set<Integer> deadBrokersWithReplicas(Cluster kafkaCluster) {
     Set<Integer> brokersWithPartitions = brokersWithPartitions(kafkaCluster);
     kafkaCluster.nodes().forEach(node -> brokersWithPartitions.remove(node.id()));
     return brokersWithPartitions;
+  }
+
+  /**
+   * Get all the brokers having offline replca in the cluster based on the partition assignment. If a metadata refresh failed
+   * due to timeout, the current metadata information will be used. This is to handle the case that all the brokers are down.
+   * @param timeout the timeout in milliseconds.
+   * @return All the brokers in the cluster that has at least one offline replica.
+   */
+  public Set<Integer> brokersWithOfflineReplicas(long timeout) {
+    Cluster kafkaCluster = _metadataClient.refreshMetadata(timeout).cluster();
+    return brokersWithOfflineReplicas(kafkaCluster);
   }
 
   private Set<Integer> brokersWithOfflineReplicas(Cluster kafkaCluster) {

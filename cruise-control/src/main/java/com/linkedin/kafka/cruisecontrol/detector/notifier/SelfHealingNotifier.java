@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
+import com.linkedin.kafka.cruisecontrol.detector.DiskFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import java.util.HashMap;
@@ -24,6 +25,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateStr
  * <ul>
  * <li>The goal violations will trigger an immediate fix.</li>
  * <li>The metric anomalies will trigger an immediate fix.</li>
+ * <li>The disk failures will trigger an immediate fix.</li>
  * <li>The broker failures are handled in the following way:
  *   <ol>
  *     <li>If a broker disappears from a cluster at timestamp <b>T</b>, the detector will start down counting.</li>
@@ -41,6 +43,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateStr
  * <li>{@link #SELF_HEALING_BROKER_FAILURE_ENABLED_CONFIG}: Enable self healing for broker failure detector.</li>
  * <li>{@link #SELF_HEALING_GOAL_VIOLATION_ENABLED_CONFIG}: Enable self healing for goal violation detector.</li>
  * <li>{@link #SELF_HEALING_METRIC_ANOMALY_ENABLED_CONFIG}: Enable self healing for metric anomaly detector.</li>
+ * <li>{@link #SELF_HEALING_DISK_FAILURE_ENABLED_CONFIG}: Enable self healing for disk failure detector.</li>
  * </ul>
  */
 public class SelfHealingNotifier implements AnomalyNotifier {
@@ -49,6 +52,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   public static final String SELF_HEALING_BROKER_FAILURE_ENABLED_CONFIG = "self.healing.broker.failure.enabled";
   public static final String SELF_HEALING_GOAL_VIOLATION_ENABLED_CONFIG = "self.healing.goal.violation.enabled";
   public static final String SELF_HEALING_METRIC_ANOMALY_ENABLED_CONFIG = "self.healing.metric.anomaly.enabled";
+  public static final String SELF_HEALING_DISK_FAILURE_ENABLED_CONFIG = "self.healing.disk.failure.enabled";
   public static final String BROKER_FAILURE_SELF_HEALING_THRESHOLD_MS_CONFIG = "broker.failure.self.healing.threshold.ms";
   static final long DEFAULT_ALERT_THRESHOLD_MS = 900000;
   static final long DEFAULT_AUTO_FIX_THRESHOLD_MS = 1800000;
@@ -78,10 +82,11 @@ public class SelfHealingNotifier implements AnomalyNotifier {
 
   @Override
   public AnomalyNotificationResult onGoalViolation(GoalViolations goalViolations) {
-    alert(goalViolations, _selfHealingEnabled.get(AnomalyType.GOAL_VIOLATION), System.currentTimeMillis(), AnomalyType.GOAL_VIOLATION);
+    boolean selfHealingTriggered = _selfHealingEnabled.get(AnomalyType.GOAL_VIOLATION) && !hasUnfixableGoals(goalViolations);
+    alert(goalViolations, selfHealingTriggered, System.currentTimeMillis(), AnomalyType.GOAL_VIOLATION);
 
     if (_selfHealingEnabled.get(AnomalyType.GOAL_VIOLATION)) {
-      if (!hasUnfixableGoals(goalViolations)) {
+      if (selfHealingTriggered) {
         return AnomalyNotificationResult.fix();
       }
       // If there are unfixable goals, do not self heal even when it is enabled and selfHealing goals include the unfixable goal.
@@ -95,6 +100,12 @@ public class SelfHealingNotifier implements AnomalyNotifier {
   public AnomalyNotificationResult onMetricAnomaly(KafkaMetricAnomaly metricAnomaly) {
     alert(metricAnomaly, _selfHealingEnabled.get(AnomalyType.METRIC_ANOMALY), System.currentTimeMillis(), AnomalyType.METRIC_ANOMALY);
     return _selfHealingEnabled.get(AnomalyType.METRIC_ANOMALY) ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
+  }
+
+  @Override
+  public AnomalyNotificationResult onDiskFailure(DiskFailures diskFailures) {
+    alert(diskFailures, _selfHealingEnabled.get(AnomalyType.DISK_FAILURE), System.currentTimeMillis(), AnomalyType.DISK_FAILURE);
+    return _selfHealingEnabled.get(AnomalyType.DISK_FAILURE) ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
   }
 
   @Override
@@ -160,7 +171,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     _selfHealingThresholdMs = fixThreshold == null ? DEFAULT_AUTO_FIX_THRESHOLD_MS : Long.parseLong(fixThreshold);
     if (_brokerFailureAlertThresholdMs > _selfHealingThresholdMs) {
       throw new IllegalArgumentException(String.format("The failure detection threshold %d cannot be larger than "
-                                                           + "the auto fix threshold. %d",
+                                                       + "the auto fix threshold. %d",
                                                        _brokerFailureAlertThresholdMs, _selfHealingThresholdMs));
     }
     // Global config for self healing.
@@ -179,5 +190,9 @@ public class SelfHealingNotifier implements AnomalyNotifier {
     _selfHealingEnabled.put(AnomalyType.METRIC_ANOMALY, selfHealingMetricAnomalyEnabledString == null
                                                         ? selfHealingAllEnabled
                                                         : Boolean.parseBoolean(selfHealingMetricAnomalyEnabledString));
+    String selfHealingDiskFailuresEnabledString = (String) config.get(SELF_HEALING_DISK_FAILURE_ENABLED_CONFIG);
+    _selfHealingEnabled.put(AnomalyType.DISK_FAILURE, selfHealingDiskFailuresEnabledString == null
+                                                      ? selfHealingAllEnabled
+                                                      : Boolean.parseBoolean(selfHealingDiskFailuresEnabledString));
   }
 }
