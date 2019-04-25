@@ -65,6 +65,8 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ensureDisJoint;
+import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEMOTED;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.*;
 
 
@@ -497,6 +499,7 @@ public class KafkaCruiseControl {
    * by Kafka controller.
    *
    * @param brokerIds The id of brokers to be demoted.
+   * @param brokerIdAndLogdirs The logdir of disks to be demoted.
    * @param dryRun Whether it is a dry run or not.
    * @param operationProgress The progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
@@ -511,6 +514,7 @@ public class KafkaCruiseControl {
    * @return the optimization result.
    */
   public GoalOptimizer.OptimizerResult demoteBrokers(Set<Integer> brokerIds,
+                                                     Map<Integer, Set<String>> brokerIdAndLogdirs,
                                                      boolean dryRun,
                                                      OperationProgress operationProgress,
                                                      boolean allowCapacityEstimation,
@@ -526,11 +530,29 @@ public class KafkaCruiseControl {
                                                                        excludeFollowerDemotion,
                                                                        skipUrpDemotion ? _loadMonitor.kafkaCluster() : null);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      sanityCheckBrokerPresence(brokerIds);
-      ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
-                                                            goal.clusterModelCompletenessRequirements(),
-                                                            operationProgress);
+      ensureDisJoint(brokerIds, brokerIdAndLogdirs.keySet(),
+                     "Attempt to demote the broker and its disk in the same request is not allowed.");
+      Set<Integer> brokersToCheckPresence = new HashSet<>(brokerIds);
+      brokersToCheckPresence.addAll(brokerIdAndLogdirs.keySet());
+      sanityCheckBrokerPresence(brokersToCheckPresence);
+      ClusterModel clusterModel = brokerIdAndLogdirs.isEmpty() ? _loadMonitor.clusterModel(_time.milliseconds(),
+                                                                                           goal.clusterModelCompletenessRequirements(),
+                                                                                           operationProgress) :
+                                                                 _loadMonitor.clusterModel(-1,
+                                                                                           _time.milliseconds(),
+                                                                                           goal.clusterModelCompletenessRequirements(),
+                                                                                           true,
+                                                                                           operationProgress);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEMOTED));
+      brokerIdAndLogdirs.forEach((brokerid, logdirs) -> {
+        Broker broker = clusterModel.broker(brokerid);
+        for (String logdir : logdirs) {
+          if (broker.disk(logdir) == null) {
+            throw new IllegalStateException(String.format("Broker %d does not have logdir %s.", brokerid, logdir));
+          }
+          broker.disk(logdir).setState(DEMOTED);
+        }
+      });
       List<Goal> goalsByPriority = goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName()));
       GoalOptimizer.OptimizerResult result = getProposals(clusterModel,
                                                           goalsByPriority,

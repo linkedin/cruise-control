@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 import java.util.Set;
 import javax.servlet.http.HttpServletRequest;
 
@@ -15,6 +16,8 @@ import javax.servlet.http.HttpServletRequest;
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#DEMOTE_BROKER}
  *
  * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ * <li>Note that "brokerid_and_logdirs" takes comma as delimiter between two broker id and logdir pairs -- i.e. we assume
+ * a valid logdir name contains no comma.</li>
  *
  * <pre>
  * Demote a broker
@@ -22,7 +25,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
  *    &amp;skip_urp_demotion=[true/false]&amp;exclude_follower_demotion=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
- *    &amp;review_id=[id]
+ *    &amp;brokerid_and_logdirs=[broker_id1-logdir1,broker_id2-logdir2]&amp;review_id=[id]
  * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
@@ -33,6 +36,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   private boolean _excludeFollowerDemotion;
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private Integer _reviewId;
+  private Map<Integer, Set<String>> _logdirByBrokerId;
 
   public DemoteBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request, config);
@@ -50,6 +54,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+    _logdirByBrokerId = ParameterUtils.brokerIdAndLogdirs(_request);
   }
 
   @Override
@@ -79,6 +84,10 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
 
   public boolean excludeFollowerDemotion() {
     return _excludeFollowerDemotion;
+  }
+
+  public Map<Integer, Set<String>> brokerIdAndLogdirs() {
+    return _logdirByBrokerId;
   }
 
   public ReplicaMovementStrategy replicaMovementStrategy() {

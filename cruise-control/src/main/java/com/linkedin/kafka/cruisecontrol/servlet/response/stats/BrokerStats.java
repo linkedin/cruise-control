@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.DiskStats;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AbstractCruiseControlResponse;
 import java.util.ArrayList;
@@ -30,6 +31,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   private final List<SingleBrokerStats> _brokerStats;
   private final SortedMap<String, BasicStats> _hostStats;
   private int _hostFieldLength;
+  private int _logdirFieldLength;
   private String _cachedPlainTextResponse;
   private String _cachedJSONResponse;
   private boolean _isBrokerStatsEstimated;
@@ -39,6 +41,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     _brokerStats = new ArrayList<>();
     _hostStats = new ConcurrentSkipListMap<>();
     _hostFieldLength = 0;
+    _logdirFieldLength = 1;
     _cachedPlainTextResponse = null;
     _cachedJSONResponse = null;
     _isBrokerStatsEstimated = false;
@@ -47,13 +50,17 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   public void addSingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                                    double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
                                    int numReplicas, int numLeaders, boolean isEstimated, double capacity,
-                                   Map<String, Double> aliveDiskUtils, Map<String, Double> diskCapacities) {
+                                   Map<String, DiskStats> diskStatsByLogdir) {
 
     SingleBrokerStats singleBrokerStats =
         new SingleBrokerStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
-                              potentialBytesOutRate, numReplicas, numLeaders, isEstimated, capacity, aliveDiskUtils, diskCapacities);
+                              potentialBytesOutRate, numReplicas, numLeaders, isEstimated, capacity, diskStatsByLogdir);
     _brokerStats.add(singleBrokerStats);
     _hostFieldLength = Math.max(_hostFieldLength, host.length());
+    // Calculate field length to print logdir name in plaintext response, a padding of 10 is added for this field.
+    // If there is no logdir information, this field will be of length of 1.
+    _logdirFieldLength = Math.max(_logdirFieldLength,
+                                  diskStatsByLogdir.keySet().stream().mapToInt(String::length).max().orElse(-10) + 10);
     _hostStats.computeIfAbsent(host, h -> new BasicStats(0.0, 0.0, 0.0, 0.0,
                                                          0.0, 0.0, 0, 0, 0.0))
               .addBasicStats(singleBrokerStats.basicStats());
@@ -122,17 +129,18 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    boolean hasDiskInfo = !_brokerStats.get(0).capacityByDisk().isEmpty();
+    boolean hasDiskInfo = !_brokerStats.get(0).diskStatsByLogdir().isEmpty();
 
     // put broker stats.
-    sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%26s%15s%25s%25s%20s%20s%20s%40s%n",
-                            "HOST", "BROKER", "DISK(MB)/_(%)_", "CPU(%)", "LEADER_NW_IN(KB/s)",
-                            "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS",
-                            hasDiskInfo ? "LOGDIR -> DISK(MB)/_(%)_" : ""));
+    sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%" + _logdirFieldLength + "s%26s%15s%25s%25s%20s%20s%20s%n",
+                            "HOST", "BROKER", hasDiskInfo ? "LOGDIR" : "", "DISK(MB)/_(%)_", "CPU(%)", "LEADER_NW_IN(KB/s)",
+                            "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
     for (SingleBrokerStats stats : _brokerStats) {
-      sb.append(String.format("%" + _hostFieldLength + "s,%14d,%19.3f/%05.2f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
+      sb.append(String.format("%" + _hostFieldLength + "s,%14d,%" + _logdirFieldLength
+                              + "s%19.3f/%05.2f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
                               stats.host(),
                               stats.id(),
+                              "",
                               stats.basicStats().diskUtil(),
                               stats.basicStats().diskUtilPct(),
                               stats.basicStats().cpuUtil(),
@@ -144,14 +152,17 @@ public class BrokerStats extends AbstractCruiseControlResponse {
                               stats.basicStats().numReplicas()));
       // If disk information is populated, put disk stats.
       if (hasDiskInfo) {
-        Map<String, Double> capacityByDisk =  stats.capacityByDisk();
-        Map<String, Double> utilByDisk =  stats.utilByDisk();
-        for (Map.Entry<String, Double> entry : capacityByDisk.entrySet()) {
-          Double util = utilByDisk.get(entry.getKey());
-          sb.append(String.format("%" + (_hostFieldLength + 166) + "s%23s -> " + (util == null ? "%s/%s%n" : "%.3f/%.2f%n"),
-                                  "", entry.getKey(),
-                                  (util == null ? "DEAD" : util),
-                                  (util == null ? "DEAD" : stats.utilPctFor(entry.getKey()))));
+        Map<String, DiskStats> capacityByDisk = stats.diskStatsByLogdir();
+        for (Map.Entry<String, DiskStats> entry : capacityByDisk.entrySet()) {
+          DiskStats diskStats = entry.getValue();
+          Double util = diskStats.utilization();
+          sb.append(String.format("%" + (_hostFieldLength + 15 + _logdirFieldLength) + "s,"
+                                  + (util == null ? "%19s/%5s," : "%19.3f/%05.2f,") + "%119d/%d%n",
+                                  entry.getKey(),
+                                  util == null ? "DEAD" : util,
+                                  util == null ? "DEAD" : diskStats.utilizationPercentage(),
+                                  diskStats.numLeaderReplicas(),
+                                  diskStats.numReplicas()));
         }
       }
     }

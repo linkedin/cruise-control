@@ -11,6 +11,7 @@ import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -259,5 +260,20 @@ public class KafkaCruiseControlUtils {
   public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) {
     PartitionInfo partitionInfo = cluster.partition(tp);
     return partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
+  }
+
+  /**
+   * Compare and ensure two sets are disjoint.
+   * @param set1 The first set to compare.
+   * @param set2 The second set to compare.
+   * @param message The exception's detailed message if two sets are not disjoint.
+   * @param <E> The type of elements maintained by the sets.
+   */
+  public static <E> void ensureDisJoint(Set<E> set1, Set<E> set2, String message) {
+    Set<E> interSection = new HashSet<>(set1);
+    interSection.retainAll(set2);
+    if (!interSection.isEmpty()) {
+      throw new IllegalStateException(message);
+    }
   }
 }

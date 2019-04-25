@@ -71,8 +71,11 @@ public class TestConstants {
 
   }
 
-  // Broker capacity (homogeneous cluster is assumed).
+  // Broker and disk capacity (homogeneous cluster is assumed).
   public final static Map<Resource, Double> BROKER_CAPACITY;
+  public final static Map<String, Double> DISK_CAPACITY;
+  public static final String LOGDIR0 = "/mnt/i00";
+  public static final String LOGDIR1 = "/mnt/i01";
 
   static {
     Map<Resource, Double> capacity = new HashMap<>();
@@ -81,6 +84,11 @@ public class TestConstants {
     capacity.put(Resource.NW_IN, TestConstants.LARGE_BROKER_CAPACITY);
     capacity.put(Resource.NW_OUT, TestConstants.MEDIUM_BROKER_CAPACITY);
     BROKER_CAPACITY = Collections.unmodifiableMap(capacity);
+    // Disk capacity
+    Map<String, Double> capacityByLogdir = new HashMap<>(2);
+    capacityByLogdir.put(LOGDIR0, TestConstants.LARGE_BROKER_CAPACITY / 2);
+    capacityByLogdir.put(LOGDIR1, TestConstants.LARGE_BROKER_CAPACITY / 2);
+    DISK_CAPACITY = Collections.unmodifiableMap(capacityByLogdir);
   }
 
   // Broker capacity config file for test.

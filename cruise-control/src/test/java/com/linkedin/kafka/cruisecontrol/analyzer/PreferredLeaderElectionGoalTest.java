@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.Disk;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
@@ -33,6 +34,8 @@ import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.LOGDIR0;
+import static com.linkedin.kafka.cruisecontrol.common.TestConstants.LOGDIR1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC2;
@@ -54,8 +57,8 @@ public class PreferredLeaderElectionGoalTest {
   private static final int NUM_RACKS = 4;
 
   @Test
-  public void testOptimizeWithoutDemotedBrokers() throws KafkaCruiseControlException {
-    ClusterModel clusterModel = createClusterModel(true)._clusterModel;
+  public void testOptimizeWithoutDemotedBrokers() {
+    ClusterModel clusterModel = createClusterModel(true, false)._clusterModel;
 
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
     goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
@@ -72,8 +75,8 @@ public class PreferredLeaderElectionGoalTest {
   }
 
   @Test
-  public void testOptimizeWithDemotedBrokers() throws KafkaCruiseControlException {
-    ClusterModel clusterModel = createClusterModel(true)._clusterModel;
+  public void testOptimizeWithDemotedBrokers() {
+    ClusterModel clusterModel = createClusterModel(true, false)._clusterModel;
     clusterModel.setBrokerState(0, Broker.State.DEMOTED);
 
     Set<TopicPartition> leaderPartitionsOnDemotedBroker = new HashSet<>();
@@ -109,8 +112,93 @@ public class PreferredLeaderElectionGoalTest {
   }
 
   @Test
+  public void testOptimizeWithDemotedDisks() {
+    ClusterModel clusterModel = createClusterModel(true, true)._clusterModel;
+    clusterModel.broker(0).disk(LOGDIR0).setState(Disk.State.DEMOTED);
+    clusterModel.broker(1).disk(LOGDIR1).setState(Disk.State.DEMOTED);
+
+    Set<TopicPartition> leaderPartitionsOnDemotedDisk = new HashSet<>();
+    clusterModel.broker(0).disk(LOGDIR0).leaderReplicas()
+                .forEach(r -> leaderPartitionsOnDemotedDisk.add(r.topicPartition()));
+    clusterModel.broker(1).disk(LOGDIR1).leaderReplicas()
+                .forEach(r -> leaderPartitionsOnDemotedDisk.add(r.topicPartition()));
+
+    Map<TopicPartition, Integer> leaderDistributionBeforeBrokerDemotion = new HashMap<>();
+    clusterModel.brokers().forEach(b -> {
+      b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
+    });
+
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+
+    for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
+      for (int p = 0; p < 3; p++) {
+        TopicPartition tp = new TopicPartition(t, p);
+        if (!leaderPartitionsOnDemotedDisk.contains(tp)) {
+          int oldLeaderBroker = leaderDistributionBeforeBrokerDemotion.get(tp);
+          assertEquals("Tp " + tp, oldLeaderBroker, clusterModel.partition(tp).leader().broker().id());
+        } else {
+          List<Replica> replicas = clusterModel.partition(tp).replicas();
+          for (int i = 0; i < 3; i++) {
+            Replica replica = replicas.get(i);
+            // only the first replica should be leader.
+            assertEquals(i == 0, replica.isLeader());
+            if (clusterModel.broker(0).disk(LOGDIR0).replicas().contains(replica)
+                || clusterModel.broker(1).disk(LOGDIR1).replicas().contains(replica)) {
+              // The demoted replica should be in the last position.
+              assertEquals(replica.topicPartition() + " broker " + replica.broker().id(), replicas.size() - 1, i);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  public void testOptimizeWithDemotedBrokersAndDisks() {
+    ClusterModel clusterModel = createClusterModel(true, true)._clusterModel;
+    clusterModel.setBrokerState(0, Broker.State.DEMOTED);
+    clusterModel.broker(1).disk(LOGDIR0).setState(Disk.State.DEMOTED);
+
+    Set<TopicPartition> leaderPartitionsToBeDemoted = new HashSet<>();
+    clusterModel.broker(0).leaderReplicas().forEach(r -> leaderPartitionsToBeDemoted.add(r.topicPartition()));
+    clusterModel.broker(1).disk(LOGDIR0).leaderReplicas()
+                .forEach(r -> leaderPartitionsToBeDemoted.add(r.topicPartition()));
+
+    Map<TopicPartition, Integer> leaderDistributionBeforeBrokerDemotion = new HashMap<>();
+    clusterModel.brokers().forEach(b -> {
+      b.leaderReplicas().forEach(r -> leaderDistributionBeforeBrokerDemotion.put(r.topicPartition(), b.id()));
+    });
+
+    PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(false, false, null);
+    goal.optimize(clusterModel, Collections.emptySet(), new OptimizationOptions(Collections.emptySet()));
+
+    for (String t : Arrays.asList(TOPIC0, TOPIC1, TOPIC2)) {
+      for (int p = 0; p < 3; p++) {
+        TopicPartition tp = new TopicPartition(t, p);
+        if (!leaderPartitionsToBeDemoted.contains(tp)) {
+          int oldLeaderBroker = leaderDistributionBeforeBrokerDemotion.get(tp);
+          assertEquals("Tp " + tp, oldLeaderBroker, clusterModel.partition(tp).leader().broker().id());
+        } else {
+          List<Replica> replicas = clusterModel.partition(tp).replicas();
+          for (int i = 0; i < 3; i++) {
+            Replica replica = replicas.get(i);
+            // only the first replica should be leader.
+            assertEquals(i == 0, replica.isLeader());
+            if (clusterModel.broker(0).replicas().contains(replica)
+                || clusterModel.broker(1).disk(LOGDIR0).replicas().contains(replica)) {
+              // The demoted replica should be in the last position.
+              assertEquals(replicas.size() - 1, i);
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @Test
   public void testOptimizeWithDemotedBrokersAndSkipUrpDemotion() throws KafkaCruiseControlException {
-    ClusterModelAndInfo clusterModelAndInfo = createClusterModel(false);
+    ClusterModelAndInfo clusterModelAndInfo = createClusterModel(false, false);
     ClusterModel clusterModel = clusterModelAndInfo._clusterModel;
     Cluster cluster = clusterModelAndInfo._clusterInfo;
     clusterModel.setBrokerState(1, Broker.State.DEMOTED);
@@ -129,8 +217,8 @@ public class PreferredLeaderElectionGoalTest {
   }
 
   @Test
-  public void testOptimizeWithDemotedBrokersAndExcludeFollowerDemotion() throws KafkaCruiseControlException {
-    ClusterModel clusterModel = createClusterModel(true)._clusterModel;
+  public void testOptimizeWithDemotedBrokersAndExcludeFollowerDemotion() {
+    ClusterModel clusterModel = createClusterModel(true, false)._clusterModel;
     clusterModel.setBrokerState(2, Broker.State.DEMOTED);
 
     Map<TopicPartition, ReplicaPlacementInfo> originalLeaderDistribution = clusterModel.getLeaderDistribution();
@@ -156,8 +244,8 @@ public class PreferredLeaderElectionGoalTest {
   }
 
   @Test
-  public void testOptimizeWithDemotedBrokersAndSkipUrpDemotionAndExcludeFollowerDemotion() throws KafkaCruiseControlException {
-    ClusterModelAndInfo clusterModelAndInfo = createClusterModel(false);
+  public void testOptimizeWithDemotedBrokersAndSkipUrpDemotionAndExcludeFollowerDemotion() {
+    ClusterModelAndInfo clusterModelAndInfo = createClusterModel(false, false);
     ClusterModel clusterModel = clusterModelAndInfo._clusterModel;
     Cluster cluster = clusterModelAndInfo._clusterInfo;
     clusterModel.setBrokerState(0, Broker.State.DEMOTED);
@@ -192,51 +280,55 @@ public class PreferredLeaderElectionGoalTest {
     }
   }
 
-  private ClusterModelAndInfo createClusterModel(boolean skipClusterInfoGeneration) {
+  private ClusterModelAndInfo createClusterModel(boolean skipClusterInfoGeneration,
+                                                 boolean populateDiskInfo) {
 
     ClusterModel clusterModel = new ClusterModel(new ModelGeneration(0, 0),
                                                  1.0);
     for (int i = 0; i < NUM_RACKS; i++) {
       clusterModel.createRack("r" + i);
     }
-    BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY);
+    BrokerCapacityInfo commonBrokerCapacityInfo = populateDiskInfo ? new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY,
+                                                                                            null,
+                                                                                            TestConstants.DISK_CAPACITY) :
+                                                                     new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY);
     int i = 0;
     for (; i < 2; i++) {
-      clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo, false);
+      clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo, populateDiskInfo);
     }
     for (int j = 1; j < NUM_RACKS; j++, i++) {
-      clusterModel.createBroker("r" + j, "h" + i, i, commonBrokerCapacityInfo, false);
+      clusterModel.createBroker("r" + j, "h" + i, i, commonBrokerCapacityInfo, populateDiskInfo);
     }
 
-    createReplicaAndSetLoad(clusterModel, "r0", 0, T0P0, 0, true);
-    createReplicaAndSetLoad(clusterModel, "r0", 1, T0P1, 0, true);
-    createReplicaAndSetLoad(clusterModel, "r1", 2, T0P2, 0, true);
-    createReplicaAndSetLoad(clusterModel, "r2", 3, T1P0, 0, false);
-    createReplicaAndSetLoad(clusterModel, "r3", 4, T1P1, 0, false);
-    createReplicaAndSetLoad(clusterModel, "r0", 0, T1P2, 0, false);
-    createReplicaAndSetLoad(clusterModel, "r0", 1, T2P0, 0, false);
-    createReplicaAndSetLoad(clusterModel, "r1", 2, T2P1, 0, false);
-    createReplicaAndSetLoad(clusterModel, "r2", 3, T2P2, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 0, logdir(populateDiskInfo, 0, 0), T0P0, 0, true);
+    createReplicaAndSetLoad(clusterModel, "r0", 1, logdir(populateDiskInfo, 0, 1), T0P1, 0, true);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, logdir(populateDiskInfo, 0, 2), T0P2, 0, true);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 0, 3), T1P0, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 0, 4), T1P1, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 0, logdir(populateDiskInfo, 0, 0), T1P2, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 1, logdir(populateDiskInfo, 0, 1), T2P0, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, logdir(populateDiskInfo, 0, 2), T2P1, 0, false);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 0, 3), T2P2, 0, false);
 
-    createReplicaAndSetLoad(clusterModel, "r3", 4, T0P0, 1, false);
-    createReplicaAndSetLoad(clusterModel, "r1", 2, T0P1, 1, false);
-    createReplicaAndSetLoad(clusterModel, "r0", 0, T0P2, 1, false);
-    createReplicaAndSetLoad(clusterModel, "r0", 1, T1P0, 1, true);
-    createReplicaAndSetLoad(clusterModel, "r2", 3, T1P1, 1, true);
-    createReplicaAndSetLoad(clusterModel, "r3", 4, T1P2, 1, true);
-    createReplicaAndSetLoad(clusterModel, "r1", 2, T2P0, 1, false);
-    createReplicaAndSetLoad(clusterModel, "r0", 0, T2P1, 1, false);
-    createReplicaAndSetLoad(clusterModel, "r0", 1, T2P2, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 1, 4), T0P0, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, logdir(populateDiskInfo, 1, 2), T0P1, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 0, logdir(populateDiskInfo, 1, 0), T0P2, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 1, logdir(populateDiskInfo, 1, 1), T1P0, 1, true);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 1, 3), T1P1, 1, true);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 1, 4), T1P2, 1, true);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, logdir(populateDiskInfo, 1, 2), T2P0, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 0, logdir(populateDiskInfo, 1, 0), T2P1, 1, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 1, logdir(populateDiskInfo, 1, 1), T2P2, 1, false);
 
-    createReplicaAndSetLoad(clusterModel, "r2", 3, T0P0, 2, false);
-    createReplicaAndSetLoad(clusterModel, "r3", 4, T0P1, 2, false);
-    createReplicaAndSetLoad(clusterModel, "r2", 3, T0P2, 2, false);
-    createReplicaAndSetLoad(clusterModel, "r1", 2, T1P0, 2, false);
-    createReplicaAndSetLoad(clusterModel, "r0", 0, T1P1, 2, false);
-    createReplicaAndSetLoad(clusterModel, "r1", 2, T1P2, 2, false);
-    createReplicaAndSetLoad(clusterModel, "r3", 4, T2P0, 2, true);
-    createReplicaAndSetLoad(clusterModel, "r2", 3, T2P1, 2, true);
-    createReplicaAndSetLoad(clusterModel, "r3", 4, T2P2, 2, true);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 2, 3), T0P0, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 2, 4), T0P1, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 2, 3), T0P2, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, logdir(populateDiskInfo, 2, 2), T1P0, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r0", 0, logdir(populateDiskInfo, 2, 0), T1P1, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r1", 2, logdir(populateDiskInfo, 2, 2), T1P2, 2, false);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 2, 4), T2P0, 2, true);
+    createReplicaAndSetLoad(clusterModel, "r2", 3, logdir(populateDiskInfo, 2, 3), T2P1, 2, true);
+    createReplicaAndSetLoad(clusterModel, "r3", 4, logdir(populateDiskInfo, 2, 4), T2P2, 2, true);
 
     Cluster cluster = null;
     if (!skipClusterInfoGeneration) {
@@ -278,13 +370,20 @@ public class PreferredLeaderElectionGoalTest {
     return new ClusterModelAndInfo(clusterModel, cluster);
   }
 
+  private String logdir(boolean populateDiskInfo, int index, int brokerId) {
+    return !populateDiskInfo ? null :
+           (index + brokerId) % 2 == 0 ? LOGDIR0 :
+                                         LOGDIR1;
+  }
+
   private void createReplicaAndSetLoad(ClusterModel clusterModel,
                                        String rack,
                                        int brokerId,
+                                       String logdir,
                                        TopicPartition tp,
                                        int index,
                                        boolean isLeader) {
-    clusterModel.createReplica(rack, brokerId, tp, index, isLeader);
+    clusterModel.createReplica(rack, brokerId, tp, index, isLeader, false, logdir);
     MetricValues metricValues = new MetricValues(1);
     Map<Integer, MetricValues> metricValuesByResource = new HashMap<>();
     Resource.cachedValues().forEach(r -> {

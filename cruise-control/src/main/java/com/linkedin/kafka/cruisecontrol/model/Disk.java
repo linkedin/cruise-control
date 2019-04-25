@@ -18,6 +18,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Function;
 import org.apache.kafka.common.TopicPartition;
+import java.util.stream.Collectors;
 
 /**
  * A class that holds the disk information of a broker, including its liveness, capacity and load. It is created as part
@@ -29,7 +30,7 @@ public class Disk implements Comparable<Disk> {
   private static final double DEAD_DISK_CAPACITY = -1.0;
 
   public enum State {
-    ALIVE, DEAD
+    ALIVE, DEAD, DEMOTED
   }
 
   private final String _logDir;
@@ -83,6 +84,10 @@ public class Disk implements Comparable<Disk> {
 
   public Set<Replica> replicas() {
     return Collections.unmodifiableSet(_replicas);
+  }
+
+  public Set<Replica> leaderReplicas() {
+    return Collections.unmodifiableSet(_replicas.stream().filter(Replica::isLeader).collect(Collectors.toSet()));
   }
 
   public Broker broker() {
@@ -232,5 +237,12 @@ public class Disk implements Comparable<Disk> {
   @Override
   public String toString() {
     return String.format("Disk[logdir=%s,state=%s,capacity=%f,replicaCount=%d]", _logDir, _state, _capacity, _replicas.size());
+  }
+
+  public DiskStats diskStats() {
+    return new DiskStats((int) _replicas.stream().filter(Replica::isLeader).count(),
+                          _replicas.size(),
+                          _utilization,
+                          _capacity);
   }
 }
