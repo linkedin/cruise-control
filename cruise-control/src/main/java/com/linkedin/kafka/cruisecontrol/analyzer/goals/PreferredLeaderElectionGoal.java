@@ -124,7 +124,7 @@ public class PreferredLeaderElectionGoal implements Goal {
             if (!r.isLeader()) {
               if (excludedBrokersForLeadership.contains(leaderCandidate.id())) {
                 LOG.warn("Skipped leadership transfer of partition {} to broker {} because it is among brokers excluded"
-                         + " for leadership {}.", p.topicPartition(), leaderCandidate);
+                         + " for leadership {}.", p.topicPartition(), leaderCandidate, excludedBrokersForLeadership);
                 continue;
               }
               clusterModel.relocateLeadership(r.topicPartition(), p.leader().broker().id(), leaderCandidate.id());

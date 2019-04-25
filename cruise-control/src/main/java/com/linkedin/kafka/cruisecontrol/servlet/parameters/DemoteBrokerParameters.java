@@ -17,7 +17,7 @@ import javax.servlet.http.HttpServletRequest;
  *
  * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
  * <li>Note that "brokerid_and_logdirs" takes comma as delimiter between two broker id and logdir pairs -- i.e. we assume
- * valid logdir name contains no comma.</li>
+ * a valid logdir name contains no comma.</li>
  *
  * <pre>
  * Demote a broker

@@ -767,7 +767,7 @@ public class ParameterUtils {
           throw new UserRequestException("No target broker ID or target disk logdir is specified to demote.");
         }
       } else if (endpoint != FIX_OFFLINE_REPLICAS) {
-        throw new IllegalArgumentException(String.format("Target broker ID is not provided for %s request", endpoint));
+        throw new UserRequestException(String.format("Target broker ID is not provided for %s request", endpoint));
       }
     }
     return Collections.unmodifiableSet(brokerIds);
