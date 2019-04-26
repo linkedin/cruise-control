@@ -314,21 +314,22 @@ public class ClusterModelStats {
    * @param clusterModel The state of the cluster.
    */
   private void numForReplicas(ClusterModel clusterModel) {
-    // Average, minimum, and maximum number of replicas in brokers.
+    // Average, minimum, and maximum number of replicas in alive brokers.
     int maxReplicasInBroker = 0;
     int minReplicasInBroker = Integer.MAX_VALUE;
-    for (Broker broker : clusterModel.brokers()) {
+    int numAliveBrokers = clusterModel.aliveBrokers().size();
+    for (Broker broker : clusterModel.aliveBrokers()) {
       int numReplicasInBroker = broker.replicas().size();
       _numReplicasInCluster += numReplicasInBroker;
       maxReplicasInBroker = Math.max(maxReplicasInBroker, numReplicasInBroker);
       minReplicasInBroker = Math.min(minReplicasInBroker, numReplicasInBroker);
     }
-    double avgReplicas = ((double) _numReplicasInCluster) / _numBrokers;
+    double avgReplicas = ((double) _numReplicasInCluster) / numAliveBrokers;
 
-    // Standard deviation of replicas in brokers.
+    // Standard deviation of replicas in alive brokers.
     double varianceForReplicas = 0.0;
-    for (Broker broker : clusterModel.brokers()) {
-      varianceForReplicas += (Math.pow((double) broker.replicas().size() - avgReplicas, 2) / _numBrokers);
+    for (Broker broker : clusterModel.aliveBrokers()) {
+      varianceForReplicas += (Math.pow((double) broker.replicas().size() - avgReplicas, 2) / numAliveBrokers);
     }
 
     _replicaStats.put(Statistic.AVG, avgReplicas);
@@ -354,21 +355,22 @@ public class ClusterModelStats {
     _topicReplicaStats.put(Statistic.MAX, 0);
     _topicReplicaStats.put(Statistic.MIN, Integer.MAX_VALUE);
     _topicReplicaStats.put(Statistic.ST_DEV, 0.0);
+    int numAliveBrokers = clusterModel.aliveBrokers().size();
     for (String topic : clusterModel.topics()) {
       int maxTopicReplicasInBroker = 0;
       int minTopicReplicasInBroker = Integer.MAX_VALUE;
-      for (Broker broker : clusterModel.brokers()) {
+      for (Broker broker : clusterModel.aliveBrokers()) {
         int numTopicReplicasInBroker = broker.numReplicasOfTopicInBroker(topic);
         maxTopicReplicasInBroker = Math.max(maxTopicReplicasInBroker, numTopicReplicasInBroker);
         minTopicReplicasInBroker = Math.min(minTopicReplicasInBroker, numTopicReplicasInBroker);
       }
-      double avgTopicReplicas = ((double) clusterModel.numTopicReplicas(topic)) / _numBrokers;
+      double avgTopicReplicas = ((double) clusterModel.numTopicReplicas(topic)) / numAliveBrokers;
 
-      // Standard deviation of replicas in brokers.
+      // Standard deviation of replicas in alive brokers.
       double variance = 0.0;
-      for (Broker broker : clusterModel.brokers()) {
+      for (Broker broker : clusterModel.aliveBrokers()) {
         variance += (Math.pow(broker.numReplicasOfTopicInBroker(topic) - avgTopicReplicas, 2)
-            / (double) _numBrokers);
+            / (double) numAliveBrokers);
       }
 
       _topicReplicaStats.put(Statistic.AVG, _topicReplicaStats.get(Statistic.AVG).doubleValue() + avgTopicReplicas);
