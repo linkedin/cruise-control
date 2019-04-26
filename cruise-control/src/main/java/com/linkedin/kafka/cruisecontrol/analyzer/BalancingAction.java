@@ -13,7 +13,7 @@ import java.util.Map;
 
 /**
  * Represents the load balancing operation over a replica for Kafka Load GoalOptimizer.
- * Note {@link this#_destinationTp} is only relevant in replica swap operation, for other operations, it will be null.
+ * Note _destinationTp field is only relevant in replica swap operation, for other operations, it will be null.
  */
 public class BalancingAction {
   private static final String TOPIC_PARTITION = "topicPartition";

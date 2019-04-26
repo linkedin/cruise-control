@@ -12,8 +12,9 @@ import javax.servlet.http.HttpServletRequest;
 
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#REMOVE_BROKER}
- *
- * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ *<ul>
+ *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ *</ul>
  *
  * <pre>
  *    POST /kafkacruisecontrol/remove_broker?brokerid=[id1,id2...]&amp;dryRun=[true/false]
