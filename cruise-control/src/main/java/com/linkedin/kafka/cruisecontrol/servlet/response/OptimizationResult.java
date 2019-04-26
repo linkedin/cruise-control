@@ -158,7 +158,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     sb.append(_optimizerResult.getProposalSummary());
     for (Map.Entry<String, ClusterModelStats> entry : _optimizerResult.statsByGoalName().entrySet()) {
       String goalName = entry.getKey();
-      sb.append(String.format("%n%nStats for goal %s(%s):%n", goalName, goalResultDescription(goalName)));
+      sb.append(String.format("%n%nStats for %s(%s):%n", goalName, goalResultDescription(goalName)));
       sb.append(entry.getValue().toString());
     }
   }
