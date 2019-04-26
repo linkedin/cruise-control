@@ -630,13 +630,13 @@ public class GoalOptimizer implements Runnable {
 
     public String getProposalSummary() {
       List<Number> moveStats = getMovementStats();
-      return String.format("%n%nThe optimization proposal has %d inter-broker replica(%d MB) movements and %d leadership movements "
-                           + "based on the cluster model with %d recent snapshot windows and %.3f%% of the partitions "
-                           + "covered.%nExcluded Topics: %s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers "
-                           + "For Replica Move: %s.",
+      return String.format("%n%nOptimization has %d inter-broker replica(%d MB) moves and %d leadership moves with a "
+                           + "cluster model of %d recent windows and %.3f%% of the partitions covered.%nExcluded Topics: "
+                           + "%s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers For Replica Move: %s.%nCounts: %s.",
                            moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(),
                            _clusterModelStats.numSnapshotWindows(), _clusterModelStats.monitoredPartitionsPercentage() * 100,
-                           excludedTopics(), excludedBrokersForLeadership(), excludedBrokersForReplicaMove());
+                           excludedTopics(), excludedBrokersForLeadership(), excludedBrokersForReplicaMove(),
+                           _clusterModelStats.toStringCounts());
     }
 
     public Map<String, Object> getProposalSummaryForJson() {
