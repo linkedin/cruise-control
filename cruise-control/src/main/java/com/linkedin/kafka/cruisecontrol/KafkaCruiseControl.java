@@ -30,6 +30,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
+import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
@@ -162,6 +163,14 @@ public class KafkaCruiseControl {
    */
   private boolean isKafkaAssignerMode(Collection<String> goals) {
     return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
+  }
+
+  /**
+   * Allow a reference to {@link UserTaskManager} to be passed to {@link Executor}
+   * @param userTaskManager a reference to {@link UserTaskManager}
+   */
+  public void setUserTaskManagerInExecutor(UserTaskManager userTaskManager) {
+    _executor.setUserTaskManager(userTaskManager);
   }
 
   /**
@@ -356,6 +365,7 @@ public class KafkaCruiseControl {
    * @param concurrentLeaderMovements The maximum number of concurrent leader movements
    *                                  (if null, use num.concurrent.leader.movements).
    * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
+   * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param uuid UUID of the execution.

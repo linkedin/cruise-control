@@ -12,7 +12,9 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#STOP_PROPOSAL_EXECUTION}.
  *
- * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ * <ul>
+ *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ * </ul>
  *
  * <pre>
  * Stop the proposal execution.
