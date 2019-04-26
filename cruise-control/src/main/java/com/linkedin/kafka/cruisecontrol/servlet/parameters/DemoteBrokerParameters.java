@@ -15,9 +15,11 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#DEMOTE_BROKER}
  *
- * <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
- * <li>Note that "brokerid_and_logdirs" takes comma as delimiter between two broker id and logdir pairs -- i.e. we assume
- * a valid logdir name contains no comma.</li>
+ * <ul>
+ *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
+ *   <li>Note that "brokerid_and_logdirs" takes comma as delimiter between two broker id and logdir pairs -- i.e. we assume
+ *   a valid logdir name contains no comma.</li>
+ * </ul>
  *
  * <pre>
  * Demote a broker

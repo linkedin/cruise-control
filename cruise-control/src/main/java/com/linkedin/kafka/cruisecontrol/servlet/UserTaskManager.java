@@ -327,6 +327,30 @@ public class UserTaskManager implements Closeable {
     }
   }
 
+  /**
+   * Allow other subsystems to retrieve {@link UserTaskInfo} using uuid. This method assumes uuid comes from some internal
+   * bookkeeping state, not an external http request. Thus it does not check request parameters like
+   * {@link UserTaskManager#getUserTaskByUserTaskId} does.
+   * @param uuid UUID associated with a user request or execution.
+   * @return {@link UserTaskInfo} which contains information about a user request.
+   */
+  public synchronized UserTaskInfo getUserTaskById(String uuid) {
+    if (uuid == null) {
+      return null;
+    }
+
+    UUID userTaskId = UUID.fromString(uuid);
+    if (_allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).containsKey(userTaskId)) {
+      return _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).get(userTaskId);
+    }
+
+    if (_allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).containsKey(userTaskId)) {
+      return _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).get(userTaskId);
+    }
+
+    return null;
+  }
+
   synchronized UserTaskInfo getUserTaskByUserTaskId(UUID userTaskId, HttpServletRequest httpServletRequest) {
     if (userTaskId == null) {
       return null;

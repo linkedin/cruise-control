@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaNetworkClientProvider;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutorNoopNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
@@ -55,6 +56,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String DEFAULT_ANOMALY_NOTIFIER_CLASS = NoopNotifier.class.getName();
   // We have to define this to support the use of network clients with different Kafka client versions.
   private static final String DEFAULT_NETWORK_CLIENT_PROVIDER_CLASS = KafkaNetworkClientProvider.class.getName();
+  private static final String DEFAULT_EXECUTOR_NOTIFIER_CLASS = ExecutorNoopNotifier.class.getName();
   private static final String DEFAULT_METRIC_ANOMALY_FINDER_CLASS = NoopMetricAnomalyFinder.class.getName();
 
   private static final ConfigDef CONFIG;
@@ -535,6 +537,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String NETWORK_CLIENT_PROVIDER_CLASS_CONFIG = "network.client.provider.class";
   private static final String NETWORK_CLIENT_PROVIDER_CLASS_DOC = "The network client provider class to generate a "
       + "network client with given properties.";
+  /*
+   * <code>executor.notifier.class</code>
+   */
+  public static final String EXECUTOR_NOTIFIER_CLASS_CONFIG = "executor.notifier.class";
+  private static final String EXECUTOR_NOTIFIER_CLASS_DOC = "The executor notifier class to trigger an alert when an "
+                                                            + "execution finishes or is stopped (by a user or "
+                                                            + "by Cruise Control).";
 
   /**
    * <code>anomaly.detection.interval.ms</code>
@@ -1201,6 +1210,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.CLASS, DEFAULT_NETWORK_CLIENT_PROVIDER_CLASS,
                 ConfigDef.Importance.LOW,
                 NETWORK_CLIENT_PROVIDER_CLASS_DOC)
+        .define(EXECUTOR_NOTIFIER_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_EXECUTOR_NOTIFIER_CLASS,
+                ConfigDef.Importance.LOW,
+                EXECUTOR_NOTIFIER_CLASS_DOC)
         .define(ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 300000L,
