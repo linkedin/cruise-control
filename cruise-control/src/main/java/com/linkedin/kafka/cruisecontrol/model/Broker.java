@@ -108,7 +108,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    * Get broker capacity for the requested resource.
    *
    * @param resource Resource for which the capacity will be provided.
-   * @return If broker is alive, the capacity of the requested resource, {@link this#DEAD_BROKER_CAPACITY} otherwise.
+   * @return If broker is alive, the capacity of the requested resource, DEAD_BROKER_CAPACITY otherwise.
    */
   public double capacityFor(Resource resource) {
     if (isAlive()) {

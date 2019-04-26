@@ -111,7 +111,7 @@ public class BalancingConstraint {
 
   /**
    * Get topic replica balance percentage for
-   * {@link import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal}.
+   * {@link com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal}.
    */
   public Double topicReplicaBalancePercentage() {
     return _topicReplicaBalancePercentage;
