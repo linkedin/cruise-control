@@ -226,14 +226,16 @@ public class ClusterModelStats {
     return statMap;
   }
 
+  /**
+   * @return A string representation of the cluster counts including brokers, replicas, and topics.
+   */
+  public String toStringCounts() {
+    return String.format("%d brokers %d replicas %d topics.", numBrokers(), numReplicasInCluster(), numTopics());
+  }
 
   @Override
   public String toString() {
     StringBuilder sb = new StringBuilder();
-    sb.append(String.format("brokers:%d replicas:%d topics:%d%n",
-                            numBrokers(),
-                            numReplicasInCluster(),
-                            numTopics()));
     for (Statistic stat : Statistic.cachedValues()) {
       sb.append(String.format("%s:{", stat));
       for (Resource resource : Resource.cachedValues()) {
