@@ -107,10 +107,10 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
       for (Disk disk : broker.disks()) {
         if (disk.isAlive()) {
           if (diskUtilizationPercentage(disk) > upperLimit) {
-            disksAboveBalanceUpperLimit.add(broker.toString() + ":" + disk.logDir());
+            disksAboveBalanceUpperLimit.add(broker.id() + ":" + disk.logDir());
           }
           if (diskUtilizationPercentage(disk) < lowerLimit) {
-            disksBelowBalanceLowerLimit.add(broker.toString() + ":" + disk.logDir());
+            disksBelowBalanceLowerLimit.add(broker.id() + ":" + disk.logDir());
           }
         }
       }

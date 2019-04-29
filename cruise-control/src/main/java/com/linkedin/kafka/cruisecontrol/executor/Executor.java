@@ -327,7 +327,7 @@ public class Executor {
                                                   Integer requestedLeadershipMovementConcurrency,
                                                   ReplicaMovementStrategy replicaMovementStrategy,
                                                   String uuid) {
-    initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, requestedLeadershipMovementConcurrency, 0,
+    initProposalExecution(proposals, demotedBrokers, loadMonitor, concurrentSwaps, 0, requestedLeadershipMovementConcurrency,
                           replicaMovementStrategy, uuid);
     startExecution(loadMonitor, demotedBrokers, null);
   }
