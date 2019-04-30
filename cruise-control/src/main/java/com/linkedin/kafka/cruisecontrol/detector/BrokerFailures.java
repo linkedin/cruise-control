@@ -9,12 +9,12 @@ import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Collections;
-import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
 
 
 /**
@@ -28,12 +28,14 @@ public class BrokerFailures extends KafkaAnomaly {
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
   private final String _anomalyId;
+  private final List<String> _selfHealingGoals;
 
   public BrokerFailures(KafkaCruiseControl kafkaCruiseControl,
                         Map<Integer, Long> failedBrokers,
                         boolean allowCapacityEstimation,
                         boolean excludeRecentlyDemotedBrokers,
-                        boolean excludeRecentlyRemovedBrokers) {
+                        boolean excludeRecentlyRemovedBrokers,
+                        List<String> selfHealingGoals) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _failedBrokers = failedBrokers;
     _allowCapacityEstimation = allowCapacityEstimation;
@@ -41,6 +43,7 @@ public class BrokerFailures extends KafkaAnomaly {
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
     _optimizationResult = null;
+    _selfHealingGoals = selfHealingGoals;
   }
 
   /**
@@ -62,7 +65,7 @@ public class BrokerFailures extends KafkaAnomaly {
       _optimizationResult = new OptimizationResult(_kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(),
                                                                                            false,
                                                                                            false,
-                                                                                           Collections.emptyList(),
+                                                                                           _selfHealingGoals,
                                                                                            null,
                                                                                            new OperationProgress(),
                                                                                            _allowCapacityEstimation,
@@ -87,9 +90,7 @@ public class BrokerFailures extends KafkaAnomaly {
   public String toString() {
     StringBuilder sb = new StringBuilder().append("{\n");
     _failedBrokers.forEach((key, value) -> {
-      Date date = new Date(value);
-      DateFormat format = new SimpleDateFormat("dd/MM/yyyy HH:mm:ss");
-      sb.append("\tBroker ").append(key).append(" failed at ").append(format.format(date)).append("\n");
+      sb.append("\tBroker ").append(key).append(" failed at ").append(toDateString(value)).append("\n");
     });
     sb.append("}");
     return sb.toString();

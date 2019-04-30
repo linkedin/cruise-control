@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
+import java.util.Collections;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
@@ -36,7 +37,9 @@ public class SlackSelfHealingNotifierTest {
         Map<Integer, Long> failedBrokers = new HashMap<>();
         failedBrokers.put(1, 200L);
         failedBrokers.put(2, 400L);
-        failures = new BrokerFailures(mockKafkaCruiseControl, failedBrokers, true, true, true);
+        failures = new BrokerFailures(mockKafkaCruiseControl, failedBrokers, true,
+                                      true, true,
+                                      Collections.emptyList());
     }
 
     @Test

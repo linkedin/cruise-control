@@ -55,12 +55,14 @@ public class GoalViolationDetector implements Runnable {
   private final boolean _allowCapacityEstimation;
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
+  private final List<String> _selfHealingGoals;
 
   public GoalViolationDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
                                Queue<Anomaly> anomalies,
                                Time time,
-                               KafkaCruiseControl kafkaCruiseControl) {
+                               KafkaCruiseControl kafkaCruiseControl,
+                               List<String> selfHealingGoals) {
     _loadMonitor = loadMonitor;
     // Notice that we use a separate set of Goal instances for anomaly detector to avoid interference.
     _goals = getDetectorGoalsMap(config);
@@ -71,6 +73,7 @@ public class GoalViolationDetector implements Runnable {
     _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
     _kafkaCruiseControl = kafkaCruiseControl;
+    _selfHealingGoals = selfHealingGoals;
   }
 
   private SortedMap<Integer, Goal> getDetectorGoalsMap(KafkaCruiseControlConfig config) {
@@ -137,7 +140,8 @@ public class GoalViolationDetector implements Runnable {
     AutoCloseable clusterModelSemaphore = null;
     try {
       GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation,
-                                                         _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers);
+                                                         _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers,
+                                                         _selfHealingGoals);
       long now = _time.milliseconds();
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
