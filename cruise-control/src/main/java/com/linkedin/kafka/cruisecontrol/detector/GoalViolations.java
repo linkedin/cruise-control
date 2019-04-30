@@ -33,11 +33,13 @@ public class GoalViolations extends KafkaAnomaly {
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
   private final String _anomalyId;
+  private final List<String> _selfHealingGoals;
 
   public GoalViolations(KafkaCruiseControl kafkaCruiseControl,
                         boolean allowCapacityEstimation,
                         boolean excludeRecentlyDemotedBrokers,
-                        boolean excludeRecentlyRemovedBrokers) {
+                        boolean excludeRecentlyRemovedBrokers,
+                        List<String> selfHealingGoals) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _allowCapacityEstimation = allowCapacityEstimation;
     _violatedGoalsByFixability = new HashMap<>();
@@ -45,6 +47,7 @@ public class GoalViolations extends KafkaAnomaly {
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
     _optimizationResult = null;
+    _selfHealingGoals = selfHealingGoals;
   }
 
   /**
@@ -74,7 +77,7 @@ public class GoalViolations extends KafkaAnomaly {
     if (_violatedGoalsByFixability.get(false) == null) {
       try {
         // Fix the fixable goal violations with rebalance operation.
-        _optimizationResult = new OptimizationResult(_kafkaCruiseControl.rebalance(Collections.emptyList(),
+        _optimizationResult = new OptimizationResult(_kafkaCruiseControl.rebalance(_selfHealingGoals,
                                                                                    false,
                                                                                    null,
                                                                                    new OperationProgress(),

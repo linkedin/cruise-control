@@ -31,6 +31,8 @@ import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ZK_SESSION_TIMEOUT;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ZK_CONNECTION_TIMEOUT;
 import static java.util.stream.Collectors.toSet;
 
 
@@ -52,15 +54,17 @@ public class BrokerFailureDetector {
   private final boolean _allowCapacityEstimation;
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
+  private final List<String> _selfHealingGoals;
 
   public BrokerFailureDetector(KafkaCruiseControlConfig config,
                                LoadMonitor loadMonitor,
                                Queue<Anomaly> anomalies,
                                Time time,
-                               KafkaCruiseControl kafkaCruiseControl) {
+                               KafkaCruiseControl kafkaCruiseControl,
+                               List<String> selfHealingGoals) {
     String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    ZkConnection zkConnection = new ZkConnection(zkUrl, 30000);
-    _zkClient = new ZkClient(zkConnection, 30000, new ZkStringSerializer());
+    ZkConnection zkConnection = new ZkConnection(zkUrl, ZK_SESSION_TIMEOUT);
+    _zkClient = new ZkClient(zkConnection, ZK_CONNECTION_TIMEOUT, new ZkStringSerializer());
     // Do not support secure ZK at this point.
     _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE);
     _failedBrokers = new HashMap<>();
@@ -72,6 +76,7 @@ public class BrokerFailureDetector {
     _allowCapacityEstimation = config.getBoolean(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
+    _selfHealingGoals = selfHealingGoals;
   }
 
   void startDetection() {
@@ -162,12 +167,12 @@ public class BrokerFailureDetector {
 
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
-      Map<Integer, Long> failedBrokers = new HashMap<>(_failedBrokers);
       _anomalies.add(new BrokerFailures(_kafkaCruiseControl,
-                                        failedBrokers,
+                                        failedBrokers(),
                                         _allowCapacityEstimation,
                                         _excludeRecentlyDemotedBrokers,
-                                        _excludeRecentlyRemovedBrokers));
+                                        _excludeRecentlyRemovedBrokers,
+                                        _selfHealingGoals));
     }
   }
 

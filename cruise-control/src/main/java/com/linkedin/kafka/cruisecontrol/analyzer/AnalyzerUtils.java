@@ -146,7 +146,7 @@ public class AnalyzerUtils {
   }
 
   /**
-   * Get an list of goals sorted by highest to lowest default priority.
+   * Get the list of default goals sorted by highest to lowest default priority.
    */
   public static List<Goal> getGoalMapByPriority(KafkaCruiseControlConfig config) {
     return config.getConfiguredInstances(KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, Goal.class);

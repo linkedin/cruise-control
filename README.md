@@ -93,7 +93,7 @@ Control). The metrics reporter periodically samples the Kafka raw metrics on the
 **Note**: 
 * Cruise Control will need some time to read the raw Kafka metrics from the cluster.
 * The metrics of a newly up broker may take a few minutes to get stable. Cruise Control will drop the inconsistent 
-metrics (e.g when topic bytes-in is higher than broker bytes-in), so first few snapshot windows may not have enough valid partitions.
+metrics (e.g when topic bytes-in is higher than broker bytes-in), so first few windows may not have enough valid partitions.
 
 ### REST API ###
 Cruise Control provides a [REST API](https://github.com/linkedin/cruise-control/wiki/REST-APIs) for users 

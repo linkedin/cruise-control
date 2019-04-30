@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
-import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -26,12 +26,14 @@ public class DiskFailures extends KafkaAnomaly {
   private final boolean _excludeRecentlyRemovedBrokers;
   private final boolean _allowCapacityEstimation;
   private final String _anomalyId;
+  private final List<String> _selfHealingGoals;
 
   public DiskFailures(KafkaCruiseControl kafkaCruiseControl,
                       Map<Integer, Map<String, Long>> failedDisksByBroker,
                       boolean allowCapacityEstimation,
                       boolean excludeRecentlyDemotedBrokers,
-                      boolean excludeRecentlyRemovedBrokers) {
+                      boolean excludeRecentlyRemovedBrokers,
+                      List<String> selfHealingGoals) {
     if (failedDisksByBroker == null || failedDisksByBroker.isEmpty()) {
       throw new IllegalArgumentException("Unable to create disk failure anomaly with no failed disk specified.");
     }
@@ -42,6 +44,7 @@ public class DiskFailures extends KafkaAnomaly {
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
     _optimizationResult = null;
+    _selfHealingGoals = selfHealingGoals;
   }
 
   /**
@@ -60,7 +63,7 @@ public class DiskFailures extends KafkaAnomaly {
   public boolean fix() throws KafkaCruiseControlException {
     // Fix the cluster by moving replicas off the dead disks.
     _optimizationResult = new OptimizationResult(_kafkaCruiseControl.fixOfflineReplicas(false,
-                                                                                        Collections.emptyList(),
+                                                                                        _selfHealingGoals,
                                                                                         null,
                                                                                         new OperationProgress(),
                                                                                         _allowCapacityEstimation,

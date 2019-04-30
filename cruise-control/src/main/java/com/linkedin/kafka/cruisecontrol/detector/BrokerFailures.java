@@ -10,10 +10,12 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateString;
+
 
 /**
  * The broker failures that have been detected.
@@ -26,12 +28,14 @@ public class BrokerFailures extends KafkaAnomaly {
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
   private final String _anomalyId;
+  private final List<String> _selfHealingGoals;
 
   public BrokerFailures(KafkaCruiseControl kafkaCruiseControl,
                         Map<Integer, Long> failedBrokers,
                         boolean allowCapacityEstimation,
                         boolean excludeRecentlyDemotedBrokers,
-                        boolean excludeRecentlyRemovedBrokers) {
+                        boolean excludeRecentlyRemovedBrokers,
+                        List<String> selfHealingGoals) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _failedBrokers = failedBrokers;
     _allowCapacityEstimation = allowCapacityEstimation;
@@ -39,6 +43,7 @@ public class BrokerFailures extends KafkaAnomaly {
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
     _optimizationResult = null;
+    _selfHealingGoals = selfHealingGoals;
   }
 
   /**
@@ -60,7 +65,7 @@ public class BrokerFailures extends KafkaAnomaly {
       _optimizationResult = new OptimizationResult(_kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(),
                                                                                            false,
                                                                                            false,
-                                                                                           Collections.emptyList(),
+                                                                                           _selfHealingGoals,
                                                                                            null,
                                                                                            new OperationProgress(),
                                                                                            _allowCapacityEstimation,

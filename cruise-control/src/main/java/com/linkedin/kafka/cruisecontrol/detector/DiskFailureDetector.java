@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
@@ -42,13 +43,15 @@ public class DiskFailureDetector implements Runnable {
   private int _lastCheckedClusterGeneration;
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
+  private final List<String> _selfHealingGoals;
 
   public DiskFailureDetector(KafkaCruiseControlConfig config,
                              LoadMonitor loadMonitor,
                              AdminClient adminClient,
                              Queue<Anomaly> anomalies,
                              Time time,
-                             KafkaCruiseControl kafkaCruiseControl) {
+                             KafkaCruiseControl kafkaCruiseControl,
+                             List<String> selfHealingGoals) {
     _loadMonitor = loadMonitor;
     _adminClient = adminClient;
     _anomalies = anomalies;
@@ -58,6 +61,7 @@ public class DiskFailureDetector implements Runnable {
     _allowCapacityEstimation = config.getBoolean(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
+    _selfHealingGoals = selfHealingGoals;
   }
 
   /**
@@ -115,7 +119,8 @@ public class DiskFailureDetector implements Runnable {
                                         failedDisksByBroker,
                                         _allowCapacityEstimation,
                                         _excludeRecentlyDemotedBrokers,
-                                        _excludeRecentlyRemovedBrokers));
+                                        _excludeRecentlyRemovedBrokers,
+                                        _selfHealingGoals));
       }
     } catch (Exception e) {
       LOG.error("Unexpected exception", e);

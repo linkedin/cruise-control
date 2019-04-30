@@ -633,12 +633,11 @@ public class LoadMonitor {
    */
   public boolean meetCompletenessRequirements(MetadataClient.ClusterAndGeneration clusterAndGeneration,
                                               ModelCompletenessRequirements requirements) {
-    int availableNumSnapshots =
+    int numValidWindows =
         _partitionMetricSampleAggregator.validWindows(clusterAndGeneration,
-                                                      requirements.minMonitoredPartitionsPercentage())
-                                        .size();
-    int requiredSnapshot = requirements.minRequiredNumWindows();
-    return availableNumSnapshots >= requiredSnapshot;
+                                                      requirements.minMonitoredPartitionsPercentage()).size();
+    int requiredNumValidWindows = requirements.minRequiredNumWindows();
+    return numValidWindows >= requiredNumValidWindows;
   }
 
   /**

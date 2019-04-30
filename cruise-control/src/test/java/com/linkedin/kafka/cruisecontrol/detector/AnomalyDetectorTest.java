@@ -105,7 +105,8 @@ public class AnomalyDetectorTest {
     try {
       anomalyDetector.startDetection();
       anomalies.add(new BrokerFailures(mockKafkaCruiseControl, Collections.singletonMap(0, 100L),
-                                       false, true, true));
+                                       false, true, true,
+                                       Collections.emptyList()));
       while (!anomalies.isEmpty()) {
         // just wait for the anomalies to be drained.
       }
@@ -196,9 +197,7 @@ public class AnomalyDetectorTest {
                                                        EasyMock.eq(Collections.emptySet()),
                                                        EasyMock.eq(false)))
               .andReturn(null);
-    }
-
-    if (anomalyType == AnomalyType.DISK_FAILURE) {
+    } else if (anomalyType == AnomalyType.DISK_FAILURE) {
       EasyMock.expect(mockAnomalyNotifier.onDiskFailure(EasyMock.isA(DiskFailures.class))).andReturn(AnomalyNotificationResult.fix());
       EasyMock.expect(mockKafkaCruiseControl.fixOfflineReplicas(EasyMock.eq(false),
                                                                 EasyMock.eq(Collections.emptyList()),
@@ -215,7 +214,7 @@ public class AnomalyDetectorTest {
                                                                 EasyMock.eq(true)))
               .andReturn(null);
     }
-    EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(EasyMock.anyObject())).andReturn(true);
+    EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(Collections.emptyList())).andReturn(true);
 
     EasyMock.replay(mockAnomalyNotifier);
     EasyMock.replay(mockBrokerFailureDetector);
@@ -232,13 +231,16 @@ public class AnomalyDetectorTest {
     try {
       anomalyDetector.startDetection();
       if (anomalyType == AnomalyType.GOAL_VIOLATION) {
-        GoalViolations violations = new GoalViolations(mockKafkaCruiseControl, true, true, true);
+        GoalViolations violations = new GoalViolations(mockKafkaCruiseControl, true,
+                                                       true, true,
+                                                       Collections.emptyList());
         violations.addViolation("RackAwareGoal", true);
         anomalies.add(violations);
-      }
-      if (anomalyType == AnomalyType.DISK_FAILURE) {
+      } else if (anomalyType == AnomalyType.DISK_FAILURE) {
         Map<Integer, Map<String, Long>> failedDisksByBroker = Collections.singletonMap(0, Collections.singletonMap("tmp", 0L));
-        DiskFailures diskFailures = new DiskFailures(mockKafkaCruiseControl, failedDisksByBroker, true, true, true);
+        DiskFailures diskFailures = new DiskFailures(mockKafkaCruiseControl, failedDisksByBroker, true,
+                                                     true, true,
+                                                     Collections.emptyList());
         anomalies.add(diskFailures);
       }
       while (!anomalies.isEmpty()) {
@@ -324,7 +326,8 @@ public class AnomalyDetectorTest {
     try {
       anomalyDetector.startDetection();
       anomalies.add(new GoalViolations(mockKafkaCruiseControl, true,
-                                       true, true));
+                                       true, true,
+                                       Collections.emptyList()));
       while (!anomalies.isEmpty()) {
         // Just wait for the anomalies to be drained.
       }
