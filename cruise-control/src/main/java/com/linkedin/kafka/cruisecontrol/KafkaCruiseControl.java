@@ -982,13 +982,10 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Check if the given goals meet the completeness requirements.
-   *
-   * @param goalNames Goal names (and empty list of names indicates all goals).
+   * Check if the completeness requirements are met for the default goals.
    */
-  public boolean meetCompletenessRequirements(List<String> goalNames) {
-    sanityCheckHardGoalPresence(goalNames, false);
-    Collection<Goal> goals = goalsByPriority(goalNames);
+  public boolean meetCompletenessRequirementsWithDefaultGoals() {
+    Collection<Goal> goals = goalsByPriority(Collections.emptyList());
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     return goals.stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(
         clusterAndGeneration, g.clusterModelCompletenessRequirements()));
@@ -1020,7 +1017,7 @@ public class KafkaCruiseControl {
    * @param goals A list of goals.
    * @param skipHardGoalCheck True if hard goal checking is not needed.
    */
-  private void sanityCheckHardGoalPresence(List<String> goals, boolean skipHardGoalCheck) {
+  public void sanityCheckHardGoalPresence(List<String> goals, boolean skipHardGoalCheck) {
     if (goals != null && !goals.isEmpty() && !skipHardGoalCheck &&
         !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
       sanityCheckNonExistingGoal(goals, AnalyzerUtils.getCaseInsensitiveGoalsByName(_config));

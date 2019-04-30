@@ -72,8 +72,10 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
       assertEquals("The failed broker should be 0 and time should be 100L", Collections.singletonMap(brokerId, 100L),
                    brokerFailures.failedBrokers());
 
+      // Ensure that broker failure is detected as long as the broker is down.
+      detector.detectBrokerFailures();
+      assertEquals("One broker failure should have been detected before timeout.", 1, anomalies.size());
       // Bring the broker back
-      System.out.println("Starting brokers.");
       restartDeadBroker(brokerId);
       detector.detectBrokerFailures();
       assertTrue(detector.failedBrokers().isEmpty());
@@ -137,7 +139,8 @@ public class BrokerFailureDetectorTest extends AbstractKafkaIntegrationTestHarne
                                      mockLoadMonitor,
                                      anomalies,
                                      time,
-                                     mockKafkaCruiseControl);
+                                     mockKafkaCruiseControl,
+                                     Collections.emptyList());
   }
 
   private void killBroker(int index) throws Exception {

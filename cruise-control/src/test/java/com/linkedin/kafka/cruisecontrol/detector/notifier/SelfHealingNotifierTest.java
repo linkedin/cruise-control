@@ -47,7 +47,8 @@ public class SelfHealingNotifierTest {
                                                                                           failedBrokers,
                                                                                           allowCapacityEstimation,
                                                                                           EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                                          EXCLUDE_RECENTLY_REMOVED_BROKERS));
+                                                                                          EXCLUDE_RECENTLY_REMOVED_BROKERS,
+                                                                                          Collections.emptyList()));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(SelfHealingNotifier.DEFAULT_ALERT_THRESHOLD_MS + failureTime1 - mockTime.milliseconds(),
                  result.delay());
@@ -59,7 +60,8 @@ public class SelfHealingNotifierTest {
                                                                 failedBrokers,
                                                                 allowCapacityEstimation,
                                                                 EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS));
+                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS,
+                                                                Collections.emptyList()));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
     assertFalse(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -71,7 +73,8 @@ public class SelfHealingNotifierTest {
                                                                 failedBrokers,
                                                                 allowCapacityEstimation,
                                                                 EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS));
+                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS,
+                                                                Collections.emptyList()));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(SelfHealingNotifier.DEFAULT_AUTO_FIX_THRESHOLD_MS + failureTime1 - mockTime.milliseconds(),
                  result.delay());
@@ -84,7 +87,8 @@ public class SelfHealingNotifierTest {
                                                                 failedBrokers,
                                                                 allowCapacityEstimation,
                                                                 EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS));
+                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS,
+                                                                Collections.emptyList()));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -97,7 +101,8 @@ public class SelfHealingNotifierTest {
                                                                 failedBrokers,
                                                                 allowCapacityEstimation,
                                                                 EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS));
+                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS,
+                                                                Collections.emptyList()));
     assertEquals(AnomalyNotificationResult.Action.FIX, result.action());
     assertEquals(-1L, result.delay());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -135,7 +140,8 @@ public class SelfHealingNotifierTest {
                            failedBrokers,
                            true,
                            EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                           EXCLUDE_RECENTLY_REMOVED_BROKERS));
+                           EXCLUDE_RECENTLY_REMOVED_BROKERS,
+                           Collections.emptyList()));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
     assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.BROKER_FAILURE));
@@ -145,7 +151,8 @@ public class SelfHealingNotifierTest {
     result = anomalyNotifier.onGoalViolation(new GoalViolations(mockKafkaCruiseControl,
                                                                 true,
                                                                 EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS));
+                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS,
+                                                                Collections.emptyList()));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.GOAL_VIOLATION));
     assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.GOAL_VIOLATION));
