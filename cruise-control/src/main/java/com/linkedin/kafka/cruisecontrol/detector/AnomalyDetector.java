@@ -61,6 +61,8 @@ public class AnomalyDetector {
   private final Map<AnomalyType, Meter> _anomalyRateByType;
   private final LoadMonitor _loadMonitor;
   private final AnomalyDetectorState _anomalyDetectorState;
+  // TODO: Make this configurable.
+  private final List<String> _selfHealingGoals;
 
   public AnomalyDetector(KafkaCruiseControlConfig config,
                          LoadMonitor loadMonitor,
@@ -73,10 +75,10 @@ public class AnomalyDetector {
                                                     AnomalyNotifier.class);
     _loadMonitor = loadMonitor;
     _kafkaCruiseControl = kafkaCruiseControl;
-    List<String> selfHealingGoals = Collections.emptyList();
-    _kafkaCruiseControl.sanityCheckHardGoalPresence(selfHealingGoals, false);
-    _goalViolationDetector = new GoalViolationDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl, selfHealingGoals);
-    _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl, selfHealingGoals);
+    _selfHealingGoals = Collections.emptyList();
+    _kafkaCruiseControl.sanityCheckHardGoalPresence(_selfHealingGoals, false);
+    _goalViolationDetector = new GoalViolationDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
+    _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
     _metricAnomalyDetector = new MetricAnomalyDetector(config, _loadMonitor, _anomalies, _kafkaCruiseControl);
     _detectorScheduler =
         Executors.newScheduledThreadPool(4, new KafkaCruiseControlThreadFactory(METRIC_REGISTRY_NAME, false, LOG));
@@ -119,6 +121,7 @@ public class AnomalyDetector {
     _loadMonitor = loadMonitor;
     // Add anomaly detector state
     _anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()), 10);
+    _selfHealingGoals = Collections.emptyList();
   }
 
   public void startDetection() {
@@ -288,7 +291,7 @@ public class AnomalyDetector {
         LOG.info("Skipping {} because load monitor is in {} state.", skipMsg, loadMonitorTaskRunnerState);
         _anomalyDetectorState.onAnomalyHandle(anomaly, AnomalyState.Status.LOAD_MONITOR_NOT_READY);
       } else {
-        if (_kafkaCruiseControl.meetCompletenessRequirementsWithDefaultGoals()) {
+        if (_kafkaCruiseControl.meetCompletenessRequirements(_selfHealingGoals)) {
           return true;
         } else {
           LOG.warn("Skipping {} because load completeness requirement is not met for goals.", skipMsg);

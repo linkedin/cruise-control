@@ -982,12 +982,14 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Check if the completeness requirements are met for the default goals.
+   * Check if the completeness requirements are met for the given goals.
+   *
+   * @param goals A list of goals to check completeness for.
+   * @return True if completeness requirements are met for the given goals, false otherwise.
    */
-  public boolean meetCompletenessRequirementsWithDefaultGoals() {
-    Collection<Goal> goals = goalsByPriority(Collections.emptyList());
+  public boolean meetCompletenessRequirements(List<String> goals) {
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
-    return goals.stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(
+    return goalsByPriority(goals).stream().allMatch(g -> _loadMonitor.meetCompletenessRequirements(
         clusterAndGeneration, g.clusterModelCompletenessRequirements()));
   }
 

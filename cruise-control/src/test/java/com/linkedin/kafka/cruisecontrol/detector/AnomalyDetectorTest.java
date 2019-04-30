@@ -162,7 +162,7 @@ public class AnomalyDetectorTest {
                                                      EasyMock.eq(true),
                                                      EasyMock.eq(Collections.emptySet())))
             .andReturn(null);
-    EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirementsWithDefaultGoals()).andReturn(true);
+    EasyMock.expect(mockKafkaCruiseControl.meetCompletenessRequirements(Collections.emptyList())).andReturn(true);
 
     EasyMock.replay(mockAnomalyNotifier);
     EasyMock.replay(mockBrokerFailureDetector);
