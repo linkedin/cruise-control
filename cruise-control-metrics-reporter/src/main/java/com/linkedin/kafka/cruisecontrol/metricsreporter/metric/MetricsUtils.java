@@ -98,7 +98,13 @@ public class MetricsUtils {
    */
   public static CruiseControlMetric toCruiseControlMetric(KafkaMetric kafkaMetric, long now, int brokerId) {
     org.apache.kafka.common.MetricName metricName = kafkaMetric.metricName();
-    CruiseControlMetric ccm = toCruiseControlMetric(now, brokerId, metricName.name(), metricName.tags(), kafkaMetric.value());
+    if (!(kafkaMetric.metricValue() instanceof Double)) {
+      throw new IllegalArgumentException(String.format("Cannot convert non-double (%s) KafkaMetric %s to a Cruise Control"
+                                                       + " metric for broker %d", kafkaMetric.metricValue().getClass(),
+                                                       kafkaMetric.metricName(), brokerId));
+    }
+
+    CruiseControlMetric ccm = toCruiseControlMetric(now, brokerId, metricName.name(), metricName.tags(), (double) kafkaMetric.metricValue());
     if (ccm == null) {
       throw new IllegalArgumentException(String.format("Cannot convert KafkaMetric %s to a Cruise Control metric for "
                                                            + "broker %d at time %d", kafkaMetric.metricName(), brokerId, now));
