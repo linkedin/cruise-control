@@ -154,6 +154,7 @@ public class CruiseControlMetricsProcessor {
       BrokerLoad brokerLoad = _brokerLoad.get(node.id());
       if (brokerLoad == null) {
         LOG.warn("Skip generating broker metric sample for broker {} because all broker metrics are missing.", node.id());
+        skippedBroker++;
         continue;
       } else if (!brokerLoad.minRequiredBrokerMetricsAvailable()) {
         if (brokerLoad.missingBrokerMetricsInMinSupportedVersion().size() == 0) {
@@ -163,6 +164,7 @@ public class CruiseControlMetricsProcessor {
           LOG.warn("Skip generating broker metric sample for broker {} because the following required metrics are missing {}.",
               node.id(), brokerLoad.missingBrokerMetricsInMinSupportedVersion());
         }
+        skippedBroker++;
         continue;
       }
 
