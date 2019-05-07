@@ -573,6 +573,15 @@ public class ClusterModel implements Serializable {
   }
 
   /**
+   * Get the number of replicas in cluster.
+   *
+   * @return Number of replicas in cluster.
+   */
+  public int numReplicas() {
+    return _partitionsByTopicPartition.values().stream().mapToInt(p -> p.replicas().size()).sum();
+  }
+
+  /**
    * Get topics in the cluster.
    */
   public Set<String> topics() {
