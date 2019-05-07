@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import com.google.gson.Gson;
 import java.util.Set;
+import java.util.function.Function;
 import org.apache.kafka.common.TopicPartition;
 
 
@@ -316,35 +317,52 @@ public class ClusterModelStats {
    * @param clusterModel The state of the cluster.
    */
   private void numForReplicas(ClusterModel clusterModel) {
-    // Average, minimum, and maximum number of replicas in alive brokers.
-    int maxReplicasInBroker = 0;
-    int minReplicasInBroker = Integer.MAX_VALUE;
-    int numAliveBrokers = clusterModel.aliveBrokers().size();
-    for (Broker broker : clusterModel.aliveBrokers()) {
-      int numReplicasInBroker = broker.replicas().size();
-      _numReplicasInCluster += numReplicasInBroker;
-      maxReplicasInBroker = Math.max(maxReplicasInBroker, numReplicasInBroker);
-      minReplicasInBroker = Math.min(minReplicasInBroker, numReplicasInBroker);
-    }
-    double avgReplicas = ((double) _numReplicasInCluster) / numAliveBrokers;
-
-    // Standard deviation of replicas in alive brokers.
-    double varianceForReplicas = 0.0;
-    for (Broker broker : clusterModel.aliveBrokers()) {
-      varianceForReplicas += (Math.pow((double) broker.replicas().size() - avgReplicas, 2) / numAliveBrokers);
-    }
-
-    _replicaStats.put(Statistic.AVG, avgReplicas);
-    _replicaStats.put(Statistic.MAX, maxReplicasInBroker);
-    _replicaStats.put(Statistic.MIN, minReplicasInBroker);
-    _replicaStats.put(Statistic.ST_DEV, Math.sqrt(varianceForReplicas));
-
+    populateReplicaStats(clusterModel,
+                         broker -> broker.replicas().size(),
+                         _replicaStats);
+    _numReplicasInCluster = clusterModel.numReplicas();
     // Set the number of partitions with offline replicas.
     Set<TopicPartition> partitionsWithOfflineReplicas = new HashSet<>();
     for (Replica replica : clusterModel.selfHealingEligibleReplicas()) {
       partitionsWithOfflineReplicas.add(replica.topicPartition());
     }
     _numPartitionsWithOfflineReplicas = partitionsWithOfflineReplicas.size();
+  }
+
+  /**
+   * Generate statistics for replicas of interest in the given cluster.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param numInterestedReplicasFunc function to calculate number of replicas of interest on a broker.
+   * @param interestedReplicaStats statistics for replicas of interest.
+   */
+  private void populateReplicaStats(ClusterModel clusterModel,
+                                    Function<Broker, Integer> numInterestedReplicasFunc,
+                                    Map<Statistic, Number> interestedReplicaStats) {
+    // Average, minimum, and maximum number of replicas of interest in brokers.
+    int maxInterestedReplicasInBroker = 0;
+    int minInterestedReplicasInBroker = Integer.MAX_VALUE;
+    int numInterestedReplicasInCluster = 0;
+    int numAliveBrokers = clusterModel.aliveBrokers().size();
+    for (Broker broker : clusterModel.brokers()) {
+      int numInterestedReplicasInBroker = numInterestedReplicasFunc.apply(broker);
+      numInterestedReplicasInCluster += numInterestedReplicasInBroker;
+      maxInterestedReplicasInBroker = Math.max(maxInterestedReplicasInBroker, numInterestedReplicasInBroker);
+      minInterestedReplicasInBroker = Math.min(minInterestedReplicasInBroker, numInterestedReplicasInBroker);
+    }
+    double avgInterestedReplicas = ((double) numInterestedReplicasInCluster) / numAliveBrokers;
+
+    // Standard deviation of replicas of interest in alive brokers.
+    double varianceForInterestedReplicas = 0.0;
+    for (Broker broker : clusterModel.aliveBrokers()) {
+      varianceForInterestedReplicas +=
+          (Math.pow((double) numInterestedReplicasFunc.apply(broker) - avgInterestedReplicas, 2) / numAliveBrokers);
+    }
+
+    interestedReplicaStats.put(Statistic.AVG, avgInterestedReplicas);
+    interestedReplicaStats.put(Statistic.MAX, maxInterestedReplicasInBroker);
+    interestedReplicaStats.put(Statistic.MIN, minInterestedReplicasInBroker);
+    interestedReplicaStats.put(Statistic.ST_DEV, Math.sqrt(varianceForInterestedReplicas));
   }
 
   /**
@@ -361,7 +379,7 @@ public class ClusterModelStats {
     for (String topic : clusterModel.topics()) {
       int maxTopicReplicasInBroker = 0;
       int minTopicReplicasInBroker = Integer.MAX_VALUE;
-      for (Broker broker : clusterModel.aliveBrokers()) {
+      for (Broker broker : clusterModel.brokers()) {
         int numTopicReplicasInBroker = broker.numReplicasOfTopicInBroker(topic);
         maxTopicReplicasInBroker = Math.max(maxTopicReplicasInBroker, numTopicReplicasInBroker);
         minTopicReplicasInBroker = Math.min(minTopicReplicasInBroker, numTopicReplicasInBroker);
