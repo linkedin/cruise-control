@@ -161,7 +161,7 @@ public class KafkaSampleStore implements SampleStore {
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
     _consumers = new ArrayList<>(numProcessingThreads);
     for (int i = 0; i < numProcessingThreads; i++) {
-      _consumers.add(createConsumers(config));
+      _consumers.add(createConsumer(config));
     }
 
     _producer = createProducer(config);
@@ -187,7 +187,7 @@ public class KafkaSampleStore implements SampleStore {
     return new KafkaProducer<>(producerProps);
   }
 
-  protected KafkaConsumer<byte[], byte[]> createConsumers(Map<String, ?> config) {
+  protected KafkaConsumer<byte[], byte[]> createConsumer(Map<String, ?> config) {
       Properties consumerProps = new Properties();
       consumerProps.putAll(config);
       long randomToken = RANDOM.nextLong();

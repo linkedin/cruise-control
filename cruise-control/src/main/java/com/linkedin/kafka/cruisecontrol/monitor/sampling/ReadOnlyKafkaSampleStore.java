@@ -32,7 +32,7 @@ public class ReadOnlyKafkaSampleStore extends KafkaSampleStore {
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
     _consumers = new ArrayList<>(numProcessingThreads);
     for (int i = 0; i < numProcessingThreads; i++) {
-      _consumers.add(createConsumers(config));
+      _consumers.add(createConsumer(config));
     }
     _loadingProgress = -1.0;
   }

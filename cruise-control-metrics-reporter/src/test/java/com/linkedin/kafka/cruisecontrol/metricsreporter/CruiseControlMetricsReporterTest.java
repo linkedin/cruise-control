@@ -90,7 +90,7 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     setSecurityConfigs(props, "consumer");
     Consumer<String, CruiseControlMetric> consumer = new KafkaConsumer<>(props);
 
-    consumer.subscribe(Collections.singletonList(TOPIC));
+    consumer.subscribe(Collections.singleton(TOPIC));
     long startMs = System.currentTimeMillis();
     HashSet<Integer> expectedMetricTypes = new HashSet<>(Arrays.asList((int) ALL_TOPIC_BYTES_IN.id(),
                                                                        (int) ALL_TOPIC_BYTES_OUT.id(),

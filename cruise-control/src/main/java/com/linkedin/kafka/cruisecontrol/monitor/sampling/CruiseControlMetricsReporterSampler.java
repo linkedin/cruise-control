@@ -6,12 +6,10 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -19,15 +17,14 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Set;
-import java.util.regex.Pattern;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRebalanceListener;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.common.serialization.StringDeserializer;
@@ -41,6 +38,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   public static final String METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS = "metric.reporter.sampler.bootstrap.servers";
   public static final String METRIC_REPORTER_TOPIC_PATTERN = "metric.reporter.topic.pattern";
   public static final String METRIC_REPORTER_SAMPLER_GROUP_ID = "metric.reporter.sampler.group.id";
+  public static final long METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = 5000L;
   // Default configs
   private static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
   // static metric processor for metrics aggregation.
@@ -49,80 +47,71 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   private static final Random RANDOM = new Random();
 
   private Consumer<String, CruiseControlMetric> _metricConsumer;
+  private String _metricReporterTopic;
+  private Set<TopicPartition> _currentPartitionAssignment;
+
   @Override
   public Samples getSamples(Cluster cluster,
                             Set<TopicPartition> assignedPartitions,
                             long startTimeMs,
                             long endTimeMs,
                             SamplingMode mode,
-                            MetricDef metricDef) throws MetricSamplingException {
-    // Ensure we have an assignment.
-    long pollerCount = 0L;
-    while (_metricConsumer.assignment().isEmpty()) {
-      pollerCount++;
-      _metricConsumer.poll(10);
-      if (pollerCount % (12000) == 0) {
-        LOG.warn("metricConsumer Assignment is empty .. Did you copy the cruise-control-metrics-reporter.jar to Kafka libs ?");
-      }
+                            MetricDef metricDef,
+                            long timeout) {
+    // Commit consumer offsets and refresh partition assignment.
+    _metricConsumer.commitSync();
+    if (refreshPartitionAssignment()) {
+      return new Samples(Collections.emptySet(), Collections.emptySet());
     }
     // Now seek to the startTimeMs.
-    Map<TopicPartition, Long> timestampToSeek = new HashMap<>();
-    for (TopicPartition tp : _metricConsumer.assignment()) {
+    Map<TopicPartition, Long> timestampToSeek = new HashMap<>(_currentPartitionAssignment.size());
+    for (TopicPartition tp : _currentPartitionAssignment) {
       timestampToSeek.put(tp, startTimeMs);
     }
-    Set<TopicPartition> assignment = new HashSet<>(_metricConsumer.assignment());
+    Set<TopicPartition> assignment = new HashSet<>(_currentPartitionAssignment);
     Map<TopicPartition, Long> endOffsets = _metricConsumer.endOffsets(assignment);
     Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = _metricConsumer.offsetsForTimes(timestampToSeek);
-    // If some of the partitions does not have data, we simply seek to the end offset. To avoid losing metrics, we use
-    // the end offsets before the timestamp query.
+    // If some partitions do not have data, we simply seek to the end offset. To avoid losing metrics, we use the end
+    // offsets before the timestamp query.
     assignment.removeAll(offsetsForTimes.keySet());
-    for (TopicPartition tp : assignment) {
-      _metricConsumer.seek(tp, endOffsets.get(tp));
-    }
+    assignment.forEach(tp -> _metricConsumer.seek(tp, endOffsets.get(tp)));
     // For the partition that returned an offset, seek to the returned offsets.
     for (Map.Entry<TopicPartition, OffsetAndTimestamp> entry : offsetsForTimes.entrySet()) {
       TopicPartition tp = entry.getKey();
       OffsetAndTimestamp offsetAndTimestamp = entry.getValue();
-      if (offsetAndTimestamp != null) {
-        _metricConsumer.seek(tp, offsetAndTimestamp.offset());
-      } else {
-        _metricConsumer.seek(tp, endOffsets.get(tp));
-      }
+      _metricConsumer.seek(tp, offsetAndTimestamp != null ? offsetAndTimestamp.offset() : endOffsets.get(tp));
     }
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Starting consuming from metrics reporter topic partitions {}.", _metricConsumer.assignment());
+      LOG.debug("Starting consuming from metrics reporter topic partitions {}.", _currentPartitionAssignment);
     }
     _metricConsumer.resume(_metricConsumer.paused());
     int totalMetricsAdded = 0;
-    long maxTimeStamp = -1L;
-    // TODO: Ideally we should have a timeout passed in to the metric sampler. Will do that in a separate patch.
-    long deadline = System.currentTimeMillis() + (endTimeMs - startTimeMs) / 2;
     do {
-      ConsumerRecords<String, CruiseControlMetric> records = _metricConsumer.poll(5000L);
+      ConsumerRecords<String, CruiseControlMetric> records = _metricConsumer.poll(METRIC_REPORTER_CONSUMER_POLL_TIMEOUT);
       for (ConsumerRecord<String, CruiseControlMetric> record : records) {
         if (record == null) {
           // This means we cannot parse the metrics. It might happen when a newer type of metrics has been added and
           // the current code is still old. We simply ignore that metric in this case.
-          LOG.debug("Cannot parse record.");
+          LOG.warn("Cannot parse record, please update your Cruise Control version.");
           continue;
         }
-        if (startTimeMs <= record.value().time() && record.value().time() < endTimeMs) {
-          METRICS_PROCESSOR.addMetric(record.value());
-          maxTimeStamp = Math.max(maxTimeStamp, record.value().time());
-          totalMetricsAdded++;
-        } else if (record.value().time() >= endTimeMs) {
+        long recordTime = record.value().time();
+        if (recordTime < startTimeMs) {
+          LOG.debug("Discarding metric {} because its timestamp is smaller than the start time of sampling period {}.",
+                    record.value(), startTimeMs);
+        } else if (recordTime >= endTimeMs) {
           TopicPartition tp = new TopicPartition(record.topic(), record.partition());
-          LOG.debug("Saw metric {} whose timestamp is larger than start time {}. Pausing partition {} at offset",
-                    record.value(), record.value().time(), tp, record.offset());
+          LOG.debug("Saw metric {} whose timestamp is larger than the end time of sampling period {}. Pausing "
+                    + "partition {} at offset {}.", record.value(), endTimeMs, tp, record.offset());
           _metricConsumer.pause(Collections.singleton(tp));
         } else {
-          LOG.debug("Discarding metric {} because the timestamp {} is smaller than the start time {}",
-                    record.value(), record.value().time(), startTimeMs);
+          METRICS_PROCESSOR.addMetric(record.value());
+          totalMetricsAdded++;
         }
       }
-    } while (!consumptionDone(endOffsets) && System.currentTimeMillis() < deadline);
+    } while (!consumptionDone(endOffsets) && System.currentTimeMillis() < timeout);
     LOG.info("Finished sampling for topic partitions {} in time range [{},{}]. Collected {} metrics.",
-              _metricConsumer.assignment(), startTimeMs, endTimeMs, totalMetricsAdded);
+             _currentPartitionAssignment, startTimeMs, endTimeMs, totalMetricsAdded);
 
     try {
       if (totalMetricsAdded > 0) {
@@ -142,7 +131,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
    * The check if the consumption is done or not. The consumption is done if the consumer has caught up with the
    * log end or all the partitions are paused.
    * @param endOffsets the log end for each partition.
-   * @return true if the consumption is done, false otherwise.
+   * @return True if the consumption is done, false otherwise.
    */
   private boolean consumptionDone(Map<TopicPartition, Long> endOffsets) {
     Set<TopicPartition> partitionsNotPaused = new HashSet<>(_metricConsumer.assignment());
@@ -153,6 +142,27 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
       }
     }
     return true;
+  }
+
+  /**
+   * Ensure that the {@link #_metricConsumer} is assigned to the latest partitions of the {@link #_metricReporterTopic}.
+   * This enables metrics reporter sampler to handle dynamic partition size increases in {@link #_metricReporterTopic}.
+   *
+   * @return True if the set of partitions currently assigned to this consumer is empty, false otherwise.
+   */
+  private boolean refreshPartitionAssignment() {
+    _currentPartitionAssignment = new HashSet<>();
+    for (PartitionInfo partitionInfo : _metricConsumer.partitionsFor(_metricReporterTopic)) {
+      _currentPartitionAssignment.add(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
+    }
+
+    if (_currentPartitionAssignment.isEmpty()) {
+      LOG.error("The set of partitions currently assigned to the metric consumer is empty.");
+      return true;
+    }
+
+    _metricConsumer.assign(_currentPartitionAssignment);
+    return false;
   }
 
   @Override
@@ -167,9 +177,9 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     if (bootstrapServers == null) {
       bootstrapServers = (String) configs.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG);
     }
-    String metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC_PATTERN);
-    if (metricReporterTopic == null) {
-      metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
+    _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC_PATTERN);
+    if (_metricReporterTopic == null) {
+      _metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
     }
     String groupId = (String) configs.get(METRIC_REPORTER_SAMPLER_GROUP_ID);
     if (groupId == null) {
@@ -187,27 +197,11 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
     consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
-    consumerProps.setProperty(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, Integer.toString(Integer.MAX_VALUE));
     _metricConsumer = new KafkaConsumer<>(consumerProps);
-    _metricConsumer.subscribe(Pattern.compile(metricReporterTopic), new ConsumerRebalanceListener() {
-      @Override
-      public void onPartitionsRevoked(Collection<TopicPartition> collection) {
-        _metricConsumer.commitSync();
-      }
-
-      @Override
-      public void onPartitionsAssigned(Collection<TopicPartition> collection) {
-        // Do nothing
-      }
-    });
-    Pattern topicPattern = Pattern.compile(metricReporterTopic);
-    for (String topic : _metricConsumer.listTopics().keySet()) {
-      if (topicPattern.matcher(topic).matches()) {
-        return;
-      }
+    if (refreshPartitionAssignment()) {
+      throw new IllegalStateException("Cruise Control cannot find partitions for the metrics reporter that topic matches "
+                                      + _metricReporterTopic + " in the target cluster.");
     }
-    throw new IllegalStateException("Cruise Control cannot find sampling topic matches " + metricReporterTopic
-        + " in the target cluster.");
   }
 
   @Override

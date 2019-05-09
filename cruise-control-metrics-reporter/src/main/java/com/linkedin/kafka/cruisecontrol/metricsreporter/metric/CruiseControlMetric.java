@@ -91,4 +91,9 @@ public abstract class CruiseControlMetric {
       }
     }
   }
+
+  @Override
+  public String toString() {
+    return String.format("[RawMetricType=%s,Time=%d,BrokerId=%d,Value=%.4f}", _rawMetricType, _time, _brokerId, _value);
+  }
 }
