@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -325,6 +326,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "average replica count of all brokers.";
 
   /**
+   * <code>leader.replica.count.balance.threshold</code>
+   */
+  public static final String LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "leader.replica.count.balance.threshold";
+  private static final String LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for "
+      + "leader replica distribution. For example, 1.10 means the highest leader replica count of a broker should not be "
+      + "above 1.10x of average leader replica count of all alive brokers.";
+
+  /**
    * <code>topic.replica.count.balance.threshold</code>
    */
   public static final String TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "topic.replica.count.balance.threshold";
@@ -338,8 +347,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG = "goal.violation.distribution.threshold.multiplier";
   private static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_DOC = "The multiplier applied to the threshold"
       + " of distribution goals used for detecting and fixing anomalies. For example, 2.50 means the threshold for each "
-      + "distribution goal (i.e. Replica Distribution, Resource Distribution, and Topic Replica Distribution Goals) will "
-      + "be 2.50x of the value used in manual goal optimization requests (e.g. rebalance).";
+      + "distribution goal (i.e. Replica Distribution, Leader Replica Distribution, Resource Distribution, and Topic Replica "
+      + "Distribution Goals) will be 2.50x of the value used in manual goal optimization requests (e.g. rebalance).";
 
   /**
    * <code>cpu.capacity.threshold</code>
@@ -1025,6 +1034,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.HIGH,
                 REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
+        .define(LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                1.10,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
         .define(TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 3.00,
@@ -1154,6 +1169,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(NetworkInboundUsageDistributionGoal.class.getName())
                     .add(NetworkOutboundUsageDistributionGoal.class.getName())
                     .add(CpuUsageDistributionGoal.class.getName())
+                    .add(LeaderReplicaDistributionGoal.class.getName())
                     .add(LeaderBytesInDistributionGoal.class.getName())
                     .add(TopicReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,

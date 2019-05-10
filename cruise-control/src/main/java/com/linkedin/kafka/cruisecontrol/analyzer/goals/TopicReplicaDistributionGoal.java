@@ -35,8 +35,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils.EPSILON;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal.ChangeType.ADD;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal.ChangeType.REMOVE;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionAbstractGoal.ChangeType.*;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 
 
@@ -307,7 +306,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
         throw ofe;
       }
       _selfHealingDeadBrokersOnly = true;
-      LOG.warn("Ignoring topic replica balance limit to move replicas from dead brokers to healthy ones.");
+      LOG.info("Ignoring topic replica balance limit to move replicas from dead brokers to healthy ones.");
       return;
     }
 
