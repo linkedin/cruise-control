@@ -257,15 +257,15 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       }
     }
     if (!brokerIdsAboveBalanceUpperLimit.isEmpty()) {
-      LOG.warn("Utilization for broker ids:{} {} above the balance limit for:{} after {}.",
-               brokerIdsAboveBalanceUpperLimit, (brokerIdsAboveBalanceUpperLimit.size() > 1) ? "are" : "is", resource(),
-               (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
+      LOG.debug("Utilization for broker ids:{} {} above the balance limit for:{} after {}.",
+                brokerIdsAboveBalanceUpperLimit, (brokerIdsAboveBalanceUpperLimit.size() > 1) ? "are" : "is", resource(),
+                (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
       _succeeded = false;
     }
     if (!brokerIdsUnderBalanceLowerLimit.isEmpty()) {
-      LOG.warn("Utilization for broker ids:{} {} under the balance limit for:{} after {}.",
-               brokerIdsUnderBalanceLowerLimit, (brokerIdsUnderBalanceLowerLimit.size() > 1) ? "are" : "is", resource(),
-               (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
+      LOG.debug("Utilization for broker ids:{} {} under the balance limit for:{} after {}.",
+                brokerIdsUnderBalanceLowerLimit, (brokerIdsUnderBalanceLowerLimit.size() > 1) ? "are" : "is", resource(),
+                (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
       _succeeded = false;
     }
     // Sanity check: No self-healing eligible replica should remain at a decommissioned broker.
@@ -276,7 +276,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         throw ofe;
       }
       _selfHealingDeadBrokersOnly = true;
-      LOG.warn("Ignoring resource balance limit to move replicas from dead brokers to healthy ones.");
+      LOG.info("Ignoring resource balance limit to move replicas from dead brokers to healthy ones.");
       return;
     }
 
