@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -77,9 +78,10 @@ public class RandomGoalTest {
                                                        NetworkInboundUsageDistributionGoal.class.getName(),
                                                        NetworkOutboundUsageDistributionGoal.class.getName(),
                                                        CpuUsageDistributionGoal.class.getName(),
+                                                       LeaderReplicaDistributionGoal.class.getName(),
+                                                       LeaderBytesInDistributionGoal.class.getName(),
                                                        TopicReplicaDistributionGoal.class.getName(),
-                                                       PreferredLeaderElectionGoal.class.getName(),
-                                                       LeaderBytesInDistributionGoal.class.getName());
+                                                       PreferredLeaderElectionGoal.class.getName());
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1500L));

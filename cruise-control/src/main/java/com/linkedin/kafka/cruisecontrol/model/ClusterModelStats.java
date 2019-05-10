@@ -25,6 +25,7 @@ public class ClusterModelStats {
   private final Map<Statistic, Map<Resource, Double>> _resourceUtilizationStats;
   private final Map<Statistic, Double> _potentialNwOutUtilizationStats;
   private final Map<Statistic, Number> _replicaStats;
+  private final Map<Statistic, Number> _leaderReplicaStats;
   private final Map<Statistic, Number> _topicReplicaStats;
   private int _numBrokers;
   private int _numReplicasInCluster;
@@ -48,6 +49,7 @@ public class ClusterModelStats {
     _resourceUtilizationStats = new HashMap<>();
     _potentialNwOutUtilizationStats = new HashMap<>();
     _replicaStats = new HashMap<>();
+    _leaderReplicaStats = new HashMap<>();
     _topicReplicaStats = new HashMap<>();
     _numBrokers = 0;
     _numReplicasInCluster = 0;
@@ -73,6 +75,7 @@ public class ClusterModelStats {
     utilizationForResources(clusterModel);
     utilizationForPotentialNwOut(clusterModel);
     numForReplicas(clusterModel);
+    numForLeaderReplicas(clusterModel);
     numForAvgTopicReplicas(clusterModel);
     _utilizationMatrix = clusterModel.utilizationMatrix();
     _numSnapshotWindows = clusterModel.load().numWindows();
@@ -100,6 +103,13 @@ public class ClusterModelStats {
    */
   public Map<Statistic, Number> replicaStats() {
     return _replicaStats;
+  }
+
+  /**
+   * Get leader replica stats for the cluster instance that the object was populated with.
+   */
+  public Map<Statistic, Number> leaderReplicaStats() {
+    return _leaderReplicaStats;
   }
 
   /**
@@ -353,6 +363,17 @@ public class ClusterModelStats {
       partitionsWithOfflineReplicas.add(replica.topicPartition());
     }
     _numPartitionsWithOfflineReplicas = partitionsWithOfflineReplicas.size();
+  }
+
+  /**
+   * Generate statistics for leader replicas in the given cluster.
+   *
+   * @param clusterModel The state of the cluster.
+   */
+  private void numForLeaderReplicas(ClusterModel clusterModel) {
+    populateReplicaStats(clusterModel,
+                         broker -> broker.leaderReplicas().size(),
+                         _leaderReplicaStats);
   }
 
   /**

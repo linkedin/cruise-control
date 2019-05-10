@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -73,6 +74,7 @@ public class RandomSelfHealingTest {
                                                     NetworkInboundUsageDistributionGoal.class.getName(),
                                                     NetworkOutboundUsageDistributionGoal.class.getName(),
                                                     CpuUsageDistributionGoal.class.getName(),
+                                                    LeaderReplicaDistributionGoal.class.getName(),
                                                     TopicReplicaDistributionGoal.class.getName());
 
     List<String> kafkaAssignerGoals = Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getName(),

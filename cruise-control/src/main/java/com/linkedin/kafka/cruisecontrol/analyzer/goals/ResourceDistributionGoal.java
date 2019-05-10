@@ -255,15 +255,15 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       }
     }
     if (!brokerIdsAboveBalanceUpperLimit.isEmpty()) {
-      LOG.warn("Utilization for broker ids:{} {} above the balance limit for:{} after {}.",
-               brokerIdsAboveBalanceUpperLimit, (brokerIdsAboveBalanceUpperLimit.size() > 1) ? "are" : "is", resource(),
-               (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
+      LOG.debug("Utilization for broker ids:{} {} above the balance limit for:{} after {}.",
+                brokerIdsAboveBalanceUpperLimit, (brokerIdsAboveBalanceUpperLimit.size() > 1) ? "are" : "is", resource(),
+                (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
       _succeeded = false;
     }
     if (!brokerIdsUnderBalanceLowerLimit.isEmpty()) {
-      LOG.warn("Utilization for broker ids:{} {} under the balance limit for:{} after {}.",
-               brokerIdsUnderBalanceLowerLimit, (brokerIdsUnderBalanceLowerLimit.size() > 1) ? "are" : "is", resource(),
-               (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
+      LOG.debug("Utilization for broker ids:{} {} under the balance limit for:{} after {}.",
+                brokerIdsUnderBalanceLowerLimit, (brokerIdsUnderBalanceLowerLimit.size() > 1) ? "are" : "is", resource(),
+                (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
       _succeeded = false;
     }
     // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
@@ -274,7 +274,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         throw ofe;
       }
       _fixOfflineReplicasOnly = true;
-      LOG.warn("Ignoring resource balance limit to move replicas from dead brokers/disks.");
+      LOG.info("Ignoring resource balance limit to move replicas from dead brokers/disks.");
       return;
     }
     // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.

@@ -658,6 +658,15 @@ public class ClusterModel implements Serializable {
   }
 
   /**
+   * Get the number of leader replicas in cluster.
+   *
+   * @return Number of leader replicas in cluster.
+   */
+  public int numLeaderReplicas() {
+    return _partitionsByTopicPartition.size();
+  }
+
+  /**
    * Get the number of replicas in cluster.
    *
    * @return Number of replicas in cluster.
@@ -876,8 +885,8 @@ public class ClusterModel implements Serializable {
 
   /**
    * Get a list of sorted (in ascending order by resource) alive brokers having utilization under:
-   * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#_isHostResource} and
-   * {@link Resource#_isBrokerResource}). Utilization threshold might be any capacity constraint thresholds such as
+   * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#isHostResource} and
+   * {@link Resource#isBrokerResource}). Utilization threshold might be any capacity constraint thresholds such as
    * balance or capacity.
    *
    * @param resource             Resource for which brokers will be sorted.

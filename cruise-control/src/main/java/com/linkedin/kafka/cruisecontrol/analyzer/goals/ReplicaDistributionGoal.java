@@ -13,7 +13,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSortedReplicas;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
-import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -22,8 +21,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Map;
-import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
-import java.util.HashSet;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
@@ -35,10 +32,8 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal.ChangeType.ADD;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal.ChangeType.REMOVE;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionAbstractGoal.ChangeType.*;
 import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 
 
 /**
@@ -47,29 +42,15 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_
  * <li>Under: (the average number of replicas per broker) * (1 + replica count balance percentage)</li>
  * <li>Above: (the average number of replicas per broker) * Math.max(0, 1 - replica count balance percentage)</li>
  * </ul>
- * Also see: {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG},
- * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG},
- * and {@link #balancePercentageWithMargin(OptimizationOptions)}.
  */
-public class ReplicaDistributionGoal extends AbstractGoal {
+public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicaDistributionGoal.class);
-  private static final double BALANCE_MARGIN = 0.9;
-  // Flag to indicate whether the self healing failed to relocate all offline replicas away from dead brokers or broken
-  // disks in its initial attempt and currently omitting the replica balance limit to relocate remaining replicas.
-  private boolean _fixOfflineReplicasOnly;
-  private final Set<Integer> _brokerIdsAboveBalanceUpperLimit;
-  private final Set<Integer> _brokerIdsUnderBalanceLowerLimit;
   private final Map<Integer, BrokerAndSortedReplicas> _brokerAndReplicasMap;
-  private double _avgReplicasOnAliveBroker;
-  private int _balanceUpperLimit;
-  private int _balanceLowerLimit;
 
   /**
    * Constructor for Replica Distribution Goal.
    */
   public ReplicaDistributionGoal() {
-    _brokerIdsAboveBalanceUpperLimit = new HashSet<>();
-    _brokerIdsUnderBalanceLowerLimit = new HashSet<>();
     _brokerAndReplicasMap = new HashMap<>();
   }
 
@@ -78,40 +59,18 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     _balancingConstraint = balancingConstraint;
   }
 
-  /**
-   * To avoid churns, we add a balance margin to the user specified rebalance threshold. e.g. when user sets the
-   * threshold to be {@link BalancingConstraint#replicaBalancePercentage()}, we use
-   * ({@link BalancingConstraint#replicaBalancePercentage()}-1)*{@link #BALANCE_MARGIN} instead.
-   *
-   * @param optimizationOptions Options to adjust balance percentage with margin in case goal optimization is triggered
-   * by goal violation detector.
-   * @return the rebalance threshold with a margin.
-   */
-  private double balancePercentageWithMargin(OptimizationOptions optimizationOptions) {
-    double balancePercentage = optimizationOptions.isTriggeredByGoalViolation()
-                               ? _balancingConstraint.replicaBalancePercentage()
-                                 * _balancingConstraint.goalViolationDistributionThresholdMultiplier()
-                               : _balancingConstraint.replicaBalancePercentage();
-
-    return (balancePercentage - 1) * BALANCE_MARGIN;
+  @Override
+  int numInterestedReplicas(ClusterModel clusterModel) {
+    return clusterModel.numReplicas();
   }
 
   /**
-   * @param optimizationOptions Options to adjust balance upper limit in case goal optimization is triggered by goal
-   * violation detector.
-   * @return The replica balance upper threshold in number of replicas.
+   * The rebalance threshold for this goal is set by
+   * {@link com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig#REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG}
    */
-  private int balanceUpperLimit(OptimizationOptions optimizationOptions) {
-    return (int) Math.ceil(_avgReplicasOnAliveBroker * (1 + balancePercentageWithMargin(optimizationOptions)));
-  }
-
-  /**
-   * @param optimizationOptions Options to adjust balance lower limit in case goal optimization is triggered by goal
-   * violation detector.
-   * @return The replica balance lower threshold in number of replicas.
-   */
-  private int balanceLowerLimit(OptimizationOptions optimizationOptions) {
-    return (int) Math.floor(_avgReplicasOnAliveBroker * Math.max(0, (1 - balancePercentageWithMargin(optimizationOptions))));
+  @Override
+  double balancePercentage() {
+    return _balancingConstraint.replicaBalancePercentage();
   }
 
   /**
@@ -135,25 +94,12 @@ public class ReplicaDistributionGoal extends AbstractGoal {
         Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
 
         //Check that destination and source would not become unbalanced.
-        return (isReplicaCountUnderBalanceUpperLimitAfterChange(destinationBroker, ADD)
-            && isReplicaCountAboveBalanceLowerLimitAfterChange(sourceBroker, REMOVE)) ? ACCEPT : REPLICA_REJECT;
+        return (isReplicaCountUnderBalanceUpperLimitAfterChange(destinationBroker, destinationBroker.replicas().size(), ADD)
+               && isReplicaCountAboveBalanceLowerLimitAfterChange(sourceBroker, sourceBroker.replicas().size(), REMOVE))
+               ? ACCEPT : REPLICA_REJECT;
       default:
         throw new IllegalArgumentException("Unsupported balancing action " + action.balancingAction() + " is provided.");
     }
-  }
-
-  private boolean isReplicaCountUnderBalanceUpperLimitAfterChange(Broker broker, ChangeType changeType) {
-    int numReplicas = broker.replicas().size();
-    int brokerBalanceUpperLimit = broker.isAlive() ? _balanceUpperLimit : 0;
-
-    return changeType == ADD ? numReplicas + 1 <= brokerBalanceUpperLimit : numReplicas - 1 <= brokerBalanceUpperLimit;
-  }
-
-  private boolean isReplicaCountAboveBalanceLowerLimitAfterChange(Broker broker, ChangeType changeType) {
-    int numReplicas = broker.replicas().size();
-    int brokerBalanceLowerLimit = broker.isAlive() ? _balanceLowerLimit : 0;
-
-    return changeType == ADD ? numReplicas + 1 >= brokerBalanceLowerLimit : numReplicas - 1 >= brokerBalanceLowerLimit;
   }
 
   @Override
@@ -162,30 +108,8 @@ public class ReplicaDistributionGoal extends AbstractGoal {
   }
 
   @Override
-  public ModelCompletenessRequirements clusterModelCompletenessRequirements() {
-    return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING, 0.0, true);
-  }
-
-  @Override
   public String name() {
     return ReplicaDistributionGoal.class.getSimpleName();
-  }
-
-  @Override
-  public boolean isHardGoal() {
-    return false;
-  }
-
-  /**
-   * Get brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
-   *
-   * @param clusterModel The state of the cluster.
-   * @return A collection of brokers that the rebalance process will go over to apply balancing actions to replicas
-   * they contain.
-   */
-  @Override
-  protected SortedSet<Broker> brokersToBalance(ClusterModel clusterModel) {
-    return clusterModel.brokers();
   }
 
   /**
@@ -196,89 +120,11 @@ public class ReplicaDistributionGoal extends AbstractGoal {
    */
   @Override
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
-    // Initialize the average replicas on an alive broker.
-    int numReplicasInCluster = clusterModel.getReplicaDistribution().values().stream().mapToInt(List::size).sum();
-    _avgReplicasOnAliveBroker = (numReplicasInCluster / (double) clusterModel.aliveBrokers().size());
-
-    // Log a warning if all replicas are excluded.
-    if (clusterModel.topics().equals(optimizationOptions.excludedTopics())) {
-      LOG.warn("All replicas are excluded from {}.", name());
-    }
-
+    super.initGoalState(clusterModel, optimizationOptions);
     for (Broker broker : clusterModel.brokers()) {
       BrokerAndSortedReplicas bas = new BrokerAndSortedReplicas(broker, broker.replicaComparator(DISK));
       _brokerAndReplicasMap.put(broker.id(), bas);
     }
-
-    _fixOfflineReplicasOnly = false;
-    _balanceUpperLimit = balanceUpperLimit(optimizationOptions);
-    _balanceLowerLimit = balanceLowerLimit(optimizationOptions);
-  }
-
-  /**
-   * Check if requirements of this goal are not violated if this proposal is applied to the given cluster state,
-   * false otherwise.
-   *
-   * @param clusterModel The state of the cluster.
-   * @param action Action containing information about potential modification to the given cluster model. Assumed to be
-   * of type {@link ActionType#INTER_BROKER_REPLICA_MOVEMENT}.
-   * @return True if requirements of this goal are not violated if this proposal is applied to the given cluster state,
-   * false otherwise.
-   */
-  @Override
-  protected boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action) {
-    Broker sourceBroker = clusterModel.broker(action.sourceBrokerId());
-    // The action must be executed if currently fixing offline replicas only and the offline source replica is proposed
-    // to be moved to another broker.
-    if (_fixOfflineReplicasOnly && sourceBroker.replica(action.topicPartition()).isCurrentOffline()) {
-      return action.balancingAction() == ActionType.INTER_BROKER_REPLICA_MOVEMENT;
-    }
-    Broker destinationBroker = clusterModel.broker(action.destinationBrokerId());
-    //Check that destination and source would not become unbalanced.
-    return isReplicaCountUnderBalanceUpperLimitAfterChange(destinationBroker, ADD) &&
-        isReplicaCountAboveBalanceLowerLimitAfterChange(sourceBroker, REMOVE);
-  }
-
-  /**
-   * Update goal state after one round of self-healing / rebalance.
-   * @param clusterModel The state of the cluster.
-   * @param excludedTopics The topics that should be excluded from the optimization proposal.
-   */
-  @Override
-  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
-      throws OptimizationFailureException {
-    // Log broker Ids over balancing limit.
-    // While proposals exclude the excludedTopics, the balance still considers utilization of the excludedTopic replicas.
-    if (!_brokerIdsAboveBalanceUpperLimit.isEmpty()) {
-      LOG.warn("Replicas count on broker ids:{} {} above the balance limit of {} after {}.",
-               _brokerIdsAboveBalanceUpperLimit, (_brokerIdsAboveBalanceUpperLimit.size() > 1) ? "are" : "is",
-               _balanceUpperLimit,
-               (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
-      _brokerIdsAboveBalanceUpperLimit.clear();
-      _succeeded = false;
-    }
-    if (!_brokerIdsUnderBalanceLowerLimit.isEmpty()) {
-      LOG.warn("Replica count on broker ids:{} {} under the balance limit of {} after {}.",
-               _brokerIdsUnderBalanceLowerLimit, (_brokerIdsUnderBalanceLowerLimit.size() > 1) ? "are" : "is",
-               _balanceLowerLimit,
-               (clusterModel.selfHealingEligibleReplicas().isEmpty()) ? "rebalance" : "self-healing");
-      _brokerIdsUnderBalanceLowerLimit.clear();
-      _succeeded = false;
-    }
-    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
-    try {
-      GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
-    } catch (OptimizationFailureException ofe) {
-      if (_fixOfflineReplicasOnly) {
-        throw ofe;
-      }
-      _fixOfflineReplicasOnly = true;
-      LOG.warn("Ignoring replica balance limit to move replicas from dead brokers/disks.");
-      return;
-    }
-    // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
-    GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
-    finish();
   }
 
   /**
@@ -437,10 +283,6 @@ public class ReplicaDistributionGoal extends AbstractGoal {
             // Note that the broker passed to this method is always alive; hence, there is no need to check if it is dead.
             return false;
           }
-
-
-
-
           // If the source broker has a lower number of offline replicas or an equal number of offline replicas, but
           // more total replicas than the next broker in the eligible broker in the queue, we reenqueue the source broker
           // and switch to the next broker.
@@ -452,11 +294,6 @@ public class ReplicaDistributionGoal extends AbstractGoal {
               break;
             }
           }
-
-
-
-
-
         }
       }
     }
@@ -482,12 +319,5 @@ public class ReplicaDistributionGoal extends AbstractGoal {
     public String explainLastComparison() {
       return _reasonForLastNegativeResult;
     }
-  }
-
-  /**
-   * Whether bring replica in or out.
-   */
-  protected enum ChangeType {
-    ADD, REMOVE
   }
 }
