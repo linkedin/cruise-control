@@ -13,6 +13,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Random;
@@ -36,9 +37,11 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterSampler.class);
   // Configurations
   public static final String METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS = "metric.reporter.sampler.bootstrap.servers";
+  public static final String METRIC_REPORTER_TOPIC = "metric.reporter.topic";
+  // TODO: Remove the deprecated config.
   public static final String METRIC_REPORTER_TOPIC_PATTERN = "metric.reporter.topic.pattern";
   public static final String METRIC_REPORTER_SAMPLER_GROUP_ID = "metric.reporter.sampler.group.id";
-  public static final long METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = 5000L;
+  private static final long METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = 5000L;
   // Default configs
   private static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
   // static metric processor for metrics aggregation.
@@ -58,8 +61,6 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
                             SamplingMode mode,
                             MetricDef metricDef,
                             long timeout) {
-    // Commit consumer offsets and refresh partition assignment.
-    _metricConsumer.commitSync();
     if (refreshPartitionAssignment()) {
       return new Samples(Collections.emptySet(), Collections.emptySet());
     }
@@ -81,9 +82,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
       OffsetAndTimestamp offsetAndTimestamp = entry.getValue();
       _metricConsumer.seek(tp, offsetAndTimestamp != null ? offsetAndTimestamp.offset() : endOffsets.get(tp));
     }
-    if (LOG.isDebugEnabled()) {
-      LOG.debug("Starting consuming from metrics reporter topic partitions {}.", _currentPartitionAssignment);
-    }
+    LOG.debug("Starting consuming from metrics reporter topic partitions {}.", _currentPartitionAssignment);
     _metricConsumer.resume(_metricConsumer.paused());
     int totalMetricsAdded = 0;
     do {
@@ -151,14 +150,21 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
    * @return True if the set of partitions currently assigned to this consumer is empty, false otherwise.
    */
   private boolean refreshPartitionAssignment() {
-    _currentPartitionAssignment = new HashSet<>();
-    for (PartitionInfo partitionInfo : _metricConsumer.partitionsFor(_metricReporterTopic)) {
-      _currentPartitionAssignment.add(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
-    }
-
-    if (_currentPartitionAssignment.isEmpty()) {
+    List<PartitionInfo> remotePartitionInfo = _metricConsumer.partitionsFor(_metricReporterTopic);
+    if (remotePartitionInfo.isEmpty()) {
+      _currentPartitionAssignment = Collections.emptySet();
       LOG.error("The set of partitions currently assigned to the metric consumer is empty.");
       return true;
+    }
+
+    // Ensure that reassignment overhead is avoided if partition set of the topic has not changed.
+    if (remotePartitionInfo.size() == _currentPartitionAssignment.size()) {
+      return false;
+    }
+
+    _currentPartitionAssignment = new HashSet<>(remotePartitionInfo.size());
+    for (PartitionInfo partitionInfo : remotePartitionInfo) {
+      _currentPartitionAssignment.add(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
     }
 
     _metricConsumer.assign(_currentPartitionAssignment);
@@ -177,9 +183,12 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     if (bootstrapServers == null) {
       bootstrapServers = (String) configs.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG);
     }
-    _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC_PATTERN);
+    _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC);
     if (_metricReporterTopic == null) {
-      _metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
+      _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC_PATTERN);
+      if (_metricReporterTopic == null) {
+        _metricReporterTopic = CruiseControlMetricsReporterConfig.DEFAULT_CRUISE_CONTROL_METRICS_TOPIC;
+      }
     }
     String groupId = (String) configs.get(METRIC_REPORTER_SAMPLER_GROUP_ID);
     if (groupId == null) {
@@ -198,6 +207,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
     _metricConsumer = new KafkaConsumer<>(consumerProps);
+    _currentPartitionAssignment = Collections.emptySet();
     if (refreshPartitionAssignment()) {
       throw new IllegalStateException("Cruise Control cannot find partitions for the metrics reporter that topic matches "
                                       + _metricReporterTopic + " in the target cluster.");
