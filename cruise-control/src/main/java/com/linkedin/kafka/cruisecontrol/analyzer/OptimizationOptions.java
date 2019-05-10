@@ -86,7 +86,7 @@ public class OptimizationOptions {
   @Override
   public String toString() {
     return String.format("[excludedTopics=%s,excludedBrokersForLeadership=%s,excludedBrokersForReplicaMove=%s,"
-                         + "isTriggeredByGoalViolation=%s,requestedDestinationBrokerIds=%s}", _excludedTopics,
+                         + "isTriggeredByGoalViolation=%s,requestedDestinationBrokerIds=%s]", _excludedTopics,
                          _excludedBrokersForLeadership, _excludedBrokersForReplicaMove, _isTriggeredByGoalViolation,
                          _requestedDestinationBrokerIds);
   }

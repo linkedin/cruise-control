@@ -45,6 +45,7 @@ class SamplingFetcher extends MetricFetcher {
   private final Timer _fetchTimer;
   private final Meter _fetchFailureRate;
   private final MetricDef _metricDef;
+  private final long _timeout;
 
   SamplingFetcher(MetricSampler metricSampler,
                   Cluster cluster,
@@ -72,6 +73,7 @@ class SamplingFetcher extends MetricFetcher {
     _useLinearRegressionModel = useLinearRegressionModel;
     _fetchTimer = fetchTimer;
     _fetchFailureRate = fetchFailureRate;
+    _timeout = System.currentTimeMillis() + (endTimeMs - startTimeMs) / 2;
   }
 
   /**
@@ -103,7 +105,7 @@ class SamplingFetcher extends MetricFetcher {
   private MetricSampler.Samples fetchSamples() throws MetricSamplingException {
     MetricSampler.Samples samples =
         _metricSampler.getSamples(_cluster, _assignedPartitions, _startTimeMs, _endTimeMs,
-                                  MetricSampler.SamplingMode.ALL, _metricDef);
+                                  MetricSampler.SamplingMode.ALL, _metricDef, _timeout);
     if (samples == null) {
       samples = MetricSampler.EMPTY_SAMPLES;
     }

@@ -16,7 +16,7 @@ public class NoopSampler implements MetricSampler {
 
   @Override
   public Samples getSamples(Cluster cluster, Set<TopicPartition> assignedPartitions, long startTimeMs, long endTimeMs,
-                            SamplingMode mode, MetricDef metricDef) throws MetricSamplingException {
+                            SamplingMode mode, MetricDef metricDef, long timeout) throws MetricSamplingException {
     return null;
   }
 
