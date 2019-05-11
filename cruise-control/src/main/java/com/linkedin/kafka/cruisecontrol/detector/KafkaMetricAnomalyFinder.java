@@ -56,12 +56,12 @@ public class KafkaMetricAnomalyFinder extends PercentileMetricAnomalyFinder<Brok
   private KafkaCruiseControl _kafkaCruiseControl;
 
   @Override
-  protected String toMetricName(Integer metricId) {
+  protected String toMetricName(Short metricId) {
     return KafkaMetricDef.brokerMetricDef().metricInfo(metricId).name();
   }
 
   @Override
-  public KafkaMetricAnomaly createMetricAnomaly(String description, BrokerEntity entity, Integer metricId, List<Long> windows) {
+  public KafkaMetricAnomaly createMetricAnomaly(String description, BrokerEntity entity, Short metricId, List<Long> windows) {
     return new KafkaMetricAnomaly(_kafkaCruiseControl, description, entity, metricId, windows);
   }
 

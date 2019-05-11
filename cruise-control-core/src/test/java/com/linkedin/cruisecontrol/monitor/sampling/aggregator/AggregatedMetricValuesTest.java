@@ -16,12 +16,12 @@ public class AggregatedMetricValuesTest {
 
   @Test
   public void testAdd() {
-    Map<Integer, MetricValues> valuesMap = getValuesMap();
+    Map<Short, MetricValues> valuesByMetricId = getValuesByMetricId();
 
-    AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(valuesMap);
+    AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(valuesByMetricId);
     aggregatedMetricValues.add(aggregatedMetricValues);
 
-    for (Map.Entry<Integer, MetricValues> entry : valuesMap.entrySet()) {
+    for (Map.Entry<Short, MetricValues> entry : valuesByMetricId.entrySet()) {
       MetricValues values = entry.getValue();
       for (int j = 0; j < 10; j++) {
         assertEquals(2 * j, values.get(j), 0.01);
@@ -31,28 +31,28 @@ public class AggregatedMetricValuesTest {
 
   @Test
   public void testDeduct() {
-    Map<Integer, MetricValues> valuesMap = getValuesMap();
+    Map<Short, MetricValues> valuesByMetricId = getValuesByMetricId();
 
-    AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(valuesMap);
+    AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(valuesByMetricId);
     aggregatedMetricValues.subtract(aggregatedMetricValues);
 
-    for (Map.Entry<Integer, MetricValues> entry : valuesMap.entrySet()) {
+    for (Map.Entry<Short, MetricValues> entry : valuesByMetricId.entrySet()) {
       MetricValues values = entry.getValue();
       for (int j = 0; j < 10; j++) {
         assertEquals(0, values.get(j), 0.01);
       }
     }
   }
-  
+
   @Test
   public void testAddValuesToEmptyAggregatedMetricValues() {
-    Map<Integer, MetricValues> valuesMap = getValuesMap();
-    
+    Map<Short, MetricValues> valuesByMetricId = getValuesByMetricId();
+
     AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(new HashMap<>());
-    AggregatedMetricValues toBeAdded = new AggregatedMetricValues(valuesMap);
-    
+    AggregatedMetricValues toBeAdded = new AggregatedMetricValues(valuesByMetricId);
+
     aggregatedMetricValues.add(toBeAdded);
-    for (int i = 0; i < 2; i++) {
+    for (short i = 0; i < 2; i++) {
       MetricValues values = aggregatedMetricValues.valuesFor(i);
       for (int j = 0; j < 10; j++) {
         assertEquals(j, values.get(j), 0.01);
@@ -60,10 +60,10 @@ public class AggregatedMetricValuesTest {
     }
   }
 
-  private Map<Integer, MetricValues> getValuesMap() {
-    Map<Integer, MetricValues> valuesMap = new TreeMap<>();
+  private Map<Short, MetricValues> getValuesByMetricId() {
+    Map<Short, MetricValues> valuesMap = new TreeMap<>();
 
-    for (int i = 0; i < 2; i++) {
+    for (short i = 0; i < 2; i++) {
       MetricValues value = new MetricValues(10);
       for (int j = 0; j < 10; j++) {
         value.set(j, j);

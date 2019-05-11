@@ -163,7 +163,7 @@ public class Replica implements Serializable, Comparable<Replica> {
     // All the following metric values are in a shared mode to avoid data copy.
     // Just get the first metric id because CPU only has one metric id in the group. Eventually the per replica
     // CPU utilization will be removed to use resource estimation at broker level.
-    int cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
+    short cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
     AggregatedMetricValues leadershipNwOutLoad = _load.loadFor(Resource.NW_OUT, true);
 
     // Create a leadership load delta to store the load change.
@@ -195,7 +195,7 @@ public class Replica implements Serializable, Comparable<Replica> {
   private MetricValues computeCpuLoadAsFollower(AggregatedMetricValues leadershipNwOutLoad, boolean updateLoad) {
     // Just get the first metric id because CPU only has one metric id in the group. Eventually the per replica
     // CPU utilization will be removed to use resource estimation at broker level.
-    int cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
+    short cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
     // Use the shared data structure so we can set the load directly.
     MetricValues cpuLoad = _load.loadFor(Resource.CPU, true).valuesFor(cpuMetricId);
     AggregatedMetricValues leadershipNwInLoad = _load.loadFor(Resource.NW_IN, true);

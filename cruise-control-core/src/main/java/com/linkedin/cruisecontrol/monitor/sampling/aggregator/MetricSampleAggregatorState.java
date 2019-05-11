@@ -101,8 +101,8 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
    * @param numWindowIndexesToReset the number of windows to reset.
    */
   synchronized void resetWindowIndexes(long startingWindowIndex, int numWindowIndexesToReset) {
-    if (inValidRange(startingWindowIndex)
-        || inValidRange(startingWindowIndex + numWindowIndexesToReset - 1)) {
+    if (inValidWindowRange(startingWindowIndex)
+        || inValidWindowRange(startingWindowIndex + numWindowIndexesToReset - 1)) {
       throw new IllegalStateException("Should never reset a window index that is in the valid range");
     }
     if (LOG.isDebugEnabled()) {
@@ -124,7 +124,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
   }
 
   /**
-   * Get the list of window indexes that need to be updated based on the current generation.
+   * Get the list of window indices that need to be updated based on the current generation.
    * This method also removes the windows that are older than the oldestWindowIndex from the the internal state
    * of this class.
    *
@@ -132,19 +132,19 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
    * @param currentWindowIndex the index fo the current window in the MetricSampleAggregator.
    * @return A list of window indexes that need to be updated.
    */
-  synchronized List<Long> windowIndexesToUpdate(long oldestWindowIndex, long currentWindowIndex) {
-    List<Long> windowIndexesToUpdate = new ArrayList<>();
-    for (long windowIdx = oldestWindowIndex; windowIdx < currentWindowIndex; windowIdx++) {
-      WindowState windowState = _windowStates.get(windowIdx);
-      int arrayIndex = arrayIndex(windowIdx);
+  synchronized List<Long> windowIndicesToUpdate(long oldestWindowIndex, long currentWindowIndex) {
+    List<Long> windowIndicesToUpdate = new ArrayList<>();
+    for (long windowIndex = oldestWindowIndex; windowIndex < currentWindowIndex; windowIndex++) {
+      WindowState windowState = _windowStates.get(windowIndex);
+      int arrayIndex = arrayIndex(windowIndex);
       if (windowState == null || _windowGenerations[arrayIndex].get() > windowState.generation()) {
-        windowIndexesToUpdate.add(windowIdx);
+        windowIndicesToUpdate.add(windowIndex);
       }
     }
     while (!_windowStates.isEmpty() && _windowStates.lastKey() < oldestWindowIndex) {
       _windowStates.remove(_windowStates.lastKey());
     }
-    return windowIndexesToUpdate;
+    return windowIndicesToUpdate;
   }
 
   /**

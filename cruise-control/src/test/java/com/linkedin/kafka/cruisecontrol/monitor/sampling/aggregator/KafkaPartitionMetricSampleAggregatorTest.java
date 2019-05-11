@@ -78,7 +78,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     for (int i = 0; i < NUM_WINDOWS; i++) {
       assertEquals((NUM_WINDOWS - i) * WINDOW_MS, result.valuesAndExtrapolations().get(PE).window(i));
       for (Resource resource : Resource.cachedValues()) {
-        Collection<Integer> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
+        Collection<Short> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
         double expectedValue = (resource == Resource.DISK ?
             (NUM_WINDOWS - 1 - i) * 10 + MIN_SAMPLES_PER_WINDOW - 1 :
             (NUM_WINDOWS - 1 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0) * metricIds.size();
@@ -320,7 +320,7 @@ public class KafkaPartitionMetricSampleAggregatorTest {
                               .valuesAndExtrapolations();
     ValuesAndExtrapolations partitionValuesAndExtrapolations = valuesAndExtrapolations.get(PE);
     for (Resource resource : Resource.cachedValues()) {
-      Collection<Integer> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
+      Collection<Short> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
       double expectedValue = (resource == Resource.DISK ?
           MIN_SAMPLES_PER_WINDOW - 1 : (MIN_SAMPLES_PER_WINDOW - 1) / 2.0) * metricIds.size();
       assertEquals("The utilization for " + resource + " should be " + expectedValue,

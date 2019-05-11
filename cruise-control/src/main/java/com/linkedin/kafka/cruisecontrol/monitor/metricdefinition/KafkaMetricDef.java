@@ -103,12 +103,13 @@ public enum KafkaMetricDef {
   private final DefScope _defScope;
   private final boolean _toPredict;
   private static final Map<RawMetricType, KafkaMetricDef> TYPE_TO_DEF = new HashMap<>();
-  private static final MetricDef COMMON_METRIC_DEF = buildCommonMetricDef();
-  private static final MetricDef BROKER_METRIC_DEF = buildBrokerMetricDef();
   private static final List<KafkaMetricDef> CACHED_VALUES =
       Collections.unmodifiableList(Arrays.asList(KafkaMetricDef.values()));
   private static final List<KafkaMetricDef> CACHED_COMMON_DEF_VALUES = buildCachedCommonDefValues();
   private static final List<KafkaMetricDef> CACHED_BROKER_DEF_VALUES = CACHED_VALUES;
+  // Ensure that COMMON_METRIC_DEF and BROKER_METRIC_DEF are created after CACHED_COMMON_DEF_VALUES and CACHED_BROKER_DEF_VALUES
+  private static final MetricDef COMMON_METRIC_DEF = buildCommonMetricDef();
+  private static final MetricDef BROKER_METRIC_DEF = buildBrokerMetricDef();
 
   static {
     // Topic raw metrics
@@ -227,7 +228,7 @@ public enum KafkaMetricDef {
     return TYPE_TO_DEF.get(type);
   }
 
-  public static int commonMetricDefId(KafkaMetricDef def) {
+  public static short commonMetricDefId(KafkaMetricDef def) {
     return COMMON_METRIC_DEF.metricInfo(def.name()).id();
   }
 
@@ -247,8 +248,8 @@ public enum KafkaMetricDef {
     return commonMetricDef().metricInfoForGroup(resource.name());
   }
 
-  public static List<Integer> resourceToMetricIds(Resource resource) {
-    List<Integer> metricIds = new ArrayList<>();
+  public static List<Short> resourceToMetricIds(Resource resource) {
+    List<Short> metricIds = new ArrayList<>();
     resourceToMetricInfo(resource).forEach(info -> metricIds.add(info.id()));
     return metricIds;
   }
@@ -271,18 +272,16 @@ public enum KafkaMetricDef {
 
   private static MetricDef buildCommonMetricDef() {
     MetricDef metricDef = new MetricDef();
-    for (KafkaMetricDef def : KafkaMetricDef.values()) {
-      if (def._defScope == COMMON) {
-        // Add the common metrics definitions to the common metric def.
-        metricDef.define(def.name(), def.group(), def.valueComputingStrategy().name(), def._toPredict);
-      }
+    for (KafkaMetricDef def : CACHED_COMMON_DEF_VALUES) {
+      // Add the common metrics definitions to the common metric def.
+      metricDef.define(def.name(), def.group(), def.valueComputingStrategy().name(), def._toPredict);
     }
     return metricDef;
   }
 
   private static MetricDef buildBrokerMetricDef() {
     MetricDef metricDef = new MetricDef();
-    for (KafkaMetricDef def : KafkaMetricDef.values()) {
+    for (KafkaMetricDef def : CACHED_BROKER_DEF_VALUES) {
       // Add the all metrics definitions to the broker metric def.
       metricDef.define(def.name(), def.group(), def.valueComputingStrategy().name(), def._toPredict);
     }

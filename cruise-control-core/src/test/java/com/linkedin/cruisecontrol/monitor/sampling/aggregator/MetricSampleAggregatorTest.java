@@ -36,7 +36,7 @@ public class MetricSampleAggregatorTest {
   private static final float EPSILON = 0.01f;
   private static final int NUM_WINDOWS = 20;
   private static final long WINDOW_MS = 1000L;
-  private static final int MIN_SAMPLES_PER_WINDOW = 4;
+  private static final byte MIN_SAMPLES_PER_WINDOW = 4;
   private static final String ENTITY_GROUP_1 = "g1";
   private static final String ENTITY_GROUP_2 = "g2";
   private static final IntegerEntity ENTITY1 = new IntegerEntity(ENTITY_GROUP_1, 1234);
@@ -202,7 +202,7 @@ public class MetricSampleAggregatorTest {
   }
 
   @Test
-  public void testAggregationOption1() throws NotEnoughValidWindowsException {
+  public void testAggregationOption1() {
     MetricSampleAggregator<String, IntegerEntity> aggregator = prepareCompletenessTestEnv();
 
     // Let the group coverage to be 1
@@ -367,14 +367,14 @@ public class MetricSampleAggregatorTest {
   public void testConcurrency() throws NotEnoughValidWindowsException {
     final int numThreads = 10;
     final int numEntities = 5;
-    final int samplesPerWindow = 100;
+    final int samplesPerWindow = 6;
     final int numRandomEntities = 10;
 
     // We set the minimum number of samples per window to be the total number of samples to insert.
     // So when there is a sample got lost we will fail to collect enough window.
     final MetricSampleAggregator<String, IntegerEntity> aggregator =
         new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS,
-                                     samplesPerWindow * numThreads * (numRandomEntities / numEntities),
+                                     (byte) (samplesPerWindow * numThreads * (numRandomEntities / numEntities)),
                                      0, _metricDef);
 
     final Random random = new Random();

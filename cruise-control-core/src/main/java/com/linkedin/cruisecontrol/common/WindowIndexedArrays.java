@@ -40,29 +40,29 @@ public abstract class WindowIndexedArrays {
    *
    * @param windowIndex the window index to check.
    */
-  protected void validateIndex(long windowIndex) {
-    if (!inValidRange(windowIndex)) {
+  protected void validateWindowIndex(long windowIndex) {
+    if (!inValidWindowRange(windowIndex)) {
       throw new IllegalArgumentException(String.format("Index %d is out of range [%d, %d]", windowIndex,
-                                                       _oldestWindowIndex, currentWindowIndex() - 1));
+                                                       _oldestWindowIndex, lastWindowIndex()));
     }
   }
 
   /**
    * The previous array index of a given array index. This method handles the wrapping at the circular buffer edge.
-   * @param idx the array index to get the previous array index for.
+   * @param arrayIndex the array index to get the previous array index for.
    * @return the previous array index if exists, {@link #INVALID_INDEX} otherwise.
    */
-  protected int prevIdx(int idx) {
-    return idx == firstIdx() ? INVALID_INDEX : (idx + length() - 1) % length();
+  protected int prevArrayIndex(int arrayIndex) {
+    return arrayIndex == firstArrayIndex() ? INVALID_INDEX : (arrayIndex + length() - 1) % length();
   }
 
   /**
    * The next array index of a given array index. This method handles the wrapping at the circular buffer edge.
-   * @param idx the array index to get the next array index for.
+   * @param arrayIndex the array index to get the next array index for.
    * @return the next array index if exists, {@link #INVALID_INDEX} otherwise.
    */
-  protected int nextIdx(int idx) {
-    return idx == lastIdx() ? INVALID_INDEX : (idx + 1) % length();
+  protected int nextArrayIndex(int arrayIndex) {
+    return arrayIndex == lastArrayIndex() ? INVALID_INDEX : (arrayIndex + 1) % length();
   }
 
   /**
@@ -70,18 +70,22 @@ public abstract class WindowIndexedArrays {
    * index.
    * @return the first array index in the circular array.
    */
-  protected int firstIdx() {
+  protected int firstArrayIndex() {
     return arrayIndex(_oldestWindowIndex);
   }
 
   /**
-   * Get the last array index in the circular array. The last index is the array index of last stable window index.
-   * i.e. the array index of (current_window_index - 1)
-   *
-   * @return the last index in the circular array.
+   * @return the last array index in the circular array corresponding to {@link #lastWindowIndex()}.
    */
-  protected int lastIdx() {
-    return arrayIndex(currentWindowIndex() - 1);
+  protected int lastArrayIndex() {
+    return arrayIndex(lastWindowIndex());
+  }
+
+  /**
+   * @return the last stable window index -- i.e. {@link #currentWindowIndex()} - 1.
+   */
+  protected long lastWindowIndex() {
+    return currentWindowIndex() - 1;
   }
 
   /**
@@ -91,8 +95,8 @@ public abstract class WindowIndexedArrays {
    * @param windowIndex the window index to check.
    * @return true if the window index is valid, false otherwise.
    */
-  protected boolean inValidRange(long windowIndex) {
-    return windowIndex >= _oldestWindowIndex && windowIndex <= currentWindowIndex() - 1;
+  protected boolean inValidWindowRange(long windowIndex) {
+    return windowIndex >= _oldestWindowIndex && windowIndex <= lastWindowIndex();
   }
 
   /**

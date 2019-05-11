@@ -1339,8 +1339,31 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     long metadataTimeoutMs = getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
     if (metadataTimeoutMs >  samplingPeriodMs) {
       throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs +
-          "] to be longer than sampling period [" + samplingPeriodMs + "].");
+                                "] to be longer than sampling period [" + samplingPeriodMs + "].");
     }
+
+    // Ensure that the sampling frequency per partition window is within the limits.
+    long partitionSampleWindowMs = getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
+    short partitionSamplingFrequency = (short) (partitionSampleWindowMs / samplingPeriodMs);
+    if (partitionSamplingFrequency > Byte.MAX_VALUE) {
+      throw new ConfigException(String.format("Configured sampling frequency (%d) exceeds the maximum allowed value (%d). "
+                                              + "Decrease the value of %s or increase the value of %s to ensure that their"
+                                              + " ratio is under this limit.", partitionSamplingFrequency, Byte.MAX_VALUE,
+                                              KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG,
+                                              KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+    }
+
+    // Ensure that the sampling frequency per broker window is within the limits.
+    long brokerSampleWindowMs = getLong(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG);
+    short brokerSamplingFrequency = (short) (brokerSampleWindowMs / samplingPeriodMs);
+    if (brokerSamplingFrequency > Byte.MAX_VALUE) {
+      throw new ConfigException(String.format("Configured sampling frequency (%d) exceeds the maximum allowed value (%d). "
+                                              + "Decrease the value of %s or increase the value of %s to ensure that their"
+                                              + " ratio is under this limit.", brokerSamplingFrequency, Byte.MAX_VALUE,
+                                              KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG,
+                                              KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+    }
+
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals) {

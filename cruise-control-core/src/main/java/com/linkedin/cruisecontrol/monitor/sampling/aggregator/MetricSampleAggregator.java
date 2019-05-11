@@ -89,7 +89,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
 
   protected final ConcurrentMap<E, E> _identityEntityMap;
   protected final int _numWindows;
-  protected final int _minSamplesPerWindow;
+  protected final byte _minSamplesPerWindow;
   protected final int _numWindowsToKeep;
   protected final long _windowMs;
   protected final long _monitoringPeriodMs;
@@ -111,7 +111,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
    */
   public MetricSampleAggregator(int numWindows,
                                 long windowMs,
-                                int minSamplesPerWindow,
+                                byte minSamplesPerWindow,
                                 int completenessCacheSize,
                                 MetricDef metricDef) {
     super(0);
@@ -154,7 +154,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
           // the raw values was created in an existing window while a new window is being rolled out.
           _windowRollingLock.lock();
           try {
-            RawMetricValues rawValues = new RawMetricValues(_numWindowsToKeep, _minSamplesPerWindow);
+            RawMetricValues rawValues = new RawMetricValues(_numWindowsToKeep, _minSamplesPerWindow, _metricDef.size());
             rawValues.updateOldestWindowIndex(_oldestWindowIndex);
             return rawValues;
           } finally {
@@ -444,20 +444,21 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
 
   private void maybeUpdateAggregatorState() {
     long currentGeneration = generation();
-    for (long windowIdx : _aggregatorState.windowIndexesToUpdate(_oldestWindowIndex, _currentWindowIndex)) {
-      _aggregatorState.updateWindowState(windowIdx, getWindowState(windowIdx, currentGeneration));
+    for (long windowIndex : _aggregatorState.windowIndicesToUpdate(_oldestWindowIndex, _currentWindowIndex)) {
+      _aggregatorState.updateWindowState(windowIndex, getWindowState(windowIndex, currentGeneration));
     }
   }
 
-  private WindowState<G, E> getWindowState(long windowIdx, long currentGeneration) {
+  private WindowState<G, E> getWindowState(long windowIndex, long currentGeneration) {
     WindowState<G, E> windowState = new WindowState<>(currentGeneration);
     for (Map.Entry<E, RawMetricValues> entry : _rawMetrics.entrySet()) {
       E entity = entry.getKey();
       RawMetricValues rawValues = entry.getValue();
-      if (rawValues.isExtrapolatedAtWindowIndex(windowIdx)) {
+      rawValues.sanityCheckWindowIndex(windowIndex);
+      if (rawValues.isExtrapolatedAtWindowIndex(windowIndex)) {
         windowState.addExtrapolatedEntities(entity);
       }
-      if (rawValues.isValidAtWindowIndex(windowIdx)) {
+      if (rawValues.isValidAtWindowIndex(windowIndex)) {
         windowState.addValidEntities(entity);
       }
     }

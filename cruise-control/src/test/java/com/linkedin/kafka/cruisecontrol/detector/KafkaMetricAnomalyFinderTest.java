@@ -84,14 +84,14 @@ public class KafkaMetricAnomalyFinderTest {
    * metric values: [numValues, numValues - 1, ..., 1.0]
    */
   private ValuesAndExtrapolations createHistoryValuesAndExtrapolations(int numValues) {
-    Map<Integer, MetricValues> valuesByMetricId = new HashMap<>();
+    Map<Short, MetricValues> valuesByMetricId = new HashMap<>();
     MetricValues historicalMetricValues = new MetricValues(numValues);
     double[] values = new double[numValues];
     for (int i = 0; i < values.length; i++) {
       values[i] = numValues - i;
     }
     historicalMetricValues.add(values);
-    valuesByMetricId.put(55, historicalMetricValues);
+    valuesByMetricId.put((short) 55, historicalMetricValues);
 
     AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(valuesByMetricId);
     ValuesAndExtrapolations historyValuesAndExtrapolations = new ValuesAndExtrapolations(aggregatedMetricValues, null);
@@ -121,11 +121,11 @@ public class KafkaMetricAnomalyFinderTest {
    * metric values: [value]
    */
   private ValuesAndExtrapolations createCurrentValuesAndExtrapolations(long window, double value) {
-    Map<Integer, MetricValues> valuesByMetricId = new HashMap<>();
+    Map<Short, MetricValues> valuesByMetricId = new HashMap<>();
     MetricValues currentMetricValues = new MetricValues(1);
     double[] values = new double[] {value};
     currentMetricValues.add(values);
-    valuesByMetricId.put(55, currentMetricValues);
+    valuesByMetricId.put((short) 55, currentMetricValues);
 
     AggregatedMetricValues aggregatedMetricValues = new AggregatedMetricValues(valuesByMetricId);
     ValuesAndExtrapolations currentValuesAndExtrapolations = new ValuesAndExtrapolations(aggregatedMetricValues, null);
