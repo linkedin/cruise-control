@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
@@ -504,10 +505,16 @@ public class Executor {
       _state = NO_TASK_IN_PROGRESS;
       _executionStartMs = _time.milliseconds();
       _executionException = null;
-      if (_userTaskManager == null) {
-        throw new IllegalStateException("UserTaskManager not set, cannot retrieve UserTaskInfo");
+
+      // If the task is triggered from a user request, retrieve the task information from user task manager.
+      if (AnomalyType.cachedValues().stream().anyMatch(type -> _uuid.startsWith(type.toString()))) {
+        _userTaskInfo = null;
+      } else {
+        if (_userTaskManager == null) {
+          throw new IllegalStateException("UserTaskManager not set, cannot retrieve UserTaskInfo");
+        }
+        _userTaskInfo =  _userTaskManager.getUserTaskById(_uuid);
       }
-      _userTaskInfo = _userTaskManager.getUserTaskById(_uuid);
 
       if (demotedBrokers != null) {
         // Add/overwrite the latest demotion time of demoted brokers (if any).
