@@ -85,12 +85,12 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
   /**
    * Update the state of a window.
    *
-   * @param windowIdx the index of the window to update.
+   * @param windowIndex the index of the window to update.
    * @param windowState the new state of the window.
    */
-  synchronized void updateWindowState(long windowIdx, WindowState<G, E> windowState) {
-    if (windowIdx >= _oldestWindowIndex) {
-      _windowStates.put(windowIdx, windowState);
+  synchronized void updateWindowState(long windowIndex, WindowState<G, E> windowState) {
+    if (windowIndex >= _oldestWindowIndex) {
+      _windowStates.put(windowIndex, windowState);
     }
   }
 
@@ -98,19 +98,19 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
    * Clear the state of a given number of windows starting at the given window index.
    *
    * @param startingWindowIndex the starting index of the windows to reset.
-   * @param numWindowIndexesToReset the number of windows to reset.
+   * @param numWindowIndicesToReset the number of windows to reset.
    */
-  synchronized void resetWindowIndexes(long startingWindowIndex, int numWindowIndexesToReset) {
+  synchronized void resetWindowIndices(long startingWindowIndex, int numWindowIndicesToReset) {
     if (inValidWindowRange(startingWindowIndex)
-        || inValidWindowRange(startingWindowIndex + numWindowIndexesToReset - 1)) {
+        || inValidWindowRange(startingWindowIndex + numWindowIndicesToReset - 1)) {
       throw new IllegalStateException("Should never reset a window index that is in the valid range");
     }
     if (LOG.isDebugEnabled()) {
       LOG.debug("Resetting window index [{}, {}]", startingWindowIndex,
-                startingWindowIndex + numWindowIndexesToReset - 1);
+                startingWindowIndex + numWindowIndicesToReset - 1);
     }
     // We are resetting all the data here.
-    for (long wi = startingWindowIndex; wi < startingWindowIndex + numWindowIndexesToReset; wi++) {
+    for (long wi = startingWindowIndex; wi < startingWindowIndex + numWindowIndicesToReset; wi++) {
       // It is important to synchronize on all the window generation here, so that no thread will miss the reset.
       // The assumption is that in the MetricSampleAggregator, the oldest window has been updated, and the
       // new windows have not been rolled out yet, so resetting these windows will be safe, i.e. none of the
@@ -130,7 +130,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
    *
    * @param oldestWindowIndex the index of the oldest window in the MetricSampleAggregator.
    * @param currentWindowIndex the index fo the current window in the MetricSampleAggregator.
-   * @return A list of window indexes that need to be updated.
+   * @return A list of window indices that need to be updated.
    */
   synchronized List<Long> windowIndicesToUpdate(long oldestWindowIndex, long currentWindowIndex) {
     List<Long> windowIndicesToUpdate = new ArrayList<>();
@@ -219,17 +219,17 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
     completeness.addValidEntityGroups(new HashSet<>(options.interestedEntityGroups()));
 
     for (Map.Entry<Long, WindowState<G, E>> entry : _windowStates.entrySet()) {
-      long windowIdx = entry.getKey();
-      if (windowIdx > toWindowIndex) {
+      long windowIndex = entry.getKey();
+      if (windowIndex > toWindowIndex) {
         continue;
-      } else if (windowIdx < fromWindowIndex) {
+      } else if (windowIndex < fromWindowIndex) {
         break;
       }
       WindowState<G, E> windowState = entry.getValue();
-      windowState.maybeInclude(windowIdx, completeness, entityExtrapolations, options);
+      windowState.maybeInclude(windowIndex, completeness, entityExtrapolations, options);
     }
     // No window is included. We need to clear the valid entity and entity group. Otherwise we keep them.
-    if (completeness.validWindowIndexes().isEmpty()) {
+    if (completeness.validWindowIndices().isEmpty()) {
       completeness.retainAllValidEntities(Collections.emptySet());
       completeness.retainAllValidEntityGroups(Collections.emptySet());
     }

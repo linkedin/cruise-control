@@ -564,10 +564,10 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     return new TestContext(metadata, aggregator);
   }
 
-  private void assertValidWindows(SortedSet<Long> actualValidWindows, int firstValidWindowIndex, Collection<Integer> invalidWindowIndexes) {
+  private void assertValidWindows(SortedSet<Long> actualValidWindows, int firstValidWindowIndex, Collection<Integer> invalidWindowIndices) {
     int windowIndex = firstValidWindowIndex;
     for (long window : actualValidWindows) {
-      while (invalidWindowIndexes.contains(windowIndex)) {
+      while (invalidWindowIndices.contains(windowIndex)) {
         windowIndex--;
       }
       assertEquals(windowIndex * WINDOW_MS, window);

@@ -72,13 +72,11 @@ public class RawMetricValues extends WindowIndexedArrays {
    */
   private void maybeUpdateValidityAndExtrapolationOfPrevAndNextFor(int arrayIndex) {
     if (_counts[arrayIndex] >= _minSamplesPerWindow) {
-      _extrapolations.clear(arrayIndex);
       // If this index has two left neighbour indices, we may need to update the extrapolation of the previous index
-      // with AvgAdjacent. We need to exclude the current window index. It will be included when new windows get
-      // rolled out.
+      // with AvgAdjacent. We need to exclude the current window index. It will be included when new windows get rolled out.
       if (arrayIndex != arrayIndex(currentWindowIndex()) && hasTwoLeftNeighbours(arrayIndex)) {
         int prevArrayIndex = prevArrayIndex(arrayIndex);
-        if (_counts[prevArrayIndex] < _halfMinRequiredSamples) {
+        if (_counts[prevArrayIndex] == 0) {
           updateAvgAdjacent(prevArrayIndex);
         }
       }
@@ -86,7 +84,7 @@ public class RawMetricValues extends WindowIndexedArrays {
       // Adding sample to the current window index has no next index to update.
       if (hasTwoRightNeighbours(arrayIndex)) {
         int nextArrayIndex = nextArrayIndex(arrayIndex);
-        if (_counts[nextArrayIndex] < _halfMinRequiredSamples) {
+        if (_counts[nextArrayIndex] == 0) {
           updateAvgAdjacent(nextArrayIndex);
         }
       }
@@ -167,10 +165,10 @@ public class RawMetricValues extends WindowIndexedArrays {
    */
   public synchronized boolean isValid(int maxAllowedWindowsWithExtrapolation) {
     int currentArrayIndex = arrayIndex(currentWindowIndex());
-    // The total number of valid window indexes should exclude the current window index.
+    // The total number of valid window indices should exclude the current window index.
     int numValidIndicesAdjustment = _validity.get(currentArrayIndex) ? 1 : 0;
     boolean allIndicesValid = _validity.cardinality() - numValidIndicesAdjustment == _counts.length - 1;
-    // All indexes should be valid and should not have more than maxAllowedWindowsWithExtrapolation extrapolations.
+    // All indices should be valid and should not have more than maxAllowedWindowsWithExtrapolation extrapolations.
     return allIndicesValid && numWindowsWithExtrapolation() <= maxAllowedWindowsWithExtrapolation;
   }
 
@@ -220,17 +218,17 @@ public class RawMetricValues extends WindowIndexedArrays {
    * Clear the state of a given number of windows starting at the given window index.
    *
    * @param startingWindowIndex the starting index of the windows to reset.
-   * @param numWindowIndexesToReset the number of windows to reset.
+   * @param numWindowIndicesToReset the number of windows to reset.
    * @return number of samples abandoned in window clearing process. The abandoned samples are samples in the windows which get reset.
    */
-  public synchronized int resetWindowIndexes(long startingWindowIndex, int numWindowIndexesToReset) {
+  public synchronized int resetWindowIndices(long startingWindowIndex, int numWindowIndicesToReset) {
     if (inValidWindowRange(startingWindowIndex)
-        || inValidWindowRange(startingWindowIndex + numWindowIndexesToReset - 1)) {
+        || inValidWindowRange(startingWindowIndex + numWindowIndicesToReset - 1)) {
       throw new IllegalStateException("Should never reset a window index that is in the valid range");
     }
     // We are not resetting all the data here. The data will be interpreted to 0 if count is 0.
     int numAbandonedSamples = 0;
-    for (long i = startingWindowIndex; i < startingWindowIndex + numWindowIndexesToReset; i++) {
+    for (long i = startingWindowIndex; i < startingWindowIndex + numWindowIndicesToReset; i++) {
       int arrayIndex = arrayIndex(i);
       numAbandonedSamples += _counts[arrayIndex];
       _counts[arrayIndex] = 0;
@@ -238,7 +236,7 @@ public class RawMetricValues extends WindowIndexedArrays {
     }
     if (LOG.isTraceEnabled()) {
       LOG.trace("Resetting window index [{}, {}], abandon {} samples.", startingWindowIndex,
-                startingWindowIndex + numWindowIndexesToReset - 1, numAbandonedSamples);
+                startingWindowIndex + numWindowIndicesToReset - 1, numAbandonedSamples);
     }
     return numAbandonedSamples;
   }
@@ -247,12 +245,12 @@ public class RawMetricValues extends WindowIndexedArrays {
    * Get the aggregated values of the given sorted set of windows. The result {@link ValuesAndExtrapolations} contains
    * the windows in the same order.
    *
-   * @param windowIndexes the sorted set of windows to get values for.
+   * @param windowIndices the sorted set of windows to get values for.
    * @param metricDef the metric definitions.
    * @return the aggregated values and extrapolations of the given sorted set of windows in that order.
    */
-  public synchronized ValuesAndExtrapolations aggregate(SortedSet<Long> windowIndexes, MetricDef metricDef) {
-    return aggregate(windowIndexes, metricDef, true);
+  public synchronized ValuesAndExtrapolations aggregate(SortedSet<Long> windowIndices, MetricDef metricDef) {
+    return aggregate(windowIndices, metricDef, true);
   }
 
   /**
@@ -267,9 +265,9 @@ public class RawMetricValues extends WindowIndexedArrays {
     return aggregate(window, metricDef, false);
   }
 
-  private ValuesAndExtrapolations aggregate(SortedSet<Long> windowIndexes, MetricDef metricDef, boolean checkWindow) {
+  private ValuesAndExtrapolations aggregate(SortedSet<Long> windowIndices, MetricDef metricDef, boolean checkWindow) {
     if (_windowValuesByMetricId.isEmpty()) {
-      return ValuesAndExtrapolations.empty(windowIndexes.size(), metricDef);
+      return ValuesAndExtrapolations.empty(windowIndices.size(), metricDef);
     }
     Map<Short, MetricValues> aggValues = new HashMap<>(_windowValuesByMetricId.size());
     SortedMap<Integer, Extrapolation> extrapolations = new TreeMap<>();
@@ -278,11 +276,11 @@ public class RawMetricValues extends WindowIndexedArrays {
       float[] values = entry.getValue();
       MetricInfo info = metricDef.metricInfo(metricId);
 
-      MetricValues aggValuesForMetric = new MetricValues(windowIndexes.size());
+      MetricValues aggValuesForMetric = new MetricValues(windowIndices.size());
       aggValues.put(metricId, aggValuesForMetric);
 
       int resultIndex = 0;
-      for (long windowIndex : windowIndexes) {
+      for (long windowIndex : windowIndices) {
         // When we query the latest window, we need to skip the window validation because the valid windows do not
         // include the current active window.
         if (checkWindow) {
@@ -290,14 +288,14 @@ public class RawMetricValues extends WindowIndexedArrays {
         }
         int arrayIndex = arrayIndex(windowIndex);
         // Sufficient samples
-        if (_counts[arrayIndex] >= _minSamplesPerWindow) {
+        if (_counts[arrayIndex] >= _halfMinRequiredSamples) {
           aggValuesForMetric.set(resultIndex, getValue(info, arrayIndex, values));
-        // Not quite sufficient, but have some available.
-        } else if (_counts[arrayIndex] >= _halfMinRequiredSamples) {
-          extrapolations.putIfAbsent(resultIndex, Extrapolation.AVG_AVAILABLE);
-          aggValuesForMetric.set(resultIndex, getValue(info, arrayIndex, values));
-        // Not sufficient, check the neighbors. The neighbors only exist when the index is not on the edge, i.e
-        // neither the first nor last index.
+          if (_counts[arrayIndex] < _minSamplesPerWindow) {
+            // Though not quite sufficient, but have some available.
+            extrapolations.putIfAbsent(resultIndex, Extrapolation.AVG_AVAILABLE);
+          }
+          // Not sufficient, check the neighbors. The neighbors only exist when the index is not on the edge, i.e.
+          // neither the first nor last index.
         } else if (arrayIndex != firstArrayIndex() && arrayIndex != lastArrayIndex()
                    && _counts[prevArrayIndex(arrayIndex)] >= _minSamplesPerWindow
                    && _counts[nextArrayIndex(arrayIndex)] >= _minSamplesPerWindow) {

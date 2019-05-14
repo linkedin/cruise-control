@@ -5,7 +5,7 @@
 package com.linkedin.cruisecontrol.common;
 
 /**
- * This class helps maintain the window indexes in circular arrays.
+ * This class helps maintain the window indices in circular arrays.
  *
  * The default methods assumes there are N + 1 windows, where there are N stable windows and one current active window.
  * The active window is not considered as visible to the users, i.e. it is not a valid window index to query.

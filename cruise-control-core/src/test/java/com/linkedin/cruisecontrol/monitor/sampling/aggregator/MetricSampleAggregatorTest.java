@@ -212,7 +212,7 @@ public class MetricSampleAggregatorTest {
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness =
         aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertTrue(completeness.validWindowIndexes().isEmpty());
+    assertTrue(completeness.validWindowIndices().isEmpty());
     assertTrue(completeness.validEntities().isEmpty());
     assertTrue(completeness.validEntityGroups().isEmpty());
     assertCompletenessByWindowIndex(completeness);
@@ -227,10 +227,10 @@ public class MetricSampleAggregatorTest {
                                  new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(17, completeness.validWindowIndexes().size());
-    assertFalse(completeness.validWindowIndexes().contains(3L));
-    assertFalse(completeness.validWindowIndexes().contains(4L));
-    assertFalse(completeness.validWindowIndexes().contains(20L));
+    assertEquals(17, completeness.validWindowIndices().size());
+    assertFalse(completeness.validWindowIndices().contains(3L));
+    assertFalse(completeness.validWindowIndices().contains(4L));
+    assertFalse(completeness.validWindowIndices().contains(20L));
     assertEquals(2, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY1));
     assertTrue(completeness.validEntities().contains(ENTITY3));
@@ -249,10 +249,10 @@ public class MetricSampleAggregatorTest {
                                  AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(17, completeness.validWindowIndexes().size());
-    assertFalse(completeness.validWindowIndexes().contains(3L));
-    assertFalse(completeness.validWindowIndexes().contains(4L));
-    assertFalse(completeness.validWindowIndexes().contains(20L));
+    assertEquals(17, completeness.validWindowIndices().size());
+    assertFalse(completeness.validWindowIndices().contains(3L));
+    assertFalse(completeness.validWindowIndices().contains(4L));
+    assertFalse(completeness.validWindowIndices().contains(20L));
     assertEquals(2, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY1));
     assertTrue(completeness.validEntities().contains(ENTITY3));
@@ -271,7 +271,7 @@ public class MetricSampleAggregatorTest {
                                  AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(17, completeness.validWindowIndexes().size());
+    assertEquals(17, completeness.validWindowIndices().size());
     assertEquals(2, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY1));
     assertTrue(completeness.validEntities().contains(ENTITY3));
@@ -289,7 +289,7 @@ public class MetricSampleAggregatorTest {
                                  new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertTrue(completeness.validWindowIndexes().isEmpty());
+    assertTrue(completeness.validWindowIndices().isEmpty());
     assertTrue(completeness.validEntities().isEmpty());
     assertTrue(completeness.validEntityGroups().isEmpty());
     assertCompletenessByWindowIndex(completeness);
@@ -305,10 +305,10 @@ public class MetricSampleAggregatorTest {
                                  new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(17, completeness.validWindowIndexes().size());
-    assertFalse(completeness.validWindowIndexes().contains(3L));
-    assertFalse(completeness.validWindowIndexes().contains(4L));
-    assertFalse(completeness.validWindowIndexes().contains(20L));
+    assertEquals(17, completeness.validWindowIndices().size());
+    assertFalse(completeness.validWindowIndices().contains(3L));
+    assertFalse(completeness.validWindowIndices().contains(4L));
+    assertFalse(completeness.validWindowIndices().contains(20L));
     assertEquals(1, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY3));
     assertEquals(1, completeness.validEntityGroups().size());
@@ -327,11 +327,11 @@ public class MetricSampleAggregatorTest {
                                  new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(16, completeness.validWindowIndexes().size());
-    assertFalse(completeness.validWindowIndexes().contains(3L));
-    assertFalse(completeness.validWindowIndexes().contains(4L));
-    assertFalse(completeness.validWindowIndexes().contains(20L));
-    assertFalse(completeness.validWindowIndexes().contains(11L));
+    assertEquals(16, completeness.validWindowIndices().size());
+    assertFalse(completeness.validWindowIndices().contains(3L));
+    assertFalse(completeness.validWindowIndices().contains(4L));
+    assertFalse(completeness.validWindowIndices().contains(20L));
+    assertFalse(completeness.validWindowIndices().contains(11L));
     assertEquals(2, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY1));
     assertTrue(completeness.validEntities().contains(ENTITY3));

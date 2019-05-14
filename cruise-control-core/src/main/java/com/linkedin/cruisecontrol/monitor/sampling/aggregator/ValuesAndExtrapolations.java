@@ -22,7 +22,7 @@ public class ValuesAndExtrapolations {
   /**
    * Construct the values and extrapolations.
    * @param metricValues the metric values.
-   * @param extrapolations the extrapolations by corresponding metric value indexes.
+   * @param extrapolations the extrapolations by corresponding metric value indices.
    */
   public ValuesAndExtrapolations(AggregatedMetricValues metricValues, Map<Integer, Extrapolation> extrapolations) {
     _metricValues = metricValues;
@@ -43,7 +43,7 @@ public class ValuesAndExtrapolations {
   }
 
   /**
-   * Get the extrapolations for the values. The keys of the returned map are the indexes of the {@link AggregatedMetricValues}
+   * Get the extrapolations for the values. The keys of the returned map are the indices of the {@link AggregatedMetricValues}
    * returned by {@link #metricValues()}.
    *
    * @return the {@link Extrapolation}s for the values if exist.

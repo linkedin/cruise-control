@@ -32,7 +32,7 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   private final SortedMap<Long, Float> _validEntityRatioWithGroupGranularityByWindowIndex;
   private final SortedMap<Long, Float> _validEntityGroupRatioByWindowIndex;
   private final SortedMap<Long, Float> _extrapolatedEntitiesByWindowIndex;
-  private final SortedSet<Long> _validWindowIndexes;
+  private final SortedSet<Long> _validWindowIndices;
   private final long _windowMs;
   private final Set<E> _validEntities;
   private final Set<G> _validEntityGroups;
@@ -45,7 +45,7 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
     _validEntityRatioWithGroupGranularityByWindowIndex = new TreeMap<>(Collections.reverseOrder());
     _validEntityGroupRatioByWindowIndex = new TreeMap<>(Collections.reverseOrder());
     _extrapolatedEntitiesByWindowIndex = new TreeMap<>(Collections.reverseOrder());
-    _validWindowIndexes = new TreeSet<>(Collections.reverseOrder());
+    _validWindowIndices = new TreeSet<>(Collections.reverseOrder());
     _validEntities = new HashSet<>();
     _validEntityGroups = new HashSet<>();
     _validEntityRatio = 0.0f;
@@ -70,7 +70,7 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   }
 
   void addValidWindowIndex(long windowIndex) {
-    _validWindowIndexes.add(windowIndex);
+    _validWindowIndices.add(windowIndex);
   }
 
   void setValidEntityRatio(float validEntityRatio) {
@@ -139,15 +139,15 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   }
 
   /**
-   * Get the valid window indexes. A window starts from <I><tt>(windowIndex - 1) * windowMs</tt></I> and ends at
+   * Get the valid window indices. A window starts from <I><tt>(windowIndex - 1) * windowMs</tt></I> and ends at
    * <I><tt>windowIndex * windowMs</tt></I>.
    * The entity and valid entity group ratio requirements can still meet the requirement after all these windows
    * are included.
    *
-   * @return A sorted set of valid window indexes.
+   * @return A sorted set of valid window indices.
    */
-  public SortedSet<Long> validWindowIndexes() {
-    return _validWindowIndexes;
+  public SortedSet<Long> validWindowIndices() {
+    return _validWindowIndices;
   }
 
   /**
@@ -165,14 +165,14 @@ public class MetricSampleCompleteness<G, E extends Entity<G>> extends LongGenera
   }
 
   /**
-   * @return the actual valid entity ratio after including all the {@link #validWindowIndexes()}
+   * @return the actual valid entity ratio after including all the {@link #validWindowIndices()}
    */
   public float validEntityRatio() {
     return _validEntityRatio;
   }
 
   /**
-   * @return the actual valid entity group ratio after including all the {@link #validWindowIndexes()}
+   * @return the actual valid entity group ratio after including all the {@link #validWindowIndices()}
    */
   public float validEntityGroupRatio() {
     return _validEntityGroupRatio;

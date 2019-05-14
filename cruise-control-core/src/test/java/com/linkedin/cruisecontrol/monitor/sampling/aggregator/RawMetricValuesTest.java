@@ -143,7 +143,7 @@ public class RawMetricValuesTest {
       RawMetricValues rawValues = new RawMetricValues(NUM_WINDOWS_TO_KEEP, MIN_SAMPLES_PER_WINDOW, NUM_RAW_METRICS);
       rawValues.updateOldestWindowIndex(i);
       float[][] expected = populate(rawValues, i);
-      ValuesAndExtrapolations valuesAndExtrapolations = aggregate(rawValues, allIndexes(i));
+      ValuesAndExtrapolations valuesAndExtrapolations = aggregate(rawValues, allWindowIndices(i));
       assertAggregatedValues(valuesAndExtrapolations.metricValues(), expected, i);
     }
   }
@@ -152,7 +152,7 @@ public class RawMetricValuesTest {
   public void testExtrapolationAdjacentAvgAtMiddle() {
     RawMetricValues rawValues = new RawMetricValues(NUM_WINDOWS_TO_KEEP, MIN_SAMPLES_PER_WINDOW, NUM_RAW_METRICS);
     prepareWindowMissingAtIndex(rawValues, 1);
-    ValuesAndExtrapolations valuesAndExtrapolations = aggregate(rawValues, allIndexes(0));
+    ValuesAndExtrapolations valuesAndExtrapolations = aggregate(rawValues, allWindowIndices(0));
     assertEquals(11.5, valuesAndExtrapolations.metricValues().valuesFor((short) 0).get(1), EPSILON);
     assertEquals(13.0, valuesAndExtrapolations.metricValues().valuesFor((short) 1).get(1), EPSILON);
     assertEquals(13.0, valuesAndExtrapolations.metricValues().valuesFor((short) 2).get(1), EPSILON);
@@ -164,7 +164,7 @@ public class RawMetricValuesTest {
   public void testExtrapolationAdjacentAvgAtLeftEdge() {
     RawMetricValues rawValues = new RawMetricValues(NUM_WINDOWS_TO_KEEP, MIN_SAMPLES_PER_WINDOW, NUM_RAW_METRICS);
     prepareWindowMissingAtIndex(rawValues, 0);
-    ValuesAndExtrapolations valuesAndExtrapolations = aggregate(rawValues, allIndexes(0));
+    ValuesAndExtrapolations valuesAndExtrapolations = aggregate(rawValues, allWindowIndices(0));
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 0).get(0), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 1).get(0), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 2).get(0), EPSILON);
@@ -177,7 +177,7 @@ public class RawMetricValuesTest {
     RawMetricValues rawValues = new RawMetricValues(NUM_WINDOWS_TO_KEEP, MIN_SAMPLES_PER_WINDOW, NUM_RAW_METRICS);
     prepareWindowMissingAtIndex(rawValues, NUM_WINDOWS);
     rawValues.updateOldestWindowIndex(1);
-    ValuesAndExtrapolations valuesAndExtrapolations = aggregate(rawValues, allIndexes(1));
+    ValuesAndExtrapolations valuesAndExtrapolations = aggregate(rawValues, allWindowIndices(1));
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 0).get(NUM_WINDOWS - 1), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 1).get(NUM_WINDOWS - 1), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 2).get(NUM_WINDOWS - 1), EPSILON);
@@ -191,7 +191,7 @@ public class RawMetricValuesTest {
     prepareWindowMissingAtIndex(rawValues, 0);
 
     // When oldest window index is 0, position 0 is the first index and should have no extrapolation.
-    ValuesAndExtrapolations valuesAndExtrapolations = rawValues.aggregate(allIndexes(0), _metricDef);
+    ValuesAndExtrapolations valuesAndExtrapolations = rawValues.aggregate(allWindowIndices(0), _metricDef);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 0).get(0), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 1).get(0), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 2).get(0), EPSILON);
@@ -200,7 +200,7 @@ public class RawMetricValuesTest {
 
     // When oldest window index is 2, position 0 is the last index and should have no extrapolation.
     rawValues.updateOldestWindowIndex(2);
-    valuesAndExtrapolations = rawValues.aggregate(allIndexes(2), _metricDef);
+    valuesAndExtrapolations = rawValues.aggregate(allWindowIndices(2), _metricDef);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 0).get(NUM_WINDOWS - 1), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 1).get(NUM_WINDOWS - 1), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 2).get(NUM_WINDOWS - 1), EPSILON);
@@ -209,7 +209,7 @@ public class RawMetricValuesTest {
 
     // when the oldest window index is 3, position 0 is the 3rd index. There should be an extrapolation.
     rawValues.updateOldestWindowIndex(3);
-    valuesAndExtrapolations = rawValues.aggregate(allIndexes(3), _metricDef);
+    valuesAndExtrapolations = rawValues.aggregate(allWindowIndices(3), _metricDef);
     assertEquals(31.5, valuesAndExtrapolations.metricValues().valuesFor((short) 0).get(3), EPSILON);
     assertEquals(33.0, valuesAndExtrapolations.metricValues().valuesFor((short) 1).get(3), EPSILON);
     assertEquals(33.0, valuesAndExtrapolations.metricValues().valuesFor((short) 2).get(3), EPSILON);
@@ -223,7 +223,7 @@ public class RawMetricValuesTest {
     prepareWindowMissingAtIndex(rawValues, NUM_WINDOWS);
     // When oldest window index is 1, position NUM_WINDOWS is the last index and should have no extrapolation.
     rawValues.updateOldestWindowIndex(1);
-    ValuesAndExtrapolations valuesAndExtrapolations = rawValues.aggregate(allIndexes(1), _metricDef);
+    ValuesAndExtrapolations valuesAndExtrapolations = rawValues.aggregate(allWindowIndices(1), _metricDef);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 0).get(NUM_WINDOWS - 1), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 1).get(NUM_WINDOWS - 1), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 2).get(NUM_WINDOWS - 1), EPSILON);
@@ -232,7 +232,7 @@ public class RawMetricValuesTest {
 
     // When oldest window index is NUM_WINDOWS, position NUM_WINDOWS is the first index, it should have no extrapolation.
     rawValues.updateOldestWindowIndex(NUM_WINDOWS);
-    valuesAndExtrapolations = rawValues.aggregate(allIndexes(NUM_WINDOWS), _metricDef);
+    valuesAndExtrapolations = rawValues.aggregate(allWindowIndices(NUM_WINDOWS), _metricDef);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 0).get(0), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 1).get(0), EPSILON);
     assertEquals(0, valuesAndExtrapolations.metricValues().valuesFor((short) 2).get(0), EPSILON);
@@ -241,7 +241,7 @@ public class RawMetricValuesTest {
 
     // when the oldest window index is 3, position NUM_WINDOWS is the 3rd index. There should be an extrapolation.
     rawValues.updateOldestWindowIndex(3);
-    valuesAndExtrapolations = rawValues.aggregate(allIndexes(3), _metricDef);
+    valuesAndExtrapolations = rawValues.aggregate(allWindowIndices(3), _metricDef);
     assertEquals(21.5, valuesAndExtrapolations.metricValues().valuesFor((short) 0).get(2), EPSILON);
     assertEquals(23.0, valuesAndExtrapolations.metricValues().valuesFor((short) 1).get(2), EPSILON);
     assertEquals(23.0, valuesAndExtrapolations.metricValues().valuesFor((short) 2).get(2), EPSILON);
@@ -310,31 +310,31 @@ public class RawMetricValuesTest {
     prepareWindowMissingAtIndex(rawValues, Collections.singleton(idx), 0);
   }
 
-  private void prepareWindowMissingAtIndex(RawMetricValues rawValues, Collection<Integer> indexes, int oldestWindowIndex) {
+  private void prepareWindowMissingAtIndex(RawMetricValues rawValues, Collection<Integer> windowIndices, int oldestWindowIndex) {
     rawValues.updateOldestWindowIndex(oldestWindowIndex);
     populate(rawValues, oldestWindowIndex);
     // reset index, we need to play the trick to change the oldest window index temporarily to make it work.
     rawValues.updateOldestWindowIndex(oldestWindowIndex + 100);
-    indexes.forEach(idx -> rawValues.resetWindowIndexes(idx, 1));
+    windowIndices.forEach(startingWindowIndex -> rawValues.resetWindowIndices(startingWindowIndex, 1));
     rawValues.updateOldestWindowIndex(oldestWindowIndex);
   }
 
   private float[][] populate(RawMetricValues rawValues, long startingWindowIndex) {
     float[][] expected = new float[_metricDef.size()][NUM_WINDOWS_TO_KEEP];
-    for (long windowIdx = startingWindowIndex; windowIdx < startingWindowIndex + NUM_WINDOWS_TO_KEEP; windowIdx++) {
+    for (long windowIndex = startingWindowIndex; windowIndex < startingWindowIndex + NUM_WINDOWS_TO_KEEP; windowIndex++) {
       for (int i = 0; i < MIN_SAMPLES_PER_WINDOW; i++) {
-        float v = 10 * windowIdx + i;
+        float v = 10 * windowIndex + i;
         MetricSample<String, IntegerEntity> m = getMetricSample(v, v, v);
-        rawValues.addSample(m, windowIdx, _metricDef);
+        rawValues.addSample(m, windowIndex, _metricDef);
 
         for (MetricInfo info : _metricDef.all()) {
           switch (info.aggregationFunction()) {
             case AVG:
-              expected[info.id()][(int) (windowIdx % NUM_WINDOWS_TO_KEEP)] += v / MIN_SAMPLES_PER_WINDOW;
+              expected[info.id()][(int) (windowIndex % NUM_WINDOWS_TO_KEEP)] += v / MIN_SAMPLES_PER_WINDOW;
               break;
             case MAX:
             case LATEST:
-              expected[info.id()][(int) (windowIdx % NUM_WINDOWS_TO_KEEP)] = v;
+              expected[info.id()][(int) (windowIndex % NUM_WINDOWS_TO_KEEP)] = v;
               break;
             default:
               throw new IllegalStateException("Should never be here");
@@ -345,20 +345,20 @@ public class RawMetricValuesTest {
     return expected;
   }
 
-  private SortedSet<Long> allIndexes(int oldestWindowIndex) {
-    SortedSet<Long> indexes = new TreeSet<>();
+  private SortedSet<Long> allWindowIndices(int oldestWindowIndex) {
+    SortedSet<Long> windowIndices = new TreeSet<>();
     for (long i = 0; i < NUM_WINDOWS; i++) {
-      indexes.add(oldestWindowIndex + i);
+      windowIndices.add(oldestWindowIndex + i);
     }
-    return indexes;
+    return windowIndices;
   }
 
-  private void addSample(RawMetricValues rawValues, MetricSample<String, IntegerEntity> metricSample, int index) {
-    rawValues.addSample(metricSample, index, _metricDef);
+  private void addSample(RawMetricValues rawValues, MetricSample<String, IntegerEntity> metricSample, int windowIndex) {
+    rawValues.addSample(metricSample, windowIndex, _metricDef);
   }
 
-  private ValuesAndExtrapolations aggregate(RawMetricValues rawValues, SortedSet<Long> indexes) {
-    return rawValues.aggregate(indexes, _metricDef);
+  private ValuesAndExtrapolations aggregate(RawMetricValues rawValues, SortedSet<Long> windowIndices) {
+    return rawValues.aggregate(windowIndices, _metricDef);
   }
 
   /**
