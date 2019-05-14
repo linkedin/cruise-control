@@ -32,6 +32,8 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.*;
+
 
 public class CruiseControlMetricsReporterSampler implements MetricSampler {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterSampler.class);
@@ -206,6 +208,8 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
     consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG,
+                              (String) configs.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG));
     _metricConsumer = new KafkaConsumer<>(consumerProps);
     _currentPartitionAssignment = Collections.emptySet();
     if (refreshPartitionAssignment()) {
