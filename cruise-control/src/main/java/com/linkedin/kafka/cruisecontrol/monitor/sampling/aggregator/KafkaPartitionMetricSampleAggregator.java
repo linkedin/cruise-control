@@ -57,7 +57,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
                                               Metadata metadata) {
     super(config.getInt(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG),
           config.getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG),
-          config.getInt(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG),
+          config.getInt(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG).byteValue(),
           config.getInt(KafkaCruiseControlConfig.PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG),
           KafkaMetricDef.commonMetricDef());
     _metadata = metadata;
@@ -190,7 +190,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
                                  AggregationOptions.Granularity.ENTITY_GROUP,
                                  true);
     MetricSampleCompleteness<String, PartitionEntity> completeness = completeness(-1, Long.MAX_VALUE, options);
-    return windowIndexesToWindows(completeness.validWindowIndexes(), _windowMs);
+    return windowIndicesToWindows(completeness.validWindowIndices(), _windowMs);
   }
 
   /**
@@ -227,7 +227,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
                                  AggregationOptions.Granularity.ENTITY_GROUP,
                                  true);
     MetricSampleCompleteness<String, PartitionEntity> completeness = completeness(-1, Long.MAX_VALUE, options);
-    return windowIndexesToWindows(completeness.validEntityRatioWithGroupGranularityByWindowIndex(), _windowMs);
+    return windowIndicesToWindows(completeness.validEntityRatioWithGroupGranularityByWindowIndex(), _windowMs);
   }
 
   private Set<PartitionEntity> allPartitions(Cluster cluster) {
@@ -242,13 +242,13 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
     return allPartitions;
   }
 
-  private SortedSet<Long> windowIndexesToWindows(SortedSet<Long> original, long windowMs) {
+  private SortedSet<Long> windowIndicesToWindows(SortedSet<Long> original, long windowMs) {
     SortedSet<Long> result = new TreeSet<>(Collections.reverseOrder());
     original.forEach(idx -> result.add(idx * windowMs));
     return result;
   }
 
-  private <T> SortedMap<Long, T> windowIndexesToWindows(SortedMap<Long, T> original, long windowMs) {
+  private <T> SortedMap<Long, T> windowIndicesToWindows(SortedMap<Long, T> original, long windowMs) {
     SortedMap<Long, T> result = new TreeMap<>(Collections.reverseOrder());
     original.forEach((key, value) -> result.put(key * windowMs, value));
     return result;

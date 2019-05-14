@@ -105,7 +105,7 @@ public class PartitionMetricSample extends MetricSample<String, PartitionEntity>
   public String toString() {
     MetricDef metricDef = KafkaMetricDef.commonMetricDef();
     StringBuilder builder = new StringBuilder().append("{");
-    for (Map.Entry<Integer, Double> entry : _valuesByMetricId.entrySet()) {
+    for (Map.Entry<Short, Double> entry : _valuesByMetricId.entrySet()) {
       builder.append(metricDef.metricInfo(entry.getKey()).name())
           .append("=")
           .append(entry.getValue().toString())

@@ -168,7 +168,7 @@ public class Load implements Serializable {
    * @param metricId the metric id to set.
    * @param loadToSet Load for the given metric id to overwrite the original load by snapshot time.
    */
-  void setLoad(int metricId, MetricValues loadToSet) {
+  void setLoad(short metricId, MetricValues loadToSet) {
     if (loadToSet.length() != _metricValues.length()) {
       throw new IllegalArgumentException("Load to set and load for the resources must have exactly " +
                                              _metricValues.length() + " entries.");
