@@ -184,8 +184,8 @@ class SamplingFetcher extends MetricFetcher {
   }
 
   private double estimateCpuUtil(PartitionMetricSample partitionMetricSample) {
-    List<Integer> cpuId = KafkaMetricDef.resourceToMetricIds(Resource.CPU);
-    List<Integer> networkOutId = KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT);
+    List<Short> cpuId = KafkaMetricDef.resourceToMetricIds(Resource.CPU);
+    List<Short> networkOutId = KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT);
     Double cpuUsage = sumOfMetrics(partitionMetricSample, cpuId);
     Double networkOutUsage = sumOfMetrics(partitionMetricSample, networkOutId);
     return ModelUtils.estimateLeaderCpuUtilUsingLinearRegressionModel(cpuUsage, networkOutUsage);
@@ -193,9 +193,9 @@ class SamplingFetcher extends MetricFetcher {
 
   // Add all the values of the given metric ids up.
   // TODO: remove this once we completely move to metric def.
-  private Double sumOfMetrics(PartitionMetricSample partitionMetricSample, List<Integer> metricIds) {
+  private Double sumOfMetrics(PartitionMetricSample partitionMetricSample, List<Short> metricIds) {
     double result = 0;
-    for (int id : metricIds) {
+    for (short id : metricIds) {
       result += partitionMetricSample.metricValue(id);
     }
     return result;

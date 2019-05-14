@@ -385,9 +385,9 @@ public class PreferredLeaderElectionGoalTest {
                                        boolean isLeader) {
     clusterModel.createReplica(rack, brokerId, tp, index, isLeader, false, logdir);
     MetricValues metricValues = new MetricValues(1);
-    Map<Integer, MetricValues> metricValuesByResource = new HashMap<>();
+    Map<Short, MetricValues> metricValuesByResource = new HashMap<>();
     Resource.cachedValues().forEach(r -> {
-      for (int id : KafkaMetricDef.resourceToMetricIds(r)) {
+      for (short id : KafkaMetricDef.resourceToMetricIds(r)) {
         metricValuesByResource.put(id, metricValues);
       }
     });

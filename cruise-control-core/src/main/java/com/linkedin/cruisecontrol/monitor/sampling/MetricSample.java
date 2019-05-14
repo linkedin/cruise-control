@@ -11,8 +11,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.StringJoiner;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 
 /**
@@ -21,9 +19,8 @@ import org.slf4j.LoggerFactory;
  * @param <E> the entity class
  */
 public class MetricSample<G, E extends Entity<G>> {
-  private static final Logger LOG = LoggerFactory.getLogger(MetricSample.class);
   protected final E _entity;
-  protected final Map<Integer, Double> _valuesByMetricId;
+  protected final Map<Short, Double> _valuesByMetricId;
   protected long _sampleTime;
 
   public MetricSample(E entity) {
@@ -67,14 +64,14 @@ public class MetricSample<G, E extends Entity<G>> {
   /**
    * The metric for the specified metric id.
    */
-  public Double metricValue(int metricId) {
+  public Double metricValue(short metricId) {
     return _valuesByMetricId.getOrDefault(metricId, Double.NaN);
   }
 
   /**
    * @return all the metrics.
    */
-  public Map<Integer, Double> allMetricValues() {
+  public Map<Short, Double> allMetricValues() {
     return Collections.unmodifiableMap(_valuesByMetricId);
   }
 

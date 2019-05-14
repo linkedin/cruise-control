@@ -82,8 +82,7 @@ public class AnomalyDetectorTest {
             .andReturn(null);
     mockDetectorScheduler.shutdown();
     EasyMock.expectLastCall().andDelegateTo(executorService);
-    EasyMock.expect(mockDetectorScheduler.awaitTermination(MOCK_ANOMALY_DETECTION_INTERVAL_MS, TimeUnit.MILLISECONDS))
-            .andDelegateTo(executorService);
+    EasyMock.expect(mockDetectorScheduler.awaitTermination(MOCK_ANOMALY_DETECTION_INTERVAL_MS, TimeUnit.MILLISECONDS)).andDelegateTo(executorService);
     EasyMock.expect(mockDetectorScheduler.isTerminated()).andDelegateTo(executorService);
 
     // The following state are used to test the delayed check when executor is idle.
@@ -167,8 +166,7 @@ public class AnomalyDetectorTest {
 
     mockDetectorScheduler.shutdown();
     EasyMock.expectLastCall().andDelegateTo(executorService);
-    EasyMock.expect(mockDetectorScheduler.awaitTermination(MOCK_ANOMALY_DETECTION_INTERVAL_MS, TimeUnit.MILLISECONDS))
-            .andDelegateTo(executorService);
+    EasyMock.expect(mockDetectorScheduler.awaitTermination(MOCK_ANOMALY_DETECTION_INTERVAL_MS, TimeUnit.MILLISECONDS)).andDelegateTo(executorService);
     EasyMock.expect(mockDetectorScheduler.isTerminated()).andDelegateTo(executorService);
 
     // The following state are used to test the delayed check when executor is idle.
@@ -294,8 +292,7 @@ public class AnomalyDetectorTest {
     // For detector shutdown.
     mockDetectorScheduler.shutdown();
     EasyMock.expectLastCall().andDelegateTo(executorService);
-    EasyMock.expect(mockDetectorScheduler.awaitTermination(MOCK_ANOMALY_DETECTION_INTERVAL_MS, TimeUnit.MILLISECONDS))
-            .andDelegateTo(executorService);
+    EasyMock.expect(mockDetectorScheduler.awaitTermination(MOCK_ANOMALY_DETECTION_INTERVAL_MS, TimeUnit.MILLISECONDS)).andDelegateTo(executorService);
     EasyMock.expect(mockDetectorScheduler.isTerminated()).andDelegateTo(executorService);
 
     // The following state are used to test the delayed check when executor is busy.

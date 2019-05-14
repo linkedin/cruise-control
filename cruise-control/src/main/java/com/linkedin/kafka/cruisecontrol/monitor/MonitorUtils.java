@@ -49,9 +49,8 @@ public class MonitorUtils {
    * @param aggregatedMetricValues the leader aggregated metric values to convert.
    */
   public static AggregatedMetricValues toFollowerMetricValues(AggregatedMetricValues aggregatedMetricValues) {
-
     AggregatedMetricValues followerLoad = new AggregatedMetricValues();
-    for (int metricId : aggregatedMetricValues.metricIds()) {
+    for (short metricId : aggregatedMetricValues.metricIds()) {
       String metricGroup = KafkaMetricDef.commonMetricDef().metricInfo(metricId).group();
       if (!Resource.CPU.name().equals(metricGroup) && !Resource.NW_OUT.name().equals(metricGroup)) {
         followerLoad.add(metricId, aggregatedMetricValues.valuesFor(metricId));
@@ -69,7 +68,7 @@ public class MonitorUtils {
                                                                            totalCpuUsage.get(i));
       followerCpu.set(i, followerCpuUtil);
     }
-    for (int nwOutMetricId : KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT)) {
+    for (short nwOutMetricId : KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT)) {
       followerLoad.add(nwOutMetricId, new MetricValues(aggregatedMetricValues.length()));
     }
     followerLoad.add(KafkaMetricDef.commonMetricDefId(CPU_USAGE), followerCpu);

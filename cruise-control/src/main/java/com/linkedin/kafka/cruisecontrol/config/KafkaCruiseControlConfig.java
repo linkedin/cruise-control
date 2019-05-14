@@ -1376,21 +1376,55 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   }
 
   /**
-   * Sanity check to ensure that {@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} is not longer than
-   * {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
+   * Sanity check to ensure that
+   * <ul>
+   *   <li>{@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} is not longer than
+   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG},</li>
+   *   <li>sampling frequency per partition window is within the limits -- i.e.
+   *   ({@link KafkaCruiseControlConfig#PARTITION_METRICS_WINDOW_MS_CONFIG} /
+   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
+   *   <li>sampling frequency per broker window is within the limits -- i.e.
+   *   ({@link KafkaCruiseControlConfig#BROKER_METRICS_WINDOW_MS_CONFIG} /
+   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}.</li>
+   * </ul>
    *
    * Sampling process involves a potential metadata update if the current metadata is stale. The configuration
    * {@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} indicates the timeout of such a metadata update. Hence,
    * this subprocess of the sampling process cannot be set with a timeout larger than the total sampling timeout of
    * {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
+   *
+   * The number of samples at a given window cannot exceed a predefined maximum limit.
    */
   private void sanityCheckSamplingPeriod() {
     long samplingPeriodMs = getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
     long metadataTimeoutMs = getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
     if (metadataTimeoutMs >  samplingPeriodMs) {
       throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs +
-          "] to be longer than sampling period [" + samplingPeriodMs + "].");
+                                "] to be longer than sampling period [" + samplingPeriodMs + "].");
     }
+
+    // Ensure that the sampling frequency per partition window is within the limits.
+    long partitionSampleWindowMs = getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
+    short partitionSamplingFrequency = (short) (partitionSampleWindowMs / samplingPeriodMs);
+    if (partitionSamplingFrequency > Byte.MAX_VALUE) {
+      throw new ConfigException(String.format("Configured sampling frequency (%d) exceeds the maximum allowed value (%d). "
+                                              + "Decrease the value of %s or increase the value of %s to ensure that their"
+                                              + " ratio is under this limit.", partitionSamplingFrequency, Byte.MAX_VALUE,
+                                              KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG,
+                                              KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+    }
+
+    // Ensure that the sampling frequency per broker window is within the limits.
+    long brokerSampleWindowMs = getLong(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG);
+    short brokerSamplingFrequency = (short) (brokerSampleWindowMs / samplingPeriodMs);
+    if (brokerSamplingFrequency > Byte.MAX_VALUE) {
+      throw new ConfigException(String.format("Configured sampling frequency (%d) exceeds the maximum allowed value (%d). "
+                                              + "Decrease the value of %s or increase the value of %s to ensure that their"
+                                              + " ratio is under this limit.", brokerSamplingFrequency, Byte.MAX_VALUE,
+                                              KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG,
+                                              KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+    }
+
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
