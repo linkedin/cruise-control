@@ -1335,7 +1335,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
    *   <li>sampling frequency per broker window is within the limits -- i.e.
    *   ({@link KafkaCruiseControlConfig#BROKER_METRICS_WINDOW_MS_CONFIG} /
-   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
+   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}.</li>
    * </ul>
    *
    * Sampling process involves a potential metadata update if the current metadata is stale. The configuration
