@@ -47,6 +47,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.TrainResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -61,6 +62,9 @@ import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -921,6 +925,121 @@ public class KafkaCruiseControl {
   public StopProposalResult stopProposalExecution(StopProposalParameters parameters) {
     _executor.userTriggeredStopExecution();
     return new StopProposalResult(_config);
+  }
+
+  private void ensureNoOfflineReplicaForPartition(PartitionInfo partitionInfo, List<Node> aliveNodes) {
+    for (Node node: partitionInfo.replicas()) {
+      if (!aliveNodes.contains(node)) {
+        throw new RuntimeException(String.format("Topic %s have offline replica on broker %d , unable to increase its "
+                                   + "replication factor.", partitionInfo.topic(), node.id()));
+      }
+    }
+  }
+
+  /**
+   * Increase the replication factor of Kafka topics through adding new replicas in a rack-aware, round-robin way.
+   * There are two scenarios that rack awareness property is not guaranteed.
+   * <ul>
+   *   <li> If metadata does not have rack information about brokers, then it is only guaranteed that new replicas are
+   *   added to brokers which currently do not host any replicas of partition.</li>
+   *   <li> If replication factor to set for the topic is larger than number of racks in the cluster and
+   *   skipTopicRackAwarenessCheck is set to true, then rack awareness property is ignored.</li>
+   * </ul>
+   *
+   * @param cluster The metadata of the cluster.
+   * @param replicationFactor The replication factor to set for the topics.
+   * @param topics The topics to apply the change.
+   * @param skipTopicRackAwarenessCheck Whether skip ignore rack awareness property if number of rack in clsuter is less
+   *                                    than target replication factor.
+   * @return Execution proposals to increase replication factor of topics.
+   */
+  public List<ExecutionProposal> maybeIncreaseTopicReplicationFactor(Cluster cluster,
+                                                                     int replicationFactor,
+                                                                     Set<String> topics,
+                                                                     boolean skipTopicRackAwarenessCheck) {
+    Map<String, List<Integer>> brokersByRack = new HashMap<>();
+    Map<Integer, String> rackByBroker = new HashMap<>();
+    for (Node node : cluster.nodes()) {
+      // If the rack is not specified, we use the broker id info as rack info.
+      String rack = node.rack() == null || node.rack().isEmpty() ? String.valueOf(node.id()) : node.rack();
+      brokersByRack.putIfAbsent(rack, new ArrayList<>());
+      brokersByRack.get(rack).add(node.id());
+      rackByBroker.put(node.id(), rack);
+    }
+
+    if (replicationFactor > brokersByRack.size()) {
+      if (skipTopicRackAwarenessCheck) {
+        LOG.info(String.format("Target replication factor for topics %s is larger than number of racks in cluster, new replica"
+                               + " maybe added in none rack-aware way.", topics));
+      } else {
+        throw new RuntimeException(String.format("Unable to increase topics %s replica factor to %d since there are only %d " +
+                                                 "racks in the cluster.", topics, replicationFactor, brokersByRack.size()));
+      }
+    }
+
+    List<ExecutionProposal> proposals = new ArrayList<>();
+    for (String topic : topics) {
+      List<String> racks = new ArrayList<>(brokersByRack.keySet());
+      int[] cursors = new int[racks.size()];
+      int rackCursor = 0;
+      for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+        if (partitionInfo.replicas().length < replicationFactor) {
+          ensureNoOfflineReplicaForPartition(partitionInfo, cluster.nodes());
+          List<Integer> currentAssignedReplica = new ArrayList<>(partitionInfo.replicas().length);
+          List<Integer> newAssignedReplica = new ArrayList<>();
+          Set<String> currentOccupiedRack = new HashSet<>();
+          // Make sure the current replicas are in new replica list.
+          for (Node node : partitionInfo.replicas()) {
+            currentAssignedReplica.add(node.id());
+            newAssignedReplica.add(node.id());
+            currentOccupiedRack.add(rackByBroker.get(node.id()));
+          }
+          // Add new replica to partition in rack-aware(if possible), round-robin way.
+          while (newAssignedReplica.size() < replicationFactor) {
+            if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
+              String rack = racks.get(rackCursor);
+              int cursor = cursors[rackCursor];
+              newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
+              currentOccupiedRack.add(rack);
+              cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+            }
+            rackCursor = (rackCursor + 1) % racks.size();
+          }
+          proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
+                                              0,
+                                              partitionInfo.leader().id(),
+                                              currentAssignedReplica,
+                                              newAssignedReplica));
+        }
+      }
+    }
+    return proposals;
+  }
+
+  /**
+   * Update topic's configuration. Currently only support change topic's replication factor.
+   *
+   * @param topic The name pattern of topics to apply the change.
+   * @param replicationFactor The replication factor to set for the topics.
+   * @param skipTopicRackAwarenessCheck Whether skip ignore rack awareness property if number of rack in cluster is less
+   *                                    than target replication factor.
+   * @param uuid UUID of the execution.
+   *
+   * @return Topics to apply the change.
+   */
+  public Set<String> updateTopicConfiguration(Pattern topic,
+                                              int replicationFactor,
+                                              boolean skipTopicRackAwarenessCheck,
+                                              String uuid
+      ) {
+    Cluster cluster = _loadMonitor.kafkaCluster();
+    Set<String> topics = cluster.topics().stream().filter(t -> topic.matcher(t).matches()).collect(Collectors.toSet());
+    List<ExecutionProposal> proposals = maybeIncreaseTopicReplicationFactor(cluster,
+                                                                            replicationFactor,
+                                                                            topics,
+                                                                            skipTopicRackAwarenessCheck);
+    _executor.executeProposals(proposals, null, null, _loadMonitor, null, null, null, uuid);
+    return topics;
   }
 
   /**
