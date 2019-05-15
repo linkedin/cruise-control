@@ -225,6 +225,8 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
     consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG,
+                              (String) configs.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG));
     _metricConsumer = new KafkaConsumer<>(consumerProps);
     _currentPartitionAssignment = Collections.emptySet();
     if (refreshPartitionAssignment()) {
@@ -234,7 +236,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     _metricConsumer.close();
   }
 }

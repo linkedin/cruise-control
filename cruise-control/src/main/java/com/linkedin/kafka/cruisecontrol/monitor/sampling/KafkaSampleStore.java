@@ -184,23 +184,27 @@ public class KafkaSampleStore implements SampleStore {
     producerProps.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
     producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
+    producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG,
+                              (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG));
     return new KafkaProducer<>(producerProps);
   }
 
   protected KafkaConsumer<byte[], byte[]> createConsumer(Map<String, ?> config) {
-      Properties consumerProps = new Properties();
-      consumerProps.putAll(config);
-      long randomToken = RANDOM.nextLong();
-      consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                                (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
-      consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KafkaCruiseControlSampleStore" + randomToken);
-      consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, CONSUMER_CLIENT_ID + randomToken);
-      consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-      consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-      consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
-      consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-      consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-      return new KafkaConsumer<>(consumerProps);
+    Properties consumerProps = new Properties();
+    consumerProps.putAll(config);
+    long randomToken = RANDOM.nextLong();
+    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                              (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
+    consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KafkaCruiseControlSampleStore" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, CONSUMER_CLIENT_ID + randomToken);
+    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
+    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG,
+                              (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG));
+    return new KafkaConsumer<>(consumerProps);
   }
 
   @SuppressWarnings("unchecked")
