@@ -32,8 +32,6 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.*;
-
 
 public class CruiseControlMetricsReporterSampler implements MetricSampler {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterSampler.class);
@@ -219,7 +217,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() {
     _metricConsumer.close();
   }
 }
