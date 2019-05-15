@@ -44,10 +44,17 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
   private static final Logger LOG = LoggerFactory.getLogger(LeaderReplicaDistributionGoal.class);
 
   /**
+   * Constructor for Leader Replica Distribution Goal.
+   */
+  public LeaderReplicaDistributionGoal() {
+
+  }
+
+  /**
    * Package private for unit test.
    */
-  LeaderReplicaDistributionGoal(BalancingConstraint balancingConstraint) {
-    super();
+  public LeaderReplicaDistributionGoal(BalancingConstraint balancingConstraint) {
+    this();
     _balancingConstraint = balancingConstraint;
   }
 
