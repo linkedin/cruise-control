@@ -325,7 +325,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                           request, response, endPoint);
             }
             break;
-          case UPDATE_TOPIC_CONFIGURATION:
+          case TOPIC_CONFIGURATION:
             reviewableParams = evaluateReviewableParams(request, response, () -> new UpdateTopicConfigurationParameters(request, _config));
             if (reviewableParams != null) {
               updateTopicConfiguration(request, response, () -> (UpdateTopicConfigurationParameters) reviewableParams);

@@ -259,12 +259,12 @@ public class ParameterUtils {
     reviewBoard.add(JSON_PARAM);
     reviewBoard.add(REVIEW_IDS_PARAM);
 
-    Set<String> updateTopicConfiguration = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    updateTopicConfiguration.add(JSON_PARAM);
-    updateTopicConfiguration.add(TOPIC_PARAM);
-    updateTopicConfiguration.add(REPLICATION_FACTOR_PARAM);
-    updateTopicConfiguration.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
-    updateTopicConfiguration.add(REVIEW_IDS_PARAM);
+    Set<String> topicConfiguration = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    topicConfiguration.add(JSON_PARAM);
+    topicConfiguration.add(TOPIC_PARAM);
+    topicConfiguration.add(REPLICATION_FACTOR_PARAM);
+    topicConfiguration.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
+    topicConfiguration.add(REVIEW_IDS_PARAM);
 
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
@@ -284,7 +284,7 @@ public class ParameterUtils {
     validParamNames.put(ADMIN, Collections.unmodifiableSet(admin));
     validParamNames.put(REVIEW, Collections.unmodifiableSet(review));
     validParamNames.put(REVIEW_BOARD, Collections.unmodifiableSet(reviewBoard));
-    validParamNames.put(UPDATE_TOPIC_CONFIGURATION, Collections.unmodifiableSet(updateTopicConfiguration));
+    validParamNames.put(TOPIC_CONFIGURATION, Collections.unmodifiableSet(topicConfiguration));
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
