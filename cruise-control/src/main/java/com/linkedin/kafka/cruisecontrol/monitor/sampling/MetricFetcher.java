@@ -23,7 +23,7 @@ abstract class MetricFetcher implements Callable<Boolean> {
     try {
       fetchMetricsForAssignedPartitions();
     } catch (MetricSamplingException mse) {
-      LOG.warn("Received sampling error.");
+      LOG.warn("Received sampling error.", mse);
       hasSamplingError = true;
     } catch (Throwable t) {
       LOG.error("Received exception.", t);

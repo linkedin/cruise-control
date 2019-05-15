@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
@@ -60,7 +61,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
                             long endTimeMs,
                             SamplingMode mode,
                             MetricDef metricDef,
-                            long timeout) {
+                            long timeout) throws MetricSamplingException {
     if (refreshPartitionAssignment()) {
       return new Samples(Collections.emptySet(), Collections.emptySet());
     }
@@ -72,6 +73,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     Set<TopicPartition> assignment = new HashSet<>(_currentPartitionAssignment);
     Map<TopicPartition, Long> endOffsets = _metricConsumer.endOffsets(assignment);
     Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes = _metricConsumer.offsetsForTimes(timestampToSeek);
+    sanityCheckOffsetFetch(endOffsets, offsetsForTimes);
     // If some partitions do not have data, we simply seek to the end offset. To avoid losing metrics, we use the end
     // offsets before the timestamp query.
     assignment.removeAll(offsetsForTimes.keySet());
@@ -141,6 +143,23 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
       }
     }
     return true;
+  }
+
+  private void sanityCheckOffsetFetch(Map<TopicPartition, Long> endOffsets,
+                                      Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes)
+      throws MetricSamplingException {
+    Set<TopicPartition> failedToFetchOffsets = new HashSet<>();
+    for (Map.Entry<TopicPartition, OffsetAndTimestamp> entry : offsetsForTimes.entrySet()) {
+      if (entry.getValue() == null && endOffsets.get(entry.getKey()) == null) {
+        failedToFetchOffsets.add(entry.getKey());
+      }
+    }
+
+    if (!failedToFetchOffsets.isEmpty()) {
+      throw new MetricSamplingException(String.format("Metric consumer failed to fetch offsets for %s. Consider "
+                                                      + "decreasing reconnect.backoff.ms to mitigate consumption failures"
+                                                      + " due to transient network issues.", failedToFetchOffsets));
+    }
   }
 
   /**
