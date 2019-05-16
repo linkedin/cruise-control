@@ -87,6 +87,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     LOG.debug("Starting consuming from metrics reporter topic partitions {}.", _currentPartitionAssignment);
     _metricConsumer.resume(_metricConsumer.paused());
     int totalMetricsAdded = 0;
+    Set<TopicPartition> partitionsToPause = new HashSet<>();
     do {
       ConsumerRecords<String, CruiseControlMetric> records = _metricConsumer.poll(METRIC_REPORTER_CONSUMER_POLL_TIMEOUT);
       for (ConsumerRecord<String, CruiseControlMetric> record : records) {
@@ -104,11 +105,15 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
           TopicPartition tp = new TopicPartition(record.topic(), record.partition());
           LOG.debug("Saw metric {} whose timestamp is larger than the end time of sampling period {}. Pausing "
                     + "partition {} at offset {}.", record.value(), endTimeMs, tp, record.offset());
-          _metricConsumer.pause(Collections.singleton(tp));
+          partitionsToPause.add(tp);
         } else {
           METRICS_PROCESSOR.addMetric(record.value());
           totalMetricsAdded++;
         }
+      }
+      if (!partitionsToPause.isEmpty()) {
+        _metricConsumer.pause(partitionsToPause);
+        partitionsToPause.clear();
       }
     } while (!consumptionDone(endOffsets) && System.currentTimeMillis() < timeout);
     LOG.info("Finished sampling for topic partitions {} in time range [{},{}]. Collected {} metrics.",
