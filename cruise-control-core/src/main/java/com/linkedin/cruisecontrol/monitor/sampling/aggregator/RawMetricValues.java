@@ -215,17 +215,28 @@ public class RawMetricValues extends WindowIndexedArrays {
   }
 
   /**
+   * Check whether the given window range can be reset.
+   *
+   * @param startingWindowIndex the starting index of the windows to reset.
+   * @param numWindowIndicesToReset the number of windows to reset.
+   */
+  public synchronized void sanityCheckWindowRangeReset(long startingWindowIndex, int numWindowIndicesToReset) {
+    if (inValidWindowRange(startingWindowIndex)
+        || inValidWindowRange(startingWindowIndex + numWindowIndicesToReset - 1)) {
+      throw new IllegalStateException("Should never reset a window index that is in the valid range");
+    }
+  }
+
+  /**
    * Clear the state of a given number of windows starting at the given window index.
+   * Assumes that {@link #sanityCheckWindowRangeReset(long, int)} is satisfied -- this prevents repetitive sanity checks
+   * within this function.
    *
    * @param startingWindowIndex the starting index of the windows to reset.
    * @param numWindowIndicesToReset the number of windows to reset.
    * @return number of samples abandoned in window clearing process. The abandoned samples are samples in the windows which get reset.
    */
   public synchronized int resetWindowIndices(long startingWindowIndex, int numWindowIndicesToReset) {
-    if (inValidWindowRange(startingWindowIndex)
-        || inValidWindowRange(startingWindowIndex + numWindowIndicesToReset - 1)) {
-      throw new IllegalStateException("Should never reset a window index that is in the valid range");
-    }
     // We are not resetting all the data here. The data will be interpreted to 0 if count is 0.
     int numAbandonedSamples = 0;
     for (long i = startingWindowIndex; i < startingWindowIndex + numWindowIndicesToReset; i++) {

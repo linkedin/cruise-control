@@ -46,7 +46,6 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
    */
   MetricSampleAggregatorState(int numWindows, long windowMs, int completenessCacheSize) {
     super();
-    // Only keep as many as _windowStates.size() completeness caches.
     _completenessCache = new LinkedHashMap<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>> eldest) {
@@ -55,8 +54,8 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
     };
     _windowStates = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
     _windowGenerations = new MyAtomicLong[numWindows];
-    for (int i = 0; i < numWindows; i++) {
-      _windowGenerations[i] = new MyAtomicLong(0);
+    for (int arrayIndex = 0; arrayIndex < numWindows; arrayIndex++) {
+      _windowGenerations[arrayIndex] = new MyAtomicLong(0);
     }
     _windowMs = windowMs;
   }
@@ -106,7 +105,7 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
       throw new IllegalStateException("Should never reset a window index that is in the valid range");
     }
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Resetting window index [{}, {}]", startingWindowIndex,
+      LOG.debug("Resetting window indices [{}, {}]", startingWindowIndex,
                 startingWindowIndex + numWindowIndicesToReset - 1);
     }
     // We are resetting all the data here.
