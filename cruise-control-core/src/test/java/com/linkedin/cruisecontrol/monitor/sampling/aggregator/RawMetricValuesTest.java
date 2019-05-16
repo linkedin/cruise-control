@@ -315,6 +315,7 @@ public class RawMetricValuesTest {
     populate(rawValues, oldestWindowIndex);
     // reset index, we need to play the trick to change the oldest window index temporarily to make it work.
     rawValues.updateOldestWindowIndex(oldestWindowIndex + 100);
+    windowIndices.forEach(startingWindowIndex -> rawValues.sanityCheckWindowRangeReset(startingWindowIndex, 1));
     windowIndices.forEach(startingWindowIndex -> rawValues.resetWindowIndices(startingWindowIndex, 1));
     rawValues.updateOldestWindowIndex(oldestWindowIndex);
   }
