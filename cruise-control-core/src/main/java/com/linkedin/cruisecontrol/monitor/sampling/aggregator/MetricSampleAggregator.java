@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -147,7 +148,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     if (windowIndex < _oldestWindowIndex) {
       return false;
     }
-    boolean newWindowRolledOut = maybeRollOutNewWindow(windowIndex);
+    boolean newWindowsRolledOut = maybeRollOutNewWindow(windowIndex);
     RawMetricValues rawMetricValues =
         _rawMetrics.computeIfAbsent(identity(sample.entity()), k -> {
           // Need to grab the lock to make sure the raw value for this partition is updated correctly when
@@ -163,12 +164,13 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
         });
     LOG.trace("Adding sample {} to window index {}", sample, windowIndex);
     rawMetricValues.addSample(sample, windowIndex, _metricDef);
-    long generation = _generation.get();
-    if (newWindowRolledOut || windowIndex != _currentWindowIndex) {
-      generation = _generation.incrementAndGet();
+    if (newWindowsRolledOut || windowIndex != _currentWindowIndex) {
+      // Either new window(s) rolled out or the data has been inserted to an old window. Both cases affect the historical
+      // load information that Cruise Control is interested in. Hence, they require bumping up the generation of the
+      // window index of the added sample.
+      _aggregatorState.updateWindowGeneration(windowIndex, _generation.incrementAndGet());
     }
-    // Data has been inserted to an old window.
-    _aggregatorState.updateWindowGeneration(windowIndex, generation);
+
     return true;
   }
 
@@ -465,17 +467,17 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     return windowState;
   }
 
-  private boolean maybeRollOutNewWindow(long index) {
-    if (_currentWindowIndex < index) {
+  private boolean maybeRollOutNewWindow(long windowIndex) {
+    if (_currentWindowIndex < windowIndex) {
       _windowRollingLock.lock();
       try {
-        if (_currentWindowIndex < index) {
+        if (_currentWindowIndex < windowIndex) {
           // find out how many windows we need to reset in the raw metrics.
-          int numWindowsToRollOut = (int) (index - _currentWindowIndex);
+          int numWindowsToRollOut = (int) (windowIndex - _currentWindowIndex);
           // First set the oldest window index so newly coming older samples will not be added.
           long prevOldestWindowIndex = _oldestWindowIndex;
           // The first possible window index is actually 1 instead of 0.
-          _oldestWindowIndex = Math.max(1, index - _numWindows);
+          _oldestWindowIndex = Math.max(1, windowIndex - _numWindows);
           int numOldWindowIndicesToReset = (int) Math.min(_numWindowsToKeep, _oldestWindowIndex - prevOldestWindowIndex);
           int numAbandonedSamples = 0;
           // Reset all the data starting from previous oldest window. After this point the old samples cannot get
@@ -486,7 +488,7 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
           // Set the generation of the old current window.
           _aggregatorState.updateWindowGeneration(_currentWindowIndex, generation());
           // Lastly update current window.
-          _currentWindowIndex = index;
+          _currentWindowIndex = windowIndex;
           LOG.info("{} Aggregator rolled out {} new windows, reset {} windows, current window range [{}, {}], abandon {} samples.",
                     _sampleType, numWindowsToRollOut, numOldWindowIndicesToReset, _oldestWindowIndex * _windowMs,
                     _currentWindowIndex * _windowMs, numAbandonedSamples);
@@ -499,13 +501,29 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     return false;
   }
 
-  private int resetIndices(long prevOldestWindowIndex, int numIndicesToReset) {
-    long currentOldestWindowIndex = _oldestWindowIndex;
+  private int resetRawValueIndices(long prevOldestWindowIndex, int numIndicesToReset, long currentOldestWindowIndex) {
     int numAbandonedSamples = 0;
-    for (RawMetricValues rawValues : _rawMetrics.values()) {
+    // Each member of _rawMetrics has the same window range; hence, a single sanity check for any member is sufficient.
+    Iterator<RawMetricValues> iterator = _rawMetrics.values().iterator();
+    if (iterator.hasNext()) {
+      RawMetricValues rawValues = iterator.next();
+      rawValues.updateOldestWindowIndex(currentOldestWindowIndex);
+      rawValues.sanityCheckWindowRangeReset(prevOldestWindowIndex, numIndicesToReset);
+      numAbandonedSamples += rawValues.resetWindowIndices(prevOldestWindowIndex, numIndicesToReset);
+    }
+
+    for (; iterator.hasNext(); ) {
+      RawMetricValues rawValues = iterator.next();
       rawValues.updateOldestWindowIndex(currentOldestWindowIndex);
       numAbandonedSamples += rawValues.resetWindowIndices(prevOldestWindowIndex, numIndicesToReset);
     }
+
+    return numAbandonedSamples;
+  }
+
+  private int resetIndices(long prevOldestWindowIndex, int numIndicesToReset) {
+    long currentOldestWindowIndex = _oldestWindowIndex;
+    int numAbandonedSamples = resetRawValueIndices(prevOldestWindowIndex, numIndicesToReset, currentOldestWindowIndex);
     _aggregatorState.updateOldestWindowIndex(currentOldestWindowIndex);
     _aggregatorState.resetWindowIndices(prevOldestWindowIndex, numIndicesToReset);
     return numAbandonedSamples;
