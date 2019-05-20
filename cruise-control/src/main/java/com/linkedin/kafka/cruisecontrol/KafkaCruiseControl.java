@@ -930,14 +930,16 @@ public class KafkaCruiseControl {
   private void ensureNoOfflineReplicaForPartition(PartitionInfo partitionInfo, List<Node> aliveNodes) {
     for (Node node: partitionInfo.replicas()) {
       if (!aliveNodes.contains(node)) {
-        throw new RuntimeException(String.format("Topic %s have offline replica on broker %d , unable to increase its "
-                                   + "replication factor.", partitionInfo.topic(), node.id()));
+        throw new RuntimeException(String.format("Topic partition %s-%d have offline replica on broker %d , unable to update "
+                                   + "its replication factor.", partitionInfo.topic(), partitionInfo.partition(), node.id()));
       }
     }
   }
 
   /**
-   * Increase the replication factor of Kafka topics through adding new replicas in a rack-aware, round-robin way.
+   * Update the replication factor of Kafka topics.
+   * If partition's current replication factor is less than target replication factor, add new replicas to the partition
+   * in a rack-aware, round-robin way.
    * There are two scenarios that rack awareness property is not guaranteed.
    * <ul>
    *   <li> If metadata does not have rack information about brokers, then it is only guaranteed that new replicas are
@@ -945,6 +947,8 @@ public class KafkaCruiseControl {
    *   <li> If replication factor to set for the topic is larger than number of racks in the cluster and
    *   skipTopicRackAwarenessCheck is set to true, then rack awareness property is ignored.</li>
    * </ul>
+   * If partition's current replication factor is larger than target replication factor, remove one or more follower replicas
+   * from the partition.
    *
    * @param cluster The metadata of the cluster.
    * @param replicationFactor The replication factor to set for the topics.
@@ -953,10 +957,10 @@ public class KafkaCruiseControl {
    *                                    than target replication factor.
    * @return Execution proposals to increase replication factor of topics.
    */
-  public List<ExecutionProposal> maybeIncreaseTopicReplicationFactor(Cluster cluster,
-                                                                     int replicationFactor,
-                                                                     Set<String> topics,
-                                                                     boolean skipTopicRackAwarenessCheck) {
+  private List<ExecutionProposal> maybeUpdateTopicReplicationFactor(Cluster cluster,
+                                                                    int replicationFactor,
+                                                                    Set<String> topics,
+                                                                    boolean skipTopicRackAwarenessCheck) {
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
     Map<Integer, String> rackByBroker = new HashMap<>();
     for (Node node : cluster.nodes()) {
@@ -1010,6 +1014,23 @@ public class KafkaCruiseControl {
                                               partitionInfo.leader().id(),
                                               currentAssignedReplica,
                                               newAssignedReplica));
+        } else if (partitionInfo.replicas().length > replicationFactor) {
+          ensureNoOfflineReplicaForPartition(partitionInfo, cluster.nodes());
+          List<Integer> currentAssignedReplica = new ArrayList<>(partitionInfo.replicas().length);
+          List<Integer> newAssignedReplica = new ArrayList<>();
+          // Make sure the leader replica is in new replica list.
+          newAssignedReplica.add(partitionInfo.leader().id());
+          for (Node node : partitionInfo.replicas()) {
+            currentAssignedReplica.add(node.id());
+            if (newAssignedReplica.size() < replicationFactor && node.id() != newAssignedReplica.get(0)) {
+              newAssignedReplica.add(node.id());
+            }
+          }
+          proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
+                                              0,
+                                              partitionInfo.leader().id(),
+                                              currentAssignedReplica,
+                                              newAssignedReplica));
         }
       }
     }
@@ -1034,10 +1055,10 @@ public class KafkaCruiseControl {
       ) {
     Cluster cluster = _loadMonitor.kafkaCluster();
     Set<String> topics = cluster.topics().stream().filter(t -> topic.matcher(t).matches()).collect(Collectors.toSet());
-    List<ExecutionProposal> proposals = maybeIncreaseTopicReplicationFactor(cluster,
-                                                                            replicationFactor,
-                                                                            topics,
-                                                                            skipTopicRackAwarenessCheck);
+    List<ExecutionProposal> proposals = maybeUpdateTopicReplicationFactor(cluster,
+                                                                          replicationFactor,
+                                                                          topics,
+                                                                          skipTopicRackAwarenessCheck);
     _executor.executeProposals(proposals, null, null, _loadMonitor, null, null, null, uuid);
     return topics;
   }
