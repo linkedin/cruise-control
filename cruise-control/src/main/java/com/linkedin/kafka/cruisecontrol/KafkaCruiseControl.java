@@ -1011,7 +1011,7 @@ public class KafkaCruiseControl {
             }
             rackCursor = (rackCursor + 1) % racks.size();
           }
-          // TODO: get the partition size and  populate into execution proposal, see https://github.com/linkedin/cruise-control/issues/722
+          // TODO: get the partition size and populate into execution proposal, check https://github.com/linkedin/cruise-control/issues/722
           proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
                                               0,
                                               partitionInfo.leader().id(),
@@ -1026,7 +1026,7 @@ public class KafkaCruiseControl {
               newAssignedReplica.add(node.id());
             }
           }
-          // TODO: get the partition size and  populate into execution proposal, see https://github.com/linkedin/cruise-control/issues/722
+          // TODO: get the partition size and populate into execution proposal, check https://github.com/linkedin/cruise-control/issues/722
           proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
                                               0,
                                               partitionInfo.leader().id(),
