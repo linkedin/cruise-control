@@ -935,7 +935,7 @@ public class KafkaCruiseControl {
    * There are two scenarios that rack awareness property is not guaranteed.
    * <ul>
    *   <li> If metadata does not have rack information about brokers, then it is only guaranteed that new replicas are
-   *   added to brokers which currently do not host any replicas of partition.</li>
+   *   added to brokers, which currently do not host any replicas of partition.</li>
    *   <li> If replication factor to set for the topic is larger than number of racks in the cluster and
    *   skipTopicRackAwarenessCheck is set to true, then rack awareness property is ignored.</li>
    * </ul>
@@ -981,14 +981,18 @@ public class KafkaCruiseControl {
       int[] cursors = new int[racks.size()];
       int rackCursor = 0;
       for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+        if (partitionInfo.replicas().length == replicationFactor) {
+          continue;
+        }
+
+        Set<Integer> offlineReplicas = offlineReplicasForPartition(partitionInfo, cluster.nodes());
+        if (!offlineReplicas.isEmpty()) {
+          throw new RuntimeException(String.format("Topic partition %s-%d has offline replicas on brokers %s, unable to update "
+                                     + "its replication factor.", partitionInfo.topic(), partitionInfo.partition(), offlineReplicas));
+        }
+        List<Integer> currentAssignedReplica = new ArrayList<>(partitionInfo.replicas().length);
+        List<Integer> newAssignedReplica = new ArrayList<>();
         if (partitionInfo.replicas().length < replicationFactor) {
-          Set<Integer> offlineReplicas = offlineReplicasForPartition(partitionInfo, cluster.nodes());
-          if (!offlineReplicas.isEmpty()) {
-            throw new RuntimeException(String.format("Topic partition %s-%d has offline replicas on brokers %s, unable to update "
-                                       + "its replication factor.", partitionInfo.topic(), partitionInfo.partition(), offlineReplicas));
-          }
-          List<Integer> currentAssignedReplica = new ArrayList<>(partitionInfo.replicas().length);
-          List<Integer> newAssignedReplica = new ArrayList<>();
           Set<String> currentOccupiedRack = new HashSet<>();
           // Make sure the current replicas are in new replica list.
           for (Node node : partitionInfo.replicas()) {
@@ -1007,19 +1011,13 @@ public class KafkaCruiseControl {
             }
             rackCursor = (rackCursor + 1) % racks.size();
           }
+          // TODO: get the partition size and  populate into execution proposal, see https://github.com/linkedin/cruise-control/issues/722
           proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
                                               0,
                                               partitionInfo.leader().id(),
                                               currentAssignedReplica,
                                               newAssignedReplica));
-        } else if (partitionInfo.replicas().length > replicationFactor) {
-          Set<Integer> offlineReplicas = offlineReplicasForPartition(partitionInfo, cluster.nodes());
-          if (!offlineReplicas.isEmpty()) {
-            throw new RuntimeException(String.format("Topic partition %s-%d has offline replicas on brokers %s, unable to update "
-                                       + "its replication factor.", partitionInfo.topic(), partitionInfo.partition(), offlineReplicas));
-          }
-          List<Integer> currentAssignedReplica = new ArrayList<>(partitionInfo.replicas().length);
-          List<Integer> newAssignedReplica = new ArrayList<>();
+        } else {
           // Make sure the leader replica is in new replica list.
           newAssignedReplica.add(partitionInfo.leader().id());
           for (Node node : partitionInfo.replicas()) {
@@ -1028,6 +1026,7 @@ public class KafkaCruiseControl {
               newAssignedReplica.add(node.id());
             }
           }
+          // TODO: get the partition size and  populate into execution proposal, see https://github.com/linkedin/cruise-control/issues/722
           proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
                                               0,
                                               partitionInfo.leader().id(),
