@@ -857,12 +857,12 @@ public class ParameterUtils {
     return getBooleanParam(request, EXCLUDE_FOLLOWER_DEMOTION_PARAM, false);
   }
 
-  static int replicationFactor(HttpServletRequest request) {
+  static short replicationFactor(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_FACTOR_PARAM);
     if (parameterString == null) {
       throw new IllegalArgumentException("Topic's replication factor is not specified.");
     }
-    return Integer.parseInt(request.getParameter(parameterString));
+    return Short.parseShort(request.getParameter(parameterString));
   }
 
   public enum DataFrom {

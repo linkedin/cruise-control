@@ -7,12 +7,16 @@ package com.linkedin.kafka.cruisecontrol;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
@@ -131,5 +135,19 @@ public class KafkaCruiseControlUtils {
   public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) {
     PartitionInfo partitionInfo = cluster.partition(tp);
     return partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
+  }
+
+  /**
+   * Get the offline replicas for the partition.
+   * @param partitionInfo The partition information of topic partition to check.
+   * @param aliveNodes The alive nodes of the cluster.
+   * @return Id of brokers which host offline replica of the partition.
+   */
+  public static Set<Integer> offlineReplicasForPartition(PartitionInfo partitionInfo, List<Node> aliveNodes) {
+    return Arrays.stream(partitionInfo.replicas())
+                 .filter(node -> !aliveNodes.contains(node))
+                 .mapToInt(Node::id)
+                 .boxed()
+                 .collect(Collectors.toSet());
   }
 }

@@ -26,7 +26,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateTopicConfigurationParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
@@ -326,9 +326,9 @@ public class KafkaCruiseControlServlet extends HttpServlet {
             }
             break;
           case TOPIC_CONFIGURATION:
-            reviewableParams = evaluateReviewableParams(request, response, () -> new UpdateTopicConfigurationParameters(request, _config));
+            reviewableParams = evaluateReviewableParams(request, response, () -> new TopicConfigurationParameters(request, _config));
             if (reviewableParams != null) {
-              updateTopicConfiguration(request, response, () -> (UpdateTopicConfigurationParameters) reviewableParams);
+              updateTopicConfiguration(request, response, () -> (TopicConfigurationParameters) reviewableParams);
             }
             break;
           case REVIEW:
@@ -418,7 +418,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                  request, response);
   }
 
-  private void updateTopicConfiguration(HttpServletRequest request, HttpServletResponse response, Supplier<UpdateTopicConfigurationParameters> paramSupplier)
+  private void updateTopicConfiguration(HttpServletRequest request, HttpServletResponse response, Supplier<TopicConfigurationParameters> paramSupplier)
       throws IOException, ExecutionException, InterruptedException {
     asyncRequest(paramSupplier, parameters -> (uuid -> _asyncKafkaCruiseControl.updateTopicConfiguration(parameters, uuid)),
                  request, response);

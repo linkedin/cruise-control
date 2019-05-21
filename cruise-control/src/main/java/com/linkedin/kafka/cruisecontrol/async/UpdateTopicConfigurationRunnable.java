@@ -6,16 +6,16 @@ package com.linkedin.kafka.cruisecontrol.async;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateTopicConfigurationParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.UpdateTopicConfigurationResult;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.TopicConfigurationResult;
 import java.util.regex.Pattern;
 
 /**
- * The async runnable for {@link KafkaCruiseControl#updateTopicConfiguration(Pattern, int, boolean, String)}
+ * The async runnable for {@link KafkaCruiseControl#updateTopicConfiguration(Pattern, short, boolean, String)}
  */
 public class UpdateTopicConfigurationRunnable extends OperationRunnable {
   private final Pattern _topic;
-  private final int _replicationFactor;
+  private final short _replicationFactor;
   private final boolean _skipRackAwarenessCheck;
   private final String _uuid;
   private final KafkaCruiseControlConfig _config;
@@ -23,7 +23,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
   UpdateTopicConfigurationRunnable(KafkaCruiseControl kafkaCruiseControl,
                                    OperationFuture future,
                                    String uuid,
-                                   UpdateTopicConfigurationParameters parameters,
+                                   TopicConfigurationParameters parameters,
                                    KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
     _uuid = uuid;
@@ -34,12 +34,12 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
   }
 
   @Override
-  protected UpdateTopicConfigurationResult getResult() {
-    return new UpdateTopicConfigurationResult(_kafkaCruiseControl.updateTopicConfiguration(_topic,
-                                                                                           _replicationFactor,
-                                                                                           _skipRackAwarenessCheck,
-                                                                                           _uuid),
-                                              _replicationFactor,
-                                              _config);
+  protected TopicConfigurationResult getResult() {
+    return new TopicConfigurationResult(_kafkaCruiseControl.updateTopicConfiguration(_topic,
+                                                                                     _replicationFactor,
+                                                                                     _skipRackAwarenessCheck,
+                                                                                     _uuid),
+                                        _replicationFactor,
+                                        _config);
   }
 }

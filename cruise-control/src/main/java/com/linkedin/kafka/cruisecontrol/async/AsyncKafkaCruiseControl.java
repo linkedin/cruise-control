@@ -19,7 +19,7 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveBrokerParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateTopicConfigurationParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -50,7 +50,7 @@ import java.util.regex.Pattern;
  * boolean, Integer, Integer, boolean, java.util.regex.Pattern,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean, boolean,
  * boolean, Set)}</li>
- * <li>{@link KafkaCruiseControl#updateTopicConfiguration(Pattern, int, boolean, String)}</li>
+ * <li>{@link KafkaCruiseControl#updateTopicConfiguration(Pattern, short, boolean, String)}</li>
  * </ul>
  *
  * The other operations are non-blocking by default.
@@ -162,9 +162,9 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see {@link KafkaCruiseControl#updateTopicConfiguration(Pattern, int, boolean, String)}
+   * @see {@link KafkaCruiseControl#updateTopicConfiguration(Pattern, short, boolean, String)}
    */
-  public OperationFuture updateTopicConfiguration(UpdateTopicConfigurationParameters parameters, String uuid) {
+  public OperationFuture updateTopicConfiguration(TopicConfigurationParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("UpdateTopicConfiguration");
     pending(future.operationProgress());
     _sessionExecutor.submit(new UpdateTopicConfigurationRunnable(this, future, uuid, parameters, _config));
