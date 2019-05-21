@@ -105,6 +105,7 @@ public class ParameterUtils {
   public static final String BROKER_ID_AND_LOGDIRS_PARAM = "brokerid_and_logdirs";
   public static final String REPLICATION_FACTOR_PARAM = "replication_factor";
   public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
+  public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
   private static final int MAX_REASON_LENGTH = 50;
   private static final String DELIMITER_BETWEEN_BROKER_ID_AND_LOGDIR = "-";
 
@@ -257,6 +258,7 @@ public class ParameterUtils {
     userTasks.add(ENTRIES_PARAM);
     userTasks.add(ENDPOINTS_PARAM);
     userTasks.add(TYPES_PARAM);
+    userTasks.add(FETCH_COMPLETED_TASK_PARAM);
 
     Set<String> admin = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     admin.add(JSON_PARAM);
@@ -883,7 +885,9 @@ public class ParameterUtils {
    * Default: An empty set.
    */
   public static Set<EndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
-    Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM);
+    Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM).stream()
+                                                                                 .map(String::toUpperCase)
+                                                                                 .collect(Collectors.toSet());
 
     Set<EndPoint> endPoints = new HashSet<>();
     for (EndPoint endPoint : EndPoint.cachedValues()) {
@@ -922,7 +926,7 @@ public class ParameterUtils {
   }
 
   /**
-   * Skip hard goal check in kafka_assigner mode,
+   * Skip hard goal check in kafka_assigner mode.
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
     return isKafkaAssignerMode(request) || isRebalanceDiskMode(request) ||
@@ -943,6 +947,10 @@ public class ParameterUtils {
       throw new IllegalArgumentException("Topic's replication factor is not specified.");
     }
     return Short.parseShort(request.getParameter(parameterString));
+  }
+
+  static boolean fetchCompletedTask(HttpServletRequest request) {
+    return getBooleanParam(request, FETCH_COMPLETED_TASK_PARAM, false);
   }
 
   public enum DataFrom {
