@@ -84,12 +84,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     jsonObjectMap.put(STATUS, status);
     // Populate original response of completed task if requested so.
     if (fetchCompletedTask) {
-      try {
-        CruiseControlResponse response = userTaskInfo.futures().get(userTaskInfo.futures().size() - 1).get();
-        jsonObjectMap.put(ORIGINAL_RESPONSE, ((AbstractCruiseControlResponse) response).cachedResponse());
-      } catch (InterruptedException | ExecutionException e) {
-        throw new IllegalStateException("Error happened in fetching response for task " + userTaskInfo.userTaskId().toString(), e);
-      }
+      jsonObjectMap.put(ORIGINAL_RESPONSE, completedTaskResponse(userTaskInfo));
     }
     jsonUserTaskList.add(jsonObjectMap);
   }
@@ -185,17 +180,21 @@ public class UserTaskState extends AbstractCruiseControlResponse {
         }
         sb.append("%nOriginal response for task ")
           .append(userTaskInfo.userTaskId())
-          .append(":%n");
-        try {
-          CruiseControlResponse response = userTaskInfo.futures().get(userTaskInfo.futures().size() - 1).get();
-          sb.append(((AbstractCruiseControlResponse) response).cachedResponse());
-        } catch (InterruptedException | ExecutionException e) {
-          throw new IllegalStateException("Error happened in fetching response for task " + userTaskInfo.userTaskId().toString(), e);
-        }
+          .append(":%n")
+          .append(completedTaskResponse(userTaskInfo));
       }
     }
 
     return sb.toString();
+  }
+
+  private String completedTaskResponse(UserTaskManager.UserTaskInfo userTaskInfo) {
+    try {
+      CruiseControlResponse response = userTaskInfo.futures().get(userTaskInfo.futures().size() - 1).get();
+      return ((AbstractCruiseControlResponse) response).cachedResponse();
+    } catch (InterruptedException | ExecutionException e) {
+      throw new IllegalStateException("Error happened in fetching response for task " + userTaskInfo.userTaskId().toString(), e);
+    }
   }
 
   @Override
