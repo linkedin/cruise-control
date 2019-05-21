@@ -16,16 +16,11 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#USER_TASKS}
  *
- * <ul>
- *   <li>Note that if "fetch_complete_response" is set to true, one and only one user task id should to be set for "user_task_ids"
- *   and the id should correspond to a completed task.
- * </ul>
- *
  * <pre>
  * Retrieve the recent user tasks.
  *    GET /kafkacruisecontrol/user_tasks?json=[true/false]&amp;user_task_ids=[Set-of-USER-TASK-IDS]&amp;client_ids=[Set-of-ClientIdentity]&amp;
  *    endpoints=[Set-of-{@link EndPoint}]&amp;types=[Set-of-{@link UserTaskManager.TaskState}]&amp;entries=[POSITIVE-INTEGER]
- *    &amp;fetch_complete_response=[true/false]
+ *    &amp;fetch_completed_task=[true/false]
  * </pre>
  */
 public class UserTasksParameters extends AbstractParameters {
@@ -34,7 +29,7 @@ public class UserTasksParameters extends AbstractParameters {
   private Set<EndPoint> _endPoints;
   private Set<UserTaskManager.TaskState> _types;
   private int _entries;
-  private boolean _fetchCompleteResponse;
+  private boolean _fetchCompletedTask;
 
   public UserTasksParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request, config);
@@ -48,10 +43,7 @@ public class UserTasksParameters extends AbstractParameters {
     _endPoints = ParameterUtils.endPoints(_request);
     _types = ParameterUtils.types(_request);
     _entries = ParameterUtils.entries(_request);
-    _fetchCompleteResponse = ParameterUtils.fetchCompleteResponse(_request);
-    if (_fetchCompleteResponse && _userTaskIds.size() != 1) {
-      throw new IllegalArgumentException("Only one user task ID should be specified to fetch complete response.");
-    }
+    _fetchCompletedTask = ParameterUtils.fetchCompletedTask(_request);
   }
 
   public Set<UUID> userTaskIds() {
@@ -74,7 +66,7 @@ public class UserTasksParameters extends AbstractParameters {
     return _entries;
   }
 
-  public boolean fetchCompleteResponse() {
-    return _fetchCompleteResponse;
+  public boolean fetchCompletedTask() {
+    return _fetchCompletedTask;
   }
 }
