@@ -26,6 +26,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
@@ -324,6 +325,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                           request, response, endPoint);
             }
             break;
+          case TOPIC_CONFIGURATION:
+            reviewableParams = evaluateReviewableParams(request, response, () -> new TopicConfigurationParameters(request, _config));
+            if (reviewableParams != null) {
+              updateTopicConfiguration(request, response, () -> (TopicConfigurationParameters) reviewableParams);
+            }
+            break;
           case REVIEW:
             if (!_twoStepVerification) {
               throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
@@ -408,6 +415,12 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private void demoteBroker(HttpServletRequest request, HttpServletResponse response, Supplier<DemoteBrokerParameters> paramSupplier)
       throws IOException, ExecutionException, InterruptedException {
     asyncRequest(paramSupplier, parameters -> (uuid -> _asyncKafkaCruiseControl.demoteBrokers(uuid, parameters)),
+                 request, response);
+  }
+
+  private void updateTopicConfiguration(HttpServletRequest request, HttpServletResponse response, Supplier<TopicConfigurationParameters> paramSupplier)
+      throws IOException, ExecutionException, InterruptedException {
+    asyncRequest(paramSupplier, parameters -> (uuid -> _asyncKafkaCruiseControl.updateTopicConfiguration(parameters, uuid)),
                  request, response);
   }
 

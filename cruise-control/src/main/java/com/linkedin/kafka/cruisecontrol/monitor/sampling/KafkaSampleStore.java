@@ -23,9 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import kafka.admin.AdminUtils;
-import kafka.admin.BrokerMetadata;
 import kafka.admin.RackAwareMode;
-import kafka.common.TopicAndPartition;
 import kafka.log.LogConfig;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -50,15 +48,9 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Option;
 import scala.collection.JavaConversions;
-import scala.collection.JavaConverters;
-import scala.collection.Seq;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureNoPartitionUnderPartitionReassignment;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicNotUnderPartitionReassignment;
-import static org.apache.kafka.common.requests.MetadataResponse.TopicMetadata;
-import static org.apache.kafka.common.requests.MetadataResponse.PartitionMetadata;
 
 /**
  * The sample store that implements the {@link SampleStore}. It stores the partition metric samples and broker metric
@@ -239,93 +231,8 @@ public class KafkaSampleStore implements SampleStore {
                          replicationFactor, _partitionSampleStoreTopicPartitionCount);
       ensureTopicCreated(zkUtils, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor, _brokerSampleStoreTopicPartitionCount);
-      maybeIncreaseTopicReplicationFactor(zkUtils, replicationFactor,
-                                          new HashSet<>(Arrays.asList(_partitionMetricSampleStoreTopic, _brokerMetricSampleStoreTopic)));
     } finally {
       KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
-    }
-  }
-
-  /**
-   * Increase the replication factor of Kafka topics through adding new replicas in a rack-aware, round-robin way.
-   * There are two scenarios that rack awareness property is not guaranteed.
-   * <ul>
-   *   <li> If Zookeeper does not have rack information about brokers, then it is only guaranteed that new replicas are
-   *   added to brokers which do not currently host the partition.</li>
-   *   <li> If replication factor to set for the topic is larger than number of racks in the cluster, then rack awareness
-   *   property is ignored.</li>
-   * </ul>
-   *
-   * @param zkUtils ZkUtils class to use to increase replication factor.
-   * @param replicationFactor The replication factor to set for the topic.
-   * @param topics The topics to check.
-   */
-  private void maybeIncreaseTopicReplicationFactor(ZkUtils zkUtils,
-                                                   int replicationFactor,
-                                                   Set<String> topics) {
-    if (!ensureNoPartitionUnderPartitionReassignment(zkUtils)) {
-      LOG.warn("There are ongoing partition reassignments, skip checking replication factor of topics {}.", topics);
-      return;
-    }
-    Map<String, List<Integer>> brokersByRack = new HashMap<>();
-    Map<Integer, String> rackByBroker = new HashMap<>();
-    for (BrokerMetadata bm :
-         JavaConversions.seqAsJavaList(AdminUtils.getBrokerMetadatas(zkUtils, RackAwareMode.Enforced$.MODULE$, Option.empty()))) {
-      // If the rack is not specified, we use the broker id info as rack info.
-      String rack = bm.rack().isEmpty() ? String.valueOf(bm.id()) : bm.rack().get();
-      brokersByRack.putIfAbsent(rack, new ArrayList<>());
-      brokersByRack.get(rack).add(bm.id());
-      rackByBroker.put(bm.id(), rack);
-    }
-
-    if (replicationFactor > brokersByRack.size()) {
-      if (_skipSampleStoreTopicRackAwarenessCheck) {
-        LOG.warn("Target replication factor for topics " + topics + " is larger than number of racks in cluster, new replica maybe"
-                 + " added in none rack-aware way.");
-      } else {
-        throw new RuntimeException("Unable to increase topics " + topics + " replica factor to " + replicationFactor
-                                   + " since there are only " + brokersByRack.size() + " racks in the cluster.");
-      }
-    }
-
-    scala.collection.mutable.Map<TopicAndPartition, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
-    scala.collection.Set<TopicMetadata> topicMetadatas = AdminUtils.fetchTopicMetadataFromZk(JavaConversions.asScalaSet(topics), zkUtils,
-                                                                                             ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT));
-    for (scala.collection.Iterator<TopicMetadata> iter = topicMetadatas.iterator(); iter.hasNext();) {
-      TopicMetadata topicMetadata = iter.next();
-      String topic = topicMetadata.topic();
-      List<String> racks = new ArrayList<>(brokersByRack.keySet());
-      int[] cursors = new int[racks.size()];
-      int rackCursor = 0;
-      for (PartitionMetadata pm : topicMetadata.partitionMetadata()) {
-        if (pm.replicas().size() < replicationFactor) {
-          List<Object> newAssignedReplica = new ArrayList<>();
-          Set<String> currentOccupiedRack = new HashSet<>();
-          // Make sure the current replicas are in new replica list.
-          pm.replicas().forEach(node -> {
-            newAssignedReplica.add(node.id());
-            currentOccupiedRack.add(rackByBroker.get(node.id()));
-          });
-          // Add new replica to partition in rack-aware(if possible), round-robin way.
-          while (newAssignedReplica.size() < replicationFactor) {
-            if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
-              String rack = racks.get(rackCursor);
-              int cursor = cursors[rackCursor];
-              newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
-              currentOccupiedRack.add(rack);
-              cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
-            }
-            rackCursor = (rackCursor + 1) % racks.size();
-          }
-          newReplicaAssignment.put(new TopicAndPartition(topic, pm.partition()),
-              JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
-        }
-      }
-    }
-    if (newReplicaAssignment.nonEmpty()) {
-      zkUtils.updatePartitionReassignmentData(newReplicaAssignment);
-      LOG.info(String.format("The replication factor of topic partition %s is increased to %d.",
-                             newReplicaAssignment.keySet(), replicationFactor));
     }
   }
 
