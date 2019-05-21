@@ -31,7 +31,8 @@ public enum EndPoint {
   USER_TASKS,
   REVIEW_BOARD,
   ADMIN,
-  REVIEW;
+  REVIEW,
+  TOPIC_CONFIGURATION;
 
   private static final List<EndPoint> GET_ENDPOINT = Arrays.asList(BOOTSTRAP,
                                                                    TRAIN,
@@ -51,7 +52,8 @@ public enum EndPoint {
                                                                     RESUME_SAMPLING,
                                                                     DEMOTE_BROKER,
                                                                     ADMIN,
-                                                                    REVIEW);
+                                                                    REVIEW,
+                                                                    TOPIC_CONFIGURATION);
   private static final List<EndPoint> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
   public static List<EndPoint> getEndpoint() {

@@ -12,6 +12,7 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -20,7 +21,9 @@ import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
@@ -276,5 +279,17 @@ public class KafkaCruiseControlUtils {
     if (!interSection.isEmpty()) {
       throw new IllegalStateException(message);
     }
+  }
+
+  /**
+   * Get the offline replicas for the partition.
+   * @param partitionInfo The partition information of topic partition to check.
+   * @return Id of brokers which host offline replica of the partition.
+   */
+  public static Set<Integer> offlineReplicasForPartition(PartitionInfo partitionInfo) {
+    return Arrays.stream(partitionInfo.offlineReplicas())
+                 .mapToInt(Node::id)
+                 .boxed()
+                 .collect(Collectors.toSet());
   }
 }

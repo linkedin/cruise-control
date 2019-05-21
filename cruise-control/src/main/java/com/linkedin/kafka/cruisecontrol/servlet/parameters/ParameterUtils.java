@@ -103,6 +103,8 @@ public class ParameterUtils {
   public static final String REBALANCE_DISK_MODE_PARAM = "rebalance_disk";
   public static final String POPULATE_DISK_INFO_PARAM = "populate_disk_info";
   public static final String BROKER_ID_AND_LOGDIRS_PARAM = "brokerid_and_logdirs";
+  public static final String REPLICATION_FACTOR_PARAM = "replication_factor";
+  public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
   private static final int MAX_REASON_LENGTH = 50;
   private static final String DELIMITER_BETWEEN_BROKER_ID_AND_LOGDIR = "-";
 
@@ -275,6 +277,13 @@ public class ParameterUtils {
     reviewBoard.add(JSON_PARAM);
     reviewBoard.add(REVIEW_IDS_PARAM);
 
+    Set<String> topicConfiguration = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    topicConfiguration.add(JSON_PARAM);
+    topicConfiguration.add(TOPIC_PARAM);
+    topicConfiguration.add(REPLICATION_FACTOR_PARAM);
+    topicConfiguration.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
+    topicConfiguration.add(REVIEW_IDS_PARAM);
+
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
     validParamNames.put(LOAD, Collections.unmodifiableSet(load));
@@ -294,6 +303,7 @@ public class ParameterUtils {
     validParamNames.put(ADMIN, Collections.unmodifiableSet(admin));
     validParamNames.put(REVIEW, Collections.unmodifiableSet(review));
     validParamNames.put(REVIEW_BOARD, Collections.unmodifiableSet(reviewBoard));
+    validParamNames.put(TOPIC_CONFIGURATION, Collections.unmodifiableSet(topicConfiguration));
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
@@ -379,6 +389,10 @@ public class ParameterUtils {
 
   static boolean allowCapacityEstimation(HttpServletRequest request) {
     return getBooleanParam(request, ALLOW_CAPACITY_ESTIMATION_PARAM, true);
+  }
+
+  static boolean skipRackAwarenessCheck(HttpServletRequest request) {
+    return getBooleanParam(request, SKIP_RACK_AWARENESS_CHECK_PARAM, false);
   }
 
   private static boolean excludeBrokers(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
@@ -921,6 +935,14 @@ public class ParameterUtils {
 
   static boolean excludeFollowerDemotion(HttpServletRequest request) {
     return getBooleanParam(request, EXCLUDE_FOLLOWER_DEMOTION_PARAM, false);
+  }
+
+  static short replicationFactor(HttpServletRequest request) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_FACTOR_PARAM);
+    if (parameterString == null) {
+      throw new IllegalArgumentException("Topic's replication factor is not specified.");
+    }
+    return Short.parseShort(request.getParameter(parameterString));
   }
 
   public enum DataFrom {

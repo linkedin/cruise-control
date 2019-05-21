@@ -26,6 +26,7 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
@@ -47,6 +48,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.TrainResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -61,6 +63,9 @@ import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
@@ -68,6 +73,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ensureDisJoint;
 import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEMOTED;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.offlineReplicasForPartition;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.*;
 
 
@@ -1049,6 +1055,141 @@ public class KafkaCruiseControl {
   public StopProposalResult stopProposalExecution(StopProposalParameters parameters) {
     _executor.userTriggeredStopExecution();
     return new StopProposalResult(_config);
+  }
+
+  /**
+   * Update the replication factor of Kafka topics.
+   * If partition's current replication factor is less than target replication factor, add new replicas to the partition
+   * in a rack-aware, round-robin way.
+   * There are two scenarios that rack awareness property is not guaranteed.
+   * <ul>
+   *   <li> If metadata does not have rack information about brokers, then it is only guaranteed that new replicas are
+   *   added to brokers, which currently do not host any replicas of partition.</li>
+   *   <li> If replication factor to set for the topic is larger than number of racks in the cluster and
+   *   skipTopicRackAwarenessCheck is set to true, then rack awareness property is ignored.</li>
+   * </ul>
+   * If partition's current replication factor is larger than target replication factor, remove one or more follower replicas
+   * from the partition.
+   *
+   * @param cluster The metadata of the cluster.
+   * @param replicationFactor The replication factor to set for the topics.
+   * @param topics The topics to apply the change.
+   * @param skipTopicRackAwarenessCheck Whether ignore rack awareness property if number of rack in cluster is less
+   *                                    than target replication factor.
+   * @return Execution proposals to increase replication factor of topics.
+   */
+  private Set<ExecutionProposal> maybeUpdateTopicReplicationFactor(Cluster cluster,
+                                                                   short replicationFactor,
+                                                                   Set<String> topics,
+                                                                   boolean skipTopicRackAwarenessCheck) {
+    Map<String, List<Integer>> brokersByRack = new HashMap<>();
+    Map<Integer, String> rackByBroker = new HashMap<>();
+    for (Node node : cluster.nodes()) {
+      // If the rack is not specified, we use the broker id info as rack info.
+      String rack = node.rack() == null || node.rack().isEmpty() ? String.valueOf(node.id()) : node.rack();
+      brokersByRack.putIfAbsent(rack, new ArrayList<>());
+      brokersByRack.get(rack).add(node.id());
+      rackByBroker.put(node.id(), rack);
+    }
+
+    if (replicationFactor > brokersByRack.size()) {
+      if (skipTopicRackAwarenessCheck) {
+        LOG.info(String.format("Target replication factor for topics %s is larger than number of racks in cluster, rack-awareness "
+                               + "property may not be guaranteed.", topics));
+      } else {
+        throw new RuntimeException(String.format("Unable to change replication factor of topics %s to %d since there are only %d "
+                                                 + "racks in the cluster, to skip the rack-awareness check, set "
+                                                 + "skipTopicRackAwarenessCheck to true in the request.",
+                                                 topics, replicationFactor, brokersByRack.size()));
+      }
+    }
+
+    Set<ExecutionProposal> proposals = new HashSet<>();
+    for (String topic : topics) {
+      List<String> racks = new ArrayList<>(brokersByRack.keySet());
+      int[] cursors = new int[racks.size()];
+      int rackCursor = 0;
+      for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+        if (partitionInfo.replicas().length == replicationFactor) {
+          continue;
+        }
+
+        Set<Integer> offlineReplicas = offlineReplicasForPartition(partitionInfo);
+        if (!offlineReplicas.isEmpty()) {
+          throw new RuntimeException(String.format("Topic partition %s-%d has offline replicas on brokers %s, unable to update "
+                                     + "its replication factor.", partitionInfo.topic(), partitionInfo.partition(), offlineReplicas));
+        }
+        List<ReplicaPlacementInfo> currentAssignedReplica = new ArrayList<>(partitionInfo.replicas().length);
+        List<ReplicaPlacementInfo> newAssignedReplica = new ArrayList<>();
+        if (partitionInfo.replicas().length < replicationFactor) {
+          Set<String> currentOccupiedRack = new HashSet<>();
+          // Make sure the current replicas are in new replica list.
+          for (Node node : partitionInfo.replicas()) {
+            currentAssignedReplica.add(new ReplicaPlacementInfo(node.id()));
+            newAssignedReplica.add(new ReplicaPlacementInfo(node.id()));
+            currentOccupiedRack.add(rackByBroker.get(node.id()));
+          }
+          // Add new replica to partition in rack-aware(if possible), round-robin way.
+          while (newAssignedReplica.size() < replicationFactor) {
+            if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
+              String rack = racks.get(rackCursor);
+              int cursor = cursors[rackCursor];
+              newAssignedReplica.add(new ReplicaPlacementInfo(brokersByRack.get(rack).get(cursor)));
+              currentOccupiedRack.add(rack);
+              cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+            }
+            rackCursor = (rackCursor + 1) % racks.size();
+          }
+          // TODO: get the partition size and populate into execution proposal, check https://github.com/linkedin/cruise-control/issues/722
+          proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
+                                              0,
+                                              new ReplicaPlacementInfo(partitionInfo.leader().id()),
+                                              currentAssignedReplica,
+                                              newAssignedReplica));
+        } else {
+          // Make sure the leader replica is in new replica list.
+          newAssignedReplica.add(new ReplicaPlacementInfo(partitionInfo.leader().id()));
+          for (Node node : partitionInfo.replicas()) {
+            currentAssignedReplica.add(new ReplicaPlacementInfo(node.id()));
+            if (newAssignedReplica.size() < replicationFactor && node.id() != newAssignedReplica.get(0).brokerId()) {
+              newAssignedReplica.add(new ReplicaPlacementInfo(node.id()));
+            }
+          }
+          // TODO: get the partition size and populate into execution proposal, check https://github.com/linkedin/cruise-control/issues/722
+          proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
+                                              0,
+                                              new ReplicaPlacementInfo(partitionInfo.leader().id()),
+                                              currentAssignedReplica,
+                                              newAssignedReplica));
+        }
+      }
+    }
+    return proposals;
+  }
+
+  /**
+   * Update configuration of topic pattern. Currently only support change replication factor of topics from the given pattern.
+   *
+   * @param topic The name pattern of topics to apply the change.
+   * @param replicationFactor The replication factor to set for the topics.
+   * @param skipTopicRackAwarenessCheck Whether skip ignore rack awareness property if number of rack in cluster is less
+   *                                    than target replication factor.
+   * @param uuid UUID of the execution.
+   *
+   * @return Topics to apply the change.
+   */
+  public Set<String> updateTopicConfiguration(Pattern topic,
+                                              short replicationFactor,
+                                              boolean skipTopicRackAwarenessCheck,
+                                              String uuid) {
+    Cluster cluster = _loadMonitor.kafkaCluster();
+    Set<String> topics = cluster.topics().stream().filter(t -> topic.matcher(t).matches()).collect(Collectors.toSet());
+    Set<ExecutionProposal> proposals = maybeUpdateTopicReplicationFactor(cluster,
+                                                                         replicationFactor,
+                                                                         topics,
+                                                                         skipTopicRackAwarenessCheck);
+    _executor.executeProposals(proposals, null, null, _loadMonitor, null, null, null, null, uuid);
+    return topics;
   }
 
   /**
