@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 
@@ -165,10 +166,28 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     return sb.toString();
   }
 
+  private String fetchResponseFromCompletedTask(UserTasksParameters parameters) {
+    UUID interestedUUID = parameters.userTaskIds().iterator().next();
+    for (UserTaskManager.UserTaskInfo taskInfo : _userTasksByTaskState.get(UserTaskManager.TaskState.COMPLETED)) {
+      if (taskInfo.userTaskId() == interestedUUID) {
+        try {
+          CruiseControlResponse response = taskInfo.futures().get(taskInfo.futures().size() - 1).get();
+          return ((AbstractCruiseControlResponse) response).cachedResponse();
+        } catch (InterruptedException | ExecutionException e) {
+          throw new IllegalStateException("Error happened in fetching response for task with UUID " + interestedUUID);
+        }
+      }
+    }
+    throw new IllegalArgumentException("Can not find completed task with UUID " + interestedUUID);
+  }
+
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
+    UserTasksParameters userTasksParameters = (UserTasksParameters) parameters;
     // Cache relevant response.
-    _cachedResponse = parameters.json() ? getJSONString(parameters) : getPlaintext(parameters);
+    _cachedResponse = userTasksParameters.fetchCompleteResponse() ? fetchResponseFromCompletedTask(userTasksParameters) :
+                      userTasksParameters.json()                  ? getJSONString(userTasksParameters) :
+                                                                    getPlaintext(userTasksParameters);
     // Discard irrelevant response.
     _userTasksByTaskState.get(UserTaskManager.TaskState.ACTIVE).clear();
     _userTasksByTaskState.get(UserTaskManager.TaskState.COMPLETED).clear();
