@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -28,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -40,10 +40,9 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.httpServletRequestToString;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.DATE_FORMAT;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.TIME_ZONE;
 
 /**
  * {@link UserTaskManager} keeps track of Sync and Async user tasks. When a {@link HttpServletRequest} comes in, the servlet
@@ -62,7 +61,7 @@ public class UserTaskManager implements Closeable {
   public static final long USER_TASK_SCANNER_INITIAL_DELAY_SECONDS = 0;
 
   private static final Logger LOG = LoggerFactory.getLogger(UserTaskManager.class);
-  private static final Logger RESULT_LOG = LoggerFactory.getLogger("com.linkedin.kafka.cruisecontrol.CruiseControlResultLog");
+  private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private final Map<SessionKey, UUID> _sessionKeyToUserTaskIdMap;
   private final Map<TaskState, Map<UUID, UserTaskInfo>> _allUuidToUserTaskInfoMap;
   private final long _sessionExpiryMs;
@@ -71,8 +70,8 @@ public class UserTaskManager implements Closeable {
   private final ScheduledExecutorService _userTaskScannerExecutor =
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskScanner", true, null));
   // TODO upgrade log4j to log4j2 to use async logger
-  private final ExecutorService _loggerExecutor =
-      Executors.newFixedThreadPool(1, new KafkaCruiseControlThreadFactory("UserTaskManagerLoggerExecutor", true, null));
+  private final ExecutorService _userTaskLoggerExecutor =
+      Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskLogger", true, null));
   private final UUIDGenerator _uuidGenerator;
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer;
   private final long _completedUserTaskRetentionTimeMs;
@@ -167,7 +166,7 @@ public class UserTaskManager implements Closeable {
    *                 returns a completed Future.
    * @param step The index of the step that has to be added or fetched.
    * @param isAsyncRequest Indicate whether the task is async or sync.
-   * @param parameters parameters to help retrieve UserTask result.
+   * @param parameters Parsed parameters from http request.
    * @return The list of {@link OperationFuture} for the linked UserTask.
    */
   public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest,
@@ -299,13 +298,13 @@ public class UserTaskManager implements Closeable {
         LOG.warn("UserTask {} is completed with Exception and removed from active tasks list", entry.getKey());
         _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED_WITH_ERROR));
         iter.remove();
-        _loggerExecutor.submit(() -> persistCompletedUserTask(entry.getValue()));
+        _userTaskLoggerExecutor.submit(() -> entry.getValue().logOperation());
       } else if (entry.getValue().isUserTaskDone()) {
         LOG.info("UserTask {} is completed and removed from active tasks list", entry.getKey());
         _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
         _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED));
         iter.remove();
-        _loggerExecutor.submit(() -> persistCompletedUserTask(entry.getValue()));
+        _userTaskLoggerExecutor.submit(() -> entry.getValue().logOperation());
       }
     }
   }
@@ -393,7 +392,7 @@ public class UserTaskManager implements Closeable {
    * @param userTaskId UUID to uniquely identify task.
    * @param operation lambda function to provide result to UserTaskInfo object
    * @param httpServletRequest http request associated with the task
-   * @param parameters parameters to help retrieve UserTask result
+   * @param parameters Parsed parameters from http request.
    * @return {@link UserTaskInfo} containing request detail and  {@link OperationFuture}
    */
   private synchronized UserTaskInfo insertFuturesByUserTaskId(UUID userTaskId,
@@ -533,7 +532,7 @@ public class UserTaskManager implements Closeable {
     private final Map<String, String[]> _queryParams;
     private final EndPoint _endPoint;
     private TaskState _state;
-    private CruiseControlParameters _parameters;
+    private final CruiseControlParameters _parameters;
 
     public UserTaskInfo(HttpServletRequest httpServletRequest,
                         List<OperationFuture> futures,
@@ -622,41 +621,15 @@ public class UserTaskManager implements Closeable {
       return _futures.get(_futures.size() - 1).isCompletedExceptionally();
     }
 
-    @Override
-    public String toString() {
-      return String.format("UserTask [%s] for endpoint [%s] with requestUrl [%s] started-at [%s]. UserTask has %d step(s).",
-                           userTaskId().toString(), endPoint().toString(), requestWithParams(),
-                           KafkaCruiseControlUtils.toDateString(startMs(), DATE_FORMAT, TIME_ZONE),
-                           futures().size());
-    }
-  }
-
-  // Persist user request and result to log. Called when the user task completes and is moved into COMPLETED status
-  private void persistCompletedUserTask(UserTaskInfo userTaskInfo) {
-    String userTaskId = userTaskInfo.userTaskId().toString();
-    List<OperationFuture> futures = userTaskInfo.futures();
-
-    RESULT_LOG.info(userTaskInfo.toString());
-    StringBuilder message = new StringBuilder();
-    int step = 1;
-    for (OperationFuture future : futures) {
+    void logOperation() {
       try {
-        AbstractCruiseControlResponse response = ((AbstractCruiseControlResponse) future.get());
-        if (userTaskInfo.parameters() != null) {
-          String cachedResponse = response.cachedResponse(userTaskInfo.parameters());
-          message.append(String.format("Result for step %d:%n", step++))
-                 .append(cachedResponse)
-                 .append("%n");
-        } else {
-          message.append("UserTask parameter is null, cannot obtain result.");
-        }
-      } catch (Exception e) {
-        // Log Exception from completeExceptionally.
-        message.append(String.format("UserTask [%s] had exception:[%s].%n", userTaskId, e.getMessage()));
+        AbstractCruiseControlResponse response = (AbstractCruiseControlResponse) _futures.get(_futures.size() - 1).get();
+        response.discardIrrelevantResponse(_parameters);
+        OPERATION_LOG.info("Task [{}] calculation finishes, result:\n{}", _userTaskId, response.cachedResponse());
+      } catch (InterruptedException | ExecutionException e) {
+        OPERATION_LOG.info("Task [{}] calculation fails, exception:\n{}", _userTaskId, e);
       }
     }
-    RESULT_LOG.info(message.toString());
-    RESULT_LOG.info("End of UserTask [{}] message.", userTaskId);
   }
 
   /**

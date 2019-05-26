@@ -508,8 +508,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                                                           CruiseControlParameters parameters)
       throws ExecutionException, InterruptedException, IOException {
     int step = _asyncOperationStep.get();
-    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, function, step,
-                                                                         true, parameters);
+    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, function, step, true, parameters);
     _asyncOperationStep.set(step + 1);
     try {
       return futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);

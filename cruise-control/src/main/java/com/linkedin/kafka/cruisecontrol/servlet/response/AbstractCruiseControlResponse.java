@@ -53,7 +53,7 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
     }
   }
 
-  String cachedResponse() {
+  public String cachedResponse() {
     return _cachedResponse;
   }
 }
