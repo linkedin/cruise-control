@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.UnsupportedEncodingException;
+import java.util.regex.Pattern;
 import javax.servlet.http.HttpServletRequest;
 
 
@@ -19,6 +20,7 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class KafkaClusterStateParameters extends AbstractParameters {
   private boolean _isVerbose;
+  private Pattern _topic;
 
   public KafkaClusterStateParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request, config);
@@ -28,9 +30,14 @@ public class KafkaClusterStateParameters extends AbstractParameters {
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     _isVerbose = ParameterUtils.isVerbose(_request);
+    _topic = ParameterUtils.topic(_request);
   }
 
   public boolean isVerbose() {
     return _isVerbose;
+  }
+
+  public Pattern topic() {
+    return _topic;
   }
 }
