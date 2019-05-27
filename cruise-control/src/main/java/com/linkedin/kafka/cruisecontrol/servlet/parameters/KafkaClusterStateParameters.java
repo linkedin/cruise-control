@@ -15,7 +15,7 @@ import javax.servlet.http.HttpServletRequest;
  *
  * <pre>
  * Retrieve the kafka cluster state.
- *    GET /kafkacruisecontrol/kafka_cluster_state?verbose=[true/false]&amp;json=[true/false]
+ *    GET /kafkacruisecontrol/kafka_cluster_state?verbose=[true/false]&amp;json=[true/false];topic=[topic]
  * </pre>
  */
 public class KafkaClusterStateParameters extends AbstractParameters {

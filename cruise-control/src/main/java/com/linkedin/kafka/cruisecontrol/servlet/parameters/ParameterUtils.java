@@ -216,6 +216,7 @@ public class ParameterUtils {
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
     kafkaClusterState.add(JSON_PARAM);
+    kafkaClusterState.add(TOPIC_PARAM);
 
     Set<String> pauseSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     pauseSampling.add(REASON_PARAM);
