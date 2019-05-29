@@ -112,9 +112,10 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     setIfAbsent(producerProps,
                 ProducerConfig.CLIENT_ID_CONFIG,
                 reporterConfig.getString(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.CLIENT_ID_CONFIG)));
-    // Set batch.size and linger.ms to a big number to have better batching.
-    setIfAbsent(producerProps, ProducerConfig.LINGER_MS_CONFIG, "30000");
-    setIfAbsent(producerProps, ProducerConfig.BATCH_SIZE_CONFIG, "800000");
+    setIfAbsent(producerProps, ProducerConfig.LINGER_MS_CONFIG,
+        reporterConfig.getInt(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_LINGER_MS_CONFIG).toString());
+    setIfAbsent(producerProps, ProducerConfig.BATCH_SIZE_CONFIG,
+        reporterConfig.getInt(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_BATCH_SIZE_CONFIG).toString());
     setIfAbsent(producerProps, ProducerConfig.RETRIES_CONFIG, "5");
     setIfAbsent(producerProps, ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
     setIfAbsent(producerProps, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
