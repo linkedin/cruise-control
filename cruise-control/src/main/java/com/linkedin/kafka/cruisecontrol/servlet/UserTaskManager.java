@@ -13,7 +13,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.Purgatory;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.AbstractCruiseControlResponse;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,7 +69,6 @@ public class UserTaskManager implements Closeable {
   private final Time _time;
   private final ScheduledExecutorService _userTaskScannerExecutor =
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskScanner", true, null));
-  // TODO upgrade log4j to log4j2 to use async logger
   private final ExecutorService _userTaskLoggerExecutor =
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskLogger", true, null));
   private final UUIDGenerator _uuidGenerator;
@@ -448,6 +447,7 @@ public class UserTaskManager implements Closeable {
   @Override
   public void close() {
     _userTaskScannerExecutor.shutdownNow();
+    _userTaskLoggerExecutor.shutdownNow();
   }
 
   private boolean hasTheSameHttpParameter(Map<String, String[]> params1, Map<String, String[]> params2) {
@@ -583,7 +583,11 @@ public class UserTaskManager implements Closeable {
     }
 
     public long executionTimeNs() {
-      return _futures.get(_futures.size() - 1).finishTimeNs() - TimeUnit.MILLISECONDS.toNanos(_startMs);
+      return lastFuture().finishTimeNs() - TimeUnit.MILLISECONDS.toNanos(_startMs);
+    }
+
+    private OperationFuture lastFuture() {
+      return _futures.get(_futures.size() - 1);
     }
 
     public TaskState state() {
@@ -614,16 +618,16 @@ public class UserTaskManager implements Closeable {
     }
 
     boolean isUserTaskDone() {
-      return _futures.get(_futures.size() - 1).isDone();
+      return lastFuture().isDone();
     }
 
     boolean isUserTaskDoneExceptionally() {
-      return _futures.get(_futures.size() - 1).isCompletedExceptionally();
+      return lastFuture().isCompletedExceptionally();
     }
 
-    void logOperation() {
+    private void logOperation() {
       try {
-        AbstractCruiseControlResponse response = (AbstractCruiseControlResponse) _futures.get(_futures.size() - 1).get();
+        CruiseControlResponse response = lastFuture().get();
         response.discardIrrelevantResponse(_parameters);
         OPERATION_LOG.info("Task [{}] calculation finishes, result:\n{}", _userTaskId, response.cachedResponse());
       } catch (InterruptedException | ExecutionException e) {

@@ -67,7 +67,6 @@ public class AnomalyDetector {
   private final AnomalyDetectorState _anomalyDetectorState;
   // TODO: Make this configurable.
   private final List<String> _selfHealingGoals;
-  // TODO: Upgrade log4j to log4j2 to use async logger.
   private final ExecutorService _anomalyLoggerExecutor;
 
   public AnomalyDetector(KafkaCruiseControlConfig config,
@@ -170,6 +169,7 @@ public class AnomalyDetector {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
     }
     _brokerFailureDetector.shutdown();
+    _anomalyLoggerExecutor.shutdownNow();
     LOG.info("Anomaly detector shutdown completed.");
   }
 
@@ -313,12 +313,18 @@ public class AnomalyDetector {
 
     private void logSelfHealingOperation(Anomaly anomaly, OptimizationFailureException ofe, boolean selfHealingStarted) {
       if (selfHealingStarted) {
-        if (anomaly instanceof KafkaAnomaly) {
-          OPERATION_LOG.info("[{}] calculation finishes, result:\n{}", anomaly.anomalyId(),
-                             ((KafkaAnomaly) anomaly).optimizationResult(false));
-        } else if (anomaly instanceof KafkaMetricAnomaly) {
-          OPERATION_LOG.info("[{}] calculation finishes, result:\n{}", anomaly.anomalyId(),
-                             ((KafkaMetricAnomaly) anomaly).optimizationResult(false));
+        switch (getAnomalyType(anomaly)) {
+          case GOAL_VIOLATION:
+          case BROKER_FAILURE:
+            OPERATION_LOG.info("[{}] calculation finishes, result:\n{}", anomaly.anomalyId(),
+                               ((KafkaAnomaly) anomaly).optimizationResult(false));
+            break;
+          case METRIC_ANOMALY:
+            OPERATION_LOG.info("[{}] calculation finishes, result:\n{}", anomaly.anomalyId(),
+                               ((KafkaMetricAnomaly) anomaly).optimizationResult(false));
+            break;
+          default:
+            throw new IllegalStateException("Unrecognized anomaly type.");
         }
       } else {
         OPERATION_LOG.info("[{}] calculation fails, exception:\n{}", anomaly.anomalyId(), ofe);
@@ -335,6 +341,7 @@ public class AnomalyDetector {
           _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomaly, null, true));
         } catch (OptimizationFailureException ofe) {
           _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomaly, ofe, false));
+          throw ofe;
         } finally {
           _anomalyDetectorState.onAnomalyHandle(anomaly, startedSuccessfully ? AnomalyState.Status.FIX_STARTED
                                                                              : AnomalyState.Status.FIX_FAILED_TO_START);

@@ -74,7 +74,7 @@ public class KafkaCruiseControlServletEndpointTest {
   private static class MockResult implements CruiseControlResponse {
     public void discardIrrelevantResponse(CruiseControlParameters parameters) { }
     public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) { }
-    public String cachedResponse(CruiseControlParameters parameters) {
+    public String cachedResponse() {
       return "";
     }
   }
