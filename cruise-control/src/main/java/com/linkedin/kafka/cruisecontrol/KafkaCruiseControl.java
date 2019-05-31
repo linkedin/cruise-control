@@ -644,20 +644,20 @@ public class KafkaCruiseControl {
   }
 
   private String processDropRecentBrokersRequest(AdminParameters parameters) {
-    String dropRecentBrokersRequest = "";
+    StringBuilder sb = new StringBuilder();
 
     Set<Integer> brokersToDropFromRecentlyRemoved = parameters.dropRecentlyRemovedBrokers();
     if (!brokersToDropFromRecentlyRemoved.isEmpty()) {
       if (!_executor.dropRecentlyRemovedBrokers(brokersToDropFromRecentlyRemoved)) {
         Set<Integer> recentlyRemovedBrokers = _executor.recentlyRemovedBrokers();
-        dropRecentBrokersRequest += String.format("None of the brokers to drop (%s) are in the recently removed broker set"
-                                                  + " (%s).%n", brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
+        sb.append(String.format("None of the brokers to drop (%s) are in the recently removed broker set"
+                                + " (%s).%n", brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers));
         LOG.warn("None of the user-requested brokers to drop ({}) are in the recently removed broker set ({}).",
                  brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
       } else {
         Set<Integer> recentlyRemovedBrokers = _executor.recentlyRemovedBrokers();
-        dropRecentBrokersRequest += String.format("Dropped recently removed brokers (requested: %s after-dropping: %s).%n",
-                                                  brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
+        sb.append(String.format("Dropped recently removed brokers (requested: %s after-dropping: %s).%n",
+                                brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers));
         LOG.warn("Recently removed brokers are dropped by user (requested: {} after-dropping: {}).",
                  brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
       }
@@ -665,22 +665,22 @@ public class KafkaCruiseControl {
 
     Set<Integer> brokersToDropFromRecentlyDemoted = parameters.dropRecentlyDemotedBrokers();
     if (!brokersToDropFromRecentlyDemoted.isEmpty()) {
-      if (_executor.dropRecentlyDemotedBrokers(brokersToDropFromRecentlyDemoted)) {
+      if (!_executor.dropRecentlyDemotedBrokers(brokersToDropFromRecentlyDemoted)) {
         Set<Integer> recentlyDemotedBrokers = _executor.recentlyDemotedBrokers();
-        dropRecentBrokersRequest += String.format("None of the brokers to drop (%s) are in the recently demoted broker set"
-                                                  + " (%s).%n", brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
+        sb.append(String.format("None of the brokers to drop (%s) are in the recently demoted broker set"
+                                + " (%s).%n", brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers));
         LOG.warn("None of the user-requested brokers to drop ({}) are in the recently demoted broker set ({}).",
                  brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
       } else {
         Set<Integer> recentlyDemotedBrokers = _executor.recentlyDemotedBrokers();
-        dropRecentBrokersRequest += String.format("Dropped recently demoted brokers (requested: %s after-dropping: %s).%n",
-                                                  brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
+        sb.append(String.format("Dropped recently demoted brokers (requested: %s after-dropping: %s).%n",
+                                brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers));
         LOG.warn("Recently demoted brokers are dropped by user (requested: {} after-dropping: {}).",
                  brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
       }
     }
 
-    return dropRecentBrokersRequest;
+    return sb.toString();
   }
 
   /**
