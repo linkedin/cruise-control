@@ -23,6 +23,7 @@ import javax.servlet.http.HttpServletRequest;
  *    POST /kafkacruisecontrol/admin?json=[true/false]&amp;disable_self_healing_for=[Set-of-{@link AnomalyType}]
  *    &amp;enable_self_healing_for=[Set-of-{@link AnomalyType}]&amp;concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]
  *    &amp;concurrent_leader_movements=[POSITIVE-INTEGER]&amp;review_id=[id]
+ *    &amp;drop_recently_demoted_brokers=[id1,id2...]&amp;drop_recently_removed_brokers=[id1,id2...]
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
@@ -32,6 +33,8 @@ public class AdminParameters extends AbstractParameters {
   private Integer _concurrentLeaderMovements;
   private Integer _reviewId;
   private final boolean _twoStepVerificationEnabled;
+  private Set<Integer> _dropRecentlyRemovedBrokers;
+  private Set<Integer> _dropRecentlyDemotedBrokers;
 
   public AdminParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request, config);
@@ -46,6 +49,8 @@ public class AdminParameters extends AbstractParameters {
     _disableSelfHealingFor = selfHealingFor.get(false);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
+    _dropRecentlyRemovedBrokers = ParameterUtils.dropRecentlyRemovedBrokers(_request);
+    _dropRecentlyDemotedBrokers = ParameterUtils.dropRecentlyDemotedBrokers(_request);
     _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
   }
 
@@ -72,5 +77,13 @@ public class AdminParameters extends AbstractParameters {
 
   public Integer concurrentLeaderMovements() {
     return _concurrentLeaderMovements;
+  }
+
+  public Set<Integer> dropRecentlyRemovedBrokers() {
+    return _dropRecentlyRemovedBrokers;
+  }
+
+  public Set<Integer> dropRecentlyDemotedBrokers() {
+    return _dropRecentlyDemotedBrokers;
   }
 }

@@ -236,6 +236,26 @@ public class Executor {
   }
 
   /**
+   * Drop the given brokers from the recently removed brokers.
+   *
+   * @param brokersToDrop Brokers to drop from the {@link #_latestRemoveStartTimeMsByBrokerId}.
+   * @return {@code true} if any elements were removed from {@link #_latestRemoveStartTimeMsByBrokerId}.
+   */
+  public boolean dropRecentlyRemovedBrokers(Set<Integer> brokersToDrop) {
+    return _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> (brokersToDrop.contains(entry.getKey())));
+  }
+
+  /**
+   * Drop the given brokers from the recently demoted brokers.
+   *
+   * @param brokersToDrop Brokers to drop from the {@link #_latestDemoteStartTimeMsByBrokerId}.
+   * @return {@code true} if any elements were removed from {@link #_latestDemoteStartTimeMsByBrokerId}.
+   */
+  public boolean dropRecentlyDemotedBrokers(Set<Integer> brokersToDrop) {
+    return _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> (brokersToDrop.contains(entry.getKey())));
+  }
+
+  /**
    * Check whether the executor is executing a set of proposals.
    */
   public ExecutorState state() {

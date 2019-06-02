@@ -67,6 +67,8 @@ public class ParameterUtils {
   public static final String MAX_LOAD_PARAM = "max_load";
   public static final String GOALS_PARAM = "goals";
   public static final String BROKER_ID_PARAM = "brokerid";
+  public static final String DROP_RECENTLY_REMOVED_BROKERS_PARAM = "drop_recently_removed_brokers";
+  public static final String DROP_RECENTLY_DEMOTED_BROKERS_PARAM = "drop_recently_demoted_brokers";
   public static final String DESTINATION_BROKER_IDS_PARAM = "destination_broker_ids";
   public static final String REVIEW_ID_PARAM = "review_id";
   public static final String REVIEW_IDS_PARAM = "review_ids";
@@ -249,6 +251,8 @@ public class ParameterUtils {
     admin.add(ENABLE_SELF_HEALING_FOR_PARAM);
     admin.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     admin.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    admin.add(DROP_RECENTLY_REMOVED_BROKERS_PARAM);
+    admin.add(DROP_RECENTLY_DEMOTED_BROKERS_PARAM);
     admin.add(REVIEW_ID_PARAM);
 
     Set<String> review = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -725,6 +729,14 @@ public class ParameterUtils {
       throw new IllegalArgumentException("Target broker ID is not provided.");
     }
     return Collections.unmodifiableSet(brokerIds);
+  }
+
+  static Set<Integer> dropRecentlyRemovedBrokers(HttpServletRequest request) throws UnsupportedEncodingException {
+    return Collections.unmodifiableSet(parseParamToIntegerSet(request, DROP_RECENTLY_REMOVED_BROKERS_PARAM));
+  }
+
+  static Set<Integer> dropRecentlyDemotedBrokers(HttpServletRequest request) throws UnsupportedEncodingException {
+    return Collections.unmodifiableSet(parseParamToIntegerSet(request, DROP_RECENTLY_DEMOTED_BROKERS_PARAM));
   }
 
   /**
