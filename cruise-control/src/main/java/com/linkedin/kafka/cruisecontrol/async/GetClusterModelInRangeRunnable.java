@@ -4,11 +4,15 @@
 
 package com.linkedin.kafka.cruisecontrol.async;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PartitionLoadState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.Partition;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#clusterModel(long, long, Double,
@@ -35,9 +39,15 @@ class GetClusterModelInRangeRunnable extends OperationRunnable {
                                                                  _future.operationProgress(),
                                                                  _parameters.allowCapacityEstimation());
     int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
-    return new PartitionLoadState(clusterModel.replicasSortedByUtilization(_parameters.resource(),
-                                                                           _parameters.wantMaxLoad(),
-                                                                           _parameters.wantAvgLoad()),
+    List<Partition> partitionList = clusterModel.replicasSortedByUtilization(_parameters.resource(),
+                                                                             _parameters.wantMaxLoad(),
+                                                                             _parameters.wantAvgLoad());
+    if (_parameters.brokerIds() != null) {
+      partitionList = partitionList.stream()
+                                   .filter(partition -> _parameters.brokerIds().contains(partition.leader().broker().id()))
+                                   .collect(Collectors.toList());
+    }
+    return new PartitionLoadState(partitionList,
                                   _parameters.wantMaxLoad(),
                                   _parameters.wantAvgLoad(),
                                   _parameters.entries(),
