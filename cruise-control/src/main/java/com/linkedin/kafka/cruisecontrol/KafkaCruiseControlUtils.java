@@ -5,6 +5,8 @@
 package com.linkedin.kafka.cruisecontrol;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -13,6 +15,10 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Arrays;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -45,6 +51,9 @@ public class KafkaCruiseControlUtils {
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";
+  private static final Set<String> KAFKA_ASSIGNER_GOALS =
+      Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
+                                                              KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
 
   private KafkaCruiseControlUtils() {
 
@@ -291,5 +300,58 @@ public class KafkaCruiseControlUtils {
                  .mapToInt(Node::id)
                  .boxed()
                  .collect(Collectors.toSet());
+  }
+
+  /**
+   * Sanity check whether the given goals exist in the given supported goals.
+   * @param goals A list of goals.
+   * @param supportedGoals Supported goals.
+   */
+  public static void sanityCheckNonExistingGoal(List<String> goals, Map<String, Goal> supportedGoals) {
+    Set<String> nonExistingGoals = new HashSet<>();
+    goals.stream().filter(goalName -> supportedGoals.get(goalName) == null).forEach(nonExistingGoals::add);
+
+    if (!nonExistingGoals.isEmpty()) {
+      throw new IllegalArgumentException("Goals " + nonExistingGoals + " are not supported. Supported: " + supportedGoals.keySet());
+    }
+  }
+
+  /**
+   * Sanity check to ensure that the given cluster model contains brokers with offline replicas.
+   * @param clusterModel Cluster model for which the existence of an offline replica will be verified.
+   */
+  public static void sanityCheckOfflineReplicaPresence(ClusterModel clusterModel) {
+    if (clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
+      for (Broker deadBroker : clusterModel.deadBrokers()) {
+        if (!deadBroker.replicas().isEmpty()) {
+          // Has offline replica(s) on a dead broker.
+          return;
+        }
+      }
+      throw new IllegalStateException("Cluster has no offline replica on brokers " + clusterModel.brokers() + " to fix.");
+    }
+    // Has offline replica(s) on a broken disk.
+  }
+
+  /**
+   * Sanity check to ensure that the given cluster model has no offline replicas on bad disks in Kafka Assigner mode.
+   * @param goals Goals to check whether it is Kafka Assigner mode or not.
+   * @param clusterModel Cluster model for which the existence of an offline replicas on bad disks will be verified.
+   */
+  public static void sanityCheckBrokersHavingOfflineReplicasOnBadDisks(List<String> goals, ClusterModel clusterModel) {
+    if (isKafkaAssignerMode(goals) && !clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
+      throw new IllegalStateException("Kafka Assigner mode is not supported when there are offline replicas on bad disks."
+                                      + " Please run fix_offline_replicas before using Kafka Assigner mode.");
+    }
+  }
+
+  /**
+   * Check whether any of the given goals contain a Kafka Assigner goal.
+   *
+   * @param goals The goals to check
+   * @return True if the given goals contain a Kafka Assigner goal, false otherwise.
+   */
+  public static boolean isKafkaAssignerMode(Collection<String> goals) {
+    return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
   }
 }

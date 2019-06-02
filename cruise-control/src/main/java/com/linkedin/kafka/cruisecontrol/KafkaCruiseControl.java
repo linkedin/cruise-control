@@ -9,8 +9,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -73,6 +71,11 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ensureDisJoint;
 import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEMOTED;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.isKafkaAssignerMode;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckBrokersHavingOfflineReplicasOnBadDisks;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckNonExistingGoal;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckOfflineReplicaPresence;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.offlineReplicasForPartition;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.*;
 
@@ -82,9 +85,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlSta
  */
 public class KafkaCruiseControl {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControl.class);
-  private static final Set<String> KAFKA_ASSIGNER_GOALS =
-      Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
-                                                              KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
   protected final KafkaCruiseControlConfig _config;
   private final LoadMonitor _loadMonitor;
   private final GoalOptimizer _goalOptimizer;
@@ -161,16 +161,6 @@ public class KafkaCruiseControl {
     } catch (InterruptedException e) {
       LOG.warn("Cruise Control failed to shutdown in 30 seconds. Exit.");
     }
-  }
-
-  /**
-   * Check whether any of the given goals contain a Kafka Assigner goal.
-   *
-   * @param goals The goals to check
-   * @return True if the given goals contain a Kafka Assigner goal, false otherwise.
-   */
-  private boolean isKafkaAssignerMode(Collection<String> goals) {
-    return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
   }
 
   /**
@@ -709,6 +699,7 @@ public class KafkaCruiseControl {
    * <li>Dynamically change the partition and leadership concurrency of an ongoing execution. Has no effect if Executor
    * is in {@link com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State#NO_TASK_IN_PROGRESS} state.</li>
    * <li>Enable/disable the specified anomaly detectors.</li>
+   * <li>Drop selected recently removed/demoted brokers.</li>
    * </ul>
    *
    * @param parameters Admin parameters
@@ -761,10 +752,54 @@ public class KafkaCruiseControl {
       LOG.warn("Self healing state is modified by user (before: {} after: {}).", selfHealingBefore, selfHealingAfter);
     }
 
+    // 3. Drop selected recently removed/demoted brokers.
+    String dropRecentBrokersRequest = processDropRecentBrokersRequest(parameters);
+
     return new AdminResult(selfHealingBefore,
                            selfHealingAfter,
                            ongoingConcurrencyChangeRequest.isEmpty() ? null : ongoingConcurrencyChangeRequest,
+                           dropRecentBrokersRequest,
                            _config);
+  }
+
+  private String processDropRecentBrokersRequest(AdminParameters parameters) {
+    StringBuilder sb = new StringBuilder();
+
+    Set<Integer> brokersToDropFromRecentlyRemoved = parameters.dropRecentlyRemovedBrokers();
+    if (!brokersToDropFromRecentlyRemoved.isEmpty()) {
+      if (!_executor.dropRecentlyRemovedBrokers(brokersToDropFromRecentlyRemoved)) {
+        Set<Integer> recentlyRemovedBrokers = _executor.recentlyRemovedBrokers();
+        sb.append(String.format("None of the brokers to drop (%s) are in the recently removed broker set"
+                                + " (%s).%n", brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers));
+        LOG.warn("None of the user-requested brokers to drop ({}) are in the recently removed broker set ({}).",
+                 brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
+      } else {
+        Set<Integer> recentlyRemovedBrokers = _executor.recentlyRemovedBrokers();
+        sb.append(String.format("Dropped recently removed brokers (requested: %s after-dropping: %s).%n",
+                                brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers));
+        LOG.warn("Recently removed brokers are dropped by user (requested: {} after-dropping: {}).",
+                 brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
+      }
+    }
+
+    Set<Integer> brokersToDropFromRecentlyDemoted = parameters.dropRecentlyDemotedBrokers();
+    if (!brokersToDropFromRecentlyDemoted.isEmpty()) {
+      if (!_executor.dropRecentlyDemotedBrokers(brokersToDropFromRecentlyDemoted)) {
+        Set<Integer> recentlyDemotedBrokers = _executor.recentlyDemotedBrokers();
+        sb.append(String.format("None of the brokers to drop (%s) are in the recently demoted broker set"
+                                + " (%s).%n", brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers));
+        LOG.warn("None of the user-requested brokers to drop ({}) are in the recently demoted broker set ({}).",
+                 brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
+      } else {
+        Set<Integer> recentlyDemotedBrokers = _executor.recentlyDemotedBrokers();
+        sb.append(String.format("Dropped recently demoted brokers (requested: %s after-dropping: %s).%n",
+                                brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers));
+        LOG.warn("Recently demoted brokers are dropped by user (requested: {} after-dropping: {}).",
+                 brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
+      }
+    }
+
+    return sb.toString();
   }
 
   /**
@@ -1202,7 +1237,7 @@ public class KafkaCruiseControl {
     substates = !substates.isEmpty() ? substates
                                      : new HashSet<>(Arrays.asList(CruiseControlState.SubState.values()));
 
-    if (KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration(substates)) {
+    if (shouldRefreshClusterAndGeneration(substates)) {
       clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     }
 
@@ -1299,49 +1334,6 @@ public class KafkaCruiseControl {
         throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in the provided goals: " + goals
                                            + ". Add skip_hard_goal_check=true parameter to ignore this sanity check.");
       }
-    }
-  }
-
-  /**
-   * Sanity check to ensure that the given cluster model contains brokers with offline replicas.
-   * @param clusterModel Cluster model for which the existence of an offline replica will be verified.
-   */
-  private void sanityCheckOfflineReplicaPresence(ClusterModel clusterModel) {
-    if (clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
-      for (Broker deadBroker : clusterModel.deadBrokers()) {
-        if (!deadBroker.replicas().isEmpty()) {
-          // Has offline replica(s) on a dead broker.
-          return;
-        }
-      }
-      throw new IllegalStateException("Cluster has no offline replica on brokers " + clusterModel.brokers() + " to fix.");
-    }
-    // Has offline replica(s) on a broken disk.
-  }
-
-  /**
-   * Sanity check to ensure that the given cluster model has no offline replicas on bad disks in Kafka Assigner mode.
-   * @param goals Goals to check whether it is Kafka Assigner mode or not.
-   * @param clusterModel Cluster model for which the existence of an offline replicas on bad disks will be verified.
-   */
-  private void sanityCheckBrokersHavingOfflineReplicasOnBadDisks(List<String> goals, ClusterModel clusterModel) {
-    if (isKafkaAssignerMode(goals) && !clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
-      throw new IllegalStateException("Kafka Assigner mode is not supported when there are offline replicas on bad disks."
-                                      + " Please run fix_offline_replicas before using Kafka Assigner mode.");
-    }
-  }
-
-  /**
-   * Sanity check whether the given goals exist in the given supported goals.
-   * @param goals A list of goals.
-   * @param supportedGoals Supported goals.
-   */
-  private void sanityCheckNonExistingGoal(List<String> goals, Map<String, Goal> supportedGoals) {
-    Set<String> nonExistingGoals = new HashSet<>();
-    goals.stream().filter(goalName -> supportedGoals.get(goalName) == null).forEach(nonExistingGoals::add);
-
-    if (!nonExistingGoals.isEmpty()) {
-      throw new IllegalArgumentException("Goals " + nonExistingGoals + " are not supported. Supported: " + supportedGoals.keySet());
     }
   }
 
