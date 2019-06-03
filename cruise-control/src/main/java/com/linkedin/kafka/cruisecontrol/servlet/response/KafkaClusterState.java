@@ -102,8 +102,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    */
   private void populateKafkaBrokerState(Map<Integer, Integer> leaderCountByBrokerId,
                                         Map<Integer, Integer> outOfSyncCountByBrokerId,
-                                        Map<Integer, Integer> replicaCountByBrokerId,
-                                        Pattern topicPattern) {
+                                        Map<Integer, Integer> replicaCountByBrokerId) {
     // Part-1: Gather the states of brokers with replicas.
     for (String topic : _kafkaCluster.topics()) {
       for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
@@ -167,7 +166,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     Map<Integer, Integer> outOfSyncCountByBrokerId = new HashMap<>();
     Map<Integer, Integer> replicaCountByBrokerId = new HashMap<>();
 
-    populateKafkaBrokerState(leaderCountByBrokerId, outOfSyncCountByBrokerId, replicaCountByBrokerId, topic);
+    populateKafkaBrokerState(leaderCountByBrokerId, outOfSyncCountByBrokerId, replicaCountByBrokerId);
 
     Map<String, Object> kafkaClusterByBrokerState = new HashMap<>();
     kafkaClusterByBrokerState.put(LEADER_COUNT, leaderCountByBrokerId);
@@ -222,7 +221,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     SortedMap<Integer, Integer> outOfSyncCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> replicaCountByBrokerId = new TreeMap<>();
     Pattern topic = ((KafkaClusterStateParameters) parameters).topic();
-    populateKafkaBrokerState(leaderCountByBrokerId, outOfSyncCountByBrokerId, replicaCountByBrokerId, topic);
+    populateKafkaBrokerState(leaderCountByBrokerId, outOfSyncCountByBrokerId, replicaCountByBrokerId);
 
     String initMessage = "Brokers:";
 
