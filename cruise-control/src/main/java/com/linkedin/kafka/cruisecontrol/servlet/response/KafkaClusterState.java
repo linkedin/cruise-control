@@ -106,23 +106,21 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
                                         Pattern topicPattern) {
     // Part-1: Gather the states of brokers with replicas.
     for (String topic : _kafkaCluster.topics()) {
-      if (topicPattern == null || topicPattern.matcher(topic).matches()) {
-        for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
-          if (partitionInfo.leader() == null) {
-            continue;
-          }
-          leaderCountByBrokerId.merge(partitionInfo.leader().id(), 1, Integer::sum);
-
-          Set<Integer> replicas =
-              Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toSet());
-          Set<Integer> inSyncReplicas =
-              Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::id).collect(Collectors.toSet());
-          Set<Integer> outOfSyncReplicas = new HashSet<>(replicas);
-          outOfSyncReplicas.removeAll(inSyncReplicas);
-
-          outOfSyncReplicas.forEach(brokerId -> outOfSyncCountByBrokerId.merge(brokerId, 1, Integer::sum));
-          replicas.forEach(brokerId -> replicaCountByBrokerId.merge(brokerId, 1, Integer::sum));
+      for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
+        if (partitionInfo.leader() == null) {
+          continue;
         }
+        leaderCountByBrokerId.merge(partitionInfo.leader().id(), 1, Integer::sum);
+
+        Set<Integer> replicas =
+            Arrays.stream(partitionInfo.replicas()).map(Node::id).collect(Collectors.toSet());
+        Set<Integer> inSyncReplicas =
+            Arrays.stream(partitionInfo.inSyncReplicas()).map(Node::id).collect(Collectors.toSet());
+        Set<Integer> outOfSyncReplicas = new HashSet<>(replicas);
+        outOfSyncReplicas.removeAll(inSyncReplicas);
+
+        outOfSyncReplicas.forEach(brokerId -> outOfSyncCountByBrokerId.merge(brokerId, 1, Integer::sum));
+        replicas.forEach(brokerId -> replicaCountByBrokerId.merge(brokerId, 1, Integer::sum));
       }
     }
     // Part-2: Gather the states of brokers without replicas.
