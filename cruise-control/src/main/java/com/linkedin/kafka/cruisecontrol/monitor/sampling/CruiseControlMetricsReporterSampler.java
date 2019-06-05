@@ -46,6 +46,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   // Default configs
   private static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
   private static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
+  private static final long ACCEPTABLE_NETWORK_DELAY_MS = 100L;
   // static metric processor for metrics aggregation.
   private static final CruiseControlMetricsProcessor METRICS_PROCESSOR = new CruiseControlMetricsProcessor();
   // static random token to avoid group conflict.
@@ -54,6 +55,9 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   private Consumer<String, CruiseControlMetric> _metricConsumer;
   private String _metricReporterTopic;
   private Set<TopicPartition> _currentPartitionAssignment;
+  // Due to delay introduced by KafkaProducer and network, the metric record's event time may be smaller than append
+  // time at broker side, sampler should take this delay into consideration when aggregating metric records int samples.
+  private long _acceptableMetricRecordProduceDelayMs;
 
   @Override
   public Samples getSamples(Cluster cluster,
@@ -99,7 +103,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
           continue;
         }
         long recordTime = record.value().time();
-        if (recordTime < startTimeMs) {
+        if (recordTime + _acceptableMetricRecordProduceDelayMs < startTimeMs) {
           LOG.debug("Discarding metric {} because its timestamp is smaller than the start time of sampling period {}.",
                     record.value(), startTimeMs);
         } else if (recordTime >= endTimeMs) {
@@ -223,6 +227,9 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     if (reconnectBackoffMs == null) {
       reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
     }
+
+    _acceptableMetricRecordProduceDelayMs = ACCEPTABLE_NETWORK_DELAY_MS + new CruiseControlMetricsReporterConfig(configs, false)
+        .getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG);
 
     Properties consumerProps = new Properties();
     consumerProps.putAll(configs);

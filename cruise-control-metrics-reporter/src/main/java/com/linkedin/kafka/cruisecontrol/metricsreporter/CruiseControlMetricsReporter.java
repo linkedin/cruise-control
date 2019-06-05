@@ -113,9 +113,9 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
                 ProducerConfig.CLIENT_ID_CONFIG,
                 reporterConfig.getString(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.CLIENT_ID_CONFIG)));
     setIfAbsent(producerProps, ProducerConfig.LINGER_MS_CONFIG,
-        reporterConfig.getInt(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_LINGER_MS_CONFIG).toString());
+        reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG).toString());
     setIfAbsent(producerProps, ProducerConfig.BATCH_SIZE_CONFIG,
-        reporterConfig.getInt(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_BATCH_SIZE_CONFIG).toString());
+        reporterConfig.getInt(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_CONFIG).toString());
     setIfAbsent(producerProps, ProducerConfig.RETRIES_CONFIG, "5");
     setIfAbsent(producerProps, ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
     setIfAbsent(producerProps, ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
@@ -126,7 +126,7 @@ public class CruiseControlMetricsReporter implements MetricsReporter, Runnable {
     _brokerId = Integer.parseInt((String) configs.get(KafkaConfig.BrokerIdProp()));
 
     _cruiseControlMetricsTopic = reporterConfig.getString(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG);
-    _reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG);
+    _reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG);
 
     if (reporterConfig.getBoolean(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG)) {
       try {

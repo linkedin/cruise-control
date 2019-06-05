@@ -31,23 +31,23 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   private static final String CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS_DOC = "The number of partitions of Cruise Control metrics topic";
   public static final String CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_CONFIG = "cruise.control.metrics.topic.replication.factor";
   private static final String CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_DOC = "The replication factor of Cruise Control metrics topic";
-  public static final String CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG = PREFIX + "metrics.reporting.interval.ms";
-  private static final String CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_DOC = "The interval in milliseconds the "
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG = PREFIX + "metrics.reporting.interval.ms";
+  private static final String CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_DOC = "The interval in milliseconds the "
       + "metrics reporter should report the metrics.";
-  public static final String CRUISE_CONTROL_METRICS_REPORTING_LINGER_MS_CONFIG = PREFIX + "linger.ms";
-  private static final String CRUISE_CONTROL_METRICS_REPORTING_LINGER_MS_DOC = "The linger.ms configure of KafkaProducer used in Cruise Control "
-      + "metrics reporter. Set this config and cruise.control.metrics.reporter.batch.size to a big number to have better batching.";
-  public static final String CRUISE_CONTROL_METRICS_REPORTING_BATCH_SIZE_CONFIG = PREFIX + "batch.size";
-  private static final String CRUISE_CONTROL_METRICS_REPORTING_BATCH_SIZE_DOC = "The batch.size configure of KafkaProducer used in Cruise Control "
-      + "metrics reporter. Set this config and cruise.control.metrics.reporter.linger.ms to a big number to have better batching.";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG = PREFIX + "linger.ms";
+  private static final String CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_DOC = "The linger.ms configuration of KafkaProducer used in Cruise "
+      + "Control metrics reporter. Set this config and cruise.control.metrics.reporter.batch.size to a large number to have better batching.";
+  public static final String CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_CONFIG = PREFIX + "batch.size";
+  private static final String CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_DOC = "The batch.size configuration of KafkaProducer used in Cruise "
+      + "Control metrics reporter. Set this config and cruise.control.metrics.reporter.linger.ms to a large number to have better batching.";
   // Default values
   public static final String DEFAULT_CRUISE_CONTROL_METRICS_TOPIC = "__CruiseControlMetrics";
   private static final Integer DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_NUM_PARTITIONS = -1;
   private static final boolean DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE = false;
   private static final Short DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR = -1;
-  private static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS = 60000;
+  private static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS = 60000;
   private static final String PRODUCER_ID = "CruiseControlMetricsReporter";
-  private static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTING_LINGER_MS = 30000;
+  private static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = 30000;
   private static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 800000;
 
   public CruiseControlMetricsReporterConfig(Map<?, ?> originals, boolean doLog) {
@@ -67,11 +67,11 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
                 DEFAULT_CRUISE_CONTROL_METRICS_TOPIC,
                 ConfigDef.Importance.HIGH,
                 CRUISE_CONTROL_METRICS_TOPIC_DOC)
-        .define(CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG,
+        .define(CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG,
                 ConfigDef.Type.LONG,
-                DEFAULT_CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS,
+                DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS,
                 ConfigDef.Importance.HIGH,
-                CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_DOC)
+                CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_DOC)
         .define(CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE_CONFIG,
                 ConfigDef.Type.BOOLEAN,
                 DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_AUTO_CREATE,
@@ -87,16 +87,16 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
                 DEFAULT_CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR,
                 ConfigDef.Importance.LOW,
                 CRUISE_CONTROL_METRICS_TOPIC_REPLICATION_FACTOR_DOC)
-        .define(CRUISE_CONTROL_METRICS_REPORTING_LINGER_MS_CONFIG,
-                ConfigDef.Type.INT,
-                DEFAULT_CRUISE_CONTROL_METRICS_REPORTING_LINGER_MS,
+        .define(CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS,
                 ConfigDef.Importance.LOW,
-                CRUISE_CONTROL_METRICS_REPORTING_LINGER_MS_DOC)
-        .define(CRUISE_CONTROL_METRICS_REPORTING_BATCH_SIZE_CONFIG,
+                CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_DOC)
+        .define(CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_CONFIG,
                 ConfigDef.Type.INT,
                 DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE,
                 ConfigDef.Importance.LOW,
-                CRUISE_CONTROL_METRICS_REPORTING_BATCH_SIZE_DOC);
+                CRUISE_CONTROL_METRICS_REPORTER_BATCH_SIZE_DOC);
   }
 
   public static String config(String baseConfigName) {
