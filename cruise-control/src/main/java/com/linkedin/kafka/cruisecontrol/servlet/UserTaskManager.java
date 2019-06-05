@@ -12,6 +12,8 @@ import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.Purgatory;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
 import java.io.Closeable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,6 +27,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -36,10 +40,9 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.httpServletRequestToString;
-import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
-
 
 /**
  * {@link UserTaskManager} keeps track of Sync and Async user tasks. When a {@link HttpServletRequest} comes in, the servlet
@@ -58,6 +61,7 @@ public class UserTaskManager implements Closeable {
   public static final long USER_TASK_SCANNER_INITIAL_DELAY_SECONDS = 0;
 
   private static final Logger LOG = LoggerFactory.getLogger(UserTaskManager.class);
+  private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private final Map<SessionKey, UUID> _sessionKeyToUserTaskIdMap;
   private final Map<TaskState, Map<UUID, UserTaskInfo>> _allUuidToUserTaskInfoMap;
   private final long _sessionExpiryMs;
@@ -65,6 +69,8 @@ public class UserTaskManager implements Closeable {
   private final Time _time;
   private final ScheduledExecutorService _userTaskScannerExecutor =
       Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskScanner", true, null));
+  private final ExecutorService _userTaskLoggerExecutor =
+      Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("UserTaskLogger", true, null));
   private final UUIDGenerator _uuidGenerator;
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer;
   private final long _completedUserTaskRetentionTimeMs;
@@ -159,13 +165,15 @@ public class UserTaskManager implements Closeable {
    *                 returns a completed Future.
    * @param step The index of the step that has to be added or fetched.
    * @param isAsyncRequest Indicate whether the task is async or sync.
+   * @param parameters Parsed parameters from http request, or null if the parsing result is unavailable.
    * @return The list of {@link OperationFuture} for the linked UserTask.
    */
   public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest,
                                                    HttpServletResponse httpServletResponse,
                                                    Function<String, OperationFuture> function,
                                                    int step,
-                                                   boolean isAsyncRequest) {
+                                                   boolean isAsyncRequest,
+                                                   CruiseControlParameters parameters) {
     UUID userTaskId = getUserTaskId(httpServletRequest);
     UserTaskInfo userTaskInfo = getUserTaskByUserTaskId(userTaskId, httpServletRequest);
 
@@ -176,7 +184,7 @@ public class UserTaskManager implements Closeable {
         return userTaskInfo.futures();
       } else if (step == userTaskInfo.futures().size()) {
         LOG.info("Add a new future to existing UserTask {}", userTaskId);
-        return insertFuturesByUserTaskId(userTaskId, function, httpServletRequest).futures();
+        return insertFuturesByUserTaskId(userTaskId, function, httpServletRequest, parameters).futures();
       } else {
         throw new IllegalArgumentException(
             String.format("There are %d steps in the session. Cannot add step %d.", userTaskInfo.futures().size(), step));
@@ -188,7 +196,7 @@ public class UserTaskManager implements Closeable {
             String.format("There are no step in the session. Cannot add step %d.", step));
       }
       userTaskId = _uuidGenerator.randomUUID();
-      userTaskInfo = insertFuturesByUserTaskId(userTaskId, function, httpServletRequest);
+      userTaskInfo = insertFuturesByUserTaskId(userTaskId, function, httpServletRequest, parameters);
       // Only create user task id to session mapping for async request
       if (isAsyncRequest) {
         createSessionKeyMapping(userTaskId, httpServletRequest);
@@ -289,11 +297,13 @@ public class UserTaskManager implements Closeable {
         LOG.warn("UserTask {} is completed with Exception and removed from active tasks list", entry.getKey());
         _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED_WITH_ERROR));
         iter.remove();
+        _userTaskLoggerExecutor.submit(() -> entry.getValue().logOperation());
       } else if (entry.getValue().isUserTaskDone()) {
         LOG.info("UserTask {} is completed and removed from active tasks list", entry.getKey());
         _successfulRequestExecutionTimer.get(entry.getValue().endPoint()).update(entry.getValue().executionTimeNs(), TimeUnit.NANOSECONDS);
         _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).put(entry.getKey(), entry.getValue().setState(TaskState.COMPLETED));
         iter.remove();
+        _userTaskLoggerExecutor.submit(() -> entry.getValue().logOperation());
       }
     }
   }
@@ -381,11 +391,13 @@ public class UserTaskManager implements Closeable {
    * @param userTaskId UUID to uniquely identify task.
    * @param operation lambda function to provide result to UserTaskInfo object
    * @param httpServletRequest http request associated with the task
+   * @param parameters Parsed parameters from http request, or null if parsing result is unavailable.
    * @return {@link UserTaskInfo} containing request detail and  {@link OperationFuture}
    */
   private synchronized UserTaskInfo insertFuturesByUserTaskId(UUID userTaskId,
                                                               Function<String, OperationFuture> operation,
-                                                              HttpServletRequest httpServletRequest) {
+                                                              HttpServletRequest httpServletRequest,
+                                                              CruiseControlParameters parameters) {
     if (_allUuidToUserTaskInfoMap.get(TaskState.COMPLETED).containsKey(userTaskId)) {
       // Before add new operation to task, first recycle the task from completed task list.
       _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).put(userTaskId, _allUuidToUserTaskInfoMap.get(TaskState.COMPLETED)
@@ -401,7 +413,7 @@ public class UserTaskManager implements Closeable {
       }
       UserTaskInfo userTaskInfo =
           new UserTaskInfo(httpServletRequest, new ArrayList<>(Collections.singleton(operation.apply(userTaskId.toString()))),
-                           _time.milliseconds(), userTaskId, TaskState.ACTIVE);
+                           _time.milliseconds(), userTaskId, TaskState.ACTIVE, parameters);
       _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).put(userTaskId, userTaskInfo);
     }
     return _allUuidToUserTaskInfoMap.get(TaskState.ACTIVE).get(userTaskId);
@@ -435,6 +447,7 @@ public class UserTaskManager implements Closeable {
   @Override
   public void close() {
     _userTaskScannerExecutor.shutdownNow();
+    _userTaskLoggerExecutor.shutdownNow();
   }
 
   private boolean hasTheSameHttpParameter(Map<String, String[]> params1, Map<String, String[]> params2) {
@@ -519,35 +532,26 @@ public class UserTaskManager implements Closeable {
     private final Map<String, String[]> _queryParams;
     private final EndPoint _endPoint;
     private TaskState _state;
+    private final CruiseControlParameters _parameters;
 
     public UserTaskInfo(HttpServletRequest httpServletRequest,
                         List<OperationFuture> futures,
                         long startMs,
                         UUID userTaskId,
-                        TaskState state) {
-      this(futures, httpServletRequestToString(httpServletRequest), getClientIpAddress(httpServletRequest), startMs,
-           userTaskId, httpServletRequest.getParameterMap(), ParameterUtils.endPoint(httpServletRequest), state);
-    }
-
-    public UserTaskInfo(List<OperationFuture> futures,
-                 String requestUrl,
-                 String clientIdentity,
-                 long startMs,
-                 UUID userTaskId,
-                 Map<String, String[]> queryParams,
-                 EndPoint endPoint,
-                 TaskState state) {
+                        TaskState state,
+                        CruiseControlParameters parameters) {
       if (futures == null || futures.isEmpty()) {
         throw new IllegalArgumentException("Invalid OperationFuture list " + futures + " is provided for UserTaskInfo.");
       }
       _futures = futures;
-      _requestUrl = requestUrl;
-      _clientIdentity = clientIdentity;
+      _requestUrl = httpServletRequestToString(httpServletRequest);
+      _clientIdentity = KafkaCruiseControlServletUtils.getClientIpAddress(httpServletRequest);
       _startMs = startMs;
       _userTaskId = userTaskId;
-      _queryParams = queryParams;
-      _endPoint = endPoint;
+      _queryParams = httpServletRequest.getParameterMap();
+      _endPoint = ParameterUtils.endPoint(httpServletRequest);
       _state = state;
+      _parameters = parameters;
     }
 
     public List<OperationFuture> futures() {
@@ -579,7 +583,11 @@ public class UserTaskManager implements Closeable {
     }
 
     public long executionTimeNs() {
-      return _futures.get(_futures.size() - 1).finishTimeNs() - TimeUnit.MILLISECONDS.toNanos(_startMs);
+      return lastFuture().finishTimeNs() - TimeUnit.MILLISECONDS.toNanos(_startMs);
+    }
+
+    private OperationFuture lastFuture() {
+      return _futures.get(_futures.size() - 1);
     }
 
     public TaskState state() {
@@ -605,12 +613,26 @@ public class UserTaskManager implements Closeable {
       return this;
     }
 
+    public CruiseControlParameters parameters() {
+      return _parameters;
+    }
+
     boolean isUserTaskDone() {
-      return _futures.get(_futures.size() - 1).isDone();
+      return lastFuture().isDone();
     }
 
     boolean isUserTaskDoneExceptionally() {
-      return _futures.get(_futures.size() - 1).isCompletedExceptionally();
+      return lastFuture().isCompletedExceptionally();
+    }
+
+    private void logOperation() {
+      try {
+        CruiseControlResponse response = lastFuture().get();
+        response.discardIrrelevantResponse(_parameters);
+        OPERATION_LOG.info("Task [{}] calculation finishes, result:\n{}", _userTaskId, response.cachedResponse());
+      } catch (InterruptedException | ExecutionException e) {
+        OPERATION_LOG.info("Task [{}] calculation fails, exception:\n{}", _userTaskId, e);
+      }
     }
   }
 

@@ -41,6 +41,7 @@ public class KafkaCruiseControlUtils {
   private static final Set<String> KAFKA_ASSIGNER_GOALS =
       Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                                                               KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
+  public static final String OPERATION_LOGGER = "operationLogger";
 
   private KafkaCruiseControlUtils() {
 
