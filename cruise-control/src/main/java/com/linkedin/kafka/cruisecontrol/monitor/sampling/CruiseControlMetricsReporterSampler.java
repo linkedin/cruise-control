@@ -45,7 +45,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   private static final long METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = 5000L;
   // Default configs
   private static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
-  private static final Long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
+  private static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
   // static metric processor for metrics aggregation.
   private static final CruiseControlMetricsProcessor METRICS_PROCESSOR = new CruiseControlMetricsProcessor();
   // static random token to avoid group conflict.
@@ -219,9 +219,9 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     if (groupId == null) {
       groupId = DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID + "-" + RANDOM.nextLong();
     }
-    Long reconnectBackoffMs = (Long) configs.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG);
+    String reconnectBackoffMs = (String) configs.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG);
     if (reconnectBackoffMs == null) {
-      reconnectBackoffMs = DEFAULT_RECONNECT_BACKOFF_MS;
+      reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
     }
 
     Properties consumerProps = new Properties();
@@ -235,7 +235,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
     consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, MetricSerde.class.getName());
-    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs.toString());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);
     _metricConsumer = new KafkaConsumer<>(consumerProps);
     _currentPartitionAssignment = Collections.emptySet();
     if (refreshPartitionAssignment()) {
