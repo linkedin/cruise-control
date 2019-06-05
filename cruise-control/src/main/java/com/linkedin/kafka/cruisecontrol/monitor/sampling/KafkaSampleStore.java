@@ -92,6 +92,7 @@ public class KafkaSampleStore implements SampleStore {
   protected static final int DEFAULT_BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT = 32;
   protected static final long DEFAULT_MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = 3600000L;
   protected static final long DEFAULT_MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = 3600000L;
+  protected static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
   protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   protected static final Random RANDOM = new Random();
@@ -186,6 +187,10 @@ public class KafkaSampleStore implements SampleStore {
     Properties consumerProps = new Properties();
     consumerProps.putAll(config);
     long randomToken = RANDOM.nextLong();
+    String reconnectBackoffMs = (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG);
+    if (reconnectBackoffMs == null) {
+      reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
+    }
     consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                               (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
     consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KafkaCruiseControlSampleStore" + randomToken);
@@ -195,8 +200,7 @@ public class KafkaSampleStore implements SampleStore {
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
     consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG,
-                              (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG));
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);
     return new KafkaConsumer<>(consumerProps);
   }
 
