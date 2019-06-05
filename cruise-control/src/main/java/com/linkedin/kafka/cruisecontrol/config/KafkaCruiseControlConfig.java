@@ -1367,16 +1367,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * Metrics reporting frequency should be larger than metric sampling frequency to ensure there is always data to be collected.
    */
   private void sanityCheckSamplingPeriod(Map<?, ?> originals) {
-    long samplingPeriodMs = getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
+    long samplingIntervalMs = getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
     long metadataTimeoutMs = getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
-    if (metadataTimeoutMs >  samplingPeriodMs) {
+    if (metadataTimeoutMs >  samplingIntervalMs) {
       throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs +
-                                "] to be longer than sampling period [" + samplingPeriodMs + "].");
+                                "] to be longer than sampling period [" + samplingIntervalMs + "].");
     }
 
     // Ensure that the sampling frequency per partition window is within the limits.
     long partitionSampleWindowMs = getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
-    short partitionSamplingFrequency = (short) (partitionSampleWindowMs / samplingPeriodMs);
+    short partitionSamplingFrequency = (short) (partitionSampleWindowMs / samplingIntervalMs);
     if (partitionSamplingFrequency > Byte.MAX_VALUE) {
       throw new ConfigException(String.format("Configured sampling frequency (%d) exceeds the maximum allowed value (%d). "
                                               + "Decrease the value of %s or increase the value of %s to ensure that their"
@@ -1387,7 +1387,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
 
     // Ensure that the sampling frequency per broker window is within the limits.
     long brokerSampleWindowMs = getLong(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG);
-    short brokerSamplingFrequency = (short) (brokerSampleWindowMs / samplingPeriodMs);
+    short brokerSamplingFrequency = (short) (brokerSampleWindowMs / samplingIntervalMs);
     if (brokerSamplingFrequency > Byte.MAX_VALUE) {
       throw new ConfigException(String.format("Configured sampling frequency (%d) exceeds the maximum allowed value (%d). "
                                               + "Decrease the value of %s or increase the value of %s to ensure that their"
@@ -1399,11 +1399,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     // Ensure reporting frequency is larger than sampling frequency.
     CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(originals, false);
     long reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG);
-    if (reportingIntervalMs > samplingPeriodMs) {
+    if (reportingIntervalMs > samplingIntervalMs) {
       throw new ConfigException(String.format("Configured metric reporting interval (%d) exceeds metric sampling interval (%d). "
                                               + "Decrease the value of %s or increase the value of %s to ensure that reported "
                                               + "metrics can be properly sampled.",
-                                              reportingIntervalMs, samplingPeriodMs,
+                                              reportingIntervalMs, samplingIntervalMs,
                                               CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG,
                                               KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
     }

@@ -51,7 +51,7 @@ public class CruiseControlMetricsReporterConfig extends AbstractConfig {
   private static final long DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS = 60000;
   private static final String PRODUCER_ID = "CruiseControlMetricsReporter";
   private static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS = 15 * 1000;
-  private static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = 60 * 000;
+  private static final int DEFAULT_CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS = 60 * 1000;
   private static final int DEFAULT_CRUISE_CONTROL_METRICS_BATCH_SIZE = 400 * 1024;
 
   public CruiseControlMetricsReporterConfig(Map<?, ?> originals, boolean doLog) {
