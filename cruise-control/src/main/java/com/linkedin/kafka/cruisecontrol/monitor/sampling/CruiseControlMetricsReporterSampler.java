@@ -46,6 +46,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   // Default configs
   private static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
   private static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
+  private static final long ACCEPTABLE_NETWORK_DELAY_MS = 100L;
   // static metric processor for metrics aggregation.
   private static final CruiseControlMetricsProcessor METRICS_PROCESSOR = new CruiseControlMetricsProcessor();
   // static random token to avoid group conflict.
@@ -54,6 +55,12 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   private Consumer<String, CruiseControlMetric> _metricConsumer;
   private String _metricReporterTopic;
   private Set<TopicPartition> _currentPartitionAssignment;
+  // Due to delay introduced by KafkaProducer and network, the metric record's event time is smaller than append
+  // time at broker side, sampler should take this delay into consideration when collecting metric records into samples.
+  // _acceptableMetricRecordProduceDelayMs is a conservative estimate of this delay, if one record's event time not earlier
+  // than starting_time_of_sampling_period minus _acceptableMetricRecordProduceDelayMs, it is included in the sample;
+  // otherwise it is discarded.
+  private long _acceptableMetricRecordProduceDelayMs;
 
   @Override
   public Samples getSamples(Cluster cluster,
@@ -99,9 +106,9 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
           continue;
         }
         long recordTime = record.value().time();
-        if (recordTime < startTimeMs) {
-          LOG.debug("Discarding metric {} because its timestamp is smaller than the start time of sampling period {}.",
-                    record.value(), startTimeMs);
+        if (recordTime + _acceptableMetricRecordProduceDelayMs < startTimeMs) {
+          LOG.debug("Discarding metric {} because its timestamp is more than {} ms earlier than the start time of sampling period {}.",
+                    record.value(), _acceptableMetricRecordProduceDelayMs, startTimeMs);
         } else if (recordTime >= endTimeMs) {
           TopicPartition tp = new TopicPartition(record.topic(), record.partition());
           LOG.debug("Saw metric {} whose timestamp is larger than the end time of sampling period {}. Pausing "
@@ -223,6 +230,11 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     if (reconnectBackoffMs == null) {
       reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
     }
+
+    CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(configs, false);
+    _acceptableMetricRecordProduceDelayMs = ACCEPTABLE_NETWORK_DELAY_MS +
+        Math.max(reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_MAX_BLOCK_MS_CONFIG),
+                 reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_LINGER_MS_CONFIG));
 
     Properties consumerProps = new Properties();
     consumerProps.putAll(configs);

@@ -72,7 +72,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     props.setProperty(KafkaConfig.ListenersProp(), "PLAINTEXT://127.0.0.1:" + port);
     props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
                       "127.0.0.1:" + port);
-    props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG, "100");
+    props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");
     props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
     props.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), "1");
     props.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
