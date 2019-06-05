@@ -227,7 +227,7 @@ public class KafkaCruiseControlUtils {
       setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_MECHANISM);
       setPasswordConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_JAAS_CONFIG);
 
-      // Configure SSL configs (if security protocol is SSL)
+      // Configure SSL configs (if security protocol is SSL or SASL_SSL)
       if (securityProtocol.equals(SecurityProtocol.SSL.name) || securityProtocol.equals(SecurityProtocol.SASL_SSL.name)) {
         setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG);
         setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG);
