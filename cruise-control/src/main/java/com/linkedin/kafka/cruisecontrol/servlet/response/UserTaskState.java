@@ -191,7 +191,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   private String completedTaskResponse(UserTaskManager.UserTaskInfo userTaskInfo) {
     try {
       CruiseControlResponse response = userTaskInfo.futures().get(userTaskInfo.futures().size() - 1).get();
-      return ((AbstractCruiseControlResponse) response).cachedResponse();
+      return response.cachedResponse();
     } catch (InterruptedException | ExecutionException e) {
       throw new IllegalStateException("Error happened in fetching response for task " + userTaskInfo.userTaskId().toString(), e);
     }

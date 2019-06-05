@@ -190,7 +190,7 @@ project(':cruise-control') {
   dependencies {
     compile project(':cruise-control-metrics-reporter')
     compile project(':cruise-control-core')
-    compile "org.slf4j:slf4j-api:1.7.26"
+    compile "org.slf4j:slf4j-api:1.7.26" // TODO: Upgrade log4j to log4j2 to use async logger.
     compile "org.apache.zookeeper:zookeeper:3.4.14"
     compile "org.apache.kafka:kafka_2.11:2.0.0"
     compile 'org.apache.kafka:kafka-clients:2.0.0'

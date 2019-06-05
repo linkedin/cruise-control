@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationRes
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
@@ -24,6 +25,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
@@ -33,6 +35,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
@@ -45,6 +48,7 @@ public class AnomalyDetector {
   private static final int INIT_JITTER_BOUND = 10000;
   private static final int NUM_ANOMALY_DETECTION_THREADS = 5;
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
+  private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
                                                                      Collections.emptyMap(),
                                                                      true,
@@ -68,6 +72,7 @@ public class AnomalyDetector {
   private final AnomalyDetectorState _anomalyDetectorState;
   // TODO: Make this configurable.
   private final List<String> _selfHealingGoals;
+  private final ExecutorService _anomalyLoggerExecutor;
 
   public AnomalyDetector(KafkaCruiseControlConfig config,
                          LoadMonitor loadMonitor,
@@ -102,6 +107,8 @@ public class AnomalyDetector {
     // Add anomaly detector state
     int numCachedRecentAnomalyStates = config.getInt(KafkaCruiseControlConfig.NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG);
     _anomalyDetectorState = new AnomalyDetectorState(_anomalyNotifier.selfHealingEnabled(), numCachedRecentAnomalyStates);
+    _anomalyLoggerExecutor =
+        Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
   }
 
   /**
@@ -135,6 +142,8 @@ public class AnomalyDetector {
     // Add anomaly detector state
     _anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()), 10);
     _selfHealingGoals = Collections.emptyList();
+    _anomalyLoggerExecutor =
+        Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
   }
 
   public void startDetection() {
@@ -180,6 +189,7 @@ public class AnomalyDetector {
       LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
     }
     _brokerFailureDetector.shutdown();
+    _anomalyLoggerExecutor.shutdownNow();
     LOG.info("Anomaly detector shutdown completed.");
   }
 
@@ -325,6 +335,26 @@ public class AnomalyDetector {
       return false;
     }
 
+    private void logSelfHealingOperation(Anomaly anomaly, OptimizationFailureException ofe, boolean selfHealingStarted) {
+      if (selfHealingStarted) {
+        switch (getAnomalyType(anomaly)) {
+          case GOAL_VIOLATION:
+          case BROKER_FAILURE:
+            OPERATION_LOG.info("[{}] calculation finishes, result:\n{}", anomaly.anomalyId(),
+                               ((KafkaAnomaly) anomaly).optimizationResult(false));
+            break;
+          case METRIC_ANOMALY:
+            OPERATION_LOG.info("[{}] calculation finishes, result:\n{}", anomaly.anomalyId(),
+                               ((KafkaMetricAnomaly) anomaly).optimizationResult(false));
+            break;
+          default:
+            throw new IllegalStateException("Unrecognized anomaly type.");
+        }
+      } else {
+        OPERATION_LOG.info("[{}] calculation fails, exception:\n{}", anomaly.anomalyId(), ofe);
+      }
+    }
+
     private void fixAnomaly(Anomaly anomaly) throws Exception {
       boolean isReadyToFix = isReadyToFix(anomaly);
       if (isReadyToFix) {
@@ -332,6 +362,10 @@ public class AnomalyDetector {
         boolean startedSuccessfully = false;
         try {
           startedSuccessfully = anomaly.fix();
+          _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomaly, null, true));
+        } catch (OptimizationFailureException ofe) {
+          _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomaly, ofe, false));
+          throw ofe;
         } finally {
           _anomalyDetectorState.onAnomalyHandle(anomaly, startedSuccessfully ? AnomalyState.Status.FIX_STARTED
                                                                              : AnomalyState.Status.FIX_FAILED_TO_START);
