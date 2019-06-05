@@ -281,7 +281,7 @@ public class KafkaSampleStore implements SampleStore {
                                                        ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
         maybeIncreaseTopicPartitionCount(zkUtils, topic, topicMetadata, partitionCount);
       }  catch (RuntimeException re) {
-        LOG.error("Skip updating topic " +  topic + " configuration due to failure:" + re.getMessage() + ".");
+        LOG.error("Skip updating configuration of topic " +  topic + " due to exception.", re);
       }
     }
   }
