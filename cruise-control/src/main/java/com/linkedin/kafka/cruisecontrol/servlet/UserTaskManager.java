@@ -165,7 +165,7 @@ public class UserTaskManager implements Closeable {
    *                 returns a completed Future.
    * @param step The index of the step that has to be added or fetched.
    * @param isAsyncRequest Indicate whether the task is async or sync.
-   * @param parameters Parsed parameters from http request.
+   * @param parameters Parsed parameters from http request, or null if the parsing result is unavailable.
    * @return The list of {@link OperationFuture} for the linked UserTask.
    */
   public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest,
@@ -391,7 +391,7 @@ public class UserTaskManager implements Closeable {
    * @param userTaskId UUID to uniquely identify task.
    * @param operation lambda function to provide result to UserTaskInfo object
    * @param httpServletRequest http request associated with the task
-   * @param parameters Parsed parameters from http request.
+   * @param parameters Parsed parameters from http request, or null if parsing result is unavailable.
    * @return {@link UserTaskInfo} containing request detail and  {@link OperationFuture}
    */
   private synchronized UserTaskInfo insertFuturesByUserTaskId(UUID userTaskId,
