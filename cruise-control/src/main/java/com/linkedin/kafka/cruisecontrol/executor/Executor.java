@@ -461,6 +461,7 @@ public class Executor {
    */
   public synchronized void userTriggeredStopExecution() {
     if (stopExecution()) {
+      LOG.info("User requested to stop the ongoing proposal execution.");
       _numExecutionStoppedByUser.incrementAndGet();
       _executionStoppedByUser.set(true);
     }
