@@ -112,7 +112,7 @@ public interface Goal extends CruiseControlConfigurable {
 
   /**
    * Signal for finishing the process for rebalance or self-healing for this goal. It is intended to mark the goal
-   * optimization as finished and perform the memory clean up after the goal.
+   * optimization as finished and perform the memory clean up after the goal optimization.
    */
   void finish();
 
