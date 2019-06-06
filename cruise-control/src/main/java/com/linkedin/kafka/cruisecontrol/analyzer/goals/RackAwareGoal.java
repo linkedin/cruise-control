@@ -214,6 +214,11 @@ public class RackAwareGoal extends AbstractGoal {
     finish();
   }
 
+  @Override
+  public void finish() {
+    _finished = true;
+  }
+
   /**
    * Rack-awareness violations can be resolved with replica movements.
    *
