@@ -218,6 +218,13 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     return !broker.replicas().isEmpty();
   }
 
+  @Override
+  public void finish() {
+    super.finish();
+    // Clean up the memory
+    _brokerAndReplicasMap.clear();
+  }
+
   private boolean rebalanceByMovingReplicasIn(Broker broker,
                                               ClusterModel clusterModel,
                                               Set<Goal> optimizedGoals,

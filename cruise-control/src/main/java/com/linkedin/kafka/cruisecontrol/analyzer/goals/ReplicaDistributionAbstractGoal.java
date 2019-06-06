@@ -216,6 +216,11 @@ public abstract class ReplicaDistributionAbstractGoal extends AbstractGoal {
     finish();
   }
 
+  @Override
+  public void finish() {
+    _finished = true;
+  }
+
   /**
    * Whether bring replica in or out.
    */

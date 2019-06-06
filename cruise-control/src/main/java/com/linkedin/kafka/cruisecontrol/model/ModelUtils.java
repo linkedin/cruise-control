@@ -12,6 +12,18 @@ import org.apache.kafka.common.TopicPartition;
  * The util class for model.
  */
 public class ModelUtils {
+  public static final String BROKER_ID = "brokerid";
+  public static final String BROKER_STATE = "brokerstate";
+  public static final String REPLICAS = "replicas";
+  public static final String IS_LEADER = "isLeader";
+  public static final String TOPIC = "topic";
+  public static final String PARTITION = "partition";
+  public static final String LOAD = "load";
+  public static final String METRIC_VALUES = "MetricValues";
+  public static final String NAME = "name";
+  public static final String BROKERS = "brokers";
+  public static final String RACK_ID = "rackid";
+  public static final String HOSTS = "hosts";
   // In some extremely low throughput cluster, the partition IO may appear to be higher than the broker IO.
   // We allow such error if it is not too big and just treat the partition IO the same as broker IO.
   // We also ignore all the inaccuracy when the broker total throughput is too low.

@@ -41,7 +41,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.eligible
  */
 public abstract class AbstractGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractGoal.class);
-  private boolean _finished;
+  protected boolean _finished;
   protected boolean _succeeded = true;
   protected BalancingConstraint _balancingConstraint;
   protected int _numWindows;
@@ -135,13 +135,6 @@ public abstract class AbstractGoal implements Goal {
    * false otherwise.
    */
   protected abstract boolean selfSatisfied(ClusterModel clusterModel, BalancingAction action);
-
-  /**
-   * Signal for finishing the process for rebalance or self-healing for this goal.
-   */
-  protected void finish() {
-    _finished = true;
-  }
 
   /**
    * Initialize states that this goal requires -- e.g. run sanity checks regarding hard goals requirements.

@@ -518,6 +518,11 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
   }
 
   @Override
+  public void finish() {
+    // Done.
+  }
+
+  @Override
   public boolean isHardGoal() {
     return true;
   }
