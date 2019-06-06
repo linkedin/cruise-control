@@ -230,8 +230,9 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     Capture<ExecutorNotification> captureNotification = Capture.newInstance(CaptureType.FIRST);
 
     EasyMock.expect(mockUserTaskInfo.endPoint()).andReturn(EndPoint.REBALANCE).once();
-    EasyMock.expect(mockUserTaskManager.getUserTaskById(uuid))
+    EasyMock.expect(mockUserTaskManager.markTaskInExecution(uuid))
             .andReturn(expectUserTaskInfo ? mockUserTaskInfo : null).once();
+    mockUserTaskManager.markTaskFinishExecution(anyString());
     mockExecutorNotifier.sendNotification(EasyMock.capture(captureNotification));
     EasyMock.expectLastCall();
 
@@ -306,7 +307,8 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   private UserTaskManager getMockUserTaskManager() {
     UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
-    EasyMock.expect(mockUserTaskManager.getUserTaskById(anyObject())).andReturn(null).anyTimes();
+    mockUserTaskManager.markTaskFinishExecution(anyString());
+    EasyMock.expect(mockUserTaskManager.markTaskInExecution(anyObject())).andReturn(null).anyTimes();
     EasyMock.replay(mockUserTaskManager);
     return mockUserTaskManager;
   }

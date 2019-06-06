@@ -490,14 +490,15 @@ public class Executor {
       _executionStartMs = _time.milliseconds();
       _executionException = null;
 
-      // If the task is triggered from a user request, retrieve the task information from user task manager.
+      // If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
+      // retrieve the associated user task information.
       if (AnomalyType.cachedValues().stream().anyMatch(type -> _uuid.startsWith(type.toString()))) {
         _userTaskInfo = null;
       } else {
         if (_userTaskManager == null) {
-          throw new IllegalStateException("UserTaskManager not set, cannot retrieve UserTaskInfo");
+          throw new IllegalStateException("UserTaskManager is not specified in Executor.");
         }
-        _userTaskInfo =  _userTaskManager.getUserTaskById(_uuid);
+        _userTaskInfo = _userTaskManager.markTaskInExecution(_uuid);
       }
 
       if (demotedBrokers != null) {
@@ -572,6 +573,10 @@ public class Executor {
         LOG.error("Executor got exception during execution", t);
         _executionException = t;
       } finally {
+        // If the finished task is triggered by user request, update task status in user task manager.
+        if (_userTaskInfo != null) {
+          _userTaskManager.markTaskFinishExecution(_uuid);
+        }
         _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
 
         // If execution encountered exception and isn't stopped, it's considered successful.
