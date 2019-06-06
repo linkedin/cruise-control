@@ -198,8 +198,14 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       // Sanity check to confirm that the final distribution has less than the allowed number of replicas per broker.
       ensureReplicaCapacitySatisfied(clusterModel);
       finish();
+    } else {
+      _isSelfHealingMode = false;
     }
-    _isSelfHealingMode = false;
+  }
+
+  @Override
+  public void finish() {
+    _finished = true;
   }
 
   /**

@@ -321,6 +321,11 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     finish();
   }
 
+  @Override
+  public void finish() {
+    _finished = true;
+  }
+
   private static boolean skipBrokerRebalance(Broker broker,
                                              ClusterModel clusterModel,
                                              Collection<Replica> replicas,

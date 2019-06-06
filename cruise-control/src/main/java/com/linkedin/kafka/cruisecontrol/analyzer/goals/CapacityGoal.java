@@ -203,6 +203,11 @@ public abstract class CapacityGoal extends AbstractGoal {
     clusterModel.untrackSortedReplicas(sortNameByLeader());
   }
 
+  @Override
+  public void finish() {
+    _finished = true;
+  }
+
   /**
    * Ensure that for the resource, the utilization is under the capacity of the host/broker-level.
    * {@link Resource#isBrokerResource()} and {@link Resource#isHostResource()} determines the level of checks this

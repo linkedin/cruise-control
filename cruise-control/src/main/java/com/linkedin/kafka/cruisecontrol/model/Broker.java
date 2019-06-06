@@ -32,9 +32,6 @@ import org.apache.kafka.common.TopicPartition;
  */
 public class Broker implements Serializable, Comparable<Broker> {
   private static final double DEAD_BROKER_CAPACITY = -1.0;
-  private static final String BROKER_ID = "brokerid";
-  private static final String BROKER_STATE = "brokerstate";
-  private static final String REPLICAS = "replicas";
 
   public enum State {
     ALIVE, DEAD, NEW, DEMOTED, BAD_DISKS
@@ -629,9 +626,9 @@ public class Broker implements Serializable, Comparable<Broker> {
       replicaList.add(replica.getJsonStructureForLoad());
     }
     Map<String, Object> brokerMap = new HashMap<>(3);
-    brokerMap.put(BROKER_ID, _id);
-    brokerMap.put(BROKER_STATE, _state);
-    brokerMap.put(REPLICAS, replicaList);
+    brokerMap.put(ModelUtils.BROKER_ID, _id);
+    brokerMap.put(ModelUtils.BROKER_STATE, _state);
+    brokerMap.put(ModelUtils.REPLICAS, replicaList);
     return brokerMap;
   }
 

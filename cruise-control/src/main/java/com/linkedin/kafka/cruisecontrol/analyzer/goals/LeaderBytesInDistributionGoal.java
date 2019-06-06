@@ -166,6 +166,13 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
   }
 
   @Override
+  public void finish() {
+    _finished = true;
+    // Clean up the memory
+    _overLimitBrokerIds.clear();
+  }
+
+  @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) {
     // While proposals exclude the excludedTopics, the leader bytes in still considers replicas of the excludedTopics.
     if (!_overLimitBrokerIds.isEmpty()) {

@@ -249,6 +249,11 @@ public class PotentialNwOutGoal extends AbstractGoal {
     finish();
   }
 
+  @Override
+  public void finish() {
+    _finished = true;
+  }
+
   /**
    * Rebalance the given broker without violating the constraints of the current goal and optimized goals.
    *

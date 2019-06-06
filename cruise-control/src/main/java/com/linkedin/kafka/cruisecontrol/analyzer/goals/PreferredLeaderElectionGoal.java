@@ -35,7 +35,7 @@ public class PreferredLeaderElectionGoal implements Goal {
   private static final Logger LOG = LoggerFactory.getLogger(PreferredLeaderElectionGoal.class);
   private final boolean _skipUrpDemotion;
   private final boolean _excludeFollowerDemotion;
-  private final Cluster _kafkaCluster;
+  private Cluster _kafkaCluster;
 
   public PreferredLeaderElectionGoal() {
     this(false, false, null);
@@ -143,6 +143,8 @@ public class PreferredLeaderElectionGoal implements Goal {
         }
       }
     }
+    // This goal is optimized in one pass.
+    finish();
     // Return true if at least one leadership has been relocated.
     return relocatedLeadership;
   }
@@ -175,6 +177,11 @@ public class PreferredLeaderElectionGoal implements Goal {
   @Override
   public String name() {
     return PreferredLeaderElectionGoal.class.getSimpleName();
+  }
+
+  @Override
+  public void finish() {
+    _kafkaCluster = null;
   }
 
   @Override
