@@ -58,7 +58,9 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
   private final Map<String, Set<Integer>> _brokerIdsAboveBalanceUpperLimitByTopic;
   private final Map<String, Set<Integer>> _brokerIdsUnderBalanceLowerLimitByTopic;
+  // Must contain only the topics to be rebalanced.
   private final Map<String, Double> _avgTopicReplicasOnAliveBroker;
+  // Must contain all topics to ensure that the lower priority goals work w/o an NPE.
   private final Map<String, Integer> _balanceUpperLimitByTopic;
   private final Map<String, Integer> _balanceLowerLimitByTopic;
 
@@ -246,11 +248,15 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     Set<String> topicsToRebalance = topicsToRebalance(clusterModel, optimizationOptions.excludedTopics());
 
     // Initialize the average replicas on an alive broker.
-    for (String topic : topicsToRebalance) {
+    for (String topic : clusterModel.topics()) {
       int numTopicReplicas = clusterModel.numTopicReplicas(topic);
       _avgTopicReplicasOnAliveBroker.put(topic, (numTopicReplicas / (double) clusterModel.aliveBrokers().size()));
       _balanceUpperLimitByTopic.put(topic, balanceUpperLimit(topic, optimizationOptions));
       _balanceLowerLimitByTopic.put(topic, balanceLowerLimit(topic, optimizationOptions));
+      // Retain only the topics to rebalance in _avgTopicReplicasOnAliveBroker
+      if (!topicsToRebalance.contains(topic)) {
+        _avgTopicReplicasOnAliveBroker.remove(topic);
+      }
     }
 
     _selfHealingDeadBrokersOnly = false;
@@ -335,6 +341,10 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     return false;
   }
 
+  private boolean isTopicExcludedFromRebalance(String topic) {
+    return _avgTopicReplicasOnAliveBroker.get(topic) == null;
+  }
+
   /**
    * Rebalance the given broker without violating the constraints of the current goal and optimized goals.
    *
@@ -352,8 +362,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
               _balanceUpperLimitByTopic);
 
     for (String topic : broker.topics()) {
-      if (_avgTopicReplicasOnAliveBroker.get(topic) == null) {
-        // Topic is excluded from the rebalance.
+      if (isTopicExcludedFromRebalance(topic)) {
         continue;
       }
 
