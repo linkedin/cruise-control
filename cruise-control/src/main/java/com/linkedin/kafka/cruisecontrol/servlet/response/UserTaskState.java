@@ -37,13 +37,11 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   private static final String STATUS = "Status";
   private static final String USER_TASKS = "userTasks";
   private static final String ORIGINAL_RESPONSE = "originalResponse";
-  private final Map<UserTaskManager.TaskState, List<UserTaskManager.UserTaskInfo>> _userTasksByTaskState;
+  private final List<UserTaskManager.UserTaskInfo> _userTasks;
 
   public UserTaskState(UserTaskManager userTaskManager, KafkaCruiseControlConfig config) {
     super(config);
-    _userTasksByTaskState = new HashMap<>(2);
-    _userTasksByTaskState.put(UserTaskManager.TaskState.ACTIVE, userTaskManager.getActiveUserTasks());
-    _userTasksByTaskState.put(UserTaskManager.TaskState.COMPLETED, userTaskManager.getCompletedUserTasks());
+    _userTasks = userTaskManager.getAllUserTasks();
   }
 
   private String getJSONString(UserTasksParameters parameters) {
@@ -66,9 +64,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     // to MAX_VALUE
     List<UserTaskManager.UserTaskInfo> resultList = (entries == Integer.MAX_VALUE ? new ArrayList<>() : new ArrayList<>(entries));
 
-    // We fill result with ACTIVE tasks first and then COMPLETED tasks
-    populateFilteredTasks(resultList, _userTasksByTaskState.get(UserTaskManager.TaskState.ACTIVE), parameters, entries);
-    populateFilteredTasks(resultList, _userTasksByTaskState.get(UserTaskManager.TaskState.COMPLETED), parameters, entries);
+    populateFilteredTasks(resultList, _userTasks, parameters, entries);
     return resultList.subList(0, Math.min(entries, resultList.size()));
   }
 
@@ -139,16 +135,14 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     int statusLabelSize = 10;
     int requestURLLabelSize = 20;
 
-
-    for (List<UserTaskManager.UserTaskInfo> taskList : _userTasksByTaskState.values()) {
-      for (UserTaskManager.UserTaskInfo userTaskInfo : taskList) {
-        userTaskIdLabelSize = max(userTaskIdLabelSize, userTaskInfo.userTaskId().toString().length());
-        clientAddressLabelSize = max(clientAddressLabelSize, userTaskInfo.clientIdentity().length());
-        String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATE_FORMAT, TIME_ZONE);
-        startMsLabelSize = max(startMsLabelSize, dateFormatted.length());
-        statusLabelSize = max(statusLabelSize, userTaskInfo.state().toString().length());
-        requestURLLabelSize = max(requestURLLabelSize, userTaskInfo.requestWithParams().length());
-      }
+    List<UserTaskManager.UserTaskInfo> taskInfoList = prepareResultList(parameters);
+    for (UserTaskManager.UserTaskInfo userTaskInfo : taskInfoList) {
+      userTaskIdLabelSize = max(userTaskIdLabelSize, userTaskInfo.userTaskId().toString().length());
+      clientAddressLabelSize = max(clientAddressLabelSize, userTaskInfo.clientIdentity().length());
+      String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATE_FORMAT, TIME_ZONE);
+      startMsLabelSize = max(startMsLabelSize, dateFormatted.length());
+      statusLabelSize = max(statusLabelSize, userTaskInfo.state().toString().length());
+      requestURLLabelSize = max(requestURLLabelSize, userTaskInfo.requestWithParams().length());
     }
 
     StringBuilder formattingStringBuilder = new StringBuilder("%n%-");
@@ -165,7 +159,6 @@ public class UserTaskState extends AbstractCruiseControlResponse {
 
     sb.append(String.format(formattingStringBuilder.toString(), "USER TASK ID", "CLIENT ADDRESS", "START TIME", "STATUS",
                             "REQUEST URL")); // header
-    List<UserTaskManager.UserTaskInfo> taskInfoList = prepareResultList(parameters);
     for (UserTaskManager.UserTaskInfo userTaskInfo : taskInfoList) {
       String dateFormatted = KafkaCruiseControlUtils.toDateString(userTaskInfo.startMs(), DATE_FORMAT, TIME_ZONE);
       sb.append(String.format(formattingStringBuilder.toString(), userTaskInfo.userTaskId().toString(), userTaskInfo.clientIdentity(),
@@ -203,7 +196,6 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     _cachedResponse = userTasksParameters.json() ? getJSONString(userTasksParameters) :
                                                    getPlaintext(userTasksParameters);
     // Discard irrelevant response.
-    _userTasksByTaskState.get(UserTaskManager.TaskState.ACTIVE).clear();
-    _userTasksByTaskState.get(UserTaskManager.TaskState.COMPLETED).clear();
+    _userTasks.clear();
   }
 }

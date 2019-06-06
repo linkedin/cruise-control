@@ -625,11 +625,48 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "persisted samples can be reloaded from the sample store to Kafka Cruise Control.";
 
   /**
+   * <code>completed.kafka.monitor.user.task.retention.time.ms</code>
+   */
+  public static final String COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG =
+      "completed.kafka.monitor.user.task.retention.time.ms";
+  private static final String COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
+      + "to store the response and access details of a completed kafka monitoring user task. If this config is missing, "
+      + "the value set in config completed.user.task.retention.time.ms will be used.";
+
+  /**
+   * <code>completed.cruise.control.monitor.user.task.retention.time.ms</code>
+   */
+  public static final String COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG =
+      "completed.cruise.control.monitor.user.task.retention.time.ms";
+  private static final String COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
+      + "to store the response and access details of a completed cruise control monitoring user task. If this config is missing, "
+      + "the value set in config completed.user.task.retention.time.ms will be used.";
+
+  /**
+   * <code>completed.kafka.admin.user.task.retention.time.ms</code>
+   */
+  public static final String COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG =
+      "completed.kafka.admin.user.task.retention.time.ms";
+  private static final String COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
+      + "to store the response and access details of a completed kafka administration user task. If this config is missing, "
+      + "the value set in config completed.user.task.retention.time.ms will be used.";
+
+  /**
+   * <code>completed.cruise.control.admin.user.task.retention.time.ms</code>
+   */
+  public static final String COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG =
+      "completed.cruise.control.admin.user.task.retention.time.ms";
+  private static final String COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
+      + "to store the response and access details of a completed cruise control administration user task. If this config is "
+      + "missing, the value set in config completed.user.task.retention.time.ms will be used.";
+
+  /**
    * <code>completed.user.task.retention.time.ms</code>
    */
   public static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG = "completed.user.task.retention.time.ms";
-  private static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to store the"
-      + " response and access details of a completed user task.";
+  private static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC = "The fallback maximum time in milliseconds to store "
+      + "the response and access details of a completed user task if more specific config for certain user task type is not set"
+      + " (e.g. COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG).";
 
   /**
    * <code>demotion.history.retention.time.ms</code>
@@ -646,11 +683,46 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + " removal history of brokers.";
 
   /**
+   * <code>max.cached.completed.kafka.monitor.user.tasks</code>
+   */
+  public static final String MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG = "max.cached.completed.kafka.monitor.user.tasks";
+  private static final String MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_DOC = "The maximum number of completed kafka monitoring "
+      + "user tasks for which the response and access details will be cached. If this config is missing, the value set in config "
+      + "max.cached.completed.user.tasks will be used.";
+
+  /**
+   * <code>max.cached.completed.cruise.control.monitor.user.tasks</code>
+   */
+  public static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_CONFIG =
+      "max.cached.completed.cruise.control.monitor.user.tasks";
+  private static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_DOC = "The maximum number of completed "
+      + "cruise control monitoring user tasks for which the response and access details will be cached. If this config is "
+      + "missing, the value set in config max.cached.completed.user.tasks will be used.";
+
+  /**
+   * <code>max.cached.completed.kafka.admin.user.tasks</code>
+   */
+  public static final String MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_CONFIG = "max.cached.completed.kafka.admin.user.tasks";
+  private static final String MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_DOC = "The maximum number of completed kafka administration "
+      + "user tasks for which the response and access details will be cached. If this config is missing, the value set in config "
+      + "max.cached.completed.user.tasks will be used.";
+
+  /**
+   * <code>max.cached.completed.cruise.control.admin.user.tasks</code>
+   */
+  public static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_CONFIG =
+      "max.cached.completed.cruise.control.admin.user.tasks";
+  private static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_DOC = "The maximum number of completed "
+      + "cruise control administration user tasks for which the response and access details will be cached. If this config is "
+      + "missing, the value set in config max.cached.completed.user.tasks will be used.";
+
+  /**
    * <code>max.cached.completed.user.tasks</code>
    */
   public static final String MAX_CACHED_COMPLETED_USER_TASKS_CONFIG = "max.cached.completed.user.tasks";
-  private static final String MAX_CACHED_COMPLETED_USER_TASKS_DOC = "The maximum number of completed user tasks for "
-      + "which the response and access details will be cached.";
+  private static final String MAX_CACHED_COMPLETED_USER_TASKS_DOC = "The fallback maximum number of completed user tasks of"
+      + "certain type for which the response and access details will be cached. This config will be used if more specific "
+      + "config for certain user task type is not set (e.g. MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG).";
 
   /**
    * <code>max.active.user.tasks</code>
@@ -864,6 +936,26 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.HIGH,
                 BROKER_METRICS_WINDOW_MS_DOC)
+        .define(COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC)
+        .define(COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC)
+        .define(COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC)
+        .define(COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC)
         .define(COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 TimeUnit.HOURS.toMillis(24),
@@ -880,8 +972,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.LONG,
                 TimeUnit.HOURS.toMillis(336),
                 atLeast(0),
-                ConfigDef.Importance.MEDIUM,
-                REMOVAL_HISTORY_RETENTION_TIME_MS_DOC)
+                ConfigDef.Importance.MEDIUM, REMOVAL_HISTORY_RETENTION_TIME_MS_DOC)
         .define(TWO_STEP_PURGATORY_RETENTION_TIME_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 TimeUnit.HOURS.toMillis(336),
@@ -892,9 +983,29 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 25,
                 atLeast(1),
                 ConfigDef.Importance.MEDIUM, TWO_STEP_PURGATORY_MAX_REQUESTS_DOC)
+        .define(MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_DOC)
+        .define(MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_DOC)
+        .define(MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_DOC)
+        .define(MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_DOC)
         .define(MAX_CACHED_COMPLETED_USER_TASKS_CONFIG,
                 ConfigDef.Type.INT,
-                100,
+                25,
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 MAX_CACHED_COMPLETED_USER_TASKS_DOC)
@@ -1111,11 +1222,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Importance.MEDIUM,
                 PROPOSAL_EXPIRATION_MS_DOC)
         .define(MAX_REPLICAS_PER_BROKER_CONFIG,
-            ConfigDef.Type.LONG,
-            10000,
-            atLeast(0),
-            ConfigDef.Importance.MEDIUM,
-            MAX_REPLICAS_PER_BROKER_DOC)
+                ConfigDef.Type.LONG,
+                10000,
+                atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                MAX_REPLICAS_PER_BROKER_DOC)
         .define(NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG,
                 ConfigDef.Type.INT,
                 1,
