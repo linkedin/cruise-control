@@ -165,6 +165,9 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                                  ClusterModel clusterModel,
                                                  Set<Goal> optimizedGoals,
                                                  OptimizationOptions optimizationOptions) {
+    if (!clusterModel.deadBrokers().isEmpty()) {
+      return true;
+    }
     int numLeaderReplicas = broker.leaderReplicas().size();
     for (Replica replica : new HashSet<>(broker.leaderReplicas())) {
       Set<Broker> candidateBrokers = clusterModel.partition(replica.topicPartition()).partitionBrokers().stream()
@@ -189,7 +192,8 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                                 ClusterModel clusterModel,
                                                 Set<Goal> optimizedGoals,
                                                 OptimizationOptions optimizationOptions) {
-    if (optimizationOptions.excludedBrokersForLeadership().contains(broker.id())) {
+    if (!clusterModel.deadBrokers().isEmpty() ||
+        optimizationOptions.excludedBrokersForLeadership().contains(broker.id())) {
       return true;
     }
 
