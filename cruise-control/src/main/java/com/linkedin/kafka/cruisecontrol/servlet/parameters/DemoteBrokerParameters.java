@@ -28,6 +28,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;skip_urp_demotion=[true/false]&amp;exclude_follower_demotion=[true/false]&amp;verbose=[true/false]
  *    &amp;exclude_recently_demoted_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;brokerid_and_logdirs=[broker_id1-logdir1,broker_id2-logdir2]&amp;review_id=[id]
+ *    &amp;replication_throttle=[bytes_per_second]
  * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
@@ -37,6 +38,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   private boolean _skipUrpDemotion;
   private boolean _excludeFollowerDemotion;
   private ReplicaMovementStrategy _replicaMovementStrategy;
+  private Long _replicationThrottle;
   private Integer _reviewId;
   private Map<Integer, Set<String>> _logdirByBrokerId;
 
@@ -54,6 +56,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
     _skipUrpDemotion = ParameterUtils.skipUrpDemotion(_request);
     _excludeFollowerDemotion = ParameterUtils.excludeFollowerDemotion(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
+    _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
     _logdirByBrokerId = ParameterUtils.brokerIdAndLogdirs(_request);
@@ -94,5 +97,9 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
 
   public ReplicaMovementStrategy replicaMovementStrategy() {
     return _replicaMovementStrategy;
+  }
+
+  public Long replicationThrottle() {
+    return _replicationThrottle;
   }
 }
