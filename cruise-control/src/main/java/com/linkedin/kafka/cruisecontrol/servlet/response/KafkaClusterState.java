@@ -20,6 +20,7 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
@@ -52,7 +53,11 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
 
   private String getJSONString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
-    Map<String, Object> jsonStructure = getJsonStructure(((KafkaClusterStateParameters) parameters).isVerbose());
+    KafkaClusterStateParameters kafkaClusterStateParams = (KafkaClusterStateParameters) parameters;
+
+    boolean isVerbose = kafkaClusterStateParams.isVerbose();
+    Pattern topic = kafkaClusterStateParams.topic();
+    Map<String, Object> jsonStructure = getJsonStructure(isVerbose, topic);
     jsonStructure.put(VERSION, JSON_VERSION);
     return gson.toJson(jsonStructure);
   }
@@ -64,23 +69,27 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * @param offlinePartitions state of offline partitions.
    * @param otherPartitions state of partitions other than offline or urp.
    * @param verbose true if requested to gather state of partitions other than offline or urp.
+   * @param topicPattern regex of topic to filter partition states by, is null if no filter is to be applied
    */
   private void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
                                            Set<PartitionInfo> offlinePartitions,
                                            Set<PartitionInfo> otherPartitions,
-                                           boolean verbose) {
+                                           boolean verbose,
+                                           Pattern topicPattern) {
     for (String topic : _kafkaCluster.topics()) {
-      for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
-        boolean isURP = partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
-        if (isURP || verbose) {
-          boolean isOffline = partitionInfo.inSyncReplicas().length == 0;
-          if (isOffline) {
-            offlinePartitions.add(partitionInfo);
-          } else if (isURP) {
-            underReplicatedPartitions.add(partitionInfo);
-          } else {
-            // verbose -- other
-            otherPartitions.add(partitionInfo);
+      if (topicPattern == null || topicPattern.matcher(topic).matches()) {
+        for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
+          boolean isURP = partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
+          if (isURP || verbose) {
+            boolean isOffline = partitionInfo.inSyncReplicas().length == 0;
+            if (isOffline) {
+              offlinePartitions.add(partitionInfo);
+            } else if (isURP) {
+              underReplicatedPartitions.add(partitionInfo);
+            } else {
+              // verbose -- other
+              otherPartitions.add(partitionInfo);
+            }
           }
         }
       }
@@ -154,8 +163,9 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * Return an object that can be further used to encode into JSON.
    *
    * @param verbose True if verbose, false otherwise.
+   * @param topic Regex of topic to filter partition states by, is null if no filter is to be applied
    */
-  public Map<String, Object> getJsonStructure(boolean verbose) {
+  public Map<String, Object> getJsonStructure(boolean verbose, Pattern topic) {
     Map<Integer, Integer> leaderCountByBrokerId = new HashMap<>();
     Map<Integer, Integer> outOfSyncCountByBrokerId = new HashMap<>();
     Map<Integer, Integer> replicaCountByBrokerId = new HashMap<>();
@@ -172,7 +182,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     Set<PartitionInfo> offlinePartitions = new HashSet<>();
     Set<PartitionInfo> otherPartitions = new HashSet<>();
 
-    populateKafkaPartitionState(underReplicatedPartitions, offlinePartitions, otherPartitions, verbose);
+    populateKafkaPartitionState(underReplicatedPartitions, offlinePartitions, otherPartitions, verbose, topic);
 
     // Write the partition state.
     Map<String, List> kafkaClusterByPartitionState = new HashMap<>();
@@ -214,7 +224,9 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     SortedMap<Integer, Integer> leaderCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> outOfSyncCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> replicaCountByBrokerId = new TreeMap<>();
-
+    KafkaClusterStateParameters kafkaClusterStateParams = (KafkaClusterStateParameters) parameters;
+    
+    Pattern topic = kafkaClusterStateParams.topic();
     populateKafkaBrokerState(leaderCountByBrokerId, outOfSyncCountByBrokerId, replicaCountByBrokerId);
 
     String initMessage = "Brokers:";
@@ -233,7 +245,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     // Partitions summary.
     int topicNameLength = _kafkaCluster.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
 
-    boolean verbose = ((KafkaClusterStateParameters) parameters).isVerbose();
+    boolean verbose = kafkaClusterStateParams.isVerbose();
     initMessage = verbose ? "All Partitions in the Cluster (verbose):"
                           : "Under Replicated and Offline Partitions in the Cluster:";
 
@@ -247,7 +259,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     SortedSet<PartitionInfo> offlinePartitions = new TreeSet<>(comparator);
     SortedSet<PartitionInfo> otherPartitions = new TreeSet<>(comparator);
 
-    populateKafkaPartitionState(underReplicatedPartitions, offlinePartitions, otherPartitions, verbose);
+    populateKafkaPartitionState(underReplicatedPartitions, offlinePartitions, otherPartitions, verbose, topic);
 
     // Write the cluster state.
     sb.append(String.format("Offline Partitions:%n"));
