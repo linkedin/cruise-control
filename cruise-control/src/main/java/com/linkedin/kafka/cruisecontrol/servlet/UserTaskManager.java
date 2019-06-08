@@ -399,6 +399,9 @@ public class UserTaskManager implements Closeable {
 
     if (_uuidToActiveUserTaskInfoMap.containsKey(userTaskId)) {
       _inExecutionUserTaskInfo = _uuidToActiveUserTaskInfoMap.remove(userTaskId).setState(TaskState.IN_EXECUTION);
+      // Normally a user task's operation result is logged when the task's state is transferred from ACTIVE to COMPLETED_WITH_ERROR.
+      // If the user task's state is transferred from ACTIVE directly to IN_EXECUTION, need to log the task's operation result here.
+      _inExecutionUserTaskInfo.logOperation();
     }
 
     return _inExecutionUserTaskInfo;
@@ -413,8 +416,10 @@ public class UserTaskManager implements Closeable {
     if (!_inExecutionUserTaskInfo.userTaskId().equals(UUID.fromString(uuid))) {
       throw new IllegalStateException(String.format("Task %s is not found in UserTaskManager.", uuid));
     }
+    _inExecutionUserTaskInfo.setState(TaskState.COMPLETED);
     _uuidToCompletedUserTaskInfoMap.get(_inExecutionUserTaskInfo.endPoint().retentionType())
                                    .put(_inExecutionUserTaskInfo.userTaskId(), _inExecutionUserTaskInfo);
+    _inExecutionUserTaskInfo = null;
   }
 
   synchronized UserTaskInfo getUserTaskByUserTaskId(UUID userTaskId, HttpServletRequest httpServletRequest) {
@@ -439,6 +444,12 @@ public class UserTaskManager implements Closeable {
           && hasTheSameHttpParameter(userTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
         return userTaskInfo;
       }
+    }
+
+    if (_inExecutionUserTaskInfo.userTaskId() == userTaskId
+        && _inExecutionUserTaskInfo.requestUrl().equals(requestUrl)
+        && hasTheSameHttpParameter(_inExecutionUserTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
+      return _inExecutionUserTaskInfo;
     }
 
     return null;

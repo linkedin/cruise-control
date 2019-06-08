@@ -44,7 +44,7 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
   }
 
   @Override
-  public void discardIrrelevantResponse(CruiseControlParameters parameters) {
+  public synchronized void discardIrrelevantResponse(CruiseControlParameters parameters) {
     if (_cachedResponse == null) {
       discardIrrelevantAndCacheRelevant(parameters);
       if (_cachedResponse == null) {

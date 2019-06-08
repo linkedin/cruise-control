@@ -482,7 +482,7 @@ public class Executor {
     private Set<Integer> _recentlyRemovedBrokers;
     private final long _executionStartMs;
     private Throwable _executionException;
-    private final UserTaskManager.UserTaskInfo _userTaskInfo;
+    private UserTaskManager.UserTaskInfo _userTaskInfo;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers, Collection<Integer> removedBrokers) {
       _loadMonitor = loadMonitor;
@@ -490,15 +490,8 @@ public class Executor {
       _executionStartMs = _time.milliseconds();
       _executionException = null;
 
-      // If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
-      // retrieve the associated user task information.
-      if (AnomalyType.cachedValues().stream().anyMatch(type -> _uuid.startsWith(type.toString()))) {
-        _userTaskInfo = null;
-      } else {
-        if (_userTaskManager == null) {
-          throw new IllegalStateException("UserTaskManager is not specified in Executor.");
-        }
-        _userTaskInfo = _userTaskManager.markTaskInExecution(_uuid);
+      if (_userTaskManager == null) {
+        throw new IllegalStateException("UserTaskManager is not specified in Executor.");
       }
 
       if (demotedBrokers != null) {
@@ -523,6 +516,13 @@ public class Executor {
      * Start the actual execution of the proposals in order: First move replicas, then transfer leadership.
      */
     private void execute() {
+      // If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
+      // retrieve the associated user task information.
+      if (AnomalyType.cachedValues().stream().anyMatch(type -> _uuid.startsWith(type.toString()))) {
+        _userTaskInfo = null;
+      } else {
+        _userTaskInfo = _userTaskManager.markTaskInExecution(_uuid);
+      }
       _state = STARTING_EXECUTION;
       _executorState = ExecutorState.executionStarted(_uuid, _recentlyDemotedBrokers, _recentlyRemovedBrokers);
       OPERATION_LOG.info("Task [{}] execution starts.", _uuid);
