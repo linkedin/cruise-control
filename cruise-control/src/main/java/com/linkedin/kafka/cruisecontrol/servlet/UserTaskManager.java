@@ -721,7 +721,13 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Possible state of tasks.
+   * Possible state of tasks, with supported transitions:
+   * <ul>
+   *   <li>{@link TaskState#ACTIVE} -&gt; {@link TaskState#IN_EXECUTION}, {@link TaskState#COMPLETED},
+   *   {@link TaskState#COMPLETED_WITH_ERROR}</li>
+   *   <li>{@link TaskState#COMPLETED} -&gt; {@link TaskState#IN_EXECUTION}(due to thread synchronization issue)</li>
+   *   <li>{@link TaskState#IN_EXECUTION} -&gt; {@link TaskState#COMPLETED}</li>
+   * </ul>
    */
   public enum TaskState {
     ACTIVE("Active"),
