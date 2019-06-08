@@ -521,7 +521,6 @@ public class Executor {
     private Set<Integer> _recentlyRemovedBrokers;
     private final long _executionStartMs;
     private Throwable _executionException;
-    private final UserTaskManager.UserTaskInfo _userTaskInfo;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers, Collection<Integer> removedBrokers) {
       _loadMonitor = loadMonitor;
@@ -529,15 +528,8 @@ public class Executor {
       _executionStartMs = _time.milliseconds();
       _executionException = null;
 
-      // If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
-      // retrieve the associated user task information.
-      if (AnomalyType.cachedValues().stream().anyMatch(type -> _uuid.startsWith(type.toString()))) {
-        _userTaskInfo = null;
-      } else {
-        if (_userTaskManager == null) {
-          throw new IllegalStateException("UserTaskManager is not specified in Executor.");
-        }
-        _userTaskInfo = _userTaskManager.markTaskInExecution(_uuid);
+      if (_userTaskManager == null) {
+        throw new IllegalStateException("UserTaskManager is not specified in Executor.");
       }
 
       if (demotedBrokers != null) {
@@ -562,6 +554,14 @@ public class Executor {
      * Start the actual execution of the proposals in order: First move replicas, then transfer leadership.
      */
     private void execute() {
+      UserTaskManager.UserTaskInfo userTaskInfo;
+      // If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
+      // retrieve the associated user task information.
+      if (AnomalyType.cachedValues().stream().anyMatch(type -> _uuid.startsWith(type.toString()))) {
+        userTaskInfo = null;
+      } else {
+        userTaskInfo = _userTaskManager.markTaskInExecution(_uuid);
+      }
       _state = STARTING_EXECUTION;
       _executorState = ExecutorState.executionStarted(_uuid, _recentlyDemotedBrokers, _recentlyRemovedBrokers);
       OPERATION_LOG.info("Task [{}] execution starts.", _uuid);
@@ -633,7 +633,7 @@ public class Executor {
         _executionException = t;
       } finally {
         // If the finished task is triggered by user request, update task status in user task manager.
-        if (_userTaskInfo != null) {
+        if (userTaskInfo != null) {
           _userTaskManager.markTaskFinishExecution(_uuid);
         }
         _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
@@ -642,7 +642,7 @@ public class Executor {
         boolean executionSucceeded = _executorState.state() != STOPPING_EXECUTION && _executionException == null;
         // If we are here, either we succeeded, or we are stopped or had exception. Send notification to user.
         ExecutorNotification notification = new ExecutorNotification(_executionStartMs, _time.milliseconds(),
-                                                                     _userTaskInfo, _uuid, _stopRequested.get(),
+                                                                     userTaskInfo, _uuid, _stopRequested.get(),
                                                                      _executionStoppedByUser.get(),
                                                                      _executionException, executionSucceeded);
         _executorNotifier.sendNotification(notification);
