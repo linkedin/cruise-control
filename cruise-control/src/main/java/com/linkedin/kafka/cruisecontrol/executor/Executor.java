@@ -483,7 +483,6 @@ public class Executor {
     private final long _executionStartMs;
     private Throwable _executionException;
 
-
     ProposalExecutionRunnable(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers, Collection<Integer> removedBrokers) {
       _loadMonitor = loadMonitor;
       _state = NO_TASK_IN_PROGRESS;
