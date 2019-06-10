@@ -36,10 +36,10 @@ public class AnomalyDetectorTest {
   static private final long MOCK_DELAY_CHECK_MS = 1000L;
 
   private static void startPeriodicDetectors(ScheduledExecutorService mockDetectorScheduler,
-                                      GoalViolationDetector mockGoalViolationDetector,
-                                      MetricAnomalyDetector mockMetricAnomalyDetector,
-                                      DiskFailureDetector mockDiskFailureDetector,
-                                      ScheduledExecutorService executorService) {
+                                             GoalViolationDetector mockGoalViolationDetector,
+                                             MetricAnomalyDetector mockMetricAnomalyDetector,
+                                             DiskFailureDetector mockDiskFailureDetector,
+                                             ScheduledExecutorService executorService) {
     // Starting periodic goal violation detection.
     EasyMock.expect(mockDetectorScheduler.scheduleAtFixedRate(EasyMock.eq(mockGoalViolationDetector),
                                                               EasyMock.anyLong(),
@@ -67,7 +67,7 @@ public class AnomalyDetectorTest {
   }
 
   private static void shutdownDetector(ScheduledExecutorService mockDetectorScheduler,
-                                ScheduledExecutorService executorService) throws InterruptedException {
+                                       ScheduledExecutorService executorService) throws InterruptedException {
     mockDetectorScheduler.shutdown();
     EasyMock.expectLastCall().andDelegateTo(executorService);
     EasyMock.expect(mockDetectorScheduler.awaitTermination(MOCK_ANOMALY_DETECTION_INTERVAL_MS, TimeUnit.MILLISECONDS)).andDelegateTo(executorService);
@@ -75,11 +75,11 @@ public class AnomalyDetectorTest {
   }
 
   private static void replayMocks(AnomalyNotifier mockAnomalyNotifier,
-                           BrokerFailureDetector mockBrokerFailureDetector,
-                           GoalViolationDetector mockGoalViolationDetector,
-                           MetricAnomalyDetector mockMetricAnomalyDetector,
-                           ScheduledExecutorService mockDetectorScheduler,
-                           KafkaCruiseControl mockKafkaCruiseControl) {
+                                  BrokerFailureDetector mockBrokerFailureDetector,
+                                  GoalViolationDetector mockGoalViolationDetector,
+                                  MetricAnomalyDetector mockMetricAnomalyDetector,
+                                  ScheduledExecutorService mockDetectorScheduler,
+                                  KafkaCruiseControl mockKafkaCruiseControl) {
     EasyMock.replay(mockAnomalyNotifier);
     EasyMock.replay(mockBrokerFailureDetector);
     EasyMock.replay(mockGoalViolationDetector);

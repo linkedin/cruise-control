@@ -184,21 +184,21 @@ public class AnomalyDetector {
     LOG.info("Shutting down anomaly detector.");
     synchronized (_shutdownLock) {
       _shutdown = true;
-      _anomalies.addFirst(SHUTDOWN_ANOMALY);
-      _detectorScheduler.shutdown();
-      KafkaCruiseControlUtils.closeAdminClientWithTimeout(_adminClient);
-
-      try {
-        _detectorScheduler.awaitTermination(_anomalyDetectionIntervalMs, TimeUnit.MILLISECONDS);
-        if (!_detectorScheduler.isTerminated()) {
-          LOG.warn("The sampling scheduler failed to shutdown in " + _anomalyDetectionIntervalMs + " ms.");
-        }
-      } catch (InterruptedException e) {
-        LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
-      }
-      _brokerFailureDetector.shutdown();
-      _anomalyLoggerExecutor.shutdownNow();
     }
+    _anomalies.addFirst(SHUTDOWN_ANOMALY);
+    _detectorScheduler.shutdown();
+    KafkaCruiseControlUtils.closeAdminClientWithTimeout(_adminClient);
+
+    try {
+      _detectorScheduler.awaitTermination(_anomalyDetectionIntervalMs, TimeUnit.MILLISECONDS);
+      if (!_detectorScheduler.isTerminated()) {
+        LOG.warn("The sampling scheduler failed to shutdown in " + _anomalyDetectionIntervalMs + " ms.");
+      }
+    } catch (InterruptedException e) {
+      LOG.warn("Interrupted while waiting for anomaly detector to shutdown.");
+    }
+    _brokerFailureDetector.shutdown();
+    _anomalyLoggerExecutor.shutdownNow();
     LOG.info("Anomaly detector shutdown completed.");
   }
 
@@ -357,23 +357,24 @@ public class AnomalyDetector {
       return false;
     }
 
-    private void logSelfHealingOperation(OptimizationFailureException ofe, boolean selfHealingStarted) {
-      if (selfHealingStarted) {
-        switch (getAnomalyType(_anomalyInProgress)) {
-          case GOAL_VIOLATION:
-          case BROKER_FAILURE:
-            OPERATION_LOG.info("[{}] calculation finishes, result:\n{}", _anomalyInProgress.anomalyId(),
-                               ((KafkaAnomaly) _anomalyInProgress).optimizationResult(false));
-            break;
-          case METRIC_ANOMALY:
-            OPERATION_LOG.info("[{}] calculation finishes, result:\n{}", _anomalyInProgress.anomalyId(),
-                               ((KafkaMetricAnomaly) _anomalyInProgress).optimizationResult(false));
-            break;
-          default:
-            throw new IllegalStateException("Unrecognized anomaly type.");
-        }
+    private String optimizationResult() {
+      switch (getAnomalyType(_anomalyInProgress)) {
+        case GOAL_VIOLATION:
+        case BROKER_FAILURE:
+        case DISK_FAILURE:
+          return ((KafkaAnomaly) _anomalyInProgress).optimizationResult(false);
+        case METRIC_ANOMALY:
+          return ((KafkaMetricAnomaly) _anomalyInProgress).optimizationResult(false);
+        default:
+          throw new IllegalStateException("Unrecognized anomaly type.");
+      }
+    }
+
+    private void logSelfHealingOperation(String anomalyId, OptimizationFailureException ofe, String optimizationResult) {
+      if (optimizationResult != null) {
+        OPERATION_LOG.info("[{}] Self-healing started successfully:\n{}", anomalyId, optimizationResult);
       } else {
-        OPERATION_LOG.info("[{}] calculation fails, exception:\n{}", _anomalyInProgress.anomalyId(), ofe);
+        OPERATION_LOG.warn("[{}] Self-healing failed to start:\n{}", anomalyId, ofe);
       }
     }
 
@@ -386,16 +387,22 @@ public class AnomalyDetector {
           if (isReadyToFix) {
             LOG.info("Fixing anomaly {}", _anomalyInProgress);
             boolean startedSuccessfully = false;
+            String anomalyId = _anomalyInProgress.anomalyId();
             try {
               startedSuccessfully = _anomalyInProgress.fix();
-              _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(null, true));
+              String optimizationResult = optimizationResult();
+              _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, null, optimizationResult));
             } catch (OptimizationFailureException ofe) {
-              _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(ofe, false));
+              _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, ofe, null));
               throw ofe;
             } finally {
               _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, startedSuccessfully ? AnomalyState.Status.FIX_STARTED
                                                                                             : AnomalyState.Status.FIX_FAILED_TO_START);
-              LOG.info("Self-healing {}.", startedSuccessfully ? "started successfully" : "failed to start");
+              if (startedSuccessfully) {
+                LOG.info("[{}] Self-healing started successfully.", anomalyId);
+              } else {
+                LOG.warn("[{}] Self-healing failed to start.", anomalyId);
+              }
             }
           }
           handlePostFixAnomaly(isReadyToFix);
