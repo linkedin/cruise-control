@@ -11,7 +11,6 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -166,7 +165,7 @@ public class ConfigDef {
                           String documentation, String group, int orderInGroup, Width width, String displayName,
                           Recommender recommender) {
     return define(name, type, defaultValue, validator, importance, documentation, group, orderInGroup, width,
-                  displayName, Collections.<String>emptyList(), recommender);
+                  displayName, Collections.emptyList(), recommender);
   }
 
   /**
@@ -186,7 +185,7 @@ public class ConfigDef {
   public ConfigDef define(String name, Type type, Object defaultValue, Validator validator, Importance importance,
                           String documentation, String group, int orderInGroup, Width width, String displayName) {
     return define(name, type, defaultValue, validator, importance, documentation, group, orderInGroup, width,
-                  displayName, Collections.<String>emptyList());
+                  displayName, Collections.emptyList());
   }
 
   /**
@@ -248,7 +247,7 @@ public class ConfigDef {
   public ConfigDef define(String name, Type type, Object defaultValue, Importance importance, String documentation,
                           String group, int orderInGroup, Width width, String displayName, Recommender recommender) {
     return define(name, type, defaultValue, null, importance, documentation, group, orderInGroup, width, displayName,
-                  Collections.<String>emptyList(), recommender);
+                  Collections.emptyList(), recommender);
   }
 
   /**
@@ -267,7 +266,7 @@ public class ConfigDef {
   public ConfigDef define(String name, Type type, Object defaultValue, Importance importance, String documentation,
                           String group, int orderInGroup, Width width, String displayName) {
     return define(name, type, defaultValue, null, importance, documentation, group, orderInGroup, width, displayName,
-                  Collections.<String>emptyList());
+                  Collections.emptyList());
   }
 
   /**
@@ -325,7 +324,7 @@ public class ConfigDef {
   public ConfigDef define(String name, Type type, Importance importance, String documentation, String group, int orderInGroup,
                           Width width, String displayName, Recommender recommender) {
     return define(name, type, NO_DEFAULT_VALUE, null, importance, documentation, group, orderInGroup, width,
-                  displayName, Collections.<String>emptyList(), recommender);
+                  displayName, Collections.emptyList(), recommender);
   }
 
   /**
@@ -343,7 +342,7 @@ public class ConfigDef {
   public ConfigDef define(String name, Type type, Importance importance, String documentation, String group, int orderInGroup,
                           Width width, String displayName) {
     return define(name, type, NO_DEFAULT_VALUE, null, importance, documentation, group, orderInGroup, width,
-                  displayName, Collections.<String>emptyList());
+                  displayName, Collections.emptyList());
   }
 
   /**
@@ -397,7 +396,7 @@ public class ConfigDef {
    */
   public ConfigDef defineInternal(final String name, final Type type, final Object defaultValue, final Importance importance) {
     return define(new ConfigKey(name, type, defaultValue, null, importance, "", "", -1,
-                                Width.NONE, name, Collections.<String>emptyList(), null, true));
+                                Width.NONE, name, Collections.emptyList(), null, true));
   }
 
   /**
@@ -582,13 +581,7 @@ public class ConfigDef {
         List<Object> originalRecommendedValues = value.recommendedValues();
         if (!originalRecommendedValues.isEmpty()) {
           Set<Object> originalRecommendedValueSet = new HashSet<>(originalRecommendedValues);
-          Iterator<Object> it = recommendedValues.iterator();
-          while (it.hasNext()) {
-            Object o = it.next();
-            if (!originalRecommendedValueSet.contains(o)) {
-              it.remove();
-            }
-          }
+          recommendedValues.removeIf(o -> !originalRecommendedValueSet.contains(o));
         }
         value.recommendedValues(recommendedValues);
         value.visible(key._recommender.visible(name, parsed));
@@ -871,6 +864,7 @@ public class ConfigDef {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public void ensureValid(final String name, final Object value) {
       List<String> values = (List<String>) value;
       for (String string : values) {
@@ -1122,7 +1116,7 @@ public class ConfigDef {
     }
 
     List<ConfigKey> configs = new ArrayList<>(_configKeys.values());
-    Collections.sort(configs, new Comparator<ConfigKey>() {
+    configs.sort(new Comparator<ConfigKey>() {
       @Override
       public int compare(ConfigKey k1, ConfigKey k2) {
         int cmp = k1._group == null ? (k2._group == null ? 0 : -1)

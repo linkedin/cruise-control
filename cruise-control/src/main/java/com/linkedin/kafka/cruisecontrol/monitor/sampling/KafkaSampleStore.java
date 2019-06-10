@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -84,7 +85,7 @@ public class KafkaSampleStore implements SampleStore {
   // Keep additional windows in case some of the windows do not have enough samples.
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
-  private static final long SAMPLE_POLL_TIMEOUT = 1000L;
+  private static final Duration SAMPLE_POLL_TIMEOUT = Duration.ofMillis(1000L);
 
   protected static final int DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final int DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;
