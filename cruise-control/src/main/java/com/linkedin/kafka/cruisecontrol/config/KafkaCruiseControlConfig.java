@@ -1384,7 +1384,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public <T> T getConfiguredInstance(String key, Class<T> t) {
     T o = super.getConfiguredInstance(key, t);
     if (o instanceof CruiseControlConfigurable) {
-      ((CruiseControlConfigurable) o).configure(originals());
+      ((CruiseControlConfigurable) o).configure(values());
     }
     return o;
   }
@@ -1394,16 +1394,17 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     List<T> objects = super.getConfiguredInstances(key, t);
     for (T o : objects) {
       if (o instanceof CruiseControlConfigurable) {
-        ((CruiseControlConfigurable) o).configure(originals());
+        ((CruiseControlConfigurable) o).configure(values());
       }
     }
     return objects;
   }
 
+  @SuppressWarnings("unchecked")
   @Override
   public <T> List<T> getConfiguredInstances(String key, Class<T> t, Map<String, Object> configOverrides) {
     List<T> objects = super.getConfiguredInstances(key, t, configOverrides);
-    Map<String, Object> configPairs = originals();
+    Map<String, Object> configPairs = (Map<String, Object>) values();
     configPairs.putAll(configOverrides);
     for (T o : objects) {
       if (o instanceof CruiseControlConfigurable) {
