@@ -167,6 +167,10 @@ public class KafkaSampleStore implements SampleStore {
   protected KafkaProducer<byte[], byte[]> createProducer(Map<String, ?> config) {
     Properties producerProps = new Properties();
     producerProps.putAll(config);
+    String reconnectBackoffMs = (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG);
+    if (reconnectBackoffMs == null) {
+      reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
+    }
     producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
                               (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
     producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_CLIENT_ID);
@@ -178,8 +182,7 @@ public class KafkaSampleStore implements SampleStore {
     producerProps.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
     producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-    producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG,
-                              (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG));
+    producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);
     return new KafkaProducer<>(producerProps);
   }
 
