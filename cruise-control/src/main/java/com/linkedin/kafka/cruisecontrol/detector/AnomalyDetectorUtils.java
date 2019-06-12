@@ -6,12 +6,19 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
+import java.util.Collections;
 
 
 /**
  * A util class for Anomaly Detectors.
  */
 public class AnomalyDetectorUtils {
+  public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
+                                                                    null,
+                                                                    true,
+                                                                    true,
+                                                                    true,
+                                                                    Collections.emptyList());
 
   private AnomalyDetectorUtils() {
   }
