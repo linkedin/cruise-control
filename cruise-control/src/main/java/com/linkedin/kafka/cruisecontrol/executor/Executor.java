@@ -439,6 +439,7 @@ public class Executor {
   private synchronized boolean stopExecution() {
     if (_stopRequested.compareAndSet(false, true)) {
       _numExecutionStopped.incrementAndGet();
+      _executionTaskManager.setStopRequested();
       return true;
     }
     return false;
