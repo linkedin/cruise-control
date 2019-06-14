@@ -89,8 +89,6 @@ public class ExecutionTaskTracker {
                                                              && !inExecutionTasks(TaskType.cachedValues()).isEmpty() ? 1 : 0);
   }
 
-
-
   /**
    * Update the execution state of the task.
    *
