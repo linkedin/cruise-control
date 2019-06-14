@@ -29,20 +29,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.BootstrapResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
-import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.ResumeSamplingResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.TrainResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -443,7 +430,7 @@ public class KafkaCruiseControl {
     sanityCheckDryRun(dryRun);
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(skipUrpDemotion,
                                                                        excludeFollowerDemotion,
-                                                                       skipUrpDemotion ? _loadMonitor.kafkaCluster() : null);
+                                                                       skipUrpDemotion ? kafkaCluster() : null);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       sanityCheckBrokerPresence(brokerIds);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
@@ -537,16 +524,13 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Bootstrap the load monitor.
+   * Bootstrap the load monitor for a given period.
    *
-   * @param parameters Bootstrap parameters.
-   * @return Bootstrap result.
+   * @param startMs the starting time of the bootstrap period, or null if no time period will be used.
+   * @param endMs the end time of the bootstrap period, or null if no end time is specified.
+   * @param clearMetrics clear the existing metric samples.
    */
-  public BootstrapResult bootstrapLoadMonitor(BootstrapParameters parameters) {
-    Long startMs = parameters.startMs();
-    Long endMs = parameters.endMs();
-    boolean clearMetrics = parameters.clearMetrics();
-
+  public void bootstrap(Long startMs, Long endMs, boolean clearMetrics) {
     if (startMs != null && endMs != null) {
       // Bootstrap the load monitor for a given period.
       _loadMonitor.bootstrap(startMs, endMs, clearMetrics);
@@ -557,141 +541,85 @@ public class KafkaCruiseControl {
       // Bootstrap the load monitor with the most recent metric samples until it catches up -- clears all metric samples.
       _loadMonitor.bootstrap(clearMetrics);
     }
-    return new BootstrapResult(_config);
   }
 
   /**
-   * Train load model of Kafka Cruise Control with metric samples in a training period.
+   * Pause all the activities of the load monitor. The load monitor can only be paused when it is in
+   * RUNNING state.
    *
-   * @param parameters Train parameters.
-   * @return Train result.
+   * @param reason The reason for pausing metric sampling.
    */
-  public TrainResult trainLoadModel(TrainParameters parameters) {
-    _loadMonitor.train(parameters.startMs(), parameters.endMs());
-    return new TrainResult(_config);
+  public void pauseMetricSampling(String reason) {
+    _loadMonitor.pauseMetricSampling(reason);
   }
 
   /**
-   * Pause all the activities of the load monitor. Load monitor can only be paused if it is in RUNNING state.
-   *
-   * @param parameters Pause Parameters.
-   * @return Pause sampling result.
+   * Train the load model with metric samples.
+   * @param startMs training period starting time.
+   * @param endMs training period end time.
    */
-  public PauseSamplingResult pauseLoadMonitorActivity(PauseResumeParameters parameters) {
-    _loadMonitor.pauseMetricSampling(parameters.reason());
-    return new PauseSamplingResult(_config);
+  public void train(Long startMs, Long endMs) {
+    _loadMonitor.train(startMs, endMs);
   }
 
   /**
-   * Handle the admin requests:
-   * <ul>
-   * <li>Dynamically change the partition and leadership concurrency of an ongoing execution. Has no effect if Executor
-   * is in {@link com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State#NO_TASK_IN_PROGRESS} state.</li>
-   * <li>Enable/disable the specified anomaly detectors.</li>
-   * <li>Drop selected recently removed/demoted brokers.</li>
-   * </ul>
+   * Enable or disable self healing for the given anomaly type in the anomaly detector.
    *
-   * @param parameters Admin parameters
-   * @return Admin response.
+   * @param anomalyType Type of anomaly for which to enable or disable self healing.
+   * @param isSelfHealingEnabled True if self healing is enabled for the given anomaly type, false otherwise.
+   * @return The old value of self healing for the given anomaly type.
    */
-  public synchronized AdminResult handleAdminRequest(AdminParameters parameters) {
-    String ongoingConcurrencyChangeRequest = "";
-    // 1.1. Change inter-broker partition concurrency.
-    Integer concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
-    if (concurrentInterBrokerPartitionMovements != null) {
-      _executor.setRequestedInterBrokerPartitionMovementConcurrency(concurrentInterBrokerPartitionMovements);
-      ongoingConcurrencyChangeRequest += String.format("Inter-broker partition movement concurrency is set to %d%n",
-                                                       concurrentInterBrokerPartitionMovements);
-      LOG.warn("Inter-broker partition movement concurrency is set to: {} by user.", concurrentInterBrokerPartitionMovements);
-    }
-    // 1.2. Change leadership concurrency.
-    Integer concurrentLeaderMovements = parameters.concurrentLeaderMovements();
-    if (concurrentLeaderMovements != null) {
-      _executor.setRequestedLeadershipMovementConcurrency(concurrentLeaderMovements);
-      ongoingConcurrencyChangeRequest += String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements);
-      LOG.warn("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
-    }
-
-    // 2. Enable/disable the specified anomaly detectors
-    Set<AnomalyType> disableSelfHealingFor = parameters.disableSelfHealingFor();
-    Set<AnomalyType> enableSelfHealingFor = parameters.enableSelfHealingFor();
-
-    Map<AnomalyType, Boolean> selfHealingBefore = new HashMap<>(disableSelfHealingFor.size() + enableSelfHealingFor.size());
-    Map<AnomalyType, Boolean> selfHealingAfter = new HashMap<>(disableSelfHealingFor.size() + enableSelfHealingFor.size());
-
-    for (AnomalyType anomalyType : disableSelfHealingFor) {
-      selfHealingBefore.put(anomalyType, _anomalyDetector.setSelfHealingFor(anomalyType, false));
-      selfHealingAfter.put(anomalyType, false);
-    }
-
-    for (AnomalyType anomalyType : enableSelfHealingFor) {
-      selfHealingBefore.put(anomalyType, _anomalyDetector.setSelfHealingFor(anomalyType, true));
-      selfHealingAfter.put(anomalyType, true);
-    }
-
-    if (!disableSelfHealingFor.isEmpty() || !enableSelfHealingFor.isEmpty()) {
-      LOG.warn("Self healing state is modified by user (before: {} after: {}).", selfHealingBefore, selfHealingAfter);
-    }
-
-    // 3. Drop selected recently removed/demoted brokers.
-    String dropRecentBrokersRequest = processDropRecentBrokersRequest(parameters);
-
-    return new AdminResult(selfHealingBefore,
-                           selfHealingAfter,
-                           ongoingConcurrencyChangeRequest.isEmpty() ? null : ongoingConcurrencyChangeRequest,
-                           dropRecentBrokersRequest,
-                           _config);
-  }
-
-  private String processDropRecentBrokersRequest(AdminParameters parameters) {
-    StringBuilder sb = new StringBuilder();
-
-    Set<Integer> brokersToDropFromRecentlyRemoved = parameters.dropRecentlyRemovedBrokers();
-    if (!brokersToDropFromRecentlyRemoved.isEmpty()) {
-      if (!_executor.dropRecentlyRemovedBrokers(brokersToDropFromRecentlyRemoved)) {
-        Set<Integer> recentlyRemovedBrokers = _executor.recentlyRemovedBrokers();
-        sb.append(String.format("None of the brokers to drop (%s) are in the recently removed broker set"
-                                + " (%s).%n", brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers));
-        LOG.warn("None of the user-requested brokers to drop ({}) are in the recently removed broker set ({}).",
-                 brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
-      } else {
-        Set<Integer> recentlyRemovedBrokers = _executor.recentlyRemovedBrokers();
-        sb.append(String.format("Dropped recently removed brokers (requested: %s after-dropping: %s).%n",
-                                brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers));
-        LOG.warn("Recently removed brokers are dropped by user (requested: {} after-dropping: {}).",
-                 brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
-      }
-    }
-
-    Set<Integer> brokersToDropFromRecentlyDemoted = parameters.dropRecentlyDemotedBrokers();
-    if (!brokersToDropFromRecentlyDemoted.isEmpty()) {
-      if (!_executor.dropRecentlyDemotedBrokers(brokersToDropFromRecentlyDemoted)) {
-        Set<Integer> recentlyDemotedBrokers = _executor.recentlyDemotedBrokers();
-        sb.append(String.format("None of the brokers to drop (%s) are in the recently demoted broker set"
-                                + " (%s).%n", brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers));
-        LOG.warn("None of the user-requested brokers to drop ({}) are in the recently demoted broker set ({}).",
-                 brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
-      } else {
-        Set<Integer> recentlyDemotedBrokers = _executor.recentlyDemotedBrokers();
-        sb.append(String.format("Dropped recently demoted brokers (requested: %s after-dropping: %s).%n",
-                                brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers));
-        LOG.warn("Recently demoted brokers are dropped by user (requested: {} after-dropping: {}).",
-                 brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
-      }
-    }
-
-    return sb.toString();
+  public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
+    return _anomalyDetector.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
   }
 
   /**
-   * Resume all the activities of the load monitor.
+   * Drop the given brokers from the recently removed/demoted brokers.
    *
-   * @param parameters Resume Parameters.
-   * @return Resume sampling result.
+   * @param brokersToDrop Brokers to drop from the recently removed or demoted brokers.
+   * @param isRemoved True to drop recently removed brokers, false to drop recently demoted brokers
+   * @return {@code true} if any elements were removed from the requested set of brokers.
    */
-  public ResumeSamplingResult resumeLoadMonitorActivity(PauseResumeParameters parameters) {
-    _loadMonitor.resumeMetricSampling(parameters.reason());
-    return new ResumeSamplingResult(_config);
+  public boolean dropRecentBrokers(Set<Integer> brokersToDrop, boolean isRemoved) {
+    return isRemoved ? _executor.dropRecentlyRemovedBrokers(brokersToDrop) : _executor.dropRecentlyDemotedBrokers(brokersToDrop);
+  }
+
+  /**
+   * Get {@link Executor#recentlyRemovedBrokers()} if isRemoved is true, {@link Executor#recentlyDemotedBrokers()} otherwise.
+   *
+   * @param isRemoved True to get recently removed brokers, false to get recently demoted brokers
+   * @return IDs of requested brokers.
+   */
+  public Set<Integer> recentBrokers(boolean isRemoved) {
+    return isRemoved ? _executor.recentlyRemovedBrokers() : _executor.recentlyDemotedBrokers();
+  }
+
+  /**
+   * Dynamically set the inter-broker partition movement concurrency per broker.
+   *
+   * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements
+   *                                                         per broker.
+   */
+  public void setRequestedInterBrokerPartitionMovementConcurrency(Integer requestedInterBrokerPartitionMovementConcurrency) {
+    _executor.setRequestedInterBrokerPartitionMovementConcurrency(requestedInterBrokerPartitionMovementConcurrency);
+  }
+
+  /**
+   * Dynamically set the leadership movement concurrency.
+   *
+   * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements.
+   */
+  public void setRequestedLeadershipMovementConcurrency(Integer requestedLeadershipMovementConcurrency) {
+    _executor.setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
+  }
+
+  /**
+   * Resume the activities of the load monitor.
+   *
+   * @param reason The reason for resuming metric sampling.
+   */
+  public void resumeMetricSampling(String reason) {
+    _loadMonitor.resumeMetricSampling(reason);
   }
 
   /**
@@ -951,14 +879,10 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Stop the executor if it is executing the proposals.
-   *
-   * @param parameters Stop proposal parameters (not used -- added for standardization and for extensibility).
-   * @return Stop proposal execution result.
+   * Request the executor to stop any ongoing execution.
    */
-  public StopProposalResult stopProposalExecution(StopProposalParameters parameters) {
+  public synchronized void userTriggeredStopExecution() {
     _executor.userTriggeredStopExecution();
-    return new StopProposalResult(_config);
   }
 
   /**
@@ -1086,7 +1010,7 @@ public class KafkaCruiseControl {
                                               short replicationFactor,
                                               boolean skipTopicRackAwarenessCheck,
                                               String uuid) {
-    Cluster cluster = _loadMonitor.kafkaCluster();
+    Cluster cluster = kafkaCluster();
     Set<String> topics = cluster.topics().stream().filter(t -> topic.matcher(t).matches()).collect(Collectors.toSet());
     Set<ExecutionProposal> proposals = maybeUpdateTopicReplicationFactor(cluster,
                                                                          replicationFactor,
@@ -1118,13 +1042,10 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Get the cluster state for Kafka.
-   *
-   * @param parameters Kafka cluster state parameters (not used -- added for standardization and for extensibility).
-   * @return Kafka cluster state.
+   * Get the cluster information from Kafka metadata.
    */
-  public KafkaClusterState kafkaClusterState(KafkaClusterStateParameters parameters) {
-    return new KafkaClusterState(_loadMonitor.kafkaCluster(), _config);
+  public Cluster kafkaCluster() {
+    return _loadMonitor.kafkaCluster();
   }
 
   /**

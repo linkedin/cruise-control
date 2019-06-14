@@ -162,7 +162,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see {@link KafkaCruiseControl#updateTopicConfiguration(Pattern, short, boolean, String)}
+   * @see KafkaCruiseControl#updateTopicConfiguration(Pattern, short, boolean, String)
    */
   public OperationFuture updateTopicConfiguration(TopicConfigurationParameters parameters, String uuid) {
     OperationFuture future = new OperationFuture("UpdateTopicConfiguration");

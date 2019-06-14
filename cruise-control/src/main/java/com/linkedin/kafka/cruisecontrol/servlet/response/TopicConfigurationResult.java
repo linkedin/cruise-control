@@ -21,15 +21,14 @@ public class TopicConfigurationResult extends AbstractCruiseControlResponse {
   private final Set<String> _topics;
   private final int _newReplicationFactor;
   private static final String NEW_REPLICATION_FACTOR = "newReplicationFactor";
-  public TopicConfigurationResult(Set<String> topics,
-                                        int newReplicationFactor,
-                                        KafkaCruiseControlConfig config) {
+
+  public TopicConfigurationResult(Set<String> topics, int newReplicationFactor, KafkaCruiseControlConfig config) {
     super(config);
     _topics = topics;
     _newReplicationFactor = newReplicationFactor;
   }
 
-  private String getJSONstring() {
+  private String getJSONString() {
     Map<String, Object> result = new HashMap<>(3);
     result.put(AnalyzerUtils.TOPICS, _topics);
     result.put(NEW_REPLICATION_FACTOR, _newReplicationFactor);
@@ -45,7 +44,7 @@ public class TopicConfigurationResult extends AbstractCruiseControlResponse {
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
-    _cachedResponse = parameters.json() ? getJSONstring() : getPlaintext();
+    _cachedResponse = parameters.json() ? getJSONString() : getPlaintext();
     _topics.clear();
   }
 }
