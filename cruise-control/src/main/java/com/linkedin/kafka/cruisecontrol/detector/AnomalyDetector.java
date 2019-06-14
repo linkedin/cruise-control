@@ -74,6 +74,8 @@ public class AnomalyDetector {
   private final List<String> _selfHealingGoals;
   private final ExecutorService _anomalyLoggerExecutor;
   private volatile Anomaly _anomalyInProgress;
+  private volatile long _numFixed;
+  private volatile long _numCheckedWithDelay;
   private final Object _shutdownLock;
 
   public AnomalyDetector(KafkaCruiseControlConfig config,
@@ -112,6 +114,8 @@ public class AnomalyDetector {
     _anomalyLoggerExecutor =
         Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
     _anomalyInProgress = null;
+    _numFixed = 0L;
+    _numCheckedWithDelay = 0L;
     _shutdownLock = new Object();
   }
 
@@ -149,6 +153,8 @@ public class AnomalyDetector {
     _anomalyLoggerExecutor =
         Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
     _anomalyInProgress = null;
+    _numFixed = 0L;
+    _numCheckedWithDelay = 0L;
     _shutdownLock = new Object();
   }
 
@@ -221,10 +227,17 @@ public class AnomalyDetector {
   }
 
   /**
-   * Package private for unit tests.
+   * @return Number of anomalies fixed.
    */
-  boolean isAnomalyInProgress() {
-    return _anomalyInProgress != null;
+  public long numFixed() {
+    return _numFixed;
+  }
+
+  /**
+   * @return Number of anomalies checked with delay.
+   */
+  public long numCheckedWithDelay() {
+    return _numCheckedWithDelay;
   }
 
   /**
@@ -322,6 +335,7 @@ public class AnomalyDetector {
             LOG.debug("Skip delayed checking anomaly {}, because anomaly detector is shutting down.", _anomalyInProgress);
           } else {
             LOG.debug("Scheduling broker failure detection with delay of {} ms", delay);
+            _numCheckedWithDelay++;
             _detectorScheduler.schedule(_brokerFailureDetector::detectBrokerFailures, delay, TimeUnit.MILLISECONDS);
             _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, AnomalyState.Status.CHECK_WITH_DELAY);
           }
@@ -399,6 +413,7 @@ public class AnomalyDetector {
               _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, startedSuccessfully ? AnomalyState.Status.FIX_STARTED
                                                                                             : AnomalyState.Status.FIX_FAILED_TO_START);
               if (startedSuccessfully) {
+                _numFixed++;
                 LOG.info("[{}] Self-healing started successfully.", anomalyId);
               } else {
                 LOG.warn("[{}] Self-healing failed to start.", anomalyId);
