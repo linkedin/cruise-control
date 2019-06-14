@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
-import java.util.Collections;
 
 
 /**
@@ -18,7 +17,7 @@ public class AnomalyDetectorUtils {
                                                                     true,
                                                                     true,
                                                                     true,
-                                                                    Collections.emptyList());
+                                                                    null);
 
   private AnomalyDetectorUtils() {
   }
