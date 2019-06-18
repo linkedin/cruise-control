@@ -294,6 +294,10 @@ public class ExecutionTaskManager {
     _executionTaskTracker.clear();
   }
 
+  public synchronized void setStopRequested() {
+    _executionTaskTracker.setStopRequested();
+  }
+
   public synchronized ExecutionTasksSummary getExecutionTasksSummary(Set<TaskType> taskTypesToGetFullList) {
     return _executionTaskTracker.getExecutionTasksSummary(taskTypesToGetFullList);
   }
