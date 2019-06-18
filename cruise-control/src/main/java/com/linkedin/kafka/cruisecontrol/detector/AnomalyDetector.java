@@ -82,7 +82,7 @@ public class AnomalyDetector {
                                                     AnomalyNotifier.class);
     _loadMonitor = loadMonitor;
     _kafkaCruiseControl = kafkaCruiseControl;
-    _selfHealingGoals = Collections.emptyList();
+    _selfHealingGoals = config.getList(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG);
     _kafkaCruiseControl.sanityCheckHardGoalPresence(_selfHealingGoals, false);
     _goalViolationDetector = new GoalViolationDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
     _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
