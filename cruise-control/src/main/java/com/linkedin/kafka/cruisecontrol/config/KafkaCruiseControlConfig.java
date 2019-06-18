@@ -34,6 +34,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsRepo
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -533,6 +534,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String DEFAULT_GOALS_DOC = "The list of goals that will be used by default if no goal list "
       + "is provided. This list of goal will also be used for proposal pre-computation. If default.goals is not "
       + "specified, it will be default to goals config.";
+
+  /**
+   * <code>self.healing.goals</code>
+   */
+  public static final String SELF_HEALING_GOALS_CONFIG = "self.healing.goals";
+  private static final String SELF_HEALING_GOALS_DOC = "The list of goals to be used for self-healing relevant anomalies."
+      + " If empty, uses the default.goals for self healing.";
 
   /**
    * <code>anomaly.notifier.class</code>
@@ -1327,6 +1335,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.LIST,
                 ConfigDef.Importance.HIGH,
                 DEFAULT_GOALS_DOC)
+        .define(SELF_HEALING_GOALS_CONFIG,
+                ConfigDef.Type.LIST,
+                Collections.emptyList(),
+                ConfigDef.Importance.HIGH,
+                SELF_HEALING_GOALS_DOC)
         .define(ANOMALY_NOTIFIER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS,
                 DEFAULT_ANOMALY_NOTIFIER_CLASS,
@@ -1441,10 +1454,17 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
 
   /**
    * Sanity check for
-   * (1) {@link KafkaCruiseControlConfig#GOALS_CONFIG} and {@link KafkaCruiseControlConfig#INTRA_BROKER_GOALS_CONFIG} are non-empty.
-   * (2) Case insensitive goal names.
-   * (3) {@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} is non-empty.
-   * (4) {@link KafkaCruiseControlConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of {@link KafkaCruiseControlConfig#GOALS_CONFIG}.
+   * <ul>
+   * <li>{@link KafkaCruiseControlConfig#GOALS_CONFIG} and
+   * {@link KafkaCruiseControlConfig#INTRA_BROKER_GOALS_CONFIG} are non-empty.</li>
+   * <li>Case insensitive goal names.</li>
+   * <li>{@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} is non-empty.</li>
+   * <li>{@link KafkaCruiseControlConfig#SELF_HEALING_GOALS_CONFIG} is a sublist of
+   * {@link KafkaCruiseControlConfig#GOALS_CONFIG}.</li>
+   * <li>{@link KafkaCruiseControlConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of
+   * (1) {@link KafkaCruiseControlConfig#SELF_HEALING_GOALS_CONFIG} if it is not empty,
+   * (2) {@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} otherwise.</li>
+   * </ul>
    */
   private void sanityCheckGoalNames() {
     List<String> goalNames = getList(KafkaCruiseControlConfig.GOALS_CONFIG);
@@ -1477,10 +1497,17 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       throw new ConfigException("Attempt to configure default goals configuration with an empty list of goals.");
     }
 
-    // Ensure that goals used for anomaly detection are supported goals.
+    // Ensure that goals used for self-healing are supported goals.
+    List<String> selfHealingGoalNames = getList(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG);
+    if (selfHealingGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
+      throw new ConfigException("Attempt to configure self healing goals with unsupported goals.");
+    }
+
+    // Ensure that goals used for anomaly detection are a subset of goals used for fixing the anomaly.
     List<String> anomalyDetectionGoalNames = getList(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG);
-    if (anomalyDetectionGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
-      throw new ConfigException("Attempt to configure anomaly detection goals with unsupported goals.");
+    if (anomalyDetectionGoalNames.stream().anyMatch(g -> selfHealingGoalNames.isEmpty() ? !defaultGoalNames.contains(g)
+                                                                                        : !selfHealingGoalNames.contains(g))) {
+      throw new ConfigException("Attempt to configure anomaly detection goals as a superset of self healing goals.");
     }
   }
 
