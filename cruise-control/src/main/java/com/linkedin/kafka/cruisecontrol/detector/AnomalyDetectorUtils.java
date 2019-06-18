@@ -24,6 +24,12 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlSta
 public class AnomalyDetectorUtils {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorUtils.class);
   public static final long MAX_METADATA_WAIT_MS = 60000L;
+  public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
+                                                                    null,
+                                                                    true,
+                                                                    true,
+                                                                    true,
+                                                                    null);
 
   private AnomalyDetectorUtils() {
   }

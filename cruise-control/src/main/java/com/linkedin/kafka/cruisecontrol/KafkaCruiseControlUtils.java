@@ -82,6 +82,9 @@ public class KafkaCruiseControlUtils {
    * @return string representation of date
    */
   public static String toDateString(long time, String dateFormat, String timeZone) {
+    if (time < 0) {
+      throw new IllegalArgumentException(String.format("Attempt to convert negative time %d to date.", time));
+    }
     DateFormat formatter = new SimpleDateFormat(dateFormat);
     if (!timeZone.isEmpty()) {
       formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
