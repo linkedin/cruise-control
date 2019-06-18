@@ -23,6 +23,7 @@ import org.easymock.EasyMock;
 import org.junit.Test;
 
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertEquals;
 
 
 /**
@@ -95,10 +96,12 @@ public class AnomalyDetectorTest {
       anomalies.add(new BrokerFailures(mockKafkaCruiseControl, Collections.singletonMap(0, 100L),
                                        false, true, true,
                                        Collections.emptyList()));
-      while (!anomalies.isEmpty() || anomalyDetector.isAnomalyInProgress()) {
-        // Just wait for the anomalies to be drained AND until no anomalies are in progress (i.e. not being processed).
+      while (anomalyDetector.numCheckedWithDelay() < 1) {
+        // Wait for the anomaly to be checked with delay before attempting to shutdown the anomaly detector.
       }
       anomalyDetector.shutdown();
+      assertEquals(0, anomalyDetector.numFixed());
+      assertEquals(1, anomalyDetector.numCheckedWithDelay());
       assertTrue(executorService.awaitTermination(5000, TimeUnit.MILLISECONDS));
     } finally {
       executorService.shutdown();
@@ -187,10 +190,12 @@ public class AnomalyDetectorTest {
                                                      Collections.emptyList());
       violations.addViolation("RackAwareGoal", true);
       anomalies.add(violations);
-      while (!anomalies.isEmpty() || anomalyDetector.isAnomalyInProgress()) {
-        // Just wait for the anomalies to be drained AND until no anomalies are in progress (i.e. not being processed).
+      while (anomalyDetector.numFixed() < 1) {
+        // Wait for the anomaly to be fixed before attempting to shutdown the anomaly detector.
       }
       anomalyDetector.shutdown();
+      assertEquals(1, anomalyDetector.numFixed());
+      assertEquals(0, anomalyDetector.numCheckedWithDelay());
       assertTrue(executorService.awaitTermination(5000, TimeUnit.MILLISECONDS));
       EasyMock.verify(mockAnomalyNotifier, mockDetectorScheduler, mockKafkaCruiseControl);
     } finally {
@@ -241,6 +246,8 @@ public class AnomalyDetectorTest {
         // Just wait for the anomalies to be drained.
       }
       anomalyDetector.shutdown();
+      assertEquals(0, anomalyDetector.numFixed());
+      assertEquals(0, anomalyDetector.numCheckedWithDelay());
       assertTrue(executorService.awaitTermination(5000, TimeUnit.MILLISECONDS));
     } finally {
       executorService.shutdown();
@@ -267,6 +274,8 @@ public class AnomalyDetectorTest {
     Thread t = new Thread(anomalyDetector::shutdown);
     t.start();
     t.join(30000L);
+    assertEquals(0, anomalyDetector.numFixed());
+    assertEquals(0, anomalyDetector.numCheckedWithDelay());
     assertTrue(detectorScheduler.isTerminated());
   }
 }
