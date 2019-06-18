@@ -88,16 +88,22 @@ public class BrokerFailureDetector {
     _zkClient.subscribeChildChanges(ZkUtils.BrokerIdsPath(), new BrokerFailureListener());
   }
 
-  synchronized void detectBrokerFailures() {
+  private synchronized void detectBrokerFailures(Set<Integer> aliveBrokers) {
     // update the failed broker information based on the current state.
-    updateFailedBrokerList(aliveBrokers());
-    // persist the updated failed broker list.
-    persistFailedBrokerList();
+    boolean updated = updateFailedBrokers(aliveBrokers);
+    if (updated) {
+      // persist the updated failed broker list.
+      persistFailedBrokerList();
+    }
     // Report the failures to anomaly detector to handle.
     reportBrokerFailures();
   }
 
-  Map<Integer, Long> failedBrokers() {
+  synchronized void detectBrokerFailures() {
+    detectBrokerFailures(aliveBrokers());
+  }
+
+  synchronized Map<Integer, Long> failedBrokers() {
     return new HashMap<>(_failedBrokers);
   }
 
@@ -114,18 +120,27 @@ public class BrokerFailureDetector {
     parsePersistedFailedBrokers(failedBrokerListString);
   }
 
-  private void updateFailedBrokerList(Set<Integer> aliveBrokers) {
+  /**
+   * If {@link #_failedBrokers} has changed, update it.
+   *
+   * @param aliveBrokers Alive brokers in the cluster.
+   * @return true if {@link #_failedBrokers} has been updated, false otherwise.
+   */
+  private boolean updateFailedBrokers(Set<Integer> aliveBrokers) {
     // We get the complete broker list from metadata. i.e. any broker that still has a partition assigned to it is
     // included in the broker list. If we cannot update metadata in 60 seconds, skip
     Set<Integer> currentFailedBrokers = _loadMonitor.brokersWithPartitions(MAX_METADATA_WAIT_MS);
     currentFailedBrokers.removeAll(aliveBrokers);
     LOG.debug("Alive brokers: {}, failed brokers: {}", aliveBrokers, currentFailedBrokers);
     // Remove broker that is no longer failed.
-    _failedBrokers.entrySet().removeIf(entry -> !currentFailedBrokers.contains(entry.getKey()));
+    boolean updated = _failedBrokers.entrySet().removeIf(entry -> !currentFailedBrokers.contains(entry.getKey()));
     // Add broker that has just failed.
     for (Integer brokerId : currentFailedBrokers) {
-      _failedBrokers.putIfAbsent(brokerId, _time.milliseconds());
+      if (_failedBrokers.putIfAbsent(brokerId, _time.milliseconds()) == null) {
+        updated = true;
+      }
     }
+    return updated;
   }
 
   private Set<Integer> aliveBrokers() {
@@ -178,9 +193,7 @@ public class BrokerFailureDetector {
 
     @Override
     public void handleChildChange(String parentPath, List<String> currentChildren) {
-      updateFailedBrokerList(currentChildren.stream().map(Integer::parseInt).collect(toSet()));
-      persistFailedBrokerList();
-      reportBrokerFailures();
+      detectBrokerFailures(currentChildren.stream().map(Integer::parseInt).collect(toSet()));
     }
   }
 

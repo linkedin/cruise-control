@@ -12,6 +12,12 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
  * A util class for Anomaly Detectors.
  */
 public class AnomalyDetectorUtils {
+  public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
+                                                                    null,
+                                                                    true,
+                                                                    true,
+                                                                    true,
+                                                                    null);
 
   private AnomalyDetectorUtils() {
   }

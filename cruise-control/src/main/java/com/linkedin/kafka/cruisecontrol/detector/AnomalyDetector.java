@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHUTDOWN_ANOMALY;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
 
@@ -46,12 +47,6 @@ public class AnomalyDetector {
   private static final int INIT_JITTER_BOUND = 10000;
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
-  private static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
-                                                                     Collections.emptyMap(),
-                                                                     true,
-                                                                     true,
-                                                                     true,
-                                                                     Collections.emptyList());
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final AnomalyNotifier _anomalyNotifier;
   // Detectors
@@ -390,6 +385,9 @@ public class AnomalyDetector {
       // Explicitly detect broker failures after clearing the queue. This ensures that anomaly detector does not miss
       // broker failures upon (1) fixing another anomaly, or (2) having broker failures that are not yet ready for fix.
       // We don't need to worry about other anomaly types because they run periodically.
+      // If there has not been any failed brokers at the time of detecting broker failures, this is a no-op. Otherwise,
+      // the call will create a broker failure anomaly. Depending on the time of the first broker failure in that anomaly,
+      // it will trigger either a delayed check or a fix.
       _detectorScheduler.schedule(_brokerFailureDetector::detectBrokerFailures,
                                   isReadyToFix ? 0L : _anomalyDetectionIntervalMs, TimeUnit.MILLISECONDS);
     }
