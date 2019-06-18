@@ -227,7 +227,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "default implementation is a file based solution.";
 
   /**
-   * <code>min.monitored.partition.percentage</code>
+   * <code>min.valid.partition.ratio</code>
    */
   public static final String MIN_VALID_PARTITION_RATIO_CONFIG = "min.valid.partition.ratio";
   private static final String MIN_VALID_PARTITION_RATIO_DOC = "The minimum percentage of the total partitions " +
