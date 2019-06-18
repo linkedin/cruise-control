@@ -65,6 +65,7 @@ public class ParameterUtils {
   public static final String DATA_FROM_PARAM = "data_from";
   public static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
   public static final String MAX_LOAD_PARAM = "max_load";
+  public static final String AVG_LOAD_PARAM = "avg_load";
   public static final String GOALS_PARAM = "goals";
   public static final String BROKER_ID_PARAM = "brokerid";
   public static final String DROP_RECENTLY_REMOVED_BROKERS_PARAM = "drop_recently_removed_brokers";
@@ -133,6 +134,7 @@ public class ParameterUtils {
     partitionLoad.add(JSON_PARAM);
     partitionLoad.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     partitionLoad.add(MAX_LOAD_PARAM);
+    partitionLoad.add(AVG_LOAD_PARAM);
     partitionLoad.add(TOPIC_PARAM);
     partitionLoad.add(PARTITION_PARAM);
     partitionLoad.add(MIN_VALID_PARTITION_RATIO_PARAM);
@@ -418,6 +420,10 @@ public class ParameterUtils {
 
   static boolean wantMaxLoad(HttpServletRequest request) {
     return getBooleanParam(request, MAX_LOAD_PARAM, false);
+  }
+
+  static boolean wantAvgLoad(HttpServletRequest request) {
+    return getBooleanParam(request, AVG_LOAD_PARAM, false);
   }
 
   static boolean isVerbose(HttpServletRequest request) {

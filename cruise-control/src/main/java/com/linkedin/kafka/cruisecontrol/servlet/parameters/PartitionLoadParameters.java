@@ -21,7 +21,7 @@ import javax.servlet.http.HttpServletRequest;
  *    GET /kafkacruisecontrol/partition_load?resource=[RESOURCE]&amp;start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
  *    &amp;entries=[number-of-entries-to-show]&amp;topic=[topic]&amp;partition=[partition/start_partition-end_partition]
  *    &amp;min_valid_partition_ratio=[min_valid_partition_ratio]&amp;allow_capacity_estimation=[true/false]
- *    &amp;max_load=[true/false]&amp;json=[true/false]
+ *    &amp;max_load=[true/false]&amp;avg_load=[true/false]&amp;json=[true/false]
  * </pre>
  */
 public class PartitionLoadParameters extends AbstractParameters {
@@ -35,6 +35,7 @@ public class PartitionLoadParameters extends AbstractParameters {
   private Double _minValidPartitionRatio;
   private boolean _allowCapacityEstimation;
   private boolean _wantMaxLoad;
+  private boolean _wantAvgLoad;
 
 
   public PartitionLoadParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
@@ -53,6 +54,10 @@ public class PartitionLoadParameters extends AbstractParameters {
     }
 
     _wantMaxLoad = ParameterUtils.wantMaxLoad(_request);
+    _wantAvgLoad = ParameterUtils.wantAvgLoad(_request);
+    if (_wantMaxLoad && _wantAvgLoad) {
+      throw new UserRequestException("Configurations to ask for max and avg load are mutually exclusive to each other.");
+    }
     _topic = ParameterUtils.topic(_request);
     Long startMsValue = ParameterUtils.startMs(_request);
     _startMs = startMsValue == null ? -1L : startMsValue;
@@ -103,5 +108,9 @@ public class PartitionLoadParameters extends AbstractParameters {
 
   public boolean wantMaxLoad() {
     return _wantMaxLoad;
+  }
+
+  public boolean wantAvgLoad() {
+    return _wantAvgLoad;
   }
 }
