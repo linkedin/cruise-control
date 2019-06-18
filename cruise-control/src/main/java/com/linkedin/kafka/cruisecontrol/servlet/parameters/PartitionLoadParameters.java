@@ -56,7 +56,7 @@ public class PartitionLoadParameters extends AbstractParameters {
     _wantMaxLoad = ParameterUtils.wantMaxLoad(_request);
     _wantAvgLoad = ParameterUtils.wantAvgLoad(_request);
     if (_wantMaxLoad && _wantAvgLoad) {
-      throw new UserRequestException("Configurations to ask for max and avg load are mutually exclusive to each other.");
+      throw new UserRequestException("Parameters to ask for max and avg load are mutually exclusive to each other.");
     }
     _topic = ParameterUtils.topic(_request);
     Long startMsValue = ParameterUtils.startMs(_request);
