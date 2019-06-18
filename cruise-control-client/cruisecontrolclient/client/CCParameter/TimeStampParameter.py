@@ -1,6 +1,6 @@
 from typing import Union
 
-from linkedin.cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
+from cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
 
 
 class AbstractTimestampParameter(AbstractParameter):

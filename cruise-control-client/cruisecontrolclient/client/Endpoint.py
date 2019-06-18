@@ -2,7 +2,7 @@
 from abc import ABCMeta
 
 # To allow us to make use of the Parameter convenience class
-import linkedin.cruisecontrolclient.client.CCParameter as CCParameter
+import cruisecontrolclient.client.CCParameter as CCParameter
 
 # To allow us to make more-precise type hints
 from typing import Callable, ClassVar, Dict, List, Tuple, Union  # noqa

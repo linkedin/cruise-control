@@ -7,16 +7,16 @@ import argparse
 from typing import Dict, Tuple, Type  # noqa
 
 # Convenience functions for displaying the retrieved Response
-from linkedin.cruisecontrolclient.client.Display import display_response
+from cruisecontrolclient.client.Display import display_response
 
 # To be able to instantiate Endpoint objects
-import linkedin.cruisecontrolclient.client.Endpoint as Endpoint
+import cruisecontrolclient.client.Endpoint as Endpoint
 
 # To be able to make requests and get a response given a URL to cruise-control
-from linkedin.cruisecontrolclient.client.Responder import JSONDisplayingResponderGet, JSONDisplayingResponderPost
+from cruisecontrolclient.client.Responder import JSONDisplayingResponderGet, JSONDisplayingResponderPost
 
 # To be able to compose a URL to hand to requests
-from linkedin.cruisecontrolclient.client.Query import generate_url_from_cc_socket_address
+from cruisecontrolclient.client.Query import generate_url_from_cc_socket_address
 
 
 def add_add_parameter_argument(p: argparse.ArgumentParser):

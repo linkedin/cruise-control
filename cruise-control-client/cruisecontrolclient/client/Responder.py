@@ -1,8 +1,8 @@
 # Use the common Display library for showing non-final responses
-from linkedin.cruisecontrolclient.client.Display import display_response
+from cruisecontrolclient.client.Display import display_response
 
 # Use convenience function to redirect printing to stderr
-from linkedin.cruisecontrolclient.util.print import print_error
+from cruisecontrolclient.util.print import print_error
 
 # To be able to make HTTP calls
 import requests

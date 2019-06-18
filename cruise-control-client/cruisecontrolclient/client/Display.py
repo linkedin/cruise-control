@@ -1,5 +1,5 @@
 # Use convenience function to redirect printing to stderr
-from linkedin.cruisecontrolclient.util.print import print_error
+from cruisecontrolclient.util.print import print_error
 
 # To allow for more precise type hints
 from requests import Response

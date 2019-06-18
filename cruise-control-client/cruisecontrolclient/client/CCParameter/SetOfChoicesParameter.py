@@ -9,7 +9,7 @@ from typing import Set, Union, Collection  # noqa
 # a provided value is outside of that enum
 from warnings import warn
 
-from linkedin.cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
+from cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
 
 
 class AbstractSetOfChoicesParameter(AbstractParameter):

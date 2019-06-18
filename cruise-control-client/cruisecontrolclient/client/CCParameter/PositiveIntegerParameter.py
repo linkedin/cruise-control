@@ -1,4 +1,4 @@
-from linkedin.cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
+from cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
 
 
 class AbstractPositiveIntegerParameter(AbstractParameter):

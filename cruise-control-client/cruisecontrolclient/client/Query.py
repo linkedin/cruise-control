@@ -1,5 +1,5 @@
 # To be able to make more-precise type hints
-from linkedin.cruisecontrolclient.client.Endpoint import AbstractEndpoint
+from cruisecontrolclient.client.Endpoint import AbstractEndpoint
 
 
 def generate_url_from_cc_socket_address(cc_socket_address: str, endpoint: AbstractEndpoint) -> str:
