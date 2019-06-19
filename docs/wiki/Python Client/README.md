@@ -10,7 +10,7 @@ In short, `requirements.txt` can be used with [Python's `venv`](https://docs.pyt
 ```bash
 python3.7 -m venv .
 . bin/activate
-pip install -r requirements.txt
+python setup.py install
 ```
 ### Usage
 `./cccli.py --socket-address {hostname:port} {endpoint} {options}`
