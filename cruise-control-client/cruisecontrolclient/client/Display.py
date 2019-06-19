@@ -1,3 +1,6 @@
+# Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").
+# See License in the project root for license information.
+
 # Use convenience function to redirect printing to stderr
 from cruisecontrolclient.util.print import print_error
 

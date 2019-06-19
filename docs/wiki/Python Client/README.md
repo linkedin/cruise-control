@@ -1,19 +1,23 @@
 # cruise-control client
 ## Introduction
-This directory contains a `python` client for `cruise-control`.  
+The `cruise-control-client` directory provides a `python` client for `cruise-control`.  
 
-`cccli.py` is a command-line interface to this `python` client, but the `Endpoint`, `Query`, and `Responder` classes can be used outside of `cccli.py`, to supply a `cruise-control` client outside of a command-line interface.
+Within `cruise-control-client/cruisecontrolclient/client`, `cccli.py` is a command-line interface to this `python` client, but the `Endpoint`, `Query`, and `Responder` classes can be used outside of `cccli.py`, to supply a `cruise-control` client outside of a command-line interface.
 ## Getting Started
 `requirements.txt` has been supplied to assist in `python` dependency management.  
 ### Virtual Environment
-In short, `requirements.txt` can be used with [Python's `venv`](https://docs.python.org/3/library/venv.html) to quickly and easily acquire this client's external dependencies.
+In short, `setup.py` can be used with [Python's `venv`](https://docs.python.org/3/library/venv.html) to quickly and easily acquire this client's external dependencies.
 ```bash
+cd cruise-control-client
 python3.7 -m venv .
 . bin/activate
 python setup.py install
 ```
-### Usage
-`./cccli.py --socket-address {hostname:port} {endpoint} {options}`
+A `requirements.txt` has also been provided to more-precisely pin version requirements, if necessary.
+### CLI Usage
+First, change into the `cruise-control-client/cruisecontrolclient/client` directory.
+
+Then, `./cccli.py --socket-address {hostname:port} {endpoint} {options}`
 where  
 * `hostname:port` is the hostname and port of the `cruise-control` that you'd like to communicate with
 * `endpoint` is the `cruise-control` endpoint that you'd like to use
@@ -22,8 +26,8 @@ where
 ### Examples
 #### State
 ```
-./cccli.py -a someCruiseControlAddress:1234 state
-Starting long-running poll of http://someCruiseControlAddress:1234/kafkacruisecontrol/state?substates=executor&json=true
+./cccli.py -a someCruiseControlAddress:9090 state
+Starting long-running poll of http://someCruiseControlAddress:9090/kafkacruisecontrol/state?substates=executor&json=true
 'ExecutorState':
 {'state': 'NO_TASK_IN_PROGRESS'}
 
@@ -32,8 +36,8 @@ Starting long-running poll of http://someCruiseControlAddress:1234/kafkacruiseco
 ```
 #### Load
 ```bash
-./cccli.py -a someCruiseControlAddress:1234 load
-Starting long-running poll of http://someCruiseControlAddress:1234/kafkacruisecontrol/load?allow_capacity_estimation=False&json=true
+./cccli.py -a someCruiseControlAddress:9090 load
+Starting long-running poll of http://someCruiseControlAddress:9090/kafkacruisecontrol/load?allow_capacity_estimation=False&json=true
 'version':
 1
 
@@ -61,8 +65,8 @@ Broker
 ```
 #### Rebalance
 ```
-./cccli.py -a someCruiseControlAddress:1234 rebalance --dry-run
-Starting long-running poll of http://someCruiseControlAddress:1234/kafkacruisecontrol/rebalance?allow_capacity_estimation=False&dryrun=True&json=true
+./cccli.py -a someCruiseControlAddress:9090 rebalance --dry-run
+Starting long-running poll of http://someCruiseControlAddress:9090/kafkacruisecontrol/rebalance?allow_capacity_estimation=False&dryrun=True&json=true
 'version':
 1
 

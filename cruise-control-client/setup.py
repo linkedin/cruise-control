@@ -1,4 +1,8 @@
+# Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").
+# See License in the project root for license information.
+
 import setuptools
+
 setuptools.setup(
     name='cruise-control-client',
     version='0.0.1',
@@ -11,6 +15,6 @@ setuptools.setup(
         'pandas',
         'requests'
     ],
-    license='BSD 2-Clause "Simplified"',
+    license='Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").'
+            ' See License in the project root for license information.',
 )
-

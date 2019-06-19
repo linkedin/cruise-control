@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").
+# See License in the project root for license information.
+
 # To be able to easily parse command-line arguments
 import argparse
 
@@ -27,7 +30,7 @@ def add_add_parameter_argument(p: argparse.ArgumentParser):
     :return:
     """
     p.add_argument('--add-parameter', '--add-parameters', metavar='PARAM=VALUE',
-                   help="Manually specify one or more parameter and its value in the cruise-control endpoint, like 'param=value'",
+                   help="Manually specify one or more parameters and their value in the cruise-control endpoint, like 'param=value'",
                    nargs='+')
 
 
@@ -43,7 +46,7 @@ def add_remove_parameter_argument(p: argparse.ArgumentParser):
     :return:
     """
     p.add_argument('--remove-parameter', '--remove-parameters', metavar='PARAM',
-                   help="Manually remove one or more parameter from the cruise-control endpoint, like 'param'",
+                   help="Manually remove one or more parameters from the cruise-control endpoint, like 'param'",
                    nargs='+')
 
 
