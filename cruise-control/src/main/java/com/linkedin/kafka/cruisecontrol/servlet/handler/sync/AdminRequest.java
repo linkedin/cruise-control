@@ -47,14 +47,14 @@ public class AdminRequest extends AbstractSyncRequest {
       _kafkaCruiseControl.setRequestedInterBrokerPartitionMovementConcurrency(concurrentInterBrokerPartitionMovements);
       ongoingConcurrencyChangeRequest += String.format("Inter-broker partition movement concurrency is set to %d%n",
                                                        concurrentInterBrokerPartitionMovements);
-      LOG.warn("Inter-broker partition movement concurrency is set to: {} by user.", concurrentInterBrokerPartitionMovements);
+      LOG.info("Inter-broker partition movement concurrency is set to: {} by user.", concurrentInterBrokerPartitionMovements);
     }
     // 1.2. Change leadership concurrency.
     Integer concurrentLeaderMovements = _parameters.concurrentLeaderMovements();
     if (concurrentLeaderMovements != null) {
       _kafkaCruiseControl.setRequestedLeadershipMovementConcurrency(concurrentLeaderMovements);
       ongoingConcurrencyChangeRequest += String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements);
-      LOG.warn("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
+      LOG.info("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
     }
 
     // 2. Enable/disable the specified anomaly detectors
@@ -76,7 +76,7 @@ public class AdminRequest extends AbstractSyncRequest {
     }
 
     if (!disableSelfHealingFor.isEmpty() || !enableSelfHealingFor.isEmpty()) {
-      LOG.warn("Self healing state is modified by user (before: {} after: {}).", selfHealingBefore, selfHealingAfter);
+      LOG.info("Self healing state is modified by user (before: {} after: {}).", selfHealingBefore, selfHealingAfter);
     }
 
     // 3. Drop selected recently removed/demoted brokers.
@@ -104,7 +104,7 @@ public class AdminRequest extends AbstractSyncRequest {
         Set<Integer> recentlyRemovedBrokers = _kafkaCruiseControl.recentBrokers(true);
         sb.append(String.format("Dropped recently removed brokers (requested: %s after-dropping: %s).%n",
                                 brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers));
-        LOG.warn("Recently removed brokers are dropped by user (requested: {} after-dropping: {}).",
+        LOG.info("Recently removed brokers are dropped by user (requested: {} after-dropping: {}).",
                  brokersToDropFromRecentlyRemoved, recentlyRemovedBrokers);
       }
     }
@@ -121,7 +121,7 @@ public class AdminRequest extends AbstractSyncRequest {
         Set<Integer> recentlyDemotedBrokers = _kafkaCruiseControl.recentBrokers(false);
         sb.append(String.format("Dropped recently demoted brokers (requested: %s after-dropping: %s).%n",
                                 brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers));
-        LOG.warn("Recently demoted brokers are dropped by user (requested: {} after-dropping: {}).",
+        LOG.info("Recently demoted brokers are dropped by user (requested: {} after-dropping: {}).",
                  brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers);
       }
     }
