@@ -8,6 +8,26 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.common.config.ConfigException;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.Request;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.AddBrokerRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.ClusterLoadRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.CruiseControlStateRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.DemoteRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.PartitionLoadRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.ProposalsRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RebalanceRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.RemoveBrokerRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.TopicConfigurationRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.AdminRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.BootstrapRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.KafkaClusterStateRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.PauseRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.ResumeRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.ReviewBoardRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.ReviewRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.StopProposalRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.TrainRequest;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.sync.UserTasksRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
@@ -29,21 +49,15 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.Purgatory;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.RequestInfo;
-import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ReviewResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
-import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -53,8 +67,6 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.hasValidParameters;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.wantJSON;
-import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.returnProgress;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
 
 
@@ -101,6 +113,26 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     _purgatory.close();
   }
 
+  public AsyncKafkaCruiseControl asyncKafkaCruiseControl() {
+    return _asyncKafkaCruiseControl;
+  }
+
+  public Map<EndPoint, Timer> successfulRequestExecutionTimer() {
+    return _successfulRequestExecutionTimer;
+  }
+
+  public ThreadLocal<Integer> asyncOperationStep() {
+    return _asyncOperationStep;
+  }
+
+  public UserTaskManager userTaskManager() {
+    return _userTaskManager;
+  }
+
+  public long maxBlockMs() {
+    return _maxBlockMs;
+  }
+
   /**
    * OPTIONS request takes care of CORS applications
    *
@@ -120,66 +152,31 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     }
   }
 
-  /**
-   * The GET requests can do the following:
-   *
-   * <pre>
-   * 1. Bootstrap the load monitor (See {@link BootstrapParameters}).
-   * 2. Train the Kafka Cruise Control linear regression model (See {@link TrainParameters}).
-   * 3. Get the cluster load (See {@link ClusterLoadParameters}).
-   * 4. Get the partition load (See {@link PartitionLoadParameters}).
-   * 5. Get an optimization proposal (See {@link ProposalsParameters}).
-   * 6. Get the state of Cruise Control (See {@link CruiseControlStateParameters}).
-   * 7. Get the Kafka cluster state (See {@link KafkaClusterStateParameters}).
-   * 8. Get active user tasks (See {@link UserTasksParameters}).
-   * 9. Get reviews in the review board (See {@link ReviewBoardParameters}).
-   * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
-   * </pre>
-   */
   @Override
   protected void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    doGetOrPost(request, response);
+  }
+
+  @Override
+  protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
+    doGetOrPost(request, response);
+  }
+
+  private void doGetOrPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
     try {
       _asyncOperationStep.set(0);
       EndPoint endPoint = getValidEndpoint(request, response, _config);
       if (endPoint != null && hasValidParameters(request, response, _config)) {
         _requestMeter.get(endPoint).mark();
-        switch (endPoint) {
-          case BOOTSTRAP:
-            syncRequest(() -> new BootstrapParameters(request, _config), _asyncKafkaCruiseControl::bootstrapLoadMonitor,
-                        request, response, endPoint);
+        switch (request.getMethod()) {
+          case GET_METHOD:
+            handleGet(request, response, endPoint);
             break;
-          case TRAIN:
-            syncRequest(() -> new TrainParameters(request, _config), _asyncKafkaCruiseControl::trainLoadModel,
-                        request, response, endPoint);
-            break;
-          case LOAD:
-            getClusterLoad(request, response);
-            break;
-          case PARTITION_LOAD:
-            getPartitionLoad(request, response);
-            break;
-          case PROPOSALS:
-            getProposals(request, response);
-            break;
-          case STATE:
-            getState(request, response);
-            break;
-          case KAFKA_CLUSTER_STATE:
-            syncRequest(() -> new KafkaClusterStateParameters(request, _config), _asyncKafkaCruiseControl::kafkaClusterState,
-                        request, response, endPoint);
-            break;
-          case USER_TASKS:
-            syncRequest(() -> new UserTasksParameters(request, _config), this::userTaskState, request, response, endPoint);
-            break;
-          case REVIEW_BOARD:
-            if (!_twoStepVerification) {
-              throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
-                                                      endPoint, KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
-            }
-            syncRequest(() -> new ReviewBoardParameters(request, _config), this::handleReviewBoardRequest, request, response, endPoint);
+          case POST_METHOD:
+            handlePost(request, response, endPoint);
             break;
           default:
-            throw new UserRequestException("Invalid URL for GET");
+            throw new IllegalArgumentException("Unsupported request method: " + request.getMethod() + ".");
         }
       }
     } catch (UserRequestException ure) {
@@ -197,6 +194,156 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       } catch (IOException e) {
         LOG.warn("Error closing output stream: ", e);
       }
+    }
+  }
+
+  /**
+   * The GET method allows users to perform the following actions:
+   *
+   * <pre>
+   * 1. Bootstrap the load monitor (See {@link BootstrapParameters}).
+   * 2. Train the Kafka Cruise Control linear regression model (See {@link TrainParameters}).
+   * 3. Get the cluster load (See {@link ClusterLoadParameters}).
+   * 4. Get the partition load (See {@link PartitionLoadParameters}).
+   * 5. Get an optimization proposal (See {@link ProposalsParameters}).
+   * 6. Get the state of Cruise Control (See {@link CruiseControlStateParameters}).
+   * 7. Get the Kafka cluster state (See {@link KafkaClusterStateParameters}).
+   * 8. Get active user tasks (See {@link UserTasksParameters}).
+   * 9. Get reviews in the review board (See {@link ReviewBoardParameters}).
+   * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
+   * </pre>
+   */
+  private void handleGet(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
+      throws InterruptedException, ExecutionException, IOException {
+    Request ccRequest;
+    switch (endPoint) {
+      case BOOTSTRAP:
+        ccRequest = new BootstrapRequest(this, new BootstrapParameters(request, _config));
+        break;
+      case TRAIN:
+        ccRequest = new TrainRequest(this, new TrainParameters(request, _config));
+        break;
+      case LOAD:
+        ccRequest = new ClusterLoadRequest(this, new ClusterLoadParameters(request, _config));
+        break;
+      case PARTITION_LOAD:
+        ccRequest = new PartitionLoadRequest(this, new PartitionLoadParameters(request, _config));
+        break;
+      case PROPOSALS:
+        ccRequest = new ProposalsRequest(this, new ProposalsParameters(request, _config));
+        break;
+      case STATE:
+        ccRequest = new CruiseControlStateRequest(this, new CruiseControlStateParameters(request, _config));
+        break;
+      case KAFKA_CLUSTER_STATE:
+        ccRequest = new KafkaClusterStateRequest(this, new KafkaClusterStateParameters(request, _config));
+        break;
+      case USER_TASKS:
+        ccRequest = new UserTasksRequest(this, new UserTasksParameters(request, _config));
+        break;
+      case REVIEW_BOARD:
+        if (!_twoStepVerification) {
+          throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
+                                                  endPoint, KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
+        }
+        ccRequest = new ReviewBoardRequest(this, new ReviewBoardParameters(request, _config));
+        break;
+      default:
+        throw new UserRequestException("Invalid URL for GET");
+    }
+
+    ccRequest.handle(request, response);
+  }
+
+  /**
+   * The POST method allows users to perform the following actions:
+   *
+   * <pre>
+   * 1. Decommission a broker (See {@link RemoveBrokerParameters}).
+   * 2. Add a broker (See {@link AddBrokerParameters}).
+   * 3. Trigger a workload balance (See {@link RebalanceParameters}).
+   * 4. Stop the proposal execution (See {@link StopProposalParameters}).
+   * 5. Pause metrics sampling (See {@link PauseResumeParameters}).
+   * 6. Resume metrics sampling (See {@link PauseResumeParameters}).
+   * 7. Demote a broker (See {@link DemoteBrokerParameters}).
+   * 8. Admin operations on Cruise Control (See {@link AdminParameters}).
+   * 9. Change topic configurations (See {@link TopicConfigurationParameters}).
+   * 10. Review requests for two-step verification (See {@link ReviewParameters}).
+   * </pre>
+   */
+  private void handlePost(HttpServletRequest request, HttpServletResponse response, EndPoint endPoint)
+      throws InterruptedException, ExecutionException, IOException {
+    CruiseControlParameters reviewableParams;
+    Request ccRequest = null;
+    switch (endPoint) {
+      case ADD_BROKER:
+        reviewableParams = evaluateReviewableParams(request, response, () -> new AddBrokerParameters(request, _config));
+        if (reviewableParams != null) {
+          ccRequest = new AddBrokerRequest(this, (AddBrokerParameters) reviewableParams);
+        }
+        break;
+      case REMOVE_BROKER:
+        reviewableParams = evaluateReviewableParams(request, response, () -> new RemoveBrokerParameters(request, _config));
+        if (reviewableParams != null) {
+          ccRequest = new RemoveBrokerRequest(this, (RemoveBrokerParameters) reviewableParams);
+        }
+        break;
+      case REBALANCE:
+        reviewableParams = evaluateReviewableParams(request, response, () -> new RebalanceParameters(request, _config));
+        if (reviewableParams != null) {
+          ccRequest = new RebalanceRequest(this, (RebalanceParameters) reviewableParams);
+        }
+        break;
+      case STOP_PROPOSAL_EXECUTION:
+        reviewableParams = evaluateReviewableParams(request, response, () -> new StopProposalParameters(request, _config));
+        if (reviewableParams != null) {
+          ccRequest = new StopProposalRequest(this, (StopProposalParameters) reviewableParams);
+        }
+        break;
+      case PAUSE_SAMPLING:
+        reviewableParams = evaluateReviewableParams(request, response, () -> new PauseResumeParameters(request, _config));
+        if (reviewableParams != null) {
+          ccRequest = new PauseRequest(this, (PauseResumeParameters) reviewableParams);
+        }
+        break;
+      case RESUME_SAMPLING:
+        reviewableParams = evaluateReviewableParams(request, response, () -> new PauseResumeParameters(request, _config));
+        if (reviewableParams != null) {
+          ccRequest = new ResumeRequest(this, (PauseResumeParameters) reviewableParams);
+        }
+        break;
+      case DEMOTE_BROKER:
+        reviewableParams = evaluateReviewableParams(request, response, () -> new DemoteBrokerParameters(request, _config));
+        if (reviewableParams != null) {
+          ccRequest = new DemoteRequest(this, (DemoteBrokerParameters) reviewableParams);
+        }
+        break;
+      case ADMIN:
+        reviewableParams = evaluateReviewableParams(request, response, () -> new AdminParameters(request, _config));
+        if (reviewableParams != null) {
+          ccRequest = new AdminRequest(this, (AdminParameters) reviewableParams);
+        }
+        break;
+      case TOPIC_CONFIGURATION:
+        reviewableParams = evaluateReviewableParams(request, response, () -> new TopicConfigurationParameters(request, _config));
+        if (reviewableParams != null) {
+          ccRequest = new TopicConfigurationRequest(this, (TopicConfigurationParameters) reviewableParams);
+        }
+        break;
+      case REVIEW:
+        if (!_twoStepVerification) {
+          throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
+                                                  endPoint, KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
+        }
+        ccRequest = new ReviewRequest(this, new ReviewParameters(request, _config));
+        break;
+      default:
+        throw new UserRequestException("Invalid URL for POST");
+    }
+
+    if (ccRequest != null) {
+      // ccRequest would be null if request is added to Purgatory.
+      ccRequest.handle(request, response);
     }
   }
 
@@ -246,275 +393,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   /**
-   * The POST method allows user to perform the following actions:
-   *
-   * <pre>
-   * 1. Decommission a broker (See {@link RemoveBrokerParameters}).
-   * 2. Add a broker (See {@link AddBrokerParameters}).
-   * 3. Trigger a workload balance (See {@link RebalanceParameters}).
-   * 4. Stop the proposal execution (See {@link StopProposalParameters}).
-   * 5. Pause metrics sampling (See {@link PauseResumeParameters}).
-   * 6. Resume metrics sampling (See {@link PauseResumeParameters}).
-   * 7. Demote a broker (See {@link DemoteBrokerParameters}).
-   * 8. Admin operations on Cruise Control (See {@link AdminParameters}).
-   * 9. Review requests for two-step verification (See {@link ReviewParameters}).
-   * </pre>
+   * @return All user tasks that the {@link #_userTaskManager} is aware of.
    */
-  @Override
-  protected void doPost(HttpServletRequest request, HttpServletResponse response) throws IOException {
-    try {
-      _asyncOperationStep.set(0);
-      EndPoint endPoint = getValidEndpoint(request, response, _config);
-      if (endPoint != null && hasValidParameters(request, response, _config)) {
-        _requestMeter.get(endPoint).mark();
-        CruiseControlParameters reviewableParams;
-        switch (endPoint) {
-          case ADD_BROKER:
-            reviewableParams = evaluateReviewableParams(request, response, () -> new AddBrokerParameters(request, _config));
-            if (reviewableParams != null) {
-              addBroker(request, response, () -> (AddBrokerParameters) reviewableParams);
-            }
-            break;
-          case REMOVE_BROKER:
-            reviewableParams = evaluateReviewableParams(request, response, () -> new RemoveBrokerParameters(request, _config));
-            if (reviewableParams != null) {
-              removeBroker(request, response, () -> (RemoveBrokerParameters) reviewableParams);
-            }
-            break;
-          case REBALANCE:
-            reviewableParams = evaluateReviewableParams(request, response, () -> new RebalanceParameters(request, _config));
-            if (reviewableParams != null) {
-              rebalance(request, response, () -> (RebalanceParameters) reviewableParams);
-            }
-            break;
-          case STOP_PROPOSAL_EXECUTION:
-            reviewableParams = evaluateReviewableParams(request, response,
-                                                        () -> new StopProposalParameters(request, _config));
-            if (reviewableParams != null) {
-              syncRequest(() -> (StopProposalParameters) reviewableParams, _asyncKafkaCruiseControl::stopProposalExecution,
-                          request, response, endPoint);
-            }
-            break;
-          case PAUSE_SAMPLING:
-            reviewableParams = evaluateReviewableParams(request, response,
-                                                        () -> new PauseResumeParameters(request, _config));
-            if (reviewableParams != null) {
-              syncRequest(() -> (PauseResumeParameters) reviewableParams, _asyncKafkaCruiseControl::pauseLoadMonitorActivity,
-                          request, response, endPoint);
-            }
-            break;
-          case RESUME_SAMPLING:
-            reviewableParams = evaluateReviewableParams(request, response,
-                                                        () -> new PauseResumeParameters(request, _config));
-            if (reviewableParams != null) {
-              syncRequest(() -> (PauseResumeParameters) reviewableParams, _asyncKafkaCruiseControl::resumeLoadMonitorActivity,
-                          request, response, endPoint);
-            }
-            break;
-          case DEMOTE_BROKER:
-            reviewableParams = evaluateReviewableParams(request, response, () -> new DemoteBrokerParameters(request, _config));
-            if (reviewableParams != null) {
-              demoteBroker(request, response, () -> (DemoteBrokerParameters) reviewableParams);
-            }
-            break;
-          case ADMIN:
-            reviewableParams = evaluateReviewableParams(request, response,
-                                                        () -> new AdminParameters(request, _config));
-            if (reviewableParams != null) {
-              syncRequest(() -> (AdminParameters) reviewableParams, _asyncKafkaCruiseControl::handleAdminRequest,
-                          request, response, endPoint);
-            }
-            break;
-          case TOPIC_CONFIGURATION:
-            reviewableParams = evaluateReviewableParams(request, response, () -> new TopicConfigurationParameters(request, _config));
-            if (reviewableParams != null) {
-              updateTopicConfiguration(request, response, () -> (TopicConfigurationParameters) reviewableParams);
-            }
-            break;
-          case REVIEW:
-            if (!_twoStepVerification) {
-              throw new ConfigException(String.format("Attempt to access %s endpoint without enabling '%s' config.",
-                                                      endPoint, KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG));
-            }
-            syncRequest(() -> new ReviewParameters(request, _config), this::handleReviewRequest, request, response, endPoint);
-            break;
-          default:
-            throw new UserRequestException("Invalid URL for POST");
-        }
-      }
-    } catch (UserRequestException ure) {
-      String errorMessage = handleUserRequestException(ure, request, response, _config);
-      LOG.error(errorMessage, ure);
-    } catch (ConfigException ce) {
-      String errorMessage = handleConfigException(ce, request, response, _config);
-      LOG.error(errorMessage, ce);
-    } catch (Exception e) {
-      String errorMessage = handleException(e, request, response, _config);
-      LOG.error(errorMessage, e);
-    } finally {
-      try {
-        response.getOutputStream().close();
-      } catch (IOException e) {
-        LOG.warn("Error closing output stream: ", e);
-      }
-    }
+  public List<UserTaskManager.UserTaskInfo> getAllUserTasks() {
+    return _userTaskManager.getAllUserTasks();
   }
 
   /**
-   * Get the user task state.
-   *
-   * @param parameters User task state parameters (not used -- added for standardization and for extensibility).
-   * @return User task state.
+   * @return The servlet purgatory for requests.
    */
-  private UserTaskState userTaskState(UserTasksParameters parameters) {
-    return new UserTaskState(_userTaskManager, _config);
-  }
-
-  private ReviewResult handleReviewRequest(ReviewParameters parameters) {
-    return _purgatory.applyReview(parameters.reviewRequests(), parameters.reason());
-  }
-
-  private ReviewResult handleReviewBoardRequest(ReviewBoardParameters parameters) {
-    return _purgatory.reviewBoard(parameters.reviewIds());
-  }
-
-  private void getClusterLoad(HttpServletRequest request, HttpServletResponse response)
-      throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(() -> new ClusterLoadParameters(request, _config),
-                 parameters -> (uuid -> _asyncKafkaCruiseControl.getBrokerStats(parameters)),
-                 request, response);
-  }
-
-  private void getPartitionLoad(HttpServletRequest request, HttpServletResponse response)
-      throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(() -> new PartitionLoadParameters(request, _config),
-                 parameters -> (uuid -> _asyncKafkaCruiseControl.partitionLoadState(parameters)),
-                 request, response);
-  }
-
-  private void getProposals(HttpServletRequest request, HttpServletResponse response)
-      throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(() -> new ProposalsParameters(request, _config),
-                 parameters -> (uuid -> _asyncKafkaCruiseControl.getProposals(parameters)),
-                 request, response);
-  }
-
-  private void getState(HttpServletRequest request, HttpServletResponse response)
-      throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(() -> new CruiseControlStateParameters(request, _config),
-                 parameters -> (uuid -> _asyncKafkaCruiseControl.state(parameters)),
-                 request, response);
-  }
-
-  private void rebalance(HttpServletRequest request, HttpServletResponse response, Supplier<RebalanceParameters> paramSupplier)
-      throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(paramSupplier, parameters -> (uuid -> _asyncKafkaCruiseControl.rebalance(parameters, uuid)),
-                 request, response);
-  }
-
-  private void demoteBroker(HttpServletRequest request, HttpServletResponse response, Supplier<DemoteBrokerParameters> paramSupplier)
-      throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(paramSupplier, parameters -> (uuid -> _asyncKafkaCruiseControl.demoteBrokers(uuid, parameters)),
-                 request, response);
-  }
-
-  private void updateTopicConfiguration(HttpServletRequest request, HttpServletResponse response, Supplier<TopicConfigurationParameters> paramSupplier)
-      throws IOException, ExecutionException, InterruptedException {
-    asyncRequest(paramSupplier, parameters -> (uuid -> _asyncKafkaCruiseControl.updateTopicConfiguration(parameters, uuid)),
-                 request, response);
-  }
-
-  private void addBroker(HttpServletRequest request,
-                         HttpServletResponse response,
-                         Supplier<AddBrokerParameters> paramSupplier)
-      throws IOException, ExecutionException, InterruptedException {
-    Function<AddBrokerParameters, Function<String, OperationFuture>> function;
-    function = parameters -> (uuid -> _asyncKafkaCruiseControl.addBrokers(parameters, uuid));
-
-    asyncRequest(paramSupplier, function, request, response);
-  }
-
-  private void removeBroker(HttpServletRequest request,
-                            HttpServletResponse response,
-                            Supplier<RemoveBrokerParameters> paramSupplier)
-      throws IOException, ExecutionException, InterruptedException {
-    Function<RemoveBrokerParameters, Function<String, OperationFuture>> function;
-    function = parameters -> (uuid -> _asyncKafkaCruiseControl.decommissionBrokers(parameters, uuid));
-
-    asyncRequest(paramSupplier, function, request, response);
-  }
-
-  /**
-   * Handle async request and populate the response.
-   *
-   * @param paramSupplier Supplier to get the request parameters.
-   * @param function Function that generates the function to pass to getAndMaybeReturnProgress using request parameters.
-   * @param request Http servlet request.
-   * @param response Http servlet response.
-   * @param <P> Type corresponding to the request parameters.
-   */
-  private <P extends CruiseControlParameters> void asyncRequest(Supplier<P> paramSupplier,
-                                                                Function<P, Function<String, OperationFuture>> function,
-                                                                HttpServletRequest request,
-                                                                HttpServletResponse response)
-      throws IOException, ExecutionException, InterruptedException {
-    P parameters = paramSupplier.get();
-    if (parameters.parseParameters(response)) {
-      LOG.warn("Failed to parse parameters: {} for async request: {}.", request.getParameterMap(), request.getPathInfo());
-      return;
-    }
-
-    CruiseControlResponse ccResponse = getAndMaybeReturnProgress(request, response, function.apply(parameters), parameters);
-    if (ccResponse == null) {
-      LOG.info("Computation is in progress for async request: {}.", request.getPathInfo());
-      return;
-    }
-
-    ccResponse.writeSuccessResponse(parameters, response);
-    LOG.info("Computation is completed for async request: {}.", request.getPathInfo());
-  }
-
-  private <P extends CruiseControlParameters, R extends CruiseControlResponse> void syncRequest(Supplier<P> paramSupplier,
-                                                                                                Function<P, R> resultFunction,
-                                                                                                HttpServletRequest request,
-                                                                                                HttpServletResponse response,
-                                                                                                EndPoint endPoint)
-      throws ExecutionException, InterruptedException, IOException {
-    long requestExecutionStartTime = System.nanoTime();
-    P parameters = paramSupplier.get();
-
-    if (!parameters.parseParameters(response)) {
-      // Successfully parsed parameters.
-      int step = 0;
-
-      OperationFuture resultFuture = _userTaskManager.getOrCreateUserTask(request, response, uuid -> {
-        OperationFuture future = new OperationFuture(String.format("%s request", parameters.endPoint().toString()));
-        future.complete(resultFunction.apply(parameters));
-        return future;
-      }, step, false, parameters).get(step);
-
-      CruiseControlResponse result = resultFuture.get();
-
-      result.writeSuccessResponse(parameters, response);
-      _successfulRequestExecutionTimer.get(endPoint).update(System.nanoTime() - requestExecutionStartTime, TimeUnit.NANOSECONDS);
-    } else {
-      LOG.warn("Failed to parse parameters: {} for sync request: {}.", request.getParameterMap(), request.getPathInfo());
-    }
-  }
-
-  private CruiseControlResponse getAndMaybeReturnProgress(HttpServletRequest request,
-                                                          HttpServletResponse response,
-                                                          Function<String, OperationFuture> function,
-                                                          CruiseControlParameters parameters)
-      throws ExecutionException, InterruptedException, IOException {
-    int step = _asyncOperationStep.get();
-    List<OperationFuture> futures = _userTaskManager.getOrCreateUserTask(request, response, function, step, true, parameters);
-    _asyncOperationStep.set(step + 1);
-    try {
-      return futures.get(step).get(_maxBlockMs, TimeUnit.MILLISECONDS);
-    } catch (TimeoutException te) {
-      returnProgress(response, futures, wantJSON(request), _config);
-      return null;
-    }
+  public Purgatory purgatory() {
+    return _purgatory;
   }
 }

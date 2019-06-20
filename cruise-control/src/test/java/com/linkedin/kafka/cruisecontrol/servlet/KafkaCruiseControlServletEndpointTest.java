@@ -29,10 +29,11 @@ import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
+
 
 public class KafkaCruiseControlServletEndpointTest {
-  private static final String GET_METHOD = "GET";
-  private static final String POST_METHOD = "POST";
   private static final Function<String, OperationFuture> FUTURE_CREATOR = uuid -> new OperationFuture("future");
 
   // A hack to make 2 requests to same endpoint 'look' different to UserTaskManager
@@ -147,7 +148,7 @@ public class KafkaCruiseControlServletEndpointTest {
     EasyMock.replay(_mockUUIDGenerator, _mockHttpSession, _mockHttpServletResponse);
     populateUserTaskManager(_mockHttpServletResponse, _userTaskManager);
 
-    UserTaskState userTaskState = new UserTaskState(_userTaskManager, null);
+    UserTaskState userTaskState = new UserTaskState(_userTaskManager.getAllUserTasks(), null);
 
     // Test Case 1: Get all PROPOSAL or REBALANCE tasks
     Map<String,  String []> answerQueryParam1 = new HashMap<>();
@@ -199,13 +200,13 @@ public class KafkaCruiseControlServletEndpointTest {
 
     // Transition UserTaskManager state: some tasks will move from ACTIVE to COMPLETED
     // Resolve futures. Allow those tasks to be moved into completed state
-    getFuture(0).complete(new MockResult());    // Complete 1st requst
+    getFuture(0).complete(new MockResult());    // Complete 1st request
     getFuture(4).complete(new MockResult());    // Complete 5th request
     getFuture(5).complete(new MockResult());    // Complete 6th request
     // Update task manager active vs completed state
     _userTaskManager.checkActiveUserTasks();
     // Now the UserTaskManager state has changed, so we reload the states
-    UserTaskState userTaskState2 = new UserTaskState(_userTaskManager, null);
+    UserTaskState userTaskState2 = new UserTaskState(_userTaskManager.getAllUserTasks(), null);
 
     // Test Case 5: Get all LOAD or REMOVE_BROKER tasks that's completed and with user task id repeatUUID
     Map<String,  String []> answerQueryParam5 = new HashMap<>();
@@ -223,7 +224,7 @@ public class KafkaCruiseControlServletEndpointTest {
   }
 
   // Some how we cannot instantiate UserTasksParameters (fail at instantiating LOGGER object), so we mock it.
-  private UserTasksParameters mockUserTasksParameters(HttpServletRequest answerQueryRequest) throws UnsupportedEncodingException {
+  private static UserTasksParameters mockUserTasksParameters(HttpServletRequest answerQueryRequest) throws UnsupportedEncodingException {
     UserTasksParameters parameters = EasyMock.mock(UserTasksParameters.class);
     EasyMock.expect(parameters.userTaskIds()).andReturn(ParameterUtils.userTaskIds(answerQueryRequest)).anyTimes();
     EasyMock.expect(parameters.clientIds()).andReturn(ParameterUtils.clientIds(answerQueryRequest)).anyTimes();
