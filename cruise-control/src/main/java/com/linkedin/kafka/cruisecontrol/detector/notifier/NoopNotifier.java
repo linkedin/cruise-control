@@ -50,4 +50,14 @@ public class NoopNotifier implements AnomalyNotifier {
   public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
     return false;
   }
+
+  @Override
+  public Map<AnomalyType, Float> selfHealingEnabledRatio() {
+    return null;
+  }
+
+  @Override
+  public long uptimeMs(long nowMs) {
+    return 0;
+  }
 }
