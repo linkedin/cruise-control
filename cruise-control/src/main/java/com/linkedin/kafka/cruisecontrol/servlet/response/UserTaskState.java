@@ -39,9 +39,9 @@ public class UserTaskState extends AbstractCruiseControlResponse {
   private static final String ORIGINAL_RESPONSE = "originalResponse";
   private final List<UserTaskManager.UserTaskInfo> _userTasks;
 
-  public UserTaskState(UserTaskManager userTaskManager, KafkaCruiseControlConfig config) {
+  public UserTaskState(List<UserTaskManager.UserTaskInfo> userTasks, KafkaCruiseControlConfig config) {
     super(config);
-    _userTasks = userTaskManager.getAllUserTasks();
+    _userTasks = userTasks;
   }
 
   private String getJSONString(UserTasksParameters parameters) {
@@ -85,7 +85,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     jsonUserTaskList.add(jsonObjectMap);
   }
 
-  private <T> Predicate<UserTaskManager.UserTaskInfo> checkInputFilter(Set<T> set) {
+  private static <T> Predicate<UserTaskManager.UserTaskInfo> checkInputFilter(Set<T> set) {
     if (set == null || set.isEmpty()) {
       return elem -> true;
     } else {
@@ -98,10 +98,10 @@ public class UserTaskState extends AbstractCruiseControlResponse {
    * result list. The ordering of the filters do not matter. We limit the returned result with entries so as to save
    * memory
    */
-  private void populateFilteredTasks(List<UserTaskManager.UserTaskInfo> filteredTasks,
-                                    List<UserTaskManager.UserTaskInfo> userTasks,
-                                    UserTasksParameters parameters,
-                                    int entries) {
+  private static void populateFilteredTasks(List<UserTaskManager.UserTaskInfo> filteredTasks,
+                                            List<UserTaskManager.UserTaskInfo> userTasks,
+                                            UserTasksParameters parameters,
+                                            int entries) {
     if (filteredTasks.size() >= entries) {
       return;
     }
@@ -181,7 +181,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     return sb.toString();
   }
 
-  private String completedTaskResponse(UserTaskManager.UserTaskInfo userTaskInfo) {
+  private static String completedTaskResponse(UserTaskManager.UserTaskInfo userTaskInfo) {
     try {
       CruiseControlResponse response = userTaskInfo.futures().get(userTaskInfo.futures().size() - 1).get();
       return response.cachedResponse();

@@ -41,6 +41,8 @@ import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.APPROVED;
@@ -323,10 +325,10 @@ public class ParameterUtils {
   public static EndPoint endPoint(HttpServletRequest request) {
     List<EndPoint> supportedEndpoints;
     switch (request.getMethod()) {
-      case "GET":
+      case GET_METHOD:
         supportedEndpoints = EndPoint.getEndpoint();
         break;
-      case "POST":
+      case POST_METHOD:
         supportedEndpoints = EndPoint.postEndpoint();
         break;
       default:

@@ -20,6 +20,8 @@ import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
+
 
 public class UserTaskManagerTest {
   @Test
@@ -292,7 +294,7 @@ public class UserTaskManagerTest {
 
     EasyMock.expect(request.getSession()).andReturn(session).anyTimes();
     EasyMock.expect(request.getSession(false)).andReturn(session).anyTimes();
-    EasyMock.expect(request.getMethod()).andReturn("GET").anyTimes();
+    EasyMock.expect(request.getMethod()).andReturn(GET_METHOD).anyTimes();
     EasyMock.expect(request.getRequestURI()).andReturn(resource).anyTimes();
     EasyMock.expect(request.getParameterMap()).andReturn(params).anyTimes();
     EasyMock.expect(request.getHeader(UserTaskManager.USER_TASK_HEADER_NAME)).andReturn(userTaskId).anyTimes();
