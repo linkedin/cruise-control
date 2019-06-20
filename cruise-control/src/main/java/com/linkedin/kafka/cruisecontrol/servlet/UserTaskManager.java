@@ -509,7 +509,7 @@ public class UserTaskManager implements Closeable {
            + ", _uuidToActiveUserTaskInfoMap=" + _uuidToActiveUserTaskInfoMap
            + ", _inExecutionUserTask=" + (_inExecutionUserTaskInfo != null ? _inExecutionUserTaskInfo : "No-User-Initiated-Execution")
            + ", _uuidToCompletedWithSuccessUserTaskInfoMap=" + uuidToCompletedWithSuccessUserTaskInfoMap
-           + ", _uuidToCcompletedWithErrorUserTaskInfoMap=" + uuidToCompletedWithErrorUserTaskInfoMap + '}';
+           + ", _uuidToCompletedWithErrorUserTaskInfoMap=" + uuidToCompletedWithErrorUserTaskInfoMap + '}';
   }
 
   @Override

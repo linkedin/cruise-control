@@ -24,7 +24,7 @@ public class RemoveBrokerRequest extends AbstractAsyncRequest {
 
   @Override
   public RemoveBrokerParameters parameters() {
-    return null;
+    return _parameters;
   }
 
   @Override

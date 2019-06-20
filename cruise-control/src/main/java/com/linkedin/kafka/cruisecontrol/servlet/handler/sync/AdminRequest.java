@@ -111,7 +111,7 @@ public class AdminRequest extends AbstractSyncRequest {
 
     Set<Integer> brokersToDropFromRecentlyDemoted = _parameters.dropRecentlyDemotedBrokers();
     if (!brokersToDropFromRecentlyDemoted.isEmpty()) {
-      if (!_kafkaCruiseControl.dropRecentBrokers(brokersToDropFromRecentlyRemoved, false)) {
+      if (!_kafkaCruiseControl.dropRecentBrokers(brokersToDropFromRecentlyDemoted, false)) {
         Set<Integer> recentlyDemotedBrokers = _kafkaCruiseControl.recentBrokers(false);
         sb.append(String.format("None of the brokers to drop (%s) are in the recently demoted broker set"
                                 + " (%s).%n", brokersToDropFromRecentlyDemoted, recentlyDemotedBrokers));

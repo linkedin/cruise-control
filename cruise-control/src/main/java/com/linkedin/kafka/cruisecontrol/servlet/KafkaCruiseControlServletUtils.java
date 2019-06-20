@@ -82,7 +82,7 @@ public class KafkaCruiseControlServletUtils {
       String method = request.getMethod();
       String errorMessage = String.format("Unrecognized endpoint in request '%s'%nSupported %s endpoints: %s",
                                           request.getPathInfo(), method, method.equals(GET_METHOD) ? EndPoint.getEndpoint()
-                                                                                              : EndPoint.postEndpoint());
+                                                                                                   : EndPoint.postEndpoint());
       writeErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request), config);
       return null;
     }
