@@ -446,7 +446,7 @@ public class UserTaskManager implements Closeable {
       }
     }
 
-    if (_inExecutionUserTaskInfo.userTaskId() == userTaskId
+    if (_inExecutionUserTaskInfo.userTaskId().equals(userTaskId)
         && _inExecutionUserTaskInfo.requestUrl().equals(requestUrl)
         && hasTheSameHttpParameter(_inExecutionUserTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
       return _inExecutionUserTaskInfo;
