@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHUTDOWN_ANOMALY;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
@@ -65,7 +66,6 @@ public class AnomalyDetector {
   private final Map<AnomalyType, Meter> _anomalyRateByType;
   private final LoadMonitor _loadMonitor;
   private final AnomalyDetectorState _anomalyDetectorState;
-  // TODO: Make this configurable.
   private final List<String> _selfHealingGoals;
   private final ExecutorService _anomalyLoggerExecutor;
   private volatile Anomaly _anomalyInProgress;
@@ -85,7 +85,7 @@ public class AnomalyDetector {
                                                     AnomalyNotifier.class);
     _loadMonitor = loadMonitor;
     _kafkaCruiseControl = kafkaCruiseControl;
-    _selfHealingGoals = config.getList(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG);
+    _selfHealingGoals = getSelfHealingGoalNames(config);
     _kafkaCruiseControl.sanityCheckHardGoalPresence(_selfHealingGoals, false);
     _goalViolationDetector = new GoalViolationDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
     _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);

@@ -165,7 +165,8 @@ public class KafkaCruiseControl {
    * @param removedBrokers The brokers to decommission.
    * @param dryRun Whether it is a dry run or not.
    * @param throttleDecommissionedBroker Whether throttle the brokers that are being decommissioned.
-   * @param goals The goals to be met when decommissioning the brokers. When empty all goals will be used.
+   * @param goals The goal names (i.e. each matching {@link Goal#name()}) to be met when decommissioning the brokers.
+   *              When empty all goals will be used.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
@@ -332,7 +333,8 @@ public class KafkaCruiseControl {
    * @param brokerIds The broker ids.
    * @param dryRun Whether it is a dry run or not.
    * @param throttleAddedBrokers Whether throttle the brokers that are being added.
-   * @param goals The goals to be met when adding the brokers. When empty all goals will be used.
+   * @param goals The goal names (i.e. each matching {@link Goal#name()}) to be met when adding the brokers.
+   *              When empty all goals will be used.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to update.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
@@ -418,7 +420,8 @@ public class KafkaCruiseControl {
 
   /**
    * Rebalance the cluster
-   * @param goals The goals to be met during the rebalance. When empty all goals will be used.
+   * @param goals The goal names (i.e. each matching {@link Goal#name()}) to be met during the rebalance.
+   *              When empty all goals will be used.
    * @param dryRun Whether it is a dry run or not.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to report.
@@ -769,7 +772,7 @@ public class KafkaCruiseControl {
    * 5. The request involves explicitly requested destination broker Ids.
    * 6. The caller wants to rebalance across disks within the brokers.
    *
-   * @param goals A list of goals to optimize. When empty all goals will be used.
+   * @param goals A list of goal names (i.e. each matching {@link Goal#name()}) to optimize. When empty all goals will be used.
    * @param requirements Model completeness requirements.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param excludeBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
@@ -801,7 +804,7 @@ public class KafkaCruiseControl {
 
   /**
    * Optimize a cluster workload model.
-   * @param goals A list of goals to optimize. When empty all goals will be used.
+   * @param goals A list of goal names (i.e. each matching {@link Goal#name()}) to optimize. When empty all goals will be used.
    * @param requirements The model completeness requirements to enforce when generating the proposals.
    * @param operationProgress The progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
@@ -1235,7 +1238,7 @@ public class KafkaCruiseControl {
    */
   private List<Goal> goalsByPriority(List<String> goals) {
     if (goals == null || goals.isEmpty()) {
-      return AnalyzerUtils.getGoalMapByPriority(_config);
+      return AnalyzerUtils.getGoalsByPriority(_config);
     }
     Map<String, Goal> allGoals = AnalyzerUtils.getCaseInsensitiveGoalsByName(_config);
     sanityCheckNonExistingGoal(goals, allGoals);
@@ -1250,7 +1253,7 @@ public class KafkaCruiseControl {
    * <li> {@code goals} only has PreferredLeaderElectionGoal, denotes it is a PLE request.</li>
    * </ul>
    *
-   * @param goals A list of goals.
+   * @param goals A list of goal names (i.e. each matching {@link Goal#name()}) to check.
    * @param skipHardGoalCheck True if hard goal checking is not needed.
    */
   public void sanityCheckHardGoalPresence(List<String> goals, boolean skipHardGoalCheck) {
