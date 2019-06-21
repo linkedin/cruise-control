@@ -337,7 +337,8 @@ public class KafkaCruiseControl {
 
   /**
    * Rebalance the cluster
-   * @param goals The goals to be met during the rebalance. When empty all goals will be used.
+   * @param goals The goal names (i.e. each matching {@link Goal#name()}) to be met during the rebalance.
+   *              When empty all goals will be used.
    * @param dryRun Whether it is a dry run or not.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to report.
@@ -649,7 +650,7 @@ public class KafkaCruiseControl {
    * 4. The request is triggered by goal violation detector.
    * 5. The request involves explicitly requested destination broker Ids.
    *
-   * @param goals A list of goals to optimize. When empty all goals will be used.
+   * @param goals A list of goal names (i.e. each matching {@link Goal#name()}) to optimize. When empty all goals will be used.
    * @param requirements Model completeness requirements.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param excludeBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
