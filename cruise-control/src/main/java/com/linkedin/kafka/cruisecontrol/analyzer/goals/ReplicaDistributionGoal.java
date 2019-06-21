@@ -11,16 +11,15 @@ import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.BrokerAndSortedReplicas;
 import com.linkedin.kafka.cruisecontrol.common.Statistic;
+import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Set;
@@ -45,13 +44,11 @@ import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
  */
 public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
   private static final Logger LOG = LoggerFactory.getLogger(ReplicaDistributionGoal.class);
-  private final Map<Integer, BrokerAndSortedReplicas> _brokerAndReplicasMap;
 
   /**
    * Constructor for Replica Distribution Goal.
    */
   public ReplicaDistributionGoal() {
-    _brokerAndReplicasMap = new HashMap<>();
   }
 
   public ReplicaDistributionGoal(BalancingConstraint balancingConstraint) {
@@ -121,9 +118,23 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
   @Override
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     super.initGoalState(clusterModel, optimizationOptions);
-    for (Broker broker : clusterModel.brokers()) {
-      BrokerAndSortedReplicas bas = new BrokerAndSortedReplicas(broker, broker.replicaComparator(DISK));
-      _brokerAndReplicasMap.put(broker.id(), bas);
+    clusterModel.trackSortedReplicas(name(),
+                                     ReplicaSortFunctionFactory.prioritizeImmigrants(),
+                                     ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()));
+  }
+
+  /**
+   * Update goal state after one round of self-healing / rebalance.
+   * @param clusterModel The state of the cluster.
+   * @param excludedTopics The topics that should be excluded from the optimization proposal.
+   */
+  @Override
+  protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
+      throws OptimizationFailureException {
+    super.updateGoalState(clusterModel, excludedTopics);
+    // Clean up memory usage.
+    if (_finished) {
+      clusterModel.untrackSortedReplicas(name());
     }
   }
 
@@ -186,9 +197,12 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
         .filter(b -> b.replicas().size() < _balanceUpperLimit)
         .collect(Collectors.toSet()));
 
-    BrokerAndSortedReplicas sourceBas = _brokerAndReplicasMap.get(broker.id());
     // Get the replicas to rebalance. Replicas are sorted from smallest to largest disk usage.
-    List<Replica> replicasToMove = sourceBas.replicasToMoveOut(clusterModel);
+    List<Replica> replicasToMove = broker.trackedSortedReplicas(name()).sortedReplicas();
+    // If cluster has dead brokers, but this broker is alive, then limit moving replica to immigrant replica.
+    if (!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) {
+      replicasToMove = replicasToMove.stream().filter(r -> broker.immigrantReplicas().contains(r)).collect(Collectors.toList());
+    }
     // Now let's move things around.
     for (Replica replica : replicasToMove) {
       if (shouldExclude(replica, excludedTopics)) {
@@ -199,11 +213,6 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
                                            optimizedGoals, optimizationOptions);
       // Only check if we successfully moved something.
       if (b != null) {
-        // Update the global sorted broker set to reflect the replica movement.
-        BrokerAndSortedReplicas destBas = _brokerAndReplicasMap.get(b.id());
-        destBas.sortedReplicas().add(replica);
-        sourceBas.sortedReplicas().remove(replica);
-
         if (broker.replicas().size() <= (broker.isAlive() ? _balanceUpperLimit : 0)) {
           return false;
         }
@@ -216,13 +225,6 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     }
     // All the replicas has been moved away from the broker.
     return !broker.replicas().isEmpty();
-  }
-
-  @Override
-  public void finish() {
-    super.finish();
-    // Clean up the memory
-    _brokerAndReplicasMap.clear();
   }
 
   private boolean rebalanceByMovingReplicasIn(Broker broker,
@@ -241,16 +243,17 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
       }
     }
 
-    // Remove the destination broker from the global sorted broker set.
-    BrokerAndSortedReplicas destBas = _brokerAndReplicasMap.get(broker.id());
     List<Broker> candidateBrokers = Collections.singletonList(broker);
 
     // Stop when no replicas can be moved in anymore.
     while (!eligibleBrokers.isEmpty()) {
       Broker sourceBroker = eligibleBrokers.poll();
-      // Remove the source brokerAndReplicas from the sorted broker set.
-      BrokerAndSortedReplicas sourceBas = _brokerAndReplicasMap.get(sourceBroker.id());
-      List<Replica> replicasToMove = sourceBas.replicasToMoveOut(clusterModel);
+      // Get the replicas to rebalance. Replicas are sorted from smallest to largest disk usage.
+      List<Replica> replicasToMove = sourceBroker.trackedSortedReplicas(name()).sortedReplicas();
+      // If cluster has dead brokers, but this broker is alive, then limit moving replica to immigrant replica.
+      if (!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) {
+        replicasToMove = replicasToMove.stream().filter(r -> sourceBroker.immigrantReplicas().contains(r)).collect(Collectors.toList());
+      }
       for (Replica replica : replicasToMove) {
         if (shouldExclude(replica, excludedTopics)) {
           continue;
@@ -260,9 +263,6 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
         // Only need to check status if the action is taken. This will also handle the case that the source broker
         // has nothing to move in. In that case we will never reenqueue that source broker.
         if (b != null) {
-          // Update the BrokerAndSortedReplicas in the global sorted broker set to ensure consistency.
-          sourceBas.sortedReplicas().remove(replica);
-          destBas.sortedReplicas().add(replica);
           if (broker.replicas().size() >= (broker.isAlive() ? _balanceLowerLimit : 0)) {
             return false;
           }
