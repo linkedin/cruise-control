@@ -136,8 +136,11 @@ if [ -z "$KAFKA_JVM_PERFORMANCE_OPTS" ]; then
   KAFKA_JVM_PERFORMANCE_OPTS="-server -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:+DisableExplicitGC -Djava.awt.headless=true"
 fi
 
-#Add jaas file to KAFKA_OPTS
-KAFKA_OPTS="-Djava.security.auth.login.config=$base_dir/config/cruise_control_jaas.conf $KAFKA_OPTS"
+#Add jaas file to KAFKA_OPTS if present
+if [ -f $base_dir/config/cruise_control_jaas.conf ]
+then
+  KAFKA_OPTS="-Djava.security.auth.login.config=$base_dir/config/cruise_control_jaas.conf $KAFKA_OPTS"
+fi
 
 DAEMON_NAME="kafka-cruise-control"
 CONSOLE_OUTPUT_FILE="${LOG_DIR}"/"${DAEMON_NAME}".out
