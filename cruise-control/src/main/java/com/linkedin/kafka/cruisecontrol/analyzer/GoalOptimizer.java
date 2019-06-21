@@ -98,7 +98,7 @@ public class GoalOptimizer implements Runnable {
                        Time time,
                        MetricRegistry dropwizardMetricRegistry,
                        Executor executor) {
-    _goalsByPriority = AnalyzerUtils.getGoalMapByPriority(config);
+    _goalsByPriority = AnalyzerUtils.getGoalsByPriority(config);
     _defaultModelCompletenessRequirements = MonitorUtils.combineLoadRequirementOptions(_goalsByPriority);
     _requirementsWithAvailableValidWindows = new ModelCompletenessRequirements(
         1,
