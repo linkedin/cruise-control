@@ -211,9 +211,11 @@ public class KafkaSampleStore implements SampleStore {
   @SuppressWarnings("unchecked")
   private void ensureTopicsCreated(Map<String, ?> config) {
     String connectString = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    boolean zkSecurityEnabled = Boolean.parseBoolean((String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG));
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(connectString,
                                                                               "KafkaSampleStore",
-                                                                              "EnsureTopicCreated");
+                                                                              "EnsureTopicCreated",
+                                                                              zkSecurityEnabled);
     AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
     try {

@@ -520,6 +520,7 @@ public class LoadMonitorTest {
     props.put(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG, Long.toString(WINDOW_MS));
     props.put(CleanupPolicyProp(), DEFAULT_CLEANUP_POLICY);
     props.put(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
+    props.put(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG, "false");
     if (isClusterJBOD) {
       String capacityConfigFileJBOD =
           KafkaCruiseControlUnitTestUtils.class.getClassLoader().getResource("testCapacityConfigJBOD.json").getFile();

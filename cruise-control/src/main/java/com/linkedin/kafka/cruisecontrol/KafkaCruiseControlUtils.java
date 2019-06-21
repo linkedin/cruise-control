@@ -162,10 +162,11 @@ public class KafkaCruiseControlUtils {
    * @param connectString Comma separated host:port pairs, each corresponding to a zk server
    * @param metricGroup Metric group
    * @param metricType Metric type
+   * @param zkSecurityEnabled True if zkSecurityEnabled, false otherwise.
    * @return A new instance of KafkaZkClient
    */
-  public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
-    return KafkaZkClient.apply(connectString, false, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
+  public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType, boolean zkSecurityEnabled) {
+    return KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
         new SystemTime(), metricGroup, metricType);
   }
 

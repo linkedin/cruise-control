@@ -63,10 +63,12 @@ public class BrokerFailureDetector {
                                KafkaCruiseControl kafkaCruiseControl,
                                List<String> selfHealingGoals) {
     String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    boolean zkSecurityEnabled = config.getBoolean(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     ZkConnection zkConnection = new ZkConnection(zkUrl, ZK_SESSION_TIMEOUT);
     _zkClient = new ZkClient(zkConnection, ZK_CONNECTION_TIMEOUT, new ZkStringSerializer());
     // Do not support secure ZK at this point.
-    _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE);
+    _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE,
+        zkSecurityEnabled);
     _failedBrokers = new HashMap<>();
     _failedBrokersZkPath = config.getString(KafkaCruiseControlConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
     _loadMonitor = loadMonitor;

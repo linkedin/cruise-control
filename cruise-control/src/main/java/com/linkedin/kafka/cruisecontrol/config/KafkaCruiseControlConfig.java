@@ -458,6 +458,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String ZOOKEEPER_CONNECT_DOC = "The zookeeper path used by the Kafka cluster.";
 
   /**
+   * <code>zookeeper.security.enabled</code>
+   */
+  public static final String ZOOKEEPER_SECURITY_ENABLED_CONFIG = "zookeeper.security.enabled";
+  private static final String ZOOKEEPER_SECURITY_ENABLED_DOC = "Specify if zookeeper is secured, true or false";
+
+  /**
    * <code>num.concurrent.partition.movements.per.broker</code>
    */
   public static final String NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG = "num.concurrent.partition.movements.per.broker";
@@ -1255,6 +1261,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Importance.LOW,
                 NUM_PROPOSAL_PRECOMPUTE_THREADS_DOC)
         .define(ZOOKEEPER_CONNECT_CONFIG, ConfigDef.Type.STRING, ConfigDef.Importance.HIGH, ZOOKEEPER_CONNECT_DOC)
+        .define(ZOOKEEPER_SECURITY_ENABLED_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                false,
+                ConfigDef.Importance.HIGH,
+                ZOOKEEPER_SECURITY_ENABLED_DOC)
         .define(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
                 ConfigDef.Type.INT,
                 5,

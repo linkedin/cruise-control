@@ -83,7 +83,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   public void testBasicBalanceMovement() throws InterruptedException {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
-                                                                              "BasicBalanceMovement");
+                                                                              "BasicBalanceMovement",
+                                                                              false);
     try {
       Collection<ExecutionProposal> proposals = getBasicProposals();
       executeAndVerifyProposals(kafkaZkClient, proposals, proposals);
@@ -96,7 +97,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   public void testMoveNonExistingPartition() throws InterruptedException {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
-                                                                              "MoveNonExistingPartition");
+                                                                              "MoveNonExistingPartition",
+                                                                              false);
     try {
       Map<String, TopicDescription> topicDescriptions = createTopics();
       int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
@@ -141,7 +143,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   public void testBrokerDiesWhenMovePartitions() throws Exception {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zookeeper().connectionString(),
                                                                               "ExecutorTestMetricGroup",
-                                                                              "BrokerDiesWhenMovePartitions");
+                                                                              "BrokerDiesWhenMovePartitions",
+                                                                              false);
     try {
       Map<String, TopicDescription> topicDescriptions = createTopics();
       int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
