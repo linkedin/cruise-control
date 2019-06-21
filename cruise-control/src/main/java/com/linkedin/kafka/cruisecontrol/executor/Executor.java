@@ -142,7 +142,8 @@ public class Executor {
 
     _time = time;
     String zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    _zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect);
+    boolean zkSecurityEnabled = config.getBoolean(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
+    _zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect, zkSecurityEnabled);
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
                                  config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),

@@ -34,7 +34,6 @@ import org.apache.kafka.common.config.ConfigException;
 public class KafkaCruiseControlUtils {
   public static final int ZK_SESSION_TIMEOUT = 30000;
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
-  public static final boolean IS_ZK_SECURITY_ENABLED = false;
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";
@@ -93,8 +92,8 @@ public class KafkaCruiseControlUtils {
     return value;
   }
 
-  public static ZkUtils createZkUtils(String zkConnect) {
-    return ZkUtils.apply(zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
+  public static ZkUtils createZkUtils(String zkConnect, boolean zkSecurityEnabled) {
+    return ZkUtils.apply(zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, zkSecurityEnabled);
   }
 
   public static void closeZkUtilsWithTimeout(ZkUtils zkUtils, long timeoutMs) {

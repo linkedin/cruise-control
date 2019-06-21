@@ -208,7 +208,8 @@ public class KafkaSampleStore implements SampleStore {
 
   private void ensureTopicsCreated(Map<String, ?> config) {
     String zkConnect = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect);
+    boolean zkSecurityEnabled = Boolean.parseBoolean((String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG));
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect, zkSecurityEnabled);
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
       long partitionSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));

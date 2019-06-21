@@ -81,7 +81,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   @Test
   public void testBasicBalanceMovement() throws InterruptedException {
-    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString(), false);
     Collection<ExecutionProposal> proposals = getBasicProposals();
 
     try {
@@ -93,7 +93,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   @Test
   public void testMoveNonExistingPartition() throws InterruptedException {
-    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString(), false);
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
     int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
@@ -127,7 +127,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   @Test
   public void testBrokerDiesWhenMovePartitions() throws Exception {
-    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString(), false);
 
     Map<String, TopicDescription> topicDescriptions = createTopics();
     int initialLeader0 = topicDescriptions.get(TOPIC0).partitions().get(0).leader().id();
