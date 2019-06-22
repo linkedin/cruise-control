@@ -271,6 +271,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
     } catch (OptimizationFailureException ofe) {
       if (_fixOfflineReplicasOnly) {
+        clusterModel.untrackSortedReplicas(sortName());
         throw ofe;
       }
       _fixOfflineReplicasOnly = true;

@@ -542,7 +542,8 @@ public class ClusterModel implements Serializable {
    * {@link #untrackSortedReplicas(String)} to release memory.
    *
    * @param sortName the name of the sorted replicas.
-   * @param scoreFunction the score function to sort the replicas with the same priority.
+   * @param scoreFunction the score function to sort the replicas with the same priority, replicas are sorted in ascending
+   *                      order of score.
    * @see SortedReplicas
    */
   public void trackSortedReplicas(String sortName, Function<Replica, Double> scoreFunction) {
@@ -568,7 +569,8 @@ public class ClusterModel implements Serializable {
    *
    * @param sortName the name of the sorted replicas.
    * @param priorityFunc the priority function to sort the replicas
-   * @param scoreFunc the score function to sort the replicas with the same priority.
+   * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
+   *                  order of score.
    * @see SortedReplicas
    */
   public void trackSortedReplicas(String sortName,
@@ -598,7 +600,8 @@ public class ClusterModel implements Serializable {
    * @param sortName the name of the sorted replicas.
    * @param selectionFunc the selection function to decide which replicas to include in the sort.
    * @param priorityFunc the priority function to sort the replicas
-   * @param scoreFunc the score function to sort the replicas with the same priority.
+   * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
+   *                  order of score.
    * @see SortedReplicas
    */
   public void trackSortedReplicas(String sortName,
