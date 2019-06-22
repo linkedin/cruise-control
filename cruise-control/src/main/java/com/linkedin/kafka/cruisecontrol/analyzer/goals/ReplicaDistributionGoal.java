@@ -133,13 +133,13 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
       throws OptimizationFailureException {
     try {
       super.updateGoalState(clusterModel, excludedTopics);
-      // Clean up memory usage.
-      if (_finished) {
-        clusterModel.untrackSortedReplicas(name());
-      }
     } catch (OptimizationFailureException ofe) {
       clusterModel.untrackSortedReplicas(name());
       throw ofe;
+    }
+    // Clean up memory usage.
+    if (_finished) {
+      clusterModel.untrackSortedReplicas(name());
     }
   }
 
