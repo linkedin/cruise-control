@@ -273,6 +273,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       GoalUtils.ensureNoReplicaOnDeadBrokers(clusterModel, name());
     } catch (OptimizationFailureException ofe) {
       if (_selfHealingDeadBrokersOnly) {
+        clusterModel.untrackSortedReplicas(sortName());
         throw ofe;
       }
       _selfHealingDeadBrokersOnly = true;

@@ -131,10 +131,15 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws OptimizationFailureException {
-    super.updateGoalState(clusterModel, excludedTopics);
-    // Clean up memory usage.
-    if (_finished) {
+    try {
+      super.updateGoalState(clusterModel, excludedTopics);
+      // Clean up memory usage.
+      if (_finished) {
+        clusterModel.untrackSortedReplicas(name());
+      }
+    } catch (OptimizationFailureException ofe) {
       clusterModel.untrackSortedReplicas(name());
+      throw ofe;
     }
   }
 
