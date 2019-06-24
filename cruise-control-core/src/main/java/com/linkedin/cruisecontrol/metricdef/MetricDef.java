@@ -32,7 +32,7 @@ public class MetricDef {
   private final Map<String, MetricInfo> _metricInfoByName;
   private final List<MetricInfo> _metricInfoByIndex;
   private final Map<String, List<MetricInfo>> _metricInfoByGroup;
-  private final Set<Integer> _metricsToPredict;
+  private final Set<Short> _metricsToPredict;
   private volatile boolean _doneDefinition = false;
 
   public MetricDef() {
@@ -78,7 +78,7 @@ public class MetricDef {
       if (v != null) {
         throw new IllegalArgumentException("Metric " + metricName + " is already defined");
       }
-      int metricId = _nextIndex.getAndIncrement();
+      short metricId = getAndIncrementMetricId();
       if (toPredict) {
         _metricsToPredict.add(metricId);
       }
@@ -91,6 +91,14 @@ public class MetricDef {
       _metricInfoByGroup.computeIfAbsent(group, g -> new ArrayList<>()).add(info);
     }
     return this;
+  }
+
+  private short getAndIncrementMetricId() {
+    int metricId = _nextIndex.getAndIncrement();
+    if (metricId > Short.MAX_VALUE) {
+      throw new IllegalStateException(String.format("Metric Ids beyond %d are not supported.", Short.MAX_VALUE));
+    }
+    return (short) metricId;
   }
 
   /**
@@ -127,7 +135,7 @@ public class MetricDef {
   /**
    * @return the {@link MetricInfo} by id;
    */
-  public MetricInfo metricInfo(int id) {
+  public MetricInfo metricInfo(short id) {
     if (id >= _nextIndex.get()) {
       throw new IllegalArgumentException("Metric Id " + id + " is not defined. Currently defined metrics are "
                                              + _metricInfoByIndex);
@@ -138,7 +146,7 @@ public class MetricDef {
   /**
    * @return A set of metric ids that are to be predicted.
    */
-  public Set<Integer> metricsToPredict() {
+  public Set<Short> metricsToPredict() {
     return _metricsToPredict;
   }
 

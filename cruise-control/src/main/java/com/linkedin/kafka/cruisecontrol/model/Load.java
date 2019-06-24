@@ -30,7 +30,6 @@ import static java.lang.Math.max;
  * windows.
  */
 public class Load implements Serializable {
-  private static final String METRIC_VALUES = "MetricValues";
   // load by their time.
   private List<Long> _windows;
   private final AggregatedMetricValues _metricValues;
@@ -67,27 +66,33 @@ public class Load implements Serializable {
   /**
    * Get a single snapshot value that is representative for the given resource. The current algorithm uses
    * <ol>
-   *   <li>If the max load is not requested, then:
+   *   <li>If the max or avg load is not requested, then:
    *   <ol>
    *   <li>It is the mean of the recent resource load for inbound network load, outbound network load, and cpu load.</li>
    *   <li>It is the latest utilization for disk space usage.</li>
    *   </ol>
    *   </li>
    *   <li>If the max load is requested: the peak load.</li>
+   *   <li>If the avg load is requested: the avg load.</li>
    * </ol>
    *
    * @param resource Resource for which the expected utilization will be provided.
    * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
+   * @param wantAvgLoad True if the requested utilization represents the avg load, false otherwise.
    * @return A single representative utilization value on a resource.
    */
-  public double expectedUtilizationFor(Resource resource, boolean wantMaxLoad) {
+  public double expectedUtilizationFor(Resource resource, boolean wantMaxLoad, boolean wantAvgLoad) {
+    if (wantMaxLoad && wantAvgLoad) {
+      throw new IllegalArgumentException("Attempt to request expected utilization with both max and avg load.");
+    }
     if (_metricValues.isEmpty()) {
       return 0.0;
     }
     double result = 0;
     for (MetricInfo info : KafkaMetricDef.resourceToMetricInfo(resource)) {
       MetricValues valuesForId = _metricValues.valuesFor(info.id());
-      result += wantMaxLoad ? valuesForId.max() : (resource == Resource.DISK ? valuesForId.latest() : valuesForId.avg());
+      result += wantMaxLoad ? valuesForId.max()
+                            : (resource == Resource.DISK && !wantAvgLoad ? valuesForId.latest() : valuesForId.avg());
     }
     return max(result, 0.0);
   }
@@ -99,16 +104,21 @@ public class Load implements Serializable {
   /**
    * Get a single snapshot value that is representative for the given KafkaMetric type. The current algorithm uses
    * <ol>
-   *   <li>If the max load is not requested, it is max/latest/mean load depending on the ValueComputingStrategy
+   *   <li>If the max or avg load is not requested, it is max/latest/mean load depending on the ValueComputingStrategy
    *   which the KafkaMetric type uses.</li>
    *   <li>If the max load is requested, it is the max load.</li>
+   *   <li>If the avg load is requested, it is the avg load.</li>
    * </ol>
    *
    * @param metric KafkaMetric type for which the expected utilization will be provided.
    * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
+   * @param wantAvgLoad True if the requested utilization represents the avg load, false otherwise.
    * @return A single representative utilization value on a metric type.
    */
-  public double expectedUtilizationFor(KafkaMetricDef metric, boolean wantMaxLoad) {
+  public double expectedUtilizationFor(KafkaMetricDef metric, boolean wantMaxLoad, boolean wantAvgLoad) {
+    if (wantMaxLoad && wantAvgLoad) {
+      throw new IllegalArgumentException("Attempt to request expected utilization with both max and avg load.");
+    }
     MetricInfo info;
     switch (metric.defScope()) {
       case COMMON:
@@ -126,6 +136,8 @@ public class Load implements Serializable {
     MetricValues valuesForId = _metricValues.valuesFor(info.id());
     if (wantMaxLoad) {
       return max(valuesForId.max(), 0.0);
+    } else if (wantAvgLoad) {
+      return max(valuesForId.avg(), 0.0);
     }
     switch (metric.valueComputingStrategy()) {
       case MAX: return max(valuesForId.max(), 0.0);
@@ -168,7 +180,7 @@ public class Load implements Serializable {
    * @param metricId the metric id to set.
    * @param loadToSet Load for the given metric id to overwrite the original load by snapshot time.
    */
-  void setLoad(int metricId, MetricValues loadToSet) {
+  void setLoad(short metricId, MetricValues loadToSet) {
     if (loadToSet.length() != _metricValues.length()) {
       throw new IllegalArgumentException("Load to set and load for the resources must have exactly " +
                                              _metricValues.length() + " entries.");
@@ -297,7 +309,7 @@ public class Load implements Serializable {
         metricValueList.add(metricValuesMap);
       }
     }
-    loadMap.put(METRIC_VALUES, metricValueList);
+    loadMap.put(ModelUtils.METRIC_VALUES, metricValueList);
     return loadMap;
   }
 

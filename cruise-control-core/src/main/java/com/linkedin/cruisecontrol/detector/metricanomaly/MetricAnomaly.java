@@ -28,5 +28,5 @@ public interface MetricAnomaly<E extends Entity> extends Anomaly {
   /**
    * Get the metric Id caused the metric anomaly.
    */
-  Integer metricId();
+  Short metricId();
 }

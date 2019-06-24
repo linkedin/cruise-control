@@ -15,6 +15,8 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
+
 
 /**
  * A class that holds Kafka metric anomalies.
@@ -26,7 +28,7 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
   private final KafkaCruiseControl _kafkaCruiseControl;
   private final String _description;
   private final BrokerEntity _brokerEntity;
-  private final Integer _metricId;
+  private final Short _metricId;
   private final List<Long> _windows;
   private final String _anomalyId;
   private OptimizationResult _optimizationResult;
@@ -43,7 +45,7 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
   public KafkaMetricAnomaly(KafkaCruiseControl kafkaCruiseControl,
                             String description,
                             BrokerEntity brokerEntity,
-                            Integer metricId,
+                            Short metricId,
                             List<Long> windows) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _description = description;
@@ -82,7 +84,7 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
    * Get the metric Id caused the metric anomaly.
    */
   @Override
-  public Integer metricId() {
+  public Short metricId() {
     return _metricId;
   }
 
@@ -103,7 +105,8 @@ public class KafkaMetricAnomaly implements MetricAnomaly<BrokerEntity> {
 
   @Override
   public String toString() {
-    return String.format("{%nMetric Anomaly windows: %s description: %s%n}", _windows, _description);
+    return String.format("%s anomaly with id: %s Metric Anomaly windows: %s description: %s",
+                         getAnomalyType(this), anomalyId(), _windows, _description);
   }
 
   /**

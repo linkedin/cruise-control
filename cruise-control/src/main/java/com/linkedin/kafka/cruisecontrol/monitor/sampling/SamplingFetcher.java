@@ -45,6 +45,7 @@ class SamplingFetcher extends MetricFetcher {
   private final Timer _fetchTimer;
   private final Meter _fetchFailureRate;
   private final MetricDef _metricDef;
+  private final long _timeout;
 
   SamplingFetcher(MetricSampler metricSampler,
                   Cluster cluster,
@@ -72,6 +73,7 @@ class SamplingFetcher extends MetricFetcher {
     _useLinearRegressionModel = useLinearRegressionModel;
     _fetchTimer = fetchTimer;
     _fetchFailureRate = fetchFailureRate;
+    _timeout = System.currentTimeMillis() + (endTimeMs - startTimeMs) / 2;
   }
 
   /**
@@ -103,7 +105,7 @@ class SamplingFetcher extends MetricFetcher {
   private MetricSampler.Samples fetchSamples() throws MetricSamplingException {
     MetricSampler.Samples samples =
         _metricSampler.getSamples(_cluster, _assignedPartitions, _startTimeMs, _endTimeMs,
-                                  MetricSampler.SamplingMode.ALL, _metricDef);
+                                  MetricSampler.SamplingMode.ALL, _metricDef, _timeout);
     if (samples == null) {
       samples = MetricSampler.EMPTY_SAMPLES;
     }
@@ -182,8 +184,8 @@ class SamplingFetcher extends MetricFetcher {
   }
 
   private double estimateCpuUtil(PartitionMetricSample partitionMetricSample) {
-    List<Integer> cpuId = KafkaMetricDef.resourceToMetricIds(Resource.CPU);
-    List<Integer> networkOutId = KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT);
+    List<Short> cpuId = KafkaMetricDef.resourceToMetricIds(Resource.CPU);
+    List<Short> networkOutId = KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT);
     Double cpuUsage = sumOfMetrics(partitionMetricSample, cpuId);
     Double networkOutUsage = sumOfMetrics(partitionMetricSample, networkOutId);
     return ModelUtils.estimateLeaderCpuUtilUsingLinearRegressionModel(cpuUsage, networkOutUsage);
@@ -191,9 +193,9 @@ class SamplingFetcher extends MetricFetcher {
 
   // Add all the values of the given metric ids up.
   // TODO: remove this once we completely move to metric def.
-  private Double sumOfMetrics(PartitionMetricSample partitionMetricSample, List<Integer> metricIds) {
+  private Double sumOfMetrics(PartitionMetricSample partitionMetricSample, List<Short> metricIds) {
     double result = 0;
-    for (int id : metricIds) {
+    for (short id : metricIds) {
       result += partitionMetricSample.metricValue(id);
     }
     return result;

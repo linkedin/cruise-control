@@ -82,7 +82,7 @@ public class KafkaCruiseControlUnitTestUtils {
                                          Resource resource,
                                          double value) {
     boolean set = false;
-    for (int id : KafkaMetricDef.resourceToMetricIds(resource)) {
+    for (short id : KafkaMetricDef.resourceToMetricIds(resource)) {
       MetricValues metricValues = new MetricValues(1);
       if (!set) {
         metricValues.set(0, value);

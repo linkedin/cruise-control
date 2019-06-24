@@ -30,6 +30,7 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
   private static final String RECORDS = "records";
   private final List<Partition> _sortedPartitions;
   private final boolean _wantMaxLoad;
+  private final boolean _wantAvgLoad;
   private final int _entries;
   private final int _partitionUpperBoundary;
   private final int _partitionLowerBoundary;
@@ -38,6 +39,7 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
 
   public PartitionLoadState(List<Partition> sortedPartitions,
                             boolean wantMaxLoad,
+                            boolean wantAvgLoad,
                             int entries,
                             int partitionUpperBoundary,
                             int partitionLowerBoundary,
@@ -47,6 +49,7 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
     super(config);
     _sortedPartitions = sortedPartitions;
     _wantMaxLoad = wantMaxLoad;
+    _wantAvgLoad = wantAvgLoad;
     _entries = entries;
     _partitionUpperBoundary = partitionUpperBoundary;
     _partitionLowerBoundary = partitionLowerBoundary;
@@ -73,11 +76,11 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
                               p.leader().topicPartition(),
                               p.leader().broker().id(),
                               followers,
-                              p.leader().load().expectedUtilizationFor(Resource.CPU, _wantMaxLoad),
-                              p.leader().load().expectedUtilizationFor(Resource.DISK, _wantMaxLoad),
-                              p.leader().load().expectedUtilizationFor(Resource.NW_IN, _wantMaxLoad),
-                              p.leader().load().expectedUtilizationFor(Resource.NW_OUT, _wantMaxLoad),
-                              p.leader().load().expectedUtilizationFor(KafkaMetricDef.MESSAGE_IN_RATE, _wantMaxLoad)));
+                              p.leader().load().expectedUtilizationFor(Resource.CPU, _wantMaxLoad, _wantAvgLoad),
+                              p.leader().load().expectedUtilizationFor(Resource.DISK, _wantMaxLoad, _wantAvgLoad),
+                              p.leader().load().expectedUtilizationFor(Resource.NW_IN, _wantMaxLoad, _wantAvgLoad),
+                              p.leader().load().expectedUtilizationFor(Resource.NW_OUT, _wantMaxLoad, _wantAvgLoad),
+                              p.leader().load().expectedUtilizationFor(KafkaMetricDef.MESSAGE_IN_RATE, _wantMaxLoad, _wantAvgLoad)));
     }
     return sb.toString();
   }
@@ -112,11 +115,11 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
       record.put(PARTITION, p.leader().topicPartition().partition());
       record.put(LEADER, p.leader().broker().id());
       record.put(FOLLOWERS, followers);
-      record.put(Resource.CPU.resource(), p.leader().load().expectedUtilizationFor(Resource.CPU, _wantMaxLoad));
-      record.put(Resource.DISK.resource(), p.leader().load().expectedUtilizationFor(Resource.DISK, _wantMaxLoad));
-      record.put(Resource.NW_IN.resource(), p.leader().load().expectedUtilizationFor(Resource.NW_IN, _wantMaxLoad));
-      record.put(Resource.NW_OUT.resource(), p.leader().load().expectedUtilizationFor(Resource.NW_OUT, _wantMaxLoad));
-      record.put(MSG_IN, p.leader().load().expectedUtilizationFor(KafkaMetricDef.MESSAGE_IN_RATE, _wantMaxLoad));
+      record.put(Resource.CPU.resource(), p.leader().load().expectedUtilizationFor(Resource.CPU, _wantMaxLoad, _wantAvgLoad));
+      record.put(Resource.DISK.resource(), p.leader().load().expectedUtilizationFor(Resource.DISK, _wantMaxLoad, _wantAvgLoad));
+      record.put(Resource.NW_IN.resource(), p.leader().load().expectedUtilizationFor(Resource.NW_IN, _wantMaxLoad, _wantAvgLoad));
+      record.put(Resource.NW_OUT.resource(), p.leader().load().expectedUtilizationFor(Resource.NW_OUT, _wantMaxLoad, _wantAvgLoad));
+      record.put(MSG_IN, p.leader().load().expectedUtilizationFor(KafkaMetricDef.MESSAGE_IN_RATE, _wantMaxLoad, _wantAvgLoad));
       partitionList.add(record);
     }
     partitionMap.put(RECORDS, partitionList);

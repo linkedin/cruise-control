@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -48,6 +49,7 @@ import org.junit.runners.Parameterized;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.RACK_BY_BROKER;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced2;
+import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced3;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.fail;
@@ -180,6 +182,20 @@ public class ExcludedBrokersForReplicaMoveTest {
     // Test: With all brokers excluded, balance not satisfiable, one dead brokers (No exception, No proposal
     // for excluded brokers, Expected to look optimized)
     p.add(params(3, ReplicaDistributionGoal.class, excludeAllBrokers, null, unbalanced2(), deadBroker0, true));
+
+    // ============LeaderReplicaDistributionGoal============
+    // Test: With single excluded broker, satisfiable cluster, no dead broker (No exception, Some proposal for
+    // excluded broker, Expected to look optimized)
+    p.add(params(0, LeaderReplicaDistributionGoal.class, excludeB1, null, unbalanced3(), noDeadBroker, true));
+    // Test: With single excluded broker, satisfiable cluster, one dead broker (No exception, Some proposal for
+    // excluded broker, Expected to look optimized)
+    p.add(params(1, LeaderReplicaDistributionGoal.class, excludeB1, null, unbalanced3(), deadBroker0, true));
+    // Test: With all brokers excluded, satisfiable cluster, no dead broker (No exception, Some proposal
+    // for excluded brokers, Expected to look optimized)
+    p.add(params(2, LeaderReplicaDistributionGoal.class, excludeAllBrokers, null, unbalanced3(), noDeadBroker, true));
+    // Test: With all brokers excluded, satisfiable cluster, one dead broker (No exception, Some proposal
+    // for excluded brokers, Expected to look optimized)
+    p.add(params(3, LeaderReplicaDistributionGoal.class, excludeB2, null, unbalanced3(), deadBroker0, true));
 
     return p;
   }

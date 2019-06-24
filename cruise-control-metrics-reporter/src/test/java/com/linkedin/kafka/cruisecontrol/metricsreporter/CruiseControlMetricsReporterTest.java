@@ -72,7 +72,7 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     props.setProperty(KafkaConfig.ListenersProp(), "PLAINTEXT://127.0.0.1:" + port);
     props.setProperty(CruiseControlMetricsReporterConfig.config(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG),
                       "127.0.0.1:" + port);
-    props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTING_INTERVAL_MS_CONFIG, "100");
+    props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG, "100");
     props.setProperty(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_TOPIC_CONFIG, TOPIC);
     props.setProperty(KafkaConfig.LogFlushIntervalMessagesProp(), "1");
     props.setProperty(KafkaConfig.OffsetsTopicReplicationFactorProp(), "1");
@@ -90,7 +90,7 @@ public class CruiseControlMetricsReporterTest extends AbstractKafkaClientsIntegr
     setSecurityConfigs(props, "consumer");
     Consumer<String, CruiseControlMetric> consumer = new KafkaConsumer<>(props);
 
-    consumer.subscribe(Collections.singletonList(TOPIC));
+    consumer.subscribe(Collections.singleton(TOPIC));
     long startMs = System.currentTimeMillis();
     HashSet<Integer> expectedMetricTypes = new HashSet<>(Arrays.asList((int) ALL_TOPIC_BYTES_IN.id(),
                                                                        (int) ALL_TOPIC_BYTES_OUT.id(),

@@ -457,7 +457,8 @@ public class ClusterModel implements Serializable {
    * {@link #untrackSortedReplicas(String)} to release memory.
    *
    * @param sortName the name of the sorted replicas.
-   * @param scoreFunction the score function to sort the replicas with the same priority.
+   * @param scoreFunction the score function to sort the replicas with the same priority, replicas are sorted in ascending
+   *                      order of score.
    * @see SortedReplicas
    */
   public void trackSortedReplicas(String sortName, Function<Replica, Double> scoreFunction) {
@@ -483,7 +484,8 @@ public class ClusterModel implements Serializable {
    *
    * @param sortName the name of the sorted replicas.
    * @param priorityFunc the priority function to sort the replicas
-   * @param scoreFunc the score function to sort the replicas with the same priority.
+   * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
+   *                  order of score.
    * @see SortedReplicas
    */
   public void trackSortedReplicas(String sortName,
@@ -513,7 +515,8 @@ public class ClusterModel implements Serializable {
    * @param sortName the name of the sorted replicas.
    * @param selectionFunc the selection function to decide which replicas to include in the sort.
    * @param priorityFunc the priority function to sort the replicas
-   * @param scoreFunc the score function to sort the replicas with the same priority.
+   * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
+   *                  order of score.
    * @see SortedReplicas
    */
   public void trackSortedReplicas(String sortName,
@@ -570,6 +573,15 @@ public class ClusterModel implements Serializable {
       numTopicReplicas += rack.numTopicReplicas(topic);
     }
     return numTopicReplicas;
+  }
+
+  /**
+   * Get the number of leader replicas in cluster.
+   *
+   * @return Number of leader replicas in cluster.
+   */
+  public int numLeaderReplicas() {
+    return _partitionsByTopicPartition.size();
   }
 
   /**
@@ -740,8 +752,8 @@ public class ClusterModel implements Serializable {
 
   /**
    * Get a list of sorted (in ascending order by resource) alive brokers having utilization under:
-   * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#_isHostResource} and
-   * {@link Resource#_isBrokerResource}). Utilization threshold might be any capacity constraint thresholds such as
+   * (given utilization threshold) * (broker and/or host capacity (see {@link Resource#isHostResource} and
+   * {@link Resource#isBrokerResource}). Utilization threshold might be any capacity constraint thresholds such as
    * balance or capacity.
    *
    * @param resource             Resource for which brokers will be sorted.
@@ -834,12 +846,13 @@ public class ClusterModel implements Serializable {
    * Sort the partitions in the cluster by the utilization of the given resource.
    * @param resource the resource type.
    * @param wantMaxLoad True if the requested utilization represents the peak load, false otherwise.
+   * @param wantAvgLoad True if the requested utilization represents the avg load, false otherwise.
    * @return a list of partitions sorted by utilization of the given resource.
    */
-  public List<Partition> replicasSortedByUtilization(Resource resource, boolean wantMaxLoad) {
+  public List<Partition> replicasSortedByUtilization(Resource resource, boolean wantMaxLoad, boolean wantAvgLoad) {
     List<Partition> partitionList = new ArrayList<>(_partitionsByTopicPartition.values());
-    partitionList.sort((o1, o2) -> Double.compare(o2.leader().load().expectedUtilizationFor(resource, wantMaxLoad),
-                                                  o1.leader().load().expectedUtilizationFor(resource, wantMaxLoad)));
+    partitionList.sort((o1, o2) -> Double.compare(o2.leader().load().expectedUtilizationFor(resource, wantMaxLoad, wantAvgLoad),
+                                                  o1.leader().load().expectedUtilizationFor(resource, wantMaxLoad, wantAvgLoad)));
     return partitionList;
   }
 

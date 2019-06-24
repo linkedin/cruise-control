@@ -23,9 +23,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import kafka.admin.AdminUtils;
-import kafka.admin.BrokerMetadata;
 import kafka.admin.RackAwareMode;
-import kafka.common.TopicAndPartition;
 import kafka.log.LogConfig;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -50,15 +48,9 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Option;
 import scala.collection.JavaConversions;
-import scala.collection.JavaConverters;
-import scala.collection.Seq;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureNoPartitionUnderPartitionReassignment;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicNotUnderPartitionReassignment;
-import static org.apache.kafka.common.requests.MetadataResponse.TopicMetadata;
-import static org.apache.kafka.common.requests.MetadataResponse.PartitionMetadata;
 
 /**
  * The sample store that implements the {@link SampleStore}. It stores the partition metric samples and broker metric
@@ -99,6 +91,7 @@ public class KafkaSampleStore implements SampleStore {
   protected static final int DEFAULT_BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT = 32;
   protected static final long DEFAULT_MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = 3600000L;
   protected static final long DEFAULT_MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = 3600000L;
+  protected static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
   protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   protected static final Random RANDOM = new Random();
@@ -161,7 +154,7 @@ public class KafkaSampleStore implements SampleStore {
     _metricProcessorExecutor = Executors.newFixedThreadPool(numProcessingThreads);
     _consumers = new ArrayList<>(numProcessingThreads);
     for (int i = 0; i < numProcessingThreads; i++) {
-      _consumers.add(createConsumers(config));
+      _consumers.add(createConsumer(config));
     }
 
     _producer = createProducer(config);
@@ -173,6 +166,10 @@ public class KafkaSampleStore implements SampleStore {
   protected KafkaProducer<byte[], byte[]> createProducer(Map<String, ?> config) {
     Properties producerProps = new Properties();
     producerProps.putAll(config);
+    String reconnectBackoffMs = (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG);
+    if (reconnectBackoffMs == null) {
+      reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
+    }
     producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
                               (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
     producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_CLIENT_ID);
@@ -184,28 +181,35 @@ public class KafkaSampleStore implements SampleStore {
     producerProps.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
     producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
+    producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);
     return new KafkaProducer<>(producerProps);
   }
 
-  protected KafkaConsumer<byte[], byte[]> createConsumers(Map<String, ?> config) {
-      Properties consumerProps = new Properties();
-      consumerProps.putAll(config);
-      long randomToken = RANDOM.nextLong();
-      consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                                (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
-      consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KafkaCruiseControlSampleStore" + randomToken);
-      consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, CONSUMER_CLIENT_ID + randomToken);
-      consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-      consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-      consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
-      consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-      consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-      return new KafkaConsumer<>(consumerProps);
+  protected KafkaConsumer<byte[], byte[]> createConsumer(Map<String, ?> config) {
+    Properties consumerProps = new Properties();
+    consumerProps.putAll(config);
+    long randomToken = RANDOM.nextLong();
+    String reconnectBackoffMs = (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG);
+    if (reconnectBackoffMs == null) {
+      reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
+    }
+    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                              (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
+    consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KafkaCruiseControlSampleStore" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, CONSUMER_CLIENT_ID + randomToken);
+    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
+    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);
+    return new KafkaConsumer<>(consumerProps);
   }
 
   private void ensureTopicsCreated(Map<String, ?> config) {
     String zkConnect = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect);
+    boolean zkSecurityEnabled = Boolean.parseBoolean((String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG));
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect, zkSecurityEnabled);
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
       long partitionSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
@@ -235,93 +239,8 @@ public class KafkaSampleStore implements SampleStore {
                          replicationFactor, _partitionSampleStoreTopicPartitionCount);
       ensureTopicCreated(zkUtils, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor, _brokerSampleStoreTopicPartitionCount);
-      maybeIncreaseTopicReplicationFactor(zkUtils, replicationFactor,
-                                          new HashSet<>(Arrays.asList(_partitionMetricSampleStoreTopic, _brokerMetricSampleStoreTopic)));
     } finally {
       KafkaCruiseControlUtils.closeZkUtilsWithTimeout(zkUtils, ZK_UTILS_CLOSE_TIMEOUT_MS);
-    }
-  }
-
-  /**
-   * Increase the replication factor of Kafka topics through adding new replicas in a rack-aware, round-robin way.
-   * There are two scenarios that rack awareness property is not guaranteed.
-   * <ul>
-   *   <li> If Zookeeper does not have rack information about brokers, then it is only guaranteed that new replicas are
-   *   added to brokers which do not currently host the partition.</li>
-   *   <li> If replication factor to set for the topic is larger than number of racks in the cluster, then rack awareness
-   *   property is ignored.</li>
-   * </ul>
-   *
-   * @param zkUtils ZkUtils class to use to increase replication factor.
-   * @param replicationFactor The replication factor to set for the topic.
-   * @param topics The topics to check.
-   */
-  private void maybeIncreaseTopicReplicationFactor(ZkUtils zkUtils,
-                                                   int replicationFactor,
-                                                   Set<String> topics) {
-    if (!ensureNoPartitionUnderPartitionReassignment(zkUtils)) {
-      LOG.warn("There are ongoing partition reassignments, skip checking replication factor of topics {}.", topics);
-      return;
-    }
-    Map<String, List<Integer>> brokersByRack = new HashMap<>();
-    Map<Integer, String> rackByBroker = new HashMap<>();
-    for (BrokerMetadata bm :
-         JavaConversions.seqAsJavaList(AdminUtils.getBrokerMetadatas(zkUtils, RackAwareMode.Enforced$.MODULE$, Option.empty()))) {
-      // If the rack is not specified, we use the broker id info as rack info.
-      String rack = bm.rack().isEmpty() ? String.valueOf(bm.id()) : bm.rack().get();
-      brokersByRack.putIfAbsent(rack, new ArrayList<>());
-      brokersByRack.get(rack).add(bm.id());
-      rackByBroker.put(bm.id(), rack);
-    }
-
-    if (replicationFactor > brokersByRack.size()) {
-      if (_skipSampleStoreTopicRackAwarenessCheck) {
-        LOG.warn("Target replication factor for topics " + topics + " is larger than number of racks in cluster, new replica maybe"
-                 + " added in none rack-aware way.");
-      } else {
-        throw new RuntimeException("Unable to increase topics " + topics + " replica factor to " + replicationFactor
-                                   + " since there are only " + brokersByRack.size() + " racks in the cluster.");
-      }
-    }
-
-    scala.collection.mutable.Map<TopicAndPartition, Seq<Object>> newReplicaAssignment = new scala.collection.mutable.HashMap<>();
-    scala.collection.Set<TopicMetadata> topicMetadatas = AdminUtils.fetchTopicMetadataFromZk(JavaConversions.asScalaSet(topics), zkUtils,
-                                                                                             ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT));
-    for (scala.collection.Iterator<TopicMetadata> iter = topicMetadatas.iterator(); iter.hasNext();) {
-      TopicMetadata topicMetadata = iter.next();
-      String topic = topicMetadata.topic();
-      List<String> racks = new ArrayList<>(brokersByRack.keySet());
-      int[] cursors = new int[racks.size()];
-      int rackCursor = 0;
-      for (PartitionMetadata pm : topicMetadata.partitionMetadata()) {
-        if (pm.replicas().size() < replicationFactor) {
-          List<Object> newAssignedReplica = new ArrayList<>();
-          Set<String> currentOccupiedRack = new HashSet<>();
-          // Make sure the current replicas are in new replica list.
-          pm.replicas().forEach(node -> {
-            newAssignedReplica.add(node.id());
-            currentOccupiedRack.add(rackByBroker.get(node.id()));
-          });
-          // Add new replica to partition in rack-aware(if possible), round-robin way.
-          while (newAssignedReplica.size() < replicationFactor) {
-            if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
-              String rack = racks.get(rackCursor);
-              int cursor = cursors[rackCursor];
-              newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
-              currentOccupiedRack.add(rack);
-              cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
-            }
-            rackCursor = (rackCursor + 1) % racks.size();
-          }
-          newReplicaAssignment.put(new TopicAndPartition(topic, pm.partition()),
-              JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
-        }
-      }
-    }
-    if (newReplicaAssignment.nonEmpty()) {
-      zkUtils.updatePartitionReassignmentData(newReplicaAssignment);
-      LOG.info(String.format("The replication factor of topic partition %s is increased to %d.",
-                             newReplicaAssignment.keySet(), replicationFactor));
     }
   }
 
@@ -366,7 +285,7 @@ public class KafkaSampleStore implements SampleStore {
                                                        ListenerName.forSecurityProtocol(SecurityProtocol.PLAINTEXT)).head();
         maybeIncreaseTopicPartitionCount(zkUtils, topic, topicMetadata, partitionCount);
       }  catch (RuntimeException re) {
-        LOG.error("Skip updating topic " +  topic + " configuration due to failure:" + re.getMessage() + ".");
+        LOG.error("Skip updating configuration of topic " +  topic + " due to exception.", re);
       }
     }
   }

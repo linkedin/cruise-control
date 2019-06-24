@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
@@ -40,6 +41,7 @@ import java.util.Collection;
 import java.util.List;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
@@ -54,6 +56,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.Exe
  */
 public class Executor {
   private static final Logger LOG = LoggerFactory.getLogger(Executor.class);
+  private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
   private static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
   // The maximum time to wait for a leader movement to finish. A leader movement will be marked as failed if
@@ -139,7 +142,8 @@ public class Executor {
 
     _time = time;
     String zkConnect = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    _zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect);
+    boolean zkSecurityEnabled = config.getBoolean(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
+    _zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect, zkSecurityEnabled);
     _executionTaskManager =
         new ExecutionTaskManager(config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG),
                                  config.getInt(KafkaCruiseControlConfig.NUM_CONCURRENT_LEADER_MOVEMENTS_CONFIG),
@@ -232,6 +236,26 @@ public class Executor {
    */
   public Set<Integer> recentlyRemovedBrokers() {
     return Collections.unmodifiableSet(_latestRemoveStartTimeMsByBrokerId.keySet());
+  }
+
+  /**
+   * Drop the given brokers from the recently removed brokers.
+   *
+   * @param brokersToDrop Brokers to drop from the {@link #_latestRemoveStartTimeMsByBrokerId}.
+   * @return {@code true} if any elements were removed from {@link #_latestRemoveStartTimeMsByBrokerId}.
+   */
+  public boolean dropRecentlyRemovedBrokers(Set<Integer> brokersToDrop) {
+    return _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> (brokersToDrop.contains(entry.getKey())));
+  }
+
+  /**
+   * Drop the given brokers from the recently demoted brokers.
+   *
+   * @param brokersToDrop Brokers to drop from the {@link #_latestDemoteStartTimeMsByBrokerId}.
+   * @return {@code true} if any elements were removed from {@link #_latestDemoteStartTimeMsByBrokerId}.
+   */
+  public boolean dropRecentlyDemotedBrokers(Set<Integer> brokersToDrop) {
+    return _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> (brokersToDrop.contains(entry.getKey())));
   }
 
   /**
@@ -402,6 +426,7 @@ public class Executor {
    */
   public synchronized void userTriggeredStopExecution() {
     if (stopExecution()) {
+      LOG.info("User requested to stop the ongoing proposal execution.");
       _numExecutionStoppedByUser.incrementAndGet();
       _executionStoppedByUser.set(true);
     }
@@ -415,6 +440,7 @@ public class Executor {
   private synchronized boolean stopExecution() {
     if (_stopRequested.compareAndSet(false, true)) {
       _numExecutionStopped.incrementAndGet();
+      _executionTaskManager.setStopRequested();
       return true;
     }
     return false;
@@ -458,17 +484,16 @@ public class Executor {
     private Set<Integer> _recentlyRemovedBrokers;
     private final long _executionStartMs;
     private Throwable _executionException;
-    private final UserTaskManager.UserTaskInfo _userTaskInfo;
 
     ProposalExecutionRunnable(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers, Collection<Integer> removedBrokers) {
       _loadMonitor = loadMonitor;
       _state = NO_TASK_IN_PROGRESS;
       _executionStartMs = _time.milliseconds();
       _executionException = null;
+
       if (_userTaskManager == null) {
-        throw new IllegalStateException("UserTaskManager not set, cannot retrieve UserTaskInfo");
+        throw new IllegalStateException("UserTaskManager is not specified in Executor.");
       }
-      _userTaskInfo = _userTaskManager.getUserTaskById(_uuid);
 
       if (demotedBrokers != null) {
         // Add/overwrite the latest demotion time of demoted brokers (if any).
@@ -492,8 +517,17 @@ public class Executor {
      * Start the actual execution of the proposals in order: First move replicas, then transfer leadership.
      */
     private void execute() {
+      UserTaskManager.UserTaskInfo userTaskInfo;
+      // If the task is triggered from a user request, mark the task to be in-execution state in user task manager and
+      // retrieve the associated user task information.
+      if (AnomalyType.cachedValues().stream().anyMatch(type -> _uuid.startsWith(type.toString()))) {
+        userTaskInfo = null;
+      } else {
+        userTaskInfo = _userTaskManager.markTaskInExecution(_uuid);
+      }
       _state = STARTING_EXECUTION;
       _executorState = ExecutorState.executionStarted(_uuid, _recentlyDemotedBrokers, _recentlyRemovedBrokers);
+      OPERATION_LOG.info("Task [{}] execution starts.", _uuid);
       try {
         // Pause the metric sampling to avoid the loss of accuracy during execution.
         while (true) {
@@ -541,16 +575,21 @@ public class Executor {
         LOG.error("Executor got exception during execution", t);
         _executionException = t;
       } finally {
+        // If the finished task is triggered by user request, update task status in user task manager.
+        if (userTaskInfo != null) {
+          _userTaskManager.markTaskFinishExecution(_uuid);
+        }
         _loadMonitor.resumeMetricSampling(String.format("Resumed-By-Cruise-Control-After-Completed-Execution (Date: %s)", currentUtcDate()));
 
         // If execution encountered exception and isn't stopped, it's considered successful.
         boolean executionSucceeded = _executorState.state() != STOPPING_EXECUTION && _executionException == null;
         // If we are here, either we succeeded, or we are stopped or had exception. Send notification to user.
         ExecutorNotification notification = new ExecutorNotification(_executionStartMs, _time.milliseconds(),
-                                                                     _userTaskInfo, _uuid, _stopRequested.get(),
+                                                                     userTaskInfo, _uuid, _stopRequested.get(),
                                                                      _executionStoppedByUser.get(),
                                                                      _executionException, executionSucceeded);
         _executorNotifier.sendNotification(notification);
+        OPERATION_LOG.info("Task [{}] execution finishes.", _uuid);
         // Clear completed execution.
         clearCompletedExecution();
       }

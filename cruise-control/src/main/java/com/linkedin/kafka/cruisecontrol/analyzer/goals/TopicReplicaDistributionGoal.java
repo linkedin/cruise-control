@@ -35,8 +35,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils.EPSILON;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal.ChangeType.ADD;
-import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal.ChangeType.REMOVE;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionAbstractGoal.ChangeType.*;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 
 
@@ -59,7 +58,9 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
   private final Map<String, Set<Integer>> _brokerIdsAboveBalanceUpperLimitByTopic;
   private final Map<String, Set<Integer>> _brokerIdsUnderBalanceLowerLimitByTopic;
+  // Must contain only the topics to be rebalanced.
   private final Map<String, Double> _avgTopicReplicasOnAliveBroker;
+  // Must contain all topics to ensure that the lower priority goals work w/o an NPE.
   private final Map<String, Integer> _balanceUpperLimitByTopic;
   private final Map<String, Integer> _balanceLowerLimitByTopic;
 
@@ -247,11 +248,15 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     Set<String> topicsToRebalance = topicsToRebalance(clusterModel, optimizationOptions.excludedTopics());
 
     // Initialize the average replicas on an alive broker.
-    for (String topic : topicsToRebalance) {
+    for (String topic : clusterModel.topics()) {
       int numTopicReplicas = clusterModel.numTopicReplicas(topic);
       _avgTopicReplicasOnAliveBroker.put(topic, (numTopicReplicas / (double) clusterModel.aliveBrokers().size()));
       _balanceUpperLimitByTopic.put(topic, balanceUpperLimit(topic, optimizationOptions));
       _balanceLowerLimitByTopic.put(topic, balanceLowerLimit(topic, optimizationOptions));
+      // Retain only the topics to rebalance in _avgTopicReplicasOnAliveBroker
+      if (!topicsToRebalance.contains(topic)) {
+        _avgTopicReplicasOnAliveBroker.remove(topic);
+      }
     }
 
     _selfHealingDeadBrokersOnly = false;
@@ -307,11 +312,16 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
         throw ofe;
       }
       _selfHealingDeadBrokersOnly = true;
-      LOG.warn("Ignoring topic replica balance limit to move replicas from dead brokers to healthy ones.");
+      LOG.info("Ignoring topic replica balance limit to move replicas from dead brokers to healthy ones.");
       return;
     }
 
     finish();
+  }
+
+  @Override
+  public void finish() {
+    _finished = true;
   }
 
   private static boolean skipBrokerRebalance(Broker broker,
@@ -336,6 +346,10 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     return false;
   }
 
+  private boolean isTopicExcludedFromRebalance(String topic) {
+    return _avgTopicReplicasOnAliveBroker.get(topic) == null;
+  }
+
   /**
    * Rebalance the given broker without violating the constraints of the current goal and optimized goals.
    *
@@ -353,8 +367,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
               _balanceUpperLimitByTopic);
 
     for (String topic : broker.topics()) {
-      if (_avgTopicReplicasOnAliveBroker.get(topic) == null) {
-        // Topic is excluded from the rebalance.
+      if (isTopicExcludedFromRebalance(topic)) {
         continue;
       }
 

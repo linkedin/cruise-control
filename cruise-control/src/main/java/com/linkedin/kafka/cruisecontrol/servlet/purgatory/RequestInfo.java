@@ -22,8 +22,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.*;
 /**
  * A class to represent request information in purgatory. Possible status of requests, with supported transitions:
  * <ul>
- * <li>{@link ReviewStatus#PENDING_REVIEW} -&gt; {@link ReviewStatus#APPROVED}, {@link ReviewStatus#DISCARDED}</li>
- * <li>{@link ReviewStatus#APPROVED} -&gt; {@link ReviewStatus#DISCARDED}, {@link ReviewStatus#SUBMITTED}</li>
+ *   <li>{@link ReviewStatus#PENDING_REVIEW} -&gt; {@link ReviewStatus#APPROVED}, {@link ReviewStatus#DISCARDED}</li>
+ *   <li>{@link ReviewStatus#APPROVED} -&gt; {@link ReviewStatus#DISCARDED}, {@link ReviewStatus#SUBMITTED}</li>
  * </ul>
  */
 public class RequestInfo {

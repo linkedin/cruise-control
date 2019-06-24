@@ -27,6 +27,7 @@ class TrainingFetcher extends MetricFetcher {
   private final Timer _fetcherTimer;
   private final Meter _fetcherFailureRate;
   private final MetricDef _metricDef;
+  private final long _timeout;
 
   TrainingFetcher(MetricSampler metricSampler,
                   Cluster cluster,
@@ -46,6 +47,7 @@ class TrainingFetcher extends MetricFetcher {
     _metricDef = metricDef;
     _fetcherTimer = fetcherTimer;
     _fetcherFailureRate = fetcherFailureRate;
+    _timeout = System.currentTimeMillis() + (endTimeMs - startTimeMs) / 2;
   }
 
   @Override
@@ -55,7 +57,7 @@ class TrainingFetcher extends MetricFetcher {
     try {
       MetricSampler.Samples samples =
           _metricSampler.getSamples(_cluster, _assignedPartitions, _startTimeMs, _endTimeMs,
-                                    MetricSampler.SamplingMode.BROKER_METRICS_ONLY, _metricDef);
+                                    MetricSampler.SamplingMode.BROKER_METRICS_ONLY, _metricDef, _timeout);
       ModelParameters.addMetricObservation(samples.brokerMetricSamples());
 
       _sampleStore.storeSamples(samples);

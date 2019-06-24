@@ -27,8 +27,6 @@ import org.apache.kafka.common.TopicPartition;
  * replicas. A rack object is created as part of a cluster structure.
  */
 public class Rack implements Serializable {
-  private static final String RACK_ID = "rackid";
-  private static final String HOSTS = "hosts";
   private static final long serialVersionUID = 6866290448556002509L;
   private final String _id;
   private final Map<String, Host> _hosts;
@@ -289,8 +287,8 @@ public class Rack implements Serializable {
       hostList.add(host.getJsonStructure());
     }
     Map<String, Object> rackMap = new HashMap<>();
-    rackMap.put(RACK_ID, _id);
-    rackMap.put(HOSTS, hostList);
+    rackMap.put(ModelUtils.RACK_ID, _id);
+    rackMap.put(ModelUtils.HOSTS, hostList);
     return rackMap;
   }
 

@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
@@ -104,9 +105,10 @@ public class DeterministicClusterTest {
                                                     NetworkInboundUsageDistributionGoal.class.getName(),
                                                     NetworkOutboundUsageDistributionGoal.class.getName(),
                                                     CpuUsageDistributionGoal.class.getName(),
+                                                    LeaderReplicaDistributionGoal.class.getName(),
+                                                    LeaderBytesInDistributionGoal.class.getName(),
                                                     TopicReplicaDistributionGoal.class.getName(),
-                                                    PreferredLeaderElectionGoal.class.getName(),
-                                                    LeaderBytesInDistributionGoal.class.getName());
+                                                    PreferredLeaderElectionGoal.class.getName());
 
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(6L));

@@ -39,6 +39,8 @@ import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.APPROVED;
@@ -65,8 +67,11 @@ public class ParameterUtils {
   public static final String DATA_FROM_PARAM = "data_from";
   public static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
   public static final String MAX_LOAD_PARAM = "max_load";
+  public static final String AVG_LOAD_PARAM = "avg_load";
   public static final String GOALS_PARAM = "goals";
   public static final String BROKER_ID_PARAM = "brokerid";
+  public static final String DROP_RECENTLY_REMOVED_BROKERS_PARAM = "drop_recently_removed_brokers";
+  public static final String DROP_RECENTLY_DEMOTED_BROKERS_PARAM = "drop_recently_demoted_brokers";
   public static final String DESTINATION_BROKER_IDS_PARAM = "destination_broker_ids";
   public static final String REVIEW_ID_PARAM = "review_id";
   public static final String REVIEW_IDS_PARAM = "review_ids";
@@ -97,6 +102,9 @@ public class ParameterUtils {
   public static final String REPLICA_MOVEMENT_STRATEGIES_PARAM = "replica_movement_strategies";
   public static final String APPROVE_PARAM = "approve";
   public static final String DISCARD_PARAM = "discard";
+  public static final String REPLICATION_FACTOR_PARAM = "replication_factor";
+  public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
+  public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
   private static final int MAX_REASON_LENGTH = 50;
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
@@ -128,6 +136,7 @@ public class ParameterUtils {
     partitionLoad.add(JSON_PARAM);
     partitionLoad.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     partitionLoad.add(MAX_LOAD_PARAM);
+    partitionLoad.add(AVG_LOAD_PARAM);
     partitionLoad.add(TOPIC_PARAM);
     partitionLoad.add(PARTITION_PARAM);
     partitionLoad.add(MIN_VALID_PARTITION_RATIO_PARAM);
@@ -216,6 +225,7 @@ public class ParameterUtils {
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
     kafkaClusterState.add(JSON_PARAM);
+    kafkaClusterState.add(TOPIC_PARAM);
 
     Set<String> pauseSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     pauseSampling.add(REASON_PARAM);
@@ -238,6 +248,7 @@ public class ParameterUtils {
     userTasks.add(ENTRIES_PARAM);
     userTasks.add(ENDPOINTS_PARAM);
     userTasks.add(TYPES_PARAM);
+    userTasks.add(FETCH_COMPLETED_TASK_PARAM);
 
     Set<String> admin = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     admin.add(JSON_PARAM);
@@ -245,6 +256,8 @@ public class ParameterUtils {
     admin.add(ENABLE_SELF_HEALING_FOR_PARAM);
     admin.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     admin.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    admin.add(DROP_RECENTLY_REMOVED_BROKERS_PARAM);
+    admin.add(DROP_RECENTLY_DEMOTED_BROKERS_PARAM);
     admin.add(REVIEW_ID_PARAM);
 
     Set<String> review = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -256,6 +269,13 @@ public class ParameterUtils {
     Set<String> reviewBoard = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     reviewBoard.add(JSON_PARAM);
     reviewBoard.add(REVIEW_IDS_PARAM);
+
+    Set<String> topicConfiguration = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    topicConfiguration.add(JSON_PARAM);
+    topicConfiguration.add(TOPIC_PARAM);
+    topicConfiguration.add(REPLICATION_FACTOR_PARAM);
+    topicConfiguration.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
+    topicConfiguration.add(REVIEW_IDS_PARAM);
 
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
@@ -275,6 +295,7 @@ public class ParameterUtils {
     validParamNames.put(ADMIN, Collections.unmodifiableSet(admin));
     validParamNames.put(REVIEW, Collections.unmodifiableSet(review));
     validParamNames.put(REVIEW_BOARD, Collections.unmodifiableSet(reviewBoard));
+    validParamNames.put(TOPIC_CONFIGURATION, Collections.unmodifiableSet(topicConfiguration));
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
@@ -285,10 +306,10 @@ public class ParameterUtils {
   public static EndPoint endPoint(HttpServletRequest request) {
     List<EndPoint> supportedEndpoints;
     switch (request.getMethod()) {
-      case "GET":
+      case GET_METHOD:
         supportedEndpoints = EndPoint.getEndpoint();
         break;
-      case "POST":
+      case POST_METHOD:
         supportedEndpoints = EndPoint.postEndpoint();
         break;
       default:
@@ -362,6 +383,10 @@ public class ParameterUtils {
     return getBooleanParam(request, ALLOW_CAPACITY_ESTIMATION_PARAM, true);
   }
 
+  static boolean skipRackAwarenessCheck(HttpServletRequest request) {
+    return getBooleanParam(request, SKIP_RACK_AWARENESS_CHECK_PARAM, false);
+  }
+
   private static boolean excludeBrokers(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
     boolean isKafkaAssignerMode = isKafkaAssignerMode(request);
     boolean excludeBrokers = getBooleanParam(request, parameter, defaultIfMissing);
@@ -397,6 +422,10 @@ public class ParameterUtils {
 
   static boolean wantMaxLoad(HttpServletRequest request) {
     return getBooleanParam(request, MAX_LOAD_PARAM, false);
+  }
+
+  static boolean wantAvgLoad(HttpServletRequest request) {
+    return getBooleanParam(request, AVG_LOAD_PARAM, false);
   }
 
   static boolean isVerbose(HttpServletRequest request) {
@@ -711,6 +740,14 @@ public class ParameterUtils {
     return Collections.unmodifiableSet(brokerIds);
   }
 
+  static Set<Integer> dropRecentlyRemovedBrokers(HttpServletRequest request) throws UnsupportedEncodingException {
+    return Collections.unmodifiableSet(parseParamToIntegerSet(request, DROP_RECENTLY_REMOVED_BROKERS_PARAM));
+  }
+
+  static Set<Integer> dropRecentlyDemotedBrokers(HttpServletRequest request) throws UnsupportedEncodingException {
+    return Collections.unmodifiableSet(parseParamToIntegerSet(request, DROP_RECENTLY_DEMOTED_BROKERS_PARAM));
+  }
+
   /**
    * Default: An empty set.
    */
@@ -790,7 +827,9 @@ public class ParameterUtils {
    * Default: An empty set.
    */
   public static Set<EndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
-    Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM);
+    Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM).stream()
+                                                                                 .map(String::toUpperCase)
+                                                                                 .collect(Collectors.toSet());
 
     Set<EndPoint> endPoints = new HashSet<>();
     for (EndPoint endPoint : EndPoint.cachedValues()) {
@@ -829,7 +868,7 @@ public class ParameterUtils {
   }
 
   /**
-   * Skip hard goal check in kafka_assigner mode,
+   * Skip hard goal check in kafka_assigner mode.
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
     return isKafkaAssignerMode(request) || getBooleanParam(request, SKIP_HARD_GOAL_CHECK_PARAM, false);
@@ -841,6 +880,18 @@ public class ParameterUtils {
 
   static boolean excludeFollowerDemotion(HttpServletRequest request) {
     return getBooleanParam(request, EXCLUDE_FOLLOWER_DEMOTION_PARAM, false);
+  }
+
+  static short replicationFactor(HttpServletRequest request) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_FACTOR_PARAM);
+    if (parameterString == null) {
+      throw new IllegalArgumentException("Topic's replication factor is not specified.");
+    }
+    return Short.parseShort(request.getParameter(parameterString));
+  }
+
+  static boolean fetchCompletedTask(HttpServletRequest request) {
+    return getBooleanParam(request, FETCH_COMPLETED_TASK_PARAM, false);
   }
 
   public enum DataFrom {

@@ -10,6 +10,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderBytesInDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.LeaderReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkInboundUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.NetworkOutboundCapacityGoal;
@@ -27,6 +28,7 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStr
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PostponeUrpReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeLargeReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.PrioritizeSmallReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.DefaultMetricSamplerPartitionAssignor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.KafkaSampleStore;
@@ -224,7 +226,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "default implementation is a file based solution.";
 
   /**
-   * <code>min.monitored.partition.percentage</code>
+   * <code>min.valid.partition.ratio</code>
    */
   public static final String MIN_VALID_PARTITION_RATIO_CONFIG = "min.valid.partition.ratio";
   private static final String MIN_VALID_PARTITION_RATIO_DOC = "The minimum percentage of the total partitions " +
@@ -325,6 +327,14 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "average replica count of all brokers.";
 
   /**
+   * <code>leader.replica.count.balance.threshold</code>
+   */
+  public static final String LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "leader.replica.count.balance.threshold";
+  private static final String LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_DOC = "The maximum allowed extent of unbalance for "
+      + "leader replica distribution. For example, 1.10 means the highest leader replica count of a broker should not be "
+      + "above 1.10x of average leader replica count of all alive brokers.";
+
+  /**
    * <code>topic.replica.count.balance.threshold</code>
    */
   public static final String TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG = "topic.replica.count.balance.threshold";
@@ -338,8 +348,8 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG = "goal.violation.distribution.threshold.multiplier";
   private static final String GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_DOC = "The multiplier applied to the threshold"
       + " of distribution goals used for detecting and fixing anomalies. For example, 2.50 means the threshold for each "
-      + "distribution goal (i.e. Replica Distribution, Resource Distribution, and Topic Replica Distribution Goals) will "
-      + "be 2.50x of the value used in manual goal optimization requests (e.g. rebalance).";
+      + "distribution goal (i.e. Replica Distribution, Leader Replica Distribution, Resource Distribution, and Topic Replica "
+      + "Distribution Goals) will be 2.50x of the value used in manual goal optimization requests (e.g. rebalance).";
 
   /**
    * <code>cpu.capacity.threshold</code>
@@ -446,6 +456,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String ZOOKEEPER_CONNECT_DOC = "The zookeeper path used by the Kafka cluster.";
 
   /**
+   * <code>zookeeper.security.enabled</code>
+   */
+  public static final String ZOOKEEPER_SECURITY_ENABLED_CONFIG = "zookeeper.security.enabled";
+  private static final String ZOOKEEPER_SECURITY_ENABLED_DOC = "Specify if zookeeper is secured, true or false";
+
+  /**
    * <code>num.concurrent.partition.movements.per.broker</code>
    */
   public static final String NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG = "num.concurrent.partition.movements.per.broker";
@@ -513,6 +529,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String DEFAULT_GOALS_DOC = "The list of goals that will be used by default if no goal list "
       + "is provided. This list of goal will also be used for proposal pre-computation. If default.goals is not "
       + "specified, it will be default to goals config.";
+
+  /**
+   * <code>self.healing.goals</code>
+   */
+  public static final String SELF_HEALING_GOALS_CONFIG = "self.healing.goals";
+  private static final String SELF_HEALING_GOALS_DOC = "The list of goals to be used for self-healing relevant anomalies."
+      + " If empty, uses the default.goals for self healing.";
 
   /**
    * <code>anomaly.notifier.class</code>
@@ -615,11 +638,48 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "persisted samples can be reloaded from the sample store to Kafka Cruise Control.";
 
   /**
+   * <code>completed.kafka.monitor.user.task.retention.time.ms</code>
+   */
+  public static final String COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG =
+      "completed.kafka.monitor.user.task.retention.time.ms";
+  private static final String COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
+      + "to store the response and access details of a completed kafka monitoring user task. If this config is missing, "
+      + "the value set in config completed.user.task.retention.time.ms will be used.";
+
+  /**
+   * <code>completed.cruise.control.monitor.user.task.retention.time.ms</code>
+   */
+  public static final String COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG =
+      "completed.cruise.control.monitor.user.task.retention.time.ms";
+  private static final String COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
+      + "to store the response and access details of a completed cruise control monitoring user task. If this config is missing, "
+      + "the value set in config completed.user.task.retention.time.ms will be used.";
+
+  /**
+   * <code>completed.kafka.admin.user.task.retention.time.ms</code>
+   */
+  public static final String COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG =
+      "completed.kafka.admin.user.task.retention.time.ms";
+  private static final String COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
+      + "to store the response and access details of a completed kafka administration user task. If this config is missing, "
+      + "the value set in config completed.user.task.retention.time.ms will be used.";
+
+  /**
+   * <code>completed.cruise.control.admin.user.task.retention.time.ms</code>
+   */
+  public static final String COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG =
+      "completed.cruise.control.admin.user.task.retention.time.ms";
+  private static final String COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds "
+      + "to store the response and access details of a completed cruise control administration user task. If this config is "
+      + "missing, the value set in config completed.user.task.retention.time.ms will be used.";
+
+  /**
    * <code>completed.user.task.retention.time.ms</code>
    */
   public static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG = "completed.user.task.retention.time.ms";
-  private static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC = "The maximum time in milliseconds to store the"
-      + " response and access details of a completed user task.";
+  private static final String COMPLETED_USER_TASK_RETENTION_TIME_MS_DOC = "The fallback maximum time in milliseconds to store "
+      + "the response and access details of a completed user task if more specific config for certain user task type is not set"
+      + " (e.g. COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG).";
 
   /**
    * <code>demotion.history.retention.time.ms</code>
@@ -636,11 +696,46 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + " removal history of brokers.";
 
   /**
+   * <code>max.cached.completed.kafka.monitor.user.tasks</code>
+   */
+  public static final String MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG = "max.cached.completed.kafka.monitor.user.tasks";
+  private static final String MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_DOC = "The maximum number of completed kafka monitoring "
+      + "user tasks for which the response and access details will be cached. If this config is missing, the value set in config "
+      + "max.cached.completed.user.tasks will be used.";
+
+  /**
+   * <code>max.cached.completed.cruise.control.monitor.user.tasks</code>
+   */
+  public static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_CONFIG =
+      "max.cached.completed.cruise.control.monitor.user.tasks";
+  private static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_DOC = "The maximum number of completed "
+      + "cruise control monitoring user tasks for which the response and access details will be cached. If this config is "
+      + "missing, the value set in config max.cached.completed.user.tasks will be used.";
+
+  /**
+   * <code>max.cached.completed.kafka.admin.user.tasks</code>
+   */
+  public static final String MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_CONFIG = "max.cached.completed.kafka.admin.user.tasks";
+  private static final String MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_DOC = "The maximum number of completed kafka administration "
+      + "user tasks for which the response and access details will be cached. If this config is missing, the value set in config "
+      + "max.cached.completed.user.tasks will be used.";
+
+  /**
+   * <code>max.cached.completed.cruise.control.admin.user.tasks</code>
+   */
+  public static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_CONFIG =
+      "max.cached.completed.cruise.control.admin.user.tasks";
+  private static final String MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_DOC = "The maximum number of completed "
+      + "cruise control administration user tasks for which the response and access details will be cached. If this config is "
+      + "missing, the value set in config max.cached.completed.user.tasks will be used.";
+
+  /**
    * <code>max.cached.completed.user.tasks</code>
    */
   public static final String MAX_CACHED_COMPLETED_USER_TASKS_CONFIG = "max.cached.completed.user.tasks";
-  private static final String MAX_CACHED_COMPLETED_USER_TASKS_DOC = "The maximum number of completed user tasks for "
-      + "which the response and access details will be cached.";
+  private static final String MAX_CACHED_COMPLETED_USER_TASKS_DOC = "The fallback maximum number of completed user tasks of"
+      + "certain type for which the response and access details will be cached. This config will be used if more specific "
+      + "config for certain user task type is not set (e.g. MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG).";
 
   /**
    * <code>max.active.user.tasks</code>
@@ -854,6 +949,26 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.HIGH,
                 BROKER_METRICS_WINDOW_MS_DOC)
+        .define(COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                COMPLETED_KAFKA_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC)
+        .define(COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASK_RETENTION_TIME_MS_DOC)
+        .define(COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                COMPLETED_KAFKA_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC)
+        .define(COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASK_RETENTION_TIME_MS_DOC)
         .define(COMPLETED_USER_TASK_RETENTION_TIME_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 TimeUnit.HOURS.toMillis(24),
@@ -870,8 +985,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.LONG,
                 TimeUnit.HOURS.toMillis(336),
                 atLeast(0),
-                ConfigDef.Importance.MEDIUM,
-                REMOVAL_HISTORY_RETENTION_TIME_MS_DOC)
+                ConfigDef.Importance.MEDIUM, REMOVAL_HISTORY_RETENTION_TIME_MS_DOC)
         .define(TWO_STEP_PURGATORY_RETENTION_TIME_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 TimeUnit.HOURS.toMillis(336),
@@ -882,9 +996,29 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 25,
                 atLeast(1),
                 ConfigDef.Importance.MEDIUM, TWO_STEP_PURGATORY_MAX_REQUESTS_DOC)
+        .define(MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                MAX_CACHED_COMPLETED_KAFKA_MONITOR_USER_TASKS_DOC)
+        .define(MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                MAX_CACHED_COMPLETED_CRUISE_CONTROL_MONITOR_USER_TASKS_DOC)
+        .define(MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                MAX_CACHED_COMPLETED_KAFKA_ADMIN_USER_TASKS_DOC)
+        .define(MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_CONFIG,
+                ConfigDef.Type.INT,
+                null,
+                ConfigDef.Importance.MEDIUM,
+                MAX_CACHED_COMPLETED_CRUISE_CONTROL_ADMIN_USER_TASKS_DOC)
         .define(MAX_CACHED_COMPLETED_USER_TASKS_CONFIG,
                 ConfigDef.Type.INT,
-                100,
+                25,
                 atLeast(0),
                 ConfigDef.Importance.MEDIUM,
                 MAX_CACHED_COMPLETED_USER_TASKS_DOC)
@@ -1025,6 +1159,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 atLeast(1),
                 ConfigDef.Importance.HIGH,
                 REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
+        .define(LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                1.10,
+                atLeast(1),
+                ConfigDef.Importance.HIGH,
+                LEADER_REPLICA_COUNT_BALANCE_THRESHOLD_DOC)
         .define(TOPIC_REPLICA_COUNT_BALANCE_THRESHOLD_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 3.00,
@@ -1095,11 +1235,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Importance.MEDIUM,
                 PROPOSAL_EXPIRATION_MS_DOC)
         .define(MAX_REPLICAS_PER_BROKER_CONFIG,
-            ConfigDef.Type.LONG,
-            10000,
-            atLeast(0),
-            ConfigDef.Importance.MEDIUM,
-            MAX_REPLICAS_PER_BROKER_DOC)
+                ConfigDef.Type.LONG,
+                10000,
+                atLeast(0),
+                ConfigDef.Importance.MEDIUM,
+                MAX_REPLICAS_PER_BROKER_DOC)
         .define(NUM_PROPOSAL_PRECOMPUTE_THREADS_CONFIG,
                 ConfigDef.Type.INT,
                 1,
@@ -1107,6 +1247,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Importance.LOW,
                 NUM_PROPOSAL_PRECOMPUTE_THREADS_DOC)
         .define(ZOOKEEPER_CONNECT_CONFIG, ConfigDef.Type.STRING, ConfigDef.Importance.HIGH, ZOOKEEPER_CONNECT_DOC)
+        .define(ZOOKEEPER_SECURITY_ENABLED_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                false,
+                ConfigDef.Importance.HIGH,
+                ZOOKEEPER_SECURITY_ENABLED_DOC)
         .define(NUM_CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_CONFIG,
                 ConfigDef.Type.INT,
                 5,
@@ -1154,6 +1299,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                     .add(NetworkInboundUsageDistributionGoal.class.getName())
                     .add(NetworkOutboundUsageDistributionGoal.class.getName())
                     .add(CpuUsageDistributionGoal.class.getName())
+                    .add(LeaderReplicaDistributionGoal.class.getName())
                     .add(LeaderBytesInDistributionGoal.class.getName())
                     .add(TopicReplicaDistributionGoal.class.getName()).toString(),
                 ConfigDef.Importance.HIGH,
@@ -1178,6 +1324,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Type.LIST,
                 ConfigDef.Importance.HIGH,
                 DEFAULT_GOALS_DOC)
+        .define(SELF_HEALING_GOALS_CONFIG,
+                ConfigDef.Type.LIST,
+                Collections.emptyList(),
+                ConfigDef.Importance.HIGH,
+                SELF_HEALING_GOALS_DOC)
         .define(ANOMALY_NOTIFIER_CLASS_CONFIG,
                 ConfigDef.Type.CLASS,
                 DEFAULT_ANOMALY_NOTIFIER_CLASS,
@@ -1287,10 +1438,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
 
   /**
    * Sanity check for
-   * (1) {@link KafkaCruiseControlConfig#GOALS_CONFIG} is non-empty.
-   * (2) Case insensitive goal names.
-   * (3) {@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} is non-empty.
-   * (4) {@link KafkaCruiseControlConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of {@link KafkaCruiseControlConfig#GOALS_CONFIG}.
+   * <ul>
+   * <li>{@link KafkaCruiseControlConfig#GOALS_CONFIG} is non-empty.</li>
+   * <li>Case insensitive goal names.</li>
+   * <li>{@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} is non-empty.</li>
+   * <li>{@link KafkaCruiseControlConfig#SELF_HEALING_GOALS_CONFIG} is a sublist of
+   * {@link KafkaCruiseControlConfig#GOALS_CONFIG}.</li>
+   * <li>{@link KafkaCruiseControlConfig#ANOMALY_DETECTION_GOALS_CONFIG} is a sublist of
+   * (1) {@link KafkaCruiseControlConfig#SELF_HEALING_GOALS_CONFIG} if it is not empty,
+   * (2) {@link KafkaCruiseControlConfig#DEFAULT_GOALS_CONFIG} otherwise.</li>
+   * </ul>
    */
   private void sanityCheckGoalNames() {
     List<String> goalNames = getList(KafkaCruiseControlConfig.GOALS_CONFIG);
@@ -1318,40 +1475,96 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       throw new ConfigException("Attempt to configure default goals configuration with an empty list of goals.");
     }
 
-    // Ensure that goals used for anomaly detection are supported goals.
+    // Ensure that goals used for self-healing are supported goals.
+    List<String> selfHealingGoalNames = getList(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG);
+    if (selfHealingGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
+      throw new ConfigException("Attempt to configure self healing goals with unsupported goals.");
+    }
+
+    // Ensure that goals used for anomaly detection are a subset of goals used for fixing the anomaly.
     List<String> anomalyDetectionGoalNames = getList(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG);
-    if (anomalyDetectionGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
-      throw new ConfigException("Attempt to configure anomaly detection goals with unsupported goals.");
+    if (anomalyDetectionGoalNames.stream().anyMatch(g -> selfHealingGoalNames.isEmpty() ? !defaultGoalNames.contains(g)
+                                                                                        : !selfHealingGoalNames.contains(g))) {
+      throw new ConfigException("Attempt to configure anomaly detection goals as a superset of self healing goals.");
     }
   }
 
   /**
-   * Sanity check to ensure that {@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} is not longer than
-   * {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
+   * Sanity check to ensure that
+   * <ul>
+   *   <li>{@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} is not longer than
+   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG},</li>
+   *   <li>sampling frequency per partition window is within the limits -- i.e.
+   *   ({@link KafkaCruiseControlConfig#PARTITION_METRICS_WINDOW_MS_CONFIG} /
+   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
+   *   <li>sampling frequency per broker window is within the limits -- i.e.
+   *   ({@link KafkaCruiseControlConfig#BROKER_METRICS_WINDOW_MS_CONFIG} /
+   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}) <= {@link Byte#MAX_VALUE}, and</li>
+   *   <li>{@link CruiseControlMetricsReporterConfig#CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG} is not longer than
+   *   {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}</li>
+   * </ul>
    *
    * Sampling process involves a potential metadata update if the current metadata is stale. The configuration
    * {@link KafkaCruiseControlConfig#METADATA_MAX_AGE_CONFIG} indicates the timeout of such a metadata update. Hence,
    * this subprocess of the sampling process cannot be set with a timeout larger than the total sampling timeout of
    * {@link KafkaCruiseControlConfig#METRIC_SAMPLING_INTERVAL_MS_CONFIG}.
+   *
+   * The number of samples at a given window cannot exceed a predefined maximum limit.
+   *
+   * Metrics reporting frequency should be larger than metric sampling frequency to ensure there is always data to be collected.
    */
-  private void sanityCheckSamplingPeriod() {
-    long samplingPeriodMs = getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
+  private void sanityCheckSamplingPeriod(Map<?, ?> originals) {
+    long samplingIntervalMs = getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
     long metadataTimeoutMs = getLong(KafkaCruiseControlConfig.METADATA_MAX_AGE_CONFIG);
-    if (metadataTimeoutMs >  samplingPeriodMs) {
+    if (metadataTimeoutMs >  samplingIntervalMs) {
       throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs +
-          "] to be longer than sampling period [" + samplingPeriodMs + "].");
+                                "] to be longer than sampling period [" + samplingIntervalMs + "].");
+    }
+
+    // Ensure that the sampling frequency per partition window is within the limits.
+    long partitionSampleWindowMs = getLong(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
+    short partitionSamplingFrequency = (short) (partitionSampleWindowMs / samplingIntervalMs);
+    if (partitionSamplingFrequency > Byte.MAX_VALUE) {
+      throw new ConfigException(String.format("Configured sampling frequency (%d) exceeds the maximum allowed value (%d). "
+                                              + "Decrease the value of %s or increase the value of %s to ensure that their"
+                                              + " ratio is under this limit.", partitionSamplingFrequency, Byte.MAX_VALUE,
+                                              KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG,
+                                              KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+    }
+
+    // Ensure that the sampling frequency per broker window is within the limits.
+    long brokerSampleWindowMs = getLong(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG);
+    short brokerSamplingFrequency = (short) (brokerSampleWindowMs / samplingIntervalMs);
+    if (brokerSamplingFrequency > Byte.MAX_VALUE) {
+      throw new ConfigException(String.format("Configured sampling frequency (%d) exceeds the maximum allowed value (%d). "
+                                              + "Decrease the value of %s or increase the value of %s to ensure that their"
+                                              + " ratio is under this limit.", brokerSamplingFrequency, Byte.MAX_VALUE,
+                                              KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG,
+                                              KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
+    }
+
+    // Ensure reporting frequency is larger than sampling frequency.
+    CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(originals, false);
+    long reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG);
+    if (reportingIntervalMs > samplingIntervalMs) {
+      throw new ConfigException(String.format("Configured metric reporting interval (%d) exceeds metric sampling interval (%d). "
+                                              + "Decrease the value of %s or increase the value of %s to ensure that reported "
+                                              + "metrics can be properly sampled.",
+                                              reportingIntervalMs, samplingIntervalMs,
+                                              CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG,
+                                              KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
     }
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals) {
     super(CONFIG, originals);
     sanityCheckGoalNames();
-    sanityCheckSamplingPeriod();
+    sanityCheckSamplingPeriod(originals);
   }
 
   public KafkaCruiseControlConfig(Map<?, ?> originals, boolean doLog) {
     super(CONFIG, originals, doLog);
     sanityCheckGoalNames();
-    sanityCheckSamplingPeriod();
+    sanityCheckSamplingPeriod(originals);
   }
 }

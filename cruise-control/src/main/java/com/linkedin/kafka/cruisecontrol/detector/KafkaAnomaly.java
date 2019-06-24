@@ -7,6 +7,8 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
+
 
 /**
  * The interface for a Kafka anomaly.
@@ -25,5 +27,10 @@ abstract class KafkaAnomaly implements Anomaly {
       return null;
     }
     return isJson ? _optimizationResult.cachedJSONResponse() : _optimizationResult.cachedPlaintextResponse();
+  }
+
+  @Override
+  public String toString() {
+    return String.format("%s anomaly with id: %s", getAnomalyType(this), anomalyId());
   }
 }

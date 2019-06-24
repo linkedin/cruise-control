@@ -49,8 +49,6 @@ import static org.junit.Assert.assertTrue;
 
 /**
  * The unit test for metric fetcher manager.
- * <p>
- * TODO: We copy the test harness code from likafka-clients code. This should be removed after likafka-clients is open sourced.
  */
 public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarness {
   private static final long WINDOW_MS = 10000L;
@@ -66,7 +64,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   @Before
   public void setUp() {
     super.setUp();
-    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString());
+    ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zookeeper().getConnectionString(), false);
     for (int i = 0; i < NUM_TOPICS; i++) {
       AdminUtils.createTopic(zkUtils, "topic-" + i, NUM_PARTITIONS, 1, new Properties(), RackAwareMode.Safe$.MODULE$);
     }
@@ -205,7 +203,8 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
                               long startTime,
                               long endTime,
                               SamplingMode mode,
-                              MetricDef metricDef) throws MetricSamplingException {
+                              MetricDef metricDef,
+                              long timeout) throws MetricSamplingException {
 
       if (_exceptionsLeft > 0) {
         _exceptionsLeft--;

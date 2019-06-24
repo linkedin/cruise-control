@@ -16,7 +16,7 @@ import org.apache.kafka.common.TopicPartition;
  * The interface to get metric samples of given topic partitions.
  * <p>
  * Kafka Cruise Control periodically collects the metrics of all the partitions in the cluster, including the leader and follower
- * replicas. The {@link #getSamples(Cluster, Set, long, long, SamplingMode, MetricDef)}
+ * replicas. The {@link #getSamples(Cluster, Set, long, long, SamplingMode, MetricDef, long)}
  * will be called for all the replicas of partitions in the cluster in one sampling period.
  * The MetricSampler may be used by multiple threads at the same time, so the implementation need to be thread safe.
  *
@@ -47,6 +47,7 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
    * @param endTimeMs the end time of the sampling period.
    * @param mode The sampling mode.
    * @param metricDef the metric definitions.
+   * @param timeout The sampling timeout to stop sampling even if there is more data to get.
    * @return the PartitionMetricSample of the topic partition and replica id
    */
   Samples getSamples(Cluster cluster,
@@ -54,7 +55,8 @@ public interface MetricSampler extends CruiseControlConfigurable, AutoCloseable 
                      long startTimeMs,
                      long endTimeMs,
                      SamplingMode mode,
-                     MetricDef metricDef)
+                     MetricDef metricDef,
+                     long timeout)
       throws MetricSamplingException;
 
   /**

@@ -36,7 +36,7 @@ public class MetricSampleAggregatorTest {
   private static final float EPSILON = 0.01f;
   private static final int NUM_WINDOWS = 20;
   private static final long WINDOW_MS = 1000L;
-  private static final int MIN_SAMPLES_PER_WINDOW = 4;
+  private static final byte MIN_SAMPLES_PER_WINDOW = 4;
   private static final String ENTITY_GROUP_1 = "g1";
   private static final String ENTITY_GROUP_2 = "g2";
   private static final IntegerEntity ENTITY1 = new IntegerEntity(ENTITY_GROUP_1, 1234);
@@ -202,7 +202,7 @@ public class MetricSampleAggregatorTest {
   }
 
   @Test
-  public void testAggregationOption1() throws NotEnoughValidWindowsException {
+  public void testAggregationOption1() {
     MetricSampleAggregator<String, IntegerEntity> aggregator = prepareCompletenessTestEnv();
 
     // Let the group coverage to be 1
@@ -212,7 +212,7 @@ public class MetricSampleAggregatorTest {
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness =
         aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertTrue(completeness.validWindowIndexes().isEmpty());
+    assertTrue(completeness.validWindowIndices().isEmpty());
     assertTrue(completeness.validEntities().isEmpty());
     assertTrue(completeness.validEntityGroups().isEmpty());
     assertCompletenessByWindowIndex(completeness);
@@ -227,10 +227,10 @@ public class MetricSampleAggregatorTest {
                                  new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(17, completeness.validWindowIndexes().size());
-    assertFalse(completeness.validWindowIndexes().contains(3L));
-    assertFalse(completeness.validWindowIndexes().contains(4L));
-    assertFalse(completeness.validWindowIndexes().contains(20L));
+    assertEquals(17, completeness.validWindowIndices().size());
+    assertFalse(completeness.validWindowIndices().contains(3L));
+    assertFalse(completeness.validWindowIndices().contains(4L));
+    assertFalse(completeness.validWindowIndices().contains(20L));
     assertEquals(2, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY1));
     assertTrue(completeness.validEntities().contains(ENTITY3));
@@ -249,10 +249,10 @@ public class MetricSampleAggregatorTest {
                                  AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(17, completeness.validWindowIndexes().size());
-    assertFalse(completeness.validWindowIndexes().contains(3L));
-    assertFalse(completeness.validWindowIndexes().contains(4L));
-    assertFalse(completeness.validWindowIndexes().contains(20L));
+    assertEquals(17, completeness.validWindowIndices().size());
+    assertFalse(completeness.validWindowIndices().contains(3L));
+    assertFalse(completeness.validWindowIndices().contains(4L));
+    assertFalse(completeness.validWindowIndices().contains(20L));
     assertEquals(2, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY1));
     assertTrue(completeness.validEntities().contains(ENTITY3));
@@ -271,7 +271,7 @@ public class MetricSampleAggregatorTest {
                                  AggregationOptions.Granularity.ENTITY, true);
 
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(17, completeness.validWindowIndexes().size());
+    assertEquals(17, completeness.validWindowIndices().size());
     assertEquals(2, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY1));
     assertTrue(completeness.validEntities().contains(ENTITY3));
@@ -289,7 +289,7 @@ public class MetricSampleAggregatorTest {
                                  new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertTrue(completeness.validWindowIndexes().isEmpty());
+    assertTrue(completeness.validWindowIndices().isEmpty());
     assertTrue(completeness.validEntities().isEmpty());
     assertTrue(completeness.validEntityGroups().isEmpty());
     assertCompletenessByWindowIndex(completeness);
@@ -305,10 +305,10 @@ public class MetricSampleAggregatorTest {
                                  new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY_GROUP, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(17, completeness.validWindowIndexes().size());
-    assertFalse(completeness.validWindowIndexes().contains(3L));
-    assertFalse(completeness.validWindowIndexes().contains(4L));
-    assertFalse(completeness.validWindowIndexes().contains(20L));
+    assertEquals(17, completeness.validWindowIndices().size());
+    assertFalse(completeness.validWindowIndices().contains(3L));
+    assertFalse(completeness.validWindowIndices().contains(4L));
+    assertFalse(completeness.validWindowIndices().contains(20L));
     assertEquals(1, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY3));
     assertEquals(1, completeness.validEntityGroups().size());
@@ -327,11 +327,11 @@ public class MetricSampleAggregatorTest {
                                  new HashSet<>(Arrays.asList(ENTITY1, ENTITY2, ENTITY3)),
                                  AggregationOptions.Granularity.ENTITY, true);
     MetricSampleCompleteness<String, IntegerEntity> completeness = aggregator.completeness(-1, Long.MAX_VALUE, options);
-    assertEquals(16, completeness.validWindowIndexes().size());
-    assertFalse(completeness.validWindowIndexes().contains(3L));
-    assertFalse(completeness.validWindowIndexes().contains(4L));
-    assertFalse(completeness.validWindowIndexes().contains(20L));
-    assertFalse(completeness.validWindowIndexes().contains(11L));
+    assertEquals(16, completeness.validWindowIndices().size());
+    assertFalse(completeness.validWindowIndices().contains(3L));
+    assertFalse(completeness.validWindowIndices().contains(4L));
+    assertFalse(completeness.validWindowIndices().contains(20L));
+    assertFalse(completeness.validWindowIndices().contains(11L));
     assertEquals(2, completeness.validEntities().size());
     assertTrue(completeness.validEntities().contains(ENTITY1));
     assertTrue(completeness.validEntities().contains(ENTITY3));
@@ -367,14 +367,14 @@ public class MetricSampleAggregatorTest {
   public void testConcurrency() throws NotEnoughValidWindowsException {
     final int numThreads = 10;
     final int numEntities = 5;
-    final int samplesPerWindow = 100;
+    final int samplesPerWindow = 6;
     final int numRandomEntities = 10;
 
     // We set the minimum number of samples per window to be the total number of samples to insert.
     // So when there is a sample got lost we will fail to collect enough window.
     final MetricSampleAggregator<String, IntegerEntity> aggregator =
         new MetricSampleAggregator<>(NUM_WINDOWS, WINDOW_MS,
-                                     samplesPerWindow * numThreads * (numRandomEntities / numEntities),
+                                     (byte) (samplesPerWindow * numThreads * (numRandomEntities / numEntities)),
                                      0, _metricDef);
 
     final Random random = new Random();

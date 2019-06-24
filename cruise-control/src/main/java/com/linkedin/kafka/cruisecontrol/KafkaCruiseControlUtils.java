@@ -4,15 +4,25 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TimeZone;
+import java.util.stream.Collectors;
 import kafka.utils.ZkUtils;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
@@ -24,10 +34,13 @@ import org.apache.kafka.common.config.ConfigException;
 public class KafkaCruiseControlUtils {
   public static final int ZK_SESSION_TIMEOUT = 30000;
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
-  public static final boolean IS_ZK_SECURITY_ENABLED = false;
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";
+  private static final Set<String> KAFKA_ASSIGNER_GOALS =
+      Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
+                                                              KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
+  public static final String OPERATION_LOGGER = "operationLogger";
 
   private KafkaCruiseControlUtils() {
 
@@ -55,6 +68,9 @@ public class KafkaCruiseControlUtils {
    * @return string representation of date
    */
   public static String toDateString(long time, String dateFormat, String timeZone) {
+    if (time < 0) {
+      throw new IllegalArgumentException(String.format("Attempt to convert negative time %d to date.", time));
+    }
     DateFormat formatter = new SimpleDateFormat(dateFormat);
     if (!timeZone.isEmpty()) {
       formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
@@ -76,8 +92,8 @@ public class KafkaCruiseControlUtils {
     return value;
   }
 
-  public static ZkUtils createZkUtils(String zkConnect) {
-    return ZkUtils.apply(zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, IS_ZK_SECURITY_ENABLED);
+  public static ZkUtils createZkUtils(String zkConnect, boolean zkSecurityEnabled) {
+    return ZkUtils.apply(zkConnect, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, zkSecurityEnabled);
   }
 
   public static void closeZkUtilsWithTimeout(ZkUtils zkUtils, long timeoutMs) {
@@ -131,5 +147,43 @@ public class KafkaCruiseControlUtils {
   public static boolean isPartitionUnderReplicated(Cluster cluster, TopicPartition tp) {
     PartitionInfo partitionInfo = cluster.partition(tp);
     return partitionInfo.inSyncReplicas().length != partitionInfo.replicas().length;
+  }
+
+  /**
+   * Get the offline replicas for the partition.
+   * @param partitionInfo The partition information of topic partition to check.
+   * @param aliveNodes The alive nodes of the cluster.
+   * @return Id of brokers which host offline replica of the partition.
+   */
+  public static Set<Integer> offlineReplicasForPartition(PartitionInfo partitionInfo, List<Node> aliveNodes) {
+    return Arrays.stream(partitionInfo.replicas())
+                 .filter(node -> !aliveNodes.contains(node))
+                 .mapToInt(Node::id)
+                 .boxed()
+                 .collect(Collectors.toSet());
+  }
+
+  /**
+   * Sanity check whether the given goals exist in the given supported goals.
+   * @param goals A list of goals.
+   * @param supportedGoals Supported goals.
+   */
+  public static void sanityCheckNonExistingGoal(List<String> goals, Map<String, Goal> supportedGoals) {
+    Set<String> nonExistingGoals = new HashSet<>();
+    goals.stream().filter(goalName -> supportedGoals.get(goalName) == null).forEach(nonExistingGoals::add);
+
+    if (!nonExistingGoals.isEmpty()) {
+      throw new IllegalArgumentException("Goals " + nonExistingGoals + " are not supported. Supported: " + supportedGoals.keySet());
+    }
+  }
+
+  /**
+   * Check whether any of the given goals contain a Kafka Assigner goal.
+   *
+   * @param goals The goals to check
+   * @return True if the given goals contain a Kafka Assigner goal, false otherwise.
+   */
+  public static boolean isKafkaAssignerMode(Collection<String> goals) {
+    return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
   }
 }

@@ -9,8 +9,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
-import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
@@ -31,22 +29,10 @@ import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.BootstrapResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.KafkaClusterState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
-import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.ResumeSamplingResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.StopProposalResult;
-import com.linkedin.kafka.cruisecontrol.servlet.response.TrainResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
@@ -61,11 +47,18 @@ import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.isKafkaAssignerMode;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckNonExistingGoal;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.offlineReplicasForPartition;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.*;
 
 
@@ -74,9 +67,6 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlSta
  */
 public class KafkaCruiseControl {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControl.class);
-  private static final Set<String> KAFKA_ASSIGNER_GOALS =
-      Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
-                                                              KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
   protected final KafkaCruiseControlConfig _config;
   private final LoadMonitor _loadMonitor;
   private final GoalOptimizer _goalOptimizer;
@@ -156,16 +146,6 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Check whether any of the given goals contain a Kafka Assigner goal.
-   *
-   * @param goals The goals to check
-   * @return True if the given goals contain a Kafka Assigner goal, false otherwise.
-   */
-  private boolean isKafkaAssignerMode(Collection<String> goals) {
-    return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
-  }
-
-  /**
    * Allow a reference to {@link UserTaskManager} to be passed to {@link Executor}
    * @param userTaskManager a reference to {@link UserTaskManager}
    */
@@ -179,7 +159,8 @@ public class KafkaCruiseControl {
    * @param removedBrokers The brokers to decommission.
    * @param dryRun Whether it is a dry run or not.
    * @param throttleDecommissionedBroker Whether throttle the brokers that are being decommissioned.
-   * @param goals The goals to be met when decommissioning the brokers. When empty all goals will be used.
+   * @param goals The goal names (i.e. each matching {@link Goal#name()}) to be met when decommissioning the brokers.
+   *              When empty all goals will be used.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
@@ -271,7 +252,8 @@ public class KafkaCruiseControl {
    * @param brokerIds The broker ids.
    * @param dryRun Whether it is a dry run or not.
    * @param throttleAddedBrokers Whether throttle the brokers that are being added.
-   * @param goals The goals to be met when adding the brokers. When empty all goals will be used.
+   * @param goals The goal names (i.e. each matching {@link Goal#name()}) to be met when adding the brokers.
+   *              When empty all goals will be used.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to update.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
@@ -355,7 +337,8 @@ public class KafkaCruiseControl {
 
   /**
    * Rebalance the cluster
-   * @param goals The goals to be met during the rebalance. When empty all goals will be used.
+   * @param goals The goal names (i.e. each matching {@link Goal#name()}) to be met during the rebalance.
+   *              When empty all goals will be used.
    * @param dryRun Whether it is a dry run or not.
    * @param requirements The cluster model completeness requirements.
    * @param operationProgress The progress of the job to report.
@@ -450,7 +433,7 @@ public class KafkaCruiseControl {
     sanityCheckDryRun(dryRun);
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(skipUrpDemotion,
                                                                        excludeFollowerDemotion,
-                                                                       skipUrpDemotion ? _loadMonitor.kafkaCluster() : null);
+                                                                       skipUrpDemotion ? kafkaCluster() : null);
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       sanityCheckBrokerPresence(brokerIds);
       ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(),
@@ -544,16 +527,13 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Bootstrap the load monitor.
+   * Bootstrap the load monitor for a given period.
    *
-   * @param parameters Bootstrap parameters.
-   * @return Bootstrap result.
+   * @param startMs the starting time of the bootstrap period, or null if no time period will be used.
+   * @param endMs the end time of the bootstrap period, or null if no end time is specified.
+   * @param clearMetrics clear the existing metric samples.
    */
-  public BootstrapResult bootstrapLoadMonitor(BootstrapParameters parameters) {
-    Long startMs = parameters.startMs();
-    Long endMs = parameters.endMs();
-    boolean clearMetrics = parameters.clearMetrics();
-
+  public void bootstrap(Long startMs, Long endMs, boolean clearMetrics) {
     if (startMs != null && endMs != null) {
       // Bootstrap the load monitor for a given period.
       _loadMonitor.bootstrap(startMs, endMs, clearMetrics);
@@ -564,96 +544,85 @@ public class KafkaCruiseControl {
       // Bootstrap the load monitor with the most recent metric samples until it catches up -- clears all metric samples.
       _loadMonitor.bootstrap(clearMetrics);
     }
-    return new BootstrapResult(_config);
   }
 
   /**
-   * Train load model of Kafka Cruise Control with metric samples in a training period.
+   * Pause all the activities of the load monitor. The load monitor can only be paused when it is in
+   * RUNNING state.
    *
-   * @param parameters Train parameters.
-   * @return Train result.
+   * @param reason The reason for pausing metric sampling.
    */
-  public TrainResult trainLoadModel(TrainParameters parameters) {
-    _loadMonitor.train(parameters.startMs(), parameters.endMs());
-    return new TrainResult(_config);
+  public void pauseMetricSampling(String reason) {
+    _loadMonitor.pauseMetricSampling(reason);
   }
 
   /**
-   * Pause all the activities of the load monitor. Load monitor can only be paused if it is in RUNNING state.
-   *
-   * @param parameters Pause Parameters.
-   * @return Pause sampling result.
+   * Train the load model with metric samples.
+   * @param startMs training period starting time.
+   * @param endMs training period end time.
    */
-  public PauseSamplingResult pauseLoadMonitorActivity(PauseResumeParameters parameters) {
-    _loadMonitor.pauseMetricSampling(parameters.reason());
-    return new PauseSamplingResult(_config);
+  public void train(Long startMs, Long endMs) {
+    _loadMonitor.train(startMs, endMs);
   }
 
   /**
-   * Handle the admin requests:
-   * <ul>
-   * <li>Dynamically change the partition and leadership concurrency of an ongoing execution. Has no effect if Executor
-   * is in {@link com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State#NO_TASK_IN_PROGRESS} state.</li>
-   * <li>Enable/disable the specified anomaly detectors.</li>
-   * </ul>
+   * Enable or disable self healing for the given anomaly type in the anomaly detector.
    *
-   * @param parameters Admin parameters
-   * @return Admin response.
+   * @param anomalyType Type of anomaly for which to enable or disable self healing.
+   * @param isSelfHealingEnabled True if self healing is enabled for the given anomaly type, false otherwise.
+   * @return The old value of self healing for the given anomaly type.
    */
-  public synchronized AdminResult handleAdminRequest(AdminParameters parameters) {
-    String ongoingConcurrencyChangeRequest = "";
-    // 1.1. Change inter-broker partition concurrency.
-    Integer concurrentInterBrokerPartitionMovements = parameters.concurrentInterBrokerPartitionMovements();
-    if (concurrentInterBrokerPartitionMovements != null) {
-      _executor.setRequestedInterBrokerPartitionMovementConcurrency(concurrentInterBrokerPartitionMovements);
-      ongoingConcurrencyChangeRequest += String.format("Inter-broker partition movement concurrency is set to %d%n",
-                                                       concurrentInterBrokerPartitionMovements);
-      LOG.warn("Inter-broker partition movement concurrency is set to: {} by user.", concurrentInterBrokerPartitionMovements);
-    }
-    // 1.2. Change leadership concurrency.
-    Integer concurrentLeaderMovements = parameters.concurrentLeaderMovements();
-    if (concurrentLeaderMovements != null) {
-      _executor.setRequestedLeadershipMovementConcurrency(concurrentLeaderMovements);
-      ongoingConcurrencyChangeRequest += String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements);
-      LOG.warn("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
-    }
-
-    // 2. Enable/disable the specified anomaly detectors
-    Set<AnomalyType> disableSelfHealingFor = parameters.disableSelfHealingFor();
-    Set<AnomalyType> enableSelfHealingFor = parameters.enableSelfHealingFor();
-
-    Map<AnomalyType, Boolean> selfHealingBefore = new HashMap<>(disableSelfHealingFor.size() + enableSelfHealingFor.size());
-    Map<AnomalyType, Boolean> selfHealingAfter = new HashMap<>(disableSelfHealingFor.size() + enableSelfHealingFor.size());
-
-    for (AnomalyType anomalyType : disableSelfHealingFor) {
-      selfHealingBefore.put(anomalyType, _anomalyDetector.setSelfHealingFor(anomalyType, false));
-      selfHealingAfter.put(anomalyType, false);
-    }
-
-    for (AnomalyType anomalyType : enableSelfHealingFor) {
-      selfHealingBefore.put(anomalyType, _anomalyDetector.setSelfHealingFor(anomalyType, true));
-      selfHealingAfter.put(anomalyType, true);
-    }
-
-    if (!disableSelfHealingFor.isEmpty() || !enableSelfHealingFor.isEmpty()) {
-      LOG.warn("Self healing state is modified by user (before: {} after: {}).", selfHealingBefore, selfHealingAfter);
-    }
-
-    return new AdminResult(selfHealingBefore,
-                           selfHealingAfter,
-                           ongoingConcurrencyChangeRequest.isEmpty() ? null : ongoingConcurrencyChangeRequest,
-                           _config);
+  public boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled) {
+    return _anomalyDetector.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
   }
 
   /**
-   * Resume all the activities of the load monitor.
+   * Drop the given brokers from the recently removed/demoted brokers.
    *
-   * @param parameters Resume Parameters.
-   * @return Resume sampling result.
+   * @param brokersToDrop Brokers to drop from the recently removed or demoted brokers.
+   * @param isRemoved True to drop recently removed brokers, false to drop recently demoted brokers
+   * @return {@code true} if any elements were removed from the requested set of brokers.
    */
-  public ResumeSamplingResult resumeLoadMonitorActivity(PauseResumeParameters parameters) {
-    _loadMonitor.resumeMetricSampling(parameters.reason());
-    return new ResumeSamplingResult(_config);
+  public boolean dropRecentBrokers(Set<Integer> brokersToDrop, boolean isRemoved) {
+    return isRemoved ? _executor.dropRecentlyRemovedBrokers(brokersToDrop) : _executor.dropRecentlyDemotedBrokers(brokersToDrop);
+  }
+
+  /**
+   * Get {@link Executor#recentlyRemovedBrokers()} if isRemoved is true, {@link Executor#recentlyDemotedBrokers()} otherwise.
+   *
+   * @param isRemoved True to get recently removed brokers, false to get recently demoted brokers
+   * @return IDs of requested brokers.
+   */
+  public Set<Integer> recentBrokers(boolean isRemoved) {
+    return isRemoved ? _executor.recentlyRemovedBrokers() : _executor.recentlyDemotedBrokers();
+  }
+
+  /**
+   * Dynamically set the inter-broker partition movement concurrency per broker.
+   *
+   * @param requestedInterBrokerPartitionMovementConcurrency The maximum number of concurrent inter-broker partition movements
+   *                                                         per broker.
+   */
+  public void setRequestedInterBrokerPartitionMovementConcurrency(Integer requestedInterBrokerPartitionMovementConcurrency) {
+    _executor.setRequestedInterBrokerPartitionMovementConcurrency(requestedInterBrokerPartitionMovementConcurrency);
+  }
+
+  /**
+   * Dynamically set the leadership movement concurrency.
+   *
+   * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements.
+   */
+  public void setRequestedLeadershipMovementConcurrency(Integer requestedLeadershipMovementConcurrency) {
+    _executor.setRequestedLeadershipMovementConcurrency(requestedLeadershipMovementConcurrency);
+  }
+
+  /**
+   * Resume the activities of the load monitor.
+   *
+   * @param reason The reason for resuming metric sampling.
+   */
+  public void resumeMetricSampling(String reason) {
+    _loadMonitor.resumeMetricSampling(reason);
   }
 
   /**
@@ -681,7 +650,7 @@ public class KafkaCruiseControl {
    * 4. The request is triggered by goal violation detector.
    * 5. The request involves explicitly requested destination broker Ids.
    *
-   * @param goals A list of goals to optimize. When empty all goals will be used.
+   * @param goals A list of goal names (i.e. each matching {@link Goal#name()}) to optimize. When empty all goals will be used.
    * @param requirements Model completeness requirements.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
    * @param excludeBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
@@ -711,7 +680,7 @@ public class KafkaCruiseControl {
 
   /**
    * Optimize a cluster workload model.
-   * @param goals A list of goals to optimize. When empty all goals will be used.
+   * @param goals A list of goal names (i.e. each matching {@link Goal#name()}) to optimize. When empty all goals will be used.
    * @param requirements The model completeness requirements to enforce when generating the proposals.
    * @param operationProgress The progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
@@ -913,14 +882,145 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Stop the executor if it is executing the proposals.
-   *
-   * @param parameters Stop proposal parameters (not used -- added for standardization and for extensibility).
-   * @return Stop proposal execution result.
+   * Request the executor to stop any ongoing execution.
    */
-  public StopProposalResult stopProposalExecution(StopProposalParameters parameters) {
+  public synchronized void userTriggeredStopExecution() {
     _executor.userTriggeredStopExecution();
-    return new StopProposalResult(_config);
+  }
+
+  /**
+   * Update the replication factor of Kafka topics.
+   * If partition's current replication factor is less than target replication factor, add new replicas to the partition
+   * in a rack-aware, round-robin way.
+   * There are two scenarios that rack awareness property is not guaranteed.
+   * <ul>
+   *   <li> If metadata does not have rack information about brokers, then it is only guaranteed that new replicas are
+   *   added to brokers, which currently do not host any replicas of partition.</li>
+   *   <li> If replication factor to set for the topic is larger than number of racks in the cluster and
+   *   skipTopicRackAwarenessCheck is set to true, then rack awareness property is ignored.</li>
+   * </ul>
+   * If partition's current replication factor is larger than target replication factor, remove one or more follower replicas
+   * from the partition.
+   *
+   * @param cluster The metadata of the cluster.
+   * @param replicationFactor The replication factor to set for the topics.
+   * @param topics The topics to apply the change.
+   * @param skipTopicRackAwarenessCheck Whether ignore rack awareness property if number of rack in cluster is less
+   *                                    than target replication factor.
+   * @return Execution proposals to increase replication factor of topics.
+   */
+  private Set<ExecutionProposal> maybeUpdateTopicReplicationFactor(Cluster cluster,
+                                                                   short replicationFactor,
+                                                                   Set<String> topics,
+                                                                   boolean skipTopicRackAwarenessCheck) {
+    Map<String, List<Integer>> brokersByRack = new HashMap<>();
+    Map<Integer, String> rackByBroker = new HashMap<>();
+    for (Node node : cluster.nodes()) {
+      // If the rack is not specified, we use the broker id info as rack info.
+      String rack = node.rack() == null || node.rack().isEmpty() ? String.valueOf(node.id()) : node.rack();
+      brokersByRack.putIfAbsent(rack, new ArrayList<>());
+      brokersByRack.get(rack).add(node.id());
+      rackByBroker.put(node.id(), rack);
+    }
+
+    if (replicationFactor > brokersByRack.size()) {
+      if (skipTopicRackAwarenessCheck) {
+        LOG.info(String.format("Target replication factor for topics %s is larger than number of racks in cluster, rack-awareness "
+                               + "property may not be guaranteed.", topics));
+      } else {
+        throw new RuntimeException(String.format("Unable to change replication factor of topics %s to %d since there are only %d "
+                                                 + "racks in the cluster, to skip the rack-awareness check, set "
+                                                 + "skipTopicRackAwarenessCheck to true in the request.",
+                                                 topics, replicationFactor, brokersByRack.size()));
+      }
+    }
+
+    Set<ExecutionProposal> proposals = new HashSet<>();
+    for (String topic : topics) {
+      List<String> racks = new ArrayList<>(brokersByRack.keySet());
+      int[] cursors = new int[racks.size()];
+      int rackCursor = 0;
+      for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+        if (partitionInfo.replicas().length == replicationFactor) {
+          continue;
+        }
+
+        Set<Integer> offlineReplicas = offlineReplicasForPartition(partitionInfo, cluster.nodes());
+        if (!offlineReplicas.isEmpty()) {
+          throw new RuntimeException(String.format("Topic partition %s-%d has offline replicas on brokers %s, unable to update "
+                                     + "its replication factor.", partitionInfo.topic(), partitionInfo.partition(), offlineReplicas));
+        }
+        List<Integer> currentAssignedReplica = new ArrayList<>(partitionInfo.replicas().length);
+        List<Integer> newAssignedReplica = new ArrayList<>();
+        if (partitionInfo.replicas().length < replicationFactor) {
+          Set<String> currentOccupiedRack = new HashSet<>();
+          // Make sure the current replicas are in new replica list.
+          for (Node node : partitionInfo.replicas()) {
+            currentAssignedReplica.add(node.id());
+            newAssignedReplica.add(node.id());
+            currentOccupiedRack.add(rackByBroker.get(node.id()));
+          }
+          // Add new replica to partition in rack-aware(if possible), round-robin way.
+          while (newAssignedReplica.size() < replicationFactor) {
+            if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
+              String rack = racks.get(rackCursor);
+              int cursor = cursors[rackCursor];
+              newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
+              currentOccupiedRack.add(rack);
+              cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+            }
+            rackCursor = (rackCursor + 1) % racks.size();
+          }
+          // TODO: get the partition size and populate into execution proposal, check https://github.com/linkedin/cruise-control/issues/722
+          proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
+                                              0,
+                                              partitionInfo.leader().id(),
+                                              currentAssignedReplica,
+                                              newAssignedReplica));
+        } else {
+          // Make sure the leader replica is in new replica list.
+          newAssignedReplica.add(partitionInfo.leader().id());
+          for (Node node : partitionInfo.replicas()) {
+            currentAssignedReplica.add(node.id());
+            if (newAssignedReplica.size() < replicationFactor && node.id() != newAssignedReplica.get(0)) {
+              newAssignedReplica.add(node.id());
+            }
+          }
+          // TODO: get the partition size and populate into execution proposal, check https://github.com/linkedin/cruise-control/issues/722
+          proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
+                                              0,
+                                              partitionInfo.leader().id(),
+                                              currentAssignedReplica,
+                                              newAssignedReplica));
+        }
+      }
+    }
+    return proposals;
+  }
+
+  /**
+   * Update configuration of topic pattern. Currently only support change replication factor of topics from the given pattern.
+   *
+   * @param topic The name pattern of topics to apply the change.
+   * @param replicationFactor The replication factor to set for the topics.
+   * @param skipTopicRackAwarenessCheck Whether skip ignore rack awareness property if number of rack in cluster is less
+   *                                    than target replication factor.
+   * @param uuid UUID of the execution.
+   *
+   * @return Topics to apply the change.
+   */
+  public Set<String> updateTopicConfiguration(Pattern topic,
+                                              short replicationFactor,
+                                              boolean skipTopicRackAwarenessCheck,
+                                              String uuid) {
+    Cluster cluster = kafkaCluster();
+    Set<String> topics = cluster.topics().stream().filter(t -> topic.matcher(t).matches()).collect(Collectors.toSet());
+    Set<ExecutionProposal> proposals = maybeUpdateTopicReplicationFactor(cluster,
+                                                                         replicationFactor,
+                                                                         topics,
+                                                                         skipTopicRackAwarenessCheck);
+    _executor.executeProposals(proposals, null, null, _loadMonitor, null, null, null, uuid);
+    return topics;
   }
 
   /**
@@ -933,7 +1033,7 @@ public class KafkaCruiseControl {
     substates = !substates.isEmpty() ? substates
                                      : new HashSet<>(Arrays.asList(CruiseControlState.SubState.values()));
 
-    if (KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration(substates)) {
+    if (shouldRefreshClusterAndGeneration(substates)) {
       clusterAndGeneration = _loadMonitor.refreshClusterAndGeneration();
     }
 
@@ -945,13 +1045,10 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Get the cluster state for Kafka.
-   *
-   * @param parameters Kafka cluster state parameters (not used -- added for standardization and for extensibility).
-   * @return Kafka cluster state.
+   * Get the cluster information from Kafka metadata.
    */
-  public KafkaClusterState kafkaClusterState(KafkaClusterStateParameters parameters) {
-    return new KafkaClusterState(_loadMonitor.kafkaCluster(), _config);
+  public Cluster kafkaCluster() {
+    return _loadMonitor.kafkaCluster();
   }
 
   /**
@@ -1001,7 +1098,7 @@ public class KafkaCruiseControl {
    */
   private List<Goal> goalsByPriority(List<String> goals) {
     if (goals == null || goals.isEmpty()) {
-      return AnalyzerUtils.getGoalMapByPriority(_config);
+      return AnalyzerUtils.getGoalsByPriority(_config);
     }
     Map<String, Goal> allGoals = AnalyzerUtils.getCaseInsensitiveGoalsByName(_config);
     sanityCheckNonExistingGoal(goals, allGoals);
@@ -1016,7 +1113,7 @@ public class KafkaCruiseControl {
    * <li> {@code goals} only has PreferredLeaderElectionGoal, denotes it is a PLE request.</li>
    * </ul>
    *
-   * @param goals A list of goals.
+   * @param goals A list of goal names (i.e. each matching {@link Goal#name()}) to check.
    * @param skipHardGoalCheck True if hard goal checking is not needed.
    */
   public void sanityCheckHardGoalPresence(List<String> goals, boolean skipHardGoalCheck) {
@@ -1029,20 +1126,6 @@ public class KafkaCruiseControl {
         throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in the provided goals: " + goals
                                            + ". Add skip_hard_goal_check=true parameter to ignore this sanity check.");
       }
-    }
-  }
-
-  /**
-   * Sanity check whether the given goals exist in the given supported goals.
-   * @param goals A list of goals.
-   * @param supportedGoals Supported goals.
-   */
-  private void sanityCheckNonExistingGoal(List<String> goals, Map<String, Goal> supportedGoals) {
-    Set<String> nonExistingGoals = new HashSet<>();
-    goals.stream().filter(goalName -> supportedGoals.get(goalName) == null).forEach(nonExistingGoals::add);
-
-    if (!nonExistingGoals.isEmpty()) {
-      throw new IllegalArgumentException("Goals " + nonExistingGoals + " are not supported. Supported: " + supportedGoals.keySet());
     }
   }
 

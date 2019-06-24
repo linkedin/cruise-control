@@ -19,18 +19,22 @@ public class AdminResult extends AbstractCruiseControlResponse {
   private static final String SELF_HEALING_ENABLED_BEFORE = "selfHealingEnabledBefore";
   private static final String SELF_HEALING_ENABLED_AFTER = "selfHealingEnabledAfter";
   private static final String ONGOING_CONCURRENCY_CHANGE_REQUEST = "ongoingConcurrencyChangeRequest";
+  private static final String DROP_RECENT_BROKERS_REQUEST = "dropRecentBrokersRequest";
   private final Map<AnomalyType, Boolean> _selfHealingEnabledBefore;
   private final Map<AnomalyType, Boolean> _selfHealingEnabledAfter;
   private String _ongoingConcurrencyChangeRequest;
+  private String _dropRecentBrokersRequest;
 
   public AdminResult(Map<AnomalyType, Boolean> selfHealingEnabledBefore,
                      Map<AnomalyType, Boolean> selfHealingEnabledAfter,
                      String ongoingConcurrencyChangeRequest,
+                     String dropRecentBrokersRequest,
                      KafkaCruiseControlConfig config) {
     super(config);
     _selfHealingEnabledBefore = selfHealingEnabledBefore;
     _selfHealingEnabledAfter = selfHealingEnabledAfter;
     _ongoingConcurrencyChangeRequest = ongoingConcurrencyChangeRequest;
+    _dropRecentBrokersRequest = dropRecentBrokersRequest;
   }
 
   @Override
@@ -41,6 +45,7 @@ public class AdminResult extends AbstractCruiseControlResponse {
     _selfHealingEnabledBefore.clear();
     _selfHealingEnabledAfter.clear();
     _ongoingConcurrencyChangeRequest = null;
+    _dropRecentBrokersRequest = null;
   }
 
   private String getJSONString() {
@@ -52,6 +57,9 @@ public class AdminResult extends AbstractCruiseControlResponse {
     }
     if (_ongoingConcurrencyChangeRequest != null) {
       jsonStructure.put(ONGOING_CONCURRENCY_CHANGE_REQUEST, _ongoingConcurrencyChangeRequest);
+    }
+    if (_dropRecentBrokersRequest != null) {
+      jsonStructure.put(DROP_RECENT_BROKERS_REQUEST, _dropRecentBrokersRequest);
     }
     jsonStructure.put(VERSION, JSON_VERSION);
     return new Gson().toJson(jsonStructure);
@@ -66,6 +74,9 @@ public class AdminResult extends AbstractCruiseControlResponse {
     }
     if (_ongoingConcurrencyChangeRequest != null) {
       sb.append(String.format("%s: %s%n", ONGOING_CONCURRENCY_CHANGE_REQUEST, _ongoingConcurrencyChangeRequest));
+    }
+    if (_dropRecentBrokersRequest != null) {
+      sb.append(String.format("%s: %s%n", DROP_RECENT_BROKERS_REQUEST, _dropRecentBrokersRequest));
     }
     sb.append("}");
 

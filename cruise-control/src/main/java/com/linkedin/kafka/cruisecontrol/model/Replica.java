@@ -25,11 +25,6 @@ import org.apache.kafka.common.TopicPartition;
  * object is created as part of a broker structure.
  */
 public class Replica implements Serializable, Comparable<Replica> {
-  private static final String IS_LEADER = "isLeader";
-  private static final String BROKER_ID = "brokerid";
-  private static final String TOPIC = "topic";
-  private static final String PARTITION = "partition";
-  private static final String LOAD = "load";
   // Two static final variables for comparison purpose.
   public static final Replica MIN_REPLICA = new Replica(null, null, false);
   public static final Replica MAX_REPLICA = new Replica(null, null, false);
@@ -163,7 +158,7 @@ public class Replica implements Serializable, Comparable<Replica> {
     // All the following metric values are in a shared mode to avoid data copy.
     // Just get the first metric id because CPU only has one metric id in the group. Eventually the per replica
     // CPU utilization will be removed to use resource estimation at broker level.
-    int cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
+    short cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
     AggregatedMetricValues leadershipNwOutLoad = _load.loadFor(Resource.NW_OUT, true);
 
     // Create a leadership load delta to store the load change.
@@ -195,7 +190,7 @@ public class Replica implements Serializable, Comparable<Replica> {
   private MetricValues computeCpuLoadAsFollower(AggregatedMetricValues leadershipNwOutLoad, boolean updateLoad) {
     // Just get the first metric id because CPU only has one metric id in the group. Eventually the per replica
     // CPU utilization will be removed to use resource estimation at broker level.
-    int cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
+    short cpuMetricId = KafkaMetricDef.resourceToMetricIds(Resource.CPU).get(0);
     // Use the shared data structure so we can set the load directly.
     MetricValues cpuLoad = _load.loadFor(Resource.CPU, true).valuesFor(cpuMetricId);
     AggregatedMetricValues leadershipNwInLoad = _load.loadFor(Resource.NW_IN, true);
@@ -237,11 +232,11 @@ public class Replica implements Serializable, Comparable<Replica> {
    */
   public Map<String, Object> getJsonStructureForLoad() {
     Map<String, Object> replicaMap = new HashMap<>();
-    replicaMap.put(IS_LEADER, _isLeader);
-    replicaMap.put(BROKER_ID, _broker.id());
-    replicaMap.put(TOPIC, _tp.topic());
-    replicaMap.put(PARTITION, _tp.partition());
-    replicaMap.put(LOAD, _load.getJsonStructure());
+    replicaMap.put(ModelUtils.IS_LEADER, _isLeader);
+    replicaMap.put(ModelUtils.BROKER_ID, _broker.id());
+    replicaMap.put(ModelUtils.TOPIC, _tp.topic());
+    replicaMap.put(ModelUtils.PARTITION, _tp.partition());
+    replicaMap.put(ModelUtils.LOAD, _load.getJsonStructure());
     return replicaMap;
   }
 
