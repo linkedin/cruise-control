@@ -33,6 +33,8 @@ class GetClusterModelInRangeRunnable extends OperationRunnable {
 
   @Override
   protected PartitionLoadState getResult() throws Exception {
+    _kafkaCruiseControl.sanityCheckBrokerPresence(_parameters.brokerIds());
+
     ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(_parameters.startMs(),
                                                                  _parameters.endMs(),
                                                                  _parameters.minValidPartitionRatio(),
@@ -42,7 +44,7 @@ class GetClusterModelInRangeRunnable extends OperationRunnable {
     List<Partition> partitionList = clusterModel.replicasSortedByUtilization(_parameters.resource(),
                                                                              _parameters.wantMaxLoad(),
                                                                              _parameters.wantAvgLoad());
-    if (_parameters.brokerIds() != null) {
+    if (!_parameters.brokerIds().isEmpty()) {
       partitionList = partitionList.stream()
                                    .filter(partition -> _parameters.brokerIds().contains(partition.leader().broker().id()))
                                    .collect(Collectors.toList());

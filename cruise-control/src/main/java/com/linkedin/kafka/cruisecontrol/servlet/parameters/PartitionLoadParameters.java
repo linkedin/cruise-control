@@ -8,6 +8,8 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 import javax.servlet.http.HttpServletRequest;
@@ -22,11 +24,7 @@ import javax.servlet.http.HttpServletRequest;
  *    GET /kafkacruisecontrol/partition_load?resource=[RESOURCE]&amp;start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]
  *    &amp;entries=[number-of-entries-to-show]&amp;topic=[topic]&amp;partition=[partition/start_partition-end_partition]
  *    &amp;min_valid_partition_ratio=[min_valid_partition_ratio]&amp;allow_capacity_estimation=[true/false]
-<<<<<<< HEAD
- *    &amp;max_load=[true/false]&amp;avg_load=[true/false]&amp;json=[true/false]
-=======
- *    &amp;max_load=[true/false]&amp;json=[true/false]&amp;brokerid=[brokerid]
->>>>>>> filter partition load by brokerid
+ *    &amp;max_load=[true/false]&amp;avg_load=[true/false]&amp;json=[true/false]&amp;brokerid=[brokerid]
  * </pre>
  */
 public class PartitionLoadParameters extends AbstractParameters {
@@ -77,7 +75,7 @@ public class PartitionLoadParameters extends AbstractParameters {
     try {
       _brokerIds = ParameterUtils.brokerIds(_request);
     } catch (IllegalArgumentException e) {
-      _brokerIds = null;
+      _brokerIds = Collections.unmodifiableSet(new HashSet<>(0));
     }
   }
 
@@ -123,6 +121,7 @@ public class PartitionLoadParameters extends AbstractParameters {
 
   public boolean wantAvgLoad() {
     return _wantAvgLoad;
+  }
 
   public Set<Integer> brokerIds() {
     return _brokerIds;
