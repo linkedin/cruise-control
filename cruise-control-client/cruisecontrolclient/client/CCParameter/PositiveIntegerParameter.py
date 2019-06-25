@@ -60,13 +60,3 @@ class ReplicationFactorParameter(AbstractPositiveIntegerParameter):
         'args': ('--replication-factor',),
         'kwargs': dict(metavar='K', help=description, type=int)
     }
-
-
-class ReviewIDParameter(AbstractPositiveIntegerParameter):
-    """review_id=[id]"""
-    name = 'review_id'
-    description = 'The id of the approved review'
-    argparse_properties = {
-        'args': ('--review-id',),
-        'kwargs': dict(metavar='K', help=description, type=int)
-    }
