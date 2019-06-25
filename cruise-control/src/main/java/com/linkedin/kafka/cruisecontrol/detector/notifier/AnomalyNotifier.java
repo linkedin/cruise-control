@@ -57,4 +57,17 @@ public interface AnomalyNotifier extends CruiseControlConfigurable {
    * @return The old value of self healing for the given anomaly type.
    */
   boolean setSelfHealingFor(AnomalyType anomalyType, boolean isSelfHealingEnabled);
+
+  /**
+   * Get the ratio during which the self-healing is enabled over the total operating time.
+   *
+   * @return The ratio during which the self-healing is enabled over the total operating time for each anomaly type.
+   */
+  Map<AnomalyType, Float> selfHealingEnabledRatio();
+
+  /**
+   * @param nowMs Current time in ms.
+   * @return Uptime until now in ms.
+   */
+  long uptimeMs(long nowMs);
 }

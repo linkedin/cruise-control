@@ -184,6 +184,7 @@ public class AnomalyDetector {
   }
 
   public AnomalyDetectorState anomalyDetectorState() {
+    _anomalyDetectorState.setSelfHealingEnabledRatio(_anomalyNotifier.selfHealingEnabledRatio());
     return _anomalyDetectorState;
   }
 
