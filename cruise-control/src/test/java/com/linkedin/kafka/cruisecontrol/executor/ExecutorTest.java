@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
@@ -62,6 +63,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
   private static final TopicPartition TP1 = new TopicPartition(TOPIC1, PARTITION);
   private static final TopicPartition TP2 = new TopicPartition(TOPIC2, PARTITION);
   private static final TopicPartition TP3 = new TopicPartition(TOPIC3, PARTITION);
+  private static final String RANDOM_UUID = "random_uuid";
 
 
   @Override
@@ -183,7 +185,8 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
     Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, 86400000L,
-                                     43200000L, null, getMockUserTaskManager());
+                                     43200000L, null, getMockUserTaskManager(RANDOM_UUID),
+                                     getMockAnomalyDetector(RANDOM_UUID));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
@@ -192,7 +195,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
                               null,
                               null,
                               null,
-                              "random-uuid");
+                              RANDOM_UUID);
     // Wait until the execution to start so the task timestamp is set to time.milliseconds.
     while (executor.state().state() != ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS) {
       Thread.sleep(10);
@@ -230,9 +233,9 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     Capture<ExecutorNotification> captureNotification = Capture.newInstance(CaptureType.FIRST);
 
     EasyMock.expect(mockUserTaskInfo.endPoint()).andReturn(EndPoint.REBALANCE).once();
-    EasyMock.expect(mockUserTaskManager.markTaskInExecution(uuid))
-            .andReturn(expectUserTaskInfo ? mockUserTaskInfo : null).once();
-    mockUserTaskManager.markTaskFinishExecution(anyString());
+    EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid))
+        .andReturn(expectUserTaskInfo ? mockUserTaskInfo : null).once();
+    mockUserTaskManager.markTaskExecutionFinished(uuid);
     mockExecutorNotifier.sendNotification(EasyMock.capture(captureNotification));
     EasyMock.expectLastCall();
 
@@ -241,7 +244,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     EasyMock.replay(mockExecutorNotifier);
 
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, 86400000L,
-                                     43200000L, mockExecutorNotifier, mockUserTaskManager);
+                                     43200000L, mockExecutorNotifier, mockUserTaskManager, getMockAnomalyDetector(uuid));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, EasyMock.mock(LoadMonitor.class), null,
                               null, null, uuid);
@@ -305,12 +308,19 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     return topicDescriptions0;
   }
 
-  private UserTaskManager getMockUserTaskManager() {
+  private UserTaskManager getMockUserTaskManager(String uuid) {
     UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
-    mockUserTaskManager.markTaskFinishExecution(anyString());
-    EasyMock.expect(mockUserTaskManager.markTaskInExecution(anyObject())).andReturn(null).anyTimes();
+    mockUserTaskManager.markTaskExecutionFinished(uuid);
+    EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid)).andReturn(null).anyTimes();
     EasyMock.replay(mockUserTaskManager);
     return mockUserTaskManager;
+  }
+
+  private AnomalyDetector getMockAnomalyDetector(String anomalyId) {
+    AnomalyDetector mockAnomalyDetector = EasyMock.mock(AnomalyDetector.class);
+    mockAnomalyDetector.markSelfHealingFinished(anomalyId);
+    EasyMock.replay(mockAnomalyDetector);
+    return mockAnomalyDetector;
   }
 
   private void executeAndVerifyProposals(ZkUtils zkUtils,
@@ -319,10 +329,11 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
 
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, 86400000L,
-                                     43200000L, null, getMockUserTaskManager());
+                                     43200000L, null, getMockUserTaskManager(RANDOM_UUID),
+                                     getMockAnomalyDetector(RANDOM_UUID));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, EasyMock.mock(LoadMonitor.class), null,
-                              null, null, "random-uuid");
+                              null, null, RANDOM_UUID);
 
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
     for (ExecutionProposal proposal : proposalsToCheck) {
