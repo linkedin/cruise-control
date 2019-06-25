@@ -67,7 +67,7 @@ public class AnomalyDetectorState {
     _selfHealingEnabledRatio = null;
   }
 
-  void setSelfHealingEnabledRatio(Map<AnomalyType, Float> selfHealingEnabledRatio) {
+  public void setSelfHealingEnabledRatio(Map<AnomalyType, Float> selfHealingEnabledRatio) {
     if (selfHealingEnabledRatio == null) {
       throw new IllegalArgumentException("Attempt to set selfHealingEnabledRatio with null.");
     }
