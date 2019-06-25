@@ -40,6 +40,7 @@ public class AnomalyDetectorState {
   private static final String DESCRIPTION = "description";
   private static final String SELF_HEALING_ENABLED = "selfHealingEnabled";
   private static final String SELF_HEALING_DISABLED = "selfHealingDisabled";
+  private static final String SELF_HEALING_ENABLED_RATIO = "selfHealingEnabledRatio";
   private static final String RECENT_GOAL_VIOLATIONS = "recentGoalViolations";
   private static final String RECENT_BROKER_FAILURES = "recentBrokerFailures";
   private static final String RECENT_METRIC_ANOMALIES = "recentMetricAnomalies";
@@ -49,6 +50,7 @@ public class AnomalyDetectorState {
   // Recent anomalies with anomaly state by the anomaly type.
   private final Map<AnomalyType, Map<String, AnomalyState>> _recentAnomaliesByType;
   private final Map<AnomalyType, Boolean> _selfHealingEnabled;
+  private Map<String, Float> _selfHealingEnabledRatio;
   // Maximum number of anomalies to keep in the anomaly detector state.
   private final int _numCachedRecentAnomalyStates;
 
@@ -64,6 +66,19 @@ public class AnomalyDetectorState {
       });
     }
     _selfHealingEnabled = selfHealingEnabled;
+    _selfHealingEnabledRatio = null;
+  }
+
+  public void setSelfHealingEnabledRatio(Map<AnomalyType, Float> selfHealingEnabledRatio) {
+    if (selfHealingEnabledRatio == null) {
+      throw new IllegalArgumentException("Attempt to set selfHealingEnabledRatio with null.");
+    }
+    _selfHealingEnabledRatio = new HashMap<>(selfHealingEnabledRatio.size());
+    selfHealingEnabledRatio.forEach((key, value) -> _selfHealingEnabledRatio.put(key.name(), value));
+  }
+
+  private Map<String, Float> selfHealingEnabledRatio() {
+    return _selfHealingEnabledRatio == null ? Collections.emptyMap() : _selfHealingEnabledRatio;
   }
 
   /**
@@ -172,10 +187,11 @@ public class AnomalyDetectorState {
   }
 
   public Map<String, Object> getJsonStructure() {
-    Map<String, Object> anomalyDetectorState = new HashMap<>(_recentAnomaliesByType.size() + 2);
+    Map<String, Object> anomalyDetectorState = new HashMap<>(_recentAnomaliesByType.size() + 3);
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
     anomalyDetectorState.put(SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true));
     anomalyDetectorState.put(SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false));
+    anomalyDetectorState.put(SELF_HEALING_ENABLED_RATIO, selfHealingEnabledRatio());
     anomalyDetectorState.put(RECENT_GOAL_VIOLATIONS, recentAnomalies(AnomalyType.GOAL_VIOLATION, true));
     anomalyDetectorState.put(RECENT_BROKER_FAILURES, recentAnomalies(AnomalyType.BROKER_FAILURE, true));
     anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentAnomalies(AnomalyType.METRIC_ANOMALY, true));
@@ -187,9 +203,10 @@ public class AnomalyDetectorState {
   @Override
   public String toString() {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
-    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s}%n",
+    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s}%n",
                          SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true),
                          SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false),
+                         SELF_HEALING_ENABLED_RATIO, selfHealingEnabledRatio(),
                          RECENT_GOAL_VIOLATIONS, recentAnomalies(AnomalyType.GOAL_VIOLATION, false),
                          RECENT_BROKER_FAILURES, recentAnomalies(AnomalyType.BROKER_FAILURE, false),
                          RECENT_METRIC_ANOMALIES, recentAnomalies(AnomalyType.METRIC_ANOMALY, false),
