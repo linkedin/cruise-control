@@ -50,3 +50,23 @@ class EntriesParameter(AbstractPositiveIntegerParameter):
         'args': ('--number-of-entries-to-show', '--num-entries'),
         'kwargs': dict(metavar='K', help=description, type=int)
     }
+
+
+class ReplicationFactorParameter(AbstractPositiveIntegerParameter):
+    """replication_factor=[target_replication_factor]"""
+    name = 'replication_factor'
+    description = 'The target replication factor to which the specified topics should be set'
+    argparse_properties = {
+        'args': ('--replication-factor',),
+        'kwargs': dict(metavar='K', help=description, type=int)
+    }
+
+
+class ReviewIDParameter(AbstractPositiveIntegerParameter):
+    """review_id=[id]"""
+    name = 'review_id'
+    description = 'The id of the approved review'
+    argparse_properties = {
+        'args': ('--review-id',),
+        'kwargs': dict(metavar='K', help=description, type=int)
+    }

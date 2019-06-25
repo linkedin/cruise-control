@@ -123,6 +123,17 @@ class SkipHardGoalCheckParameter(AbstractBooleanParameter):
     }
 
 
+class SkipRackAwarenessCheckParameter(AbstractBooleanParameter):
+    """skip_rack_awareness_check=[true/false]"""
+    name = 'skip_rack_awareness_check'
+    description = "Whether to skip the rack-awareness check when performing this action"
+    argparse_properties = {
+        'args': ('--skip-rack-awareness-check',),
+        # Presume that the sensible default is to NOT skip rack awareness
+        'kwargs': dict(help=description, action='store_true')
+    }
+
+
 class SkipURPDemotionParameter(AbstractBooleanParameter):
     """skip_urp_demotion=[true/false]"""
     name = 'skip_urp_demotion'
