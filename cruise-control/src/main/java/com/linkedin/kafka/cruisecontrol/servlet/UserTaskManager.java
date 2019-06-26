@@ -383,12 +383,12 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Mark the user task which is currently executed in {@link com.linkedin.kafka.cruisecontrol.executor.Executor}.
+   * Update status for user task which is currently being executed.
    *
    * @param uuid UUID associated with the in-execution user task.
    * @return {@link UserTaskInfo} associated with the task in-execution.
    */
-  public synchronized UserTaskInfo markTaskInExecution(String uuid) {
+  public synchronized UserTaskInfo markTaskExecutionBegan(String uuid) {
     UUID userTaskId = UUID.fromString(uuid);
     for (Map<UUID, UserTaskInfo> infoMap : _uuidToCompletedUserTaskInfoMap.values()) {
       if (infoMap.containsKey(userTaskId)) {
@@ -408,11 +408,11 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Unmark the in-execution user task once {@link com.linkedin.kafka.cruisecontrol.executor.Executor} has finish the execution.
+   * Update user task status once the execution is done.
    *
    * @param uuid UUID associated with the in-execution user task.
    */
-  public synchronized void markTaskFinishExecution(String uuid) {
+  public synchronized void markTaskExecutionFinished(String uuid) {
     if (!_inExecutionUserTaskInfo.userTaskId().equals(UUID.fromString(uuid))) {
       throw new IllegalStateException(String.format("Task %s is not found in UserTaskManager.", uuid));
     }

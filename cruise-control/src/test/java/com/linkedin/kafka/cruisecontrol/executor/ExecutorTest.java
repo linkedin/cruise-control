@@ -11,9 +11,10 @@ import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaIntegrationTestHarness;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
+import com.linkedin.kafka.cruisecontrol.detector.AnomalyDetector;
+import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
-import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.util.Arrays;
@@ -49,7 +50,6 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorNotification.ActionAgent.USER;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorNotification.ActionAgent.EXECUTION_COMPLETION;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorNotification.ActionAgent.CRUISE_CONTROL;
-import static org.easymock.EasyMock.*;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -62,6 +62,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
   private static final TopicPartition TP1 = new TopicPartition(TOPIC1, PARTITION);
   private static final TopicPartition TP2 = new TopicPartition(TOPIC2, PARTITION);
   private static final TopicPartition TP3 = new TopicPartition(TOPIC3, PARTITION);
+  private static final String RANDOM_UUID = "random_uuid";
 
 
   @Override
@@ -206,7 +207,8 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
 
     Collection<ExecutionProposal> proposalsToExecute = Collections.singletonList(proposal);
     Executor executor = new Executor(configs, time, new MetricRegistry(), mockMetadataClient, 86400000L,
-                                     43200000L, null, getMockUserTaskManager());
+                                     43200000L, null, getMockUserTaskManager(RANDOM_UUID),
+                                     getMockAnomalyDetector(RANDOM_UUID));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute,
                               Collections.emptySet(),
@@ -216,7 +218,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
                               null,
                               null,
                               null,
-                              "random-uuid");
+                               RANDOM_UUID);
     // Wait until the execution to start so the task timestamp is set to time.milliseconds.
     while (executor.state().state() != ExecutorState.State.LEADER_MOVEMENT_TASK_IN_PROGRESS) {
       Thread.sleep(10);
@@ -254,9 +256,9 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     Capture<ExecutorNotification> captureNotification = Capture.newInstance(CaptureType.FIRST);
 
     EasyMock.expect(mockUserTaskInfo.endPoint()).andReturn(EndPoint.REBALANCE).once();
-    EasyMock.expect(mockUserTaskManager.markTaskInExecution(uuid))
-            .andReturn(expectUserTaskInfo ? mockUserTaskInfo : null).once();
-    mockUserTaskManager.markTaskFinishExecution(anyString());
+    EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid))
+        .andReturn(expectUserTaskInfo ? mockUserTaskInfo : null).once();
+    mockUserTaskManager.markTaskExecutionFinished(uuid);
     mockExecutorNotifier.sendNotification(EasyMock.capture(captureNotification));
     EasyMock.expectLastCall();
 
@@ -265,7 +267,7 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     EasyMock.replay(mockExecutorNotifier);
 
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, 86400000L,
-                                     43200000L, mockExecutorNotifier, mockUserTaskManager);
+                                     43200000L, mockExecutorNotifier, mockUserTaskManager, getMockAnomalyDetector(uuid));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, EasyMock.mock(LoadMonitor.class), null,
                               null, null, null, uuid);
@@ -343,12 +345,19 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     return topicDescriptions0;
   }
 
-  private UserTaskManager getMockUserTaskManager() {
+  private UserTaskManager getMockUserTaskManager(String uuid) {
     UserTaskManager mockUserTaskManager = EasyMock.mock(UserTaskManager.class);
-    mockUserTaskManager.markTaskFinishExecution(anyString());
-    EasyMock.expect(mockUserTaskManager.markTaskInExecution(anyObject())).andReturn(null).anyTimes();
+    mockUserTaskManager.markTaskExecutionFinished(uuid);
+    EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid)).andReturn(null).anyTimes();
     EasyMock.replay(mockUserTaskManager);
     return mockUserTaskManager;
+  }
+
+  private AnomalyDetector getMockAnomalyDetector(String anomalyId) {
+    AnomalyDetector mockAnomalyDetector = EasyMock.mock(AnomalyDetector.class);
+    mockAnomalyDetector.markSelfHealingFinished(anomalyId);
+    EasyMock.replay(mockAnomalyDetector);
+    return mockAnomalyDetector;
   }
 
   private void executeAndVerifyProposals(KafkaZkClient kafkaZkClient,
@@ -357,10 +366,11 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
     KafkaCruiseControlConfig configs = new KafkaCruiseControlConfig(getExecutorProperties());
 
     Executor executor = new Executor(configs, new SystemTime(), new MetricRegistry(), null, 86400000L,
-                                     43200000L, null, getMockUserTaskManager());
+                                     43200000L, null, getMockUserTaskManager(RANDOM_UUID),
+                                     getMockAnomalyDetector(RANDOM_UUID));
     executor.setExecutionMode(false);
     executor.executeProposals(proposalsToExecute, Collections.emptySet(), null, EasyMock.mock(LoadMonitor.class), null,
-                              null, null, null, "random-uuid");
+                              null, null, null, RANDOM_UUID);
 
     Map<TopicPartition, Integer> replicationFactors = new HashMap<>();
     for (ExecutionProposal proposal : proposalsToCheck) {

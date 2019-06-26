@@ -237,6 +237,15 @@ public class AnomalyDetector {
   }
 
   /**
+   * Update anomaly status once associated self-healing operation has finished.
+   *
+   * @param anomalyId Unique id of anomaly which triggered self-healing operation.
+   */
+  public void markSelfHealingFinished(String anomalyId) {
+    _anomalyDetectorState.markSelfHealingFinished(anomalyId);
+  }
+
+  /**
    * A class that handles all the anomalies.
    */
   class AnomalyHandlerTask implements Runnable {
