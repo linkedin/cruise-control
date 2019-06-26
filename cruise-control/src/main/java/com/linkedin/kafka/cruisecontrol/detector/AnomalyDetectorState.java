@@ -121,7 +121,7 @@ public class AnomalyDetectorState {
       _ongoingSelfHealingAnomaly = anomaly;
     }
 
-    AnomalyState recentAnomalyState = _recentAnomaliesByType.get(anomalyType).remove(anomalyId);
+    AnomalyState recentAnomalyState = _recentAnomaliesByType.get(anomalyType).get(anomalyId);
     if (recentAnomalyState != null) {
       recentAnomalyState.setStatus(status);
     } else if (LOG.isDebugEnabled()) {
