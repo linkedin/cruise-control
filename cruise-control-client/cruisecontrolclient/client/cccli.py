@@ -6,8 +6,8 @@
 # To be able to easily parse command-line arguments
 import argparse
 
-# To be able to make more precise type hints
-from typing import Dict, Tuple, Type  # noqa
+# To be able to easily pass around the available endpoints and parameters
+from cruisecontrolclient.client.ExecutionContext import ExecutionContext
 
 # Convenience functions for displaying the retrieved Response
 from cruisecontrolclient.client.Display import display_response
@@ -16,176 +16,15 @@ from cruisecontrolclient.client.Display import display_response
 import cruisecontrolclient.client.Endpoint as Endpoint
 
 # To be able to make requests and get a response given a URL to cruise-control
-from cruisecontrolclient.client.Responder import JSONDisplayingResponderGet, JSONDisplayingResponderPost
+from cruisecontrolclient.client.Responder import AbstractResponder, JSONDisplayingResponderGet, \
+    JSONDisplayingResponderPost
 
 # To be able to compose a URL to hand to requests
 from cruisecontrolclient.client.Query import generate_url_from_cc_socket_address
 
 
-def add_add_parameter_argument(p: argparse.ArgumentParser):
-    """
-    This should be used with all cruise-control endpoint parsers, to provide
-    forward compatibility and greater operational flexibility.
-    :param p:
-    :return:
-    """
-    p.add_argument('--add-parameter', '--add-parameters', metavar='PARAM=VALUE',
-                   help="Manually specify one or more parameters and their value in the cruise-control endpoint, like 'param=value'",
-                   nargs='+')
-
-
-def add_remove_parameter_argument(p: argparse.ArgumentParser):
-    """
-    Adds the ability to manually specify parameters to remove from the cruise-control
-    endpoint, of the form 'parameter'.
-
-    This should be used with all cruise-control endpoint parsers, to provide
-    forward compatibility and greater operational flexibility.
-
-    :param p:
-    :return:
-    """
-    p.add_argument('--remove-parameter', '--remove-parameters', metavar='PARAM',
-                   help="Manually remove one or more parameters from the cruise-control endpoint, like 'param'",
-                   nargs='+')
-
-
-# Define the argparse flags that cannot be used for endpoint parameters
-#
-# This helps the multi-stage argument parsing not to conflict with itself
-# during the different stages.
-non_parameter_flags = {
-    'add_parameter',
-    'endpoint_subparser',
-    'socket_address',
-    'remove_parameter',
-}
-
-# Define the in-order available endpoints for programmatically building the argparse CLI
-available_endpoints: Tuple[Type[Endpoint.AbstractEndpoint]] = (
-    Endpoint.AddBrokerEndpoint,
-    Endpoint.AdminEndpoint,
-    Endpoint.BootstrapEndpoint,
-    Endpoint.DemoteBrokerEndpoint,
-    Endpoint.FixOfflineReplicasEndpoint,
-    Endpoint.KafkaClusterStateEndpoint,
-    Endpoint.LoadEndpoint,
-    Endpoint.PartitionLoadEndpoint,
-    Endpoint.PauseSamplingEndpoint,
-    Endpoint.ProposalsEndpoint,
-    Endpoint.RebalanceEndpoint,
-    Endpoint.RemoveBrokerEndpoint,
-    Endpoint.ResumeSamplingEndpoint,
-    Endpoint.StateEndpoint,
-    Endpoint.StopProposalExecutionEndpoint,
-    Endpoint.TrainEndpoint,
-    Endpoint.UserTasksEndpoint
-)
-
-# A mapping from the names of the subparsers to the Endpoint object they should instantiate.
-#
-# Like:
-# {"add_broker": AddBrokerEndpoint,
-#  "add_brokers": AddBrokerEndpoint,
-#  "admin": AdminEndpoint,
-#  "bootstrap": BootstrapEndpoint,
-#  "demote_broker": DemoteBrokerEndpoint,
-#  "demote_brokers": DemoteBrokerEndpoint,
-#  "fix_offline_replicas": FixOfflineReplicasEndpoint,
-#  "kafka_cluster_state": KafkaClusterStateEndpoint,
-#  "load": LoadEndpoint,
-#  "partition_load": PartitionLoadEndpoint,
-#  "pause_sampling": PauseSamplingEndpoint,
-#  "proposals": ProposalsEndpoint,
-#  "rebalance": RebalanceEndpoint,
-#  "remove_broker": RemoveBrokerEndpoint,
-#  "remove_brokers": RemoveBrokerEndpoint,
-#  "resume_sampling": ResumeSamplingEndpoint,
-#  "state": StateEndpoint,
-#  "stop_proposal_execution": StopProposalExecutionEndpoint,
-#  "stop": StopProposalExecutionEndpoint,
-#  "train": TrainEndpoint,
-#  "user_task": UserTasksEndpoint,
-#  "user_tasks": UserTasksEndpoint}
-dest_to_Endpoint: Dict[str, Type[Endpoint.AbstractEndpoint]] = {}
-available_parameter_set = set()
-for endpoint in available_endpoints:
-    dest_to_Endpoint[endpoint.name] = endpoint
-    if 'aliases' in endpoint.argparse_properties['kwargs']:
-        endpoint_aliases = endpoint.argparse_properties['kwargs']['aliases']
-        for alias in endpoint_aliases:
-            dest_to_Endpoint[alias] = endpoint
-    for parameter in endpoint.available_Parameters:
-        available_parameter_set.add(parameter)
-
-# A mapping from the names of the argparse parameters to their cruise-control parameter name
-#
-# Like:
-# {'allow_capacity_estimation': 'allow_capacity_estimation',
-#  'brokers': 'brokerid',
-#  'clearmetrics': 'clearmetrics',
-#  'client_id': 'client_ids',
-#  'concurrency': 'concurrent_partition_movements_per_broker',
-#  'data_from': 'data_from',
-#  'disable_self_healing_for': 'disable_self_healing_for',
-#  'dry_run': 'dryRun',
-#  'enable_self_healing_for': 'enable_self_healing_for',
-#  'end_timestamp': 'end',
-#  'endpoint': 'endpoints',
-#  'exclude_follower_demotion': 'exclude_follower_demotion',
-#  'exclude_recently_demoted_brokers': 'exclude_recently_demoted_brokers',
-#  'exclude_recently_removed_brokers': 'exclude_recently_removed_brokers',
-#  'excluded_topics': 'excluded_topics',
-#  'goals': 'goals',
-#  'ignore_proposal_cache': 'ignore_proposal_cache',
-#  'leader_concurrency': 'concurrent_leader_movements',
-#  'max_load': 'max_load',
-#  'min_valid_partition_ratio': 'min_valid_partition_ratio',
-#  'number_of_entries_to_show': 'entries',
-#  'partition': 'partition',
-#  'reason': 'reason',
-#  'resource': 'resource',
-#  'skip_hard_goal_check': 'skip_hard_goal_check',
-#  'skip_urp_demotion': 'skip_urp_demotion',
-#  'start_timestamp': 'start',
-#  'strategies': 'replica_movement_strategies',
-#  'substate': 'substates',
-#  'super_verbose': 'super_verbose',
-#  'text': 'json',
-#  'throttle_removed_broker': 'throttle_removed_broker',
-#  'timestamp': 'time',
-#  'topic': 'topic',
-#  'types': 'types',
-#  'use_ready_default_goals': 'use_ready_default_goals',
-#  'user_task_ids': 'user_task_ids',
-#  'verbose': 'verbose'}
-flag_to_parameter_name: Dict[str, str] = {}
-for parameter in available_parameter_set:
-    argparse_parameter_name = None
-    # argparse names this parameter's flag after the first string in 'args'
-    for possible_argparse_name in parameter.argparse_properties['args']:
-        # argparse chooses flag names only from the --flags
-        if not possible_argparse_name.startswith('-'):
-            argparse_parameter_name = possible_argparse_name.replace('-', '_')
-        elif not possible_argparse_name.startswith('--'):
-            continue
-        else:
-            argparse_parameter_name = possible_argparse_name.lstrip('-').replace('-', '_')
-            break
-    if argparse_parameter_name and argparse_parameter_name in flag_to_parameter_name:
-        raise ValueError(f"Colliding parameter flags: {argparse_parameter_name}")
-    else:
-        flag_to_parameter_name[argparse_parameter_name] = parameter.name
-
-
-def query_cruise_control(args):
-    """
-    Handles asking cruise-control for a requests.Response object, and pretty-
-    printing the Response.text.
-
-    :param args:
-    :return:
-    """
+def get_endpoint(args: argparse.Namespace,
+                 execution_context: ExecutionContext) -> Endpoint.AbstractEndpoint:
     # Deepcopy the args so that we can delete keys from it as we handle them.
     #
     # Otherwise successive iterations will step on each other's toes.
@@ -195,22 +34,23 @@ def query_cruise_control(args):
     # and pass it to the Endpoint at instantiation.
     if 'brokers' in arg_dict:
         comma_broker_id_list = ",".join(args.brokers)
-        endpoint: Endpoint.AbstractEndpoint = dest_to_Endpoint[args.endpoint_subparser](comma_broker_id_list)
+        endpoint: Endpoint.AbstractEndpoint = execution_context.dest_to_Endpoint[args.endpoint_subparser](
+            comma_broker_id_list)
         # Prevent trying to add this parameter a second time.
         del arg_dict['brokers']
 
     # Otherwise we can directly instantiate the Endpoint
     else:
-        endpoint: Endpoint.AbstractEndpoint = dest_to_Endpoint[args.endpoint_subparser]()
+        endpoint: Endpoint.AbstractEndpoint = execution_context.dest_to_Endpoint[args.endpoint_subparser]()
 
     # Iterate only over the parameter flags; warn user if conflicts exist
     for flag in arg_dict:
-        if flag in non_parameter_flags:
+        if flag in execution_context.non_parameter_flags:
             pass
         else:
             # Presume None is ternary for ignore
             if arg_dict[flag] is not None:
-                param_name = flag_to_parameter_name[flag]
+                param_name = execution_context.flag_to_parameter_name[flag]
                 # Check for conflicts in this endpoint's parameter-space,
                 # which here probably means that the user is specifying more
                 # than one irresolvable flag.
@@ -301,26 +141,67 @@ def query_cruise_control(args):
         for parameter in parameters_to_remove:
             endpoint.remove_param(parameter)
 
-    # Handle instantiating the correct URL for the Responder
-    url = generate_url_from_cc_socket_address(args.socket_address, endpoint)
+    return endpoint
 
+
+def get_responder(endpoint: Endpoint.AbstractEndpoint,
+                  url: str) -> AbstractResponder:
     # Handle instantiating the correct Responder
     if endpoint.http_method == "GET":
         json_responder = JSONDisplayingResponderGet(url)
     elif endpoint.http_method == "POST":
         json_responder = JSONDisplayingResponderPost(url)
     else:
-        raise ValueError("Unexpected http_method {} in endpoint".format(endpoint.http_method))
+        raise ValueError(f"Unexpected http_method {endpoint.http_method} in endpoint")
 
-    response = json_responder.retrieve_response()
-    display_response(response)
+    return json_responder
 
 
-def main():
+def build_argument_parser(execution_context: ExecutionContext) -> argparse.ArgumentParser:
+    """
+    Builds and returns an argument parser for interacting with cruise-control via CLI.
+
+    It is expected that you can substitute another function for this function
+    that returns a parser which is decorated similarly.
+
+    :return:
+    """
+
+    # Define some inner functions that make no sense outside of this context
+    def add_add_parameter_argument(p: argparse.ArgumentParser):
+        """
+        This should be used with all cruise-control endpoint parsers, to provide
+        forward compatibility and greater operational flexibility.
+        :param p:
+        :return:
+        """
+        p.add_argument('--add-parameter', '--add-parameters', metavar='PARAM=VALUE',
+                       help="Manually specify one or more parameter and its value in the cruise-control endpoint, "
+                            "like 'param=value'",
+                       nargs='+')
+        execution_context.non_parameter_flags.add('add_parameter')
+
+    def add_remove_parameter_argument(p: argparse.ArgumentParser):
+        """
+        Adds the ability to manually specify parameters to remove from the cruise-control
+        endpoint, of the form 'parameter'.
+
+        This should be used with all cruise-control endpoint parsers, to provide
+        forward compatibility and greater operational flexibility.
+
+        :param p:
+        :return:
+        """
+        p.add_argument('--remove-parameter', '--remove-parameters', metavar='PARAM',
+                       help="Manually remove one or more parameter from the cruise-control endpoint, like 'param'",
+                       nargs='+')
+        execution_context.non_parameter_flags.add('remove_parameter')
+
     # Display command-line arguments for interacting with cruise-control
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', '--socket-address', help="The hostname[:port] of the cruise-control to interact with",
                         required=True)
+    execution_context.non_parameter_flags.add('socket_address')
 
     # Define subparser for the different cruise-control endpoints
     #
@@ -330,12 +211,13 @@ def main():
                                                description='Which cruise-control endpoint to interact with',
                                                # 'endpoint' would collide with an existing cc parameter
                                                dest='endpoint_subparser')
+    execution_context.non_parameter_flags.add('endpoint_subparser')
 
     # A map from endpoint names to that endpoint's argparse parser
     endpoint_to_parser_instance = {}
 
     # Dynamically build an argparse CLI from the Endpoint and Parameter properties
-    for endpoint in available_endpoints:
+    for endpoint in execution_context.available_endpoints:
         endpoint_parser = endpoint_subparser.add_parser(*endpoint.argparse_properties['args'],
                                                         **endpoint.argparse_properties['kwargs'])
         endpoint_to_parser_instance[endpoint.name] = endpoint_parser
@@ -346,10 +228,33 @@ def main():
         add_add_parameter_argument(endpoint_parser)
         add_remove_parameter_argument(endpoint_parser)
 
-    # Parse the provided arguments, then do the desired action
+    return parser
+
+
+def main():
+    # Instantiate a convenience class to pass around information about available endpoints and parameters.
+    e = ExecutionContext()
+
+    # Display and parse command-line arguments for interacting with cruise-control
+    parser = build_argument_parser(e)
     args = parser.parse_args()
 
-    query_cruise_control(args)
+    # Get the endpoint that the parsed args specify
+    endpoint = get_endpoint(args=args, execution_context=e)
+
+    # Get the socket address for the cruise-control we're communicating with
+    cc_socket_address = args.socket_address
+
+    # Generate the correct URL from the endpoint and the socket address
+    url = generate_url_from_cc_socket_address(cc_socket_address=cc_socket_address,
+                                              endpoint=endpoint)
+
+    # Get a responder from the given URL and endpoint
+    json_responder = get_responder(endpoint=endpoint, url=url)
+
+    # Retrieve the response and display it
+    response = json_responder.retrieve_response()
+    display_response(response)
 
 
 if __name__ == "__main__":
