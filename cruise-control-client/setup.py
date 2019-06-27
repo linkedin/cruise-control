@@ -5,7 +5,7 @@ import setuptools
 
 setuptools.setup(
     name='cruise-control-client',
-    version='0.0.1',
+    version='0.0.2',
     author='mgrubent',
     author_email='mgrubentrejo@linkedin.com',
     description='A Python client for cruise-control',
