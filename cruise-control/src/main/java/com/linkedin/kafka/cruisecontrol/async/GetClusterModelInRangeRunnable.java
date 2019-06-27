@@ -4,15 +4,14 @@
 
 package com.linkedin.kafka.cruisecontrol.async;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PartitionLoadState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#clusterModel(long, long, Double,

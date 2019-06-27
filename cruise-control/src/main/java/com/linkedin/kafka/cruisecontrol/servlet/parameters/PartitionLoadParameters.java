@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 import javax.servlet.http.HttpServletRequest;
@@ -75,7 +74,7 @@ public class PartitionLoadParameters extends AbstractParameters {
     try {
       _brokerIds = ParameterUtils.brokerIds(_request);
     } catch (IllegalArgumentException e) {
-      _brokerIds = Collections.unmodifiableSet(new HashSet<>(0));
+      _brokerIds = Collections.emptySet();
     }
   }
 
