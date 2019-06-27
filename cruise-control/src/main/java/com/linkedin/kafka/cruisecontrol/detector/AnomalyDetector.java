@@ -184,6 +184,7 @@ public class AnomalyDetector {
   }
 
   public AnomalyDetectorState anomalyDetectorState() {
+    _anomalyDetectorState.setSelfHealingEnabledRatio(_anomalyNotifier.selfHealingEnabledRatio());
     return _anomalyDetectorState;
   }
 
@@ -213,6 +214,15 @@ public class AnomalyDetector {
    */
   public long numCheckedWithDelay() {
     return _numCheckedWithDelay;
+  }
+
+  /**
+   * Update anomaly status once associated self-healing operation has finished.
+   *
+   * @param anomalyId Unique id of anomaly which triggered self-healing operation.
+   */
+  public void markSelfHealingFinished(String anomalyId) {
+    _anomalyDetectorState.markSelfHealingFinished(anomalyId);
   }
 
   /**
