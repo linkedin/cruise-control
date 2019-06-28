@@ -531,7 +531,7 @@ public class Executor {
     private ExecutorState.State _state;
     private Set<Integer> _recentlyDemotedBrokers;
     private Set<Integer> _recentlyRemovedBrokers;
-    private Long _replicationThrottle;
+    private final Long _replicationThrottle;
     private final long _executionStartMs;
     private Throwable _executionException;
     private final UserTaskManager.UserTaskInfo _userTaskInfo;
