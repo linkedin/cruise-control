@@ -288,7 +288,7 @@ public class Executor {
    *                                               (if null, use num.concurrent.leader.movements).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            during the rebalance (if null, no throttling is applied).
+   *                            when executing a proposal (if null, no throttling is applied).
    * @param uuid UUID of the execution.
    */
   public synchronized void executeProposals(Collection<ExecutionProposal> proposals,
@@ -344,7 +344,7 @@ public class Executor {
    * @param requestedLeadershipMovementConcurrency The maximum number of concurrent leader movements
    *                                               (if null, use num.concurrent.leader.movements).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            during the rebalance (if null, no throttling is applied).
+   *                            while executing demotion proposals (if null, no throttling is applied).
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks.
    * @param uuid UUID of the execution.
    */
@@ -430,7 +430,7 @@ public class Executor {
    * @param demotedBrokers Brokers to be demoted, null if no broker has been demoted.
    * @param removedBrokers Brokers to be removed, null if no broker has been removed.
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            during the rebalance (if null, no throttling is applied).
+   *                            while moving partitions (if null, no throttling is applied).
    */
   private void startExecution(LoadMonitor loadMonitor,
                               Collection<Integer> demotedBrokers,

@@ -190,7 +190,7 @@ public class KafkaCruiseControl {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            during the rebalance (if null, no throttling is applied).
+   *                            when decomissioning brokers (if null, no throttling is applied).
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
@@ -267,7 +267,7 @@ public class KafkaCruiseControl {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            during the rebalance (if null, no throttling is applied).
+   *                            when fixing offline replicas (if null, no throttling is applied).
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
@@ -365,7 +365,7 @@ public class KafkaCruiseControl {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            during the rebalance (if null, no throttling is applied).
+   *                            when adding brokers (if null, no throttling is applied).
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
@@ -531,7 +531,7 @@ public class KafkaCruiseControl {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            during the rebalance (if null, no throttling is applied).
+   *                            when demoting brokers (if null, no throttling is applied).
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @return the optimization result.
@@ -1022,7 +1022,7 @@ public class KafkaCruiseControl {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            during the rebalance (if null, no throttling is applied).
+   *                            when executing proposals (if null, no throttling is applied).
    * @param uuid UUID of the execution.
    */
   private void executeProposals(Set<ExecutionProposal> proposals,
@@ -1056,7 +1056,7 @@ public class KafkaCruiseControl {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            during the rebalance (if null, no throttling is applied).
+   *                            when executing remove operations (if null, no throttling is applied).
    * @param uuid UUID of the execution.
    */
   private void executeRemoval(Set<ExecutionProposal> proposals,
@@ -1086,7 +1086,7 @@ public class KafkaCruiseControl {
    * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
    *                                (if null, use default.replica.movement.strategies).
    * @param replicationThrottle The replication throttle (bytes/second) to apply to both leaders and followers
-   *                            during the rebalance (if null, no throttling is applied).
+   *                            when executing demote operations (if null, no throttling is applied).
    * @param uuid UUID of the execution.
    */
   private void executeDemotion(Set<ExecutionProposal> proposals,
