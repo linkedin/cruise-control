@@ -128,7 +128,7 @@ object ExecutorUtils {
     adminZkClient.changeTopicConfig(topic, config)
   }
 
-  def getAllBrokerIdsInCluster(kafkaZkClient: KafkaZkClient): java.util.List[java.lang.Integer] = {
+  def getAllLiveBrokerIdsInCluster(kafkaZkClient: KafkaZkClient): java.util.List[java.lang.Integer] = {
     seqAsJavaList(kafkaZkClient.getAllBrokersInCluster.map(_.id : java.lang.Integer))
   }
 

@@ -59,7 +59,7 @@ class ReplicationThrottleHelper {
   void clearThrottles() {
     if (throttlingEnabled()) {
       LOG.info("Removing rebalance throttles from all brokers in the cluster");
-      ExecutorUtils.getAllBrokerIdsInCluster(_kafkaZkClient).forEach(this::removeThrottledRateFromBroker);
+      ExecutorUtils.getAllLiveBrokerIdsInCluster(_kafkaZkClient).forEach(this::removeThrottledRateFromBroker);
       ExecutorUtils.getAllTopicsInCluster(_kafkaZkClient).forEach(this::removeThrottledReplicasFromTopic);
     }
   }
