@@ -6,20 +6,17 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
 import java.util.Collections;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TimeZone;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.utcDateFor;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.GOAL_VIOLATION;
 import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.METRIC_ANOMALY;
@@ -27,8 +24,6 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BRO
 
 public class AnomalyDetectorState {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorState.class);
-  private static final String DATA_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
-  private static final String TIME_ZONE = "UTC";
   private static final String DETECTION_MS = "detectionMs";
   private static final String DETECTION_DATE = "detectionDate";
   private static final String ANOMALY_ID = "anomalyId";
@@ -47,6 +42,11 @@ public class AnomalyDetectorState {
   private static final String RECENT_METRIC_ANOMALIES = "recentMetricAnomalies";
   private static final String ONGOING_SELF_HEALING_ANOMALY = "ongoingSelfHealingAnomaly";
   private static final String OPTIMIZATION_RESULT = "optimizationResult";
+  private static final String METRICS = "metrics";
+  private static final String MEAN_TIME_BETWEEN_ANOMALIES = "meanTimeBetweenAnomalies";
+  private static final String MEAN_TIME_TO_START_FIX = "meanTimeToStartFix";
+  // Package private for testing.
+  static final String NUM_SELF_HEALING_STARTED = "numSelfHealingStarted";
 
   // Recent anomalies with anomaly state by the anomaly type.
   private final Map<AnomalyType, Map<String, AnomalyState>> _recentAnomaliesByType;
@@ -55,6 +55,7 @@ public class AnomalyDetectorState {
   private Map<String, Float> _selfHealingEnabledRatio;
   // Maximum number of anomalies to keep in the anomaly detector state.
   private final int _numCachedRecentAnomalyStates;
+  private AnomalyMetrics _metrics;
 
   public AnomalyDetectorState(Map<AnomalyType, Boolean> selfHealingEnabled, int numCachedRecentAnomalyStates) {
     _numCachedRecentAnomalyStates = numCachedRecentAnomalyStates;
@@ -70,6 +71,7 @@ public class AnomalyDetectorState {
     _selfHealingEnabled = selfHealingEnabled;
     _selfHealingEnabledRatio = null;
     _ongoingSelfHealingAnomaly = null;
+    _metrics = null;
   }
 
   public void setSelfHealingEnabledRatio(Map<AnomalyType, Float> selfHealingEnabledRatio) {
@@ -78,6 +80,30 @@ public class AnomalyDetectorState {
     }
     _selfHealingEnabledRatio = new HashMap<>(selfHealingEnabledRatio.size());
     selfHealingEnabledRatio.forEach((key, value) -> _selfHealingEnabledRatio.put(key.name(), value));
+  }
+
+  /**
+   * Set metrics for the anomaly detector state.
+   *
+   * @param metrics Anomaly metrics.
+   */
+  public void setMetrics(AnomalyMetrics metrics) {
+    if (metrics == null) {
+      throw new IllegalArgumentException("Attempt to set metrics with null.");
+    }
+    _metrics = metrics;
+  }
+
+  /**
+   * Package private for testing
+   */
+  Map<String, Object> metrics() {
+    Map<String, Object> metrics = new HashMap<>(3);
+    metrics.put(MEAN_TIME_BETWEEN_ANOMALIES, _metrics.meanTimeBetweenAnomalies());
+    metrics.put(MEAN_TIME_TO_START_FIX, _metrics.meanTimeToStartFix());
+    metrics.put(NUM_SELF_HEALING_STARTED, _metrics.numSelfHealingStarted());
+
+    return metrics;
   }
 
   private Map<String, Float> selfHealingEnabledRatio() {
@@ -138,13 +164,6 @@ public class AnomalyDetectorState {
     return oldValue != null && oldValue;
   }
 
-  private static String getDateFormat(long timeMs) {
-    Date date = new Date(timeMs);
-    DateFormat formatter = new SimpleDateFormat(DATA_FORMAT);
-    formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
-    return formatter.format(date);
-  }
-
   private static Map<String, Object> populateAnomalyDetails(AnomalyState anomalyState,
                                                             AnomalyType anomalyType,
                                                             boolean hasFixStarted,
@@ -152,11 +171,11 @@ public class AnomalyDetectorState {
     // Goal violation has one more field than other anomaly types.
     Map<String, Object> anomalyDetails = new HashMap<>((hasFixStarted ? 6 : 5) + (anomalyType == GOAL_VIOLATION ? 1 : 0));
     anomalyDetails.put(isJson ? DETECTION_MS : DETECTION_DATE,
-                       isJson ? anomalyState.detectionMs() : getDateFormat(anomalyState.detectionMs()));
+                       isJson ? anomalyState.detectionMs() : utcDateFor(anomalyState.detectionMs()));
     anomalyDetails.put(STATUS, anomalyState.status());
     anomalyDetails.put(ANOMALY_ID, anomalyState.anomalyId());
     anomalyDetails.put(isJson ? STATUS_UPDATE_MS : STATUS_UPDATE_DATE,
-                       isJson ? anomalyState.statusUpdateMs() : getDateFormat(anomalyState.statusUpdateMs()));
+                       isJson ? anomalyState.statusUpdateMs() : utcDateFor(anomalyState.statusUpdateMs()));
     switch (anomalyType) {
       case GOAL_VIOLATION:
         GoalViolations goalViolations = (GoalViolations) anomalyState.anomaly();
@@ -187,6 +206,13 @@ public class AnomalyDetectorState {
     return anomalyDetails;
   }
 
+  /**
+   * Package private for unit tests.
+   */
+  Map<AnomalyType, Map<String, AnomalyState>> recentAnomaliesByType() {
+    return _recentAnomaliesByType;
+  }
+
   private Set<Map<String, Object>> recentAnomalies(AnomalyType anomalyType, boolean isJson) {
     Map<String, AnomalyState> anomaliesById = _recentAnomaliesByType.get(anomalyType);
     Set<Map<String, Object>> recentAnomalies = new HashSet<>(_numCachedRecentAnomalyStates);
@@ -215,6 +241,7 @@ public class AnomalyDetectorState {
     anomalyDetectorState.put(RECENT_GOAL_VIOLATIONS, recentAnomalies(GOAL_VIOLATION, true));
     anomalyDetectorState.put(RECENT_BROKER_FAILURES, recentAnomalies(BROKER_FAILURE, true));
     anomalyDetectorState.put(RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, true));
+    anomalyDetectorState.put(METRICS, metrics());
     if (_ongoingSelfHealingAnomaly != null) {
       anomalyDetectorState.put(ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly.anomalyId());
     }
@@ -224,13 +251,14 @@ public class AnomalyDetectorState {
   @Override
   public synchronized String toString() {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
-    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s%s, %s:%s}%n",
+    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s%s, %s%s, %s:%s}%n",
                          SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true),
                          SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false),
                          SELF_HEALING_ENABLED_RATIO, selfHealingEnabledRatio(),
                          RECENT_GOAL_VIOLATIONS, recentAnomalies(GOAL_VIOLATION, false),
                          RECENT_BROKER_FAILURES, recentAnomalies(BROKER_FAILURE, false),
                          RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, false),
+                         METRICS, metrics(),
                          ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly == null ? "None" : _ongoingSelfHealingAnomaly.anomalyId());
   }
 }

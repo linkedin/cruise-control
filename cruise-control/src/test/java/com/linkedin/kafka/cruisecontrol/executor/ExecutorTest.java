@@ -49,7 +49,6 @@ import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC3;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorNotification.ActionAgent.USER;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorNotification.ActionAgent.EXECUTION_COMPLETION;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorNotification.ActionAgent.CRUISE_CONTROL;
-import static org.easymock.EasyMock.*;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -318,6 +317,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
 
   private AnomalyDetector getMockAnomalyDetector(String anomalyId) {
     AnomalyDetector mockAnomalyDetector = EasyMock.mock(AnomalyDetector.class);
+    mockAnomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
     mockAnomalyDetector.markSelfHealingFinished(anomalyId);
     EasyMock.replay(mockAnomalyDetector);
     return mockAnomalyDetector;

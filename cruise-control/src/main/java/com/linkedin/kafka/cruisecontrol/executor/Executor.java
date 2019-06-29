@@ -417,6 +417,7 @@ public class Executor {
       throw new IllegalStateException("There are ongoing inter-broker partition reassignments.");
     }
     _hasOngoingExecution = true;
+    _anomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
     _stopRequested.set(false);
     _executionStoppedByUser.set(false);
     if (_isKafkaAssignerMode) {
