@@ -184,7 +184,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   private boolean refreshPartitionAssignment() {
     List<PartitionInfo> remotePartitionInfo = _metricConsumer.partitionsFor(_metricReporterTopic);
     if (remotePartitionInfo == null) {
-      LOG.error(String.format("_metricConsumer returned null for _metricReporterTopic %s", _metricReporterTopic));
+      LOG.error("_metricConsumer returned null for _metricReporterTopic {}", _metricReporterTopic);
       return true;
     }
     if (remotePartitionInfo.isEmpty()) {
