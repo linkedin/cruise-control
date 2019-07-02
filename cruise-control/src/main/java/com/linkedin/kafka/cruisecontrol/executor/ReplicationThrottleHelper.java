@@ -13,7 +13,14 @@ import kafka.zk.KafkaZkClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -169,7 +176,7 @@ class ReplicationThrottleHelper {
 
   private void removeLeaderThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
     String oldLeaderThrottledReplicas = config.getProperty(LEADER_THROTTLED_REPLICAS);
-    if(oldLeaderThrottledReplicas != null) {
+    if (oldLeaderThrottledReplicas != null) {
       replicas.forEach(r -> LOG.debug("Removing leader throttles for topic {} on replica {}", topic, r));
       String newLeaderThrottledReplicas = removeReplicasFromConfig(oldLeaderThrottledReplicas, replicas);
       config.setProperty(LEADER_THROTTLED_REPLICAS, newLeaderThrottledReplicas);
@@ -178,7 +185,7 @@ class ReplicationThrottleHelper {
 
   private void removeFollowerThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
     String oldLeaderThrottledReplicas = config.getProperty(FOLLOWER_THROTTLED_REPLICAS);
-    if(oldLeaderThrottledReplicas != null) {
+    if (oldLeaderThrottledReplicas != null) {
       replicas.forEach(r -> LOG.debug("Removing follower throttles for topic {} and replica {}", topic, r));
       String newLeaderThrottledReplicas = removeReplicasFromConfig(oldLeaderThrottledReplicas, replicas);
       config.setProperty(FOLLOWER_THROTTLED_REPLICAS, newLeaderThrottledReplicas);
@@ -188,7 +195,7 @@ class ReplicationThrottleHelper {
   private void removeThrottledReplicasFromTopic(String topic, Set<String> replicas) {
     Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
     removeLeaderThrottledReplicasFromTopic(config, topic, replicas);
-    removeFollowerThrottledReplicasFromTopic(config, topic,replicas);
+    removeFollowerThrottledReplicasFromTopic(config, topic, replicas);
     ExecutorUtils.changeTopicConfig(_adminZkClient, topic, config);
   }
 
