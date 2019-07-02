@@ -22,7 +22,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]&amp;excluded_topics=[pattern]&amp;kafka_assigner=[true/false]
  *    &amp;use_ready_default_goals=[true/false]&amp;verbose=[true/false]&amp;exclude_recently_demoted_brokers=[true/false]
  *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
- *    &amp;review_id=[id]
+ *    &amp;review_id=[id]&amp;replication_throttle=[bytes_per_second]
  * </pre>
  */
 public class AddBrokerParameters extends AddedOrRemovedBrokerParameters {
