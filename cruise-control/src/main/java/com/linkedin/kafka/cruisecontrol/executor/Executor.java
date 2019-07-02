@@ -753,7 +753,7 @@ public class Executor {
           ExecutorUtils.executeReplicaReassignmentTasks(_kafkaZkClient, tasksToExecute);
         }
         // Wait indefinitely for partition movements to finish.
-        waitForExecutionTaskToFinish();
+        List<ExecutionTask> completedTasks = waitForExecutionTaskToFinish();
         partitionsToMove = _executionTaskManager.numRemainingInterBrokerPartitionMovements();
         int numFinishedPartitionMovements = _executionTaskManager.numFinishedInterBrokerPartitionMovements();
         long finishedDataMovementInMB = _executionTaskManager.finishedInterBrokerDataMovementInMB();
@@ -764,7 +764,7 @@ public class Executor {
                  finishedDataMovementInMB, totalDataToMoveInMB,
                  totalDataToMoveInMB == 0 ? 100 : String.format(java.util.Locale.US, "%.2f",
                                                   (finishedDataMovementInMB * 100.0) / totalDataToMoveInMB));
-        throttleHelper.clearThrottles();
+        throttleHelper.clearThrottles(completedTasks);
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
       // ensures a clean stop when the execution is stopped in the middle.
@@ -772,8 +772,9 @@ public class Executor {
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish.", inExecutionTasks.size(),
                  _executionTaskManager.inExecutionInterBrokerDataToMoveInMB());
-        waitForExecutionTaskToFinish();
+        List<ExecutionTask> completedRemainingTasks = waitForExecutionTaskToFinish();
         inExecutionTasks = _executionTaskManager.inExecutionTasks();
+        throttleHelper.clearThrottles(completedRemainingTasks);
       }
       if (_executionTaskManager.inExecutionTasks().isEmpty()) {
         LOG.info("Inter-broker partition movements finished.");
@@ -899,7 +900,7 @@ public class Executor {
     /**
      * This method periodically check zookeeper to see if the partition reassignment has finished or not.
      */
-    private void waitForExecutionTaskToFinish() {
+    private List<ExecutionTask> waitForExecutionTaskToFinish() {
       List<ExecutionTask> finishedTasks = new ArrayList<>();
       do {
         // If there is no finished tasks, we need to check if anything is blocked.
@@ -954,6 +955,7 @@ public class Executor {
         updateOngoingExecutionState();
       } while (!_executionTaskManager.inExecutionTasks().isEmpty() && finishedTasks.isEmpty());
       LOG.info("Completed tasks: {}", finishedTasks);
+      return finishedTasks;
     }
 
     /**

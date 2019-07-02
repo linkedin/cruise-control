@@ -19,9 +19,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.Properties;
+import java.util.*;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
@@ -178,5 +176,16 @@ public class ReplicationThrottleHelperTest extends CCKafkaIntegrationTestHarness
     Arrays.asList(0, 1, 2, 3).forEach((i) -> assertExpectedThrottledRateForBroker(kafkaZkClient, i, null));
     assertExpectedThrottledReplicas(kafkaZkClient, TOPIC0, null);
     assertExpectedThrottledReplicas(kafkaZkClient, TOPIC1, null);
+  }
+
+  @Test
+  public void removeReplicasFromConfigTest() {
+    Set<String> replicas = new LinkedHashSet<>();
+    replicas.add("foo");
+    replicas.add("bar");
+    replicas.add("baz");
+    String throttleConfig = "foo,bar,qux,qaz,baz";
+    String result = ReplicationThrottleHelper.removeReplicasFromConfig(throttleConfig, replicas);
+    assertEquals(result, "qux,qaz");
   }
 }

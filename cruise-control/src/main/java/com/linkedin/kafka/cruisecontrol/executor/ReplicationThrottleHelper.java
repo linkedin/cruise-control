@@ -13,13 +13,7 @@ import kafka.zk.KafkaZkClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -56,12 +50,44 @@ class ReplicationThrottleHelper {
     }
   }
 
+  // clear all throttles
   void clearThrottles() {
     if (throttlingEnabled()) {
       LOG.info("Removing rebalance throttles from all brokers in the cluster");
       ExecutorUtils.getAllLiveBrokerIdsInCluster(_kafkaZkClient).forEach(this::removeThrottledRateFromBroker);
-      ExecutorUtils.getAllTopicsInCluster(_kafkaZkClient).forEach(this::removeThrottledReplicasFromTopic);
+      ExecutorUtils.getAllTopicsInCluster(_kafkaZkClient).forEach(this::removeAllThrottledReplicasFromTopic);
     }
+  }
+
+  // Determines if a candidate task is ready to have its throttles removed.
+  boolean shouldRemoveThrottleForTask(ExecutionTask task) {
+      return
+              // the task should not be in progress
+              task.state() != ExecutionTask.State.IN_PROGRESS &&
+              // the task should not be pending
+              task.state() != ExecutionTask.State.PENDING &&
+              // brokerId is -1 when moving replicas between brokers
+              task.brokerId() != -1;
+  }
+
+  // clear throttles for a specific list of execution tasks
+  void clearThrottles(List<ExecutionTask> completedTasks) {
+      if (throttlingEnabled()) {
+        LOG.info("Removing rebalance throttles from all brokers in the cluster");
+        List<ExecutionProposal> completedProposals =
+                completedTasks
+                        .stream()
+                        // Filter for completed tasks related to replica movement
+                        .filter(this::shouldRemoveThrottleForTask)
+                        .map(ExecutionTask::proposal)
+                        .collect(Collectors.toList());
+
+        Set<Integer> participatingBrokers = getParticipatingBrokers(completedProposals);
+        Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(completedProposals);
+
+        throttledReplicas.forEach(this::removeThrottledReplicasFromTopic);
+        participatingBrokers.forEach(this::removeThrottledRateFromBroker);
+      }
   }
 
   private boolean throttlingEnabled() {
@@ -135,7 +161,38 @@ class ReplicationThrottleHelper {
     ExecutorUtils.changeTopicConfig(_adminZkClient, topic, config);
   }
 
-  private void removeThrottledReplicasFromTopic(String topic) {
+  static String removeReplicasFromConfig(String throttleConfig, Set<String> replicas) {
+    ArrayList<String> throttles = new ArrayList<>(Arrays.asList(throttleConfig.split(",")));
+    throttles.removeIf(replicas::contains);
+    return String.join(",", throttles);
+  }
+
+  private void removeLeaderThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
+    String oldLeaderThrottledReplicas = config.getProperty(LEADER_THROTTLED_REPLICAS);
+    if(oldLeaderThrottledReplicas != null) {
+      replicas.forEach(r -> LOG.debug("Removing leader throttles for topic {} on replica {}", topic, r));
+      String newLeaderThrottledReplicas = removeReplicasFromConfig(oldLeaderThrottledReplicas, replicas);
+      config.setProperty(LEADER_THROTTLED_REPLICAS, newLeaderThrottledReplicas);
+    }
+  }
+
+  private void removeFollowerThrottledReplicasFromTopic(Properties config, String topic, Set<String> replicas) {
+    String oldLeaderThrottledReplicas = config.getProperty(FOLLOWER_THROTTLED_REPLICAS);
+    if(oldLeaderThrottledReplicas != null) {
+      replicas.forEach(r -> LOG.debug("Removing follower throttles for topic {} and replica {}", topic, r));
+      String newLeaderThrottledReplicas = removeReplicasFromConfig(oldLeaderThrottledReplicas, replicas);
+      config.setProperty(FOLLOWER_THROTTLED_REPLICAS, newLeaderThrottledReplicas);
+    }
+  }
+
+  private void removeThrottledReplicasFromTopic(String topic, Set<String> replicas) {
+    Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
+    removeLeaderThrottledReplicasFromTopic(config, topic, replicas);
+    removeFollowerThrottledReplicasFromTopic(config, topic,replicas);
+    ExecutorUtils.changeTopicConfig(_adminZkClient, topic, config);
+  }
+
+  private void removeAllThrottledReplicasFromTopic(String topic) {
     Properties config = _kafkaZkClient.getEntityConfigs(ConfigType.Topic(), topic);
     Object oldLeaderThrottle = config.remove(LEADER_THROTTLED_REPLICAS);
     Object oldFollowerThrottle = config.remove(FOLLOWER_THROTTLED_REPLICAS);
