@@ -191,16 +191,19 @@ public abstract class CapacityGoal extends AbstractGoal {
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics)
       throws OptimizationFailureException {
-    // Ensure the resource utilization is under capacity limit.
-    // While proposals exclude the excludedTopics, the utilization still considers replicas of the excludedTopics.
-    ensureUtilizationUnderCapacity(clusterModel);
-    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
-    GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
-    // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
-    GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
-    finish();
-    clusterModel.untrackSortedReplicas(sortName());
-    clusterModel.untrackSortedReplicas(sortNameByLeader());
+    try {
+      // Ensure the resource utilization is under capacity limit.
+      // While proposals exclude the excludedTopics, the utilization still considers replicas of the excludedTopics.
+      ensureUtilizationUnderCapacity(clusterModel);
+      // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+      GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
+      // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
+      GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
+      finish();
+    } finally {
+      clusterModel.untrackSortedReplicas(sortName());
+      clusterModel.untrackSortedReplicas(sortNameByLeader());
+    }
   }
 
   @Override

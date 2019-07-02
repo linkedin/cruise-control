@@ -9,6 +9,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.utils.CCKafkaClientsIntegrationTestHarness;
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -157,7 +158,7 @@ public class CruiseControlMetricsReporterTest extends CCKafkaClientsIntegrationT
     Set<Integer> metricTypes = new HashSet<>();
     ConsumerRecords<String, CruiseControlMetric> records;
     while (metricTypes.size() < expectedMetricTypes.size() && System.currentTimeMillis() < startMs + 15000) {
-      records = consumer.poll(10);
+      records = consumer.poll(Duration.ofMillis(10L));
       for (ConsumerRecord<String, CruiseControlMetric> record : records) {
         metricTypes.add((int) record.value().rawMetricType().id());
       }

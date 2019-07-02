@@ -12,6 +12,10 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import java.util.ArrayList;
+import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,6 +28,12 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlSta
 public class AnomalyDetectorUtils {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorUtils.class);
   public static final long MAX_METADATA_WAIT_MS = 60000L;
+  public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
+                                                                    null,
+                                                                    true,
+                                                                    true,
+                                                                    true,
+                                                                    null);
 
   private AnomalyDetectorUtils() {
   }
@@ -40,6 +50,18 @@ public class AnomalyDetectorUtils {
     } else {
       throw new IllegalStateException("Unrecognized type for anomaly " + anomaly);
     }
+  }
+
+  /**
+   * Get a list of names for goals {@link KafkaCruiseControlConfig#SELF_HEALING_GOALS_CONFIG} in the order of priority.
+   */
+  static List<String> getSelfHealingGoalNames(KafkaCruiseControlConfig config) {
+    List<Goal> goals = config.getConfiguredInstances(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG, Goal.class);
+    List<String> selfHealingGoalNames = new ArrayList<>(goals.size());
+    for (Goal goal : goals) {
+      selfHealingGoalNames.add(goal.name());
+    }
+    return selfHealingGoalNames;
   }
 
   /**

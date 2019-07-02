@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -84,7 +85,7 @@ public class KafkaSampleStore implements SampleStore {
   // Keep additional windows in case some of the windows do not have enough samples.
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
-  private static final long SAMPLE_POLL_TIMEOUT = 1000L;
+  private static final Duration SAMPLE_POLL_TIMEOUT = Duration.ofMillis(1000L);
 
   protected static final int DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final int DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;
@@ -167,6 +168,10 @@ public class KafkaSampleStore implements SampleStore {
   protected KafkaProducer<byte[], byte[]> createProducer(Map<String, ?> config) {
     Properties producerProps = new Properties();
     producerProps.putAll(config);
+    String reconnectBackoffMs = (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG);
+    if (reconnectBackoffMs == null) {
+      reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
+    }
     producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
                               (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
     producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_CLIENT_ID);
@@ -178,8 +183,7 @@ public class KafkaSampleStore implements SampleStore {
     producerProps.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
     producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-    producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG,
-                              (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG));
+    producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);
     return new KafkaProducer<>(producerProps);
   }
 
@@ -207,9 +211,11 @@ public class KafkaSampleStore implements SampleStore {
   @SuppressWarnings("unchecked")
   private void ensureTopicsCreated(Map<String, ?> config) {
     String connectString = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    boolean zkSecurityEnabled = Boolean.parseBoolean((String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG));
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(connectString,
                                                                               "KafkaSampleStore",
-                                                                              "EnsureTopicCreated");
+                                                                              "EnsureTopicCreated",
+                                                                              zkSecurityEnabled);
     AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
     try {

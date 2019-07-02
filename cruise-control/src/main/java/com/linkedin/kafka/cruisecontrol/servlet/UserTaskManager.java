@@ -383,12 +383,12 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Mark the user task which is currently executed in {@link com.linkedin.kafka.cruisecontrol.executor.Executor}.
+   * Update status for user task which is currently being executed.
    *
    * @param uuid UUID associated with the in-execution user task.
    * @return {@link UserTaskInfo} associated with the task in-execution.
    */
-  public synchronized UserTaskInfo markTaskInExecution(String uuid) {
+  public synchronized UserTaskInfo markTaskExecutionBegan(String uuid) {
     UUID userTaskId = UUID.fromString(uuid);
     for (Map<UUID, UserTaskInfo> infoMap : _uuidToCompletedUserTaskInfoMap.values()) {
       if (infoMap.containsKey(userTaskId)) {
@@ -399,22 +399,27 @@ public class UserTaskManager implements Closeable {
 
     if (_uuidToActiveUserTaskInfoMap.containsKey(userTaskId)) {
       _inExecutionUserTaskInfo = _uuidToActiveUserTaskInfoMap.remove(userTaskId).setState(TaskState.IN_EXECUTION);
+      // Normally a user task's operation result is logged when the task's state is transferred from ACTIVE to COMPLETED_WITH_ERROR.
+      // If the user task's state is transferred from ACTIVE directly to IN_EXECUTION, need to log the task's operation result here.
+      _inExecutionUserTaskInfo.logOperation();
     }
 
     return _inExecutionUserTaskInfo;
   }
 
   /**
-   * Unmark the in-execution user task once {@link com.linkedin.kafka.cruisecontrol.executor.Executor} has finish the execution.
+   * Update user task status once the execution is done.
    *
    * @param uuid UUID associated with the in-execution user task.
    */
-  public synchronized void markTaskFinishExecution(String uuid) {
+  public synchronized void markTaskExecutionFinished(String uuid) {
     if (!_inExecutionUserTaskInfo.userTaskId().equals(UUID.fromString(uuid))) {
       throw new IllegalStateException(String.format("Task %s is not found in UserTaskManager.", uuid));
     }
+    _inExecutionUserTaskInfo.setState(TaskState.COMPLETED);
     _uuidToCompletedUserTaskInfoMap.get(_inExecutionUserTaskInfo.endPoint().retentionType())
                                    .put(_inExecutionUserTaskInfo.userTaskId(), _inExecutionUserTaskInfo);
+    _inExecutionUserTaskInfo = null;
   }
 
   synchronized UserTaskInfo getUserTaskByUserTaskId(UUID userTaskId, HttpServletRequest httpServletRequest) {
@@ -439,6 +444,12 @@ public class UserTaskManager implements Closeable {
           && hasTheSameHttpParameter(userTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
         return userTaskInfo;
       }
+    }
+
+    if (_inExecutionUserTaskInfo.userTaskId().equals(userTaskId)
+        && _inExecutionUserTaskInfo.requestUrl().equals(requestUrl)
+        && hasTheSameHttpParameter(_inExecutionUserTaskInfo.queryParams(), httpServletRequest.getParameterMap())) {
+      return _inExecutionUserTaskInfo;
     }
 
     return null;
@@ -498,7 +509,7 @@ public class UserTaskManager implements Closeable {
            + ", _uuidToActiveUserTaskInfoMap=" + _uuidToActiveUserTaskInfoMap
            + ", _inExecutionUserTask=" + (_inExecutionUserTaskInfo != null ? _inExecutionUserTaskInfo : "No-User-Initiated-Execution")
            + ", _uuidToCompletedWithSuccessUserTaskInfoMap=" + uuidToCompletedWithSuccessUserTaskInfoMap
-           + ", _uuidToCcompletedWithErrorUserTaskInfoMap=" + uuidToCompletedWithErrorUserTaskInfoMap + '}';
+           + ", _uuidToCompletedWithErrorUserTaskInfoMap=" + uuidToCompletedWithErrorUserTaskInfoMap + '}';
   }
 
   @Override
@@ -710,7 +721,13 @@ public class UserTaskManager implements Closeable {
   }
 
   /**
-   * Possible state of tasks.
+   * Possible state of tasks, with supported transitions:
+   * <ul>
+   *   <li>{@link TaskState#ACTIVE} -&gt; {@link TaskState#IN_EXECUTION}, {@link TaskState#COMPLETED},
+   *   {@link TaskState#COMPLETED_WITH_ERROR}</li>
+   *   <li>{@link TaskState#COMPLETED} -&gt; {@link TaskState#IN_EXECUTION}(due to thread synchronization issue)</li>
+   *   <li>{@link TaskState#IN_EXECUTION} -&gt; {@link TaskState#COMPLETED}</li>
+   * </ul>
    */
   public enum TaskState {
     ACTIVE("Active"),

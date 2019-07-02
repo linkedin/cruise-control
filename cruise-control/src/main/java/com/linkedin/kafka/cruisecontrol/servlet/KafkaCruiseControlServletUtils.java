@@ -30,6 +30,8 @@ import static javax.servlet.http.HttpServletResponse.SC_FORBIDDEN;
 public class KafkaCruiseControlServletUtils {
   // FIXME: Read this from a configuration
   public static final String REQUEST_URI = "/KAFKACRUISECONTROL/";
+  public static final String GET_METHOD = "GET";
+  public static final String POST_METHOD = "POST";
 
   private KafkaCruiseControlServletUtils() {
 
@@ -79,8 +81,8 @@ public class KafkaCruiseControlServletUtils {
     if (endPoint == null) {
       String method = request.getMethod();
       String errorMessage = String.format("Unrecognized endpoint in request '%s'%nSupported %s endpoints: %s",
-                                          request.getPathInfo(), method, method.equals("GET") ? EndPoint.getEndpoint()
-                                                                                              : EndPoint.postEndpoint());
+                                          request.getPathInfo(), method, method.equals(GET_METHOD) ? EndPoint.getEndpoint()
+                                                                                                   : EndPoint.postEndpoint());
       writeErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request), config);
       return null;
     }

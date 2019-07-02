@@ -82,6 +82,9 @@ public class KafkaCruiseControlUtils {
    * @return string representation of date
    */
   public static String toDateString(long time, String dateFormat, String timeZone) {
+    if (time < 0) {
+      throw new IllegalArgumentException(String.format("Attempt to convert negative time %d to date.", time));
+    }
     DateFormat formatter = new SimpleDateFormat(dateFormat);
     if (!timeZone.isEmpty()) {
       formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
@@ -159,10 +162,11 @@ public class KafkaCruiseControlUtils {
    * @param connectString Comma separated host:port pairs, each corresponding to a zk server
    * @param metricGroup Metric group
    * @param metricType Metric type
+   * @param zkSecurityEnabled True if zkSecurityEnabled, false otherwise.
    * @return A new instance of KafkaZkClient
    */
-  public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
-    return KafkaZkClient.apply(connectString, false, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
+  public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType, boolean zkSecurityEnabled) {
+    return KafkaZkClient.apply(connectString, zkSecurityEnabled, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
         new SystemTime(), metricGroup, metricType);
   }
 

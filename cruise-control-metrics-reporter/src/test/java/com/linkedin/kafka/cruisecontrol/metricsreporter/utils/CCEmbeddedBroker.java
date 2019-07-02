@@ -32,7 +32,7 @@ public class CCEmbeddedBroker implements AutoCloseable {
     try {
       KafkaConfig kafkaConfig = KafkaConfig.apply(config); //also validates
       parseConfigs(config);
-      _kafkaServer = new KafkaServer(kafkaConfig, Time.SYSTEM, Option.empty(), new ArrayBuffer());
+      _kafkaServer = new KafkaServer(kafkaConfig, Time.SYSTEM, Option.empty(), new ArrayBuffer<>());
       startup();
       _ports.replaceAll((securityProtocol, port) -> {
         try {

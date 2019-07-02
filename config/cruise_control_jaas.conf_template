@@ -1,0 +1,23 @@
+//Rename this file to cruise_control_jaas.conf when using secured zookeepers
+//For detailed instructions, see /docs/wiki/User Guide/Secure-zookeeper-configuration.md
+
+//Enter appropriate Client entry for secured zookeeper client connections
+Client {
+  com.sun.security.auth.module.Krb5LoginModule required
+  useKeyTab=true
+  keyTab="/path/to/zookeeper_client.keytab"
+  storeKey=true
+  useTicketCache=false
+  principal="zookeeper_client@<REALM>";
+};
+
+//Enter appropriate KafkaClient entry if using the SASL protocol, remove if not
+KafkaClient {
+  com.sun.security.auth.module.Krb5LoginModule required
+  useKeyTab=true
+  keyTab="/path/to/kafka_client.keytab"
+  storeKey=true
+  useTicketCache=false
+  serviceName="kafka"
+  principal="kafka_client@<REALM>";
+};

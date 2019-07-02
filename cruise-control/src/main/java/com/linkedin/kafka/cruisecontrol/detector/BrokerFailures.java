@@ -30,6 +30,16 @@ public class BrokerFailures extends KafkaAnomaly {
   private final String _anomalyId;
   private final List<String> _selfHealingGoals;
 
+  /**
+   * An anomaly to indicate broker failure(s).
+   *
+   * @param kafkaCruiseControl The Kafka Cruise Control instance.
+   * @param failedBrokers Failed broker ids by the detection time, or null for {@link AnomalyDetectorUtils#SHUTDOWN_ANOMALY}
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
+   * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
+   * @param selfHealingGoals Goals used for self healing. An empty list indicates the default goals.
+   */
   public BrokerFailures(KafkaCruiseControl kafkaCruiseControl,
                         Map<Integer, Long> failedBrokers,
                         boolean allowCapacityEstimation,
@@ -38,6 +48,9 @@ public class BrokerFailures extends KafkaAnomaly {
                         List<String> selfHealingGoals) {
     _kafkaCruiseControl = kafkaCruiseControl;
     _failedBrokers = failedBrokers;
+    if (_failedBrokers != null && _failedBrokers.isEmpty()) {
+      throw new IllegalArgumentException("Missing broker ids for failed brokers.");
+    }
     _allowCapacityEstimation = allowCapacityEstimation;
     _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
     _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;

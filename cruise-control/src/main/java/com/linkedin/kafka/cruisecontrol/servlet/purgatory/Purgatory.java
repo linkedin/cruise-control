@@ -26,6 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.REVIEW;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.httpServletRequestToString;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 
 
 /**
@@ -74,7 +75,7 @@ public class Purgatory implements Closeable {
    */
   public synchronized <P extends CruiseControlParameters> ReviewResult addRequest(HttpServletRequest request,
                                                                                   P parameters) {
-    if (!request.getMethod().equals("POST")) {
+    if (!request.getMethod().equals(POST_METHOD)) {
       throw new IllegalArgumentException(String.format("Purgatory can only contain POST request (Attempted to add: %s).",
                                                        httpServletRequestToString(request)));
     }

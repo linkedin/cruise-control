@@ -11,6 +11,7 @@ import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsRepo
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,7 +43,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   // TODO: Remove the deprecated config.
   public static final String METRIC_REPORTER_TOPIC_PATTERN = "metric.reporter.topic.pattern";
   public static final String METRIC_REPORTER_SAMPLER_GROUP_ID = "metric.reporter.sampler.group.id";
-  private static final long METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = 5000L;
+  private static final Duration METRIC_REPORTER_CONSUMER_POLL_TIMEOUT = Duration.ofMillis(5000L);
   // Default configs
   private static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
   private static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
