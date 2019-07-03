@@ -174,7 +174,7 @@ public class AnomalyDetector {
 
   /**
    * Shutdown the anomaly detector.
-   * Note that if a fix is being started as shutdown is requested, shutdown will wait until the fix is initiated.Update
+   * Note that if a fix is being started as shutdown is requested, shutdown will wait until the fix is initiated.
    */
   public void shutdown() {
     LOG.info("Shutting down anomaly detector.");
