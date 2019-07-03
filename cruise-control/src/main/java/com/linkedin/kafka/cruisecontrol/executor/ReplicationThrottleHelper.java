@@ -73,8 +73,9 @@ class ReplicationThrottleHelper {
               task.state() != ExecutionTask.State.IN_PROGRESS &&
               // the task should not be pending
               task.state() != ExecutionTask.State.PENDING &&
-              // brokerId is -1 when moving replicas between brokers
-              task.brokerId() != -1;
+              // replica throttles are not needed for inter-broker replica
+              // actions
+              task.type() != ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
   }
 
   // clear throttles for a specific list of execution tasks
