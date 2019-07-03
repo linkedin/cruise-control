@@ -84,7 +84,7 @@ class ReplicationThrottleHelper {
         List<ExecutionProposal> completedProposals =
                 completedTasks
                         .stream()
-                        // Filter for completed tasks related to replica movement
+                        // Filter for completed tasks related to inter-broker replica movement
                         .filter(this::shouldRemoveThrottleForTask)
                         .map(ExecutionTask::proposal)
                         .collect(Collectors.toList());
