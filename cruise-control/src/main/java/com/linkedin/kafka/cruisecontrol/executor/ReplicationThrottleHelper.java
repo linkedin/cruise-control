@@ -68,34 +68,34 @@ class ReplicationThrottleHelper {
 
   // Determines if a candidate task is ready to have its throttles removed.
   boolean shouldRemoveThrottleForTask(ExecutionTask task) {
-      return
-              // the task should not be in progress
-              task.state() != ExecutionTask.State.IN_PROGRESS &&
-              // the task should not be pending
-              task.state() != ExecutionTask.State.PENDING &&
-              // replica throttles are not needed for inter-broker replica
-              // actions
-              task.type() != ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
+    return
+      // the task should not be in progress
+      task.state() != ExecutionTask.State.IN_PROGRESS &&
+        // the task should not be pending
+        task.state() != ExecutionTask.State.PENDING &&
+        // replica throttles are not needed for inter-broker replica
+        // actions
+        task.type() != ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
   }
 
   // clear throttles for a specific list of execution tasks
   void clearThrottles(List<ExecutionTask> completedTasks) {
-      if (throttlingEnabled()) {
-        List<ExecutionProposal> completedProposals =
-                completedTasks
-                        .stream()
-                        // Filter for completed tasks related to inter-broker replica movement
-                        .filter(this::shouldRemoveThrottleForTask)
-                        .map(ExecutionTask::proposal)
-                        .collect(Collectors.toList());
+    if (throttlingEnabled()) {
+      List<ExecutionProposal> completedProposals =
+        completedTasks
+          .stream()
+          // Filter for completed tasks related to inter-broker replica movement
+          .filter(this::shouldRemoveThrottleForTask)
+          .map(ExecutionTask::proposal)
+          .collect(Collectors.toList());
 
-        Set<Integer> participatingBrokers = getParticipatingBrokers(completedProposals);
-        LOG.info("Removing rebalance throttles from brokers in the cluster: {}", participatingBrokers);
-        Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(completedProposals);
+      Set<Integer> participatingBrokers = getParticipatingBrokers(completedProposals);
+      LOG.info("Removing rebalance throttles from brokers in the cluster: {}", participatingBrokers);
+      Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(completedProposals);
 
-        throttledReplicas.forEach(this::removeThrottledReplicasFromTopic);
-        participatingBrokers.forEach(this::removeThrottledRateFromBroker);
-      }
+      throttledReplicas.forEach(this::removeThrottledReplicasFromTopic);
+      participatingBrokers.forEach(this::removeThrottledRateFromBroker);
+    }
   }
 
   private boolean throttlingEnabled() {
@@ -117,10 +117,10 @@ class ReplicationThrottleHelper {
       String topic = proposal.topic();
       int partitionId = proposal.partitionId();
       Stream<Integer> brokers = Stream.concat(
-          proposal.oldReplicas().stream().map(ReplicaPlacementInfo::brokerId),
-          proposal.replicasToAdd().stream().map(ReplicaPlacementInfo::brokerId));
+        proposal.oldReplicas().stream().map(ReplicaPlacementInfo::brokerId),
+        proposal.replicasToAdd().stream().map(ReplicaPlacementInfo::brokerId));
       Set<String> throttledReplicas = throttledReplicasByTopic
-          .computeIfAbsent(topic, (x) -> new TreeSet<>());
+        .computeIfAbsent(topic, (x) -> new TreeSet<>());
       brokers.forEach((brokerId) -> throttledReplicas.add(partitionId + ":" + brokerId));
     }
     return throttledReplicasByTopic;
@@ -144,7 +144,7 @@ class ReplicationThrottleHelper {
       ExecutorUtils.changeBrokerConfig(_adminZkClient, brokerId, config);
     } else {
       LOG.debug("Not setting {} for broker {} because pre-existing throttle of {} was already set",
-          configKey, brokerId, oldThrottleRate);
+        configKey, brokerId, oldThrottleRate);
     }
   }
 
