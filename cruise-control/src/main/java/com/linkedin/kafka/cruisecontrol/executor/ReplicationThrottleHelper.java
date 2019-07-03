@@ -81,7 +81,6 @@ class ReplicationThrottleHelper {
   // clear throttles for a specific list of execution tasks
   void clearThrottles(List<ExecutionTask> completedTasks) {
       if (throttlingEnabled()) {
-        LOG.info("Removing rebalance throttles from all brokers in the cluster");
         List<ExecutionProposal> completedProposals =
                 completedTasks
                         .stream()
@@ -91,6 +90,7 @@ class ReplicationThrottleHelper {
                         .collect(Collectors.toList());
 
         Set<Integer> participatingBrokers = getParticipatingBrokers(completedProposals);
+        LOG.info("Removing rebalance throttles from brokers in the cluster: {}", participatingBrokers);
         Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(completedProposals);
 
         throttledReplicas.forEach(this::removeThrottledReplicasFromTopic);
