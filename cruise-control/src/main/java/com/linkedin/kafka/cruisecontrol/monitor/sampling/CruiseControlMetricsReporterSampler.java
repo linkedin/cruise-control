@@ -183,6 +183,10 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
    */
   private boolean refreshPartitionAssignment() {
     List<PartitionInfo> remotePartitionInfo = _metricConsumer.partitionsFor(_metricReporterTopic);
+    if (remotePartitionInfo == null) {
+      LOG.error("_metricConsumer returned null for _metricReporterTopic {}", _metricReporterTopic);
+      return true;
+    }
     if (remotePartitionInfo.isEmpty()) {
       _currentPartitionAssignment = Collections.emptySet();
       LOG.error("The set of partitions currently assigned to the metric consumer is empty.");
