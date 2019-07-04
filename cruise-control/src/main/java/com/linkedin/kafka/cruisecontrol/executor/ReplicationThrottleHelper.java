@@ -57,15 +57,6 @@ class ReplicationThrottleHelper {
     }
   }
 
-  // clear all throttles
-  void clearThrottles() {
-    if (throttlingEnabled()) {
-      LOG.info("Removing rebalance throttles from all brokers in the cluster");
-      ExecutorUtils.getAllLiveBrokerIdsInCluster(_kafkaZkClient).forEach(this::removeThrottledRateFromBroker);
-      ExecutorUtils.getAllTopicsInCluster(_kafkaZkClient).forEach(this::removeAllThrottledReplicasFromTopic);
-    }
-  }
-
   // Determines if a candidate task is ready to have its throttles removed.
   boolean shouldRemoveThrottleForTask(ExecutionTask task) {
     return
@@ -73,13 +64,20 @@ class ReplicationThrottleHelper {
       task.state() != ExecutionTask.State.IN_PROGRESS &&
         // the task should not be pending
         task.state() != ExecutionTask.State.PENDING &&
-        // replica throttles are not needed for inter-broker replica
-        // actions
-        task.type() != ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
+        // replica throttles only apply to inter-broker replica movement
+        task.type() == ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
+  }
+
+  // determines if a candidate task is in progress and related to inter-broker
+  // replica movement.
+  boolean taskIsInProgress(ExecutionTask task) {
+    return
+      task.state() == ExecutionTask.State.IN_PROGRESS &&
+        task.type() == ExecutionTask.TaskType.INTER_BROKER_REPLICA_ACTION;
   }
 
   // clear throttles for a specific list of execution tasks
-  void clearThrottles(List<ExecutionTask> completedTasks) {
+  void clearThrottles(List<ExecutionTask> completedTasks, List<ExecutionTask> inProgressTasks) {
     if (throttlingEnabled()) {
       List<ExecutionProposal> completedProposals =
         completedTasks
@@ -89,12 +87,31 @@ class ReplicationThrottleHelper {
           .map(ExecutionTask::proposal)
           .collect(Collectors.toList());
 
+      // These are the brokers which have completed a task with
+      // inter-broker replica movement
       Set<Integer> participatingBrokers = getParticipatingBrokers(completedProposals);
-      LOG.info("Removing rebalance throttles from brokers in the cluster: {}", participatingBrokers);
-      Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(completedProposals);
 
+      List<ExecutionProposal> inProgressProposals =
+        inProgressTasks
+          .stream()
+          .filter(this::taskIsInProgress)
+          .map(ExecutionTask::proposal)
+          .collect(Collectors.toList());
+
+      // These are the brokers which currently have in-progress
+      // inter-broker replica movement
+      Set<Integer> brokersWithInProgressTasks = getParticipatingBrokers(inProgressProposals);
+
+      // Remove the brokers with in-progress replica moves from the brokers that have
+      // completed inter-broker replica moves
+      Set<Integer> brokersToRemoveThrottlesFrom = new TreeSet<>(participatingBrokers);
+      brokersToRemoveThrottlesFrom.removeAll(brokersWithInProgressTasks);
+
+      LOG.info("Removing replica movement throttles from brokers in the cluster: {}", brokersToRemoveThrottlesFrom);
+      brokersToRemoveThrottlesFrom.forEach(this::removeThrottledRateFromBroker);
+
+      Map<String, Set<String>> throttledReplicas = getThrottledReplicasByTopic(completedProposals);
       throttledReplicas.forEach(this::removeThrottledReplicasFromTopic);
-      participatingBrokers.forEach(this::removeThrottledRateFromBroker);
     }
   }
 
@@ -180,7 +197,11 @@ class ReplicationThrottleHelper {
     if (oldLeaderThrottledReplicas != null) {
       replicas.forEach(r -> LOG.debug("Removing leader throttles for topic {} on replica {}", topic, r));
       String newLeaderThrottledReplicas = removeReplicasFromConfig(oldLeaderThrottledReplicas, replicas);
-      config.setProperty(LEADER_THROTTLED_REPLICAS, newLeaderThrottledReplicas);
+      if (newLeaderThrottledReplicas.isEmpty()) {
+        config.remove(LEADER_THROTTLED_REPLICAS);
+      } else {
+        config.setProperty(LEADER_THROTTLED_REPLICAS, newLeaderThrottledReplicas);
+      }
     }
   }
 
@@ -189,7 +210,11 @@ class ReplicationThrottleHelper {
     if (oldLeaderThrottledReplicas != null) {
       replicas.forEach(r -> LOG.debug("Removing follower throttles for topic {} and replica {}", topic, r));
       String newLeaderThrottledReplicas = removeReplicasFromConfig(oldLeaderThrottledReplicas, replicas);
-      config.setProperty(FOLLOWER_THROTTLED_REPLICAS, newLeaderThrottledReplicas);
+      if (newLeaderThrottledReplicas.isEmpty()) {
+        config.remove(FOLLOWER_THROTTLED_REPLICAS);
+      } else {
+        config.setProperty(FOLLOWER_THROTTLED_REPLICAS, newLeaderThrottledReplicas);
+      }
     }
   }
 

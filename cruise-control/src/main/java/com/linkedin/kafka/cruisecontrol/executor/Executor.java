@@ -779,7 +779,7 @@ public class Executor {
                  finishedDataMovementInMB, totalDataToMoveInMB,
                  totalDataToMoveInMB == 0 ? 100 : String.format(java.util.Locale.US, "%.2f",
                                                   (finishedDataMovementInMB * 100.0) / totalDataToMoveInMB));
-        throttleHelper.clearThrottles(completedTasks);
+        throttleHelper.clearThrottles(completedTasks, tasksToExecute.stream().filter(t -> t.state() == IN_PROGRESS).collect(Collectors.toList()));
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
       // ensures a clean stop when the execution is stopped in the middle.
@@ -789,7 +789,7 @@ public class Executor {
                  _executionTaskManager.inExecutionInterBrokerDataToMoveInMB());
         List<ExecutionTask> completedRemainingTasks = waitForExecutionTaskToFinish();
         inExecutionTasks = _executionTaskManager.inExecutionTasks();
-        throttleHelper.clearThrottles(completedRemainingTasks);
+        throttleHelper.clearThrottles(completedRemainingTasks, new ArrayList<>(inExecutionTasks));
       }
       if (_executionTaskManager.inExecutionTasks().isEmpty()) {
         LOG.info("Inter-broker partition movements finished.");
