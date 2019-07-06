@@ -323,7 +323,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         // return if the broker is already within limits.
         return;
       }
-      moveImmigrantsOnly = !clusterModel.deadBrokers().isEmpty() || optimizationOptions.onlyMoveImmigrantReplicas();
+      moveImmigrantsOnly = (!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) || optimizationOptions.onlyMoveImmigrantReplicas();
       if (moveImmigrantsOnly && requireLessLoad && broker.immigrantReplicas().isEmpty()) {
         // return if the cluster is in self-healing mode and the broker requires less load but does not have any
         // immigrant replicas.
@@ -334,7 +334,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // First try leadership movement
     if (resource() == Resource.NW_OUT || resource() == Resource.CPU) {
       if (requireLessLoad && !rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals,
-                                                       LEADERSHIP_MOVEMENT, optimizationOptions)) {
+                                                       LEADERSHIP_MOVEMENT, optimizationOptions, moveImmigrantsOnly)) {
         LOG.debug("Successfully balanced {} for broker {} by moving out leaders.", resource(), broker.id());
         return;
       } else if (requireMoreLoad && !rebalanceByMovingLoadIn(broker, clusterModel, optimizedGoals,
@@ -347,7 +347,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // Update broker ids over the balance limit for logging purposes.
     boolean unbalanced = false;
     if (requireLessLoad) {
-      if (rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals, INTER_BROKER_REPLICA_MOVEMENT, optimizationOptions)) {
+      if (rebalanceByMovingLoadOut(broker, clusterModel, optimizedGoals, INTER_BROKER_REPLICA_MOVEMENT, optimizationOptions, moveImmigrantsOnly)) {
         unbalanced = rebalanceBySwappingLoadOut(broker, clusterModel, optimizedGoals, optimizationOptions, moveImmigrantsOnly);
       }
     } else if (requireMoreLoad) {
@@ -700,7 +700,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                                            ClusterModel clusterModel,
                                            Set<Goal> optimizedGoals,
                                            ActionType actionType,
-                                           OptimizationOptions optimizationOptions) {
+                                           OptimizationOptions optimizationOptions,
+                                           boolean moveImmigrantsOnly) {
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(
@@ -721,6 +722,9 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     } else {
       // Take all replicas for replica movements.
       replicasToMove = broker.trackedSortedReplicas(sortName()).reverselySortedReplicas();
+      if (moveImmigrantsOnly) {
+        replicasToMove.retainAll(broker.immigrantReplicas());
+      }
     }
 
     // Now let's move things around.
