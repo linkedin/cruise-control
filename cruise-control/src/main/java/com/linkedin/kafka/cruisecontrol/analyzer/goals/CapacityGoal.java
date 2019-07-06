@@ -172,11 +172,13 @@ public abstract class CapacityGoal extends AbstractGoal {
                             + "capacity %f (capacity threshold: %f).", name(), resource(), existingUtilization, allowedCapacity,
                         _balancingConstraint.capacityThreshold(resource())));
     }
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     clusterModel.trackSortedReplicas(sortName(),
+                                     r -> !shouldExclude(r, excludedTopics),
                                      ReplicaSortFunctionFactory.deprioritizeImmigrants(),
                                      ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
     clusterModel.trackSortedReplicas(sortNameByLeader(),
-                                     ReplicaSortFunctionFactory.selectLeaders(),
+                                     r -> r.isLeader() && !shouldExclude(r, excludedTopics),
                                      ReplicaSortFunctionFactory.deprioritizeImmigrants(),
                                      ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
   }
@@ -282,7 +284,6 @@ public abstract class CapacityGoal extends AbstractGoal {
       return;
     }
 
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // First try REBALANCE BY LEADERSHIP MOVEMENT:
     if (currentResource == Resource.NW_OUT || currentResource == Resource.CPU) {
       // Sort replicas by descending order of preference to relocate. Preference is based on resource cost.
@@ -290,9 +291,6 @@ public abstract class CapacityGoal extends AbstractGoal {
       List<Replica> sortedLeadersInSourceBroker =
           broker.trackedSortedReplicas(sortNameByLeader()).reverselySortedReplicas();
       for (Replica leader : sortedLeadersInSourceBroker) {
-        if (shouldExclude(leader, excludedTopics)) {
-          continue;
-        }
         // Get followers of this leader and sort them in ascending order by their broker resource utilization.
         List<Replica> followers = clusterModel.partition(leader.topicPartition()).followers();
         clusterModel.sortReplicasInAscendingOrderByBrokerResourceUtilization(followers, currentResource);
@@ -322,9 +320,6 @@ public abstract class CapacityGoal extends AbstractGoal {
       // utilization) until the source broker utilization gets under the capacity limit. If the capacity limit cannot
       // be satisfied, throw an exception.
       for (Replica replica : broker.trackedSortedReplicas(sortName()).reverselySortedReplicas()) {
-        if (shouldExclude(replica, excludedTopics)) {
-          continue;
-        }
         // Unless the target broker would go over the host- and/or broker-level capacity,
         // the movement will be successful.
         Broker b = maybeApplyBalancingAction(clusterModel, replica, sortedAliveBrokersUnderCapacityLimit,

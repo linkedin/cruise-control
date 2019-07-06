@@ -118,9 +118,14 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
   @Override
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     super.initGoalState(clusterModel, optimizationOptions);
-    clusterModel.trackSortedReplicas(name(),
-                                     ReplicaSortFunctionFactory.prioritizeImmigrants(),
-                                     ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()));
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    for (Broker broker : clusterModel.brokers()) {
+      boolean moveImmigrantOnly = !clusterModel.deadBrokers().isEmpty() && broker.isAlive();
+      broker.trackSortedReplicas(name(),
+                                 r -> (!moveImmigrantOnly || r.isImmigrant()) && !shouldExclude(r, excludedTopics),
+                                 ReplicaSortFunctionFactory.prioritizeImmigrants(),
+                                 ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()));
+    }
   }
 
   /**
@@ -192,7 +197,6 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
                                                ClusterModel clusterModel,
                                                Set<Goal> optimizedGoals,
                                                OptimizationOptions optimizationOptions) {
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(Comparator.comparingInt((Broker b) -> b.replicas().size()).thenComparingInt(Broker::id));
 
@@ -204,16 +208,8 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
 
     // Get the replicas to rebalance. Replicas are sorted from smallest to largest disk usage.
     List<Replica> replicasToMove = broker.trackedSortedReplicas(name()).sortedReplicas();
-    // If cluster has dead brokers, but this broker is alive, then limit moving replica to immigrant replica.
-    if (!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) {
-      replicasToMove = replicasToMove.stream().filter(r -> broker.immigrantReplicas().contains(r)).collect(Collectors.toList());
-    }
     // Now let's move things around.
     for (Replica replica : replicasToMove) {
-      if (shouldExclude(replica, excludedTopics)) {
-        continue;
-      }
-
       Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,
                                            optimizedGoals, optimizationOptions);
       // Only check if we successfully moved something.
@@ -236,7 +232,6 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
                                               ClusterModel clusterModel,
                                               Set<Goal> optimizedGoals,
                                               OptimizationOptions optimizationOptions) {
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
       int result = Integer.compare(b2.replicas().size(), b1.replicas().size());
       return result == 0 ? Integer.compare(b1.id(), b2.id()) : result;
@@ -255,14 +250,7 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
       Broker sourceBroker = eligibleBrokers.poll();
       // Get the replicas to rebalance. Replicas are sorted from smallest to largest disk usage.
       List<Replica> replicasToMove = sourceBroker.trackedSortedReplicas(name()).sortedReplicas();
-      // If cluster has dead brokers, but this broker is alive, then limit moving replica to immigrant replica.
-      if (!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) {
-        replicasToMove = replicasToMove.stream().filter(r -> sourceBroker.immigrantReplicas().contains(r)).collect(Collectors.toList());
-      }
       for (Replica replica : replicasToMove) {
-        if (shouldExclude(replica, excludedTopics)) {
-          continue;
-        }
         Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,
                                              optimizedGoals, optimizationOptions);
         // Only need to check status if the action is taken. This will also handle the case that the source broker

@@ -17,6 +17,7 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.Collection;
 import java.util.Comparator;
@@ -193,14 +194,13 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     }
 
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    List<Replica> leaderReplicasSortedByBytesIn = broker.replicas().stream()
-        .filter(Replica::isLeader)
-        .filter(r -> !shouldExclude(r, excludedTopics))
-        .sorted((a, b) -> Double.compare(b.load().expectedUtilizationFor(Resource.NW_IN), a.load().expectedUtilizationFor(Resource.NW_IN)))
-        .collect(Collectors.toList());
+    broker.trackSortedReplicas(name(),
+                               r -> r.isLeader() && !shouldExclude(r, excludedTopics),
+                               ReplicaSortFunctionFactory.deprioritizeImmigrants(),
+                               ReplicaSortFunctionFactory.sortByMetricGroupValue(Resource.NW_IN.name()));
 
     boolean overThreshold = true;
-    Iterator<Replica> leaderReplicaIt = leaderReplicasSortedByBytesIn.iterator();
+    Iterator<Replica> leaderReplicaIt = broker.trackedSortedReplicas(name()).reverselySortedReplicas().iterator();
     while (overThreshold && leaderReplicaIt.hasNext()) {
       Replica leaderReplica = leaderReplicaIt.next();
       List<Replica> followers = clusterModel.partition(leaderReplica.topicPartition()).followers();
@@ -214,6 +214,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     if (overThreshold) {
       _overLimitBrokerIds.add(broker.id());
     }
+    broker.untrackSortedReplicas(name());
   }
 
   private void initMeanLeaderBytesIn(ClusterModel clusterModel) {

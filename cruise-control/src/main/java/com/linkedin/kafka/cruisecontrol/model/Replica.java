@@ -85,6 +85,13 @@ public class Replica implements Serializable, Comparable<Replica> {
   }
 
   /**
+   * Check whether the replica is an immigrant replica of the broker.
+   */
+  public boolean isImmigrant() {
+    return _originalBroker != _broker;
+  }
+
+  /**
    * Set broker that the replica resides in.
    *
    * @param broker Broker that the replica resides in.

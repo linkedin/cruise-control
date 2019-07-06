@@ -24,8 +24,6 @@ public class ReplicaSortFunctionFactory {
   private static final Function<Replica, Integer> PRIORITIZE_IMMIGRANTS = r -> r.originalBroker() != r.broker() ? 0 : 1;
   /** De-prioritize the immigrants replicas */
   private static final Function<Replica, Integer> DEPRIORITIZE_IMMIGRANTS = r -> r.originalBroker() != r.broker() ? 1 : 0;
-  /** Select leaders only */
-  private static final Function<Replica, Boolean> SELECT_LEADERS = Replica::isLeader;
 
   // Score functions
   /**
@@ -78,13 +76,5 @@ public class ReplicaSortFunctionFactory {
    */
   public static Function<Replica, Integer> deprioritizeImmigrants() {
     return DEPRIORITIZE_IMMIGRANTS;
-  }
-
-  // Selection functions
-  /**
-   * @return a selection function that only includes leaders.
-   */
-  public static Function<Replica, Boolean> selectLeaders() {
-    return SELECT_LEADERS;
   }
 }

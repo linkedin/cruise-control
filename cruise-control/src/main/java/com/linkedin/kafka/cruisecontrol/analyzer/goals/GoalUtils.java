@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.analyzer.goals;
 
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.CandidateBroker;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -19,7 +18,6 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.SortedSet;
 import java.util.stream.Collectors;
 
 
@@ -201,41 +199,43 @@ public class GoalUtils {
    *
    * @param clusterModel The state of the cluster.
    * @param sourceReplica Source replica for intended swap operation.
-   * @param cb Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
+   * @param candidateBroker Candidate broker containing candidate replicas to swap with the source replica.
+   * @param candidateReplicas Candidate replicas to swap with the source replica.
+   * @param optimizationOptions Options to take into account while swapping replicas.
    * @return Eligible replicas for swap.
    */
-  static SortedSet<Replica> eligibleReplicasForSwap(ClusterModel clusterModel, Replica sourceReplica, CandidateBroker cb) {
-    if (cb.shouldExcludeForLeadership(sourceReplica) || cb.shouldExcludeForReplicaMove(sourceReplica)) {
-      return Collections.emptySortedSet();
+  static List<Replica> eligibleReplicasForSwap(ClusterModel clusterModel,
+                                               Replica sourceReplica,
+                                               Broker candidateBroker,
+                                               List<Replica> candidateReplicas,
+                                               OptimizationOptions optimizationOptions) {
+    if (sourceReplica.originalBroker().isAlive()
+        && ((sourceReplica.isLeader() && optimizationOptions.excludedBrokersForLeadership().contains(candidateBroker.id()))
+        || (optimizationOptions.excludedBrokersForReplicaMove().contains(candidateBroker.id())))) {
+      return Collections.emptyList();
     }
-
-    // Candidate replicas from the same destination broker to swap in the order of attempts to swap.
-    SortedSet<Replica> candidateReplicasToSwapWith = cb.replicas();
 
     // CASE#1: All candidate replicas are eligible if any of the following is true:
     // (1) there are no new brokers in the cluster,
-    // (2) the given candidate set contains no replicas,
-    // (3) the intended swap is between replicas of new brokers,
-    // (4) the intended swap is between a replica on a new broker, which originally was in the destination broker, and
+    // (2) the intended swap is between replicas of new brokers,
+    // (3) the intended swap is between a replica on a new broker, which originally was in the destination broker, and
     // any replica in the destination broker.
     Broker sourceBroker = sourceReplica.broker();
-    Broker destinationBroker = candidateReplicasToSwapWith.isEmpty() ? null : candidateReplicasToSwapWith.first().broker();
 
     if (clusterModel.newBrokers().isEmpty()
-        || destinationBroker == null
-        || (sourceBroker.isNew() && (destinationBroker.isNew() || sourceReplica.originalBroker() == destinationBroker))) {
-      return candidateReplicasToSwapWith;
+        || (sourceBroker.isNew() && (candidateBroker.isNew() || sourceReplica.originalBroker() == candidateBroker))) {
+      return candidateReplicas;
     }
 
     // CASE#2: A subset of candidate replicas might be eligible if only the destination broker is a new broker and it
     // contains replicas that were originally in the source broker.
-    if (destinationBroker.isNew()) {
-      candidateReplicasToSwapWith.removeIf(replica -> replica.originalBroker() != sourceBroker);
-      return candidateReplicasToSwapWith;
+    if (candidateBroker.isNew()) {
+      candidateReplicas.removeIf(replica -> replica.originalBroker() != sourceBroker);
+      return candidateReplicas;
     }
 
     // CASE#3: No swap is possible between old brokers when there are new brokers in the cluster.
-    return Collections.emptySortedSet();
+    return Collections.emptyList();
   }
 
   /**

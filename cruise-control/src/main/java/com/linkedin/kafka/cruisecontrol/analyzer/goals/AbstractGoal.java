@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.CandidateBroker;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -229,35 +228,37 @@ public abstract class AbstractGoal implements Goal {
   /**
    * Attempt to swap the given source replica with a replica from the candidate replicas to swap with. The function
    * returns the swapped in replica if succeeded, null otherwise.
-   * All the replicas in the given candidateReplicasToSwapWith must be from the same broker.
+   * All the replicas in the given candidateReplicas must be from the given candidateBroker.
    *
    * @param clusterModel The state of the cluster.
    * @param sourceReplica Replica to be swapped with.
-   * @param cb Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
+   * @param candidateBroker Candidate broker containing candidate replicas to swap with the source replica.
+   * @param candidateReplicas Candidate replicas to swap with the source replica.
    * @param optimizedGoals Optimized goals.
+   * @param optimizationOptions Options to take into account while swapping replicas.
    * @return The swapped in replica if succeeded, null otherwise.
    */
   Replica maybeApplySwapAction(ClusterModel clusterModel,
                                Replica sourceReplica,
-                               CandidateBroker cb,
-                               Set<Goal> optimizedGoals) {
-    SortedSet<Replica> eligibleReplicas = eligibleReplicasForSwap(clusterModel, sourceReplica, cb);
+                               Broker candidateBroker,
+                               List<Replica> candidateReplicas,
+                               Set<Goal> optimizedGoals,
+                               OptimizationOptions optimizationOptions) {
+    List<Replica> eligibleReplicas = eligibleReplicasForSwap(clusterModel, sourceReplica, candidateBroker, candidateReplicas, optimizationOptions);
     if (eligibleReplicas.isEmpty()) {
       return null;
     }
 
-    Broker destinationBroker = eligibleReplicas.first().broker();
-
     for (Replica destinationReplica : eligibleReplicas) {
       BalancingAction swapProposal = new BalancingAction(sourceReplica.topicPartition(),
-                                                         sourceReplica.broker().id(), destinationBroker.id(),
+                                                         sourceReplica.broker().id(), candidateBroker.id(),
                                                          ActionType.INTER_BROKER_REPLICA_SWAP, destinationReplica.topicPartition());
       // A sourceReplica should be swapped with a replicaToSwapWith if:
       // 0. The swap from source to destination is legit.
       // 1. The swap from destination to source is legit.
       // 2. The goal requirements are not violated if this action is applied to the given cluster state.
       // 3. The movement is acceptable by the previously optimized goals.
-      if (!legitMove(sourceReplica, destinationBroker, ActionType.INTER_BROKER_REPLICA_MOVEMENT)) {
+      if (!legitMove(sourceReplica, candidateBroker, ActionType.INTER_BROKER_REPLICA_MOVEMENT)) {
         LOG.trace("Swap from source to destination broker is not legit for {}.", swapProposal);
         return null;
       }
@@ -278,8 +279,8 @@ public abstract class AbstractGoal implements Goal {
 
       if (acceptance == ACCEPT) {
         Broker sourceBroker = sourceReplica.broker();
-        clusterModel.relocateReplica(sourceReplica.topicPartition(), sourceBroker.id(), destinationBroker.id());
-        clusterModel.relocateReplica(destinationReplica.topicPartition(), destinationBroker.id(), sourceBroker.id());
+        clusterModel.relocateReplica(sourceReplica.topicPartition(), sourceBroker.id(), candidateBroker.id());
+        clusterModel.relocateReplica(destinationReplica.topicPartition(), candidateBroker.id(), sourceBroker.id());
         return destinationReplica;
       } else if (acceptance == BROKER_REJECT) {
         // Unable to swap the given source replica with any replicas in the destination broker.

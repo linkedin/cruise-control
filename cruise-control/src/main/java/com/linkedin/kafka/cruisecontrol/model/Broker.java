@@ -301,10 +301,10 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param priorityFunc the priority function to sort replicas.
    * @param scoreFunc the score function to sort replicas.
    */
-  void trackSortedReplicas(String sortName,
-                           Function<Replica, Boolean> selectionFunc,
-                           Function<Replica, Integer> priorityFunc,
-                           Function<Replica, Double> scoreFunc) {
+  public void trackSortedReplicas(String sortName,
+                                  Function<Replica, Boolean> selectionFunc,
+                                  Function<Replica, Integer> priorityFunc,
+                                  Function<Replica, Double> scoreFunc) {
     _sortedReplicas.putIfAbsent(sortName, new SortedReplicas(this, selectionFunc, priorityFunc, scoreFunc));
   }
 
@@ -313,7 +313,7 @@ public class Broker implements Serializable, Comparable<Broker> {
    *
    * @param sortName the name of the tracked sorted replicas.
    */
-  void untrackSortedReplicas(String sortName) {
+  public void untrackSortedReplicas(String sortName) {
     _sortedReplicas.remove(sortName);
   }
 
