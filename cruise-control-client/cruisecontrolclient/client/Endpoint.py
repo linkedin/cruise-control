@@ -51,7 +51,8 @@ class AbstractEndpoint(metaclass=ABCMeta):
 
     def __init__(self):
         # A mapping of 'parameter' strings
-        self.parameter_name_to_available_Parameters: Dict[str, Callable[[Union[str, int, bool]], CCParameter.AbstractParameter]] = \
+        self.parameter_name_to_available_Parameters: Dict[
+            str, Callable[[Union[str, int, bool]], CCParameter.AbstractParameter]] = \
             {ap.name: ap for ap in self.available_Parameters}
 
         # Stores the instantiated Parameters for this Endpoint.
@@ -182,6 +183,7 @@ class AddBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludedTopicsParameter,
         CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
+        CCParameter.ReviewIDParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.SkipHardGoalCheckParameter,
         CCParameter.ThrottleRemovedBrokerParameter,
@@ -208,7 +210,8 @@ class AdminEndpoint(AbstractEndpoint):
         CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
         CCParameter.DisableSelfHealingForParameter,
         CCParameter.EnableSelfHealingForParameter,
-        CCParameter.JSONParameter
+        CCParameter.JSONParameter,
+        CCParameter.ReviewIDParameter,
     )
     argparse_properties = {
         'args': (name,),
@@ -247,6 +250,7 @@ class DemoteBrokerEndpoint(AbstractEndpoint):
         CCParameter.ExcludeRecentlyDemotedBrokersParameter,
         CCParameter.JSONParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
+        CCParameter.ReviewIDParameter,
         CCParameter.SkipURPDemotionParameter,
         CCParameter.VerboseParameter
     )
@@ -266,7 +270,9 @@ class FixOfflineReplicasEndpoint(AbstractEndpoint):
     description = "Fixes the offline replicas in the cluster (kafka 1.1+ only)"
     http_method = "POST"
     can_execute_proposal = True
-    available_Parameters = tuple()
+    available_Parameters = (
+        CCParameter.ReviewIDParameter,
+    )
     argparse_properties = {
         'args': (name,),
         'kwargs': dict(aliases=[name.replace('_', '-')], help=description)
@@ -337,7 +343,8 @@ class PauseSamplingEndpoint(AbstractEndpoint):
     can_execute_proposal = False
     available_Parameters = (
         CCParameter.JSONParameter,
-        CCParameter.ReasonParameter
+        CCParameter.ReasonParameter,
+        CCParameter.ReviewIDParameter,
     )
     argparse_properties = {
         'args': (name,),
@@ -386,6 +393,7 @@ class RebalanceEndpoint(AbstractEndpoint):
         CCParameter.IgnoreProposalCacheParameter,
         CCParameter.JSONParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
+        CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
         CCParameter.UseReadyDefaultGoalsParameter,
         CCParameter.VerboseParameter
@@ -417,6 +425,7 @@ class RemoveBrokerEndpoint(AbstractEndpoint):
         CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
         CCParameter.ReplicaMovementStrategiesParameter,
+        CCParameter.ReviewIDParameter,
         CCParameter.SkipHardGoalCheckParameter,
         CCParameter.ThrottleRemovedBrokerParameter,
         CCParameter.UseReadyDefaultGoalsParameter,
@@ -439,8 +448,41 @@ class ResumeSamplingEndpoint(AbstractEndpoint):
     can_execute_proposal = False
     available_Parameters = {
         CCParameter.JSONParameter,
-        CCParameter.ReasonParameter
+        CCParameter.ReasonParameter,
+        CCParameter.ReviewIDParameter,
     }
+    argparse_properties = {
+        'args': (name,),
+        'kwargs': dict(aliases=[name.replace('_', '-')], help=description)
+    }
+
+
+class ReviewEndpoint(AbstractEndpoint):
+    name = "review"
+    description = "Create, approve, or discard reviews"
+    http_method = "POST"
+    can_execute_proposal = False
+    available_Parameters = (
+        CCParameter.ApproveParameter,
+        CCParameter.DiscardParameter,
+        CCParameter.JSONParameter,
+        CCParameter.ReasonParameter
+    )
+    argparse_properties = {
+        'args': (name,),
+        'kwargs': dict(help=description)
+    }
+
+
+class ReviewBoardEndpoint(AbstractEndpoint):
+    name = "review_board"
+    description = "View already-created reviews"
+    http_method = "GET"
+    can_execute_proposal = False
+    available_Parameters = (
+        CCParameter.JSONParameter,
+        CCParameter.ReviewIDsParameter
+    )
     argparse_properties = {
         'args': (name,),
         'kwargs': dict(aliases=[name.replace('_', '-')], help=description)
@@ -477,6 +519,25 @@ class StopProposalExecutionEndpoint(AbstractEndpoint):
     can_execute_proposal = False
     available_Parameters = (
         CCParameter.JSONParameter,
+        CCParameter.ReviewIDParameter,
+    )
+    argparse_properties = {
+        'args': (name,),
+        'kwargs': dict(aliases=[name.replace('_', '-'), 'stop'], help=description)
+    }
+
+
+class TopicConfigurationEndpoint(AbstractEndpoint):
+    name = "topic_configuration"
+    description = "Update the configuration of the specified topics"
+    http_method = "POST"
+    can_execute_proposal = True
+    available_Parameters = (
+        CCParameter.JSONParameter,
+        CCParameter.SkipRackAwarenessCheckParameter,
+        CCParameter.ReplicationFactorParameter,
+        CCParameter.ReviewIDParameter,
+        CCParameter.TopicParameter
     )
     argparse_properties = {
         'args': (name,),
