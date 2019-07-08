@@ -16,6 +16,16 @@ class AbstractCommaSeparatedParameter(AbstractParameter):
             raise ValueError(f"{self.value} is not a string value")
 
 
+class ApproveParameter(AbstractCommaSeparatedParameter):
+    """approve=[id1,id2,...]"""
+    name = 'approve'
+    description = "The review IDs to approve"
+    argparse_properties = {
+        'args': ('--approve',),
+        'kwargs': dict(help=description, nargs='+')
+    }
+
+
 class BrokerIdParameter(AbstractCommaSeparatedParameter):
     """brokerid=[id1,id2...]"""
     name = 'brokerid'
@@ -51,6 +61,16 @@ class DestinationBrokerIdsParameter(AbstractCommaSeparatedParameter):
     }
 
 
+class DiscardParameter(AbstractCommaSeparatedParameter):
+    """discard=[id1,id2,...]"""
+    name = 'discard'
+    description = "The review IDs to discard"
+    argparse_properties = {
+        'args': ('--discard',),
+        'kwargs': dict(help=description, nargs='+')
+    }
+
+
 class EndpointsParameter(AbstractCommaSeparatedParameter):
     """endpoints=[Set-of-{@link EndPoint}]"""
     name = 'endpoints'
@@ -77,6 +97,16 @@ class ReplicaMovementStrategiesParameter(AbstractCommaSeparatedParameter):
     description = 'Comma-separated and/or space-separated list of replica movement strategies'
     argparse_properties = {
         'args': ('--strategies',),
+        'kwargs': dict(help=description, nargs='+')
+    }
+
+
+class ReviewIDsParameter(AbstractCommaSeparatedParameter):
+    """review_ids=[id1,id2,...]"""
+    name = 'review_ids'
+    description = "The review IDs by which to filter the review_board response"
+    argparse_properties = {
+        'args': ('--review-ids', '--review-id', '--reviews', '--review'),
         'kwargs': dict(help=description, nargs='+')
     }
 
