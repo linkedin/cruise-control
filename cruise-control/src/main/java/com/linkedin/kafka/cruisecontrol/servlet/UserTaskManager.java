@@ -208,12 +208,12 @@ public class UserTaskManager implements Closeable {
    * @param parameters Parsed parameters from http request, or null if the parsing result is unavailable.
    * @return The list of {@link OperationFuture} for the linked UserTask.
    */
-  public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest,
-                                                   HttpServletResponse httpServletResponse,
-                                                   Function<String, OperationFuture> function,
-                                                   int step,
-                                                   boolean isAsyncRequest,
-                                                   CruiseControlParameters parameters) {
+  public synchronized List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest,
+                                                                HttpServletResponse httpServletResponse,
+                                                                Function<String, OperationFuture> function,
+                                                                int step,
+                                                                boolean isAsyncRequest,
+                                                                CruiseControlParameters parameters) {
     UUID userTaskId = getUserTaskId(httpServletRequest);
     UserTaskInfo userTaskInfo = getUserTaskByUserTaskId(userTaskId, httpServletRequest);
 
@@ -313,7 +313,7 @@ public class UserTaskManager implements Closeable {
    * @param httpServletRequest the HttpServletRequest to fetch the User-Task-ID and HTTPSession.
    * @return UUID of the user tasks or null if user task doesn't exist.
    */
-  public UUID getUserTaskId(HttpServletRequest httpServletRequest) {
+  public synchronized UUID getUserTaskId(HttpServletRequest httpServletRequest) {
     String userTaskIdString = httpServletRequest.getHeader(USER_TASK_HEADER_NAME);
 
     UUID userTaskId;
@@ -329,7 +329,7 @@ public class UserTaskManager implements Closeable {
     return userTaskId;
   }
 
-   synchronized void checkActiveUserTasks() {
+  synchronized void checkActiveUserTasks() {
     Iterator<Map.Entry<UUID, UserTaskInfo>> iter = _uuidToActiveUserTaskInfoMap.entrySet().iterator();
     while (iter.hasNext()) {
       Map.Entry<UUID, UserTaskInfo> entry = iter.next();
