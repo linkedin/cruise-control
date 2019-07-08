@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 /**
  * The async runnable for {@link KafkaCruiseControl#addBrokers(Set, boolean, boolean, List, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern,
- * ReplicaMovementStrategy, String, boolean, boolean)}
+ * ReplicaMovementStrategy, Long, String, boolean, boolean)}
  */
 class AddBrokerRunnable extends OperationRunnable {
   private final Set<Integer> _brokerIds;
@@ -36,6 +36,7 @@ class AddBrokerRunnable extends OperationRunnable {
   private final boolean _excludeRecentlyRemovedBrokers;
   private final ReplicaMovementStrategy _replicaMovementStrategy;
   private final KafkaCruiseControlConfig _config;
+  private final Long _replicationThrottle;
 
   AddBrokerRunnable(KafkaCruiseControl kafkaCruiseControl,
                     OperationFuture future,
@@ -54,6 +55,7 @@ class AddBrokerRunnable extends OperationRunnable {
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
+    _replicationThrottle = parameters.replicationThrottle();
     _uuid = uuid;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
@@ -74,6 +76,7 @@ class AddBrokerRunnable extends OperationRunnable {
                                                                  _skipHardGoalCheck,
                                                                  _excludedTopics,
                                                                  _replicaMovementStrategy,
+                                                                 _replicationThrottle,
                                                                  _uuid,
                                                                  _excludeRecentlyDemotedBrokers,
                                                                  _excludeRecentlyRemovedBrokers),

@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
 /**
  * The async runnable for {@link KafkaCruiseControl#fixOfflineReplicas(boolean, List, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, Pattern,
- * ReplicaMovementStrategy, String, boolean, boolean)}
+ * ReplicaMovementStrategy, Long, String, boolean, boolean)}
  */
 class FixOfflineReplicasRunnable extends OperationRunnable {
   private final boolean _dryRun;
@@ -32,6 +32,7 @@ class FixOfflineReplicasRunnable extends OperationRunnable {
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
   private final ReplicaMovementStrategy _replicaMovementStrategy;
+  private final Long _replicationThrottle;
   private final KafkaCruiseControlConfig _config;
 
   FixOfflineReplicasRunnable(KafkaCruiseControl kafkaCruiseControl,
@@ -52,6 +53,7 @@ class FixOfflineReplicasRunnable extends OperationRunnable {
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
+    _replicationThrottle = parameters.replicationThrottle();
     _config = config;
   }
 
@@ -61,6 +63,7 @@ class FixOfflineReplicasRunnable extends OperationRunnable {
                                                                          _future.operationProgress(), _allowCapacityEstimation,
                                                                          _concurrentInterBrokerPartitionMovements, _concurrentLeaderMovements,
                                                                          _skipHardGoalCheck, _excludedTopics, _replicaMovementStrategy,
+                                                                         _replicationThrottle,
                                                                          _uuid, _excludeRecentlyDemotedBrokers,
                                                                          _excludeRecentlyRemovedBrokers),
                                   _config);

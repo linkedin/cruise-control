@@ -87,6 +87,7 @@ public class BrokerFailures extends KafkaAnomaly {
                                                                                            false,
                                                                                            null,
                                                                                            null,
+                                                                                           null,
                                                                                            _anomalyId,
                                                                                            _excludeRecentlyDemotedBrokers,
                                                                                            _excludeRecentlyRemovedBrokers,

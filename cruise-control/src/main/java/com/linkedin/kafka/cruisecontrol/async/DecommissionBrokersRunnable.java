@@ -18,7 +18,7 @@ import java.util.regex.Pattern;
 /**
  * The async runnable for {@link KafkaCruiseControl#decommissionBrokers(Set, boolean, boolean, List,
  * ModelCompletenessRequirements, com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean,
- * Integer, Integer, boolean, Pattern, ReplicaMovementStrategy, String, boolean, boolean, Set)}
+ * Integer, Integer, boolean, Pattern, ReplicaMovementStrategy, Long, String, boolean, boolean, Set)}
  */
 class DecommissionBrokersRunnable extends OperationRunnable {
   private final Set<Integer> _removedBrokerIds;
@@ -37,6 +37,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
   private final boolean _excludeRecentlyRemovedBrokers;
   private final ReplicaMovementStrategy _replicaMovementStrategy;
   private final KafkaCruiseControlConfig _config;
+  private final Long _replicationThrottle;
 
   DecommissionBrokersRunnable(KafkaCruiseControl kafkaCruiseControl,
                               OperationFuture future,
@@ -56,6 +57,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
     _skipHardGoalCheck = parameters.skipHardGoalCheck();
     _excludedTopics = parameters.excludedTopics();
     _replicaMovementStrategy = parameters.replicaMovementStrategy();
+    _replicationThrottle = parameters.replicationThrottle();
     _uuid = uuid;
     _excludeRecentlyDemotedBrokers = parameters.excludeRecentlyDemotedBrokers();
     _excludeRecentlyRemovedBrokers = parameters.excludeRecentlyRemovedBrokers();
@@ -76,6 +78,7 @@ class DecommissionBrokersRunnable extends OperationRunnable {
                                                                           _skipHardGoalCheck,
                                                                           _excludedTopics,
                                                                           _replicaMovementStrategy,
+                                                                          _replicationThrottle,
                                                                           _uuid,
                                                                           _excludeRecentlyDemotedBrokers,
                                                                           _excludeRecentlyRemovedBrokers,

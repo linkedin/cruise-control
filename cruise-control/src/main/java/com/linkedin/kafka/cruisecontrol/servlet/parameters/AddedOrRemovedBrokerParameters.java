@@ -16,6 +16,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   private Integer _concurrentInterBrokerPartitionMovements;
   private Integer _concurrentLeaderMovements;
   private boolean _dryRun;
+  private Long _replicationThrottle;
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private Integer _reviewId;
@@ -31,6 +32,7 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
     _dryRun = ParameterUtils.getDryRun(_request);
     _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
+    _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
@@ -60,6 +62,10 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
 
   public boolean dryRun() {
     return _dryRun;
+  }
+
+  public Long replicationThrottle() {
+    return _replicationThrottle;
   }
 
   public boolean skipHardGoalCheck() {
