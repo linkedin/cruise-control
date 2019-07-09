@@ -84,7 +84,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
         return String.format("%n%nCluster load after demoting broker %s:%n", ((DemoteBrokerParameters) parameters).brokerIds());
       case TOPIC_CONFIGURATION:
         return String.format("%n%nCluster load after updating replication factor of topics %s to %d:%n",
-                             _optimizerResult.proposalTopics(), ((TopicConfigurationParameters) parameters).replicationFactor());
+                             _optimizerResult.topicsWithReplicationFactorChange(), ((TopicConfigurationParameters) parameters).replicationFactor());
       default:
         LOG.error("Unrecognized endpoint.");
         return "Unrecognized endpoint.";

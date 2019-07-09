@@ -634,11 +634,11 @@ public class GoalOptimizer implements Runnable {
     }
 
     /**
-     * The topics of partitions which are going to be modified by proposals.
+     * The topics whose replication factor has been changed by proposals.
      */
-    public Set<String> proposalTopics() {
+    public Set<String> topicsWithReplicationFactorChange() {
       Set<String> topics = new HashSet<>(_proposals.size());
-      _proposals.forEach(p -> topics.add(p.topic()));
+      _proposals.stream().filter(p -> p.newReplicas().size() != p.oldReplicas().size()).forEach(p -> topics.add(p.topic()));
       return topics;
     }
 
