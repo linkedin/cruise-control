@@ -53,7 +53,12 @@ public class NoopNotifier implements AnomalyNotifier {
 
   @Override
   public Map<AnomalyType, Float> selfHealingEnabledRatio() {
-    return null;
+    Map<AnomalyType, Float> selfHealingEnabledRatio = new HashMap<>(AnomalyType.cachedValues().size());
+    for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
+      selfHealingEnabledRatio.put(anomalyType, 0.0f);
+    }
+
+    return selfHealingEnabledRatio;
   }
 
   @Override
