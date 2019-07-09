@@ -2,25 +2,28 @@
 ## Introduction
 The `cruise-control-client` directory provides a `python` client for `cruise-control`.  
 
-Within `cruise-control-client/cruisecontrolclient/client`, `cccli.py` is a command-line interface to this `python` client, but the `Endpoint`, `Query`, and `Responder` classes can be used outside of `cccli.py`, to supply a `cruise-control` client outside of a command-line interface.
-
-Upon installing `cruise-control-client`, `cccli` can be used as a command-line entry point to invoke the script.
+`cruise-control-client` also provides `cccli`, which is a command-line interface to this `python` client.  
+Additionally, the `Endpoint`, `Query`, and `Responder` classes can be used outside of `cccli`, to supply a `cruise-control` client outside of a command-line interface.
 ## Getting Started
-`requirements.txt` has been supplied to assist in `python` dependency management.  
+The recommended method for installing `cruise-control-client` is to use the [Python Package Index](https://pypi.org/)  
 ### `pip` Install
 `cruise-control-client` [exists on PyPI](https://pypi.org/project/cruise-control-client/).  
-To install it in a new [virtual environment](https://docs.python.org/3/library/venv.html), use the following:
+To create and activate a new [virtual environment](https://docs.python.org/3/library/venv.html), use the following:
 ```bash
 python3.7 -m venv .
 . bin/activate
+```
+Then, to install `cruise-control-client`:  
+```bash
 pip install cruise-control-client
+```
+The installation will bind `cccli` to invoke the `cruise-control-client` command-line interface script.
+So, to view help for `cccli`, run the following:  
+```bash
 cccli --help
 ```
-A `requirements.txt` has also been provided to more-precisely pin version requirements, if necessary.
 ### CLI Usage
-First, change into the `cruise-control-client/cruisecontrolclient/client` directory.
-
-Then, `cccli --socket-address {hostname:port} {endpoint} {options}`
+In general, `cccli --socket-address {hostname:port} {endpoint} {options}`
 where  
 * `hostname:port` is the hostname and port of the `cruise-control` that you'd like to communicate with
 * `endpoint` is the `cruise-control` endpoint that you'd like to use
