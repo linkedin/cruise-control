@@ -17,7 +17,11 @@ setuptools.setup(
     description='A Python client for cruise-control',
     long_description=LONG_DESCRIPTION,
     url='https://github.com/linkedin/cruise-control',
-    scripts=['cruisecontrolclient/client/cccli.py'],
+    entry_points={
+        'console_scripts': [
+            'cccli = cruisecontrolclient.client.cccli:main'
+        ]
+    },
     packages=setuptools.find_packages(),
     install_requires=[
         'pandas',
