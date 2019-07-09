@@ -40,7 +40,7 @@ import java.util.regex.Pattern;
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean, boolean)}</li>
  * <li>{@link KafkaCruiseControl#demoteBrokers(Set, boolean, OperationProgress, boolean, Integer, boolean, boolean,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, String, boolean)}</li>
- * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
+ * <li>{@link KafkaCruiseControl#clusterModel(long, long, ModelCompletenessRequirements, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getProposals(OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
@@ -117,7 +117,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean)
+   * @see KafkaCruiseControl#clusterModel(long, long, ModelCompletenessRequirements, OperationProgress, boolean)
    */
   public OperationFuture getBrokerStats(ClusterLoadParameters parameters) {
     OperationFuture future = new OperationFuture("Get broker stats");

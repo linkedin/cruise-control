@@ -14,11 +14,12 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 /**
  * The async runnable to get the {@link BrokerStats} for the cluster model.
  *
- * @see KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements,
+ * @see KafkaCruiseControl#clusterModel(long, long, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)
  */
 class GetBrokerStatsRunnable extends OperationRunnable {
-  private final long _time;
+  private final long _start;
+  private final long _end;
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
   private final KafkaCruiseControlConfig _config;
@@ -28,7 +29,8 @@ class GetBrokerStatsRunnable extends OperationRunnable {
                          ClusterLoadParameters parameters,
                          KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
-    _time = parameters.time();
+    _start = parameters.startMs() != null ? parameters.startMs() : -1;
+    _end = parameters.endMs() != null ? parameters.endMs() : parameters.time();
     _modelCompletenessRequirements = parameters.requirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _config = config;
@@ -41,7 +43,8 @@ class GetBrokerStatsRunnable extends OperationRunnable {
     if (cachedBrokerStats != null) {
       return cachedBrokerStats;
     }
-    return _kafkaCruiseControl.clusterModel(_time,
+    return _kafkaCruiseControl.clusterModel(_start,
+                                            _end,
                                             _modelCompletenessRequirements,
                                             _future.operationProgress(),
                                             _allowCapacityEstimation).brokerStats(_config);

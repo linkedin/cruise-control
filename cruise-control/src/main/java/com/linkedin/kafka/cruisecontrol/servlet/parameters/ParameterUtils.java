@@ -125,6 +125,8 @@ public class ParameterUtils {
 
     Set<String> load = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     load.add(TIME_PARAM);
+    load.add(START_MS_PARAM);
+    load.add(END_MS_PARAM);
     load.add(JSON_PARAM);
     load.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
@@ -465,6 +467,11 @@ public class ParameterUtils {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), TIME_PARAM);
     if (parameterString == null) {
       return System.currentTimeMillis();
+    }
+
+    if (startMs(request) != null || endMs(request) != null) {
+      throw new IllegalArgumentException("Parameter \"time\" and parameter \"start\"/\"end\" are mutually exclusive and "
+                                         + "should not be specified in the same request.");
     }
 
     String timeString = request.getParameter(parameterString);

@@ -473,20 +473,22 @@ public class KafkaCruiseControl {
 
   /**
    * Get the cluster model cutting off at a certain timestamp.
-   * @param now time.
+   * @param from the start time of the window
+   * @param to the end time of the window
    * @param requirements the model completeness requirements.
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return the cluster workload model.
    * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
    */
-  public ClusterModel clusterModel(long now,
+  public ClusterModel clusterModel(long from,
+                                   long to,
                                    ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress,
                                    boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
-      ClusterModel clusterModel = _loadMonitor.clusterModel(now, requirements, operationProgress);
+      ClusterModel clusterModel = _loadMonitor.clusterModel(from, to, requirements, operationProgress);
       sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
       return clusterModel;
     } catch (KafkaCruiseControlException kcce) {
