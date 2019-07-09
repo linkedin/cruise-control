@@ -153,7 +153,7 @@ public class SelfHealingNotifier implements AnomalyNotifier {
       if (_selfHealingEnabled.get(anomalyType)) {
         // Add current duration during which the self-healing is enabled.
         Long currentEnabledSelfHealingStartTime = _selfHealingStateChangeTimeMs.get(false).get(anomalyType);
-        enabledTimeMs += nowMs - (currentEnabledSelfHealingStartTime == null ? 0L : currentEnabledSelfHealingStartTime);
+        enabledTimeMs += nowMs - (currentEnabledSelfHealingStartTime == null ? _notifierStartTimeMs : currentEnabledSelfHealingStartTime);
       }
       selfHealingEnabledRatio.put(anomalyType, ((float) enabledTimeMs / uptimeMs));
     }
