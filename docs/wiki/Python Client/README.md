@@ -3,6 +3,8 @@
 The `cruise-control-client` directory provides a `python` client for `cruise-control`.  
 
 Within `cruise-control-client/cruisecontrolclient/client`, `cccli.py` is a command-line interface to this `python` client, but the `Endpoint`, `Query`, and `Responder` classes can be used outside of `cccli.py`, to supply a `cruise-control` client outside of a command-line interface.
+
+Upon installing `cruise-control-client`, `cccli` can be used as a command-line entry point to invoke the script.
 ## Getting Started
 `requirements.txt` has been supplied to assist in `python` dependency management.  
 ### `pip` Install
@@ -12,13 +14,13 @@ To install it in a new [virtual environment](https://docs.python.org/3/library/v
 python3.7 -m venv .
 . bin/activate
 pip install cruise-control-client
-cccli.py --help
+cccli --help
 ```
 A `requirements.txt` has also been provided to more-precisely pin version requirements, if necessary.
 ### CLI Usage
 First, change into the `cruise-control-client/cruisecontrolclient/client` directory.
 
-Then, `cccli.py --socket-address {hostname:port} {endpoint} {options}`
+Then, `cccli --socket-address {hostname:port} {endpoint} {options}`
 where  
 * `hostname:port` is the hostname and port of the `cruise-control` that you'd like to communicate with
 * `endpoint` is the `cruise-control` endpoint that you'd like to use
@@ -27,7 +29,7 @@ where
 ### Examples
 #### State
 ```
-cccli.py -a someCruiseControlAddress:9090 state
+cccli -a someCruiseControlAddress:9090 state
 Starting long-running poll of http://someCruiseControlAddress:9090/kafkacruisecontrol/state?substates=executor&json=true
 'ExecutorState':
 {'state': 'NO_TASK_IN_PROGRESS'}
@@ -37,7 +39,7 @@ Starting long-running poll of http://someCruiseControlAddress:9090/kafkacruiseco
 ```
 #### Load
 ```bash
-cccli.py -a someCruiseControlAddress:9090 load
+cccli -a someCruiseControlAddress:9090 load
 Starting long-running poll of http://someCruiseControlAddress:9090/kafkacruisecontrol/load?allow_capacity_estimation=False&json=true
 'version':
 1
@@ -66,7 +68,7 @@ Broker
 ```
 #### Rebalance
 ```
-cccli.py -a someCruiseControlAddress:9090 rebalance --dry-run
+cccli -a someCruiseControlAddress:9090 rebalance --dry-run
 Starting long-running poll of http://someCruiseControlAddress:9090/kafkacruisecontrol/rebalance?allow_capacity_estimation=False&dryrun=True&json=true
 'version':
 1
