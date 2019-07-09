@@ -17,7 +17,7 @@ Then, to install `cruise-control-client`:
 ```bash
 pip install cruise-control-client
 ```
-The installation will bind `cccli` to invoke the `cruise-control-client` command-line interface script.
+The installation will bind `cccli` to invoke the `cruise-control-client` command-line interface script.  
 So, to view help for `cccli`, run the following:  
 ```bash
 cccli --help
