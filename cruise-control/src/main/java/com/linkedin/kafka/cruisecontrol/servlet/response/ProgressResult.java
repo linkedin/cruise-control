@@ -21,7 +21,7 @@ public class ProgressResult extends AbstractCruiseControlResponse {
   private static final String PROGRESS = "progress";
   private static final String OPERATION = "operation";
   private static final String OPERATION_PROGRESS = "operationProgress";
-  private final List<OperationFuture> _futures;
+  private List<OperationFuture> _futures;
 
   public ProgressResult(List<OperationFuture> futures, KafkaCruiseControlConfig config) {
     super(config);
@@ -57,6 +57,6 @@ public class ProgressResult extends AbstractCruiseControlResponse {
     // Cache relevant response.
     _cachedResponse = parameters.json() ? getJSONString() : getPlaintext();
     // Discard irrelevant response.
-    _futures.clear();
+    _futures = null;
   }
 }
