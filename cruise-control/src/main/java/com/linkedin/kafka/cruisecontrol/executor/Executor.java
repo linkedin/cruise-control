@@ -477,6 +477,10 @@ public class Executor {
     return _hasOngoingExecution;
   }
 
+  public boolean hasOngoingPartitionReassignments() {
+    return !ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty();
+  }
+
   /**
    * This class is thread safe.
    *

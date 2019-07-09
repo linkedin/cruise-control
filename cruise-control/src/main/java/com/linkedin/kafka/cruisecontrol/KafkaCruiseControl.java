@@ -325,14 +325,14 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Check if there is an ongoing execution and dryrun is false.
-   * This method helps to fail fast if a user attempts to start an execution during an ongoing execution.
+   * Check if there is an ongoing partition reassignment and dryrun is false.
+   * This method helps to fail fast if a user attempts to start an execution during an ongoing partition reassignment.
    *
    * @param dryRun True if the request is just a dryrun, false if the intention is to start an execution.
    */
   private void sanityCheckDryRun(boolean dryRun) {
-    if (!dryRun && _executor.hasOngoingExecution()) {
-      throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
+    if (!dryRun && _executor.hasOngoingPartitionReassignments()) {
+      throw new IllegalStateException("Cannot execute new proposals while there is an ongoing partition reassignment.");
     }
   }
 
