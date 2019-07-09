@@ -206,7 +206,7 @@ public class UserTaskManager implements Closeable {
    * @param step The index of the step that has to be added or fetched.
    * @param isAsyncRequest Indicate whether the task is async or sync.
    * @param parameters Parsed parameters from http request, or null if the parsing result is unavailable.
-   * @return The list of {@link OperationFuture} for the linked UserTask.
+   * @return An unmodifiable list of {@link OperationFuture} for the linked UserTask.
    */
   public List<OperationFuture> getOrCreateUserTask(HttpServletRequest httpServletRequest,
                                                    HttpServletResponse httpServletResponse,
@@ -221,10 +221,10 @@ public class UserTaskManager implements Closeable {
       LOG.info("Fetch an existing UserTask {}", userTaskId);
       httpServletResponse.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
       if (step < userTaskInfo.futures().size()) {
-        return userTaskInfo.futures();
+        return Collections.unmodifiableList(userTaskInfo.futures());
       } else if (step == userTaskInfo.futures().size()) {
         LOG.info("Add a new future to existing UserTask {}", userTaskId);
-        return insertFuturesByUserTaskId(userTaskId, function, httpServletRequest, parameters).futures();
+        return Collections.unmodifiableList(insertFuturesByUserTaskId(userTaskId, function, httpServletRequest, parameters).futures());
       } else {
         throw new IllegalArgumentException(
             String.format("There are %d steps in the session. Cannot add step %d.", userTaskInfo.futures().size(), step));
@@ -243,7 +243,7 @@ public class UserTaskManager implements Closeable {
       }
 
       httpServletResponse.setHeader(USER_TASK_HEADER_NAME, userTaskId.toString());
-      return userTaskInfo.futures();
+      return Collections.unmodifiableList(userTaskInfo.futures());
     }
   }
 
