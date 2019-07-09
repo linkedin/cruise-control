@@ -42,6 +42,8 @@ import org.apache.kafka.common.TopicPartition;
  */
 public class ClusterModel implements Serializable {
   private static final long serialVersionUID = -6840253566423285966L;
+  // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
+  private static final Broker GENESIS_BROKER = new Broker(null, -1, Collections.emptyMap());
 
   private final ModelGeneration _generation;
   private final Map<String, Rack> _racksById;
@@ -598,7 +600,8 @@ public class ClusterModel implements Serializable {
    * {@link #untrackSortedReplicas(String)} to release memory.
    *
    * @param sortName the name of the sorted replicas.
-   * @param selectionFunc the selection function to decide which replicas to include in the sort.
+   * @param selectionFunc the selection function to decide which replicas to include in the sort. If it is {@code null},
+   *                      all the replicas are to be included.
    * @param priorityFunc the priority function to sort the replicas
    * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
    *                  order of score.
@@ -758,8 +761,8 @@ public class ClusterModel implements Serializable {
    * created replica. Set the replica as offline if it is on a dead broker.
    *
    * The {@link com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor} uses {@link #createReplica(String, int,
-   * TopicPartition, int, boolean, boolean, String)} while setting the replica offline status, and it considers the broken disks,
-   * as well. Whereas, this method is used only by the unit tests. The relevant unit tests may use
+   * TopicPartition, int, boolean, boolean, String, boolean)} while setting the replica offline status, and it considers
+   * the broken disks as well. Whereas, this method is used only by the unit tests. The relevant unit tests may use
    * {@link Replica#markOriginalOffline()} to mark offline replicas on broken disks.
    *
    * The main reason for this separation is the lack of disk representation in the current broker model. Once the
@@ -773,7 +776,7 @@ public class ClusterModel implements Serializable {
    * @return Created replica.
    */
   public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader) {
-    return createReplica(rackId, brokerId, tp, index, isLeader, !broker(brokerId).isAlive(), null);
+    return createReplica(rackId, brokerId, tp, index, isLeader, !broker(brokerId).isAlive(), null, false);
   }
 
   /**
@@ -788,6 +791,10 @@ public class ClusterModel implements Serializable {
    * @param isOffline      True if the replica is offline in its original location, false otherwise.
    * @param logdir         The logdir of replica's hosting disk. If replica placement over disk information is not populated,
    *                       this parameter is null.
+   * @param isFuture       True if the replica does not correspond to any existing replica in the cluster, but a replica
+   *                       we are going to add to the cluster. This replica's original broker will not be any existing broker
+   *                       so that it will be treated as an immigrant replica for whatever broker it is assigned to and
+   *                       grant goals greatest freedom to allocate to an existing broker.
    * @return Created replica.
    */
   public Replica createReplica(String rackId,
@@ -796,21 +803,28 @@ public class ClusterModel implements Serializable {
                                int index,
                                boolean isLeader,
                                boolean isOffline,
-                               String logdir) {
+                               String logdir,
+                               boolean isFuture) {
+    Replica replica;
     Broker broker = broker(brokerId);
-    Disk disk = null;
-    if (logdir != null) {
-      disk = broker.disk(logdir);
-      if (disk == null) {
-        // If dead disk information is not reported by BrokerCapacityConfigResolver, add dead disk information to cluster model..
-        if (isOffline) {
-          disk = broker.addDeadDisk(logdir);
-        } else {
-          throw new IllegalStateException("Missing disk information for disk " + logdir + " on broker " + this);
+    if (!isFuture) {
+      Disk disk = null;
+      if (logdir != null) {
+        disk = broker.disk(logdir);
+        if (disk == null) {
+          // If dead disk information is not reported by BrokerCapacityConfigResolver, add dead disk information to cluster model..
+          if (isOffline) {
+            disk = broker.addDeadDisk(logdir);
+          } else {
+            throw new IllegalStateException("Missing disk information for disk " + logdir + " on broker " + this);
+          }
         }
       }
+      replica = new Replica(tp, broker, isLeader, isOffline, disk);
+    } else {
+      replica = new Replica(tp, GENESIS_BROKER, false);
+      replica.setBroker(broker);
     }
-    Replica replica = new Replica(tp, broker, isLeader, isOffline, disk);
     rack(rackId).addReplica(replica);
 
     // Add replica to its partition.
@@ -842,6 +856,33 @@ public class ClusterModel implements Serializable {
     _maxReplicationFactor = Math.max(_maxReplicationFactor, replicationFactor);
 
     return replica;
+  }
+
+  /**
+   * Delete a replica from cluster. This method is expected to be called in a batch for all partitions of the topic and in
+   * the end the replication factor across partitions are consistent. Also the caller of this method is expected to call
+   * {@link #refreshClusterMaxReplicationFactor()} after all replica deletion.
+   * @param topicPartition Topic partition of the replica to be removed.
+   * @param brokerId Id of the broker hosting the replica.
+   */
+  public void deleteReplica(TopicPartition topicPartition, int brokerId) {
+    int currentReplicaCount = _partitionsByTopicPartition.get(topicPartition).replicas().size();
+    if (currentReplicaCount < 2) {
+      throw new IllegalStateException(String.format("Unable to delete replica for topic partition %s since it only has %d replicas.",
+                                                    topicPartition, currentReplicaCount));
+    }
+    removeReplica(brokerId, topicPartition);
+    // Update partition info.
+    Partition partition = _partitionsByTopicPartition.get(topicPartition);
+    partition.deleteReplica(brokerId);
+    _replicationFactorByTopic.put(topicPartition.topic(), partition.replicas().size());
+  }
+
+  /**
+   * Refresh the maximum topic replication factor statistic.
+   */
+  public void refreshClusterMaxReplicationFactor() {
+    _maxReplicationFactor =  _replicationFactorByTopic.values().stream().max(Integer::compareTo).orElse(0);
   }
 
   /**

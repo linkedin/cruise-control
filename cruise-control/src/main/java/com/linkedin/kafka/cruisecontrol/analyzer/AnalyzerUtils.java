@@ -45,7 +45,8 @@ public class AnalyzerUtils {
   }
 
   /**
-   * Get the diff represented by the set of balancing proposals to move from initial to final distribution.
+   * Get the diff represented by the set of balancing proposals to move from initial to final distribution. This method also
+   * performs a sanity check for each proposal to ensure that topic partition's replication factor does not change.
    *
    * @param initialReplicaDistribution Initial distribution of replicas over the cluster.
    * @param initialLeaderDistribution Initial distribution of the leaders.
@@ -55,16 +56,35 @@ public class AnalyzerUtils {
   public static Set<ExecutionProposal> getDiff(Map<TopicPartition, List<ReplicaPlacementInfo>> initialReplicaDistribution,
                                                Map<TopicPartition, ReplicaPlacementInfo> initialLeaderDistribution,
                                                ClusterModel optimizedClusterModel) {
+    return getDiff(initialReplicaDistribution, initialLeaderDistribution, optimizedClusterModel, false);
+  }
+
+  /**
+   * Get the diff represented by the set of balancing proposals to move from initial to final distribution.
+   *
+   * @param initialReplicaDistribution Initial distribution of replicas over the cluster.
+   * @param initialLeaderDistribution Initial distribution of the leaders.
+   * @param optimizedClusterModel The optimized cluster model.
+   * @param skipReplicationFactorChangeCheck Whether skip sanity check of topic partition's replication factor change before
+   *                                         and after optimization.
+   * @return The diff represented by the set of balancing proposals to move from initial to final distribution.
+   */
+  public static Set<ExecutionProposal> getDiff(Map<TopicPartition, List<ReplicaPlacementInfo>> initialReplicaDistribution,
+                                               Map<TopicPartition, ReplicaPlacementInfo> initialLeaderDistribution,
+                                               ClusterModel optimizedClusterModel,
+                                               boolean skipReplicationFactorChangeCheck) {
     Map<TopicPartition, List<ReplicaPlacementInfo>> finalDistribution = optimizedClusterModel.getReplicaDistribution();
     // Sanity check to make sure that given distributions contain the same replicas.
     if (!initialReplicaDistribution.keySet().equals(finalDistribution.keySet())) {
       throw new IllegalArgumentException("Attempt to diff distributions with different partitions.");
     }
-    for (Map.Entry<TopicPartition, List<ReplicaPlacementInfo>> entry : initialReplicaDistribution.entrySet()) {
-      TopicPartition tp = entry.getKey();
-      List<ReplicaPlacementInfo> initialReplicas = entry.getValue();
-      if (finalDistribution.get(tp).size() != initialReplicas.size()) {
-        throw new IllegalArgumentException("Attempt to diff distributions with modified replication factor.");
+    if (!skipReplicationFactorChangeCheck) {
+      for (Map.Entry<TopicPartition, List<ReplicaPlacementInfo>> entry : initialReplicaDistribution.entrySet()) {
+        TopicPartition tp = entry.getKey();
+        List<ReplicaPlacementInfo> initialReplicas = entry.getValue();
+        if (finalDistribution.get(tp).size() != initialReplicas.size()) {
+          throw new IllegalArgumentException("Attempt to diff distributions with modified replication factor.");
+        }
       }
     }
 

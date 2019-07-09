@@ -132,6 +132,13 @@ public class Replica implements Serializable, Comparable<Replica> {
   }
 
   /**
+   * Check whether the replica is an immigrant replica of the broker.
+   */
+  public boolean isImmigrant() {
+    return _originalBroker != _broker;
+  }
+
+  /**
    * Set broker that the replica resides in.
    *
    * @param broker Broker that the replica resides in.
@@ -206,17 +213,7 @@ public class Replica implements Serializable, Comparable<Replica> {
   }
 
   /**
-   * This method allows a goal to check the impact before making a replica as follower.
-   *
-   * @return the difference of load if this replica becomes a follower. This method is read-only. It does not change
-   *         roll of the replica.
-   */
-  public AggregatedMetricValues leaderLoadDelta() {
-    return leaderLoadDelta(false);
-  }
-
-  /**
-   * Get the change of the load when this replica becomes the follower of a replica. When updateLoad is set to true,
+   * Get the change of the load when this replica becomes a follower replica. When updateLoad is set to true,
    * the change is actually made to the replica. Otherwise, no change is made.
    *
    * @param updateLoad whether the change to the load should actually be made to the replica
@@ -251,6 +248,17 @@ public class Replica implements Serializable, Comparable<Replica> {
 
     // Return removed leadership load.
     return leadershipLoadDelta;
+  }
+
+  /**
+   * Get the expected load if this replica becomes a follower replica.
+   * @return The expected load.
+   */
+  public Load getFollowerLoadFromLeader() {
+    Load load = new Load();
+    load.initializeMetricValues(_load.loadByWindows(), _load.windows());
+    load.subtractLoad(leaderLoadDelta(false));
+    return load;
   }
 
   /**

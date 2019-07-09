@@ -173,10 +173,13 @@ public abstract class CapacityGoal extends AbstractGoal {
                         _balancingConstraint.capacityThreshold(resource())));
     }
     clusterModel.trackSortedReplicas(sortName(),
-                                     ReplicaSortFunctionFactory.deprioritizeOfflineReplicasThenImmigrants(),
+                                     optimizationOptions.onlyMoveImmigrantReplicas() ? ReplicaSortFunctionFactory.selectImmigrants()
+                                                                                     : null,
+                                         ReplicaSortFunctionFactory.deprioritizeOfflineReplicasThenImmigrants(),
                                      ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
     clusterModel.trackSortedReplicas(sortNameByLeader(),
-                                     ReplicaSortFunctionFactory.selectLeaders(),
+                                     optimizationOptions.onlyMoveImmigrantReplicas() ? ReplicaSortFunctionFactory.selectImmigrantLeaders()
+                                                                                     : ReplicaSortFunctionFactory.selectLeaders(),
                                      ReplicaSortFunctionFactory.deprioritizeImmigrants(),
                                      ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
   }

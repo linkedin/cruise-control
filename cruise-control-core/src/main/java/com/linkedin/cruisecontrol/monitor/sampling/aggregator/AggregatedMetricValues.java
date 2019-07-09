@@ -170,7 +170,7 @@ public class AggregatedMetricValues {
       MetricValues valuesForMetric = _metricValues.computeIfAbsent(metricId, id -> new MetricValues(otherValuesForMetric.length()));
       if (valuesForMetric.length() != otherValuesForMetric.length()) {
         throw new IllegalStateException("The two values arrays have different lengths " + valuesForMetric.length()
-                                            + " and " + otherValuesForMetric.length());
+                                        + " and " + otherValuesForMetric.length());
       }
       valuesForMetric.add(otherValuesForMetric);
     }

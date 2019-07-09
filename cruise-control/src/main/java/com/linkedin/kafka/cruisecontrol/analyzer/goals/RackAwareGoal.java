@@ -237,11 +237,13 @@ public class RackAwareGoal extends AbstractGoal {
       throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
     // Satisfy rack awareness requirement. Note that the default replica comparator prioritizes offline replicas.
     SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());
     for (Replica replica : replicas) {
       if ((broker.isAlive() && !broker.currentOfflineReplicas().contains(replica) && satisfiedRackAwareness(replica, clusterModel))
-          || shouldExclude(replica, excludedTopics)) {
+          || shouldExclude(replica, excludedTopics)
+          || (onlyMoveImmigrantReplicas && !replica.isImmigrant())) {
         continue;
       }
       // Rack awareness is violated. Move replica to a broker in another rack.

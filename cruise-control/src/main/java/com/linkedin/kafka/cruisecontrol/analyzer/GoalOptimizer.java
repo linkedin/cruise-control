@@ -345,7 +345,7 @@ public class GoalOptimizer implements Runnable {
    * (4) assumes that the optimization is not triggered by anomaly detector.
    * (5) does not specify the destination brokers for replica move explicitly.
    *
-   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern, Set, Set, boolean, Set)}.
+   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern, Set, Set, boolean, Set, Map, boolean)}.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        List<Goal> goalsByPriority,
@@ -358,7 +358,9 @@ public class GoalOptimizer implements Runnable {
                          Collections.emptySet(),
                          Collections.emptySet(),
                          false,
-                         Collections.emptySet());
+                         Collections.emptySet(),
+                         null,
+                         false);
   }
 
   /**
@@ -379,6 +381,15 @@ public class GoalOptimizer implements Runnable {
    * @param isTriggeredByGoalViolation True if optimization of goals is triggered by goal violation, false otherwise.
    * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
    *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
+   * @param initReplicaDistributionForProposalGeneration The initial replica distribution of the cluster. This is only needed
+   *                                                     if the passed in clusterModel is not the original cluster model so
+   *                                                     that initial replica distribution can not be deducted from that
+   *                                                     cluster model, otherwise it is null. One case explicitly specifying
+   *                                                     initial replica distribution needed is to increase/decrease specific
+   *                                                     topic partition's replication factor, in this case some replicas
+   *                                                     are tentatively deleted/added in cluster model before passing it
+   *                                                     in to generate proposals.
+   * @param onlyMoveImmigrantReplicas Whether restrict replica movement only to immigrant replicas or not.
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
@@ -388,7 +399,9 @@ public class GoalOptimizer implements Runnable {
                                        Set<Integer> excludedBrokersForLeadership,
                                        Set<Integer> excludedBrokersForReplicaMove,
                                        boolean isTriggeredByGoalViolation,
-                                       Set<Integer> requestedDestinationBrokerIds)
+                                       Set<Integer> requestedDestinationBrokerIds,
+                                       Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistributionForProposalGeneration,
+                                       boolean onlyMoveImmigrantReplicas)
       throws KafkaCruiseControlException {
     if (clusterModel == null) {
       throw new IllegalArgumentException("The cluster model cannot be null");
@@ -419,7 +432,8 @@ public class GoalOptimizer implements Runnable {
                                                                       excludedBrokersForLeadership,
                                                                       excludedBrokersForReplicaMove,
                                                                       isTriggeredByGoalViolation,
-                                                                      requestedDestinationBrokerIds);
+                                                                      requestedDestinationBrokerIds,
+                                                                      onlyMoveImmigrantReplicas);
     for (Goal goal : goalsByPriority) {
       preOptimizedReplicaDistribution = preOptimizedReplicaDistribution == null ? initReplicaDistribution : clusterModel.getReplicaDistribution();
       preOptimizedLeaderDistribution = preOptimizedLeaderDistribution == null ? initLeaderDistribution : clusterModel.getLeaderDistribution();
@@ -452,7 +466,14 @@ public class GoalOptimizer implements Runnable {
       LOG.trace("Broker level stats after optimization: {}%n", clusterModel.brokerStats(null));
     }
 
-    Set<ExecutionProposal> proposals = AnalyzerUtils.getDiff(initReplicaDistribution, initLeaderDistribution, clusterModel);
+    // Skip replication factor change check here since in above iteration we already check for each goal it does not change
+    // any partition's replication factor.
+    Set<ExecutionProposal> proposals =
+        AnalyzerUtils.getDiff(initReplicaDistributionForProposalGeneration != null ? initReplicaDistributionForProposalGeneration
+                                                                                   : initReplicaDistribution,
+                              initLeaderDistribution,
+                              clusterModel,
+                              true);
     return new OptimizerResult(statsByGoalPriority,
                                violatedGoalNamesBeforeOptimization,
                                violatedGoalNamesAfterOptimization,
@@ -613,6 +634,15 @@ public class GoalOptimizer implements Runnable {
 
     public Set<Integer> excludedBrokersForReplicaMove() {
       return _optimizationOptions.excludedBrokersForReplicaMove();
+    }
+
+    /**
+     * The topics of partitions which are going to be modified by proposals.
+     */
+    public Set<String> topicsWithReplicationFactorChange() {
+      Set<String> topics = new HashSet<>(_proposals.size());
+      _proposals.stream().filter(p -> p.newReplicas().size() != p.oldReplicas().size()).forEach(p -> topics.add(p.topic()));
+      return topics;
     }
 
     private List<Number> getMovementStats() {

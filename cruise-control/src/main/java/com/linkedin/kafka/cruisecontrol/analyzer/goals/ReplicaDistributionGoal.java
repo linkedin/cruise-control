@@ -119,6 +119,8 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     super.initGoalState(clusterModel, optimizationOptions);
     clusterModel.trackSortedReplicas(name(),
+                                     optimizationOptions.onlyMoveImmigrantReplicas() ? ReplicaSortFunctionFactory.selectImmigrants()
+                                                                                     : null,
                                      ReplicaSortFunctionFactory.prioritizeOfflineReplicasThenImmigrants(),
                                      ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()));
   }
@@ -170,10 +172,11 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
       // return if we have new brokers and the current broker is not a new broker and does not require less replicas
       // -- i.e. hence, does not have offline replicas on it.
       return;
-    } else if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && requireLessReplicas
-               && broker.currentOfflineReplicas().isEmpty() && broker.immigrantReplicas().isEmpty()) {
-      // return if the cluster is in self-healing mode and the broker requires less load, but does not have any
-      // offline or immigrant replicas.
+    } else if (((!clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.currentOfflineReplicas().isEmpty())
+               || optimizationOptions.onlyMoveImmigrantReplicas())
+               && requireLessReplicas && broker.immigrantReplicas().isEmpty()) {
+      // return if (1) cluster is in self-healing mode or (2) optimization option requires only moving immigrant replicas,
+      // and the broker requires less load but does not have any immigrant replicas.
       return;
     }
 

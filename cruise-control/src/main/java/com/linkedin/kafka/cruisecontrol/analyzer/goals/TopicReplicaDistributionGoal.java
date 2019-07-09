@@ -331,7 +331,9 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                                              Collection<Replica> replicas,
                                              boolean requireLessReplicas,
                                              boolean requireMoreReplicas,
-                                             boolean hasOfflineTopicReplicas) {
+                                             boolean hasOfflineTopicReplicas,
+                                             boolean moveImmigrantReplicaOnly) {
+    boolean hasImmigrantTopicReplicas = replicas.stream().anyMatch(replica -> broker.immigrantReplicas().contains(replica));
     if (broker.isAlive() && !requireMoreReplicas && !requireLessReplicas) {
       LOG.trace("Skip rebalance: Broker {} is already within the limit for replicas {}.", broker, replicas);
       return true;
@@ -340,10 +342,13 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                 + "for replicas {}. Hence, it does not have any offline replicas.", broker, replicas);
       return true;
     } else if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && requireLessReplicas
-               && !hasOfflineTopicReplicas
-               && replicas.stream().noneMatch(replica -> broker.immigrantReplicas().contains(replica))) {
+               && !hasOfflineTopicReplicas && !hasImmigrantTopicReplicas) {
       LOG.trace("Skip rebalance: Cluster is in self-healing mode and the broker {} requires less load, but none of its "
                 + "current offline or immigrant replicas are from the topic being balanced {}.", broker, replicas);
+      return true;
+    } else if (moveImmigrantReplicaOnly && requireLessReplicas && !hasImmigrantTopicReplicas) {
+      LOG.trace("Skip rebalance: Only immigrant replicas can be moved, but none of broker {}'s "
+                + "current immigrant replicas are from the topic being balanced {}.", broker, replicas);
       return true;
     }
 
@@ -389,7 +394,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       boolean requireLessReplicas = numOfflineTopicReplicas > 0 || numTopicReplicas > _balanceUpperLimitByTopic.get(topic);
       boolean requireMoreReplicas = broker.isAlive() && numTopicReplicas - numOfflineTopicReplicas < _balanceLowerLimitByTopic.get(topic);
 
-      if (skipBrokerRebalance(broker, clusterModel, replicas, requireLessReplicas, requireMoreReplicas, numOfflineTopicReplicas > 0)) {
+      if (skipBrokerRebalance(broker, clusterModel, replicas, requireLessReplicas, requireMoreReplicas, numOfflineTopicReplicas > 0,
+                              optimizationOptions.onlyMoveImmigrantReplicas())) {
         continue;
       }
 
@@ -412,12 +418,12 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     }
   }
 
-  private static SortedSet<Replica> replicasToMoveOut(ClusterModel clusterModel, Broker broker, String topic) {
+  private static SortedSet<Replica> replicasToMoveOut(ClusterModel clusterModel, Broker broker, String topic, OptimizationOptions optimizationOptions) {
     SortedSet<Replica> replicasToMoveOut = new TreeSet<>(broker.replicaComparator());
     replicasToMoveOut.addAll(broker.replicasOfTopicInBroker(topic));
 
     // Cluster has offline replicas, but this broker is alive -- we can move out only the offline and immigrant replicas.
-    if (!clusterModel.brokenBrokers().isEmpty() && broker.isAlive()) {
+    if ((!clusterModel.brokenBrokers().isEmpty() && broker.isAlive()) || optimizationOptions.onlyMoveImmigrantReplicas()) {
       // Return the sorted offline then immigrant replicas.
       for (Replica replica : replicasToMoveOut) {
         if (!broker.currentOfflineReplicas().contains(replica) && !broker.immigrantReplicas().contains(replica)) {
@@ -451,7 +457,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     int numOfflineTopicReplicas = retainCurrentOfflineBrokerReplicas(broker, replicasOfTopicInBroker).size();
 
     boolean wasUnableToMoveOfflineReplica = false;
-    for (Replica replica : replicasToMoveOut(clusterModel, broker, topic)) {
+    for (Replica replica : replicasToMoveOut(clusterModel, broker, topic, optimizationOptions)) {
       if (wasUnableToMoveOfflineReplica && !replica.isCurrentOffline() && numReplicasOfTopicInBroker <= _balanceUpperLimitByTopic.get(topic)) {
         // Was unable to move offline replicas from the broker, and remaining replica count is under the balance limit.
         return false;
@@ -532,7 +538,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     // Stop when no topic replicas can be moved in anymore.
     while (!eligibleBrokers.isEmpty()) {
       Broker sourceBroker = eligibleBrokers.poll();
-      SortedSet<Replica> replicasToMove = replicasToMoveOut(clusterModel, sourceBroker, topic);
+      SortedSet<Replica> replicasToMove = replicasToMoveOut(clusterModel, sourceBroker, topic, optimizationOptions);
       int numOfflineTopicReplicas = retainCurrentOfflineBrokerReplicas(sourceBroker, replicasToMove).size();
 
       for (Replica replica : replicasToMove) {

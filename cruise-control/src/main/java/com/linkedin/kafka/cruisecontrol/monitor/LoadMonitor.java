@@ -696,7 +696,7 @@ public class LoadMonitor {
         String logdir = replicaPlacementInfo == null ? null : replicaPlacementInfo.get(tp).get(replica.id());
         // If the replica's logdir is null, it is either because replica placement information is not populated for the cluster
         // model or this replica is hosted on a dead disk and is not considered for intra-broker replica operations.
-        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader, isOffline, logdir);
+        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader, isOffline, logdir, false);
         clusterModel.setReplicaLoad(rack,
                                     replica.id(),
                                     tp,
