@@ -275,7 +275,18 @@ public class ParameterUtils {
     topicConfiguration.add(TOPIC_PARAM);
     topicConfiguration.add(REPLICATION_FACTOR_PARAM);
     topicConfiguration.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
-    topicConfiguration.add(REVIEW_IDS_PARAM);
+    topicConfiguration.add(DRY_RUN_PARAM);
+    topicConfiguration.add(GOALS_PARAM);
+    topicConfiguration.add(DATA_FROM_PARAM);
+    topicConfiguration.add(SKIP_HARD_GOAL_CHECK_PARAM);
+    topicConfiguration.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    topicConfiguration.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    topicConfiguration.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    topicConfiguration.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
+    topicConfiguration.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
+    topicConfiguration.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    topicConfiguration.add(VERBOSE_PARAM);
+    topicConfiguration.add(REVIEW_ID_PARAM);
 
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));

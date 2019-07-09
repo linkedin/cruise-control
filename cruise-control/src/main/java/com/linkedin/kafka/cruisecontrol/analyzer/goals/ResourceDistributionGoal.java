@@ -223,6 +223,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     _balanceUpperThreshold = computeBalanceUpperThreshold(clusterModel, optimizationOptions);
     _balanceLowerThreshold = computeBalanceLowerThreshold(clusterModel, optimizationOptions);
     clusterModel.trackSortedReplicas(sortName(),
+                                     optimizationOptions.onlyMoveImmigrantReplicas() ? ReplicaSortFunctionFactory.selectImmigrants()
+                                                                                     : null,
                                      ReplicaSortFunctionFactory.deprioritizeImmigrants(),
                                      ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
   }
@@ -321,7 +323,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         // return if the broker is already within limits.
         return;
       }
-      moveImmigrantsOnly = !clusterModel.deadBrokers().isEmpty();
+      moveImmigrantsOnly = !clusterModel.deadBrokers().isEmpty() || optimizationOptions.onlyMoveImmigrantReplicas();
       if (moveImmigrantsOnly && requireLessLoad && broker.immigrantReplicas().isEmpty()) {
         // return if the cluster is in self-healing mode and the broker requires less load but does not have any
         // immigrant replicas.

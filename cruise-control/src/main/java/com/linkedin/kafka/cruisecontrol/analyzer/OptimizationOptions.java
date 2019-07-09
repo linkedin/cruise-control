@@ -17,6 +17,7 @@ public class OptimizationOptions {
   private final Set<Integer> _excludedBrokersForReplicaMove;
   private final boolean _isTriggeredByGoalViolation;
   private final Set<Integer> _requestedDestinationBrokerIds;
+  private final boolean _onlyMoveImmigrantReplicas;
 
   /**
    * Default value for {@link #_excludedBrokersForLeadership} is an empty set.
@@ -51,16 +52,30 @@ public class OptimizationOptions {
     this(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove, isTriggeredByGoalViolation, Collections.emptySet());
   }
 
+  /**
+   * Default value for {@link #_onlyMoveImmigrantReplicas} is false.
+   */
   public OptimizationOptions(Set<String> excludedTopics,
                              Set<Integer> excludedBrokersForLeadership,
                              Set<Integer> excludedBrokersForReplicaMove,
                              boolean isTriggeredByGoalViolation,
                              Set<Integer> requestedDestinationBrokerIds) {
+    this(excludedTopics, excludedBrokersForLeadership, excludedBrokersForReplicaMove, isTriggeredByGoalViolation,
+         requestedDestinationBrokerIds, false);
+  }
+
+  public OptimizationOptions(Set<String> excludedTopics,
+                             Set<Integer> excludedBrokersForLeadership,
+                             Set<Integer> excludedBrokersForReplicaMove,
+                             boolean isTriggeredByGoalViolation,
+                             Set<Integer> requestedDestinationBrokerIds,
+                             boolean onlyMoveImmigrantReplicas) {
     _excludedTopics = excludedTopics;
     _excludedBrokersForLeadership = excludedBrokersForLeadership;
     _excludedBrokersForReplicaMove = excludedBrokersForReplicaMove;
     _isTriggeredByGoalViolation = isTriggeredByGoalViolation;
     _requestedDestinationBrokerIds = requestedDestinationBrokerIds;
+    _onlyMoveImmigrantReplicas = onlyMoveImmigrantReplicas;
   }
 
   public Set<String> excludedTopics() {
@@ -83,11 +98,15 @@ public class OptimizationOptions {
     return Collections.unmodifiableSet(_requestedDestinationBrokerIds);
   }
 
+  public boolean onlyMoveImmigrantReplicas() {
+    return _onlyMoveImmigrantReplicas;
+  }
+
   @Override
   public String toString() {
     return String.format("[excludedTopics=%s,excludedBrokersForLeadership=%s,excludedBrokersForReplicaMove=%s,"
-                         + "isTriggeredByGoalViolation=%s,requestedDestinationBrokerIds=%s]", _excludedTopics,
-                         _excludedBrokersForLeadership, _excludedBrokersForReplicaMove, _isTriggeredByGoalViolation,
-                         _requestedDestinationBrokerIds);
+                         + "isTriggeredByGoalViolation=%s,requestedDestinationBrokerIds=%s,onlyMoveImmigrantReplicas=%s]",
+                         _excludedTopics, _excludedBrokersForLeadership, _excludedBrokersForReplicaMove, _isTriggeredByGoalViolation,
+                         _requestedDestinationBrokerIds, _onlyMoveImmigrantReplicas);
   }
 }

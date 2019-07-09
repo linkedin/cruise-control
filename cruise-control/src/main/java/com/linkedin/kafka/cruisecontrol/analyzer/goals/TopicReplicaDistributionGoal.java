@@ -328,7 +328,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
                                              ClusterModel clusterModel,
                                              Collection<Replica> replicas,
                                              boolean requireLessReplicas,
-                                             boolean requireMoreReplicas) {
+                                             boolean requireMoreReplicas,
+                                             boolean moveImmigrantReplicaOnly) {
     if (broker.isAlive() && !requireMoreReplicas && !requireLessReplicas) {
       LOG.trace("Skip rebalance: Broker {} is already within the limit for replicas {}.", broker, replicas);
       return true;
@@ -336,7 +337,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       LOG.trace("Skip rebalance: Cluster has new brokers and this broker {} is not new, but requires more load for "
                 + "replicas {}.", broker, replicas);
       return true;
-    } else if (!clusterModel.deadBrokers().isEmpty() && requireLessReplicas && broker.isAlive()
+    } else if (((!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) || moveImmigrantReplicaOnly) && requireLessReplicas
                && replicas.stream().noneMatch(replica -> broker.immigrantReplicas().contains(replica))) {
       LOG.trace("Skip rebalance: Cluster is in self-healing mode and the broker {} requires less load, but none of its "
                 + "immigrant topic replicas are from the topic being balanced {}.", broker, replicas);
@@ -376,7 +377,8 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
       boolean requireLessReplicas = broker.isAlive() ? numTopicReplicas > _balanceUpperLimitByTopic.get(topic) : numTopicReplicas > 0;
       boolean requireMoreReplicas = broker.isAlive() && numTopicReplicas < _balanceLowerLimitByTopic.get(topic);
 
-      if (skipBrokerRebalance(broker, clusterModel, replicas, requireLessReplicas, requireMoreReplicas)) {
+      if (skipBrokerRebalance(broker, clusterModel, replicas, requireLessReplicas, requireMoreReplicas,
+                              optimizationOptions.onlyMoveImmigrantReplicas())) {
         continue;
       }
 
@@ -396,10 +398,10 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     }
   }
 
-  private static SortedSet<Replica> replicasToMoveOut(ClusterModel clusterModel, Broker broker, String topic) {
+  private static SortedSet<Replica> replicasToMoveOut(ClusterModel clusterModel, Broker broker, String topic, OptimizationOptions optimizationOptions) {
     SortedSet<Replica> replicasToMoveOut = new TreeSet<>(broker.replicasOfTopicInBroker(topic));
     // Cluster has offline replicas, but this overloaded broker is alive -- we can move out only the immigrant replicas.
-    if (!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) {
+    if ((!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) || optimizationOptions.onlyMoveImmigrantReplicas()) {
       // Return only the immigrant replicas.
       replicasToMoveOut.retainAll(broker.immigrantReplicas());
     }
@@ -425,7 +427,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
 
     int numReplicasOfTopicInBroker = broker.numReplicasOfTopicInBroker(topic);
 
-    for (Replica replica : replicasToMoveOut(clusterModel, broker, topic)) {
+    for (Replica replica : replicasToMoveOut(clusterModel, broker, topic, optimizationOptions)) {
       if (shouldExclude(replica, excludedTopics)) {
         continue;
       }
@@ -473,7 +475,7 @@ public class TopicReplicaDistributionGoal extends AbstractGoal {
     // Stop when no topic replicas can be moved in anymore.
     while (!eligibleBrokers.isEmpty()) {
       Broker sourceBroker = eligibleBrokers.poll();
-      SortedSet<Replica> replicasToMove = replicasToMoveOut(clusterModel, sourceBroker, topic);
+      SortedSet<Replica> replicasToMove = replicasToMoveOut(clusterModel, sourceBroker, topic, optimizationOptions);
 
       for (Replica replica : replicasToMove) {
         if (shouldExclude(replica, excludedTopics)) {
