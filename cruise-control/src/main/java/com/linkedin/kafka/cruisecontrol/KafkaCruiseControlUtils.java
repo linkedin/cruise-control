@@ -150,17 +150,24 @@ public class KafkaCruiseControlUtils {
   }
 
   /**
-   * Get the offline replicas for the partition.
-   * @param partitionInfo The partition information of topic partition to check.
-   * @param aliveNodes The alive nodes of the cluster.
-   * @return Id of brokers which host offline replica of the partition.
+   * Sanity check there is no offline replica in the cluster.
+   * @param cluster The current cluster state.
    */
-  public static Set<Integer> offlineReplicasForPartition(PartitionInfo partitionInfo, List<Node> aliveNodes) {
-    return Arrays.stream(partitionInfo.replicas())
-                 .filter(node -> !aliveNodes.contains(node))
-                 .mapToInt(Node::id)
-                 .boxed()
-                 .collect(Collectors.toSet());
+  public static void sanityCheckNoOfflineReplica(Cluster cluster) {
+    List<Node> aliveNodes = cluster.nodes();
+    for (String topic : cluster.topics()) {
+      for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+        Set<Integer> offlineReplicas = Arrays.stream(partitionInfo.replicas())
+                                             .filter(node -> !aliveNodes.contains(node))
+                                             .mapToInt(Node::id)
+                                             .boxed()
+                                             .collect(Collectors.toSet());
+        if (offlineReplicas.size() > 0) {
+          throw new IllegalStateException(String.format("Topic partition %s-%d has offline replicas on brokers %s",
+                                                        partitionInfo.topic(), partitionInfo.partition(), offlineReplicas));
+        }
+      }
+    }
   }
 
   /**

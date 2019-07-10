@@ -232,11 +232,16 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
     for (Replica replica : new ArrayList<>(broker.replicas())) {
       if (broker.isAlive() && broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker()) {
         break;
       }
       if (shouldExclude(replica, excludedTopics)) {
+        continue;
+      }
+
+      if (onlyMoveImmigrantReplicas && !replica.isImmigrant()) {
         continue;
       }
 

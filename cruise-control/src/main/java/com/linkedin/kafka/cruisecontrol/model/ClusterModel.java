@@ -42,6 +42,8 @@ import org.apache.kafka.common.TopicPartition;
  */
 public class ClusterModel implements Serializable {
   private static final long serialVersionUID = -6840253566423285966L;
+  // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
+  private static final Broker GENESIS_BROKER = new Broker(null, -1, Collections.emptyMap());
 
   private final ModelGeneration _generation;
   private final Map<String, Rack> _racksById;
@@ -513,7 +515,8 @@ public class ClusterModel implements Serializable {
    * {@link #untrackSortedReplicas(String)} to release memory.
    *
    * @param sortName the name of the sorted replicas.
-   * @param selectionFunc the selection function to decide which replicas to include in the sort.
+   * @param selectionFunc the selection function to decide which replicas to include in the sort. If it is {@code null},
+   *                      all the replicas are to be included.
    * @param priorityFunc the priority function to sort the replicas
    * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
    *                  order of score.
@@ -680,7 +683,32 @@ public class ClusterModel implements Serializable {
    * @return Created replica.
    */
   public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader) {
-    Replica replica = new Replica(tp, broker(brokerId), isLeader);
+    return createReplica(rackId, brokerId, tp, index, isLeader, false);
+  }
+
+  /**
+   * Create a replica under given cluster/rack/broker. Add replica to rack and corresponding partition. Get the
+   * created replica.
+   *
+   * @param rackId         Rack id under which the replica will be created.
+   * @param brokerId       Broker id under which the replica will be created.
+   * @param tp             Topic partition information of the replica.
+   * @param index          The index of the replica in the replica list.
+   * @param isLeader       True if the replica is a leader, false otherwise.
+   * @param isFuture       True if the replica does not correspond to any existing replica in the cluster, but a replica
+   *                       we are going to add to the cluster. This replica's original broker will not be any existing broker
+   *                       so that it will be treated as an immigrant replica for whatever broker it is assigned to and
+   *                       grant goals greatest freedom to allocate to an existing broker.
+   * @return Created replica.
+   */
+  public Replica createReplica(String rackId, int brokerId, TopicPartition tp, int index, boolean isLeader, boolean isFuture) {
+    Replica replica;
+    if (!isFuture) {
+      replica = new Replica(tp, broker(brokerId), isLeader);
+    } else {
+      replica = new Replica(tp, GENESIS_BROKER, false);
+      replica.setBroker(broker(brokerId));
+    }
     rack(rackId).addReplica(replica);
 
     // Add replica to its partition.
@@ -712,6 +740,33 @@ public class ClusterModel implements Serializable {
     _maxReplicationFactor = Math.max(_maxReplicationFactor, replicationFactor);
 
     return replica;
+  }
+
+  /**
+   * Delete a replica from cluster. This method is expected to be called in a batch for all partitions of the topic and in
+   * the end the replication factor across partitions are consistent. Also the caller of this method is expected to call
+   * {@link #refreshClusterMaxReplicationFactor()} after all replica deletion.
+   * @param topicPartition Topic partition of the replica to be removed.
+   * @param brokerId Id of the broker hosting the replica.
+   */
+  public void deleteReplica(TopicPartition topicPartition, int brokerId) {
+    int currentReplicaCount = _partitionsByTopicPartition.get(topicPartition).replicas().size();
+    if (currentReplicaCount < 2) {
+      throw new IllegalStateException(String.format("Unable to delete replica for topic partition %s since it only has %d replicas.",
+                                                    topicPartition, currentReplicaCount));
+    }
+    removeReplica(brokerId, topicPartition);
+    // Update partition info.
+    Partition partition = _partitionsByTopicPartition.get(topicPartition);
+    partition.deleteReplica(brokerId);
+    _replicationFactorByTopic.put(topicPartition.topic(), partition.replicas().size());
+  }
+
+  /**
+   * Refresh the maximum topic replication factor statistic.
+   */
+  public void refreshClusterMaxReplicationFactor() {
+    _maxReplicationFactor =  _replicationFactorByTopic.values().stream().max(Integer::compareTo).orElse(0);
   }
 
   /**
