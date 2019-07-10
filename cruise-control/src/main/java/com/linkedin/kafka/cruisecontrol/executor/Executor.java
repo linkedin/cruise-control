@@ -463,7 +463,7 @@ public class Executor {
    */
   private void sanityCheckOngoingReplicaMovement() {
     // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
-    if (!ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient).isEmpty()) {
+    if (hasOngoingPartitionReassignments()) {
       _executionTaskManager.clear();
       _uuid = null;
       throw new IllegalStateException("There are ongoing inter-broker partition movements.");
@@ -525,8 +525,26 @@ public class Executor {
     LOG.info("Executor shutdown completed.");
   }
 
+  /**
+   * Whether there is an ongoing operation triggered by current Cruise Control deployment.
+   *
+   * @return True if there is an ongoing execution.
+   */
   public boolean hasOngoingExecution() {
     return _hasOngoingExecution;
+  }
+
+  /**
+   * Whether there is any ongoing partition reassignment.
+   * This method directly checks the existence of znode /admin/partition_reassignment.
+   * Note this method returning false does not guarantee that there is no ongoing execution because when there is an ongoing
+   * execution inside Cruise Control, partition reassignment task batches are writen to zookeeper periodically, there will be
+   * small intervals that /admin/partition_reassignment does not exist.
+   *
+   * @return True if there is any ongoing partition reassignment.
+   */
+  public boolean hasOngoingPartitionReassignments() {
+    return !ExecutorUtils.partitionsBeingReassigned(_kafkaZkClient).isEmpty();
   }
 
   /**
