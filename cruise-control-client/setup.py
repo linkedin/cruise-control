@@ -3,13 +3,25 @@
 
 import setuptools
 
+LONG_DESCRIPTION ='''`cruise-control-client` is an API-complete Python client for [`cruise-control`](https://github.com/linkedin/cruise-control).
+
+It comes with a command-line interface to the client (`cccli.py`) (see [README](https://github.com/linkedin/cruise-control/tree/master/docs/wiki/Python%20Client)).
+
+`cruise-control-client` can also be used in Python applications needing programmatic access to `cruise-control`.'''
+
 setuptools.setup(
     name='cruise-control-client',
-    version='0.1.1',
+    version='0.1.2',
     author='mgrubent',
     author_email='mgrubentrejo@linkedin.com',
     description='A Python client for cruise-control',
+    long_description=LONG_DESCRIPTION,
     url='https://github.com/linkedin/cruise-control',
+    entry_points={
+        'console_scripts': [
+            'cccli = cruisecontrolclient.client.cccli:main'
+        ]
+    },
     packages=setuptools.find_packages(),
     install_requires=[
         'pandas',
