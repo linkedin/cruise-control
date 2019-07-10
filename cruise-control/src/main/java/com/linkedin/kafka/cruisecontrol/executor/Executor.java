@@ -410,7 +410,7 @@ public class Executor {
   private void startExecution(LoadMonitor loadMonitor, Collection<Integer> demotedBrokers, Collection<Integer> removedBrokers) {
     // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
     _executionStoppedByUser.set(false);
-    if (!ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty()) {
+    if (hasOngoingPartitionReassignments()) {
       _executionTaskManager.clear();
       _uuid = null;
       // Note that in case there is an ongoing partition reassignment, we do not unpause metric sampling.
@@ -473,8 +473,26 @@ public class Executor {
     LOG.info("Executor shutdown completed.");
   }
 
+  /**
+   * Whether there is an ongoing operation triggered by current Cruise Control deployment.
+   *
+   * @return True if there is an ongoing execution.
+   */
   public boolean hasOngoingExecution() {
     return _hasOngoingExecution;
+  }
+
+  /**
+   * Whether there is any ongoing partition reassignment.
+   * This method directly checks the existence of znode /admin/partition_reassignment.
+   * Note this method returning false does not guarantee that there is no ongoing execution because when there is an ongoing
+   * execution inside Cruise Control, partition reassignment task batches are writen to zookeeper periodically, there will be
+   * small intervals that /admin/partition_reassignment does not exist.
+   *
+   * @return True if there is any ongoing partition reassignment.
+   */
+  public boolean hasOngoingPartitionReassignments() {
+    return !ExecutorUtils.partitionsBeingReassigned(_zkUtils).isEmpty();
   }
 
   /**
