@@ -59,10 +59,8 @@ public class PartitionLoadParameters extends AbstractParameters {
       throw new UserRequestException("Parameters to ask for max and avg load are mutually exclusive to each other.");
     }
     _topic = ParameterUtils.topic(_request);
-    Long startMsValue = ParameterUtils.startMs(_request);
-    _startMs = startMsValue == null ? -1L : startMsValue;
-    Long endMsValue = ParameterUtils.endMs(_request);
-    _endMs = endMsValue == null ? System.currentTimeMillis() : endMsValue;
+    _startMs = ParameterUtils.startMs(_request);
+    _endMs = ParameterUtils.endMs(_request);
     _partitionLowerBoundary = ParameterUtils.partitionBoundary(_request, false);
     _partitionUpperBoundary = ParameterUtils.partitionBoundary(_request, true);
     _entries = ParameterUtils.entries(_request);

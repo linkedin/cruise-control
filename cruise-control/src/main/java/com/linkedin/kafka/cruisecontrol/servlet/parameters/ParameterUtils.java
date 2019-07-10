@@ -106,6 +106,7 @@ public class ParameterUtils {
   public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
   public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
   private static final int MAX_REASON_LENGTH = 50;
+  public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
 
@@ -126,7 +127,6 @@ public class ParameterUtils {
     Set<String> load = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     load.add(TIME_PARAM);
     load.add(START_MS_PARAM);
-    load.add(END_MS_PARAM);
     load.add(JSON_PARAM);
     load.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
@@ -469,23 +469,20 @@ public class ParameterUtils {
       return System.currentTimeMillis();
     }
 
-    if (startMs(request) != null || endMs(request) != null) {
-      throw new IllegalArgumentException("Parameter \"time\" and parameter \"start\"/\"end\" are mutually exclusive and "
-                                         + "should not be specified in the same request.");
-    }
-
     String timeString = request.getParameter(parameterString);
     return timeString.toUpperCase().equals("NOW") ? System.currentTimeMillis() : Long.parseLong(timeString);
   }
 
-  static Long startMs(HttpServletRequest request) {
+  static long startMs(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), START_MS_PARAM);
-    return parameterString == null ? null : Long.valueOf(request.getParameter(parameterString));
+    return parameterString == null ? DEFAULT_START_TIME_FOR_CLUSTER_MODEL
+                                   : Long.parseLong(request.getParameter(parameterString));
   }
 
-  static Long endMs(HttpServletRequest request) {
+  static long endMs(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), END_MS_PARAM);
-    return parameterString == null ? null : Long.valueOf(request.getParameter(parameterString));
+    return parameterString == null ? System.currentTimeMillis()
+                                   : Long.parseLong(request.getParameter(parameterString));
   }
 
   static Pattern topic(HttpServletRequest request) {
