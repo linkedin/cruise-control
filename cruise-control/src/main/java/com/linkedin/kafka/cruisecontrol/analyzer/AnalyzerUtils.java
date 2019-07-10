@@ -34,6 +34,7 @@ public class AnalyzerUtils {
   public static final String TOPICS = "topics";
   public static final String METADATA = "metadata";
   public static final String POTENTIAL_NW_OUT = "potentialNwOut";
+  public static final String LEADER_REPLICAS = "leaderReplicas";
   public static final String TOPIC_REPLICAS = "topicReplicas";
   public static final String STATISTICS = "statistics";
   public static final double EPSILON = 1E-5;
