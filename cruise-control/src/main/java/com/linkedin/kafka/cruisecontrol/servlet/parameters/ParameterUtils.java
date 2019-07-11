@@ -728,10 +728,24 @@ public class ParameterUtils {
   }
 
   /**
+   * @param values Integer values
+   * @return A set of negative integer values contained in the given set.
+   */
+  private static Set<Integer> getNegatives(Set<Integer> values) {
+    return values.stream().filter(v -> v < 0).collect(Collectors.toCollection(() -> new HashSet<>(values.size())));
+  }
+
+  /**
    * Default: An empty set.
    */
   public static Set<Integer> reviewIds(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<Integer> reviewIds = parseParamToIntegerSet(request, REVIEW_IDS_PARAM);
+    Set<Integer> negativeReviewIds = getNegatives(reviewIds);
+    if (!negativeReviewIds.isEmpty()) {
+      throw new UserRequestException(String.format("%s cannot contain negative values (requested: %s).",
+                                                   REVIEW_IDS_PARAM, negativeReviewIds));
+    }
+
     return Collections.unmodifiableSet(reviewIds);
   }
 
@@ -753,6 +767,8 @@ public class ParameterUtils {
       throw new UserRequestException(
           String.format("%s parameter must be mutually exclusive with other parameters (Request parameters: %s).",
                         REVIEW_ID_PARAM, request.getParameterMap()));
+    } else if (reviewId < 0) {
+      throw new UserRequestException(String.format("%s cannot be negative (requested: %d).", REVIEW_ID_PARAM, reviewId));
     }
 
     return reviewId;
