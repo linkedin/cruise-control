@@ -140,6 +140,7 @@ public class ParameterUtils {
     partitionLoad.add(TOPIC_PARAM);
     partitionLoad.add(PARTITION_PARAM);
     partitionLoad.add(MIN_VALID_PARTITION_RATIO_PARAM);
+    partitionLoad.add(BROKER_ID_PARAM);
 
     Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     proposals.add(VERBOSE_PARAM);

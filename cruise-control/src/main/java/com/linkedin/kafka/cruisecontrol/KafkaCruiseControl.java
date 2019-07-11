@@ -1252,7 +1252,7 @@ public class KafkaCruiseControl {
    * Sanity check whether the provided brokers exist in cluster or not.
    * @param brokerIds A set of broker ids.
    */
-  private void sanityCheckBrokerPresence(Set<Integer> brokerIds) {
+  public void sanityCheckBrokerPresence(Set<Integer> brokerIds) {
     Cluster cluster = _loadMonitor.refreshClusterAndGeneration().cluster();
     Set<Integer> invalidBrokerIds = brokerIds.stream().filter(id -> cluster.nodeById(id) == null).collect(Collectors.toSet());
     if (!invalidBrokerIds.isEmpty()) {
