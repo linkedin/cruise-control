@@ -203,10 +203,20 @@ public class AnomalyDetector {
     for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
       meanTimeBetweenAnomalies.put(anomalyType, _anomalyRateByType.get(anomalyType).getMeanRate());
     }
-    // Retrieve mean time to start a fix
-    double meanTimeToStartFix = _ongoingAnomalyCount == 0L ? 0 : _ongoingAnomalyDurationSumForAverageMs / _ongoingAnomalyCount;
+    // Retrieve the mean time to start a fix and ongoing anomaly duration.
+    long ongoingAnomalyDurationMs = 0L;
+    long fixedAnomalyDurations = _ongoingAnomalyCount;
+    if (_ongoingAnomalyDetectionTimeMs != NO_ONGOING_ANOMALY_FLAG) {
+      // There is an ongoing unfixed or unfixable anomaly.
+      ongoingAnomalyDurationMs = _time.milliseconds() - _ongoingAnomalyDetectionTimeMs;
+      fixedAnomalyDurations--;
+    }
+    double meanTimeToStartFix = fixedAnomalyDurations == 0L ? 0 : _ongoingAnomalyDurationSumForAverageMs / fixedAnomalyDurations;
 
-    _anomalyDetectorState.setMetrics(new AnomalyMetrics(meanTimeBetweenAnomalies, meanTimeToStartFix, _numSelfHealingStarted));
+    _anomalyDetectorState.setMetrics(new AnomalyMetrics(meanTimeBetweenAnomalies,
+                                                        meanTimeToStartFix,
+                                                        _numSelfHealingStarted,
+                                                        ongoingAnomalyDurationMs));
     _anomalyDetectorState.setSelfHealingEnabledRatio(_anomalyNotifier.selfHealingEnabledRatio());
     return _anomalyDetectorState;
   }
