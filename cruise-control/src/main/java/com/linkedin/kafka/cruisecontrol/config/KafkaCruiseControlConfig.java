@@ -1380,13 +1380,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         .withClientSaslSupport();
   }
 
-  private Map<String, Object> mergedConfigValues() {
+  public Map<String, Object> mergedConfigValues() {
     Map<String, Object> conf = originals();
 
-    // use parsed value to overwrite originals
-    // this will keep default values and also keep values that are not defined under ConfigDef
-    conf.putAll(values());
-
+    // Use parsed non-null value to overwrite originals.
+    // This will keep default values and also keep values that are not defined under ConfigDef.
+    values().forEach((k, v) -> {
+      if (v != null) {
+        conf.put(k, v);
+      }
+    });
     return conf;
   }
 
