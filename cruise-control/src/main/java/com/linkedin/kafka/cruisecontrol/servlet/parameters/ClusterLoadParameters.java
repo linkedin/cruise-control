@@ -13,14 +13,18 @@ import javax.servlet.http.HttpServletRequest;
 /**
  * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#LOAD}
  *
+ * <ul>
+ *   <li>Note that both parameter "time" and "end" are used to specify the end time for cluster model, thus they are mutually exclusive.</li>
+ *</ul>
+ *
  * <pre>
  * Get the cluster load
- *    GET /kafkacruisecontrol/load?start=[START_TIMESTAMP]&amp;time=[END_TIMESTAMP]&amp;allow_capacity_estimation=[true/false]
+ *    GET /kafkacruisecontrol/load?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]&amp;time=[END_TIMESTAMP]&amp;allow_capacity_estimation=[true/false]
  *    &amp;json=[true/false]
  * </pre>
  */
 public class ClusterLoadParameters extends AbstractParameters {
-  private long _time;
+  private long _endMs;
   private long _startMs;
   private ModelCompletenessRequirements _requirements;
   private boolean _allowCapacityEstimation;
@@ -32,7 +36,8 @@ public class ClusterLoadParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _time = ParameterUtils.time(_request);
+    Long time = ParameterUtils.time(_request);
+    _endMs = time == null ? ParameterUtils.endMs(_request) : time.longValue();
     _startMs = ParameterUtils.startMs(_request);
     _requirements = new ModelCompletenessRequirements(1, 0.0, true);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
@@ -43,7 +48,7 @@ public class ClusterLoadParameters extends AbstractParameters {
   }
 
   public long endMs() {
-    return _time;
+    return _endMs;
   }
 
   public ModelCompletenessRequirements requirements() {

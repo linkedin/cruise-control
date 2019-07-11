@@ -127,6 +127,7 @@ public class ParameterUtils {
     Set<String> load = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     load.add(TIME_PARAM);
     load.add(START_MS_PARAM);
+    load.add(END_MS_PARAM);
     load.add(JSON_PARAM);
     load.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
@@ -463,10 +464,15 @@ public class ParameterUtils {
                                   : getBooleanParam(request, THROTTLE_REMOVED_BROKER_PARAM, true);
   }
 
-  static long time(HttpServletRequest request) {
+  static Long time(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), TIME_PARAM);
     if (parameterString == null) {
-      return System.currentTimeMillis();
+      return null;
+    }
+
+    if (caseSensitiveParameterName(request.getParameterMap(), END_MS_PARAM) != null) {
+      throw new IllegalArgumentException(String.format("Parameter %s and parameter %s are mutually exclusive and should "
+                                                       + "not be specified in the same request.", TIME_PARAM, END_MS_PARAM));
     }
 
     String timeString = request.getParameter(parameterString);
