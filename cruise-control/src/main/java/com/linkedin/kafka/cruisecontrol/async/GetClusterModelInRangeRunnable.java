@@ -45,7 +45,8 @@ class GetClusterModelInRangeRunnable extends OperationRunnable {
                                                                              _parameters.wantAvgLoad());
     if (!_parameters.brokerIds().isEmpty()) {
       partitionList = partitionList.stream()
-                                   .filter(partition -> _parameters.brokerIds().contains(partition.leader().broker().id()))
+                                   .filter(partition -> partition.partitionBrokers().stream().anyMatch(
+                                             broker -> _parameters.brokerIds().contains(broker.id())))
                                    .collect(Collectors.toList());
     }
     return new PartitionLoadState(partitionList,
