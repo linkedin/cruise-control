@@ -47,6 +47,7 @@ public class AnomalyDetectorState {
   private static final String MEAN_TIME_TO_START_FIX = "meanTimeToStartFix";
   // Package private for testing.
   static final String NUM_SELF_HEALING_STARTED = "numSelfHealingStarted";
+  private static final String ONGOING_ANOMALY_DURATION_MS = "ongoingAnomalyDurationMs";
 
   // Recent anomalies with anomaly state by the anomaly type.
   private final Map<AnomalyType, Map<String, AnomalyState>> _recentAnomaliesByType;
@@ -98,10 +99,11 @@ public class AnomalyDetectorState {
    * Package private for testing
    */
   Map<String, Object> metrics() {
-    Map<String, Object> metrics = new HashMap<>(3);
+    Map<String, Object> metrics = new HashMap<>(4);
     metrics.put(MEAN_TIME_BETWEEN_ANOMALIES, _metrics.meanTimeBetweenAnomalies());
     metrics.put(MEAN_TIME_TO_START_FIX, _metrics.meanTimeToStartFix());
     metrics.put(NUM_SELF_HEALING_STARTED, _metrics.numSelfHealingStarted());
+    metrics.put(ONGOING_ANOMALY_DURATION_MS, _metrics.ongoingAnomalyDurationMs());
 
     return metrics;
   }
