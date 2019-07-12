@@ -37,7 +37,7 @@ public class ClusterLoadParameters extends AbstractParameters {
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     Long time = ParameterUtils.time(_request);
-    _endMs = time == null ? ParameterUtils.endMs(_request) : time.longValue();
+    _endMs = time == null ? ParameterUtils.endMs(_request) : time;
     _startMs = ParameterUtils.startMs(_request);
     _requirements = new ModelCompletenessRequirements(1, 0.0, true);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
