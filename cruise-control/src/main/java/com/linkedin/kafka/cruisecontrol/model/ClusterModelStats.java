@@ -26,6 +26,7 @@ public class ClusterModelStats {
   private final Map<Statistic, Number> _leaderReplicaStats;
   private final Map<Statistic, Number> _topicReplicaStats;
   private int _numBrokers;
+  private int _numAliveBrokers;
   private int _numReplicasInCluster;
   private int _numPartitionsWithOfflineReplicas;
   private int _numTopics;
@@ -62,6 +63,7 @@ public class ClusterModelStats {
    */
   ClusterModelStats populate(ClusterModel clusterModel, BalancingConstraint balancingConstraint) {
     _numBrokers = clusterModel.brokers().size();
+    _numAliveBrokers = clusterModel.aliveBrokers().size();
     _numTopics = clusterModel.topics().size();
     _balancingConstraint = balancingConstraint;
     utilizationForResources(clusterModel);
@@ -242,8 +244,7 @@ public class ClusterModelStats {
    * @param clusterModel The state of the cluster.
    */
   private void utilizationForResources(ClusterModel clusterModel) {
-    int numAliveBrokers = clusterModel.aliveBrokers().size();
-    // Average, maximum, and standard deviation of utilization percentage by resource.
+    // Average, maximum, and standard deviation of utilization by resource.
     Map<Resource, Double> avgUtilizationByResource = new HashMap<>();
     Map<Resource, Double> maxUtilizationByResource = new HashMap<>();
     Map<Resource, Double> minUtilizationByResource = new HashMap<>();
@@ -255,7 +256,7 @@ public class ClusterModelStats {
       // Maximum, minimum, and standard deviation utilization for the resource.
       double hottestBrokerUtilization = 0.0;
       double coldestBrokerUtilization = Double.MAX_VALUE;
-      double variance = 0.0;
+      double varianceSum = 0.0;
       int numBalancedBrokers = 0;
       for (Broker broker : clusterModel.aliveBrokers()) {
         double utilization = resource.isHostResource() ? broker.host().load().expectedUtilizationFor(resource)
@@ -268,13 +269,13 @@ public class ClusterModelStats {
         }
         hottestBrokerUtilization = Math.max(hottestBrokerUtilization, utilization);
         coldestBrokerUtilization = Math.min(coldestBrokerUtilization, utilization);
-        variance += Math.pow(utilization - avgUtilizationPercentage * capacity, 2);
+        varianceSum += Math.pow(utilization - avgUtilizationPercentage * capacity, 2);
       }
       _numBalancedBrokersByResource.put(resource, numBalancedBrokers);
-      avgUtilizationByResource.put(resource, clusterModel.load().expectedUtilizationFor(resource) / numAliveBrokers);
+      avgUtilizationByResource.put(resource, clusterModel.load().expectedUtilizationFor(resource) / _numAliveBrokers);
       maxUtilizationByResource.put(resource, hottestBrokerUtilization);
       minUtilizationByResource.put(resource, coldestBrokerUtilization);
-      stDevUtilizationByResource.put(resource, Math.sqrt(variance / numAliveBrokers));
+      stDevUtilizationByResource.put(resource, Math.sqrt(varianceSum / _numAliveBrokers));
     }
     _resourceUtilizationStats.put(Statistic.AVG, avgUtilizationByResource);
     _resourceUtilizationStats.put(Statistic.MAX, maxUtilizationByResource);
@@ -288,11 +289,10 @@ public class ClusterModelStats {
    * @param clusterModel The state of the cluster.
    */
   private void utilizationForPotentialNwOut(ClusterModel clusterModel) {
-    int numAliveBrokers = clusterModel.aliveBrokers().size();
     // Average, minimum, and maximum: network outbound utilization and replicas in brokers.
     double maxPotentialNwOut = 0.0;
     double minPotentialNwOut = Double.MAX_VALUE;
-    double variance = 0.0;
+    double varianceSum = 0.0;
     double potentialNwOutInCluster = clusterModel.aliveBrokers()
                                                  .stream()
                                                  .mapToDouble(b -> clusterModel.potentialLeadershipLoadFor(b.id()).expectedUtilizationFor(Resource.NW_OUT))
@@ -308,12 +308,12 @@ public class ClusterModelStats {
       }
       maxPotentialNwOut = Math.max(maxPotentialNwOut, brokerUtilization);
       minPotentialNwOut = Math.min(minPotentialNwOut, brokerUtilization);
-      variance += (Math.pow(brokerUtilization - avgPotentialNwOutUtilizationPct * brokerCapacity, 2));
+      varianceSum += (Math.pow(brokerUtilization - avgPotentialNwOutUtilizationPct * brokerCapacity, 2));
     }
-    _potentialNwOutUtilizationStats.put(Statistic.AVG, potentialNwOutInCluster / numAliveBrokers);
+    _potentialNwOutUtilizationStats.put(Statistic.AVG, potentialNwOutInCluster / _numAliveBrokers);
     _potentialNwOutUtilizationStats.put(Statistic.MAX, maxPotentialNwOut);
     _potentialNwOutUtilizationStats.put(Statistic.MIN, minPotentialNwOut);
-    _potentialNwOutUtilizationStats.put(Statistic.ST_DEV, Math.sqrt(variance / numAliveBrokers));
+    _potentialNwOutUtilizationStats.put(Statistic.ST_DEV, Math.sqrt(varianceSum / _numAliveBrokers));
   }
 
   /**
@@ -359,20 +359,19 @@ public class ClusterModelStats {
     int maxInterestedReplicasInBroker = 0;
     int minInterestedReplicasInBroker = Integer.MAX_VALUE;
     int numInterestedReplicasInCluster = 0;
-    int numAliveBrokers = clusterModel.aliveBrokers().size();
     for (Broker broker : clusterModel.brokers()) {
       int numInterestedReplicasInBroker = numInterestedReplicasFunc.apply(broker);
       numInterestedReplicasInCluster += numInterestedReplicasInBroker;
       maxInterestedReplicasInBroker = Math.max(maxInterestedReplicasInBroker, numInterestedReplicasInBroker);
       minInterestedReplicasInBroker = Math.min(minInterestedReplicasInBroker, numInterestedReplicasInBroker);
     }
-    double avgInterestedReplicas = ((double) numInterestedReplicasInCluster) / numAliveBrokers;
+    double avgInterestedReplicas = ((double) numInterestedReplicasInCluster) / _numAliveBrokers;
 
     // Standard deviation of replicas of interest in alive brokers.
     double varianceForInterestedReplicas = 0.0;
     for (Broker broker : clusterModel.aliveBrokers()) {
       varianceForInterestedReplicas +=
-          (Math.pow((double) numInterestedReplicasFunc.apply(broker) - avgInterestedReplicas, 2) / numAliveBrokers);
+          (Math.pow((double) numInterestedReplicasFunc.apply(broker) - avgInterestedReplicas, 2) / _numAliveBrokers);
     }
 
     interestedReplicaStats.put(Statistic.AVG, avgInterestedReplicas);
