@@ -484,7 +484,7 @@ public class KafkaCruiseControl {
 
   /**
    * Get the cluster model cutting off at a certain timestamp.
-   * @param now time.
+   * @param now The current time in millisecond.
    * @param requirements the model completeness requirements.
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
