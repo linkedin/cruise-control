@@ -613,7 +613,7 @@ public class KafkaCruiseControl {
 
   /**
    * Get the cluster model cutting off at a certain timestamp.
-   * @param now time.
+   * @param now The current time in millisecond.
    * @param requirements the model completeness requirements.
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
@@ -645,6 +645,7 @@ public class KafkaCruiseControl {
    * @param minValidPartitionRatio the minimum valid partition ratio requirement of model
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param populateDiskInfo Whether populate disk information for each broker or not.
    * @return the cluster workload model.
    * @throws KafkaCruiseControlException When the cluster model generation encounter errors.
    */
@@ -652,14 +653,15 @@ public class KafkaCruiseControl {
                                    long to,
                                    Double minValidPartitionRatio,
                                    OperationProgress operationProgress,
-                                   boolean allowCapacityEstimation)
+                                   boolean allowCapacityEstimation,
+                                   boolean populateDiskInfo)
       throws KafkaCruiseControlException {
     try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
       if (minValidPartitionRatio == null) {
         minValidPartitionRatio = _config.getDouble(KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
       }
       ModelCompletenessRequirements requirements = new ModelCompletenessRequirements(1, minValidPartitionRatio, false);
-      ClusterModel clusterModel = _loadMonitor.clusterModel(from, to, requirements, operationProgress);
+      ClusterModel clusterModel = _loadMonitor.clusterModel(from, to, requirements, populateDiskInfo, operationProgress);
       sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
       return clusterModel;
     } catch (KafkaCruiseControlException kcce) {

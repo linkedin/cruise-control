@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#clusterModel(long, long, Double,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean)}
  */
 class GetClusterModelInRangeRunnable extends OperationRunnable {
   private final PartitionLoadParameters _parameters;
@@ -38,7 +38,8 @@ class GetClusterModelInRangeRunnable extends OperationRunnable {
                                                                  _parameters.endMs(),
                                                                  _parameters.minValidPartitionRatio(),
                                                                  _future.operationProgress(),
-                                                                 _parameters.allowCapacityEstimation());
+                                                                 _parameters.allowCapacityEstimation(),
+                                                                 false);
     int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
     List<Partition> partitionList = clusterModel.replicasSortedByUtilization(_parameters.resource(),
                                                                              _parameters.wantMaxLoad(),

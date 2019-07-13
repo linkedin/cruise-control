@@ -42,7 +42,7 @@ import java.util.regex.Pattern;
  * <li>{@link KafkaCruiseControl#demoteBrokers(Set, java.util.Map, boolean, OperationProgress, boolean, Integer, boolean, boolean,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, Long, String, boolean)}</li>
  * <li>{@link KafkaCruiseControl#clusterModel(long, ModelCompletenessRequirements, OperationProgress, boolean, boolean)}</li>
- * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)}</li>
+ * <li>{@link KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean, boolean)}</li>
  * <li>{@link KafkaCruiseControl#getProposals(OperationProgress, boolean)}</li>
  * <li>{@link KafkaCruiseControl#state(OperationProgress, Set)}</li>
  * <li>{@link KafkaCruiseControl#getProposals(java.util.List, ModelCompletenessRequirements, OperationProgress,
@@ -125,7 +125,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean)
+   * @see KafkaCruiseControl#clusterModel(long, long, Double, OperationProgress, boolean, boolean)
    */
   public OperationFuture partitionLoadState(PartitionLoadParameters parameters) {
     OperationFuture future =
