@@ -447,6 +447,7 @@ public class Executor {
     _executionStoppedByUser.set(false);
     sanityCheckOngoingReplicaMovement();
     _hasOngoingExecution = true;
+    _anomalyDetector.maybeClearOngoingAnomalyDetectionTimeMs();
     _stopRequested.set(false);
     _executionStoppedByUser.set(false);
     if (_isKafkaAssignerMode) {

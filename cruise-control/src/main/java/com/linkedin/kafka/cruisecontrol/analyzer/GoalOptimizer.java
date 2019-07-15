@@ -198,7 +198,7 @@ public class GoalOptimizer implements Runnable {
           future.get();
           done = true;
         } catch (InterruptedException ie) {
-          LOG.debug("Goal optimizer received exception when precomputing the proposal candidates {}.", ie);
+          LOG.debug("Goal optimizer received exception when precomputing the proposal candidates.", ie);
         }
       }
     } catch (ExecutionException ee) {
@@ -672,7 +672,7 @@ public class GoalOptimizer implements Runnable {
       return String.format("%n%nOptimization has %d inter-broker replica(%d MB) moves, %d intra-broker replica(%d MB) moves"
                            + " and %d leadership moves with a cluster model of %d recent windows and %.3f%% of the partitions"
                            + " covered.%nExcluded Topics: %s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers For "
-                           + "Replica Move: %s..%nCounts: %s.",
+                           + "Replica Move: %s.%nCounts: %s",
                            moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(),
                            moveStats.get(3).longValue(), moveStats.get(4).intValue(), _clusterModelStats.numSnapshotWindows(),
                            _clusterModelStats.monitoredPartitionsPercentage() * 100, excludedTopics(),

@@ -1329,6 +1329,10 @@ public class KafkaCruiseControl {
                                   _config);
   }
 
+  public ExecutorState.State executionState() {
+    return _executor.state().state();
+  }
+
   /**
    * Get the cluster information from Kafka metadata.
    */
