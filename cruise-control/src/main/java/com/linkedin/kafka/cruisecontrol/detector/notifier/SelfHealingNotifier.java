@@ -168,27 +168,27 @@ public class SelfHealingNotifier implements AnomalyNotifier {
 
   @Override
   public AnomalyNotificationResult onBrokerFailure(BrokerFailures brokerFailures) {
-    long earliestFailureTime = Long.MAX_VALUE;
+    long earliestFailureTimeMs = Long.MAX_VALUE;
     for (long t : brokerFailures.failedBrokers().values()) {
-      earliestFailureTime = Math.min(earliestFailureTime, t);
+      earliestFailureTimeMs = Math.min(earliestFailureTimeMs, t);
     }
-    long now = _time.milliseconds();
-    long alertTime = earliestFailureTime + _brokerFailureAlertThresholdMs;
-    long selfHealingTime = earliestFailureTime + _selfHealingThresholdMs;
+    long nowMs = _time.milliseconds();
+    long alertTimeMs = earliestFailureTimeMs + _brokerFailureAlertThresholdMs;
+    long selfHealingTimeMs = earliestFailureTimeMs + _selfHealingThresholdMs;
     AnomalyNotificationResult result = null;
-    if (now < alertTime) {
+    if (nowMs < alertTimeMs) {
       // Not reaching alerting threshold yet.
-      long delay = alertTime - now;
-      result = AnomalyNotificationResult.check(delay);
-    } else if (now < selfHealingTime) {
+      long delayMs = alertTimeMs - nowMs;
+      result = AnomalyNotificationResult.check(delayMs);
+    } else if (nowMs < selfHealingTimeMs) {
       // Reached alert threshold. Alert but do not fix.
-      alert(brokerFailures, false, selfHealingTime, AnomalyType.BROKER_FAILURE);
-      long delay = selfHealingTime - now;
+      alert(brokerFailures, false, selfHealingTimeMs, AnomalyType.BROKER_FAILURE);
+      long delay = selfHealingTimeMs - nowMs;
       result = AnomalyNotificationResult.check(delay);
     } else {
       // Reached auto fix threshold. Alert and fix if self healing is enabled.
       boolean autoFixTriggered = _selfHealingEnabled.get(AnomalyType.BROKER_FAILURE);
-      alert(brokerFailures, autoFixTriggered, selfHealingTime, AnomalyType.BROKER_FAILURE);
+      alert(brokerFailures, autoFixTriggered, selfHealingTimeMs, AnomalyType.BROKER_FAILURE);
       result = autoFixTriggered ? AnomalyNotificationResult.fix() : AnomalyNotificationResult.ignore();
     }
     return result;

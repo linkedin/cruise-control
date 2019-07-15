@@ -47,7 +47,11 @@ public class KafkaCruiseControlUtils {
   }
 
   public static String currentUtcDate() {
-    Date date = new Date(System.currentTimeMillis());
+    return utcDateFor(System.currentTimeMillis());
+  }
+
+  public static String utcDateFor(long timeMs) {
+    Date date = new Date(timeMs);
     DateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
     formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
     return formatter.format(date);

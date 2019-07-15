@@ -8,7 +8,6 @@ import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult;
@@ -29,6 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import org.apache.kafka.common.utils.SystemTime;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,7 +37,6 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHUTDOWN_ANOMALY;
-import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
 
 /**
@@ -46,6 +45,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlSta
 public class AnomalyDetector {
   private static final String METRIC_REGISTRY_NAME = "AnomalyDetector";
   private static final int INIT_JITTER_BOUND = 10000;
+  private static final long NO_ONGOING_ANOMALY_FLAG = -1L;
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private final KafkaCruiseControl _kafkaCruiseControl;
@@ -64,9 +64,15 @@ public class AnomalyDetector {
   private final List<String> _selfHealingGoals;
   private final ExecutorService _anomalyLoggerExecutor;
   private volatile Anomaly _anomalyInProgress;
-  private volatile long _numFixed;
+  private volatile long _numSelfHealingStarted;
   private volatile long _numCheckedWithDelay;
   private final Object _shutdownLock;
+  // The detection time of the earliest ongoing anomaly. Expected to be cleared upon start of a proposal execution.
+  private long _ongoingAnomalyDetectionTimeMs;
+  // The count during which there is at least one ongoing anomaly.
+  private long _ongoingAnomalyCount;
+  private double _ongoingAnomalyDurationSumForAverageMs;
+  private final Time _time;
 
   public AnomalyDetector(KafkaCruiseControlConfig config,
                          LoadMonitor loadMonitor,
@@ -100,9 +106,13 @@ public class AnomalyDetector {
     _anomalyLoggerExecutor =
         Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
     _anomalyInProgress = null;
-    _numFixed = 0L;
+    _numSelfHealingStarted = 0L;
     _numCheckedWithDelay = 0L;
     _shutdownLock = new Object();
+    _ongoingAnomalyDetectionTimeMs = NO_ONGOING_ANOMALY_FLAG;
+    _ongoingAnomalyCount = 0L;
+    _ongoingAnomalyDurationSumForAverageMs = 0;
+    _time = time;
   }
 
   /**
@@ -135,9 +145,13 @@ public class AnomalyDetector {
     _anomalyLoggerExecutor =
         Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
     _anomalyInProgress = null;
-    _numFixed = 0L;
+    _numSelfHealingStarted = 0L;
     _numCheckedWithDelay = 0L;
     _shutdownLock = new Object();
+    _ongoingAnomalyDetectionTimeMs = NO_ONGOING_ANOMALY_FLAG;
+    _ongoingAnomalyCount = 0L;
+    _ongoingAnomalyDurationSumForAverageMs = 0;
+    _time = new SystemTime();
   }
 
   public void startDetection() {
@@ -183,9 +197,51 @@ public class AnomalyDetector {
     LOG.info("Anomaly detector shutdown completed.");
   }
 
-  public AnomalyDetectorState anomalyDetectorState() {
+  public synchronized AnomalyDetectorState anomalyDetectorState() {
+    // Retrieve mean time between anomalies
+    Map<AnomalyType, Double> meanTimeBetweenAnomalies = new HashMap<>(AnomalyType.cachedValues().size());
+    for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
+      meanTimeBetweenAnomalies.put(anomalyType, _anomalyRateByType.get(anomalyType).getMeanRate());
+    }
+    // Retrieve the mean time to start a fix and ongoing anomaly duration.
+    long ongoingAnomalyDurationMs = 0L;
+    long fixedAnomalyDurations = _ongoingAnomalyCount;
+    if (_ongoingAnomalyDetectionTimeMs != NO_ONGOING_ANOMALY_FLAG) {
+      // There is an ongoing unfixed or unfixable anomaly.
+      ongoingAnomalyDurationMs = _time.milliseconds() - _ongoingAnomalyDetectionTimeMs;
+      fixedAnomalyDurations--;
+    }
+    double meanTimeToStartFix = fixedAnomalyDurations == 0L ? 0 : _ongoingAnomalyDurationSumForAverageMs / fixedAnomalyDurations;
+
+    _anomalyDetectorState.setMetrics(new AnomalyMetrics(meanTimeBetweenAnomalies,
+                                                        meanTimeToStartFix,
+                                                        _numSelfHealingStarted,
+                                                        ongoingAnomalyDurationMs));
     _anomalyDetectorState.setSelfHealingEnabledRatio(_anomalyNotifier.selfHealingEnabledRatio());
     return _anomalyDetectorState;
+  }
+
+  /**
+   * If there is an ongoing anomaly, clear the earliest detection time to indicate start of an ongoing fix.
+   */
+  public synchronized void maybeClearOngoingAnomalyDetectionTimeMs() {
+    if (_ongoingAnomalyDetectionTimeMs != NO_ONGOING_ANOMALY_FLAG) {
+      double elapsed = _time.milliseconds() - _ongoingAnomalyDetectionTimeMs;
+      _ongoingAnomalyDurationSumForAverageMs += elapsed;
+      // Clear ongoing anomaly detection time
+      _ongoingAnomalyDetectionTimeMs = NO_ONGOING_ANOMALY_FLAG;
+    }
+  }
+
+  /**
+   * The {@link #_ongoingAnomalyDetectionTimeMs} is updated only when there is no earlier ongoing anomaly.
+   * See {@link #maybeClearOngoingAnomalyDetectionTimeMs()} for clearing the ongoing anomaly detection time.
+   */
+  private synchronized void maybeSetOngoingAnomalyDetectionTimeMs() {
+    if (_ongoingAnomalyDetectionTimeMs == NO_ONGOING_ANOMALY_FLAG) {
+      _ongoingAnomalyDetectionTimeMs = _time.milliseconds();
+      _ongoingAnomalyCount++;
+    }
   }
 
   /**
@@ -203,10 +259,10 @@ public class AnomalyDetector {
   }
 
   /**
-   * @return Number of anomalies fixed.
+   * @return Number of anomaly fixes started by the anomaly detector.
    */
-  public long numFixed() {
-    return _numFixed;
+  public long numSelfHealingStarted() {
+    return _numSelfHealingStarted;
   }
 
   /**
@@ -243,59 +299,12 @@ public class AnomalyDetector {
             _anomalyInProgress = null;
             break;
           }
-          // Add anomaly detection to anomaly detector state.
-          AnomalyType anomalyType = getAnomalyType(_anomalyInProgress);
-          _anomalyDetectorState.addAnomalyDetection(anomalyType, _anomalyInProgress);
-
-          // We schedule a delayed check if the executor is doing some work.
-          ExecutorState.State executorState = _kafkaCruiseControl.state(
-              new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
-          if (executorState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-            LOG.debug("Schedule delayed check for anomaly {} because executor is in {} state", _anomalyInProgress, executorState);
-            checkWithDelay(_anomalyDetectionIntervalMs);
-          } else {
-            AnomalyNotificationResult notificationResult = null;
-            _anomalyRateByType.get(anomalyType).mark();
-            // Call the anomaly notifier to see if a fix is desired.
-            switch (anomalyType) {
-              case GOAL_VIOLATION:
-                GoalViolations goalViolations = (GoalViolations) _anomalyInProgress;
-                notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
-                break;
-              case BROKER_FAILURE:
-                BrokerFailures brokerFailures = (BrokerFailures) _anomalyInProgress;
-                notificationResult = _anomalyNotifier.onBrokerFailure(brokerFailures);
-                break;
-              case METRIC_ANOMALY:
-                KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) _anomalyInProgress;
-                notificationResult = _anomalyNotifier.onMetricAnomaly(metricAnomaly);
-                break;
-              default:
-                throw new IllegalStateException("Unrecognized anomaly type.");
-            }
-            // Take the requested action if provided.
-            LOG.debug("Received notification result {}", notificationResult);
-            if (notificationResult != null) {
-              switch (notificationResult.action()) {
-                case FIX:
-                  fixAnomalyInProgress();
-                  break;
-                case CHECK:
-                  checkWithDelay(notificationResult.delay());
-                  break;
-                default:
-                  // let it go.
-                  _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, AnomalyState.Status.IGNORED);
-                  break;
-              }
-            }
-          }
+          handleAnomalyInProgress();
         } catch (InterruptedException e) {
           LOG.debug("Received interrupted exception.", e);
           retryHandling = true;
-          // Let it go.
         } catch (KafkaCruiseControlException kcce) {
-          LOG.warn("Anomaly handler received exception when try to fix the anomaly {}.", _anomalyInProgress, kcce);
+          LOG.warn("Anomaly handler received exception when trying to fix the anomaly {}.", _anomalyInProgress, kcce);
           retryHandling = true;
         } catch (Throwable t) {
           LOG.error("Uncaught exception in anomaly handler.", t);
@@ -306,6 +315,79 @@ public class AnomalyDetector {
         }
       }
       LOG.info("Anomaly handler exited.");
+    }
+
+    private void handleAnomalyInProgress() throws Exception {
+      // Add anomaly detection to anomaly detector state.
+      AnomalyType anomalyType = getAnomalyType(_anomalyInProgress);
+      _anomalyDetectorState.addAnomalyDetection(anomalyType, _anomalyInProgress);
+
+      // We schedule a delayed check if the executor is doing some work.
+      ExecutorState.State executionState = _kafkaCruiseControl.executionState();
+      if (executionState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+        LOG.debug("Schedule delayed check for anomaly {} because executor is in {} state", _anomalyInProgress, executionState);
+        checkWithDelay(_anomalyDetectionIntervalMs);
+      } else {
+        processAnomalyInProgress(anomalyType);
+      }
+    }
+
+    /**
+     * Processes the anomaly based on the notification result.
+     *
+     * @param anomalyType The type of the ongoing anomaly
+     */
+    private void processAnomalyInProgress(AnomalyType anomalyType) throws Exception {
+      _anomalyRateByType.get(anomalyType).mark();
+      // Call the anomaly notifier to see if an action is requested.
+      AnomalyNotificationResult notificationResult = notifyAnomalyInProgress(anomalyType);
+      if (notificationResult != null) {
+        maybeSetOngoingAnomalyDetectionTimeMs();
+        switch (notificationResult.action()) {
+          case FIX:
+            fixAnomalyInProgress(anomalyType);
+            break;
+          case CHECK:
+            checkWithDelay(notificationResult.delay());
+            break;
+          case IGNORE:
+            _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, AnomalyState.Status.IGNORED);
+            break;
+          default:
+            throw new IllegalStateException("Unrecognized anomaly notification result.");
+        }
+      }
+    }
+
+    /**
+     * Call the {@link AnomalyNotifier} handler corresponding to the type of {@link #_anomalyInProgress} to get the
+     * notification result.
+     *
+     * @param anomalyType The type of the {@link #_anomalyInProgress}.
+     * @return The notification result corresponding to the {@link #_anomalyInProgress}.
+     */
+    private AnomalyNotificationResult notifyAnomalyInProgress(AnomalyType anomalyType) {
+      // Call the anomaly notifier to see if a fix is desired.
+      AnomalyNotificationResult notificationResult = null;
+      switch (anomalyType) {
+        case GOAL_VIOLATION:
+          GoalViolations goalViolations = (GoalViolations) _anomalyInProgress;
+          notificationResult = _anomalyNotifier.onGoalViolation(goalViolations);
+          break;
+        case BROKER_FAILURE:
+          BrokerFailures brokerFailures = (BrokerFailures) _anomalyInProgress;
+          notificationResult = _anomalyNotifier.onBrokerFailure(brokerFailures);
+          break;
+        case METRIC_ANOMALY:
+          KafkaMetricAnomaly metricAnomaly = (KafkaMetricAnomaly) _anomalyInProgress;
+          notificationResult = _anomalyNotifier.onMetricAnomaly(metricAnomaly);
+          break;
+        default:
+          throw new IllegalStateException("Unrecognized anomaly type.");
+      }
+      LOG.debug("Received notification result {}", notificationResult);
+
+      return notificationResult;
     }
 
     private void checkWithDelay(long delay) {
@@ -332,28 +414,27 @@ public class AnomalyDetector {
      *
      * @return true if ready for a fix, false otherwise.
      */
-    private boolean isAnomalyInProgressReadyToFix() {
-      String skipMsg = String.format("%s fix", getAnomalyType(_anomalyInProgress));
+    private boolean isAnomalyInProgressReadyToFix(AnomalyType anomalyType) {
       LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = _loadMonitor.taskRunnerState();
 
       // Fixing anomalies is possible only when (1) the state is not in and unavailable state ( e.g. loading or
       // bootstrapping) and (2) the completeness requirements are met for all goals.
       if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
-        LOG.info("Skipping {} because load monitor is in {} state.", skipMsg, loadMonitorTaskRunnerState);
+        LOG.info("Skipping {} fix because load monitor is in {} state.", anomalyType, loadMonitorTaskRunnerState);
         _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, AnomalyState.Status.LOAD_MONITOR_NOT_READY);
       } else {
         if (_kafkaCruiseControl.meetCompletenessRequirements(_selfHealingGoals)) {
           return true;
         } else {
-          LOG.warn("Skipping {} because load completeness requirement is not met for goals.", skipMsg);
+          LOG.warn("Skipping {} fix because load completeness requirement is not met for goals.", anomalyType);
           _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, AnomalyState.Status.COMPLETENESS_NOT_READY);
         }
       }
       return false;
     }
 
-    private String optimizationResult() {
-      switch (getAnomalyType(_anomalyInProgress)) {
+    private String optimizationResult(AnomalyType anomalyType) {
+      switch (anomalyType) {
         case GOAL_VIOLATION:
         case BROKER_FAILURE:
           return ((KafkaAnomaly) _anomalyInProgress).optimizationResult(false);
@@ -372,19 +453,19 @@ public class AnomalyDetector {
       }
     }
 
-    private void fixAnomalyInProgress() throws Exception {
+    private void fixAnomalyInProgress(AnomalyType anomalyType) throws Exception {
       synchronized (_shutdownLock) {
         if (_shutdown) {
           LOG.info("Skip fixing anomaly {}, because anomaly detector is shutting down.", _anomalyInProgress);
         } else {
-          boolean isReadyToFix = isAnomalyInProgressReadyToFix();
+          boolean isReadyToFix = isAnomalyInProgressReadyToFix(anomalyType);
           if (isReadyToFix) {
             LOG.info("Fixing anomaly {}", _anomalyInProgress);
             boolean startedSuccessfully = false;
             String anomalyId = _anomalyInProgress.anomalyId();
             try {
               startedSuccessfully = _anomalyInProgress.fix();
-              String optimizationResult = optimizationResult();
+              String optimizationResult = optimizationResult(anomalyType);
               _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, null, optimizationResult));
             } catch (OptimizationFailureException ofe) {
               _anomalyLoggerExecutor.submit(() -> logSelfHealingOperation(anomalyId, ofe, null));
@@ -393,7 +474,7 @@ public class AnomalyDetector {
               _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, startedSuccessfully ? AnomalyState.Status.FIX_STARTED
                                                                                             : AnomalyState.Status.FIX_FAILED_TO_START);
               if (startedSuccessfully) {
-                _numFixed++;
+                _numSelfHealingStarted++;
                 LOG.info("[{}] Self-healing started successfully.", anomalyId);
               } else {
                 LOG.warn("[{}] Self-healing failed to start.", anomalyId);
