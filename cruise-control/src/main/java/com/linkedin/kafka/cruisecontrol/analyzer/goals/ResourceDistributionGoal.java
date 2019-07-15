@@ -323,7 +323,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         // return if the broker is already within limits.
         return;
       }
-      moveImmigrantsOnly = (!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) || optimizationOptions.onlyMoveImmigrantReplicas();
+      moveImmigrantsOnly = !clusterModel.deadBrokers().isEmpty() || optimizationOptions.onlyMoveImmigrantReplicas();
       if (moveImmigrantsOnly && requireLessLoad && broker.immigrantReplicas().isEmpty()) {
         // return if the cluster is in self-healing mode and the broker requires less load but does not have any
         // immigrant replicas.

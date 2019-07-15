@@ -26,6 +26,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
 import org.junit.Test;
@@ -41,10 +42,10 @@ import static org.junit.Assert.assertTrue;
  */
 @RunWith(Parameterized.class)
 public class DeterministicSelfHealingTest {
-  private BalancingConstraint _balancingConstraint;
-  private ClusterModel _cluster;
-  private List<String> _goalNameByPriority;
-  private List<OptimizationVerifier.Verification> _verifications;
+  private final BalancingConstraint _balancingConstraint;
+  private final ClusterModel _cluster;
+  private final List<String> _goalNameByPriority;
+  private final List<OptimizationVerifier.Verification> _verifications;
 
   /**
    * Constructor for Deterministic self-healing test.
@@ -122,6 +123,7 @@ public class DeterministicSelfHealingTest {
   @Test
   public void test() throws Exception {
     assertTrue("Deterministic self-healing test failed to improve the existing state.",
-               OptimizationVerifier.executeGoalsFor(_balancingConstraint, _cluster, _goalNameByPriority, _verifications));
+               OptimizationVerifier.executeGoalsFor(_balancingConstraint, _cluster, _goalNameByPriority, Collections.emptySet(),
+                                                    _verifications, true));
   }
 }
