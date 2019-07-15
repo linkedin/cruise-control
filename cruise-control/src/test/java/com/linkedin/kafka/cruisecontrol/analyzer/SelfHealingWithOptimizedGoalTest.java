@@ -41,24 +41,24 @@ import static org.junit.Assert.assertTrue;
  * Unit test for testing with various goal combinations using the deterministic cluster with one dead broker.
  */
 @RunWith(Parameterized.class)
-public class DeterministicSelfHealingTest {
+public class SelfHealingWithOptimizedGoalTest {
   private final BalancingConstraint _balancingConstraint;
   private final ClusterModel _cluster;
   private final List<String> _goalNameByPriority;
   private final List<OptimizationVerifier.Verification> _verifications;
 
   /**
-   * Constructor for Deterministic self-healing test.
+   * Constructor for self-healing test.
    *
    * @param balancingConstraint Balancing constraint.
    * @param cluster             The state of the cluster.
    * @param goalNameByPriority  Name of goals by the order of execution priority.
    * @param verifications The verifications to make.
    */
-  public DeterministicSelfHealingTest(BalancingConstraint balancingConstraint,
-                                      ClusterModel cluster,
-                                      List<String> goalNameByPriority,
-                                      List<OptimizationVerifier.Verification> verifications) {
+  public SelfHealingWithOptimizedGoalTest(BalancingConstraint balancingConstraint,
+                                          ClusterModel cluster,
+                                          List<String> goalNameByPriority,
+                                          List<OptimizationVerifier.Verification> verifications) {
     _balancingConstraint = balancingConstraint;
     _cluster = cluster;
     _goalNameByPriority = goalNameByPriority;
@@ -97,13 +97,7 @@ public class DeterministicSelfHealingTest {
     balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
     List<OptimizationVerifier.Verification> verifications = Arrays.asList(DEAD_BROKERS, REGRESSION);
 
-    // ----------##TEST 1: SINGLE GOAL.
-    for (int i = 0; i < goalNameByPriority.size(); i++) {
-      p.add(params(balancingConstraint, DeterministicCluster.deadBroker(TestConstants.BROKER_CAPACITY),
-                   goalNameByPriority.subList(i, i + 1), verifications));
-    }
-
-    // ----------##TEST 2: RACK AWARE GOAL + ONE OTHER GOAL.
+    // ----------##TEST: RACK AWARE GOAL + ONE OTHER GOAL.
     for (int i = 1; i < goalNameByPriority.size(); i++) {
       List<String> testGoals = Arrays.asList(RackAwareGoal.class.getName(), goalNameByPriority.get(i));
       p.add(params(balancingConstraint, DeterministicCluster.deadBroker(TestConstants.BROKER_CAPACITY),
@@ -122,7 +116,7 @@ public class DeterministicSelfHealingTest {
 
   @Test
   public void test() throws Exception {
-    assertTrue("Deterministic self-healing test failed to improve the existing state.",
+    assertTrue("Self-healing test failed to improve the existing state.",
                OptimizationVerifier.executeGoalsFor(_balancingConstraint, _cluster, _goalNameByPriority, Collections.emptySet(),
                                                     _verifications, true));
   }

@@ -58,13 +58,7 @@ class OptimizationVerifier {
   }
 
   /**
-   * Execute given goals in the given cluster enforcing the given constraint. Return pass / fail status of a test.
-   * A test fails if:
-   * 1) Rebalance: During the optimization process, optimization of a goal leads to a worse cluster state (in terms of
-   * the requirements of the same goal) than the cluster state just before starting the optimization.
-   * 2) Self Healing: There are replicas on dead brokers after self healing or soft goal(if any) moves non-immigrant
-   * online replicas.
-   * 3) Adding a new broker causes the replicas to move among old brokers.
+   * See {@link #executeGoalsFor(BalancingConstraint, ClusterModel, List, Collection, List, boolean)}.
    *
    * @param constraint         Balancing constraint for the given cluster.
    * @param clusterModel       The state of the cluster.
@@ -80,13 +74,7 @@ class OptimizationVerifier {
   }
 
   /**
-   * Execute given goals in the given cluster enforcing the given constraint. Return pass / fail status of a test.
-   * A test fails if:
-   * 1) Rebalance: During the optimization process, optimization of a goal leads to a worse cluster state (in terms of
-   * the requirements of the same goal) than the cluster state just before starting the optimization.
-   * 2) Self Healing: There are replicas on dead brokers after self healing or soft goal(if any) moves non-immigrant
-   * online replicas.
-   * 3) Adding a new broker causes the replicas to move among old brokers.
+   * See {@link #executeGoalsFor(BalancingConstraint, ClusterModel, List, Collection, List, boolean)}.
    *
    * @param constraint         Balancing constraint for the given cluster.
    * @param clusterModel       The state of the cluster.
@@ -108,7 +96,7 @@ class OptimizationVerifier {
    * A test fails if:
    * 1) Rebalance: During the optimization process, optimization of a goal leads to a worse cluster state (in terms of
    * the requirements of the same goal) than the cluster state just before starting the optimization.
-   * 2) Self Healing: There are replicas on dead brokers after self healing or soft goal(if any) moves non-immigrant
+   * 2) Self Healing: There are replicas on dead brokers after self healing or soft goal (if any) moves non-immigrant
    * online replicas.
    * 3) Adding a new broker causes the replicas to move among old brokers.
    *
