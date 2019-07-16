@@ -69,11 +69,7 @@ public class PartitionLoadParameters extends AbstractParameters {
     _entries = ParameterUtils.entries(_request);
     _minValidPartitionRatio = ParameterUtils.minValidPartitionRatio(_request);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
-    try {
-      _brokerIds = ParameterUtils.brokerIds(_request);
-    } catch (IllegalArgumentException e) {
-      _brokerIds = Collections.emptySet();
-    }
+    _brokerIds = ParameterUtils.brokerIds(_request, true);
   }
 
   public Resource resource() {
