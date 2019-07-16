@@ -91,7 +91,6 @@ public class KafkaSampleStore implements SampleStore {
   protected static final int DEFAULT_BROKER_SAMPLE_STORE_TOPIC_PARTITION_COUNT = 32;
   protected static final long DEFAULT_MIN_PARTITION_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = 3600000L;
   protected static final long DEFAULT_MIN_BROKER_SAMPLE_STORE_TOPIC_RETENTION_TIME_MS = 3600000L;
-  protected static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
   protected static final String PRODUCER_CLIENT_ID = "KafkaCruiseControlSampleStoreProducer";
   protected static final String CONSUMER_CLIENT_ID = "KafkaCruiseControlSampleStoreConsumer";
   protected static final Random RANDOM = new Random();
@@ -166,12 +165,12 @@ public class KafkaSampleStore implements SampleStore {
   protected KafkaProducer<byte[], byte[]> createProducer(Map<String, ?> config) {
     Properties producerProps = new Properties();
     producerProps.putAll(config);
-    String reconnectBackoffMs = (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG);
-    if (reconnectBackoffMs == null) {
-      reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
+    String bootstrapServers = config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
+    // Trim the brackets in List's String representation.
+    if (bootstrapServers.length() > 2) {
+      bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
     }
-    producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                              (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
+    producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_CLIENT_ID);
     // Set batch.size and linger.ms to a big number to have better batching.
     producerProps.setProperty(ProducerConfig.LINGER_MS_CONFIG, "30000");
@@ -181,7 +180,8 @@ public class KafkaSampleStore implements SampleStore {
     producerProps.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
     producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
-    producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);
+    producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG,
+                              config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG).toString());
     return new KafkaProducer<>(producerProps);
   }
 
@@ -189,12 +189,12 @@ public class KafkaSampleStore implements SampleStore {
     Properties consumerProps = new Properties();
     consumerProps.putAll(config);
     long randomToken = RANDOM.nextLong();
-    String reconnectBackoffMs = (String) config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG);
-    if (reconnectBackoffMs == null) {
-      reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
+    String bootstrapServers = config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
+    // Trim the brackets in List's String representation.
+    if (bootstrapServers.length() > 2) {
+      bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
     }
-    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                              (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
+    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KafkaCruiseControlSampleStore" + randomToken);
     consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, CONSUMER_CLIENT_ID + randomToken);
     consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
@@ -202,7 +202,8 @@ public class KafkaSampleStore implements SampleStore {
     consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
     consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
     consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG, reconnectBackoffMs);
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG,
+                                             config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG).toString());
     return new KafkaConsumer<>(consumerProps);
   }
 
@@ -212,16 +213,14 @@ public class KafkaSampleStore implements SampleStore {
     ZkUtils zkUtils = KafkaCruiseControlUtils.createZkUtils(zkConnect, zkSecurityEnabled);
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
-      long partitionSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
-      long brokerSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG));
+      long partitionSampleWindowMs = (Long) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
+      long brokerSampleWindowMs = (Long) config.get(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG);
 
-      int numPartitionSampleWindows =
-          Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG));
+      int numPartitionSampleWindows = (Integer) config.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
       long partitionSampleRetentionMs = (numPartitionSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * partitionSampleWindowMs;
       partitionSampleRetentionMs = Math.max(_minPartitionSampleStoreTopicRetentionTimeMs, partitionSampleRetentionMs);
 
-      int numBrokerSampleWindows =
-          Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG));
+      int numBrokerSampleWindows = (Integer) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG);
       long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * brokerSampleWindowMs;
       brokerSampleRetentionMs = Math.max(_minBrokerSampleStoreTopicRetentionTimeMs, brokerSampleRetentionMs);
 
@@ -229,8 +228,7 @@ public class KafkaSampleStore implements SampleStore {
       if (numberOfBrokersInCluster <= 1) {
         throw new IllegalStateException(
             String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d, zookeeper.connect=%s)",
-                          numberOfBrokersInCluster, config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
-
+                          numberOfBrokersInCluster, zkConnect));
       }
       int replicationFactor = _sampleStoreTopicReplicationFactor == null ? Math.min(DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR,
                               numberOfBrokersInCluster) : _sampleStoreTopicReplicationFactor;
