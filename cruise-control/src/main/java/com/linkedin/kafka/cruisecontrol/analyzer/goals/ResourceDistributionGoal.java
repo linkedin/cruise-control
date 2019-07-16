@@ -767,6 +767,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     } else {
       // Take all replicas for replica movements.
       replicasToMove = broker.trackedSortedReplicas(sortName()).reverselySortedReplicas();
+      // If cluster has offline replicas, but this broker is alive, then limit moving replica to offline and immigrant replicas.
+      if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive()) {
+        replicasToMove = replicasToMove.stream()
+                                       .filter(r -> broker.currentOfflineReplicas().contains(r) || broker.immigrantReplicas().contains(r))
+                                       .collect(Collectors.toList());
+      }
     }
 
     // Now let's move things around.
