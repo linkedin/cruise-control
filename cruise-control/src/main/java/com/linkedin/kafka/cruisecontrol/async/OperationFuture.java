@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.async;
 
-import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
+import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import java.lang.reflect.Field;
 import java.util.concurrent.CompletableFuture;

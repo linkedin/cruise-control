@@ -5,16 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveBrokerParameters;
+import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REMOVE_BROKER_PARAMETER_OBJECT_CONFIG;
 
 
 public class RemoveBrokerRequest extends AbstractAsyncRequest {
-  private final RemoveBrokerParameters _parameters;
+  private RemoveBrokerParameters _parameters;
 
-  public RemoveBrokerRequest(KafkaCruiseControlServlet servlet, RemoveBrokerParameters parameters) {
-    super(servlet);
-    _parameters = parameters;
+  public RemoveBrokerRequest() {
+    super();
   }
 
   @Override
@@ -30,5 +31,14 @@ public class RemoveBrokerRequest extends AbstractAsyncRequest {
   @Override
   public String name() {
     return RemoveBrokerRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _parameters = (RemoveBrokerParameters) configs.get(REMOVE_BROKER_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

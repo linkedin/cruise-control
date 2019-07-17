@@ -5,11 +5,12 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
+import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -107,7 +108,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     }
     Set<UUID> requestedUserTaskIds = parameters.userTaskIds();
     Set<UserTaskManager.TaskState> requestedTaskStates = parameters.types();
-    Set<EndPoint> requestedEndPoints = parameters.endPoints();
+    Set<CruiseControlEndPoint> requestedEndPoints = parameters.endPoints();
     Set<String> requestedClientIds = parameters.clientIds();
 
     Consumer<UserTaskManager.UserTaskInfo> consumer = (elem) -> {

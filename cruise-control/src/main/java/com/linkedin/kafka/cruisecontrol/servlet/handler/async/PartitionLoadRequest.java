@@ -5,16 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
+import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.PARTITION_LOAD_PARAMETER_OBJECT_CONFIG;
 
 
 public class PartitionLoadRequest extends AbstractAsyncRequest {
-  private final PartitionLoadParameters _parameters;
+  private PartitionLoadParameters _parameters;
 
-  public PartitionLoadRequest(KafkaCruiseControlServlet servlet, PartitionLoadParameters parameters) {
-    super(servlet);
-    _parameters = parameters;
+  public PartitionLoadRequest() {
+    super();
   }
 
   @Override
@@ -30,5 +31,14 @@ public class PartitionLoadRequest extends AbstractAsyncRequest {
   @Override
   public String name() {
     return PartitionLoadRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _parameters = (PartitionLoadParameters) configs.get(PARTITION_LOAD_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

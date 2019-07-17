@@ -4,14 +4,14 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
-import javax.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#BOOTSTRAP}
+ * Parameters for {@link CruiseControlEndPoint#BOOTSTRAP}
  *
  * <pre>
  * 1. RANGE MODE:
@@ -28,8 +28,8 @@ public class BootstrapParameters extends AbstractParameters {
   private Long _endMs;
   private boolean _clearMetrics;
 
-  public BootstrapParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public BootstrapParameters() {
+    super();
   }
 
   @Override
@@ -53,5 +53,10 @@ public class BootstrapParameters extends AbstractParameters {
 
   public boolean clearMetrics() {
     return _clearMetrics;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

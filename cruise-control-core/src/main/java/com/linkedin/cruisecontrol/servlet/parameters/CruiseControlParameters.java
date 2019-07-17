@@ -1,14 +1,15 @@
 /*
- * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol.servlet.parameters;
+package com.linkedin.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
+import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
+import com.linkedin.cruisecontrol.servlet.EndPoint;
 import javax.servlet.http.HttpServletResponse;
 
 
-public interface CruiseControlParameters {
+public interface CruiseControlParameters extends CruiseControlConfigurable {
 
   /**
    * Parse the parameters set in HTTP request to initialize object.

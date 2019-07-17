@@ -4,35 +4,34 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#USER_TASKS}
+ * Parameters for {@link CruiseControlEndPoint#USER_TASKS}
  *
  * <pre>
  * Retrieve the recent user tasks.
  *    GET /kafkacruisecontrol/user_tasks?json=[true/false]&amp;user_task_ids=[Set-of-USER-TASK-IDS]&amp;client_ids=[Set-of-ClientIdentity]&amp;
- *    endpoints=[Set-of-{@link EndPoint}]&amp;types=[Set-of-{@link UserTaskManager.TaskState}]&amp;entries=[POSITIVE-INTEGER]
+ *    endpoints=[Set-of-{@link CruiseControlEndPoint}]&amp;types=[Set-of-{@link UserTaskManager.TaskState}]&amp;entries=[POSITIVE-INTEGER]
  *    &amp;fetch_completed_task=[true/false]
  * </pre>
  */
 public class UserTasksParameters extends AbstractParameters {
   private Set<UUID> _userTaskIds;
   private Set<String> _clientIds;
-  private Set<EndPoint> _endPoints;
+  private Set<CruiseControlEndPoint> _endPoints;
   private Set<UserTaskManager.TaskState> _types;
   private int _entries;
   private boolean _fetchCompletedTask;
 
-  public UserTasksParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public UserTasksParameters() {
+    super();
   }
 
   @Override
@@ -54,7 +53,7 @@ public class UserTasksParameters extends AbstractParameters {
     return _clientIds;
   }
 
-  public Set<EndPoint> endPoints() {
+  public Set<CruiseControlEndPoint> endPoints() {
     return _endPoints;
   }
 
@@ -68,5 +67,10 @@ public class UserTasksParameters extends AbstractParameters {
 
   public boolean fetchCompletedTask() {
     return _fetchCompletedTask;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

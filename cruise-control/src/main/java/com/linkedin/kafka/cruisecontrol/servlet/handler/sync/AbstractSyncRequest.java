@@ -6,13 +6,12 @@ package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
 import com.codahale.metrics.Timer;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
+import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.AbstractRequest;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.AbstractAsyncRequest;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -24,12 +23,11 @@ import org.slf4j.LoggerFactory;
 
 public abstract class AbstractSyncRequest extends AbstractRequest {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractAsyncRequest.class);
-  private final UserTaskManager _userTaskManager;
-  private final Map<EndPoint, Timer> _successfulRequestExecutionTimer;
+  private UserTaskManager _userTaskManager;
+  private Map<EndPoint, Timer> _successfulRequestExecutionTimer;
 
-  public AbstractSyncRequest(KafkaCruiseControlServlet servlet) {
-    _userTaskManager = servlet.userTaskManager();
-    _successfulRequestExecutionTimer = servlet.successfulRequestExecutionTimer();
+  public AbstractSyncRequest() {
+
   }
 
   /**
@@ -58,4 +56,11 @@ public abstract class AbstractSyncRequest extends AbstractRequest {
   public abstract CruiseControlParameters parameters();
 
   public abstract String name();
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _userTaskManager = _servlet.userTaskManager();
+    _successfulRequestExecutionTimer = _servlet.successfulRequestExecutionTimer();
+  }
 }

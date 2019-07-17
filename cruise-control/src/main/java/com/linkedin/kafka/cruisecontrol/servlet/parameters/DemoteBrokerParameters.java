@@ -6,13 +6,14 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#DEMOTE_BROKER}
+ * Parameters for {@link CruiseControlEndPoint#DEMOTE_BROKER}
  *
  * <ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
@@ -36,8 +37,8 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private Integer _reviewId;
 
-  public DemoteBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public DemoteBrokerParameters() {
+    super();
   }
 
   @Override
@@ -85,5 +86,10 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
 
   public ReplicaMovementStrategy replicaMovementStrategy() {
     return _replicaMovementStrategy;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

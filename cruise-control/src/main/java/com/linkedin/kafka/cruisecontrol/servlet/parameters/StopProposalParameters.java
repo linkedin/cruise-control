@@ -5,12 +5,13 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
-import javax.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#STOP_PROPOSAL_EXECUTION}.
+ * Parameters for {@link CruiseControlEndPoint#STOP_PROPOSAL_EXECUTION}.
  *
  * <ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
@@ -23,11 +24,10 @@ import javax.servlet.http.HttpServletRequest;
  */
 public class StopProposalParameters extends AbstractParameters {
   private Integer _reviewId;
-  private final boolean _twoStepVerificationEnabled;
+  private boolean _twoStepVerificationEnabled;
 
-  public StopProposalParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
-    _twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+  public StopProposalParameters() {
+    super();
   }
 
   @Override
@@ -43,5 +43,11 @@ public class StopProposalParameters extends AbstractParameters {
 
   public Integer reviewId() {
     return _reviewId;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
   }
 }

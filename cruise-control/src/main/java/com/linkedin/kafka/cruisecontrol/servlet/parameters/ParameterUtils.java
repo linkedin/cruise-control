@@ -4,11 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus;
@@ -38,7 +39,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
-import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
@@ -108,10 +109,28 @@ public class ParameterUtils {
   private static final int MAX_REASON_LENGTH = 50;
   public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
 
-  private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
+  public static final String STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG = "stop.proposal.parameter.object";
+  public static final String BOOTSTRAP_PARAMETER_OBJECT_CONFIG = "bootstrap.parameter.object";
+  public static final String TRAIN_PARAMETER_OBJECT_CONFIG = "train.parameter.object";
+  public static final String LOAD_PARAMETER_OBJECT_CONFIG = "load.parameter.object";
+  public static final String PARTITION_LOAD_PARAMETER_OBJECT_CONFIG = "partition.load.parameter.object";
+  public static final String PROPOSALS_PARAMETER_OBJECT_CONFIG = "proposals.parameter.object";
+  public static final String STATE_PARAMETER_OBJECT_CONFIG = "state.parameter.object";
+  public static final String KAFKA_CLUSTER_STATE_PARAMETER_OBJECT_CONFIG = "kafka.cluster.state.parameter.object";
+  public static final String USER_TASKS_PARAMETER_OBJECT_CONFIG = "user.tasks.parameter.object";
+  public static final String REVIEW_BOARD_PARAMETER_OBJECT_CONFIG = "review.board.parameter.object";
+  public static final String ADD_BROKER_PARAMETER_OBJECT_CONFIG = "add.broker.parameter.object";
+  public static final String REMOVE_BROKER_PARAMETER_OBJECT_CONFIG = "remove.broker.parameter.object";
+  public static final String REBALANCE_PARAMETER_OBJECT_CONFIG = "rebalance.parameter.object";
+  public static final String PAUSE_RESUME_PARAMETER_OBJECT_CONFIG = "pause.resume.parameter.object";
+  public static final String DEMOTE_BROKER_PARAMETER_OBJECT_CONFIG = "demote.broker.parameter.object";
+  public static final String ADMIN_PARAMETER_OBJECT_CONFIG = "admin.parameter.object";
+  public static final String REVIEW_PARAMETER_OBJECT_CONFIG = "review.parameter.object";
+  public static final String TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG = "topic.configuration.parameter.object";
+  private static final Map<CruiseControlEndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
 
   static {
-    Map<EndPoint, Set<String>> validParamNames = new HashMap<>();
+    Map<CruiseControlEndPoint, Set<String>> validParamNames = new HashMap<>();
 
     Set<String> bootstrap = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     bootstrap.add(START_MS_PARAM);
@@ -318,21 +337,21 @@ public class ParameterUtils {
   private ParameterUtils() {
   }
 
-  public static EndPoint endPoint(HttpServletRequest request) {
-    List<EndPoint> supportedEndpoints;
+  public static CruiseControlEndPoint endPoint(HttpServletRequest request) {
+    List<CruiseControlEndPoint> supportedEndpoints;
     switch (request.getMethod()) {
       case GET_METHOD:
-        supportedEndpoints = EndPoint.getEndpoint();
+        supportedEndpoints = CruiseControlEndPoint.getEndpoint();
         break;
       case POST_METHOD:
-        supportedEndpoints = EndPoint.postEndpoint();
+        supportedEndpoints = CruiseControlEndPoint.postEndpoint();
         break;
       default:
         throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
 
     String path = request.getRequestURI().toUpperCase().replace(REQUEST_URI, "");
-    for (EndPoint endPoint : supportedEndpoints) {
+    for (CruiseControlEndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
       }
@@ -352,7 +371,7 @@ public class ParameterUtils {
 
   public static boolean hasValidParameters(HttpServletRequest request, HttpServletResponse response, KafkaCruiseControlConfig config)
       throws IOException {
-    EndPoint endPoint = endPoint(request);
+    CruiseControlEndPoint endPoint = endPoint(request);
     Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
     Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     userParams.addAll(request.getParameterMap().keySet());
@@ -864,13 +883,13 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  public static Set<EndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<CruiseControlEndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM).stream()
                                                                                  .map(String::toUpperCase)
                                                                                  .collect(Collectors.toSet());
 
-    Set<EndPoint> endPoints = new HashSet<>();
-    for (EndPoint endPoint : EndPoint.cachedValues()) {
+    Set<CruiseControlEndPoint> endPoints = new HashSet<>();
+    for (CruiseControlEndPoint endPoint : CruiseControlEndPoint.cachedValues()) {
       if (parsedEndPoints.contains(endPoint.toString())) {
         endPoints.add(endPoint);
       }
