@@ -88,7 +88,7 @@ public class KafkaTopicConfigProvider implements TopicConfigProvider {
   @Override
   public void configure(Map<String, ?> configs) {
     _connectString = (String) configs.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
-    _zkSecurityEnabled = Boolean.parseBoolean((String) configs.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG));
+    _zkSecurityEnabled = (Boolean) configs.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     String configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CLUSTER_CONFIGS_FILE);
     try {
       loadClusterConfigs(configFile);
