@@ -7,6 +7,11 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import java.util.Map;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDurationString;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.GOAL_VIOLATION;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.METRIC_ANOMALY;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BROKER_FAILURE;
+
 
 public class AnomalyMetrics {
   private final Map<AnomalyType, Double> _meanTimeBetweenAnomalies;
@@ -57,5 +62,15 @@ public class AnomalyMetrics {
 
   public long ongoingAnomalyDurationMs() {
     return _ongoingAnomalyDurationMs;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("{meanTimeBetweenAnomalies:{%s:%s, %s:%s, %s:%s}, "
+                         + "meanTimeToStartFix:%s, numSelfHealingStarted:%d, ongoingAnomalyDuration=%s}",
+                         GOAL_VIOLATION, toDurationString(_meanTimeBetweenAnomalies.get(GOAL_VIOLATION)),
+                         BROKER_FAILURE, toDurationString(_meanTimeBetweenAnomalies.get(BROKER_FAILURE)),
+                         METRIC_ANOMALY, toDurationString(_meanTimeBetweenAnomalies.get(METRIC_ANOMALY)),
+                         toDurationString(_meanTimeToStartFix), _numSelfHealingStarted, toDurationString(_ongoingAnomalyDurationMs));
   }
 }

@@ -83,6 +83,40 @@ public class KafkaCruiseControlUtils {
   }
 
   /**
+   * Format the duration from double to human readable string.
+   * @param durationMs Duration in milliseconds
+   * @return String representation of duration
+   */
+  public static String toDurationString(double durationMs) {
+    // If the duration is less than one second, represent in milliseconds.
+    if (durationMs < 1000) {
+      return String.format("%.2f milliseconds", durationMs);
+    }
+
+    durationMs = durationMs / 1000;
+    // If the duration is less than one minute, represent in seconds.
+    if (durationMs < 60) {
+      return String.format("%.2f seconds", durationMs);
+    }
+
+    durationMs = durationMs / 60;
+    // If the duration is less than one hour, represent in minutes.
+    if (durationMs < 60) {
+      return String.format("%.2f minutes", durationMs);
+    }
+
+    durationMs = durationMs / 60;
+    // If the duration is less than one day, represent in hours.
+    if (durationMs < 24) {
+      return String.format("%.2f hours", durationMs);
+    }
+
+    // Represent in days.
+    durationMs = durationMs / 24;
+    return String.format("%.2f days", durationMs);
+  }
+
+  /**
    * Get a configuration and throw exception if the configuration was not provided.
    * @param configs the config map.
    * @param configName the config to get.

@@ -43,8 +43,8 @@ public class AnomalyDetectorState {
   private static final String ONGOING_SELF_HEALING_ANOMALY = "ongoingSelfHealingAnomaly";
   private static final String OPTIMIZATION_RESULT = "optimizationResult";
   private static final String METRICS = "metrics";
-  private static final String MEAN_TIME_BETWEEN_ANOMALIES = "meanTimeBetweenAnomalies";
-  private static final String MEAN_TIME_TO_START_FIX = "meanTimeToStartFix";
+  private static final String MEAN_TIME_BETWEEN_ANOMALIES_MS = "meanTimeBetweenAnomaliesMs";
+  private static final String MEAN_TIME_TO_START_FIX_MS = "meanTimeToStartFixMs";
   // Package private for testing.
   static final String NUM_SELF_HEALING_STARTED = "numSelfHealingStarted";
   private static final String ONGOING_ANOMALY_DURATION_MS = "ongoingAnomalyDurationMs";
@@ -88,7 +88,7 @@ public class AnomalyDetectorState {
    *
    * @param metrics Anomaly metrics.
    */
-  public void setMetrics(AnomalyMetrics metrics) {
+  synchronized public void setMetrics(AnomalyMetrics metrics) {
     if (metrics == null) {
       throw new IllegalArgumentException("Attempt to set metrics with null.");
     }
@@ -100,8 +100,8 @@ public class AnomalyDetectorState {
    */
   Map<String, Object> metrics() {
     Map<String, Object> metrics = new HashMap<>(4);
-    metrics.put(MEAN_TIME_BETWEEN_ANOMALIES, _metrics.meanTimeBetweenAnomalies());
-    metrics.put(MEAN_TIME_TO_START_FIX, _metrics.meanTimeToStartFix());
+    metrics.put(MEAN_TIME_BETWEEN_ANOMALIES_MS, _metrics.meanTimeBetweenAnomalies());
+    metrics.put(MEAN_TIME_TO_START_FIX_MS, _metrics.meanTimeToStartFix());
     metrics.put(NUM_SELF_HEALING_STARTED, _metrics.numSelfHealingStarted());
     metrics.put(ONGOING_ANOMALY_DURATION_MS, _metrics.ongoingAnomalyDurationMs());
 
@@ -260,7 +260,7 @@ public class AnomalyDetectorState {
                          RECENT_GOAL_VIOLATIONS, recentAnomalies(GOAL_VIOLATION, false),
                          RECENT_BROKER_FAILURES, recentAnomalies(BROKER_FAILURE, false),
                          RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, false),
-                         METRICS, metrics(),
+                         METRICS, _metrics,
                          ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly == null ? "None" : _ongoingSelfHealingAnomaly.anomalyId());
   }
 }
