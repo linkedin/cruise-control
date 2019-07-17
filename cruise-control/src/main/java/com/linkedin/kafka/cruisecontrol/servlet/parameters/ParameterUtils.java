@@ -328,7 +328,7 @@ public class ParameterUtils {
         supportedEndpoints = EndPoint.postEndpoint();
         break;
       default:
-        throw new IllegalArgumentException("Unsupported request method: " + request.getMethod() + ".");
+        throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
 
     String path = request.getRequestURI().toUpperCase().replace(REQUEST_URI, "");
@@ -483,8 +483,8 @@ public class ParameterUtils {
     }
 
     if (caseSensitiveParameterName(request.getParameterMap(), END_MS_PARAM) != null) {
-      throw new IllegalArgumentException(String.format("Parameter %s and parameter %s are mutually exclusive and should "
-                                                       + "not be specified in the same request.", TIME_PARAM, END_MS_PARAM));
+      throw new UserRequestException(String.format("Parameter %s and parameter %s are mutually exclusive and should "
+                                                   + "not be specified in the same request.", TIME_PARAM, END_MS_PARAM));
     }
 
     String timeString = request.getParameter(parameterString);
@@ -515,8 +515,8 @@ public class ParameterUtils {
     } else {
       Double minValidPartitionRatio = Double.parseDouble(request.getParameter(parameterString));
       if (minValidPartitionRatio > 1.0 || minValidPartitionRatio < 0.0) {
-        throw new IllegalArgumentException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
-                                           + minValidPartitionRatio.toString() + ").");
+        throw new UserRequestException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
+                                       + minValidPartitionRatio.toString() + ").");
       }
       return minValidPartitionRatio;
     }
@@ -530,8 +530,8 @@ public class ParameterUtils {
   public static String reason(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REASON_PARAM);
     if (parameterString != null && parameterString.length() > MAX_REASON_LENGTH) {
-      throw new IllegalArgumentException(String.format("Reason cannot be longer than %d characters (attempted: %d).",
-                                                       MAX_REASON_LENGTH, parameterString.length()));
+      throw new UserRequestException(String.format("Reason cannot be longer than %d characters (attempted: %d).",
+                                                   MAX_REASON_LENGTH, parameterString.length()));
     }
     String ip = getClientIpAddress(request);
     return String.format("%s (Client: %s, Date: %s)", parameterString == null ? "No reason provided"
@@ -567,8 +567,8 @@ public class ParameterUtils {
         substates.add(CruiseControlState.SubState.valueOf(substateString.toUpperCase()));
       }
     } catch (IllegalArgumentException iae) {
-      throw new IllegalArgumentException(String.format("Unsupported substates in %s. Supported: %s",
-                                                       substatesString, CruiseControlState.SubState.cachedValues()));
+      throw new UserRequestException(String.format("Unsupported substates in %s. Supported: %s",
+                                                   substatesString, CruiseControlState.SubState.cachedValues()));
     }
 
     return Collections.unmodifiableSet(substates);
@@ -588,8 +588,8 @@ public class ParameterUtils {
         anomalyTypes.add(AnomalyType.valueOf(shfString.toUpperCase()));
       }
     } catch (IllegalArgumentException iae) {
-      throw new IllegalArgumentException(String.format("Unsupported anomaly types in %s. Supported: %s",
-                                                       selfHealingForString, AnomalyType.cachedValues()));
+      throw new UserRequestException(String.format("Unsupported anomaly types in %s. Supported: %s",
+                                                   selfHealingForString, AnomalyType.cachedValues()));
     }
 
     return Collections.unmodifiableSet(anomalyTypes);
@@ -651,7 +651,7 @@ public class ParameterUtils {
       if (supportedStrategiesByName.containsKey(strategyName)) {
         strategy = strategy == null ? supportedStrategiesByName.get(strategyName) : strategy.chain(supportedStrategiesByName.get(strategyName));
       } else {
-        throw new IllegalArgumentException("Strategy " + strategyName + " is not supported. Supported: " + supportedStrategiesByName.keySet());
+        throw new UserRequestException("Strategy " + strategyName + " is not supported. Supported: " + supportedStrategiesByName.keySet());
       }
     }
     // Chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned strategy can always
@@ -738,8 +738,8 @@ public class ParameterUtils {
     }
     Integer concurrentMovementsPerBroker = Integer.parseInt(request.getParameter(parameterString));
     if (concurrentMovementsPerBroker <= 0) {
-      throw new IllegalArgumentException("The requested movement concurrency must be positive (Requested: "
-                                         + concurrentMovementsPerBroker.toString() + ").");
+      throw new UserRequestException("The requested movement concurrency must be positive (Requested: "
+                                     + concurrentMovementsPerBroker.toString() + ").");
     }
 
     return concurrentMovementsPerBroker;
@@ -765,15 +765,15 @@ public class ParameterUtils {
 
     String[] boundaries = partitionString.split("-");
     if (boundaries.length > 2) {
-      throw new IllegalArgumentException("The " + PARTITION_PARAM + " parameter cannot contain multiple dashes.");
+      throw new UserRequestException("The " + PARTITION_PARAM + " parameter cannot contain multiple dashes.");
     }
     return Integer.parseInt(boundaries[isUpperBound ? 1 : 0]);
   }
 
-  static Set<Integer> brokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
+  static Set<Integer> brokerIds(HttpServletRequest request, boolean isOptional) throws UnsupportedEncodingException {
     Set<Integer> brokerIds = parseParamToIntegerSet(request, BROKER_ID_PARAM);
-    if (brokerIds.isEmpty()) {
-      throw new IllegalArgumentException("Target broker ID is not provided.");
+    if (!isOptional && brokerIds.isEmpty()) {
+      throw new UserRequestException("Target broker ID is not provided.");
     }
     return Collections.unmodifiableSet(brokerIds);
   }
@@ -923,7 +923,7 @@ public class ParameterUtils {
   static short replicationFactor(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_FACTOR_PARAM);
     if (parameterString == null) {
-      throw new IllegalArgumentException("Topic's replication factor is not specified.");
+      throw new UserRequestException("Topic's replication factor is not specified.");
     }
     return Short.parseShort(request.getParameter(parameterString));
   }
