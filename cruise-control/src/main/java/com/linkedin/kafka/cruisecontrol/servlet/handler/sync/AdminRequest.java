@@ -93,7 +93,7 @@ public class AdminRequest extends AbstractSyncRequest {
     return new AdminResult(selfHealingBefore,
                            selfHealingAfter,
                            ongoingConcurrencyChangeRequest.isEmpty() ? null : ongoingConcurrencyChangeRequest,
-                           dropRecentBrokersRequest,
+                           dropRecentBrokersRequest.isEmpty() ? null : dropRecentBrokersRequest,
                            _kafkaCruiseControl.config());
   }
 
