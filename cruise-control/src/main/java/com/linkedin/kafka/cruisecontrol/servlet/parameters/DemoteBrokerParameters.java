@@ -49,7 +49,7 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _brokerIds = ParameterUtils.brokerIds(_request);
+    _brokerIds = ParameterUtils.brokerIds(_request, false);
     _dryRun = ParameterUtils.getDryRun(_request);
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
