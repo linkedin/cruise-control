@@ -23,7 +23,7 @@ import org.apache.kafka.common.protocol.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.getLogDirResponseTimeoutMs;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 import static org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
 
@@ -54,10 +54,13 @@ public class ExecutorAdminUtils {
     Map<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> logDirsByReplicas = adminClient.describeReplicaLogDirs(replicasToCheck).values();
     for (Map.Entry<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> entry : logDirsByReplicas.entrySet()) {
       try {
-        ReplicaLogDirInfo info = entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        LOG.info("Trying to get logdir info with timeout {}ms", getLogDirResponseTimeoutMs());
+        ReplicaLogDirInfo info = entry.getValue().get(getLogDirResponseTimeoutMs(), TimeUnit.MILLISECONDS);
         logdirInfoByTask.put(taskByReplica.get(entry.getKey()), info);
-      } catch (InterruptedException | ExecutionException | TimeoutException e) {
+      } catch (InterruptedException | ExecutionException e) {
         LOG.warn("Encounter exception {} when fetching logdir information for replica {}", e.getMessage(), entry.getKey());
+      } catch (TimeoutException e) {
+        LOG.warn("Encounter exception {} when fetching logdir information for replica {}, timeout is set to {}ms", e.getMessage(), entry.getKey(), getLogDirResponseTimeoutMs());
       }
     }
     return logdirInfoByTask;
@@ -82,7 +85,7 @@ public class ExecutorAdminUtils {
     });
     for (Map.Entry<TopicPartitionReplica, KafkaFuture<Void>> entry: adminClient.alterReplicaLogDirs(replicaAssignment).values().entrySet()) {
       try {
-        entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        entry.getValue().get(getLogDirResponseTimeoutMs(), TimeUnit.MILLISECONDS);
       } catch (InterruptedException | ExecutionException | TimeoutException |
                LogDirNotFoundException | KafkaStorageException | ReplicaNotAvailableException e) {
         LOG.warn("Encounter exception {} when trying to execute task {}, mark task dead.", e.getMessage(), replicaToTask.get(entry.getKey()));
@@ -102,7 +105,7 @@ public class ExecutorAdminUtils {
     Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId = adminClient.describeLogDirs(brokersToCheck).values();
     for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
       try {
-        Map<String, LogDirInfo> logInfos = entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        Map<String, LogDirInfo> logInfos = entry.getValue().get(getLogDirResponseTimeoutMs(), TimeUnit.MILLISECONDS);
         for (LogDirInfo info : logInfos.values()) {
           if (info.error == Errors.NONE) {
             if (info.replicaInfos.values().stream().anyMatch(i -> i.isFuture)) {

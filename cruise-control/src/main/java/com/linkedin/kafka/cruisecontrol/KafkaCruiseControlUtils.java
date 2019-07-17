@@ -47,6 +47,18 @@ public class KafkaCruiseControlUtils {
 
   }
 
+  public static long getLogDirResponseTimeoutMs() {
+    if(System.getenv("LOGDIR_RESPONSE_TIMEOUT_MS") != null) {
+      try {
+        return Long.parseLong(System.getenv("LOGDIR_RESPONSE_TIMEOUT_MS"));
+      } catch(NumberFormatException e) {
+        return LOGDIR_RESPONSE_TIMEOUT_MS;
+      }
+    } else {
+      return LOGDIR_RESPONSE_TIMEOUT_MS;
+    }
+  }
+
   public static String currentUtcDate() {
     Date date = new Date(System.currentTimeMillis());
     DateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
