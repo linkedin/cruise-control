@@ -209,15 +209,19 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    String numSamplersString = (String) configs.get(KafkaCruiseControlConfig.NUM_METRIC_FETCHERS_CONFIG);
-    if (numSamplersString != null && Integer.parseInt(numSamplersString) != 1) {
+    int numSamplers = (Integer) configs.get(KafkaCruiseControlConfig.NUM_METRIC_FETCHERS_CONFIG);
+    if (numSamplers != 1) {
       throw new ConfigException("CruiseControlMetricsReporterSampler is not thread safe. Please change " +
                                     KafkaCruiseControlConfig.NUM_METRIC_FETCHERS_CONFIG + " to 1");
     }
 
     String bootstrapServers = (String) configs.get(METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS);
     if (bootstrapServers == null) {
-      bootstrapServers = (String) configs.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG);
+      bootstrapServers = configs.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
+      // Trim the brackets in List's String representation.
+      if (bootstrapServers.length() > 2) {
+        bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
+      }
     }
     _metricReporterTopic = (String) configs.get(METRIC_REPORTER_TOPIC);
     if (_metricReporterTopic == null) {
@@ -230,10 +234,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
     if (groupId == null) {
       groupId = DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID + "-" + RANDOM.nextLong();
     }
-    String reconnectBackoffMs = (String) configs.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG);
-    if (reconnectBackoffMs == null) {
-      reconnectBackoffMs = String.valueOf(DEFAULT_RECONNECT_BACKOFF_MS);
-    }
+    String reconnectBackoffMs = configs.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG).toString();
 
     CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(configs, false);
     _acceptableMetricRecordProduceDelayMs = ACCEPTABLE_NETWORK_DELAY_MS +

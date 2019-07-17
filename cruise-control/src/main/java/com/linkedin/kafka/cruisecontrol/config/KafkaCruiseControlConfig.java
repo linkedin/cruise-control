@@ -1403,11 +1403,24 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
         .withClientSaslSupport();
   }
 
+  public Map<String, Object> mergedConfigValues() {
+    Map<String, Object> conf = originals();
+
+    // Use parsed non-null value to overwrite originals.
+    // This will keep default values and also keep values that are not defined under ConfigDef.
+    values().forEach((k, v) -> {
+      if (v != null) {
+        conf.put(k, v);
+      }
+    });
+    return conf;
+  }
+
   @Override
   public <T> T getConfiguredInstance(String key, Class<T> t) {
     T o = super.getConfiguredInstance(key, t);
     if (o instanceof CruiseControlConfigurable) {
-      ((CruiseControlConfigurable) o).configure(originals());
+      ((CruiseControlConfigurable) o).configure(mergedConfigValues());
     }
     return o;
   }
@@ -1417,7 +1430,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     List<T> objects = super.getConfiguredInstances(key, t);
     for (T o : objects) {
       if (o instanceof CruiseControlConfigurable) {
-        ((CruiseControlConfigurable) o).configure(originals());
+        ((CruiseControlConfigurable) o).configure(mergedConfigValues());
       }
     }
     return objects;
@@ -1426,7 +1439,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   @Override
   public <T> List<T> getConfiguredInstances(String key, Class<T> t, Map<String, Object> configOverrides) {
     List<T> objects = super.getConfiguredInstances(key, t, configOverrides);
-    Map<String, Object> configPairs = originals();
+    Map<String, Object> configPairs = mergedConfigValues();
     configPairs.putAll(configOverrides);
     for (T o : objects) {
       if (o instanceof CruiseControlConfigurable) {
