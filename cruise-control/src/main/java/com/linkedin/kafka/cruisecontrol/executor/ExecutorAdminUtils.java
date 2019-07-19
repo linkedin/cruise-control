@@ -60,7 +60,8 @@ public class ExecutorAdminUtils {
       } catch (InterruptedException | ExecutionException e) {
         LOG.warn("Encounter exception {} when fetching logdir information for replica {}", e.getMessage(), entry.getKey());
       } catch (TimeoutException e) {
-        LOG.warn("Encounter exception {} when fetching logdir information for replica {}, timeout is set to {}ms", e.getMessage(), entry.getKey(), getLogDirResponseTimeoutMs());
+        LOG.warn("Encounter exception {} when fetching logdir information for replica {}, timeout is set to {}ms",
+                e.getMessage(), entry.getKey(), getLogDirResponseTimeoutMs());
       }
     }
     return logdirInfoByTask;
