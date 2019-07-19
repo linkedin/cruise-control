@@ -63,10 +63,10 @@ public class KafkaCruiseControlUtils {
   }
 
   public static int getZkSessionTimeout() {
-    if(System.getenv("ZK_SESSION_TIMEOUT") != null) {
+    if (System.getenv("ZK_SESSION_TIMEOUT") != null) {
       try {
         return Integer.parseInt(System.getenv("ZK_SESSION_TIMEOUT"));
-      } catch(NumberFormatException e) {
+      } catch (NumberFormatException e) {
         return ZK_SESSION_TIMEOUT;
       }
     } else {
@@ -75,10 +75,10 @@ public class KafkaCruiseControlUtils {
   }
 
   public static int getZkConnectionTimeout() {
-    if(System.getenv("ZK_CONNECTION_TIMEOUT") != null) {
+    if (System.getenv("ZK_CONNECTION_TIMEOUT") != null) {
       try {
         return Integer.parseInt(System.getenv("ZK_CONNECTION_TIMEOUT"));
-      } catch(NumberFormatException e) {
+      } catch (NumberFormatException e) {
         return ZK_CONNECTION_TIMEOUT;
       }
     } else {
@@ -87,10 +87,10 @@ public class KafkaCruiseControlUtils {
   }
 
   public static long getKafkaZkClientCloseTimeoutMs() {
-    if(System.getenv("KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS") != null) {
+    if (System.getenv("KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS") != null) {
       try {
         return Long.parseLong(System.getenv("KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS"));
-      } catch(NumberFormatException e) {
+      } catch (NumberFormatException e) {
         return KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS;
       }
     } else {
@@ -99,10 +99,10 @@ public class KafkaCruiseControlUtils {
   }
 
   public static long getAdminClientCloseTimeoutMs() {
-    if(System.getenv("ADMIN_CLIENT_CLOSE_TIMEOUT_MS") != null) {
+    if (System.getenv("ADMIN_CLIENT_CLOSE_TIMEOUT_MS") != null) {
       try {
         return Long.parseLong(System.getenv("ADMIN_CLIENT_CLOSE_TIMEOUT_MS"));
-      } catch(NumberFormatException e) {
+      } catch (NumberFormatException e) {
         return ADMIN_CLIENT_CLOSE_TIMEOUT_MS;
       }
     } else {
@@ -111,10 +111,10 @@ public class KafkaCruiseControlUtils {
   }
 
   public static long getLogDirResponseTimeoutMs() {
-    if(System.getenv("LOGDIR_RESPONSE_TIMEOUT_MS") != null) {
+    if (System.getenv("LOGDIR_RESPONSE_TIMEOUT_MS") != null) {
       try {
         return Long.parseLong(System.getenv("LOGDIR_RESPONSE_TIMEOUT_MS"));
-      } catch(NumberFormatException e) {
+      } catch (NumberFormatException e) {
         return LOGDIR_RESPONSE_TIMEOUT_MS;
       }
     } else {
