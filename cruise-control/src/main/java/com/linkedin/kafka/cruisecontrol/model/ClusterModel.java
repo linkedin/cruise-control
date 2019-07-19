@@ -1048,33 +1048,33 @@ public class ClusterModel implements Serializable {
       int brokerId = entry.getKey();
       Load load = entry.getValue();
       if (load.numWindows() != expectedNumWindows && broker(brokerId).replicas().size() != 0) {
-        errorMsgAndNumWindows.put("Leadership(" + brokerId + ")", load.numWindows());
+        errorMsgAndNumWindows.put(String.format("Leadership(%d)", brokerId), load.numWindows());
       }
     }
 
     // Check rack loads.
     for (Rack rack : _racksById.values()) {
       if (rack.load().numWindows() != expectedNumWindows && rack.replicas().size() != 0) {
-        errorMsgAndNumWindows.put("Rack(id:" + rack.id() + ")", rack.load().numWindows());
+        errorMsgAndNumWindows.put(String.format("Rack(%s)", rack.id()), rack.load().numWindows());
       }
 
       // Check the host load.
       for (Host host : rack.hosts()) {
         if (host.load().numWindows() != expectedNumWindows && host.replicas().size() != 0) {
-          errorMsgAndNumWindows.put("Host(id:" + host.name() + ")", host.load().numWindows());
+          errorMsgAndNumWindows.put(String.format("Host(%s)", host.name()), host.load().numWindows());
         }
 
         // Check broker loads.
         for (Broker broker : rack.brokers()) {
           if (broker.load().numWindows() != expectedNumWindows && broker.replicas().size() != 0) {
-            errorMsgAndNumWindows.put("Broker(id:" + broker.id() + ")", broker.load().numWindows());
+            errorMsgAndNumWindows.put(String.format("Broker(%d)", broker.id()), broker.load().numWindows());
           }
 
           // Check replica loads.
           for (Replica replica : broker.replicas()) {
             if (replica.load().numWindows() != expectedNumWindows) {
-              errorMsgAndNumWindows.put("Replica(id:" + replica.topicPartition() + "-" + broker.id() + ")",
-                                         replica.load().numWindows());
+              errorMsgAndNumWindows.put(String.format("Replica(%s-%d)", replica.topicPartition(), broker.id()),
+                                        replica.load().numWindows());
             }
           }
         }
@@ -1086,8 +1086,9 @@ public class ClusterModel implements Serializable {
     }
 
     if (exceptionMsg.length() > 0) {
-      throw new IllegalArgumentException("Loads must have all have " + expectedNumWindows + " windows. Following "
-                                         + "loads violate this constraint with specified number of windows: " + exceptionMsg);
+      throw new IllegalArgumentException(String.format("Loads must have all have %d windows. Following loads violate this "
+                                                       + "constraint with specified number of windows: %s",
+                                                       expectedNumWindows, exceptionMsg));
     }
     // SANITY CHECK #2: Sum of loads in the cluster / rack / broker / replica must be consistent with each other.
     String prologueErrorMsg = "Inconsistent load distribution.";
@@ -1099,34 +1100,34 @@ public class ClusterModel implements Serializable {
         for (Replica replica : broker.replicas()) {
           sumOfReplicaUtilization += replica.load().expectedUtilizationFor(resource);
         }
-        if (AnalyzerUtils.compare(sumOfReplicaUtilization, broker.load().expectedUtilizationFor(resource), resource) != 0) {
-          throw new IllegalArgumentException(prologueErrorMsg + " Broker utilization for " + resource + " is different "
-                                             + "from the total replica utilization in the broker with id: " + broker.id()
-                                             + ". Sum of the replica utilization: " + sumOfReplicaUtilization
-                                             + ", broker utilization: " + broker.load().expectedUtilizationFor(resource));
+        double brokerUtilization = broker.load().expectedUtilizationFor(resource);
+        if (AnalyzerUtils.compare(sumOfReplicaUtilization, brokerUtilization, resource) != 0) {
+          throw new IllegalArgumentException(String.format("%s Broker utilization for %s is different from the total replica "
+                                                           + "utilization in the broker with id: %d. Sum of the replica utilization: %f, "
+                                                           + "broker utilization: %f", prologueErrorMsg, resource, broker.id(),
+                                                           sumOfReplicaUtilization, brokerUtilization));
         }
       }
     }
 
     // Check equality of sum of the broker load to their rack load for each resource.
-    Map<Resource, Double> sumOfRackUtilizationByResource = new HashMap<>();
+    Map<Resource, Double> sumOfRackUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
     for (Rack rack : _racksById.values()) {
-      Map<Resource, Double> sumOfHostUtilizationByResource = new HashMap<>();
+      Map<Resource, Double> sumOfHostUtilizationByResource = new HashMap<>(Resource.cachedValues().size());
       for (Host host : rack.hosts()) {
         for (Resource resource : Resource.cachedValues()) {
-          sumOfHostUtilizationByResource.putIfAbsent(resource, 0.0);
           double sumOfBrokerUtilization = 0.0;
           for (Broker broker : host.brokers()) {
             sumOfBrokerUtilization += broker.load().expectedUtilizationFor(resource);
           }
-          Double hostUtilization = host.load().expectedUtilizationFor(resource);
+          double hostUtilization = host.load().expectedUtilizationFor(resource);
           if (AnalyzerUtils.compare(sumOfBrokerUtilization, hostUtilization, resource) != 0) {
-            throw new IllegalArgumentException(prologueErrorMsg + " Host utilization for " + resource + " is different "
-                                               + "from the total broker utilization in the host : " + host.name()
-                                               + ". Sum of the brokers: " + sumOfBrokerUtilization
-                                               + ", host utilization: " + hostUtilization);
+            throw new IllegalArgumentException(String.format("%s Host utilization for %s is different from the total broker "
+                                                             + "utilization in the host : %s. Sum of the broker utilization: %f, "
+                                                             + "host utilization: %f", prologueErrorMsg, resource, host.name(),
+                                                             sumOfBrokerUtilization, hostUtilization));
           }
-          sumOfHostUtilizationByResource.put(resource, sumOfHostUtilizationByResource.get(resource) + hostUtilization);
+          sumOfHostUtilizationByResource.compute(resource, (k, v) -> (v == null ? 0 : v) + hostUtilization);
         }
       }
 
@@ -1134,15 +1135,14 @@ public class ClusterModel implements Serializable {
       for (Map.Entry<Resource, Double> entry : sumOfHostUtilizationByResource.entrySet()) {
         Resource resource = entry.getKey();
         double sumOfHostsUtil = entry.getValue();
-        sumOfRackUtilizationByResource.putIfAbsent(resource, 0.0);
         double rackUtilization = rack.load().expectedUtilizationFor(resource);
         if (AnalyzerUtils.compare(rackUtilization, sumOfHostsUtil, resource) != 0) {
-          throw new IllegalArgumentException(prologueErrorMsg + " Rack utilization for " + resource + " is different "
-                                             + "from the total host utilization in rack" + rack.id()
-                                             + " . Sum of the hosts: " + sumOfHostsUtil + ", rack utilization: "
-                                             + rack.load().expectedUtilizationFor(resource));
+          throw new IllegalArgumentException(String.format("%s Rack utilization for %s is different from the total host "
+                                                           + "utilization in rack : %s. Sum of the host utilization: %f, "
+                                                           + "rack utilization: %f", prologueErrorMsg, resource, rack.id(),
+                                                           sumOfHostsUtil, rackUtilization));
         }
-        sumOfRackUtilizationByResource.put(resource, sumOfRackUtilizationByResource.get(resource) + sumOfHostUtilizationByResource.get(resource));
+        sumOfRackUtilizationByResource.compute(resource, (k, v) -> (v == null ? 0 : v) + sumOfHostsUtil);
       }
     }
 
@@ -1150,10 +1150,12 @@ public class ClusterModel implements Serializable {
     for (Map.Entry<Resource, Double> entry : sumOfRackUtilizationByResource.entrySet()) {
       Resource resource = entry.getKey();
       double sumOfRackUtil = entry.getValue();
+      double clusterUtilization = _load.expectedUtilizationFor(resource);
       if (AnalyzerUtils.compare(_load.expectedUtilizationFor(resource), sumOfRackUtil, resource) != 0) {
-        throw new IllegalArgumentException(prologueErrorMsg + " Cluster utilization for " + resource + " is different "
-                                           + "from the total rack utilization in the cluster. Sum of the racks: "
-                                           + sumOfRackUtil + ", cluster utilization: " + _load.expectedUtilizationFor(resource));
+        throw new IllegalArgumentException(String.format("%s Cluster utilization for %s is different from the total rack "
+                                                         + "utilization in the cluster. Sum of the rack utilization: %f, "
+                                                         + "cluster utilization: %f", prologueErrorMsg, resource,
+                                                         sumOfRackUtil, clusterUtilization));
       }
     }
 
@@ -1164,14 +1166,13 @@ public class ClusterModel implements Serializable {
         sumOfLeaderOfReplicaUtilization +=
             partition(replica.topicPartition()).leader().load().expectedUtilizationFor(Resource.NW_OUT);
       }
-      if (AnalyzerUtils.compare(sumOfLeaderOfReplicaUtilization,
-                                _potentialLeadershipLoadByBrokerId.get(broker.id()).expectedUtilizationFor(Resource.NW_OUT),
-                                Resource.NW_OUT) != 0) {
-        throw new IllegalArgumentException(prologueErrorMsg + " Leadership utilization for " + Resource.NW_OUT
-                                           + " is different from the total utilization leader of replicas in the broker"
-                                           + " with id: " + broker.id() + " Expected: " + sumOfLeaderOfReplicaUtilization
-                                           + " Received: " + _potentialLeadershipLoadByBrokerId
-                                               .get(broker.id()).expectedUtilizationFor(Resource.NW_OUT) + ".");
+      double potentialLeadershipLoad =
+          _potentialLeadershipLoadByBrokerId.get(broker.id()).expectedUtilizationFor(Resource.NW_OUT);
+      if (AnalyzerUtils.compare(sumOfLeaderOfReplicaUtilization, potentialLeadershipLoad, Resource.NW_OUT) != 0) {
+        throw new IllegalArgumentException(String.format("%s Leadership utilization for %s is different from the total utilization "
+                                                         + "leader of replicas in the broker with id: %d. Expected: %f Received: %f",
+                                                         prologueErrorMsg, Resource.NW_OUT, broker.id(), sumOfLeaderOfReplicaUtilization,
+                                                         potentialLeadershipLoad));
       }
 
       for (Resource resource : Resource.cachedValues()) {
@@ -1181,8 +1182,8 @@ public class ClusterModel implements Serializable {
         double leaderSum = broker.leaderReplicas().stream().mapToDouble(r -> r.load().expectedUtilizationFor(resource)).sum();
         double cachedLoad = broker.leadershipLoadForNwResources().expectedUtilizationFor(resource);
         if (AnalyzerUtils.compare(leaderSum, cachedLoad, resource) != 0) {
-          throw new IllegalArgumentException(prologueErrorMsg + " Leadership load for resource " + resource + " is "
-                                             + cachedLoad + " but recomputed sum is " + leaderSum + ".");
+          throw new IllegalArgumentException(String.format("%s Leadership load for resource %s is %f but recomputed sum is %f",
+                                                           prologueErrorMsg, resource, cachedLoad, leaderSum));
         }
       }
     }

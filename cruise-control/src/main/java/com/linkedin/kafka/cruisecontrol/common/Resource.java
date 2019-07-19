@@ -20,7 +20,11 @@ public enum Resource {
   NW_OUT("networkOutbound", 2, true, false, 10),
   DISK("disk", 3, false, true, 100);
 
-  private static final double EPSILON_PERCENT = 1E-3;
+  // EPSILON_PERCENT defines the acceptable nuance when comparing the utilization of the resource.
+  // This nuance is generated due to precision loss when summing up float type utilization value.
+  // In stress test we find that for cluster of around 800,000 replicas, the summed up nuance can be
+  // more than 0.1% of sum value.
+  private static final double EPSILON_PERCENT = 0.0008;
   private final String _resource;
   private final int _id;
   private final boolean _isHostResource;
@@ -62,7 +66,7 @@ public enum Resource {
   }
 
   public double epsilon(double value1, double value2) {
-    return Math.max(_epsilon, EPSILON_PERCENT * (value1 + value2) / 2);
+    return Math.max(_epsilon, EPSILON_PERCENT * (value1 + value2));
   }
 
   @Override
