@@ -15,6 +15,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import kafka.log.Log;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -38,7 +40,7 @@ public class KafkaCruiseControlUtils {
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
   public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
-  public static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
+  private static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";

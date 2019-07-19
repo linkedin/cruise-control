@@ -70,7 +70,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.getLogDirResponseTimeoutMs;
 import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEAD;
 import static org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
 import static org.apache.kafka.common.requests.DescribeLogDirsResponse.ReplicaInfo;
@@ -565,7 +565,7 @@ public class LoadMonitor {
     for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
       Integer brokerId =  entry.getKey();
       try {
-        entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
+        entry.getValue().get(getLogDirResponseTimeoutMs(), TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
           if (info.error == Errors.NONE) {
             for (Map.Entry<TopicPartition, ReplicaInfo> e : info.replicaInfos.entrySet()) {
               if (!e.getValue().isFuture) {

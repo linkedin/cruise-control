@@ -32,7 +32,7 @@ import org.apache.kafka.common.TopicPartitionReplica;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.getLogDirResponseTimeoutMs;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 
@@ -197,7 +197,7 @@ public class ExecutionTaskPlanner {
           _adminClient.describeReplicaLogDirs(replicasToCheckLogdir).values();
       for (Map.Entry<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> entry : logDirsByReplicas.entrySet()) {
         try {
-          ReplicaLogDirInfo info = entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+          ReplicaLogDirInfo info = entry.getValue().get(getLogDirResponseTimeoutMs(), TimeUnit.MILLISECONDS);
           currentLogdirByReplica.put(entry.getKey(), info.getCurrentReplicaLogDir());
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
           LOG.warn("Encounter exception {} when fetching logdir information for replica {}.", e.getMessage(), entry.getKey());
