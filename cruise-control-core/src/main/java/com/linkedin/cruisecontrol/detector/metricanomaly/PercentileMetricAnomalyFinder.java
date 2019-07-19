@@ -59,7 +59,7 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
    * @return Anomaly if an anomaly is detected, null otherwise.
    */
   private MetricAnomaly<E> getAnomalyForMetric(E entity,
-                                               Integer metricId,
+                                               Short metricId,
                                                ValuesAndExtrapolations history,
                                                ValuesAndExtrapolations current) {
     MetricValues historyMetricValues = history.metricValues().valuesFor(metricId);
@@ -101,7 +101,7 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
    * @return a string that describes the metric anomaly.
    */
   protected String description(E entity,
-                               Integer metricId,
+                               Short metricId,
                                Long currentWindow,
                                List<Long> historyWindows,
                                double currentMetricValue,
@@ -119,9 +119,9 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
   /**
    * Get the metric name from metric id.
    */
-  protected abstract String toMetricName(Integer metricId);
+  protected abstract String toMetricName(Short metricId);
 
-  protected abstract MetricAnomaly<E> createMetricAnomaly(String description, E entity, Integer metricId, List<Long> windows);
+  protected abstract MetricAnomaly<E> createMetricAnomaly(String description, E entity, Short metricId, List<Long> windows);
 
   /**
    * Get a collection of metric anomalies for entities if an anomaly in their current aggregated metrics
@@ -155,7 +155,7 @@ public abstract class PercentileMetricAnomalyFinder<E extends Entity> implements
       ValuesAndExtrapolations current = currentMetricsByEntity.get(entity);
       List<Long> windows = current.windows();
 
-      for (Integer metricId : entry.getValue().metricValues().metricIds()) {
+      for (Short metricId : entry.getValue().metricValues().metricIds()) {
         // Skip the metrics that are not interested.
         if (_interestedMetrics.contains(toMetricName(metricId))) {
           MetricAnomaly<E> metricAnomaly = getAnomalyForMetric(entity, metricId, history, current);

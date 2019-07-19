@@ -64,6 +64,15 @@ public class Partition implements Serializable {
   }
 
   /**
+   * Delete a replica from partition.
+   *
+   * @param brokerId Id of broker which host the replica to be deleted.
+   */
+  void deleteReplica(int brokerId) {
+    _replicas.removeIf(r -> r.broker().id() == brokerId);
+  }
+
+  /**
    * @return The replica list.
    */
   public List<Replica> replicas() {

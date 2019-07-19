@@ -28,6 +28,7 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;exclude_recently_removed_brokers=[true/false]&amp;replica_movement_strategies=[strategy1,strategy2...]
  *    &amp;ignore_proposal_cache=[true/false]&amp;destination_broker_ids=[id1,id2...]&amp;kafka_assigner=[true/false]
  *    &amp;rebalance_disk=[true/false]&amp;review_id=[id]
+ *    &amp;replication_throttle=[bytes_per_second]
  * </pre>
  */
 public class RebalanceParameters extends GoalBasedOptimizationParameters {
@@ -39,6 +40,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private boolean _ignoreProposalCache;
   private Set<Integer> _destinationBrokerIds;
+  private Long _replicationThrottle;
   private Integer _reviewId;
   private boolean _isRebalanceDiskMode;
 
@@ -58,6 +60,7 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
     _ignoreProposalCache = ParameterUtils.ignoreProposalCache(_request);
     _destinationBrokerIds = ParameterUtils.destinationBrokerIds(_request);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
     _isRebalanceDiskMode =  ParameterUtils.isRebalanceDiskMode(_request);
   }
@@ -105,5 +108,9 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
 
   public boolean isRebalanceDiskMode() {
     return _isRebalanceDiskMode;
+  }
+
+  public Long replicationThrottle() {
+    return _replicationThrottle;
   }
 }

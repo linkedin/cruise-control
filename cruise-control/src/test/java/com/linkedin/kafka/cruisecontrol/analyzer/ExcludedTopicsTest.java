@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.analyzer;
 
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.CpuUsageDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.DiskCapacityGoal;
@@ -23,15 +22,12 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.common.DeterministicCluster;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.common.TestConstants;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
-import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -40,7 +36,6 @@ import java.util.HashSet;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import java.util.Set;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Rule;
@@ -49,6 +44,7 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
+import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goal;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.T1;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.T2;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.unbalanced;
@@ -96,11 +92,23 @@ public class ExcludedTopicsTest {
     // Test: Without excluded topics, rack aware unsatisfiable cluster, one dead broker (Exception expected)
     p.add(params(7, RackAwareGoal.class, noExclusion, OptimizationFailureException.class, DeterministicCluster.rackAwareUnsatisfiable(), deadBroker0, null));
 
+    // ============ReplicaCapacityGoal============
+    // Test: With single excluded topic, satisfiable cluster, no dead brokers (No exception, No proposal
+    // for excluded topic, Expected to look optimized)
+    p.add(params(0, ReplicaCapacityGoal.class, excludeT1, null, unbalanced(), noDeadBroker, true));
+    // Test: With single excluded topic, satisfiable cluster, one dead brokers (No exception, No proposal
+    // for excluded topic, Expected to look optimized)
+    p.add(params(1, ReplicaCapacityGoal.class, excludeT1, null, unbalanced(), deadBroker0, true));
+    // Test: With all topics excluded, no dead brokers, not satisfiable (No exception, No proposal
+    // for excluded topic, Expected to look optimized)
+    p.add(params(2, ReplicaCapacityGoal.class, excludeAllTopics, null, unbalanced(), noDeadBroker, true));
+    // Test: With all topics excluded, one dead brokers, not satisfiable, no exception.
+    p.add(params(3, ReplicaCapacityGoal.class, excludeAllTopics, null, unbalanced(), deadBroker0, true));
+
     for (Class<? extends Goal> goalClass : Arrays.asList(CpuCapacityGoal.class,
                                                          DiskCapacityGoal.class,
                                                          NetworkInboundCapacityGoal.class,
-                                                         NetworkOutboundCapacityGoal.class,
-                                                         ReplicaCapacityGoal.class)) {
+                                                         NetworkOutboundCapacityGoal.class)) {
       // Test: With single excluded topic, satisfiable cluster, no dead brokers (No exception, No proposal
       // for excluded topic, Expected to look optimized)
       p.add(params(0, goalClass, excludeT1, null, unbalanced(), noDeadBroker, true));
@@ -307,22 +315,5 @@ public class ExcludedTopicsTest {
                                  Boolean expectedToOptimize) throws Exception {
     deadBrokers.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
     return new Object[]{tid, goal(goalClass), excludedTopics, exceptionClass, clusterModel, expectedToOptimize};
-  }
-
-  private static Goal goal(Class<? extends Goal> goalClass) throws Exception {
-    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    props.setProperty(KafkaCruiseControlConfig.MAX_REPLICAS_PER_BROKER_CONFIG, Long.toString(1L));
-    BalancingConstraint balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(props));
-    balancingConstraint.setResourceBalancePercentage(TestConstants.LOW_BALANCE_PERCENTAGE);
-    balancingConstraint.setCapacityThreshold(TestConstants.MEDIUM_CAPACITY_THRESHOLD);
-
-    try {
-      Constructor<? extends Goal> constructor = goalClass.getDeclaredConstructor(BalancingConstraint.class);
-      constructor.setAccessible(true);
-      return constructor.newInstance(balancingConstraint);
-    } catch (NoSuchMethodException badConstructor) {
-      //Try default constructor
-      return goalClass.newInstance();
-    }
   }
 }

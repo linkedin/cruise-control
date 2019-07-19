@@ -41,6 +41,8 @@ import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
 import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.APPROVED;
@@ -67,8 +69,11 @@ public class ParameterUtils {
   public static final String DATA_FROM_PARAM = "data_from";
   public static final String KAFKA_ASSIGNER_MODE_PARAM = "kafka_assigner";
   public static final String MAX_LOAD_PARAM = "max_load";
+  public static final String AVG_LOAD_PARAM = "avg_load";
   public static final String GOALS_PARAM = "goals";
   public static final String BROKER_ID_PARAM = "brokerid";
+  public static final String DROP_RECENTLY_REMOVED_BROKERS_PARAM = "drop_recently_removed_brokers";
+  public static final String DROP_RECENTLY_DEMOTED_BROKERS_PARAM = "drop_recently_demoted_brokers";
   public static final String DESTINATION_BROKER_IDS_PARAM = "destination_broker_ids";
   public static final String REVIEW_ID_PARAM = "review_id";
   public static final String REVIEW_IDS_PARAM = "review_ids";
@@ -77,6 +82,7 @@ public class ParameterUtils {
   public static final String DRY_RUN_PARAM = "dryrun";
   public static final String THROTTLE_ADDED_BROKER_PARAM = "throttle_added_broker";
   public static final String THROTTLE_REMOVED_BROKER_PARAM = "throttle_removed_broker";
+  public static final String REPLICATION_THROTTLE_PARAM = "replication_throttle";
   public static final String IGNORE_PROPOSAL_CACHE_PARAM = "ignore_proposal_cache";
   public static final String USE_READY_DEFAULT_GOALS_PARAM = "use_ready_default_goals";
   public static final String CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM = "concurrent_partition_movements_per_broker";
@@ -103,8 +109,12 @@ public class ParameterUtils {
   public static final String REBALANCE_DISK_MODE_PARAM = "rebalance_disk";
   public static final String POPULATE_DISK_INFO_PARAM = "populate_disk_info";
   public static final String BROKER_ID_AND_LOGDIRS_PARAM = "brokerid_and_logdirs";
+  public static final String REPLICATION_FACTOR_PARAM = "replication_factor";
+  public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
+  public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
   private static final int MAX_REASON_LENGTH = 50;
   private static final String DELIMITER_BETWEEN_BROKER_ID_AND_LOGDIR = "-";
+  public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
 
   private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
 
@@ -124,6 +134,8 @@ public class ParameterUtils {
 
     Set<String> load = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     load.add(TIME_PARAM);
+    load.add(START_MS_PARAM);
+    load.add(END_MS_PARAM);
     load.add(JSON_PARAM);
     load.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     load.add(POPULATE_DISK_INFO_PARAM);
@@ -136,9 +148,11 @@ public class ParameterUtils {
     partitionLoad.add(JSON_PARAM);
     partitionLoad.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
     partitionLoad.add(MAX_LOAD_PARAM);
+    partitionLoad.add(AVG_LOAD_PARAM);
     partitionLoad.add(TOPIC_PARAM);
     partitionLoad.add(PARTITION_PARAM);
     partitionLoad.add(MIN_VALID_PARTITION_RATIO_PARAM);
+    partitionLoad.add(BROKER_ID_PARAM);
 
     Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     proposals.add(VERBOSE_PARAM);
@@ -177,6 +191,7 @@ public class ParameterUtils {
     addRemoveOrFixBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
     addRemoveOrFixBroker.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
     addRemoveOrFixBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    addRemoveOrFixBroker.add(REPLICATION_THROTTLE_PARAM);
     addRemoveOrFixBroker.add(REVIEW_ID_PARAM);
 
     Set<String> addBroker = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -205,6 +220,7 @@ public class ParameterUtils {
     demoteBroker.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
     demoteBroker.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
     demoteBroker.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    demoteBroker.add(REPLICATION_THROTTLE_PARAM);
     demoteBroker.add(REVIEW_ID_PARAM);
     demoteBroker.add(BROKER_ID_AND_LOGDIRS_PARAM);
 
@@ -226,6 +242,7 @@ public class ParameterUtils {
     rebalance.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
     rebalance.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
     rebalance.add(IGNORE_PROPOSAL_CACHE_PARAM);
+    rebalance.add(REPLICATION_THROTTLE_PARAM);
     rebalance.add(REVIEW_ID_PARAM);
     rebalance.add(DESTINATION_BROKER_IDS_PARAM);
     rebalance.add(REBALANCE_DISK_MODE_PARAM);
@@ -233,6 +250,7 @@ public class ParameterUtils {
     Set<String> kafkaClusterState = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     kafkaClusterState.add(VERBOSE_PARAM);
     kafkaClusterState.add(JSON_PARAM);
+    kafkaClusterState.add(TOPIC_PARAM);
 
     Set<String> pauseSampling = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     pauseSampling.add(REASON_PARAM);
@@ -255,6 +273,7 @@ public class ParameterUtils {
     userTasks.add(ENTRIES_PARAM);
     userTasks.add(ENDPOINTS_PARAM);
     userTasks.add(TYPES_PARAM);
+    userTasks.add(FETCH_COMPLETED_TASK_PARAM);
 
     Set<String> admin = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     admin.add(JSON_PARAM);
@@ -263,6 +282,8 @@ public class ParameterUtils {
     admin.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     admin.add(CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM);
     admin.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    admin.add(DROP_RECENTLY_REMOVED_BROKERS_PARAM);
+    admin.add(DROP_RECENTLY_DEMOTED_BROKERS_PARAM);
     admin.add(REVIEW_ID_PARAM);
 
     Set<String> review = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
@@ -274,6 +295,25 @@ public class ParameterUtils {
     Set<String> reviewBoard = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     reviewBoard.add(JSON_PARAM);
     reviewBoard.add(REVIEW_IDS_PARAM);
+
+    Set<String> topicConfiguration = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    topicConfiguration.add(JSON_PARAM);
+    topicConfiguration.add(TOPIC_PARAM);
+    topicConfiguration.add(REPLICATION_FACTOR_PARAM);
+    topicConfiguration.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
+    topicConfiguration.add(DRY_RUN_PARAM);
+    topicConfiguration.add(GOALS_PARAM);
+    topicConfiguration.add(DATA_FROM_PARAM);
+    topicConfiguration.add(SKIP_HARD_GOAL_CHECK_PARAM);
+    topicConfiguration.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    topicConfiguration.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    topicConfiguration.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    topicConfiguration.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
+    topicConfiguration.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
+    topicConfiguration.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    topicConfiguration.add(REPLICATION_THROTTLE_PARAM);
+    topicConfiguration.add(VERBOSE_PARAM);
+    topicConfiguration.add(REVIEW_ID_PARAM);
 
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
@@ -294,6 +334,7 @@ public class ParameterUtils {
     validParamNames.put(ADMIN, Collections.unmodifiableSet(admin));
     validParamNames.put(REVIEW, Collections.unmodifiableSet(review));
     validParamNames.put(REVIEW_BOARD, Collections.unmodifiableSet(reviewBoard));
+    validParamNames.put(TOPIC_CONFIGURATION, Collections.unmodifiableSet(topicConfiguration));
 
     VALID_ENDPOINT_PARAM_NAMES = Collections.unmodifiableMap(validParamNames);
   }
@@ -304,14 +345,14 @@ public class ParameterUtils {
   public static EndPoint endPoint(HttpServletRequest request) {
     List<EndPoint> supportedEndpoints;
     switch (request.getMethod()) {
-      case "GET":
+      case GET_METHOD:
         supportedEndpoints = EndPoint.getEndpoint();
         break;
-      case "POST":
+      case POST_METHOD:
         supportedEndpoints = EndPoint.postEndpoint();
         break;
       default:
-        throw new IllegalArgumentException("Unsupported request method: " + request.getMethod() + ".");
+        throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
 
     String path = request.getRequestURI().toUpperCase().replace(REQUEST_URI, "");
@@ -381,6 +422,10 @@ public class ParameterUtils {
     return getBooleanParam(request, ALLOW_CAPACITY_ESTIMATION_PARAM, true);
   }
 
+  static boolean skipRackAwarenessCheck(HttpServletRequest request) {
+    return getBooleanParam(request, SKIP_RACK_AWARENESS_CHECK_PARAM, false);
+  }
+
   private static boolean excludeBrokers(HttpServletRequest request, String parameter, boolean defaultIfMissing) {
     boolean isKafkaAssignerMode = isKafkaAssignerMode(request);
     boolean excludeBrokers = getBooleanParam(request, parameter, defaultIfMissing);
@@ -416,6 +461,10 @@ public class ParameterUtils {
 
   static boolean wantMaxLoad(HttpServletRequest request) {
     return getBooleanParam(request, MAX_LOAD_PARAM, false);
+  }
+
+  static boolean wantAvgLoad(HttpServletRequest request) {
+    return getBooleanParam(request, AVG_LOAD_PARAM, false);
   }
 
   static boolean isVerbose(HttpServletRequest request) {
@@ -459,24 +508,46 @@ public class ParameterUtils {
                                   : getBooleanParam(request, THROTTLE_REMOVED_BROKER_PARAM, true);
   }
 
-  static long time(HttpServletRequest request) {
+  static Long replicationThrottle(HttpServletRequest request, KafkaCruiseControlConfig config) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_THROTTLE_PARAM);
+    Long value;
+    if (parameterString == null) {
+      value = config.getLong(KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    } else {
+      value = Long.parseLong(request.getParameter(parameterString));
+    }
+    if (value != null && value < 0) {
+      throw new IllegalArgumentException("The requested rebalance throttle must be non-negative (Requested: "
+              + value.toString() + ").");
+    }
+    return value;
+  }
+
+  static Long time(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), TIME_PARAM);
     if (parameterString == null) {
-      return System.currentTimeMillis();
+      return null;
+    }
+
+    if (caseSensitiveParameterName(request.getParameterMap(), END_MS_PARAM) != null) {
+      throw new UserRequestException(String.format("Parameter %s and parameter %s are mutually exclusive and should "
+                                                   + "not be specified in the same request.", TIME_PARAM, END_MS_PARAM));
     }
 
     String timeString = request.getParameter(parameterString);
     return timeString.toUpperCase().equals("NOW") ? System.currentTimeMillis() : Long.parseLong(timeString);
   }
 
-  static Long startMs(HttpServletRequest request) {
+  static long startMs(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), START_MS_PARAM);
-    return parameterString == null ? null : Long.valueOf(request.getParameter(parameterString));
+    return parameterString == null ? DEFAULT_START_TIME_FOR_CLUSTER_MODEL
+                                   : Long.parseLong(request.getParameter(parameterString));
   }
 
-  static Long endMs(HttpServletRequest request) {
+  static long endMs(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), END_MS_PARAM);
-    return parameterString == null ? null : Long.valueOf(request.getParameter(parameterString));
+    return parameterString == null ? System.currentTimeMillis()
+                                   : Long.parseLong(request.getParameter(parameterString));
   }
 
   static Pattern topic(HttpServletRequest request) {
@@ -491,8 +562,8 @@ public class ParameterUtils {
     } else {
       Double minValidPartitionRatio = Double.parseDouble(request.getParameter(parameterString));
       if (minValidPartitionRatio > 1.0 || minValidPartitionRatio < 0.0) {
-        throw new IllegalArgumentException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
-                                           + minValidPartitionRatio.toString() + ").");
+        throw new UserRequestException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
+                                       + minValidPartitionRatio.toString() + ").");
       }
       return minValidPartitionRatio;
     }
@@ -506,8 +577,8 @@ public class ParameterUtils {
   public static String reason(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REASON_PARAM);
     if (parameterString != null && parameterString.length() > MAX_REASON_LENGTH) {
-      throw new IllegalArgumentException(String.format("Reason cannot be longer than %d characters (attempted: %d).",
-                                                       MAX_REASON_LENGTH, parameterString.length()));
+      throw new UserRequestException(String.format("Reason cannot be longer than %d characters (attempted: %d).",
+                                                   MAX_REASON_LENGTH, parameterString.length()));
     }
     String ip = getClientIpAddress(request);
     return String.format("%s (Client: %s, Date: %s)", parameterString == null ? "No reason provided"
@@ -543,8 +614,8 @@ public class ParameterUtils {
         substates.add(CruiseControlState.SubState.valueOf(substateString.toUpperCase()));
       }
     } catch (IllegalArgumentException iae) {
-      throw new IllegalArgumentException(String.format("Unsupported substates in %s. Supported: %s",
-                                                       substatesString, CruiseControlState.SubState.cachedValues()));
+      throw new UserRequestException(String.format("Unsupported substates in %s. Supported: %s",
+                                                   substatesString, CruiseControlState.SubState.cachedValues()));
     }
 
     return Collections.unmodifiableSet(substates);
@@ -564,8 +635,8 @@ public class ParameterUtils {
         anomalyTypes.add(AnomalyType.valueOf(shfString.toUpperCase()));
       }
     } catch (IllegalArgumentException iae) {
-      throw new IllegalArgumentException(String.format("Unsupported anomaly types in %s. Supported: %s",
-                                                       selfHealingForString, AnomalyType.cachedValues()));
+      throw new UserRequestException(String.format("Unsupported anomaly types in %s. Supported: %s",
+                                                   selfHealingForString, AnomalyType.cachedValues()));
     }
 
     return Collections.unmodifiableSet(anomalyTypes);
@@ -627,7 +698,7 @@ public class ParameterUtils {
       if (supportedStrategiesByName.containsKey(strategyName)) {
         strategy = strategy == null ? supportedStrategiesByName.get(strategyName) : strategy.chain(supportedStrategiesByName.get(strategyName));
       } else {
-        throw new IllegalArgumentException("Strategy " + strategyName + " is not supported. Supported: " + supportedStrategiesByName.keySet());
+        throw new UserRequestException("Strategy " + strategyName + " is not supported. Supported: " + supportedStrategiesByName.keySet());
       }
     }
     // Chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned strategy can always
@@ -668,10 +739,24 @@ public class ParameterUtils {
   }
 
   /**
+   * @param values Integer values
+   * @return A set of negative integer values contained in the given set.
+   */
+  private static Set<Integer> getNegatives(Set<Integer> values) {
+    return values.stream().filter(v -> v < 0).collect(Collectors.toCollection(() -> new HashSet<>(values.size())));
+  }
+
+  /**
    * Default: An empty set.
    */
   public static Set<Integer> reviewIds(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<Integer> reviewIds = parseParamToIntegerSet(request, REVIEW_IDS_PARAM);
+    Set<Integer> negativeReviewIds = getNegatives(reviewIds);
+    if (!negativeReviewIds.isEmpty()) {
+      throw new UserRequestException(String.format("%s cannot contain negative values (requested: %s).",
+                                                   REVIEW_IDS_PARAM, negativeReviewIds));
+    }
+
     return Collections.unmodifiableSet(reviewIds);
   }
 
@@ -693,6 +778,8 @@ public class ParameterUtils {
       throw new UserRequestException(
           String.format("%s parameter must be mutually exclusive with other parameters (Request parameters: %s).",
                         REVIEW_ID_PARAM, request.getParameterMap()));
+    } else if (reviewId < 0) {
+      throw new UserRequestException(String.format("%s cannot be negative (requested: %d).", REVIEW_ID_PARAM, reviewId));
     }
 
     return reviewId;
@@ -725,8 +812,8 @@ public class ParameterUtils {
     }
     Integer concurrentMovementsPerBroker = Integer.parseInt(request.getParameter(parameterString));
     if (concurrentMovementsPerBroker <= 0) {
-      throw new IllegalArgumentException("The requested movement concurrency must be positive (Requested: "
-                                         + concurrentMovementsPerBroker.toString() + ").");
+      throw new UserRequestException("The requested movement concurrency must be positive (Requested: "
+                                     + concurrentMovementsPerBroker.toString() + ").");
     }
 
     return concurrentMovementsPerBroker;
@@ -752,14 +839,14 @@ public class ParameterUtils {
 
     String[] boundaries = partitionString.split("-");
     if (boundaries.length > 2) {
-      throw new IllegalArgumentException("The " + PARTITION_PARAM + " parameter cannot contain multiple dashes.");
+      throw new UserRequestException("The " + PARTITION_PARAM + " parameter cannot contain multiple dashes.");
     }
     return Integer.parseInt(boundaries[isUpperBound ? 1 : 0]);
   }
 
-  static Set<Integer> brokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
+  static Set<Integer> brokerIds(HttpServletRequest request, boolean isOptional) throws UnsupportedEncodingException {
     Set<Integer> brokerIds = parseParamToIntegerSet(request, BROKER_ID_PARAM);
-    if (brokerIds.isEmpty()) {
+    if (!isOptional && brokerIds.isEmpty()) {
       EndPoint endpoint = endPoint(request);
       if (endpoint == DEMOTE_BROKER) {
         // If it is a demote_broker request, either target broker or target disk should be specified in request.
@@ -771,6 +858,14 @@ public class ParameterUtils {
       }
     }
     return Collections.unmodifiableSet(brokerIds);
+  }
+
+  static Set<Integer> dropRecentlyRemovedBrokers(HttpServletRequest request) throws UnsupportedEncodingException {
+    return Collections.unmodifiableSet(parseParamToIntegerSet(request, DROP_RECENTLY_REMOVED_BROKERS_PARAM));
+  }
+
+  static Set<Integer> dropRecentlyDemotedBrokers(HttpServletRequest request) throws UnsupportedEncodingException {
+    return Collections.unmodifiableSet(parseParamToIntegerSet(request, DROP_RECENTLY_DEMOTED_BROKERS_PARAM));
   }
 
   /**
@@ -869,7 +964,9 @@ public class ParameterUtils {
    * Default: An empty set.
    */
   public static Set<EndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
-    Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM);
+    Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM).stream()
+                                                                                 .map(String::toUpperCase)
+                                                                                 .collect(Collectors.toSet());
 
     Set<EndPoint> endPoints = new HashSet<>();
     for (EndPoint endPoint : EndPoint.cachedValues()) {
@@ -908,7 +1005,7 @@ public class ParameterUtils {
   }
 
   /**
-   * Skip hard goal check in kafka_assigner mode,
+   * Skip hard goal check in kafka_assigner mode.
    */
   static boolean skipHardGoalCheck(HttpServletRequest request) {
     return isKafkaAssignerMode(request) || isRebalanceDiskMode(request) ||
@@ -921,6 +1018,18 @@ public class ParameterUtils {
 
   static boolean excludeFollowerDemotion(HttpServletRequest request) {
     return getBooleanParam(request, EXCLUDE_FOLLOWER_DEMOTION_PARAM, false);
+  }
+
+  static short replicationFactor(HttpServletRequest request) {
+    String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_FACTOR_PARAM);
+    if (parameterString == null) {
+      throw new UserRequestException("Topic's replication factor is not specified.");
+    }
+    return Short.parseShort(request.getParameter(parameterString));
+  }
+
+  static boolean fetchCompletedTask(HttpServletRequest request) {
+    return getBooleanParam(request, FETCH_COMPLETED_TASK_PARAM, false);
   }
 
   public enum DataFrom {

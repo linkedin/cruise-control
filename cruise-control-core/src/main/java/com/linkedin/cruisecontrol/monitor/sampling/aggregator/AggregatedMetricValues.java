@@ -23,7 +23,7 @@ import java.util.StringJoiner;
  */
 public class AggregatedMetricValues {
   // Metric values by metric id.
-  private final Map<Integer, MetricValues> _metricValues;
+  private final Map<Short, MetricValues> _metricValues;
 
   /**
    * Create an empty metric values.
@@ -36,7 +36,7 @@ public class AggregatedMetricValues {
    * Create an AggregatedMetricValues with the given values by metric ids.
    * @param valuesByMetricId the values of the metrics. The key is the metric id.
    */
-  public AggregatedMetricValues(Map<Integer, MetricValues> valuesByMetricId) {
+  public AggregatedMetricValues(Map<Short, MetricValues> valuesByMetricId) {
     if (valuesByMetricId == null) {
       throw new IllegalArgumentException("The metric values cannot be null");
     }
@@ -56,7 +56,7 @@ public class AggregatedMetricValues {
    * @param metricId the metric id to get metric values.
    * @return the {@link MetricValues} for the given metric id.
    */
-  public MetricValues valuesFor(int metricId) {
+  public MetricValues valuesFor(short metricId) {
     return _metricValues.get(metricId);
   }
 
@@ -71,7 +71,7 @@ public class AggregatedMetricValues {
    *
    * @return an AggregatedMetricValues containing the given metric ids if they exist.
    */
-  public AggregatedMetricValues valuesFor(Collection<Integer> metricIds, boolean shareValueArray) {
+  public AggregatedMetricValues valuesFor(Collection<Short> metricIds, boolean shareValueArray) {
     AggregatedMetricValues values = new AggregatedMetricValues();
     metricIds.forEach(id -> {
       MetricValues valuesForId = _metricValues.get(id);
@@ -136,7 +136,7 @@ public class AggregatedMetricValues {
   /**
    * @return The ids of all the metrics in this cluster.
    */
-  public Set<Integer> metricIds() {
+  public Set<Short> metricIds() {
     return Collections.unmodifiableSet(_metricValues.keySet());
   }
 
@@ -146,7 +146,7 @@ public class AggregatedMetricValues {
    * @param metricId the metric id the values associated with.
    * @param metricValuesToAdd the metric values to add.
    */
-  public void add(int metricId, MetricValues metricValuesToAdd) {
+  public void add(short metricId, MetricValues metricValuesToAdd) {
     if (metricValuesToAdd == null) {
       throw new IllegalArgumentException("The metric values to be added cannot be null");
     }
@@ -164,13 +164,13 @@ public class AggregatedMetricValues {
    * @param other the other AggregatedMetricValues.
    */
   public void add(AggregatedMetricValues other) {
-    for (Map.Entry<Integer, MetricValues> entry : other.metricValues().entrySet()) {
-      int metricId = entry.getKey();
+    for (Map.Entry<Short, MetricValues> entry : other.metricValues().entrySet()) {
+      short metricId = entry.getKey();
       MetricValues otherValuesForMetric = entry.getValue();
       MetricValues valuesForMetric = _metricValues.computeIfAbsent(metricId, id -> new MetricValues(otherValuesForMetric.length()));
       if (valuesForMetric.length() != otherValuesForMetric.length()) {
         throw new IllegalStateException("The two values arrays have different lengths " + valuesForMetric.length()
-                                            + " and " + otherValuesForMetric.length());
+                                        + " and " + otherValuesForMetric.length());
       }
       valuesForMetric.add(otherValuesForMetric);
     }
@@ -182,8 +182,8 @@ public class AggregatedMetricValues {
    * @param other the other AggregatedMetricValues to subtract from this one.
    */
   public void subtract(AggregatedMetricValues other) {
-    for (Map.Entry<Integer, MetricValues> entry : other.metricValues().entrySet()) {
-      int metricId = entry.getKey();
+    for (Map.Entry<Short, MetricValues> entry : other.metricValues().entrySet()) {
+      short metricId = entry.getKey();
       MetricValues otherValuesForMetric = entry.getValue();
       MetricValues valuesForMetric = valuesFor(metricId);
       if (valuesForMetric == null) {
@@ -213,7 +213,7 @@ public class AggregatedMetricValues {
   public void writeTo(OutputStream out) throws IOException {
     OutputStreamWriter osw = new OutputStreamWriter(out, StandardCharsets.UTF_8);
     osw.write("{%n");
-    for (Map.Entry<Integer, MetricValues> entry : _metricValues.entrySet()) {
+    for (Map.Entry<Short, MetricValues> entry : _metricValues.entrySet()) {
       osw.write(String.format("metricId:\"%d\", values:\"", entry.getKey()));
       entry.getValue().writeTo(out);
       osw.write("}\"");
@@ -223,13 +223,13 @@ public class AggregatedMetricValues {
   @Override
   public String toString() {
     StringJoiner joiner = new StringJoiner("\n", "{", "}");
-    for (Map.Entry<Integer, MetricValues> entry : _metricValues.entrySet()) {
+    for (Map.Entry<Short, MetricValues> entry : _metricValues.entrySet()) {
       joiner.add(String.format("metricId:\"%d\", values:\"%s\"", entry.getKey(), entry.getValue()));
     }
     return joiner.toString();
   }
 
-  private Map<Integer, MetricValues> metricValues() {
+  private Map<Short, MetricValues> metricValues() {
     return _metricValues;
   }
 }

@@ -20,6 +20,7 @@ import javax.servlet.http.HttpServletRequest;
  * Retrieve the recent user tasks.
  *    GET /kafkacruisecontrol/user_tasks?json=[true/false]&amp;user_task_ids=[Set-of-USER-TASK-IDS]&amp;client_ids=[Set-of-ClientIdentity]&amp;
  *    endpoints=[Set-of-{@link EndPoint}]&amp;types=[Set-of-{@link UserTaskManager.TaskState}]&amp;entries=[POSITIVE-INTEGER]
+ *    &amp;fetch_completed_task=[true/false]
  * </pre>
  */
 public class UserTasksParameters extends AbstractParameters {
@@ -28,6 +29,7 @@ public class UserTasksParameters extends AbstractParameters {
   private Set<EndPoint> _endPoints;
   private Set<UserTaskManager.TaskState> _types;
   private int _entries;
+  private boolean _fetchCompletedTask;
 
   public UserTasksParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
     super(request, config);
@@ -41,6 +43,7 @@ public class UserTasksParameters extends AbstractParameters {
     _endPoints = ParameterUtils.endPoints(_request);
     _types = ParameterUtils.types(_request);
     _entries = ParameterUtils.entries(_request);
+    _fetchCompletedTask = ParameterUtils.fetchCompletedTask(_request);
   }
 
   public Set<UUID> userTaskIds() {
@@ -61,5 +64,9 @@ public class UserTasksParameters extends AbstractParameters {
 
   public int entries() {
     return _entries;
+  }
+
+  public boolean fetchCompletedTask() {
+    return _fetchCompletedTask;
   }
 }

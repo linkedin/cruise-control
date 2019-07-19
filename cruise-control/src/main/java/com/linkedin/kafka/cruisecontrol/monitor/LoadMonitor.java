@@ -172,7 +172,7 @@ public class LoadMonitor {
     _clusterModelSemaphore = new Semaphore(Math.max(1, numPrecomputingThread), true);
 
     _defaultModelCompletenessRequirements =
-        MonitorUtils.combineLoadRequirementOptions(AnalyzerUtils.getGoalMapByPriority(config));
+        MonitorUtils.combineLoadRequirementOptions(AnalyzerUtils.getGoalsByPriority(config));
 
     _loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, _partitionMetricSampleAggregator, _brokerMetricSampleAggregator,
@@ -696,7 +696,7 @@ public class LoadMonitor {
         String logdir = replicaPlacementInfo == null ? null : replicaPlacementInfo.get(tp).get(replica.id());
         // If the replica's logdir is null, it is either because replica placement information is not populated for the cluster
         // model or this replica is hosted on a dead disk and is not considered for intra-broker replica operations.
-        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader, isOffline, logdir);
+        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader, isOffline, logdir, false);
         clusterModel.setReplicaLoad(rack,
                                     replica.id(),
                                     tp,
@@ -743,8 +743,8 @@ public class LoadMonitor {
   private AggregatedMetricValues fillInReplicationBytesOut(AggregatedMetricValues aggregatedMetricValues,
                                                            PartitionInfo info) {
     int numFollowers = info.replicas().length - 1;
-    int leaderBytesInRateId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.LEADER_BYTES_IN);
-    int replicationBytesOutRateId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.REPLICATION_BYTES_OUT_RATE);
+    short leaderBytesInRateId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.LEADER_BYTES_IN);
+    short replicationBytesOutRateId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.REPLICATION_BYTES_OUT_RATE);
 
     MetricValues leaderBytesInRate = aggregatedMetricValues.valuesFor(leaderBytesInRateId);
     MetricValues replicationBytesOutRate = aggregatedMetricValues.valuesFor(replicationBytesOutRateId);

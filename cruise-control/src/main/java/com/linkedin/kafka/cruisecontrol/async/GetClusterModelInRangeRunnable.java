@@ -9,10 +9,13 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PartitionLoadState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.Partition;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#clusterModel(long, long, Double,
- * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean)}
+ * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, boolean)}
  */
 class GetClusterModelInRangeRunnable extends OperationRunnable {
   private final PartitionLoadParameters _parameters;
@@ -29,14 +32,27 @@ class GetClusterModelInRangeRunnable extends OperationRunnable {
 
   @Override
   protected PartitionLoadState getResult() throws Exception {
+    _kafkaCruiseControl.sanityCheckBrokerPresence(_parameters.brokerIds());
+
     ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(_parameters.startMs(),
                                                                  _parameters.endMs(),
                                                                  _parameters.minValidPartitionRatio(),
                                                                  _future.operationProgress(),
-                                                                 _parameters.allowCapacityEstimation());
+                                                                 _parameters.allowCapacityEstimation(),
+                                                                 false);
     int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
-    return new PartitionLoadState(clusterModel.replicasSortedByUtilization(_parameters.resource(), _parameters.wantMaxLoad()),
+    List<Partition> partitionList = clusterModel.replicasSortedByUtilization(_parameters.resource(),
+                                                                             _parameters.wantMaxLoad(),
+                                                                             _parameters.wantAvgLoad());
+    if (!_parameters.brokerIds().isEmpty()) {
+      partitionList = partitionList.stream()
+                                   .filter(partition -> partition.partitionBrokers().stream().anyMatch(
+                                             broker -> _parameters.brokerIds().contains(broker.id())))
+                                   .collect(Collectors.toList());
+    }
+    return new PartitionLoadState(partitionList,
                                   _parameters.wantMaxLoad(),
+                                  _parameters.wantAvgLoad(),
                                   _parameters.entries(),
                                   _parameters.partitionUpperBoundary(),
                                   _parameters.partitionLowerBoundary(),

@@ -20,6 +20,8 @@ public class KafkaAssignerUtils {
   static void sanityCheckOptimizationOptions(OptimizationOptions optimizationOptions) {
     if (optimizationOptions.isTriggeredByGoalViolation()) {
       throw new IllegalArgumentException("Kafka Assigner goals do not support usage by goal violation detector.");
+    } else if (optimizationOptions.onlyMoveImmigrantReplicas()) {
+      throw new IllegalArgumentException("Kafka Assigner goals do not support usage of modifying topic replication factor.");
     }
   }
 }

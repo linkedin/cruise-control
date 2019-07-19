@@ -249,6 +249,11 @@ public class PotentialNwOutGoal extends AbstractGoal {
     finish();
   }
 
+  @Override
+  public void finish() {
+    _finished = true;
+  }
+
   /**
    * Rebalance the given broker without violating the constraints of the current goal and optimized goals.
    *
@@ -276,7 +281,8 @@ public class PotentialNwOutGoal extends AbstractGoal {
                                    clusterModel.aliveBrokers() : brokersUnderEstimatedMaxPossibleNwOut(clusterModel);
     // Attempt to move replicas to eligible brokers until either the estimated max possible network out
     // limit requirement is satisfied for the broker or all replicas are checked.
-    SortedSet<Replica> replicas = new TreeSet<>(broker.replicas());
+    SortedSet<Replica> replicas = new TreeSet<>(optimizationOptions.onlyMoveImmigrantReplicas() ? broker.immigrantReplicas() :
+                                                                                                  broker.replicas());
     for (Replica replica : replicas) {
       if (shouldExclude(replica, excludedTopics)) {
         continue;

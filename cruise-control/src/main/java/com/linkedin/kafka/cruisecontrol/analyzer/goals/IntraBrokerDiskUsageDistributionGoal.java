@@ -557,4 +557,9 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
   public String name() {
     return this.getClass().getSimpleName();
   }
+
+  @Override
+  public void finish() {
+    _finished = true;
+  }
 }

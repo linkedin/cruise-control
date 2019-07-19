@@ -26,4 +26,11 @@ public interface CruiseControlResponse {
    * @param response HTTP response to return to user.
    */
   void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException;
+
+  /**
+   * Return the relevant response kept in-memory after {@link #discardIrrelevantResponse(CruiseControlParameters)} is called.
+   *
+   * @return The cached response, or {@code null} if the cached response is unavailable.
+   */
+  String cachedResponse();
 }

@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerP
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaOptimizationParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -69,7 +70,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     return _cachedPlaintextResponse;
   }
 
-  private static String getPlaintextPretext(CruiseControlParameters parameters) {
+  private String getPlaintextPretext(CruiseControlParameters parameters) {
     switch (parameters.endPoint()) {
       case ADD_BROKER:
         return String.format("%n%nCluster load after adding broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
@@ -83,6 +84,9 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
         return String.format("%n%nCluster load after rebalance:%n");
       case DEMOTE_BROKER:
         return String.format("%n%nCluster load after demoting broker %s:%n", ((DemoteBrokerParameters) parameters).brokerIds());
+      case TOPIC_CONFIGURATION:
+        return String.format("%n%nCluster load after updating replication factor of topics %s to %d:%n",
+                             _optimizerResult.topicsWithReplicationFactorChange(), ((TopicConfigurationParameters) parameters).replicationFactor());
       default:
         LOG.error("Unrecognized endpoint.");
         return "Unrecognized endpoint.";

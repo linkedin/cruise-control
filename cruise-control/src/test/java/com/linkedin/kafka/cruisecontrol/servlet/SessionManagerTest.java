@@ -19,6 +19,7 @@ import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -138,7 +139,7 @@ public class SessionManagerTest {
       sessions.add(session);
       EasyMock.expect(request.getSession()).andReturn(session).anyTimes();
       EasyMock.expect(request.getSession(false)).andReturn(session).anyTimes();
-      EasyMock.expect(request.getMethod()).andReturn("GET").anyTimes();
+      EasyMock.expect(request.getMethod()).andReturn(GET_METHOD).anyTimes();
       EasyMock.expect(request.getRequestURI()).andReturn("/test").anyTimes();
       EasyMock.expect(request.getParameterMap()).andReturn(Collections.emptyMap()).anyTimes();
       EasyMock.expect(session.getLastAccessedTime()).andReturn(time.milliseconds()).anyTimes();

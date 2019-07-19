@@ -30,6 +30,8 @@ import static javax.servlet.http.HttpServletResponse.SC_FORBIDDEN;
 public class KafkaCruiseControlServletUtils {
   // FIXME: Read this from a configuration
   public static final String REQUEST_URI = "/KAFKACRUISECONTROL/";
+  public static final String GET_METHOD = "GET";
+  public static final String POST_METHOD = "POST";
 
   private KafkaCruiseControlServletUtils() {
 
@@ -79,8 +81,8 @@ public class KafkaCruiseControlServletUtils {
     if (endPoint == null) {
       String method = request.getMethod();
       String errorMessage = String.format("Unrecognized endpoint in request '%s'%nSupported %s endpoints: %s",
-                                          request.getPathInfo(), method, method.equals("GET") ? EndPoint.getEndpoint()
-                                                                                              : EndPoint.postEndpoint());
+                                          request.getPathInfo(), method, method.equals(GET_METHOD) ? EndPoint.getEndpoint()
+                                                                                                   : EndPoint.postEndpoint());
       writeErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request), config);
       return null;
     }
@@ -132,6 +134,19 @@ public class KafkaCruiseControlServletUtils {
                                         request.getMethod(), request.getPathInfo(), e.getMessage());
     writeErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request), config);
     return errorMessage;
+  }
+
+  /**
+   * Ensure that the given headerName does not exist in the given request header.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param headerName a <code>String</code> specifying the header name
+   */
+  static void ensureHeaderNotPresent(HttpServletRequest request, String headerName) {
+    String value = request.getHeader(headerName);
+    if (value != null) {
+      throw new IllegalArgumentException(String.format("Unexpected header %s (value: %s) in the request.", value, headerName));
+    }
   }
 
   public static String httpServletRequestToString(HttpServletRequest request) {

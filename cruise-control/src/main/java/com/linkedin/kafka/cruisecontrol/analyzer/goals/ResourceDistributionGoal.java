@@ -221,6 +221,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     _balanceUpperThreshold = computeBalanceUpperThreshold(clusterModel, optimizationOptions);
     _balanceLowerThreshold = computeBalanceLowerThreshold(clusterModel, optimizationOptions);
     clusterModel.trackSortedReplicas(sortName(),
+                                     optimizationOptions.onlyMoveImmigrantReplicas() ? ReplicaSortFunctionFactory.selectImmigrants()
+                                                                                     : null,
                                      ReplicaSortFunctionFactory.deprioritizeOfflineReplicasThenImmigrants(),
                                      ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
   }
@@ -271,6 +273,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
       GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
     } catch (OptimizationFailureException ofe) {
       if (_fixOfflineReplicasOnly) {
+        clusterModel.untrackSortedReplicas(sortName());
         throw ofe;
       }
       _fixOfflineReplicasOnly = true;
@@ -281,6 +284,11 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
     finish();
     clusterModel.untrackSortedReplicas(sortName());
+  }
+
+  @Override
+  public void finish() {
+    _finished = true;
   }
 
   /**
@@ -316,7 +324,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
         // return if the broker is already within limits.
         return;
       }
-      moveImmigrantsOnly = !clusterModel.selfHealingEligibleReplicas().isEmpty();
+      moveImmigrantsOnly = !clusterModel.selfHealingEligibleReplicas().isEmpty() || optimizationOptions.onlyMoveImmigrantReplicas();
       if (moveImmigrantsOnly && requireLessLoad && broker.immigrantReplicas().isEmpty()) {
         // return if the cluster is in self-healing mode and the broker requires less load but does not have any
         // immigrant replicas.
@@ -759,6 +767,12 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     } else {
       // Take all replicas for replica movements.
       replicasToMove = broker.trackedSortedReplicas(sortName()).reverselySortedReplicas();
+      // If cluster has offline replicas, but this broker is alive, then limit moving replica to offline and immigrant replicas.
+      if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive()) {
+        replicasToMove = replicasToMove.stream()
+                                       .filter(r -> broker.currentOfflineReplicas().contains(r) || broker.immigrantReplicas().contains(r))
+                                       .collect(Collectors.toList());
+      }
     }
 
     // Now let's move things around.

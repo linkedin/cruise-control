@@ -35,6 +35,7 @@ public class KafkaTopicConfigProvider implements TopicConfigProvider {
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP = "KafkaTopicConfigProvider";
   public static final String ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE = "GetAllActiveTopicConfigs";
   private String _connectString;
+  private boolean _zkSecurityEnabled;
   private static Properties _clusterConfigs;
 
   @Override
@@ -46,7 +47,8 @@ public class KafkaTopicConfigProvider implements TopicConfigProvider {
   public Properties topicConfigs(String topic) {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(_connectString,
                                                                               ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
-                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE);
+                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
+                                                                              _zkSecurityEnabled);
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
       return adminZkClient.fetchEntityConfig(ConfigType.Topic(), topic);
@@ -59,7 +61,8 @@ public class KafkaTopicConfigProvider implements TopicConfigProvider {
   public Map<String, Properties> allTopicConfigs() {
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(_connectString,
                                                                               ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_GROUP,
-                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE);
+                                                                              ZK_KAFKA_TOPIC_CONFIG_PROVIDER_METRIC_TYPE,
+                                                                              _zkSecurityEnabled);
     try {
       AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
       return JavaConversions.mapAsJavaMap(adminZkClient.getAllTopicConfigs());
@@ -85,6 +88,7 @@ public class KafkaTopicConfigProvider implements TopicConfigProvider {
   @Override
   public void configure(Map<String, ?> configs) {
     _connectString = (String) configs.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    _zkSecurityEnabled = (Boolean) configs.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     String configFile = KafkaCruiseControlUtils.getRequiredConfig(configs, CLUSTER_CONFIGS_FILE);
     try {
       loadClusterConfigs(configFile);

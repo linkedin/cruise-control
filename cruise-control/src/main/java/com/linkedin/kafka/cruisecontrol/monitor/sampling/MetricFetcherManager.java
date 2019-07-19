@@ -127,13 +127,13 @@ public class MetricFetcherManager {
       for (int i = 0; i < _numMetricFetchers; i++) {
         MetricSampler metricSampler =
             config.getConfiguredInstance(KafkaCruiseControlConfig.METRIC_SAMPLER_CLASS_CONFIG, MetricSampler.class);
-        metricSampler.configure(config.originals());
+        metricSampler.configure(config.mergedConfigValues());
         _metricSamplers.add(metricSampler);
       }
     }
     _partitionAssignor = config.getConfiguredInstance(KafkaCruiseControlConfig.METRIC_SAMPLER_PARTITION_ASSIGNOR_CLASS_CONFIG,
                                                       MetricSamplerPartitionAssignor.class);
-    _partitionAssignor.configure(config.originals());
+    _partitionAssignor.configure(config.mergedConfigValues());
     _useLinearRegressionModel = config.getBoolean(KafkaCruiseControlConfig.USE_LINEAR_REGRESSION_MODEL_CONFIG);
     _dropwizardMetricRegistry = dropwizardMetricRegistry;
     _samplingFetcherTimer = _dropwizardMetricRegistry.timer(MetricRegistry.name("MetricFetcherManager",

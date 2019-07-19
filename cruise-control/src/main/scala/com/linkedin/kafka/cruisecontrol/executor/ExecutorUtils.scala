@@ -5,9 +5,10 @@
 package com.linkedin.kafka.cruisecontrol.executor
 
 import java.util
+import java.util.Properties
 
 import kafka.admin.PreferredReplicaLeaderElectionCommand
-import kafka.zk.KafkaZkClient
+import kafka.zk.{AdminZkClient, KafkaZkClient}
 import org.apache.kafka.common.TopicPartition
 import org.slf4j.{Logger, LoggerFactory}
 
@@ -117,5 +118,21 @@ object ExecutorUtils {
 
   def currentReplicasForPartition(kafkaZkClient: KafkaZkClient, tp: TopicPartition): java.util.List[java.lang.Integer] = {
     seqAsJavaList(kafkaZkClient.getReplicasForPartition(new TopicPartition(tp.topic(), tp.partition())).map(i => i : java.lang.Integer))
+  }
+
+  def changeBrokerConfig(adminZkClient: AdminZkClient, brokerId: Int, config: Properties): Unit = {
+    adminZkClient.changeBrokerConfig(Some(brokerId), config)
+  }
+
+  def changeTopicConfig(adminZkClient: AdminZkClient, topic: String, config: Properties): Unit = {
+    adminZkClient.changeTopicConfig(topic, config)
+  }
+
+  def getAllLiveBrokerIdsInCluster(kafkaZkClient: KafkaZkClient): java.util.List[java.lang.Integer] = {
+    seqAsJavaList(kafkaZkClient.getAllBrokersInCluster.map(_.id : java.lang.Integer))
+  }
+
+  def getAllTopicsInCluster(kafkaZkClient: KafkaZkClient): java.util.List[String] = {
+    seqAsJavaList(kafkaZkClient.getAllTopicsInCluster)
   }
 }

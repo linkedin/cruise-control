@@ -198,8 +198,14 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       // Sanity check to confirm that the final distribution has less than the allowed number of replicas per broker.
       ensureReplicaCapacitySatisfied(clusterModel);
       finish();
+    } else {
+      _isSelfHealingMode = false;
     }
-    _isSelfHealingMode = false;
+  }
+
+  @Override
+  public void finish() {
+    _finished = true;
   }
 
   /**
@@ -233,6 +239,7 @@ public class ReplicaCapacityGoal extends AbstractGoal {
       throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
     for (Replica replica : new TreeSet<>(broker.replicas())) {
       boolean isReplicaOffline = replica.isCurrentOffline();
       if (broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker() && !isReplicaOffline) {
@@ -241,6 +248,10 @@ public class ReplicaCapacityGoal extends AbstractGoal {
         break;
       }
       if (shouldExclude(replica, excludedTopics)) {
+        continue;
+      }
+
+      if (onlyMoveImmigrantReplicas && !replica.isImmigrant()) {
         continue;
       }
 

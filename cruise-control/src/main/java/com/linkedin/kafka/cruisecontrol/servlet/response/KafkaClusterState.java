@@ -26,6 +26,7 @@ import java.util.TreeSet;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
@@ -83,8 +84,11 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
   private String getJSONString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure;
+    KafkaClusterStateParameters kafkaClusterStateParams = (KafkaClusterStateParameters) parameters;
+    boolean isVerbose = kafkaClusterStateParams.isVerbose();
+    Pattern topic = kafkaClusterStateParams.topic();
     try {
-      jsonStructure = getJsonStructure(((KafkaClusterStateParameters) parameters).isVerbose());
+      jsonStructure = getJsonStructure(isVerbose, topic);
       jsonStructure.put(VERSION, JSON_VERSION);
     }  catch (InterruptedException | ExecutionException e) {
       throw new RuntimeException("Failed to populate broker logDir state.", e);
@@ -118,34 +122,38 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * @param partitionsWithOfflineReplicas state of partitions with offline replicas.
    * @param underMinIsrPartitions state of under min isr partitions.
    * @param verbose true if requested to gather state of partitions other than offline or urp.
+   * @param topicPattern regex of topic to filter partition states by, is null if no filter is to be applied
    */
   private void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
                                            Set<PartitionInfo> offlinePartitions,
                                            Set<PartitionInfo> otherPartitions,
                                            Set<PartitionInfo> partitionsWithOfflineReplicas,
                                            Set<PartitionInfo> underMinIsrPartitions,
-                                           boolean verbose) {
+                                           boolean verbose,
+                                           Pattern topicPattern) {
     for (String topic : _kafkaCluster.topics()) {
-      int minInsyncReplicas = minInsyncReplicas(topic);
-      for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
-        int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
-        boolean isURP = numInsyncReplicas != partitionInfo.replicas().length;
-        if (numInsyncReplicas < minInsyncReplicas) {
-          underMinIsrPartitions.add(partitionInfo);
-        }
-        if (isURP || verbose) {
-          boolean hasOfflineReplica = partitionInfo.offlineReplicas().length != 0;
-          if (hasOfflineReplica) {
-            partitionsWithOfflineReplicas.add(partitionInfo);
+      if (topicPattern == null || topicPattern.matcher(topic).matches()) {
+        int minInsyncReplicas = minInsyncReplicas(topic);
+        for (PartitionInfo partitionInfo : _kafkaCluster.partitionsForTopic(topic)) {
+          int numInsyncReplicas = partitionInfo.inSyncReplicas().length;
+          boolean isURP = numInsyncReplicas != partitionInfo.replicas().length;
+          if (numInsyncReplicas < minInsyncReplicas) {
+            underMinIsrPartitions.add(partitionInfo);
           }
-          boolean isOffline = partitionInfo.inSyncReplicas().length == 0;
-          if (isOffline) {
-            offlinePartitions.add(partitionInfo);
-          } else if (isURP) {
-            underReplicatedPartitions.add(partitionInfo);
-          } else {
-            // verbose -- other
-            otherPartitions.add(partitionInfo);
+          if (isURP || verbose) {
+            boolean hasOfflineReplica = partitionInfo.offlineReplicas().length != 0;
+            if (hasOfflineReplica) {
+              partitionsWithOfflineReplicas.add(partitionInfo);
+            }
+            boolean isOffline = partitionInfo.inSyncReplicas().length == 0;
+            if (isOffline) {
+              offlinePartitions.add(partitionInfo);
+            } else if (isURP) {
+              underReplicatedPartitions.add(partitionInfo);
+            } else {
+              // verbose -- other
+              otherPartitions.add(partitionInfo);
+            }
           }
         }
       }
@@ -228,8 +236,9 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * Return an object that can be further used to encode into JSON.
    *
    * @param verbose True if verbose, false otherwise.
+   * @param topic Regex of topic to filter partition states by, is null if no filter is to be applied
    */
-  public Map<String, Object> getJsonStructure(boolean verbose)
+  public Map<String, Object> getJsonStructure(boolean verbose, Pattern topic)
       throws ExecutionException, InterruptedException {
     // Gather the broker state.
     Map<Integer, Integer> leaderCountByBrokerId = new HashMap<>();
@@ -268,7 +277,8 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
                                 otherPartitions,
                                 partitionsWithOfflineReplicas,
                                 underMinIsrPartitions,
-                                verbose);
+                                verbose,
+                                topic);
 
     // Write the partition state.
     Map<String, List> kafkaClusterByPartitionState = new HashMap<>();
@@ -394,7 +404,9 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
 
   private void writePartitionSummary(StringBuilder sb, CruiseControlParameters parameters) {
     int topicNameLength = _kafkaCluster.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
-    boolean verbose = ((KafkaClusterStateParameters) parameters).isVerbose();
+    KafkaClusterStateParameters kafkaClusterStateParams = (KafkaClusterStateParameters) parameters;
+    Pattern topic = kafkaClusterStateParams.topic();
+    boolean verbose = kafkaClusterStateParams.isVerbose();
 
     String initMessage = verbose ? "All Partitions in the Cluster (verbose):"
                                  : "Under Replicated, Offline, and Under MinIsr Partitions:";
@@ -415,7 +427,8 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
                                 otherPartitions,
                                 partitionsWithOfflineReplicas,
                                 underMinIsrPartitions,
-                                verbose);
+                                verbose,
+                                topic);
 
     // Write the cluster state.
     sb.append(String.format("Offline Partitions:%n"));

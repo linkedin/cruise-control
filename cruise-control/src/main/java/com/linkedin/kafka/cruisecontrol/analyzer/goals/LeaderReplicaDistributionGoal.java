@@ -44,10 +44,17 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
   private static final Logger LOG = LoggerFactory.getLogger(LeaderReplicaDistributionGoal.class);
 
   /**
+   * Constructor for Leader Replica Distribution Goal.
+   */
+  public LeaderReplicaDistributionGoal() {
+
+  }
+
+  /**
    * Package private for unit test.
    */
-  LeaderReplicaDistributionGoal(BalancingConstraint balancingConstraint) {
-    super();
+  public LeaderReplicaDistributionGoal(BalancingConstraint balancingConstraint) {
+    this();
     _balancingConstraint = balancingConstraint;
   }
 
@@ -158,6 +165,9 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                                  ClusterModel clusterModel,
                                                  Set<Goal> optimizedGoals,
                                                  OptimizationOptions optimizationOptions) {
+    if (!clusterModel.deadBrokers().isEmpty()) {
+      return true;
+    }
     int numLeaderReplicas = broker.leaderReplicas().size();
     for (Replica replica : new HashSet<>(broker.leaderReplicas())) {
       Set<Broker> candidateBrokers = clusterModel.partition(replica.topicPartition()).partitionBrokers().stream()
@@ -183,7 +193,8 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
                                                 ClusterModel clusterModel,
                                                 Set<Goal> optimizedGoals,
                                                 OptimizationOptions optimizationOptions) {
-    if (optimizationOptions.excludedBrokersForLeadership().contains(broker.id())) {
+    if (!clusterModel.deadBrokers().isEmpty() ||
+        optimizationOptions.excludedBrokersForLeadership().contains(broker.id())) {
       return true;
     }
 
@@ -232,7 +243,8 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     Set<Replica> candidateReplicas = new HashSet<>(_fixOfflineReplicasOnly ? broker.currentOfflineReplicas()
                                                                            : broker.leaderReplicas());
-    if (!clusterModel.brokenBrokers().isEmpty() && broker.isAlive()) {
+    if ((!_fixOfflineReplicasOnly && !clusterModel.selfHealingEligibleReplicas().isEmpty())
+        || optimizationOptions.onlyMoveImmigrantReplicas()) {
       candidateReplicas.retainAll(broker.immigrantReplicas());
     }
     int numReplicas = candidateReplicas.size();
@@ -281,6 +293,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
     }
     List<Broker> candidateBrokers = Collections.singletonList(broker);
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
     int numLeaderReplicas = broker.leaderReplicas().size();
     while (!eligibleBrokers.isEmpty()) {
       Broker sourceBroker = eligibleBrokers.poll();
@@ -288,7 +301,7 @@ public class LeaderReplicaDistributionGoal extends ReplicaDistributionAbstractGo
         if (shouldExclude(replica, excludedTopics) || broker.replica(replica.topicPartition()) != null) {
           continue;
         }
-        if (!clusterModel.brokenBrokers().isEmpty() && !sourceBroker.immigrantReplicas().contains(replica)) {
+        if ((!clusterModel.brokenBrokers().isEmpty() || onlyMoveImmigrantReplicas) && !replica.isImmigrant()) {
           continue;
         }
         Broker b = maybeApplyBalancingAction(clusterModel,

@@ -9,11 +9,11 @@ package com.linkedin.cruisecontrol.metricdef;
  */
 public class MetricInfo {
   private final String _name;
-  private final int _id;
+  private final short _id;
   private final AggregationFunction _aggregationFunction;
   private final String _group;
 
-  public MetricInfo(String name, int id, AggregationFunction aggregationFunction, String group) {
+  public MetricInfo(String name, short id, AggregationFunction aggregationFunction, String group) {
     _name = name;
     _id = id;
     _aggregationFunction = aggregationFunction;
@@ -30,7 +30,7 @@ public class MetricInfo {
   /**
    * @return the id of the metric.
    */
-  public int id() {
+  public short id() {
     return _id;
   }
 

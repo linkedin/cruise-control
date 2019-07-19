@@ -32,6 +32,7 @@ public class ExecutionTaskTracker {
   private long _finishedIntraBrokerDataMovementInMB;
   private boolean _isKafkaAssignerMode;
   private final Time _time;
+  private volatile boolean _stopRequested;
 
   private static final String INTER_BROKER_REPLICA_ACTION = "replica-action";
   private static final String INTRA_BROKER_REPLICA_ACTION = "intra-broker-replica-action";
@@ -64,6 +65,7 @@ public class ExecutionTaskTracker {
     _finishedIntraBrokerDataMovementInMB = 0L;
     _isKafkaAssignerMode = false;
     _time = time;
+    _stopRequested = false;
 
     // Register gauge sensors.
     registerGaugeSensors(dropwizardMetricRegistry);
@@ -83,7 +85,8 @@ public class ExecutionTaskTracker {
                               state == State.COMPLETED   ? COMPLETED :
                                                            DEAD;
         dropwizardMetricRegistry.register(MetricRegistry.name(metricName, typeString + "-" + stateString),
-                                          (Gauge<Integer>) () -> _tasksByType.get(type).get(state).size());
+                                          (Gauge<Integer>) () -> (state == State.PENDING && _stopRequested)
+                                                                 ? 0 : _tasksByType.get(type).get(state).size());
       }
     }
     dropwizardMetricRegistry.register(MetricRegistry.name(metricName, GAUGE_ONGOING_EXECUTION_IN_KAFKA_ASSIGNER_MODE),
@@ -203,7 +206,7 @@ public class ExecutionTaskTracker {
     for (TaskType type : taskTypesToGetFullList) {
       tasksByState.put(type, new HashMap<>());
       _tasksByType.get(type).forEach((k, v) -> {
-          tasksByState.get(type).put(k, new HashSet<>(v));
+        tasksByState.get(type).put(k, new HashSet<>(v));
       });
     }
     return tasksByState;
@@ -220,6 +223,11 @@ public class ExecutionTaskTracker {
     _inExecutionIntraBrokerDataMovementInMB = 0L;
     _finishedInterBrokerDataMovementInMB = 0L;
     _finishedIntraBrokerDataMovementInMB = 0L;
+    _stopRequested = false;
+  }
+
+  public void setStopRequested() {
+    _stopRequested = true;
   }
 
   // Internal query APIs.

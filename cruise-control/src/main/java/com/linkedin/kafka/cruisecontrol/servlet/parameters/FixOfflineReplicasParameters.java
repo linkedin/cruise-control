@@ -22,7 +22,9 @@ import javax.servlet.http.HttpServletRequest;
  *    &amp;allow_capacity_estimation=[true/false]&amp;concurrent_partition_movements_per_broker=[true/false]
  *    &amp;concurrent_leader_movements=[true/false]&amp;json=[true/false]&amp;skip_hard_goal_check=[true/false]
  *    &amp;excluded_topics=[pattern]&amp;use_ready_default_goals=[true/false]&amp;data_from=[valid_windows/valid_partitions]
- *    &amp;replica_movement_strategies=[strategy1,strategy2...]&amp;review_id=[id]
+ *    &amp;replica_movement_strategies=[strategy1,strategy2...]
+ *    &amp;replication_throttle=[bytes_per_second]
+ *    &amp;review_id=[id]
  * </pre>
  */
 public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameters {
@@ -31,6 +33,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
   private Integer _concurrentLeaderMovements;
   private boolean _skipHardGoalCheck;
   private ReplicaMovementStrategy _replicaMovementStrategy;
+  private Long _replicationThrottle;
   private Integer _reviewId;
 
   public FixOfflineReplicasParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
@@ -45,6 +48,7 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
     _skipHardGoalCheck = ParameterUtils.skipHardGoalCheck(_request);
     _replicaMovementStrategy = ParameterUtils.getReplicaMovementStrategy(_request, _config);
+    _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
   }
@@ -76,5 +80,9 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
 
   public ReplicaMovementStrategy replicaMovementStrategy() {
     return _replicaMovementStrategy;
+  }
+
+  public Long replicationThrottle() {
+    return _replicationThrottle;
   }
 }

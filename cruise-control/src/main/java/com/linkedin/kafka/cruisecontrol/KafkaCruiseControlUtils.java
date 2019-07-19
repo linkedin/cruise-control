@@ -4,32 +4,31 @@
 
 package com.linkedin.kafka.cruisecontrol;
 
+import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerDiskUsageDistributionGoal;
+import com.linkedin.kafka.cruisecontrol.analyzer.kafkaassigner.KafkaAssignerEvenRackAwareGoal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.model.Broker;
+import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
-import java.text.DateFormat;
-import java.text.SimpleDateFormat;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import kafka.log.Log;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
-import java.util.TimeZone;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
+import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.SystemTime;
+
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.stream.Collectors;
 
 
 /**
@@ -44,6 +43,10 @@ public class KafkaCruiseControlUtils {
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";
+  private static final Set<String> KAFKA_ASSIGNER_GOALS =
+      Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
+                                                              KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
+  public static final String OPERATION_LOGGER = "operationLogger";
 
   private KafkaCruiseControlUtils() {
 
@@ -110,7 +113,11 @@ public class KafkaCruiseControlUtils {
   }
 
   public static String currentUtcDate() {
-    Date date = new Date(System.currentTimeMillis());
+    return utcDateFor(System.currentTimeMillis());
+  }
+
+  public static String utcDateFor(long timeMs) {
+    Date date = new Date(timeMs);
     DateFormat formatter = new SimpleDateFormat(DATE_FORMAT);
     formatter.setTimeZone(TimeZone.getTimeZone(TIME_ZONE));
     return formatter.format(date);
@@ -131,6 +138,9 @@ public class KafkaCruiseControlUtils {
    * @return string representation of date
    */
   public static String toDateString(long time, String dateFormat, String timeZone) {
+    if (time < 0) {
+      throw new IllegalArgumentException(String.format("Attempt to convert negative time %d to date.", time));
+    }
     DateFormat formatter = new SimpleDateFormat(dateFormat);
     if (!timeZone.isEmpty()) {
       formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
@@ -208,10 +218,11 @@ public class KafkaCruiseControlUtils {
    * @param connectString Comma separated host:port pairs, each corresponding to a zk server
    * @param metricGroup Metric group
    * @param metricType Metric type
+   * @param zkSecurityEnabled True if zkSecurityEnabled, false otherwise.
    * @return A new instance of KafkaZkClient
    */
-  public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
-    return KafkaZkClient.apply(connectString, false, getZkSessionTimeout(), getZkConnectionTimeout(), Integer.MAX_VALUE,
+  public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType, boolean zkSecurityEnabled) {
+    return KafkaZkClient.apply(connectString, zkSecurityEnabled, getZkSessionTimeout(), getZkConnectionTimeout(), Integer.MAX_VALUE,
         new SystemTime(), metricGroup, metricType);
   }
 
@@ -275,10 +286,10 @@ public class KafkaCruiseControlUtils {
       String securityProtocol = configs.getString(AdminClientConfig.SECURITY_PROTOCOL_CONFIG);
       adminClientConfigs.put(AdminClientConfig.SECURITY_PROTOCOL_CONFIG, securityProtocol);
       setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_MECHANISM);
-      setStringConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_JAAS_CONFIG);
+      setPasswordConfigIfExists(configs, adminClientConfigs, SaslConfigs.SASL_JAAS_CONFIG);
 
-      // Configure SSL configs (if security protocol is SSL)
-      if (securityProtocol.equals(SecurityProtocol.SSL.name)) {
+      // Configure SSL configs (if security protocol is SSL or SASL_SSL)
+      if (securityProtocol.equals(SecurityProtocol.SSL.name) || securityProtocol.equals(SecurityProtocol.SASL_SSL.name)) {
         setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG);
         setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_KEYMANAGER_ALGORITHM_CONFIG);
         setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_KEYSTORE_TYPE_CONFIG);
@@ -286,6 +297,7 @@ public class KafkaCruiseControlUtils {
         setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG);
         setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG);
         setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_SECURE_RANDOM_IMPLEMENTATION_CONFIG);
+        setStringConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG);
         setPasswordConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG);
         setPasswordConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_KEY_PASSWORD_CONFIG);
         setPasswordConfigIfExists(configs, adminClientConfigs, SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG);
@@ -337,5 +349,76 @@ public class KafkaCruiseControlUtils {
     if (!interSection.isEmpty()) {
       throw new IllegalStateException(message);
     }
+  }
+
+
+  /**
+   * Sanity check there is no offline replica in the cluster.
+   * @param cluster The current cluster state.
+   */
+  public static void sanityCheckNoOfflineReplica(Cluster cluster) {
+    for (String topic : cluster.topics()) {
+      for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+        if (partitionInfo.offlineReplicas().length > 0) {
+          throw new IllegalStateException(String.format("Topic partition %s-%d has offline replicas on brokers %s",
+                                                        partitionInfo.topic(), partitionInfo.partition(),
+                                                        Arrays.stream(partitionInfo.offlineReplicas()).mapToInt(Node::id)
+                                                              .boxed().collect(Collectors.toSet())));
+        }
+      }
+    }
+  }
+
+  /**
+   * Sanity check whether the given goals exist in the given supported goals.
+   * @param goals A list of goals.
+   * @param supportedGoals Supported goals.
+   */
+  public static void sanityCheckNonExistingGoal(List<String> goals, Map<String, Goal> supportedGoals) {
+    Set<String> nonExistingGoals = new HashSet<>();
+    goals.stream().filter(goalName -> supportedGoals.get(goalName) == null).forEach(nonExistingGoals::add);
+
+    if (!nonExistingGoals.isEmpty()) {
+      throw new IllegalArgumentException("Goals " + nonExistingGoals + " are not supported. Supported: " + supportedGoals.keySet());
+    }
+  }
+
+  /**
+   * Sanity check to ensure that the given cluster model contains brokers with offline replicas.
+   * @param clusterModel Cluster model for which the existence of an offline replica will be verified.
+   */
+  public static void sanityCheckOfflineReplicaPresence(ClusterModel clusterModel) {
+    if (clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
+      for (Broker deadBroker : clusterModel.deadBrokers()) {
+        if (!deadBroker.replicas().isEmpty()) {
+          // Has offline replica(s) on a dead broker.
+          return;
+        }
+      }
+      throw new IllegalStateException("Cluster has no offline replica on brokers " + clusterModel.brokers() + " to fix.");
+    }
+    // Has offline replica(s) on a broken disk.
+  }
+
+  /**
+   * Sanity check to ensure that the given cluster model has no offline replicas on bad disks in Kafka Assigner mode.
+   * @param goals Goals to check whether it is Kafka Assigner mode or not.
+   * @param clusterModel Cluster model for which the existence of an offline replicas on bad disks will be verified.
+   */
+  public static void sanityCheckBrokersHavingOfflineReplicasOnBadDisks(List<String> goals, ClusterModel clusterModel) {
+    if (isKafkaAssignerMode(goals) && !clusterModel.brokersHavingOfflineReplicasOnBadDisks().isEmpty()) {
+      throw new IllegalStateException("Kafka Assigner mode is not supported when there are offline replicas on bad disks."
+                                      + " Please run fix_offline_replicas before using Kafka Assigner mode.");
+    }
+  }
+
+  /**
+   * Check whether any of the given goals contain a Kafka Assigner goal.
+   *
+   * @param goals The goals to check
+   * @return True if the given goals contain a Kafka Assigner goal, false otherwise.
+   */
+  public static boolean isKafkaAssignerMode(Collection<String> goals) {
+    return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
   }
 }

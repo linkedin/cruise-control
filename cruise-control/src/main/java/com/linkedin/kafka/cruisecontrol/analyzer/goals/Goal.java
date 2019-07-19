@@ -111,6 +111,12 @@ public interface Goal extends CruiseControlConfigurable {
   String name();
 
   /**
+   * Signal for finishing the process for rebalance or self-healing for this goal. It is intended to mark the goal
+   * optimization as finished and perform the memory clean up after the goal optimization.
+   */
+  void finish();
+
+  /**
    * True if this is a hard goal, false otherwise.
    */
   boolean isHardGoal();

@@ -7,9 +7,9 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -24,7 +24,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 import kafka.admin.RackAwareMode;
 import kafka.log.LogConfig;
 import kafka.zk.AdminZkClient;
@@ -44,21 +43,16 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.clients.producer.RecordMetadata;
 import org.apache.kafka.common.KafkaException;
-import org.apache.kafka.common.KafkaFuture;
-import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.TopicPartitionInfo;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import scala.Tuple2;
 import scala.collection.JavaConversions;
 import scala.collection.JavaConverters;
 import scala.collection.Seq;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureNoPartitionUnderPartitionReassignment;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.ensureTopicNotUnderPartitionReassignment;
 
 /**
@@ -91,7 +85,7 @@ public class KafkaSampleStore implements SampleStore {
   // Keep additional windows in case some of the windows do not have enough samples.
   private static final int ADDITIONAL_WINDOW_TO_RETAIN_FACTOR = 2;
   private static final ConsumerRecords<byte[], byte[]> SHUTDOWN_RECORDS = new ConsumerRecords<>(Collections.emptyMap());
-  private static final long SAMPLE_POLL_TIMEOUT = 1000L;
+  private static final Duration SAMPLE_POLL_TIMEOUT = Duration.ofMillis(1000L);
 
   protected static final int DEFAULT_NUM_SAMPLE_LOADING_THREADS = 8;
   protected static final int DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR = 2;
@@ -173,8 +167,12 @@ public class KafkaSampleStore implements SampleStore {
   protected KafkaProducer<byte[], byte[]> createProducer(Map<String, ?> config) {
     Properties producerProps = new Properties();
     producerProps.putAll(config);
-    producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                              (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
+    String bootstrapServers = config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
+    // Trim the brackets in List's String representation.
+    if (bootstrapServers.length() > 2) {
+      bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
+    }
+    producerProps.setProperty(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     producerProps.setProperty(ProducerConfig.CLIENT_ID_CONFIG, PRODUCER_CLIENT_ID);
     // Set batch.size and linger.ms to a big number to have better batching.
     producerProps.setProperty(ProducerConfig.LINGER_MS_CONFIG, "30000");
@@ -184,52 +182,60 @@ public class KafkaSampleStore implements SampleStore {
     producerProps.setProperty(ProducerConfig.COMPRESSION_TYPE_CONFIG, "gzip");
     producerProps.setProperty(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
     producerProps.setProperty(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer.class.getName());
+    producerProps.setProperty(ProducerConfig.RECONNECT_BACKOFF_MS_CONFIG,
+                              config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG).toString());
     return new KafkaProducer<>(producerProps);
   }
 
   protected KafkaConsumer<byte[], byte[]> createConsumer(Map<String, ?> config) {
-      Properties consumerProps = new Properties();
-      consumerProps.putAll(config);
-      long randomToken = RANDOM.nextLong();
-      consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                                (String) config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG));
-      consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KafkaCruiseControlSampleStore" + randomToken);
-      consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, CONSUMER_CLIENT_ID + randomToken);
-      consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
-      consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
-      consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
-      consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-      consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
-      return new KafkaConsumer<>(consumerProps);
+    Properties consumerProps = new Properties();
+    consumerProps.putAll(config);
+    long randomToken = RANDOM.nextLong();
+    String bootstrapServers = config.get(KafkaCruiseControlConfig.BOOTSTRAP_SERVERS_CONFIG).toString();
+    // Trim the brackets in List's String representation.
+    if (bootstrapServers.length() > 2) {
+      bootstrapServers = bootstrapServers.substring(1, bootstrapServers.length() - 1);
+    }
+    consumerProps.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+    consumerProps.setProperty(ConsumerConfig.GROUP_ID_CONFIG, "KafkaCruiseControlSampleStore" + randomToken);
+    consumerProps.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, CONSUMER_CLIENT_ID + randomToken);
+    consumerProps.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+    consumerProps.setProperty(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, "false");
+    consumerProps.setProperty(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(Integer.MAX_VALUE));
+    consumerProps.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer.class.getName());
+    consumerProps.setProperty(ConsumerConfig.RECONNECT_BACKOFF_MS_CONFIG,
+                                             config.get(KafkaCruiseControlConfig.RECONNECT_BACKOFF_MS_CONFIG).toString());
+    return new KafkaConsumer<>(consumerProps);
   }
 
   @SuppressWarnings("unchecked")
   private void ensureTopicsCreated(Map<String, ?> config) {
     String connectString = (String) config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
+    boolean zkSecurityEnabled = (Boolean) config.get(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     KafkaZkClient kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(connectString,
                                                                               "KafkaSampleStore",
-                                                                              "EnsureTopicCreated");
+                                                                              "EnsureTopicCreated",
+                                                                              zkSecurityEnabled);
     AdminZkClient adminZkClient = new AdminZkClient(kafkaZkClient);
     AdminClient adminClient = KafkaCruiseControlUtils.createAdminClient((Map<String, Object>) config);
     try {
       Map<String, List<PartitionInfo>> topics = _consumers.get(0).listTopics();
-      long partitionSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG));
-      long brokerSampleWindowMs = Long.parseLong((String) config.get(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG));
+      long partitionSampleWindowMs = (Long) config.get(KafkaCruiseControlConfig.PARTITION_METRICS_WINDOW_MS_CONFIG);
+      long brokerSampleWindowMs = (Long) config.get(KafkaCruiseControlConfig.BROKER_METRICS_WINDOW_MS_CONFIG);
 
-      int numPartitionSampleWindows =
-          Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG));
+      int numPartitionSampleWindows = (Integer) config.get(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
       long partitionSampleRetentionMs = (numPartitionSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * partitionSampleWindowMs;
       partitionSampleRetentionMs = Math.max(_minPartitionSampleStoreTopicRetentionTimeMs, partitionSampleRetentionMs);
 
-      int numBrokerSampleWindows =
-          Integer.parseInt((String) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG));
+      int numBrokerSampleWindows = (Integer) config.get(KafkaCruiseControlConfig.NUM_BROKER_METRICS_WINDOWS_CONFIG);
       long brokerSampleRetentionMs = (numBrokerSampleWindows * ADDITIONAL_WINDOW_TO_RETAIN_FACTOR) * brokerSampleWindowMs;
       brokerSampleRetentionMs = Math.max(_minBrokerSampleStoreTopicRetentionTimeMs, brokerSampleRetentionMs);
 
       int numberOfBrokersInCluster = kafkaZkClient.getAllBrokersInCluster().size();
       if (numberOfBrokersInCluster <= 1) {
         throw new IllegalStateException(String.format("Kafka cluster has less than 2 brokers (brokers in cluster=%d, zookeeper.connect=%s)",
-                                        numberOfBrokersInCluster, config.get(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG)));
+                                        numberOfBrokersInCluster, connectString));
       }
       int replicationFactor = _sampleStoreTopicReplicationFactor == null ? Math.min(DEFAULT_SAMPLE_STORE_TOPIC_REPLICATION_FACTOR,
                               numberOfBrokersInCluster) : _sampleStoreTopicReplicationFactor;
@@ -238,111 +244,9 @@ public class KafkaSampleStore implements SampleStore {
                          replicationFactor, _partitionSampleStoreTopicPartitionCount);
       ensureTopicCreated(kafkaZkClient, adminZkClient, adminClient, topics.keySet(), _brokerMetricSampleStoreTopic, brokerSampleRetentionMs,
                          replicationFactor, _brokerSampleStoreTopicPartitionCount);
-      maybeIncreaseTopicReplicationFactor(kafkaZkClient, adminClient, replicationFactor,
-                                          new HashSet<>(Arrays.asList(_partitionMetricSampleStoreTopic, _brokerMetricSampleStoreTopic)));
     } finally {
       KafkaCruiseControlUtils.closeKafkaZkClientWithTimeout(kafkaZkClient);
       KafkaCruiseControlUtils.closeAdminClientWithTimeout(adminClient);
-    }
-  }
-
-  /**
-   * Increase the replication factor of Kafka topics through adding new replicas in a rack-aware, round-robin way.
-   * There are two scenarios that rack awareness property is not guaranteed.
-   * <ul>
-   *   <li> If Zookeeper does not have rack information about brokers, then it is only guaranteed that new replicas are
-   *   added to brokers which do not currently host the partition.</li>
-   *   <li> If replication factor to set for the topic is larger than number of racks in the cluster, then rack awareness
-   *   property is ignored.</li>
-   * </ul>
-   *
-   * @param kafkaZkClient KafkaZkClient class to use to increase replication factor.
-   * @param adminClient AdminClient class to use to increase replication factor.
-   * @param replicationFactor The replication factor to set for the topic.
-   * @param topics The topics to check.
-   */
-  @SuppressWarnings("unchecked")
-  private void maybeIncreaseTopicReplicationFactor(KafkaZkClient kafkaZkClient,
-                                                   AdminClient adminClient,
-                                                   int replicationFactor,
-                                                   Set<String> topics) {
-    if (!ensureNoPartitionUnderPartitionReassignment(kafkaZkClient)) {
-      LOG.warn("There are ongoing partition reassignments, skip checking replication factor of topic {}.", topics);
-      return;
-    }
-    Map<String, List<Integer>> brokersByRack = new HashMap<>();
-    Map<Integer, String> rackByBroker = new HashMap<>();
-    Collection<Node> nodes;
-    try {
-      nodes = adminClient.describeCluster().nodes().get();
-    } catch (InterruptedException | ExecutionException e) {
-      throw new RuntimeException(e.getMessage());
-    }
-
-    for (Node node : nodes) {
-      // If rack information is missing, use host information as rack information.
-      String rack = node.hasRack() ? node.rack() : node.host();
-      brokersByRack.putIfAbsent(rack, new ArrayList<>());
-      brokersByRack.get(rack).add(node.id());
-      rackByBroker.put(node.id(), rack);
-    }
-
-    if (replicationFactor > brokersByRack.size()) {
-      if (_skipSampleStoreTopicRackAwarenessCheck) {
-        LOG.warn("Target replication factor for topics " + topics + " is larger than number of racks in cluster, new replica maybe"
-                 + " added in none rack-aware way.");
-      } else {
-        throw new RuntimeException("Unable to increase topics " + topics + " replica factor to " + replicationFactor
-                                   + " since there are only " + brokersByRack.size() + " racks in the cluster.");
-      }
-    }
-
-    Map<TopicPartition, Seq<Object>> newReplicaAssignment = new HashMap<>();
-    for (Map.Entry<String, KafkaFuture<TopicDescription>> entry : adminClient.describeTopics(topics).values().entrySet()) {
-      String topic = entry.getKey();
-      TopicDescription topicDescription;
-      try {
-        topicDescription = entry.getValue().get();
-      } catch (InterruptedException | ExecutionException e) {
-        throw new RuntimeException(e.getMessage());
-      }
-      List<String> racks = new ArrayList<>(brokersByRack.keySet());
-      int[] cursors = new int[racks.size()];
-      int rackCursor = 0;
-      for (TopicPartitionInfo tp : topicDescription.partitions()) {
-        if (tp.replicas().size() < replicationFactor) {
-          List<Object> newAssignedReplica = new ArrayList<>();
-          Set<String> currentOccupiedRack = new HashSet<>();
-          // Make sure the current replicas are in new replica list.
-          tp.replicas().forEach(node -> {
-            newAssignedReplica.add(node.id());
-            currentOccupiedRack.add(rackByBroker.get(node.id()));
-          });
-          // Add new replica to partition in rack-aware(if possible), round-robin way.
-          while (newAssignedReplica.size() < replicationFactor) {
-            if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
-              String rack = racks.get(rackCursor);
-              int cursor = cursors[rackCursor];
-              newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
-              currentOccupiedRack.add(rack);
-              cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
-            }
-            rackCursor = (rackCursor + 1) % racks.size();
-          }
-          newReplicaAssignment.put(new TopicPartition(topic, tp.partition()),
-                                   JavaConverters.asScalaIteratorConverter(newAssignedReplica.iterator()).asScala().toSeq());
-        }
-      }
-    }
-    if (!newReplicaAssignment.isEmpty()) {
-      Seq<Tuple2<TopicPartition, Seq<Object>>> newReplicaAssignmentSeq = JavaConverters.asScalaBufferConverter(
-                                                                         newReplicaAssignment.entrySet().stream()
-                                                                         .map(e -> Tuple2.apply(e.getKey(), e.getValue()))
-                                                                         .collect(Collectors.toList())).asScala().toSeq();
-      kafkaZkClient.createPartitionReassignment((scala.collection.immutable.Map<TopicPartition, Seq<Object>>)
-                                                scala.collection.immutable.Map$.MODULE$.apply(newReplicaAssignmentSeq));
-      LOG.info(String.format("The replication factor of topic partition %s is increased to %d.",
-                             newReplicaAssignment.keySet(), replicationFactor));
     }
   }
 
@@ -401,7 +305,7 @@ public class KafkaSampleStore implements SampleStore {
         }
         maybeIncreaseTopicPartitionCount(kafkaZkClient, adminZkClient, topic, topicDescription, partitionCount);
       }  catch (RuntimeException re) {
-        LOG.error("Skip updating topic " +  topic + "configuration due to failure:" + re.getMessage() + ".");
+        LOG.error("Skip updating configuration of topic " +  topic + " due to exception.", re);
       }
     }
   }

@@ -32,9 +32,6 @@ import org.apache.kafka.common.TopicPartition;
  */
 public class Broker implements Serializable, Comparable<Broker> {
   private static final double DEAD_BROKER_CAPACITY = -1.0;
-  private static final String BROKER_ID = "brokerid";
-  private static final String BROKER_STATE = "brokerstate";
-  private static final String REPLICAS = "replicas";
 
   public enum State {
     ALIVE, DEAD, NEW, DEMOTED, BAD_DISKS
@@ -310,40 +307,6 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Get a comparator for the replicas in the broker. The comparisons performed are:
-   * 1. offline replicas have higher priority, i.e. comes before the immigrant and native replicas.
-   * 2. immigrant replicas have higher priority compared to the native replicas.
-   * 3. the replicas with lower resource usage comes before those with higher resource usage.
-   *
-   * @param resource the resource for the comparator to use.
-   * @return a Comparator to compare the replicas for the given resource.
-   */
-  public Comparator<Replica> replicaComparator(Resource resource) {
-    return (r1, r2) -> {
-      boolean isR1Offline = _currentOfflineReplicas.contains(r1);
-      boolean isR2Offline = _currentOfflineReplicas.contains(r2);
-
-      if (isR1Offline && !isR2Offline) {
-        return -1;
-      } else if (!isR1Offline && isR2Offline) {
-        return 1;
-      } else {
-        boolean isR1Immigrant = _immigrantReplicas.contains(r1);
-        boolean isR2Immigrant = _immigrantReplicas.contains(r2);
-        if (isR1Immigrant && !isR2Immigrant) {
-          return -1;
-        } else if (!isR1Immigrant && isR2Immigrant) {
-          return 1;
-        } else {
-          int result = Double.compare(r1.load().expectedUtilizationFor(resource),
-                                      r2.load().expectedUtilizationFor(resource));
-          return result != 0 ? result : r1.compareTo(r2);
-        }
-      }
-    };
-  }
-
-  /**
    * get the load density of a resource on a replica for sorting. This is to help reduce the movement cost.
    */
   private double loadDensity(Replica replica, Resource resource) {
@@ -431,8 +394,9 @@ public class Broker implements Serializable, Comparable<Broker> {
 
   /**
    * Track the sorted replicas using the given score function. The sort first uses the priority function to
-   * sort the replicas, then use the score function to sort the replicas. The priority function is useful
-   * to priorities a particular type of replicas, e.g leader replicas, immigrant replicas, etc.
+   * sort the replicas, then use the score function to sort the replicas(i.e. replicas of same priority are sorted in
+   * ascending order of score). The priority function is useful to priorities a particular type of replicas, e.g leader
+   * replicas, immigrant replicas, etc.
    *
    * @param sortName the name of the tracked sorted replicas.
    * @param selectionFunc the selection function to decide which replicas to include.
@@ -629,9 +593,9 @@ public class Broker implements Serializable, Comparable<Broker> {
       replicaList.add(replica.getJsonStructureForLoad());
     }
     Map<String, Object> brokerMap = new HashMap<>(3);
-    brokerMap.put(BROKER_ID, _id);
-    brokerMap.put(BROKER_STATE, _state);
-    brokerMap.put(REPLICAS, replicaList);
+    brokerMap.put(ModelUtils.BROKER_ID, _id);
+    brokerMap.put(ModelUtils.BROKER_STATE, _state);
+    brokerMap.put(ModelUtils.REPLICAS, replicaList);
     return brokerMap;
   }
 

@@ -42,6 +42,10 @@ public class ReplicaSortFunctionFactory {
   private static final Function<Replica, Boolean> SELECT_LEADERS = Replica::isLeader;
   /** Select online replicas only */
   private static final Function<Replica, Boolean> SELECT_ONLINE_REPLICAS = r -> !r.isCurrentOffline();
+  /** Select immigrants only */
+  private static final Function<Replica, Boolean> SELECT_IMMIGRANTS = r -> r.originalBroker() != r.broker();
+  /** Select immigrant leaders only */
+  private static final Function<Replica, Boolean> SELECT_IMMIGRANT_LEADERS = r -> r.originalBroker() != r.broker() && r.isLeader();
 
   // Score functions
   /**
@@ -149,6 +153,13 @@ public class ReplicaSortFunctionFactory {
 
   // Selection functions
   /**
+   * @return a selection function that only includes immigrant replicas.
+   */
+  public static Function<Replica, Boolean> selectImmigrants() {
+    return SELECT_IMMIGRANTS;
+  }
+
+  /**
    * @return a selection function that only includes leaders.
    */
   public static Function<Replica, Boolean> selectLeaders() {
@@ -160,5 +171,12 @@ public class ReplicaSortFunctionFactory {
    */
   public static Function<Replica, Boolean> selectOnlineReplicas() {
     return SELECT_ONLINE_REPLICAS;
+  }
+
+  /**
+   * @return a selection function that only includes immigrant leader replicas.
+   */
+  public static Function<Replica, Boolean> selectImmigrantLeaders() {
+    return SELECT_IMMIGRANT_LEADERS;
   }
 }

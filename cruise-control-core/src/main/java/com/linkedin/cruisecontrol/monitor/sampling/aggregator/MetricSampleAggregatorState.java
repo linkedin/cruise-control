@@ -46,7 +46,6 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
    */
   MetricSampleAggregatorState(int numWindows, long windowMs, int completenessCacheSize) {
     super();
-    // Only keep as many as _windowStates.size() completeness caches.
     _completenessCache = new LinkedHashMap<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>>() {
       @Override
       protected boolean removeEldestEntry(Map.Entry<AggregationOptions<G, E>, MetricSampleCompleteness<G, E>> eldest) {
@@ -55,8 +54,8 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
     };
     _windowStates = new ConcurrentSkipListMap<>(Comparator.reverseOrder());
     _windowGenerations = new MyAtomicLong[numWindows];
-    for (int i = 0; i < numWindows; i++) {
-      _windowGenerations[i] = new MyAtomicLong(0);
+    for (int arrayIndex = 0; arrayIndex < numWindows; arrayIndex++) {
+      _windowGenerations[arrayIndex] = new MyAtomicLong(0);
     }
     _windowMs = windowMs;
   }
@@ -85,12 +84,12 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
   /**
    * Update the state of a window.
    *
-   * @param windowIdx the index of the window to update.
+   * @param windowIndex the index of the window to update.
    * @param windowState the new state of the window.
    */
-  synchronized void updateWindowState(long windowIdx, WindowState<G, E> windowState) {
-    if (windowIdx >= _oldestWindowIndex) {
-      _windowStates.put(windowIdx, windowState);
+  synchronized void updateWindowState(long windowIndex, WindowState<G, E> windowState) {
+    if (windowIndex >= _oldestWindowIndex) {
+      _windowStates.put(windowIndex, windowState);
     }
   }
 
@@ -98,19 +97,19 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
    * Clear the state of a given number of windows starting at the given window index.
    *
    * @param startingWindowIndex the starting index of the windows to reset.
-   * @param numWindowIndexesToReset the number of windows to reset.
+   * @param numWindowIndicesToReset the number of windows to reset.
    */
-  synchronized void resetWindowIndexes(long startingWindowIndex, int numWindowIndexesToReset) {
-    if (inValidRange(startingWindowIndex)
-        || inValidRange(startingWindowIndex + numWindowIndexesToReset - 1)) {
+  synchronized void resetWindowIndices(long startingWindowIndex, int numWindowIndicesToReset) {
+    if (inValidWindowRange(startingWindowIndex)
+        || inValidWindowRange(startingWindowIndex + numWindowIndicesToReset - 1)) {
       throw new IllegalStateException("Should never reset a window index that is in the valid range");
     }
     if (LOG.isDebugEnabled()) {
-      LOG.debug("Resetting window index [{}, {}]", startingWindowIndex,
-                startingWindowIndex + numWindowIndexesToReset - 1);
+      LOG.debug("Resetting window indices [{}, {}]", startingWindowIndex,
+                startingWindowIndex + numWindowIndicesToReset - 1);
     }
     // We are resetting all the data here.
-    for (long wi = startingWindowIndex; wi < startingWindowIndex + numWindowIndexesToReset; wi++) {
+    for (long wi = startingWindowIndex; wi < startingWindowIndex + numWindowIndicesToReset; wi++) {
       // It is important to synchronize on all the window generation here, so that no thread will miss the reset.
       // The assumption is that in the MetricSampleAggregator, the oldest window has been updated, and the
       // new windows have not been rolled out yet, so resetting these windows will be safe, i.e. none of the
@@ -124,27 +123,27 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
   }
 
   /**
-   * Get the list of window indexes that need to be updated based on the current generation.
+   * Get the list of window indices that need to be updated based on the current generation.
    * This method also removes the windows that are older than the oldestWindowIndex from the the internal state
    * of this class.
    *
    * @param oldestWindowIndex the index of the oldest window in the MetricSampleAggregator.
    * @param currentWindowIndex the index fo the current window in the MetricSampleAggregator.
-   * @return A list of window indexes that need to be updated.
+   * @return A list of window indices that need to be updated.
    */
-  synchronized List<Long> windowIndexesToUpdate(long oldestWindowIndex, long currentWindowIndex) {
-    List<Long> windowIndexesToUpdate = new ArrayList<>();
-    for (long windowIdx = oldestWindowIndex; windowIdx < currentWindowIndex; windowIdx++) {
-      WindowState windowState = _windowStates.get(windowIdx);
-      int arrayIndex = arrayIndex(windowIdx);
+  synchronized List<Long> windowIndicesToUpdate(long oldestWindowIndex, long currentWindowIndex) {
+    List<Long> windowIndicesToUpdate = new ArrayList<>();
+    for (long windowIndex = oldestWindowIndex; windowIndex < currentWindowIndex; windowIndex++) {
+      WindowState windowState = _windowStates.get(windowIndex);
+      int arrayIndex = arrayIndex(windowIndex);
       if (windowState == null || _windowGenerations[arrayIndex].get() > windowState.generation()) {
-        windowIndexesToUpdate.add(windowIdx);
+        windowIndicesToUpdate.add(windowIndex);
       }
     }
     while (!_windowStates.isEmpty() && _windowStates.lastKey() < oldestWindowIndex) {
       _windowStates.remove(_windowStates.lastKey());
     }
-    return windowIndexesToUpdate;
+    return windowIndicesToUpdate;
   }
 
   /**
@@ -219,17 +218,17 @@ class MetricSampleAggregatorState<G, E extends Entity<G>> extends WindowIndexedA
     completeness.addValidEntityGroups(new HashSet<>(options.interestedEntityGroups()));
 
     for (Map.Entry<Long, WindowState<G, E>> entry : _windowStates.entrySet()) {
-      long windowIdx = entry.getKey();
-      if (windowIdx > toWindowIndex) {
+      long windowIndex = entry.getKey();
+      if (windowIndex > toWindowIndex) {
         continue;
-      } else if (windowIdx < fromWindowIndex) {
+      } else if (windowIndex < fromWindowIndex) {
         break;
       }
       WindowState<G, E> windowState = entry.getValue();
-      windowState.maybeInclude(windowIdx, completeness, entityExtrapolations, options);
+      windowState.maybeInclude(windowIndex, completeness, entityExtrapolations, options);
     }
     // No window is included. We need to clear the valid entity and entity group. Otherwise we keep them.
-    if (completeness.validWindowIndexes().isEmpty()) {
+    if (completeness.validWindowIndices().isEmpty()) {
       completeness.retainAllValidEntities(Collections.emptySet());
       completeness.retainAllValidEntityGroups(Collections.emptySet());
     }
