@@ -36,10 +36,10 @@ import org.apache.kafka.common.utils.SystemTime;
  * Util class for convenience.
  */
 public class KafkaCruiseControlUtils {
-  public static final int ZK_SESSION_TIMEOUT = 30000;
-  public static final int ZK_CONNECTION_TIMEOUT = 30000;
-  public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
-  public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
+  private static final int ZK_SESSION_TIMEOUT = 30000;
+  private static final int ZK_CONNECTION_TIMEOUT = 30000;
+  private static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
+  private static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
   private static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
@@ -47,6 +47,54 @@ public class KafkaCruiseControlUtils {
 
   private KafkaCruiseControlUtils() {
 
+  }
+
+  public static int getZkSessionTimeout() {
+    if(System.getenv("ZK_SESSION_TIMEOUT") != null) {
+      try {
+        return Integer.parseInt(System.getenv("ZK_SESSION_TIMEOUT"));
+      } catch(NumberFormatException e) {
+        return ZK_SESSION_TIMEOUT;
+      }
+    } else {
+      return ZK_SESSION_TIMEOUT;
+    }
+  }
+
+  public static int getZkConnectionTimeout() {
+    if(System.getenv("ZK_CONNECTION_TIMEOUT") != null) {
+      try {
+        return Integer.parseInt(System.getenv("ZK_CONNECTION_TIMEOUT"));
+      } catch(NumberFormatException e) {
+        return ZK_CONNECTION_TIMEOUT;
+      }
+    } else {
+      return ZK_CONNECTION_TIMEOUT;
+    }
+  }
+
+  public static long getKafkaZkClientCloseTimeoutMs() {
+    if(System.getenv("KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS") != null) {
+      try {
+        return Long.parseLong(System.getenv("KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS"));
+      } catch(NumberFormatException e) {
+        return KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS;
+      }
+    } else {
+      return KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS;
+    }
+  }
+
+  public static long getAdminClientCloseTimeoutMs() {
+    if(System.getenv("ADMIN_CLIENT_CLOSE_TIMEOUT_MS") != null) {
+      try {
+        return Long.parseLong(System.getenv("ADMIN_CLIENT_CLOSE_TIMEOUT_MS"));
+      } catch(NumberFormatException e) {
+        return ADMIN_CLIENT_CLOSE_TIMEOUT_MS;
+      }
+    } else {
+      return ADMIN_CLIENT_CLOSE_TIMEOUT_MS;
+    }
   }
 
   public static long getLogDirResponseTimeoutMs() {
@@ -119,12 +167,12 @@ public class KafkaCruiseControlUtils {
   }
 
   /**
-   * Close the given KafkaZkClient with the default timeout of {@link #KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS}.
+   * Close the given KafkaZkClient with the default timeout of {@link #getKafkaZkClientCloseTimeoutMs()}.
    *
    * @param kafkaZkClient KafkaZkClient to be closed
    */
   public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient) {
-    closeKafkaZkClientWithTimeout(kafkaZkClient, KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS);
+    closeKafkaZkClientWithTimeout(kafkaZkClient, getKafkaZkClientCloseTimeoutMs());
   }
 
   public static void closeKafkaZkClientWithTimeout(KafkaZkClient kafkaZkClient, long timeoutMs) {
@@ -163,7 +211,7 @@ public class KafkaCruiseControlUtils {
    * @return A new instance of KafkaZkClient
    */
   public static KafkaZkClient createKafkaZkClient(String connectString, String metricGroup, String metricType) {
-    return KafkaZkClient.apply(connectString, false, ZK_SESSION_TIMEOUT, ZK_CONNECTION_TIMEOUT, Integer.MAX_VALUE,
+    return KafkaZkClient.apply(connectString, false, getZkSessionTimeout(), getZkConnectionTimeout(), Integer.MAX_VALUE,
         new SystemTime(), metricGroup, metricType);
   }
 
@@ -194,12 +242,12 @@ public class KafkaCruiseControlUtils {
   }
 
   /**
-   * Close the given AdminClient with the default timeout of {@link #ADMIN_CLIENT_CLOSE_TIMEOUT_MS}.
+   * Close the given AdminClient with the default timeout of {@link #getAdminClientCloseTimeoutMs()}.
    *
    * @param adminClient AdminClient to be closed
    */
   public static void closeAdminClientWithTimeout(AdminClient adminClient) {
-    closeAdminClientWithTimeout(adminClient, ADMIN_CLIENT_CLOSE_TIMEOUT_MS);
+    closeAdminClientWithTimeout(adminClient, getAdminClientCloseTimeoutMs());
   }
 
   public static void closeAdminClientWithTimeout(AdminClient adminClient, long timeoutMs) {
