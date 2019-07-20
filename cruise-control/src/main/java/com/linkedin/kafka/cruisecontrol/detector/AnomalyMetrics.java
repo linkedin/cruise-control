@@ -14,8 +14,8 @@ import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BRO
 
 
 public class AnomalyMetrics {
-  private final Map<AnomalyType, Double> _meanTimeBetweenAnomalies;
-  private final double _meanTimeToStartFix;
+  private final Map<AnomalyType, Double> _meanTimeBetweenAnomaliesMs;
+  private final double _meanTimeToStartFixMs;
   private final long _numSelfHealingStarted;
   private final long _ongoingAnomalyDurationMs;
 
@@ -30,35 +30,35 @@ public class AnomalyMetrics {
    *   to the current time for which no fix has been started. 0, if there is no unfixed (ongoing) anomaly.</li>
    * </ol>
    *
-   * @param meanTimeBetweenAnomalies Mean time between anomalies by the corresponding type.
-   * @param meanTimeToStartFix Mean time to start fix for any anomaly.
+   * @param meanTimeBetweenAnomaliesMs Mean time between anomalies by the corresponding type.
+   * @param meanTimeToStartFixMs Mean time to start fix for any anomaly.
    * @param numSelfHealingStarted Number of fixes started by the anomaly detector as a result of self healing.
    * @param ongoingAnomalyDurationMs The duration of the ongoing (unfixed/unfixable) anomaly if there is any, 0 otherwise.
    */
-  public AnomalyMetrics(Map<AnomalyType, Double> meanTimeBetweenAnomalies,
-                        double meanTimeToStartFix,
+  public AnomalyMetrics(Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs,
+                        double meanTimeToStartFixMs,
                         long numSelfHealingStarted,
                         long ongoingAnomalyDurationMs) {
-    if (meanTimeBetweenAnomalies == null) {
+    if (meanTimeBetweenAnomaliesMs == null) {
       throw new IllegalArgumentException("Attempt to set meanTimeBetweenAnomalies with null.");
     }
     for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
-      if (!meanTimeBetweenAnomalies.containsKey(anomalyType)) {
+      if (!meanTimeBetweenAnomaliesMs.containsKey(anomalyType)) {
         throw new IllegalArgumentException(anomalyType + " is missing in meanTimeBetweenAnomalies metric.");
       }
     }
-    _meanTimeBetweenAnomalies = meanTimeBetweenAnomalies;
-    _meanTimeToStartFix = meanTimeToStartFix;
+    _meanTimeBetweenAnomaliesMs = meanTimeBetweenAnomaliesMs;
+    _meanTimeToStartFixMs = meanTimeToStartFixMs;
     _numSelfHealingStarted = numSelfHealingStarted;
     _ongoingAnomalyDurationMs = ongoingAnomalyDurationMs;
   }
 
-  public double meanTimeToStartFix() {
-    return _meanTimeToStartFix;
+  public double meanTimeToStartFixMs() {
+    return _meanTimeToStartFixMs;
   }
 
-  public Map<AnomalyType, Double> meanTimeBetweenAnomalies() {
-    return _meanTimeBetweenAnomalies;
+  public Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs() {
+    return _meanTimeBetweenAnomaliesMs;
   }
 
   public long numSelfHealingStarted() {
@@ -73,9 +73,10 @@ public class AnomalyMetrics {
   public String toString() {
     return String.format("{meanTimeBetweenAnomalies:{%s:%s, %s:%s, %s:%s}, "
                          + "meanTimeToStartFix:%s, numSelfHealingStarted:%d, ongoingAnomalyDuration=%s}",
-                         GOAL_VIOLATION, toPrettyDuration(_meanTimeBetweenAnomalies.get(GOAL_VIOLATION)),
-                         BROKER_FAILURE, toPrettyDuration(_meanTimeBetweenAnomalies.get(BROKER_FAILURE)),
-                         METRIC_ANOMALY, toPrettyDuration(_meanTimeBetweenAnomalies.get(METRIC_ANOMALY)),
-                         toPrettyDuration(_meanTimeToStartFix), _numSelfHealingStarted, toPrettyDuration(_ongoingAnomalyDurationMs));
+                         GOAL_VIOLATION, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(GOAL_VIOLATION)),
+                         BROKER_FAILURE, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(BROKER_FAILURE)),
+                         METRIC_ANOMALY, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(METRIC_ANOMALY)),
+                         toPrettyDuration(_meanTimeToStartFixMs), _numSelfHealingStarted,
+                         toPrettyDuration(_ongoingAnomalyDurationMs));
   }
 }

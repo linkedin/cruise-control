@@ -100,8 +100,8 @@ public class AnomalyDetectorState {
    */
   Map<String, Object> metrics() {
     Map<String, Object> metrics = new HashMap<>(4);
-    metrics.put(MEAN_TIME_BETWEEN_ANOMALIES_MS, _metrics.meanTimeBetweenAnomalies());
-    metrics.put(MEAN_TIME_TO_START_FIX_MS, _metrics.meanTimeToStartFix());
+    metrics.put(MEAN_TIME_BETWEEN_ANOMALIES_MS, _metrics.meanTimeBetweenAnomaliesMs());
+    metrics.put(MEAN_TIME_TO_START_FIX_MS, _metrics.meanTimeToStartFixMs());
     metrics.put(NUM_SELF_HEALING_STARTED, _metrics.numSelfHealingStarted());
     metrics.put(ONGOING_ANOMALY_DURATION_MS, _metrics.ongoingAnomalyDurationMs());
 
