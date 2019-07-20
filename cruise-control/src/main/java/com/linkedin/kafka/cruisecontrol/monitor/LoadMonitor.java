@@ -567,6 +567,7 @@ public class LoadMonitor {
     PartitionInfo partitionInfo = kafkaCluster.partition(tp);
     // If partition info does not exist, the topic may have been deleted.
     if (partitionInfo != null) {
+      boolean needToAdjustCpuUsage = true;
       for (int index = 0; index < partitionInfo.replicas().length; index++) {
         Node replica = partitionInfo.replicas()[index];
         String rack = getRackHandleNull(replica);
@@ -588,8 +589,10 @@ public class LoadMonitor {
                                     tp,
                                     getAggregatedMetricValues(valuesAndExtrapolations,
                                                               kafkaCluster.partition(tp),
-                                                              isLeader),
+                                                              isLeader,
+                                                              needToAdjustCpuUsage),
                                     valuesAndExtrapolations.windows());
+        needToAdjustCpuUsage = false;
       }
     }
   }
@@ -600,16 +603,35 @@ public class LoadMonitor {
    * @param valuesAndExtrapolations the values and extrapolations of the leader replica.
    * @param partitionInfo the partition info.
    * @param isLeader whether the value is created for leader replica or follower replica.
+   * @param needToAdjustCpuUsage whether need to adjust cpu usage metric for replica.
    * @return the {@link AggregatedMetricValues} to use for the given replica.
    */
   private AggregatedMetricValues getAggregatedMetricValues(ValuesAndExtrapolations valuesAndExtrapolations,
                                                            PartitionInfo partitionInfo,
-                                                           boolean isLeader) {
+                                                           boolean isLeader,
+                                                           boolean needToAdjustCpuUsage) {
     AggregatedMetricValues aggregatedMetricValues = valuesAndExtrapolations.metricValues();
+    if (needToAdjustCpuUsage) {
+      adjustCpuUsage(aggregatedMetricValues);
+    }
     if (isLeader) {
       return fillInReplicationBytesOut(aggregatedMetricValues, partitionInfo);
     } else {
       return MonitorUtils.toFollowerMetricValues(aggregatedMetricValues);
+    }
+  }
+
+  /**
+   * Convert replica's cpu usage metric from absolute value to percentage value since the cpu capacity reported by
+   * {@link BrokerCapacityConfigResolver} is percentage value.
+   *
+   * @param aggregatedMetricValues the {@link AggregatedMetricValues} for the replica.
+   */
+  private void adjustCpuUsage(AggregatedMetricValues aggregatedMetricValues) {
+    short cpuUsageId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.CPU_USAGE);
+    MetricValues cpuUsage = aggregatedMetricValues.valuesFor(cpuUsageId);
+    for (int i = 0; i < cpuUsage.length(); i++) {
+      cpuUsage.set(i, cpuUsage.get(i) * 100);
     }
   }
 

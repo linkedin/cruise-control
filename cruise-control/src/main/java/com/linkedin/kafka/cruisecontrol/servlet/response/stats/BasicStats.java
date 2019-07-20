@@ -32,8 +32,7 @@ class BasicStats {
              double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
              int numReplicas, int numLeaders, double diskCapacity) {
     _diskUtil = diskUtil < 0.0 ? 0.0 : diskUtil;
-    // Convert cpu util b/c full utilization should look like 100% instead of 1
-    _cpuUtil = cpuUtil < 0.0 ? 0.0 : 100 * cpuUtil;
+    _cpuUtil = cpuUtil < 0.0 ? 0.0 : cpuUtil;
     _leaderBytesInRate = leaderBytesInRate < 0.0 ? 0.0 : leaderBytesInRate;
     _followerBytesInRate = followerBytesInRate < 0.0 ? 0.0 : followerBytesInRate;
     _bytesOutRate = bytesOutRate < 0.0 ? 0.0 : bytesOutRate;
