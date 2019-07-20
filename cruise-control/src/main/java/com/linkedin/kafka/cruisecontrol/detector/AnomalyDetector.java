@@ -198,10 +198,10 @@ public class AnomalyDetector {
   }
 
   public synchronized AnomalyDetectorState anomalyDetectorState() {
-    // Retrieve mean time between anomalies
+    // Retrieve mean time between anomalies, record the time in ms.
     Map<AnomalyType, Double> meanTimeBetweenAnomalies = new HashMap<>(AnomalyType.cachedValues().size());
     for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
-      meanTimeBetweenAnomalies.put(anomalyType, _anomalyRateByType.get(anomalyType).getMeanRate());
+      meanTimeBetweenAnomalies.put(anomalyType, _anomalyRateByType.get(anomalyType).getMeanRate() * 1000);
     }
     // Retrieve the mean time to start a fix and ongoing anomaly duration.
     long ongoingAnomalyDurationMs = 0L;

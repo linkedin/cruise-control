@@ -37,6 +37,10 @@ public class KafkaCruiseControlUtils {
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";
+  private static final int SEC_TO_MS = 1000;
+  private static final int MIN_TO_MS = SEC_TO_MS * 60;
+  private static final int HOUR_TO_MS = MIN_TO_MS * 60;
+  private static final int DAY_TO_MS = HOUR_TO_MS * 24;
   private static final Set<String> KAFKA_ASSIGNER_GOALS =
       Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                                                               KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
@@ -87,33 +91,33 @@ public class KafkaCruiseControlUtils {
    * @param durationMs Duration in milliseconds
    * @return String representation of duration
    */
-  public static String toDurationString(double durationMs) {
+  public static String toPrettyDuration(double durationMs) {
+    if (durationMs < 0) {
+      throw new IllegalArgumentException(String.format("Duration cannot be negative value, get %f", durationMs));
+    }
+
     // If the duration is less than one second, represent in milliseconds.
-    if (durationMs < 1000) {
+    if (durationMs < SEC_TO_MS) {
       return String.format("%.2f milliseconds", durationMs);
     }
 
-    durationMs = durationMs / 1000;
     // If the duration is less than one minute, represent in seconds.
-    if (durationMs < 60) {
-      return String.format("%.2f seconds", durationMs);
+    if (durationMs < MIN_TO_MS) {
+      return String.format("%.2f seconds", durationMs / SEC_TO_MS);
     }
 
-    durationMs = durationMs / 60;
     // If the duration is less than one hour, represent in minutes.
-    if (durationMs < 60) {
-      return String.format("%.2f minutes", durationMs);
+    if (durationMs < HOUR_TO_MS) {
+      return String.format("%.2f minutes", durationMs / MIN_TO_MS);
     }
 
-    durationMs = durationMs / 60;
     // If the duration is less than one day, represent in hours.
-    if (durationMs < 24) {
-      return String.format("%.2f hours", durationMs);
+    if (durationMs < DAY_TO_MS) {
+      return String.format("%.2f hours", durationMs / HOUR_TO_MS);
     }
 
     // Represent in days.
-    durationMs = durationMs / 24;
-    return String.format("%.2f days", durationMs);
+    return String.format("%.2f days", durationMs / DAY_TO_MS);
   }
 
   /**
