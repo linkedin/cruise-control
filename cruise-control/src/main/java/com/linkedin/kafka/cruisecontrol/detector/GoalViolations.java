@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
@@ -34,6 +35,7 @@ public class GoalViolations extends KafkaAnomaly {
   private final boolean _excludeRecentlyRemovedBrokers;
   private final String _anomalyId;
   private final List<String> _selfHealingGoals;
+  private final Long _replicationThrottle;
 
   public GoalViolations(KafkaCruiseControl kafkaCruiseControl,
                         boolean allowCapacityEstimation,
@@ -48,6 +50,11 @@ public class GoalViolations extends KafkaAnomaly {
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
     _optimizationResult = null;
     _selfHealingGoals = selfHealingGoals;
+    if (_kafkaCruiseControl != null && _kafkaCruiseControl.config() != null) {
+      _replicationThrottle = _kafkaCruiseControl.config().getLong(KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
+    } else {
+      _replicationThrottle = null;
+    }
   }
 
   /**
@@ -88,7 +95,7 @@ public class GoalViolations extends KafkaAnomaly {
                                                                                    false,
                                                                                    null,
                                                                                    null,
-                                                                                   null,
+                                                                                   _replicationThrottle,
                                                                                    _anomalyId,
                                                                                    _excludeRecentlyDemotedBrokers,
                                                                                    _excludeRecentlyRemovedBrokers,

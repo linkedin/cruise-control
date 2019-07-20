@@ -5,12 +5,15 @@
 package com.linkedin.kafka.cruisecontrol.detector.notifier;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.detector.KafkaMetricAnomaly;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
@@ -35,6 +38,9 @@ public class SelfHealingNotifierTest {
     final long failureTime2 = 400L;
     final long startTime = 500L;
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).atLeastOnce();
+    EasyMock.replay(mockKafkaCruiseControl);
     Time mockTime = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
     TestingBrokerFailureAutoFixNotifier anomalyNotifier = new TestingBrokerFailureAutoFixNotifier(mockTime);
     anomalyNotifier.configure(Collections.singletonMap(SelfHealingNotifier.SELF_HEALING_BROKER_FAILURE_ENABLED_CONFIG, "true"));
@@ -116,6 +122,9 @@ public class SelfHealingNotifierTest {
     final long startTime = 500L;
     Time mockTime = new MockTime(startTime);
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).atLeastOnce();
+    EasyMock.replay(mockKafkaCruiseControl);
     TestingBrokerFailureAutoFixNotifier anomalyNotifier = new TestingBrokerFailureAutoFixNotifier(mockTime);
 
     Map<String, String> selfHealingExplicitlyDisabled = new HashMap<>(4);

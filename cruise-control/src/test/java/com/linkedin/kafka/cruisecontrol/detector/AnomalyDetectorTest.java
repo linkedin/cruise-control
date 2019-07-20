@@ -6,8 +6,10 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotificationResult;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
@@ -17,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.ScheduledExecutorService;
@@ -111,6 +114,8 @@ public class AnomalyDetectorTest {
     EasyMock.expect(mockAnomalyNotifier.onBrokerFailure(EasyMock.isA(BrokerFailures.class)))
             .andReturn(AnomalyNotificationResult.check(MOCK_DELAY_CHECK_MS));
     EasyMock.expect(mockAnomalyNotifier.selfHealingEnabledRatio()).andReturn(MOCK_SELF_HEALING_ENABLED_RATIO);
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).times(1, 2);
 
     startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector, executorService);
     // Schedule a delayed check
@@ -174,6 +179,8 @@ public class AnomalyDetectorTest {
     ScheduledExecutorService mockDetectorScheduler = EasyMock.mock(ScheduledExecutorService.class);
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).times(1, 2);
 
     startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector, executorService);
     shutdownDetector(mockDetectorScheduler, executorService);
@@ -284,6 +291,8 @@ public class AnomalyDetectorTest {
     ScheduledExecutorService mockDetectorScheduler = EasyMock.mock(ScheduledExecutorService.class);
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
+    Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).times(1, 2);
 
     startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector, executorService);
     shutdownDetector(mockDetectorScheduler, executorService);
