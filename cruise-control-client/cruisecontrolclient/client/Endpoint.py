@@ -541,7 +541,7 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
     )
     argparse_properties = {
         'args': (name,),
-        'kwargs': dict(aliases=[name.replace('_', '-'), 'stop'], help=description)
+        'kwargs': dict(aliases=[name.replace('_', '-')], help=description)
     }
 
 
