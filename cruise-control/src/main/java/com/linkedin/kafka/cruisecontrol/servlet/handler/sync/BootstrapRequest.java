@@ -5,19 +5,19 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.BootstrapResult;
+import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BOOTSTRAP_PARAMETER_OBJECT_CONFIG;
 
 
 public class BootstrapRequest extends AbstractSyncRequest {
-  private final KafkaCruiseControl _kafkaCruiseControl;
-  private final BootstrapParameters _parameters;
+  private KafkaCruiseControl _kafkaCruiseControl;
+  private BootstrapParameters _parameters;
 
-  public BootstrapRequest(KafkaCruiseControlServlet servlet, BootstrapParameters parameters) {
-    super(servlet);
-    _kafkaCruiseControl = servlet.asyncKafkaCruiseControl();
-    _parameters = parameters;
+  public BootstrapRequest() {
+    super();
   }
 
   @Override
@@ -38,5 +38,15 @@ public class BootstrapRequest extends AbstractSyncRequest {
   @Override
   public String name() {
     return BootstrapRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
+    _parameters = (BootstrapParameters) configs.get(BOOTSTRAP_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

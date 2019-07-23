@@ -5,23 +5,22 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
 import java.util.List;
+import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.USER_TASKS_PARAMETER_OBJECT_CONFIG;
 
 
 public class UserTasksRequest extends AbstractSyncRequest {
-  private final List<UserTaskManager.UserTaskInfo> _userTasks;
-  private final KafkaCruiseControlConfig _config;
-  private final UserTasksParameters _parameters;
+  private List<UserTaskManager.UserTaskInfo> _userTasks;
+  private KafkaCruiseControlConfig _config;
+  private UserTasksParameters _parameters;
 
-  public UserTasksRequest(KafkaCruiseControlServlet servlet, UserTasksParameters parameters) {
-    super(servlet);
-    _userTasks = servlet.getAllUserTasks();
-    _config = servlet.asyncKafkaCruiseControl().config();
-    _parameters = parameters;
+  public UserTasksRequest() {
+    super();
   }
 
   @Override
@@ -37,5 +36,16 @@ public class UserTasksRequest extends AbstractSyncRequest {
   @Override
   public String name() {
     return UserTasksRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _userTasks = _servlet.getAllUserTasks();
+    _config = _servlet.asyncKafkaCruiseControl().config();
+    _parameters = (UserTasksParameters) configs.get(USER_TASKS_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

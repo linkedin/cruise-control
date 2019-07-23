@@ -14,7 +14,7 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
 import com.linkedin.kafka.clients.utils.tests.AbstractKafkaIntegrationTestHarness;
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import java.util.Arrays;
 import java.util.Collection;
@@ -231,7 +231,7 @@ public class ExecutorTest extends AbstractKafkaIntegrationTestHarness {
     ExecutorNotifier mockExecutorNotifier = EasyMock.mock(ExecutorNotifier.class);
     Capture<ExecutorNotification> captureNotification = Capture.newInstance(CaptureType.FIRST);
 
-    EasyMock.expect(mockUserTaskInfo.endPoint()).andReturn(EndPoint.REBALANCE).once();
+    EasyMock.expect(mockUserTaskInfo.endPoint()).andReturn(CruiseControlEndPoint.REBALANCE).once();
     EasyMock.expect(mockUserTaskManager.markTaskExecutionBegan(uuid))
         .andReturn(expectUserTaskInfo ? mockUserTaskInfo : null).once();
     mockUserTaskManager.markTaskExecutionFinished(uuid);

@@ -4,14 +4,14 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
-import javax.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#LOAD}
+ * Parameters for {@link CruiseControlEndPoint#LOAD}
  *
  * <ul>
  *   <li>Note that both parameter "time" and "end" are used to specify the end time for cluster model, thus they are mutually exclusive.</li>
@@ -29,8 +29,8 @@ public class ClusterLoadParameters extends AbstractParameters {
   private ModelCompletenessRequirements _requirements;
   private boolean _allowCapacityEstimation;
 
-  public ClusterLoadParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public ClusterLoadParameters() {
+    super();
   }
 
   @Override
@@ -57,5 +57,10 @@ public class ClusterLoadParameters extends AbstractParameters {
 
   public boolean allowCapacityEstimation() {
     return _allowCapacityEstimation;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

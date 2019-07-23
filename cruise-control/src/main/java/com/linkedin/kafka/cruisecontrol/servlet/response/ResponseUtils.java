@@ -50,12 +50,12 @@ public class ResponseUtils {
     return new Gson().toJson(jsonResponse);
   }
 
-  private static void writeResponseToOutputStream(HttpServletResponse response,
-                                                  int responseCode,
-                                                  boolean json,
-                                                  String responseMsg,
-                                                  KafkaCruiseControlConfig config
-                                                  )
+  static void writeResponseToOutputStream(HttpServletResponse response,
+                                          int responseCode,
+                                          boolean json,
+                                          String responseMsg,
+                                          KafkaCruiseControlConfig config
+                                         )
       throws IOException {
     OutputStream out = response.getOutputStream();
     setResponseCode(response, responseCode, json, config);

@@ -8,6 +8,7 @@ import com.codahale.metrics.Gauge;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.Timer;
+import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
@@ -63,7 +64,11 @@ public class SessionManager {
    * @param time the time object for unit test.
    * @param dropwizardMetricRegistry the metric registry to record metrics.
    */
-  SessionManager(int capacity, long sessionExpiryMs, Time time, MetricRegistry dropwizardMetricRegistry, Map<EndPoint, Timer> successfulRequestExecutionTimer) {
+  SessionManager(int capacity,
+                 long sessionExpiryMs,
+                 Time time,
+                 MetricRegistry dropwizardMetricRegistry,
+                 Map<EndPoint, Timer> successfulRequestExecutionTimer) {
     _capacity = capacity;
     _sessionExpiryMs = sessionExpiryMs;
     _time = time;

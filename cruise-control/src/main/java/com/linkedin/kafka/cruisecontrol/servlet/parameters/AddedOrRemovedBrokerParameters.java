@@ -7,8 +7,8 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
 
 
 public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizationParameters {
@@ -20,8 +20,8 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
   private ReplicaMovementStrategy _replicaMovementStrategy;
   private Integer _reviewId;
 
-  public AddedOrRemovedBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public AddedOrRemovedBrokerParameters() {
+    super();
   }
 
   @Override
@@ -68,5 +68,10 @@ public abstract class AddedOrRemovedBrokerParameters extends GoalBasedOptimizati
 
   public ReplicaMovementStrategy replicaMovementStrategy() {
     return _replicaMovementStrategy;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

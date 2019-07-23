@@ -5,16 +5,16 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#PARTITION_LOAD}
+ * Parameters for {@link CruiseControlEndPoint#PARTITION_LOAD}
  *
  * <pre>
  * Get the partition load sorted by the utilization of a given resource and filtered by given topic regular expression
@@ -40,8 +40,8 @@ public class PartitionLoadParameters extends AbstractParameters {
   private Set<Integer> _brokerIds;
 
 
-  public PartitionLoadParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public PartitionLoadParameters() {
+    super();
   }
 
   @Override
@@ -117,5 +117,10 @@ public class PartitionLoadParameters extends AbstractParameters {
 
   public Set<Integer> brokerIds() {
     return _brokerIds;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

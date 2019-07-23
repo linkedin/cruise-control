@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -225,7 +225,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     SortedMap<Integer, Integer> outOfSyncCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> replicaCountByBrokerId = new TreeMap<>();
     KafkaClusterStateParameters kafkaClusterStateParams = (KafkaClusterStateParameters) parameters;
-    
+
     Pattern topic = kafkaClusterStateParams.topic();
     populateKafkaBrokerState(leaderCountByBrokerId, outOfSyncCountByBrokerId, replicaCountByBrokerId);
 

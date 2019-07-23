@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.async;
 
-import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
+import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationStep;
 import com.linkedin.kafka.cruisecontrol.async.progress.Pending;
