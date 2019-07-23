@@ -4,14 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-import javax.servlet.http.HttpServletRequest;
 
 
 public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationParameters {
@@ -32,8 +30,8 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
   protected boolean _excludeRecentlyRemovedBrokers;
   protected GoalsAndRequirements _goalsAndRequirements;
 
-  GoalBasedOptimizationParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  GoalBasedOptimizationParameters() {
+    super();
   }
 
   @Override
@@ -75,5 +73,10 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
     return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS.get(dataFrom),
                                              MIN_VALID_PARTITIONS_RATIO.get(dataFrom),
                                              INCLUDE_ALL_TOPICS);
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

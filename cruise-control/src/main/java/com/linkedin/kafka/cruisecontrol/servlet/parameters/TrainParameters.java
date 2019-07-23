@@ -4,14 +4,14 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
-import javax.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#TRAIN}
+ * Parameters for {@link CruiseControlEndPoint#TRAIN}
  *
  * <pre>
  * Train the Kafka Cruise Control linear regression model. The trained model will only be used if
@@ -24,8 +24,8 @@ public class TrainParameters extends AbstractParameters {
   private Long _startMs;
   private Long _endMs;
 
-  public TrainParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public TrainParameters() {
+    super();
   }
 
   @Override
@@ -44,5 +44,10 @@ public class TrainParameters extends AbstractParameters {
 
   public Long endMs() {
     return _endMs;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

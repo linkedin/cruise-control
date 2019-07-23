@@ -5,19 +5,19 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.TrainResult;
+import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TRAIN_PARAMETER_OBJECT_CONFIG;
 
 
 public class TrainRequest extends AbstractSyncRequest {
-  private final KafkaCruiseControl _kafkaCruiseControl;
-  private final TrainParameters _parameters;
+  private KafkaCruiseControl _kafkaCruiseControl;
+  private TrainParameters _parameters;
 
-  public TrainRequest(KafkaCruiseControlServlet servlet, TrainParameters parameters) {
-    super(servlet);
-    _kafkaCruiseControl = servlet.asyncKafkaCruiseControl();
-    _parameters = parameters;
+  public TrainRequest() {
+    super();
   }
 
   @Override
@@ -34,5 +34,15 @@ public class TrainRequest extends AbstractSyncRequest {
   @Override
   public String name() {
     return TrainRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
+    _parameters = (TrainParameters) configs.get(TRAIN_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

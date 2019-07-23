@@ -47,6 +47,8 @@ import org.apache.kafka.common.config.ConfigDef;
 import java.util.Map;
 import org.apache.kafka.common.config.ConfigException;
 
+import static com.linkedin.kafka.cruisecontrol.config.CruiseControlParametersConfig.*;
+import static com.linkedin.kafka.cruisecontrol.config.CruiseControlRequestConfigs.*;
 import static org.apache.kafka.common.config.ConfigDef.Range.atLeast;
 import static org.apache.kafka.common.config.ConfigDef.Range.between;
 
@@ -1376,6 +1378,206 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 DEFAULT_EXECUTOR_NOTIFIER_CLASS,
                 ConfigDef.Importance.LOW,
                 EXECUTOR_NOTIFIER_CLASS_DOC)
+        .define(STOP_PROPOSAL_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_STOP_PROPOSAL_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                STOP_PROPOSAL_REQUEST_CLASS_DOC)
+        .define(BOOTSTRAP_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_BOOTSTRAP_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                BOOTSTRAP_REQUEST_CLASS_DOC)
+        .define(TRAIN_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_TRAIN_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                TRAIN_REQUEST_CLASS_DOC)
+        .define(LOAD_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_LOAD_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                LOAD_REQUEST_CLASS_DOC)
+        .define(PARTITION_LOAD_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_PARTITION_LOAD_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                PARTITION_LOAD_REQUEST_CLASS_DOC)
+        .define(PROPOSALS_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_PROPOSALS_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                PROPOSALS_REQUEST_CLASS_DOC)
+        .define(STATE_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_STATE_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                STATE_REQUEST_CLASS_DOC)
+        .define(KAFKA_CLUSTER_STATE_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_KAFKA_CLUSTER_STATE_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                KAFKA_CLUSTER_STATE_REQUEST_CLASS_DOC)
+        .define(USER_TASKS_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_USER_TASKS_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                USER_TASKS_REQUEST_CLASS_DOC)
+        .define(REVIEW_BOARD_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_REVIEW_BOARD_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                REVIEW_BOARD_REQUEST_CLASS_DOC)
+        .define(ADD_BROKER_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_ADD_BROKER_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                ADD_BROKER_REQUEST_CLASS_DOC)
+        .define(REMOVE_BROKER_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_REMOVE_BROKER_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                REMOVE_BROKER_REQUEST_CLASS_DOC)
+        .define(FIX_OFFLINE_REPLICAS_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_FIX_OFFLINE_REPLICAS_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                FIX_OFFLINE_REPLICAS_REQUEST_CLASS_DOC)
+        .define(REBALANCE_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_REBALANCE_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                REBALANCE_REQUEST_CLASS_DOC)
+        .define(PAUSE_SAMPLING_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_PAUSE_SAMPLING_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                PAUSE_SAMPLING_REQUEST_CLASS_DOC)
+        .define(RESUME_SAMPLING_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_RESUME_SAMPLING_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                RESUME_SAMPLING_REQUEST_CLASS_DOC)
+        .define(DEMOTE_BROKER_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_DEMOTE_BROKER_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                DEMOTE_BROKER_REQUEST_CLASS_DOC)
+        .define(ADMIN_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_ADMIN_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                ADMIN_REQUEST_CLASS_DOC)
+        .define(REVIEW_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_REVIEW_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                REVIEW_REQUEST_CLASS_DOC)
+        .define(TOPIC_CONFIGURATION_REQUEST_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_TOPIC_CONFIGURATION_REQUEST_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                TOPIC_CONFIGURATION_REQUEST_CLASS_DOC)
+        .define(STOP_PROPOSAL_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_STOP_PROPOSAL_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                STOP_PROPOSAL_PARAMETERS_CLASS_DOC)
+        .define(BOOTSTRAP_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_BOOTSTRAP_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                BOOTSTRAP_PARAMETERS_CLASS_DOC)
+        .define(TRAIN_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_TRAIN_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                TRAIN_PARAMETERS_CLASS_DOC)
+        .define(LOAD_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_LOAD_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                LOAD_PARAMETERS_CLASS_DOC)
+        .define(PARTITION_LOAD_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_PARTITION_LOAD_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                PARTITION_LOAD_PARAMETERS_CLASS_DOC)
+        .define(PROPOSALS_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_PROPOSALS_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                PROPOSALS_PARAMETERS_CLASS_DOC)
+        .define(STATE_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_STATE_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                STATE_PARAMETERS_CLASS_DOC)
+        .define(KAFKA_CLUSTER_STATE_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_KAFKA_CLUSTER_STATE_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                KAFKA_CLUSTER_STATE_PARAMETERS_CLASS_DOC)
+        .define(USER_TASKS_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_USER_TASKS_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                USER_TASKS_PARAMETERS_CLASS_DOC)
+        .define(REVIEW_BOARD_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_REVIEW_BOARD_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                REVIEW_BOARD_PARAMETERS_CLASS_DOC)
+        .define(ADD_BROKER_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_ADD_BROKER_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                ADD_BROKER_PARAMETERS_CLASS_DOC)
+        .define(REMOVE_BROKER_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_REMOVE_BROKER_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                REMOVE_BROKER_PARAMETERS_CLASS_DOC)
+        .define(FIX_OFFLINE_REPLICAS_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_FIX_OFFLINE_REPLICAS_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                FIX_OFFLINE_REPLICAS_PARAMETERS_CLASS_DOC)
+        .define(REBALANCE_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_REBALANCE_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                REBALANCE_PARAMETERS_CLASS_DOC)
+        .define(PAUSE_SAMPLING_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_PAUSE_RESUME_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                PAUSE_SAMPLING_PARAMETERS_CLASS_DOC)
+        .define(RESUME_SAMPLING_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_PAUSE_RESUME_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                RESUME_SAMPLING_PARAMETERS_CLASS_DOC)
+        .define(DEMOTE_BROKER_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_DEMOTE_BROKER_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                DEMOTE_BROKER_PARAMETERS_CLASS_DOC)
+        .define(ADMIN_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_ADMIN_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                ADMIN_PARAMETERS_CLASS_DOC)
+        .define(REVIEW_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_REVIEW_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                REVIEW_PARAMETERS_CLASS_DOC)
+        .define(TOPIC_CONFIGURATION_PARAMETERS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_TOPIC_CONFIGURATION_PARAMETERS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                TOPIC_CONFIGURATION_PARAMETERS_CLASS_DOC)
         .define(ANOMALY_DETECTION_INTERVAL_MS_CONFIG,
                 ConfigDef.Type.LONG,
                 300000L,
@@ -1486,6 +1688,31 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       }
     }
     return objects;
+  }
+
+  public <T> T getConfiguredInstance(String key, Class<T> t, Map<String, Object> configOverrides) {
+    Class<?> c = getClass(key);
+    Object instance;
+    try {
+      instance = c.newInstance();
+    } catch (IllegalAccessException e) {
+      throw new IllegalArgumentException("Could not instantiate class " + c.getName(), e);
+    } catch (InstantiationException e) {
+      throw new IllegalArgumentException("Could not instantiate class " + c.getName() + " Does it have a public no-argument constructor?", e);
+    } catch (NullPointerException e) {
+      throw new IllegalArgumentException("Attempt to get configured instance of null configuration " + t.getName(), e);
+    }
+
+    if (!t.isInstance(instance)) {
+      throw new IllegalArgumentException(c.getName() + " is not an instance of " + t.getName());
+    }
+    T o = t.cast(instance);
+    if (o instanceof CruiseControlConfigurable) {
+      Map<String, Object> configPairs = mergedConfigValues();
+      configPairs.putAll(configOverrides);
+      ((CruiseControlConfigurable) o).configure(configPairs);
+    }
+    return o;
   }
 
   /**

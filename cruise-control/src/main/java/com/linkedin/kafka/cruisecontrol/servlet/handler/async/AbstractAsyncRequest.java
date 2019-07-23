@@ -6,13 +6,13 @@ package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.AbstractRequest;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ProgressResult;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -24,16 +24,13 @@ import org.slf4j.LoggerFactory;
 
 public abstract class AbstractAsyncRequest extends AbstractRequest {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractAsyncRequest.class);
-  protected final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
-  private final ThreadLocal<Integer> _asyncOperationStep;
-  private final UserTaskManager _userTaskManager;
-  private final long _maxBlockMs;
+  protected AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
+  private ThreadLocal<Integer> _asyncOperationStep;
+  private UserTaskManager _userTaskManager;
+  private long _maxBlockMs;
 
-  public AbstractAsyncRequest(KafkaCruiseControlServlet servlet) {
-    _asyncKafkaCruiseControl = servlet.asyncKafkaCruiseControl();
-    _asyncOperationStep = servlet.asyncOperationStep();
-    _userTaskManager = servlet.userTaskManager();
-    _maxBlockMs = servlet.maxBlockMs();
+  public AbstractAsyncRequest() {
+
   }
 
   /**
@@ -67,4 +64,13 @@ public abstract class AbstractAsyncRequest extends AbstractRequest {
   public abstract CruiseControlParameters parameters();
 
   public abstract String name();
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _asyncKafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
+    _asyncOperationStep = _servlet.asyncOperationStep();
+    _userTaskManager = _servlet.userTaskManager();
+    _maxBlockMs = _servlet.maxBlockMs();
+  }
 }

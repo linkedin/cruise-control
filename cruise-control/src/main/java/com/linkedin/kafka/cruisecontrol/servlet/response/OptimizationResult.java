@@ -10,8 +10,9 @@ import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaOptimizationParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
@@ -71,7 +72,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   }
 
   private String getPlaintextPretext(CruiseControlParameters parameters) {
-    switch (parameters.endPoint()) {
+    switch ((CruiseControlEndPoint) parameters.endPoint()) {
       case ADD_BROKER:
         return String.format("%n%nCluster load after adding broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
       case REMOVE_BROKER:

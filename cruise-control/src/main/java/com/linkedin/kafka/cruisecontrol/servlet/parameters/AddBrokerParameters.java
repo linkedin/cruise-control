@@ -4,13 +4,13 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
-import javax.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#ADD_BROKER}
+ * Parameters for {@link CruiseControlEndPoint#ADD_BROKER}
  *<ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
  *</ul>
@@ -28,8 +28,8 @@ import javax.servlet.http.HttpServletRequest;
 public class AddBrokerParameters extends AddedOrRemovedBrokerParameters {
   private boolean _throttleAddedBrokers;
 
-  public AddBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public AddBrokerParameters() {
+    super();
   }
 
   @Override
@@ -40,5 +40,10 @@ public class AddBrokerParameters extends AddedOrRemovedBrokerParameters {
 
   public boolean throttleAddedBrokers() {
     return _throttleAddedBrokers;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

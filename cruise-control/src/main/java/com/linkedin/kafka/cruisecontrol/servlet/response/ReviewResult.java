@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.RequestInfo;
 import java.util.ArrayList;
 import java.util.HashMap;

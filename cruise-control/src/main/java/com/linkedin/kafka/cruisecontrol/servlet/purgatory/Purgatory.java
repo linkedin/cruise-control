@@ -6,12 +6,14 @@ package com.linkedin.kafka.cruisecontrol.servlet.purgatory;
 
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ReviewResult;
 import java.io.Closeable;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -21,10 +23,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.REVIEW;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REVIEW;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.httpServletRequestToString;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 
@@ -32,7 +35,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 /**
  * A Class to keep POST requests that are awaiting review if two-step verification is enabled.
  *
- * The Purgatory is thread-safe.
+ * The Purgatory is thread-safe, and is relevant only when
+ * {@link KafkaCruiseControlConfig#TWO_STEP_VERIFICATION_ENABLED_CONFIG} is enabled.
  */
 public class Purgatory implements Closeable {
   private static final Logger LOG = LoggerFactory.getLogger(Purgatory.class);
@@ -73,8 +77,8 @@ public class Purgatory implements Closeable {
    * @param <P> Type corresponding to the request parameters.
    * @return The result showing the {@link ReviewResult} for the request that has been added to the purgatory.
    */
-  public synchronized <P extends CruiseControlParameters> ReviewResult addRequest(HttpServletRequest request,
-                                                                                  P parameters) {
+  private synchronized <P extends CruiseControlParameters> ReviewResult addRequest(HttpServletRequest request,
+                                                                                   P parameters) {
     if (!request.getMethod().equals(POST_METHOD)) {
       throw new IllegalArgumentException(String.format("Purgatory can only contain POST request (Attempted to add: %s).",
                                                        httpServletRequestToString(request)));
@@ -90,6 +94,46 @@ public class Purgatory implements Closeable {
     ReviewResult result = new ReviewResult(requestInfoById, filteredRequestIds, _config);
     _requestId++;
     return result;
+  }
+
+  public CruiseControlParameters maybeAddToPurgatory(HttpServletRequest request,
+                                                     HttpServletResponse response,
+                                                     String classConfig,
+                                                     Map<String, Object> parameterConfigOverrides,
+                                                     UserTaskManager userTaskManager) throws IOException {
+    Integer reviewId = ParameterUtils.reviewId(request, true);
+    if (reviewId != null) {
+      // Submit the request with reviewId that should already be in the purgatory associated with the request endpoint.
+      RequestInfo requestInfo = submit(reviewId, request);
+      // Ensure that if the request has already been submitted, the user is not attempting to create another user task
+      // with the same parameters and endpoint.
+      sanityCheckSubmittedRequest(request, requestInfo, userTaskManager);
+
+      return requestInfo.parameters();
+    } else {
+      CruiseControlParameters parameters = _config.getConfiguredInstance(classConfig,
+                                                                         CruiseControlParameters.class,
+                                                                         parameterConfigOverrides);
+      if (!parameters.parseParameters(response)) {
+        // Add request to purgatory and return ReviewResult.
+        ReviewResult reviewResult = addRequest(request, parameters);
+        reviewResult.writeSuccessResponse(parameters, response);
+        LOG.info("Added request {} (parameters: {}) to purgatory.", request.getPathInfo(), request.getParameterMap());
+      }
+
+      return null;
+    }
+  }
+
+  private static void sanityCheckSubmittedRequest(HttpServletRequest request, RequestInfo requestInfo, UserTaskManager userTaskManager) {
+    if (requestInfo.accessToAlreadySubmittedRequest()
+        && userTaskManager.getUserTaskByUserTaskId(userTaskManager.getUserTaskId(request), request) == null) {
+      throw new UserRequestException(
+          String.format("Attempt to start a new user task with an already submitted review. If you are trying to retrieve"
+                        + " the result of a submitted execution, please use its UUID in your request header via %s flag."
+                        + " If you are starting a new execution with the same parameters, please submit a new review "
+                        + "request and get approval for it.", UserTaskManager.USER_TASK_HEADER_NAME));
+    }
   }
 
   /**
@@ -116,7 +160,7 @@ public class Purgatory implements Closeable {
     }
 
     // 2. Ensure that the request with the given review id matches the given request.
-    EndPoint endpoint = ParameterUtils.endPoint(request);
+    CruiseControlEndPoint endpoint = ParameterUtils.endPoint(request);
     if (requestInfo.endPoint() != endpoint) {
       throw new UserRequestException(
           String.format("Request with review id %d is associated with %s endpoint, but the given request has %s endpoint."
@@ -125,8 +169,8 @@ public class Purgatory implements Closeable {
     }
 
     if (requestInfo.status() == ReviewStatus.SUBMITTED) {
-        LOG.info("Request {} has already been submitted (review: {}).", requestInfo.endpointWithParams(), reviewId);
-        requestInfo.setAccessToAlreadySubmittedRequest();
+      LOG.info("Request {} has already been submitted (review: {}).", requestInfo.endpointWithParams(), reviewId);
+      requestInfo.setAccessToAlreadySubmittedRequest();
     } else {
       // 3. Ensure that the request with the given review id is approved in the purgatory, and mark the status as submitted.
       requestInfo.submitReview(reviewId);

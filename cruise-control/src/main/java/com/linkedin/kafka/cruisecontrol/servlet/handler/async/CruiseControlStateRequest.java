@@ -5,16 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters;
+import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.STATE_PARAMETER_OBJECT_CONFIG;
 
 
 public class CruiseControlStateRequest extends AbstractAsyncRequest {
-  private final CruiseControlStateParameters _parameters;
+  private CruiseControlStateParameters _parameters;
 
-  public CruiseControlStateRequest(KafkaCruiseControlServlet servlet, CruiseControlStateParameters parameters) {
-    super(servlet);
-    _parameters = parameters;
+  public CruiseControlStateRequest() {
+    super();
   }
 
   @Override
@@ -30,5 +31,14 @@ public class CruiseControlStateRequest extends AbstractAsyncRequest {
   @Override
   public String name() {
     return CruiseControlStateRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _parameters = (CruiseControlStateParameters) configs.get(STATE_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

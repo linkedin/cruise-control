@@ -4,15 +4,19 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.cruisecontrol.servlet.EndPoint;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.handleParameterParseException;
 
 
@@ -22,16 +26,15 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  */
 public abstract class AbstractParameters implements CruiseControlParameters {
   private static final Logger LOG = LoggerFactory.getLogger(AbstractParameters.class);
-  protected final HttpServletRequest _request;
+  protected HttpServletRequest _request;
   private boolean _initialized = false;
-  protected final KafkaCruiseControlConfig _config;
+  protected KafkaCruiseControlConfig _config;
   // Common to all parameters, expected to be populated via initParameters.
   protected boolean _json = false;
   protected EndPoint _endPoint = null;
 
-  public AbstractParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    _request = request;
-    _config = config;
+  public AbstractParameters() {
+
   }
 
   protected void initParameters() throws UnsupportedEncodingException {
@@ -72,5 +75,17 @@ public abstract class AbstractParameters implements CruiseControlParameters {
   @Override
   public EndPoint endPoint() {
     return _endPoint;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    _request = (HttpServletRequest) configs.get(KAFKA_CRUISE_CONTROL_HTTP_SERVLET_REQUEST_OBJECT_CONFIG);
+    if (_request == null) {
+      throw new IllegalArgumentException("HttpServletRequest configuration is missing from the request.");
+    }
+    _config = (KafkaCruiseControlConfig) configs.get(KAFKA_CRUISE_CONTROL_CONFIG_OBJECT_CONFIG);
+    if (_config == null) {
+      throw new IllegalArgumentException("KafkaCruiseControlConfig configuration is missing from the request.");
+    }
   }
 }

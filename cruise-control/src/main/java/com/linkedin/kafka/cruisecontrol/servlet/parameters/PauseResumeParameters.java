@@ -5,13 +5,13 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
-import javax.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#PAUSE_SAMPLING} and
- * {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#RESUME_SAMPLING}.
+ * Parameters for {@link CruiseControlEndPoint#PAUSE_SAMPLING} and {@link CruiseControlEndPoint#RESUME_SAMPLING}.
  *
  * <ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
@@ -28,18 +28,17 @@ import javax.servlet.http.HttpServletRequest;
 public class PauseResumeParameters extends AbstractParameters {
   private String _reason;
   private Integer _reviewId;
-  private final boolean _twoStepVerificationEnabled;
 
-  public PauseResumeParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
-    _twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+  public PauseResumeParameters() {
+    super();
   }
 
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     _reason = ParameterUtils.reason(_request);
-    _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
+    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
   }
 
   public String reason() {
@@ -53,5 +52,10 @@ public class PauseResumeParameters extends AbstractParameters {
 
   public Integer reviewId() {
     return _reviewId;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }
