@@ -11,8 +11,7 @@ import java.util.Map;
 
 
 /**
- * Parameters for {@link CruiseControlEndPoint#PAUSE_SAMPLING} and
- * {@link CruiseControlEndPoint#RESUME_SAMPLING}.
+ * Parameters for {@link CruiseControlEndPoint#PAUSE_SAMPLING} and {@link CruiseControlEndPoint#RESUME_SAMPLING}.
  *
  * <ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
@@ -29,7 +28,6 @@ import java.util.Map;
 public class PauseResumeParameters extends AbstractParameters {
   private String _reason;
   private Integer _reviewId;
-  private boolean _twoStepVerificationEnabled;
 
   public PauseResumeParameters() {
     super();
@@ -39,7 +37,8 @@ public class PauseResumeParameters extends AbstractParameters {
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
     _reason = ParameterUtils.reason(_request);
-    _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
+    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
   }
 
   public String reason() {
@@ -58,6 +57,5 @@ public class PauseResumeParameters extends AbstractParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
   }
 }

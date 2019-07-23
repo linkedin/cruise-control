@@ -24,7 +24,6 @@ import java.util.Map;
  */
 public class StopProposalParameters extends AbstractParameters {
   private Integer _reviewId;
-  private boolean _twoStepVerificationEnabled;
 
   public StopProposalParameters() {
     super();
@@ -33,7 +32,8 @@ public class StopProposalParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
+    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
   }
 
   @Override
@@ -48,6 +48,5 @@ public class StopProposalParameters extends AbstractParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
   }
 }

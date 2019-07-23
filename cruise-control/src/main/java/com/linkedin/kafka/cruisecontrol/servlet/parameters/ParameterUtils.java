@@ -341,10 +341,10 @@ public class ParameterUtils {
     List<CruiseControlEndPoint> supportedEndpoints;
     switch (request.getMethod()) {
       case GET_METHOD:
-        supportedEndpoints = CruiseControlEndPoint.getEndpoint();
+        supportedEndpoints = CruiseControlEndPoint.getEndpoints();
         break;
       case POST_METHOD:
-        supportedEndpoints = CruiseControlEndPoint.postEndpoint();
+        supportedEndpoints = CruiseControlEndPoint.postEndpoints();
         break;
       default:
         throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");

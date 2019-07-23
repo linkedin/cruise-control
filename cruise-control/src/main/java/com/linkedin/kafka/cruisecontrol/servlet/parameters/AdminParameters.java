@@ -32,7 +32,6 @@ public class AdminParameters extends AbstractParameters {
   private Integer _concurrentInterBrokerPartitionMovements;
   private Integer _concurrentLeaderMovements;
   private Integer _reviewId;
-  private boolean _twoStepVerificationEnabled;
   private Set<Integer> _dropRecentlyRemovedBrokers;
   private Set<Integer> _dropRecentlyDemotedBrokers;
 
@@ -50,7 +49,8 @@ public class AdminParameters extends AbstractParameters {
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _dropRecentlyRemovedBrokers = ParameterUtils.dropRecentlyRemovedBrokers(_request);
     _dropRecentlyDemotedBrokers = ParameterUtils.dropRecentlyDemotedBrokers(_request);
-    _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
+    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
   }
 
   @Override
@@ -89,6 +89,5 @@ public class AdminParameters extends AbstractParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
-    _twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
   }
 }

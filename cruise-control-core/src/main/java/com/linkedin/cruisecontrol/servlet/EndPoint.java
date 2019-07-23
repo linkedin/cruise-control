@@ -10,7 +10,8 @@ package com.linkedin.cruisecontrol.servlet;
 public interface EndPoint {
 
   /**
-   * @return The endpoint type, which might be relevant for the application logic -- e.g. selective response caching.
+   * @return The endpoint type, which might be relevant for the application logic -- e.g. selective caching the response,
+   * specifying custom retention for endpoints with certain type.
    */
   EndpointType endpointType();
 }

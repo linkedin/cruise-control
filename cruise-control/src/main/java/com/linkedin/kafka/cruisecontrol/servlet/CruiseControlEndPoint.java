@@ -45,34 +45,34 @@ public enum CruiseControlEndPoint implements EndPoint {
     return _endpointType;
   }
 
-  private static final List<CruiseControlEndPoint> GET_ENDPOINT = Arrays.asList(BOOTSTRAP,
-                                                                                TRAIN,
-                                                                                LOAD,
-                                                                                PARTITION_LOAD,
-                                                                                PROPOSALS,
-                                                                                STATE,
-                                                                                KAFKA_CLUSTER_STATE,
-                                                                                USER_TASKS,
-                                                                                REVIEW_BOARD);
-  private static final List<CruiseControlEndPoint> POST_ENDPOINT = Arrays.asList(ADD_BROKER,
-                                                                                 REMOVE_BROKER,
-                                                                                 REBALANCE,
-                                                                                 STOP_PROPOSAL_EXECUTION,
-                                                                                 PAUSE_SAMPLING,
-                                                                                 RESUME_SAMPLING,
-                                                                                 DEMOTE_BROKER,
-                                                                                 ADMIN,
-                                                                                 REVIEW,
-                                                                                 TOPIC_CONFIGURATION);
+  private static final List<CruiseControlEndPoint> GET_ENDPOINTS = Arrays.asList(BOOTSTRAP,
+                                                                                 TRAIN,
+                                                                                 LOAD,
+                                                                                 PARTITION_LOAD,
+                                                                                 PROPOSALS,
+                                                                                 STATE,
+                                                                                 KAFKA_CLUSTER_STATE,
+                                                                                 USER_TASKS,
+                                                                                 REVIEW_BOARD);
+  private static final List<CruiseControlEndPoint> POST_ENDPOINTS = Arrays.asList(ADD_BROKER,
+                                                                                  REMOVE_BROKER,
+                                                                                  REBALANCE,
+                                                                                  STOP_PROPOSAL_EXECUTION,
+                                                                                  PAUSE_SAMPLING,
+                                                                                  RESUME_SAMPLING,
+                                                                                  DEMOTE_BROKER,
+                                                                                  ADMIN,
+                                                                                  REVIEW,
+                                                                                  TOPIC_CONFIGURATION);
 
   private static final List<CruiseControlEndPoint> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
-  public static List<CruiseControlEndPoint> getEndpoint() {
-    return GET_ENDPOINT;
+  public static List<CruiseControlEndPoint> getEndpoints() {
+    return GET_ENDPOINTS;
   }
 
-  public static List<CruiseControlEndPoint> postEndpoint() {
-    return POST_ENDPOINT;
+  public static List<CruiseControlEndPoint> postEndpoints() {
+    return POST_ENDPOINTS;
   }
 
   public static List<CruiseControlEndPoint> cachedValues() {

@@ -1659,7 +1659,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     }
     T o = t.cast(instance);
     if (o instanceof CruiseControlConfigurable) {
-      Map<String, Object> configPairs = originals();
+      Map<String, Object> configPairs = mergedConfigValues();
       configPairs.putAll(configOverrides);
       ((CruiseControlConfigurable) o).configure(configPairs);
     }
