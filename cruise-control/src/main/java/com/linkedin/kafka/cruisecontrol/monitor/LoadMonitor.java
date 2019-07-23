@@ -60,6 +60,9 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.PERCENTILE_TO_ABSOLUTE_VALUE;
+
+
 /**
  * The LoadMonitor monitors the workload of a Kafka cluster. It periodically triggers the metric sampling and
  * maintains the collected {@link PartitionMetricSample}. It is also responsible for aggregate the metrics samples into
@@ -603,7 +606,7 @@ public class LoadMonitor {
    * @param valuesAndExtrapolations the values and extrapolations of the leader replica.
    * @param partitionInfo the partition info.
    * @param isLeader whether the value is created for leader replica or follower replica.
-   * @param needToAdjustCpuUsage whether need to adjust cpu usage metric for replica.
+   * @param needToAdjustCpuUsage whether need to cast cpu usage metric for replica from absolute value to percentile.
    * @return the {@link AggregatedMetricValues} to use for the given replica.
    */
   private AggregatedMetricValues getAggregatedMetricValues(ValuesAndExtrapolations valuesAndExtrapolations,
@@ -631,7 +634,7 @@ public class LoadMonitor {
     short cpuUsageId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.CPU_USAGE);
     MetricValues cpuUsage = aggregatedMetricValues.valuesFor(cpuUsageId);
     for (int i = 0; i < cpuUsage.length(); i++) {
-      cpuUsage.set(i, cpuUsage.get(i) * 100);
+      cpuUsage.set(i, cpuUsage.get(i) * PERCENTILE_TO_ABSOLUTE_VALUE);
     }
   }
 
