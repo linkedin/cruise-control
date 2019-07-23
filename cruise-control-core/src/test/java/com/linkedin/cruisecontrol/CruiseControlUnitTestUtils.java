@@ -16,6 +16,7 @@ public class CruiseControlUnitTestUtils {
   public static final String METRIC1 = "m1";
   public static final String METRIC2 = "m2";
   public static final String METRIC3 = "m3";
+  public static final String CPU_USAGE = "CPU_USAGE";
 
   private CruiseControlUnitTestUtils() {
 
@@ -32,7 +33,11 @@ public class CruiseControlUnitTestUtils {
       for (int j = 0; j < numSamplesPerWindow; j++) {
         MetricSample<G, E> sample = new MetricSample<>(entity);
         for (MetricInfo metricInfo : metricDef.all()) {
-          sample.record(metricInfo, i * 10 + j);
+          double sampleValue = i * 10 + j;
+          if (metricInfo.name().equals(CPU_USAGE)) {
+            sampleValue /= 100.0;
+          }
+          sample.record(metricInfo, sampleValue);
         }
         sample.close(i * windowMs + 1);
         metricSampleAggregator.addSample(sample);
