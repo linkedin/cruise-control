@@ -136,6 +136,8 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().connectionString());
     props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG, "false");
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).atLeastOnce();
+    EasyMock.replay(mockKafkaCruiseControl);
     return new BrokerFailureDetector(kafkaCruiseControlConfig,
                                      mockLoadMonitor,
                                      anomalies,
