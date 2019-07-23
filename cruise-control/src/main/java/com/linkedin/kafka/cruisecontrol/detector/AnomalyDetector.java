@@ -33,7 +33,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHUTDOWN_ANOMALY;
@@ -199,9 +199,9 @@ public class AnomalyDetector {
 
   public synchronized AnomalyDetectorState anomalyDetectorState() {
     // Retrieve mean time between anomalies, record the time in ms.
-    Map<AnomalyType, Double> meanTimeBetweenAnomalies = new HashMap<>(AnomalyType.cachedValues().size());
+    Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>(AnomalyType.cachedValues().size());
     for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
-      meanTimeBetweenAnomalies.put(anomalyType, _anomalyRateByType.get(anomalyType).getMeanRate() * 1000);
+      meanTimeBetweenAnomaliesMs.put(anomalyType, _anomalyRateByType.get(anomalyType).getMeanRate() * SEC_TO_MS);
     }
     // Retrieve the mean time to start a fix and ongoing anomaly duration.
     long ongoingAnomalyDurationMs = 0L;
@@ -211,10 +211,10 @@ public class AnomalyDetector {
       ongoingAnomalyDurationMs = _time.milliseconds() - _ongoingAnomalyDetectionTimeMs;
       fixedAnomalyDurations--;
     }
-    double meanTimeToStartFix = fixedAnomalyDurations == 0L ? 0 : _ongoingAnomalyDurationSumForAverageMs / fixedAnomalyDurations;
+    double meanTimeToStartFixMs = fixedAnomalyDurations == 0L ? 0 : _ongoingAnomalyDurationSumForAverageMs / fixedAnomalyDurations;
 
-    _anomalyDetectorState.setMetrics(new AnomalyMetrics(meanTimeBetweenAnomalies,
-                                                        meanTimeToStartFix,
+    _anomalyDetectorState.setMetrics(new AnomalyMetrics(meanTimeBetweenAnomaliesMs,
+                                                        meanTimeToStartFixMs,
                                                         _numSelfHealingStarted,
                                                         ongoingAnomalyDurationMs));
     _anomalyDetectorState.setSelfHealingEnabledRatio(_anomalyNotifier.selfHealingEnabledRatio());
