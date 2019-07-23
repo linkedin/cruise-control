@@ -37,6 +37,10 @@ public class KafkaCruiseControlUtils {
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";
+  public static final int SEC_TO_MS = 1000;
+  private static final int MIN_TO_MS = SEC_TO_MS * 60;
+  private static final int HOUR_TO_MS = MIN_TO_MS * 60;
+  private static final int DAY_TO_MS = HOUR_TO_MS * 24;
   private static final Set<String> KAFKA_ASSIGNER_GOALS =
       Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                                                               KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
@@ -80,6 +84,40 @@ public class KafkaCruiseControlUtils {
       formatter.setTimeZone(TimeZone.getTimeZone(timeZone));
     }
     return formatter.format(new Date(time));
+  }
+
+  /**
+   * Format the duration from double to human readable string.
+   * @param durationMs Duration in milliseconds
+   * @return String representation of duration
+   */
+  public static String toPrettyDuration(double durationMs) {
+    if (durationMs < 0) {
+      throw new IllegalArgumentException(String.format("Duration cannot be negative value, get %f", durationMs));
+    }
+
+    // If the duration is less than one second, represent in milliseconds.
+    if (durationMs < SEC_TO_MS) {
+      return String.format("%.2f milliseconds", durationMs);
+    }
+
+    // If the duration is less than one minute, represent in seconds.
+    if (durationMs < MIN_TO_MS) {
+      return String.format("%.2f seconds", durationMs / SEC_TO_MS);
+    }
+
+    // If the duration is less than one hour, represent in minutes.
+    if (durationMs < HOUR_TO_MS) {
+      return String.format("%.2f minutes", durationMs / MIN_TO_MS);
+    }
+
+    // If the duration is less than one day, represent in hours.
+    if (durationMs < DAY_TO_MS) {
+      return String.format("%.2f hours", durationMs / HOUR_TO_MS);
+    }
+
+    // Represent in days.
+    return String.format("%.2f days", durationMs / DAY_TO_MS);
   }
 
   /**

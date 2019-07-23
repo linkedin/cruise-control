@@ -7,10 +7,15 @@ package com.linkedin.kafka.cruisecontrol.detector;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import java.util.Map;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toPrettyDuration;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.GOAL_VIOLATION;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.METRIC_ANOMALY;
+import static com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType.BROKER_FAILURE;
+
 
 public class AnomalyMetrics {
-  private final Map<AnomalyType, Double> _meanTimeBetweenAnomalies;
-  private final double _meanTimeToStartFix;
+  private final Map<AnomalyType, Double> _meanTimeBetweenAnomaliesMs;
+  private final double _meanTimeToStartFixMs;
   private final long _numSelfHealingStarted;
   private final long _ongoingAnomalyDurationMs;
 
@@ -25,30 +30,35 @@ public class AnomalyMetrics {
    *   to the current time for which no fix has been started. 0, if there is no unfixed (ongoing) anomaly.</li>
    * </ol>
    *
-   * @param meanTimeBetweenAnomalies Mean time between anomalies by the corresponding type.
-   * @param meanTimeToStartFix Mean time to start fix for any anomaly.
+   * @param meanTimeBetweenAnomaliesMs Mean time between anomalies by the corresponding type.
+   * @param meanTimeToStartFixMs Mean time to start fix for any anomaly.
    * @param numSelfHealingStarted Number of fixes started by the anomaly detector as a result of self healing.
    * @param ongoingAnomalyDurationMs The duration of the ongoing (unfixed/unfixable) anomaly if there is any, 0 otherwise.
    */
-  public AnomalyMetrics(Map<AnomalyType, Double> meanTimeBetweenAnomalies,
-                        double meanTimeToStartFix,
+  public AnomalyMetrics(Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs,
+                        double meanTimeToStartFixMs,
                         long numSelfHealingStarted,
                         long ongoingAnomalyDurationMs) {
-    if (meanTimeBetweenAnomalies == null) {
+    if (meanTimeBetweenAnomaliesMs == null) {
       throw new IllegalArgumentException("Attempt to set meanTimeBetweenAnomalies with null.");
     }
-    _meanTimeBetweenAnomalies = meanTimeBetweenAnomalies;
-    _meanTimeToStartFix = meanTimeToStartFix;
+    for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
+      if (!meanTimeBetweenAnomaliesMs.containsKey(anomalyType)) {
+        throw new IllegalArgumentException(anomalyType + " is missing in meanTimeBetweenAnomalies metric.");
+      }
+    }
+    _meanTimeBetweenAnomaliesMs = meanTimeBetweenAnomaliesMs;
+    _meanTimeToStartFixMs = meanTimeToStartFixMs;
     _numSelfHealingStarted = numSelfHealingStarted;
     _ongoingAnomalyDurationMs = ongoingAnomalyDurationMs;
   }
 
-  public double meanTimeToStartFix() {
-    return _meanTimeToStartFix;
+  public double meanTimeToStartFixMs() {
+    return _meanTimeToStartFixMs;
   }
 
-  public Map<AnomalyType, Double> meanTimeBetweenAnomalies() {
-    return _meanTimeBetweenAnomalies;
+  public Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs() {
+    return _meanTimeBetweenAnomaliesMs;
   }
 
   public long numSelfHealingStarted() {
@@ -57,5 +67,16 @@ public class AnomalyMetrics {
 
   public long ongoingAnomalyDurationMs() {
     return _ongoingAnomalyDurationMs;
+  }
+
+  @Override
+  public String toString() {
+    return String.format("{meanTimeBetweenAnomalies:{%s:%s, %s:%s, %s:%s}, "
+                         + "meanTimeToStartFix:%s, numSelfHealingStarted:%d, ongoingAnomalyDuration=%s}",
+                         GOAL_VIOLATION, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(GOAL_VIOLATION)),
+                         BROKER_FAILURE, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(BROKER_FAILURE)),
+                         METRIC_ANOMALY, toPrettyDuration(_meanTimeBetweenAnomaliesMs.get(METRIC_ANOMALY)),
+                         toPrettyDuration(_meanTimeToStartFixMs), _numSelfHealingStarted,
+                         toPrettyDuration(_ongoingAnomalyDurationMs));
   }
 }
