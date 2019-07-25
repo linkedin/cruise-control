@@ -40,11 +40,11 @@ public class AnomalyMetrics {
                         long numSelfHealingStarted,
                         long ongoingAnomalyDurationMs) {
     if (meanTimeBetweenAnomaliesMs == null) {
-      throw new IllegalArgumentException("Attempt to set meanTimeBetweenAnomalies with null.");
+      throw new IllegalArgumentException("Attempt to set meanTimeBetweenAnomaliesMs with null.");
     }
     for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
       if (!meanTimeBetweenAnomaliesMs.containsKey(anomalyType)) {
-        throw new IllegalArgumentException(anomalyType + " is missing in meanTimeBetweenAnomalies metric.");
+        throw new IllegalArgumentException(anomalyType + " is missing in meanTimeBetweenAnomaliesMs metric.");
       }
     }
     _meanTimeBetweenAnomaliesMs = meanTimeBetweenAnomaliesMs;
