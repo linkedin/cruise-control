@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
-import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
@@ -22,7 +21,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -36,7 +34,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.SEC_TO_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHUTDOWN_ANOMALY;
@@ -46,10 +43,9 @@ import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHU
  * The anomaly detector class that helps detect and handle anomalies.
  */
 public class AnomalyDetector {
-  private static final String METRIC_REGISTRY_NAME = "AnomalyDetector";
+  static final String METRIC_REGISTRY_NAME = "AnomalyDetector";
   private static final int INIT_JITTER_BOUND = 10000;
   private static final int NUM_ANOMALY_DETECTION_THREADS = 5;
-  private static final long NO_ONGOING_ANOMALY_FLAG = -1L;
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetector.class);
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private final KafkaCruiseControl _kafkaCruiseControl;
@@ -64,21 +60,13 @@ public class AnomalyDetector {
   private final long _anomalyDetectionIntervalMs;
   private final LinkedBlockingDeque<Anomaly> _anomalies;
   private volatile boolean _shutdown;
-  private final Map<AnomalyType, Meter> _anomalyRateByType;
   private final LoadMonitor _loadMonitor;
   private final AnomalyDetectorState _anomalyDetectorState;
   private final List<String> _selfHealingGoals;
   private final ExecutorService _anomalyLoggerExecutor;
   private volatile Anomaly _anomalyInProgress;
-  private volatile long _numSelfHealingStarted;
   private volatile long _numCheckedWithDelay;
   private final Object _shutdownLock;
-  // The detection time of the earliest ongoing anomaly. Expected to be cleared upon start of a proposal execution.
-  private long _ongoingAnomalyDetectionTimeMs;
-  // The count during which there is at least one ongoing anomaly.
-  private long _ongoingAnomalyCount;
-  private double _ongoingAnomalyDurationSumForAverageMs;
-  private final Time _time;
 
   public AnomalyDetector(KafkaCruiseControlConfig config,
                          LoadMonitor loadMonitor,
@@ -101,28 +89,17 @@ public class AnomalyDetector {
     _detectorScheduler = Executors.newScheduledThreadPool(NUM_ANOMALY_DETECTION_THREADS,
                                                           new KafkaCruiseControlThreadFactory(METRIC_REGISTRY_NAME, false, LOG));
     _shutdown = false;
-    _anomalyRateByType = new HashMap<>(AnomalyType.cachedValues().size());
-    _anomalyRateByType.put(AnomalyType.BROKER_FAILURE,
-                           dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "broker-failure-rate")));
-    _anomalyRateByType.put(AnomalyType.GOAL_VIOLATION,
-                           dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "goal-violation-rate")));
-    _anomalyRateByType.put(AnomalyType.METRIC_ANOMALY,
-                           dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "metric-anomaly-rate")));
-    _anomalyRateByType.put(AnomalyType.DISK_FAILURE,
-                           dropwizardMetricRegistry.meter(MetricRegistry.name(METRIC_REGISTRY_NAME, "disk-failure-rate")));
     // Add anomaly detector state
     int numCachedRecentAnomalyStates = config.getInt(KafkaCruiseControlConfig.NUM_CACHED_RECENT_ANOMALY_STATES_CONFIG);
-    _anomalyDetectorState = new AnomalyDetectorState(_anomalyNotifier.selfHealingEnabled(), numCachedRecentAnomalyStates);
     _anomalyLoggerExecutor =
         Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
     _anomalyInProgress = null;
-    _numSelfHealingStarted = 0L;
     _numCheckedWithDelay = 0L;
     _shutdownLock = new Object();
-    _ongoingAnomalyDetectionTimeMs = NO_ONGOING_ANOMALY_FLAG;
-    _ongoingAnomalyCount = 0L;
-    _ongoingAnomalyDurationSumForAverageMs = 0;
-    _time = time;
+    _anomalyDetectorState = new AnomalyDetectorState(time,
+                                                     _anomalyNotifier.selfHealingEnabled(),
+                                                     numCachedRecentAnomalyStates,
+                                                     dropwizardMetricRegistry);
   }
 
   /**
@@ -150,22 +127,15 @@ public class AnomalyDetector {
     _kafkaCruiseControl = kafkaCruiseControl;
     _detectorScheduler = detectorScheduler;
     _shutdown = false;
-    _anomalyRateByType = new HashMap<>(AnomalyType.cachedValues().size());
-    AnomalyType.cachedValues().forEach(anomalyType -> _anomalyRateByType.put(anomalyType, new Meter()));
     _loadMonitor = loadMonitor;
-    // Add anomaly detector state
-    _anomalyDetectorState = new AnomalyDetectorState(new HashMap<>(AnomalyType.cachedValues().size()), 10);
     _selfHealingGoals = Collections.emptyList();
     _anomalyLoggerExecutor =
         Executors.newSingleThreadScheduledExecutor(new KafkaCruiseControlThreadFactory("AnomalyLogger", true, null));
     _anomalyInProgress = null;
-    _numSelfHealingStarted = 0L;
     _numCheckedWithDelay = 0L;
     _shutdownLock = new Object();
-    _ongoingAnomalyDetectionTimeMs = NO_ONGOING_ANOMALY_FLAG;
-    _ongoingAnomalyCount = 0L;
-    _ongoingAnomalyDurationSumForAverageMs = 0;
-    _time = new SystemTime();
+    // Add anomaly detector state
+    _anomalyDetectorState = new AnomalyDetectorState(new SystemTime(), new HashMap<>(AnomalyType.cachedValues().size()), 10, null);
   }
 
   public void startDetection() {
@@ -219,50 +189,22 @@ public class AnomalyDetector {
   }
 
   public synchronized AnomalyDetectorState anomalyDetectorState() {
-    // Retrieve mean time between anomalies, record the time in ms.
-    Map<AnomalyType, Double> meanTimeBetweenAnomaliesMs = new HashMap<>(AnomalyType.cachedValues().size());
-    for (AnomalyType anomalyType : AnomalyType.cachedValues()) {
-      meanTimeBetweenAnomaliesMs.put(anomalyType, _anomalyRateByType.get(anomalyType).getMeanRate() * SEC_TO_MS);
-    }
-    // Retrieve the mean time to start a fix and ongoing anomaly duration.
-    long ongoingAnomalyDurationMs = 0L;
-    long fixedAnomalyDurations = _ongoingAnomalyCount;
-    if (_ongoingAnomalyDetectionTimeMs != NO_ONGOING_ANOMALY_FLAG) {
-      // There is an ongoing unfixed or unfixable anomaly.
-      ongoingAnomalyDurationMs = _time.milliseconds() - _ongoingAnomalyDetectionTimeMs;
-      fixedAnomalyDurations--;
-    }
-    double meanTimeToStartFixMs = fixedAnomalyDurations == 0L ? 0 : _ongoingAnomalyDurationSumForAverageMs / fixedAnomalyDurations;
-
-    _anomalyDetectorState.setMetrics(new AnomalyMetrics(meanTimeBetweenAnomaliesMs,
-                                                        meanTimeToStartFixMs,
-                                                        _numSelfHealingStarted,
-                                                        ongoingAnomalyDurationMs));
-    _anomalyDetectorState.setSelfHealingEnabledRatio(_anomalyNotifier.selfHealingEnabledRatio());
+    _anomalyDetectorState.refreshMetrics(_anomalyNotifier.selfHealingEnabledRatio());
     return _anomalyDetectorState;
   }
 
   /**
-   * If there is an ongoing anomaly, clear the earliest detection time to indicate start of an ongoing fix.
+   * @return Number of anomaly fixes started by the anomaly detector for self healing.
    */
-  public synchronized void maybeClearOngoingAnomalyDetectionTimeMs() {
-    if (_ongoingAnomalyDetectionTimeMs != NO_ONGOING_ANOMALY_FLAG) {
-      double elapsed = _time.milliseconds() - _ongoingAnomalyDetectionTimeMs;
-      _ongoingAnomalyDurationSumForAverageMs += elapsed;
-      // Clear ongoing anomaly detection time
-      _ongoingAnomalyDetectionTimeMs = NO_ONGOING_ANOMALY_FLAG;
-    }
+  long numSelfHealingStarted() {
+    return _anomalyDetectorState.numSelfHealingStarted();
   }
 
   /**
-   * The {@link #_ongoingAnomalyDetectionTimeMs} is updated only when there is no earlier ongoing anomaly.
-   * See {@link #maybeClearOngoingAnomalyDetectionTimeMs()} for clearing the ongoing anomaly detection time.
+   * See {@link AnomalyDetectorState#maybeClearOngoingAnomalyDetectionTimeMs}.
    */
-  private synchronized void maybeSetOngoingAnomalyDetectionTimeMs() {
-    if (_ongoingAnomalyDetectionTimeMs == NO_ONGOING_ANOMALY_FLAG) {
-      _ongoingAnomalyDetectionTimeMs = _time.milliseconds();
-      _ongoingAnomalyCount++;
-    }
+  public void maybeClearOngoingAnomalyDetectionTimeMs() {
+    _anomalyDetectorState.maybeClearOngoingAnomalyDetectionTimeMs();
   }
 
   /**
@@ -277,13 +219,6 @@ public class AnomalyDetector {
     _anomalyDetectorState.setSelfHealingFor(anomalyType, isSelfHealingEnabled);
 
     return oldSelfHealingEnabled;
-  }
-
-  /**
-   * @return Number of anomaly fixes started by the anomaly detector.
-   */
-  public long numSelfHealingStarted() {
-    return _numSelfHealingStarted;
   }
 
   /**
@@ -359,11 +294,11 @@ public class AnomalyDetector {
      * @param anomalyType The type of the ongoing anomaly
      */
     private void processAnomalyInProgress(AnomalyType anomalyType) throws Exception {
-      _anomalyRateByType.get(anomalyType).mark();
+      _anomalyDetectorState.markAnomalyRate(anomalyType);
       // Call the anomaly notifier to see if an action is requested.
       AnomalyNotificationResult notificationResult = notifyAnomalyInProgress(anomalyType);
       if (notificationResult != null) {
-        maybeSetOngoingAnomalyDetectionTimeMs();
+        _anomalyDetectorState.maybeSetOngoingAnomalyDetectionTimeMs();
         switch (notificationResult.action()) {
           case FIX:
             fixAnomalyInProgress(anomalyType);
@@ -500,7 +435,7 @@ public class AnomalyDetector {
               _anomalyDetectorState.onAnomalyHandle(_anomalyInProgress, startedSuccessfully ? AnomalyState.Status.FIX_STARTED
                                                                                             : AnomalyState.Status.FIX_FAILED_TO_START);
               if (startedSuccessfully) {
-                _numSelfHealingStarted++;
+                _anomalyDetectorState.incrementNumSelfHealingStarted();
                 LOG.info("[{}] Self-healing started successfully.", anomalyId);
               } else {
                 LOG.warn("[{}] Self-healing failed to start.", anomalyId);
