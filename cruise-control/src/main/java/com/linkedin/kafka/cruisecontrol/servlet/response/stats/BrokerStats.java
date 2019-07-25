@@ -28,6 +28,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   protected static final String HOSTS = "hosts";
   protected static final String BROKERS = "brokers";
   protected final List<SingleBrokerStats> _brokerStats;
+  private final List<SingleBrokerCapacityStats> _brokerCapacityStats;
   protected final SortedMap<String, BasicStats> _hostStats;
   protected int _hostFieldLength;
   protected String _cachedPlainTextResponse;
@@ -37,6 +38,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
   public BrokerStats(KafkaCruiseControlConfig config) {
     super(config);
     _brokerStats = new ArrayList<>();
+    _brokerCapacityStats = new ArrayList<>();
     _hostStats = new ConcurrentSkipListMap<>();
     _hostFieldLength = 0;
     _cachedPlainTextResponse = null;
@@ -57,6 +59,14 @@ public class BrokerStats extends AbstractCruiseControlResponse {
                                                          0.0, 0.0, 0, 0, 0.0))
               .addBasicStats(singleBrokerStats.basicStats());
     _isBrokerStatsEstimated = _isBrokerStatsEstimated || isEstimated;
+  }
+
+  public void addSingleBrokerCapacityStats(String host, int id, boolean isEstimated, double diskCap, double cpuCap, double nwInCap,
+                                            double nwOutCap) {
+    SingleBrokerCapacityStats singleBrokerCapacityStats = 
+        new SingleBrokerCapacityStats(host, id, isEstimated, diskCap, cpuCap, nwInCap, nwOutCap);
+    _brokerCapacityStats.add(singleBrokerCapacityStats);
+    _isBrokerStatsEstimated = _isBrokerStatsEstimated || isEstimated;                           
   }
 
   public boolean isBrokerStatsEstimated() {
