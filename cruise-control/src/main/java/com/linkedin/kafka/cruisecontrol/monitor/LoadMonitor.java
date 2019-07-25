@@ -473,6 +473,7 @@ public class LoadMonitor {
         TopicPartition tp = entry.getKey().tp();
         ValuesAndExtrapolations leaderLoad = entry.getValue();
         populateLoad(kafkaCluster, clusterModel, tp, leaderLoad);
+        step.incrementPopulatedNumPartitions();
       }
 
       // Get the dead brokers and mark them as dead.
