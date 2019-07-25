@@ -12,7 +12,10 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelGeneration;
+import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerCapacityStats;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
+import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerUtilizationStats;
+
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -1136,15 +1139,15 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Get broker return the broker stats.
+   * Get broker return the broker stats (related to resource utilization).
    */
   public BrokerStats brokerStats(KafkaCruiseControlConfig config) {
-    BrokerStats brokerStats = new BrokerStats(config);
+    BrokerUtilizationStats brokerUtilizationStats = new BrokerUtilizationStats(config);
     brokers().forEach(broker -> {
       double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
       double cpuUsagePercent = UNIT_INTERVAL_TO_PERCENTAGE * broker.load().expectedUtilizationFor(Resource.CPU)
                                / broker.capacityFor(Resource.CPU);
-      brokerStats.addSingleBrokerStats(broker.host().name(),
+      brokerUtilizationStats.addSingleBrokerUtilizationStats(broker.host().name(),
                                        broker.id(),
                                        broker.state(),
                                        broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
@@ -1157,13 +1160,16 @@ public class ClusterModel implements Serializable {
                                        _capacityEstimationInfoByBrokerId.get(broker.id()) != null,
                                         broker.capacityFor(Resource.DISK));
     });
-    return brokerStats;
+    return brokerUtilizationStats;
   }
 
+  /**
+   * Get broker return the broker stats (related to capacity).
+   */
   public BrokerStats brokerCapacityStats(KafkaCruiseControlConfig config) {
-    BrokerStats brokerStats = new BrokerStats(config);
+    BrokerCapacityStats brokerCapacityStats = new BrokerCapacityStats(config);
     brokers().forEach(broker -> {
-      brokerStats.addSingleBrokerCapacityStats(broker.host().name(), 
+      brokerCapacityStats.addSingleBrokerCapacityStats(broker.host().name(), 
                                                broker.id(),
                                                _capacityEstimationInfoByBrokerId.get(broker.id()) != null,
                                                broker.rack().capacityFor(Resource.DISK),
@@ -1171,7 +1177,7 @@ public class ClusterModel implements Serializable {
                                                broker.rack().capacityFor(Resource.NW_IN),
                                                broker.rack().capacityFor(Resource.NW_OUT));
     });
-    return brokerStats;
+    return brokerCapacityStats;
   }
 
   /**
