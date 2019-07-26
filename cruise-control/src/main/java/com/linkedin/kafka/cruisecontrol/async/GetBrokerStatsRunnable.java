@@ -26,7 +26,7 @@ class GetBrokerStatsRunnable extends OperationRunnable {
   private final ModelCompletenessRequirements _modelCompletenessRequirements;
   private final boolean _allowCapacityEstimation;
   private final KafkaCruiseControlConfig _config;
-  private final boolean _capacity;
+  private final boolean _isCapacityStats;
 
   GetBrokerStatsRunnable(KafkaCruiseControl kafkaCruiseControl,
                          OperationFuture future,
@@ -38,16 +38,17 @@ class GetBrokerStatsRunnable extends OperationRunnable {
     _modelCompletenessRequirements = parameters.requirements();
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _config = config;
-    _capacity = parameters.capacity();
+    _isCapacityStats = parameters.capacity();
   }
 
   @Override
   protected BrokerStats getResult() throws Exception {
-    if (_capacity) {
+    if (_isCapacityStats) {
         return _kafkaCruiseControl.clusterModel(_time,
                                                 _modelCompletenessRequirements,
                                                 _future.operationProgress(),
-                                                _allowCapacityEstimation).brokerCapacityStats(_config);
+                                                _allowCapacityEstimation)
+                                  .brokerCapacityStats(_config);
     }
 
     // Check whether the cached broker stats is still valid.

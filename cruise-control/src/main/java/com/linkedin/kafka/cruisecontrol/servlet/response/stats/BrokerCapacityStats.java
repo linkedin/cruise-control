@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
+ * Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
 package com.linkedin.kafka.cruisecontrol.servlet.response.stats;
@@ -49,7 +49,6 @@ public class BrokerCapacityStats extends BrokerStats {
       brokerCapacityStats.add(brokerEntry);
     }
 
-    // consolidated
     Map<String, Object> stats = new HashMap<>(1);
     stats.put(BROKERS, brokerCapacityStats);
     return stats;
@@ -60,7 +59,7 @@ public class BrokerCapacityStats extends BrokerStats {
     StringBuilder sb = new StringBuilder();
 
     // put broker stats.
-    sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%20s%16s%20s%21s%n",
+    sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%22s%18s%22s%23s%n",
                             "HOST", "BROKER", "DISK_CAPACITY(MB)", "CPU_CAPACITY(MB)", "NW_IN_CAPACITY(KB/s)",
                             "NW_OUT_CAPACITY(KB/s)"));
     for (SingleBrokerCapacityStats stats : _brokerCapacityStats) {

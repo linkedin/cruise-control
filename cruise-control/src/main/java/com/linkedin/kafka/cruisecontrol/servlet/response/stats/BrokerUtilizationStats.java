@@ -73,7 +73,7 @@ public class BrokerUtilizationStats extends BrokerStats{
       brokerStats.add(brokerEntry);
     }
 
-    // consolidated
+    // consolidated statistics
     Map<String, Object> stats = new HashMap<>(2);
     stats.put(HOSTS, hostStats);
     stats.put(BROKERS, brokerStats);
