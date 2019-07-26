@@ -1,0 +1,31 @@
+{
+  "brokerCapacities": [
+    {
+      "brokerId": "-1",
+      "capacity": {
+        "DISK": "1000000",
+        "CPU": {"num.cores": "16"},
+        "NW_IN": "100000",
+        "NW_OUT": "100000"
+      }
+    },
+    {
+      "brokerId": "0",
+      "capacity": {
+        "DISK": "2000000",
+        "CPU": {"num.cores": "8"},
+        "NW_IN": "200000",
+        "NW_OUT": "200000"
+      }
+    },
+    {
+      "brokerId": "1",
+      "capacity": {
+        "DISK": "3000000",
+        "CPU": {"num.cores": "64"},
+        "NW_IN": "300000",
+        "NW_OUT": "200000"
+      }
+    }
+  ]
+}

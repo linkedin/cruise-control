@@ -15,6 +15,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -93,6 +94,45 @@ import java.util.Set;
  *   }
  * </pre>
  *
+ * Example capacity file with number of cores (i.e. see the use of {@link #NUM_CORES_CONFIG} config):
+ * <pre>
+ * {
+ *   "brokerCapacities":[
+ *     {
+ *       "brokerId": "-1",
+ *       "capacity": {
+ *         "DISK": {"/tmp/kafka-logs-1": "100000", "/tmp/kafka-logs-2": "100000", "/tmp/kafka-logs-3": "50000",
+ *           "/tmp/kafka-logs-4": "50000", "/tmp/kafka-logs-5": "150000", "/tmp/kafka-logs-6": "50000"},
+ *         "CPU": {"num.cores": "16"},
+ *         "NW_IN": "10000",
+ *         "NW_OUT": "10000"
+ *       },
+ *       "doc": "The default capacity for a broker with multiple logDirs each on a separate heterogeneous disk and num.cores CPU cores."
+ *     },
+ *     {
+ *       "brokerId": "0",
+ *       "capacity": {
+ *         "DISK": {"/tmp/kafka-logs": "500000"},
+ *         "CPU": {"num.cores": "32"},
+ *         "NW_IN": "50000",
+ *         "NW_OUT": "50000"
+ *       },
+ *       "doc": "This overrides the capacity for broker 0. This broker is not a JBOD broker, but has num.cores CPU cores."
+ *     },
+ *     {
+ *       "brokerId": "1",
+ *       "capacity": {
+ *         "DISK": {"/tmp/kafka-logs-1": "250000", "/tmp/kafka-logs-2": "250000"},
+ *         "CPU": {"num.cores": "24"},
+ *         "NW_IN": "50000",
+ *         "NW_OUT": "50000"
+ *       },
+ *       "doc": "This overrides the capacity for broker 1. This broker is a JBOD broker and has num.cores CPU cores."
+ *     }
+ *   ]
+ * }
+ * </pre>
+ *
  * The broker id -1 defines the default broker capacity estimate. A broker capacity is overridden if there is a capacity
  * defined for a particular broker id. In case a broker capacity is missing, the default estimate for a broker capacity
  * will be used.
@@ -100,7 +140,7 @@ import java.util.Set;
  * The units of the definition are:
  * <ul>
  *  <li>DISK - MB</li>
- *  <li>CPU - Percent</li>
+ *  <li>CPU - either (1) Percentage (0 - 100) or (2) number of cores (see the use of {@link #NUM_CORES_CONFIG} config) </li>
  *  <li>NW_IN - KB/s</li>
  *  <li>NW_OUT - KB/s</li>
  * </ul>
@@ -108,6 +148,8 @@ import java.util.Set;
 public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigResolver {
   public static final String CAPACITY_CONFIG_FILE = "capacity.config.file";
   public static final int DEFAULT_CAPACITY_BROKER_ID = -1;
+  private static final String NUM_CORES_CONFIG = "num.cores";
+  public static final double DEFAULT_CPU_CAPACITY_WITH_CORES = 100.0;
   private static Map<Integer, BrokerCapacityInfo> _capacitiesForBrokers;
 
   @Override
@@ -129,7 +171,8 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
       } else {
         String info = String.format("Missing broker id(%d) in capacity config file.", brokerId);
         return new BrokerCapacityInfo(_capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).capacity(), info,
-                                      _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).diskCapacityByLogDir());
+                                      _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).diskCapacityByLogDir(),
+                                      _capacitiesForBrokers.get(DEFAULT_CAPACITY_BROKER_ID).numCpuCores());
       }
     } else {
       throw new IllegalArgumentException("The broker id(" + brokerId + ") should be non-negative.");
@@ -140,8 +183,12 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
     return brokerCapacity.get(Resource.DISK) instanceof Map;
   }
 
+  private static boolean hasNumCores(Map<Resource, Object> brokerCapacity) {
+    return brokerCapacity.get(Resource.CPU) instanceof Map;
+  }
+
   @SuppressWarnings("unchecked")
-  private static Map<Resource, Double> getTotalCapacity(Map<Resource, Object> brokerCapacity) {
+  private static Map<Resource, Double> getTotalCapacity(Map<Resource, Object> brokerCapacity, boolean hasNumCores) {
     Map<Resource, Double> totalCapacity = new HashMap<>(brokerCapacity.size());
     if (isJBOD(brokerCapacity)) {
       for (Map.Entry<Resource, Object> entry : brokerCapacity.entrySet()) {
@@ -156,12 +203,15 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
             totalDiskCapacity += Double.parseDouble(diskEntry.getValue());
           }
           totalCapacity.put(resource, totalDiskCapacity);
+        } else if (hasNumCores && resource == Resource.CPU) {
+          totalCapacity.put(resource, DEFAULT_CPU_CAPACITY_WITH_CORES);
         } else {
           totalCapacity.put(resource, Double.parseDouble((String) entry.getValue()));
         }
       }
     } else {
-      brokerCapacity.forEach((key, value) -> totalCapacity.put(key, Double.parseDouble((String) value)));
+      brokerCapacity.forEach((key, value) -> totalCapacity.put(key, hasNumCores && key == Resource.CPU ? DEFAULT_CPU_CAPACITY_WITH_CORES
+                                                                                                       : Double.parseDouble((String) value)));
     }
 
     return totalCapacity;
@@ -186,6 +236,51 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
     return diskCapacityByLogDir;
   }
 
+  /**
+   * Get number of cores (requires the {@link Resource#CPU} capacity to specify {@link #NUM_CORES_CONFIG}).
+   *
+   * @param brokerCapacity Broker capacity for each resource.
+   * @return Number of cores.
+   */
+  @SuppressWarnings("unchecked")
+  private static short getNumCores(Map<Resource, Object> brokerCapacity) {
+    String stringNumCores = ((Map<String, String>) brokerCapacity.get(Resource.CPU)).get(NUM_CORES_CONFIG);
+    if (stringNumCores == null) {
+      throw new IllegalArgumentException("Missing " + NUM_CORES_CONFIG + " config for brokers in capacity config file.");
+    }
+
+    return Short.parseShort(stringNumCores);
+  }
+
+  private static void numCoresConfigConsistencyChecker(Set<Boolean> numCoresConfigConsistency) {
+    if (numCoresConfigConsistency.size() > 1) {
+      throw new IllegalArgumentException("Inconsistent " + NUM_CORES_CONFIG + " config for brokers in capacity config file. This "
+                                         + "config must be provided by either all or non of the brokers.");
+    }
+  }
+
+  private BrokerCapacityInfo getBrokerCapacityInfo(BrokerCapacity bc, Set<Boolean> numCoresConfigConsistency) {
+    boolean hasNumCores = hasNumCores(bc.capacity);
+    numCoresConfigConsistency.add(hasNumCores);
+    numCoresConfigConsistencyChecker(numCoresConfigConsistency);
+    boolean isDefault = bc.brokerId == DEFAULT_CAPACITY_BROKER_ID;
+    Map<Resource, Double> totalCapacity = getTotalCapacity(bc.capacity, hasNumCores);
+    Map<String, Double> diskCapacityByLogDir = getDiskCapacityByLogDir(bc.capacity);
+
+    BrokerCapacityInfo brokerCapacityInfo;
+    if (hasNumCores) {
+      short numCores = getNumCores(bc.capacity);
+      brokerCapacityInfo
+          = isDefault ? new BrokerCapacityInfo(totalCapacity, "The default broker capacity.", diskCapacityByLogDir, numCores)
+                      : new BrokerCapacityInfo(totalCapacity, diskCapacityByLogDir, numCores);
+    } else {
+      brokerCapacityInfo
+          = isDefault ? new BrokerCapacityInfo(totalCapacity, "The default broker capacity.", diskCapacityByLogDir)
+                      : new BrokerCapacityInfo(totalCapacity, diskCapacityByLogDir);
+    }
+    return brokerCapacityInfo;
+  }
+
   private void loadCapacities(String capacityConfigFile) throws FileNotFoundException {
     JsonReader reader = null;
     try {
@@ -193,15 +288,9 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
       Gson gson = new Gson();
       Set<BrokerCapacity> brokerCapacities = ((BrokerCapacities) gson.fromJson(reader, BrokerCapacities.class)).brokerCapacities;
       _capacitiesForBrokers = new HashMap<>(brokerCapacities.size());
+      Set<Boolean> numCoresConfigConsistency = new HashSet<>(1);
       for (BrokerCapacity bc : brokerCapacities) {
-        boolean isDefault = bc.brokerId == DEFAULT_CAPACITY_BROKER_ID;
-        Map<Resource, Double> totalCapacity = getTotalCapacity(bc.capacity);
-        Map<String, Double> diskCapacityByLogDir = getDiskCapacityByLogDir(bc.capacity);
-
-        BrokerCapacityInfo brokerCapacityInfo =
-            isDefault ? new BrokerCapacityInfo(totalCapacity, "The default broker capacity.", diskCapacityByLogDir)
-                      : new BrokerCapacityInfo(totalCapacity, diskCapacityByLogDir);
-        _capacitiesForBrokers.put(bc.brokerId, brokerCapacityInfo);
+        _capacitiesForBrokers.put(bc.brokerId, getBrokerCapacityInfo(bc, numCoresConfigConsistency));
       }
     } finally {
       try {
