@@ -100,7 +100,7 @@ class BasicStats {
    * Return an object that can be further used
    * to encode into JSON
    */
-  public Map<String, Object> getJSONStructure() {
+  public Map<String, Object> getJsonStructure() {
     Map<String, Object> entry = new HashMap<>(9);
     entry.put(DISK_MB, diskUtil());
     entry.put(DISK_PCT, diskUtilPct());

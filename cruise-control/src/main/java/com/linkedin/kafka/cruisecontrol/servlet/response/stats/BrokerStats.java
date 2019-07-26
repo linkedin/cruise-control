@@ -36,7 +36,7 @@ public abstract class BrokerStats extends AbstractCruiseControlResponse {
     return _isBrokerStatsEstimated;
   }
 
-  protected String getJSONString() {
+  private String getJSONString() {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure();
     jsonStructure.put(VERSION, JSON_VERSION);

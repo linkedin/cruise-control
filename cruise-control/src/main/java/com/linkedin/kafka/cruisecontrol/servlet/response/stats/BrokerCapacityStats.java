@@ -45,7 +45,7 @@ public class BrokerCapacityStats extends BrokerStats {
     // broker level statistics
     List<Map<String, Object>> brokerCapacityStats = new ArrayList<>(_brokerCapacityStats.size());
     for (SingleBrokerCapacityStats stats : _brokerCapacityStats) {
-      Map<String, Object> brokerEntry = stats.getJSONStructure();
+      Map<String, Object> brokerEntry = stats.getJsonStructure();
       brokerCapacityStats.add(brokerEntry);
     }
 

@@ -53,8 +53,8 @@ public class SingleBrokerStats {
    * Return an object that can be further used
    * to encode into JSON
    */
-  public Map<String, Object> getJSONStructure() {
-    Map<String, Object> entry = _basicStats.getJSONStructure();
+  public Map<String, Object> getJsonStructure() {
+    Map<String, Object> entry = _basicStats.getJsonStructure();
     entry.put(HOST, _host);
     entry.put(BROKER, _id);
     entry.put(BROKER_STATE, _state);

@@ -45,7 +45,7 @@ class BasicCapacityStats {
    * Return an object that can be further used
    * to encode into JSON
    */
-  public Map<String, Object> getJSONStructure() {
+  public Map<String, Object> getJsonStructure() {
     Map<String, Object> entry = new HashMap<>(4);
     entry.put(DISK_CAPACITY, diskCapacity());
     entry.put(CPU_CAPACITY, cpuCapacity());

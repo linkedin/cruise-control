@@ -61,7 +61,7 @@ public class BrokerUtilizationStats extends BrokerStats{
 
     // host level statistics
     for (Map.Entry<String, BasicStats> entry : _hostStats.entrySet()) {
-      Map<String, Object> hostEntry = entry.getValue().getJSONStructure();
+      Map<String, Object> hostEntry = entry.getValue().getJsonStructure();
       hostEntry.put(HOST, entry.getKey());
       hostStats.add(hostEntry);
     }
@@ -69,7 +69,7 @@ public class BrokerUtilizationStats extends BrokerStats{
     // broker level statistics
     List<Map<String, Object>> brokerStats = new ArrayList<>(_brokerStats.size());
     for (SingleBrokerStats stats : _brokerStats) {
-      Map<String, Object> brokerEntry = stats.getJSONStructure();
+      Map<String, Object> brokerEntry = stats.getJsonStructure();
       brokerStats.add(brokerEntry);
     }
 
