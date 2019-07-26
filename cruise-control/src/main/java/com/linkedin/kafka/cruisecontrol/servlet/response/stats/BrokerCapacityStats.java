@@ -76,4 +76,3 @@ public class BrokerCapacityStats extends BrokerStats {
     return sb.toString();
   }
 }
-
