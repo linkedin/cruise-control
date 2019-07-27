@@ -59,7 +59,7 @@ public class BrokerCapacityStats extends BrokerStats {
     StringBuilder sb = new StringBuilder();
 
     // put broker stats.
-    sb.append(String.format("%n%n%" + _hostFieldLength + "s%14s%25s%25s%25s%25s%n",
+    sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%25s%25s%25s%25s%n",
                             "HOST", "BROKER", "DISK_CAPACITY(MB)", "CPU_CAPACITY(MB)", "NW_IN_CAPACITY(KB/s)",
                             "NW_OUT_CAPACITY(KB/s)"));
     for (SingleBrokerCapacityStats stats : _brokerCapacityStats) {
