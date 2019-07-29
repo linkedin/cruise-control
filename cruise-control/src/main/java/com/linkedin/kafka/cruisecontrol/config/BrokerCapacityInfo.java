@@ -9,32 +9,71 @@ import java.util.Map;
 
 
 public class BrokerCapacityInfo {
+  public final static short DEFAULT_NUM_CPU_CORES = 1;
+  private final static String DEFAULT_ESTIMATION_INFO = "";
   private final Map<Resource, Double> _capacity;
   private final String _estimationInfo;
   private final Map<String, Double> _diskCapacityByLogDir;
+  private final short _numCpuCores;
 
   /**
-   * BrokerCapacityInfo with the given capacity, estimation, and per absolute logDir disk capacity information.
+   * BrokerCapacityInfo with the given capacity, estimation, per absolute logDir disk capacity, and number of CPU cores.
    *
    * @param capacity Capacity information for each resource.
-   * @param estimationInfo Description if there is any capacity estimation, null or empty string otherwise.
+   * @param estimationInfo Description if there is any capacity estimation, null or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
+   * @param diskCapacityByLogDir Disk capacity by absolute logDir.
+   * @param numCpuCores Number of CPU cores.
+   */
+  public BrokerCapacityInfo(Map<Resource, Double> capacity,
+                            String estimationInfo,
+                            Map<String, Double> diskCapacityByLogDir,
+                            short numCpuCores) {
+    _capacity = capacity;
+    _estimationInfo = estimationInfo == null ? DEFAULT_ESTIMATION_INFO : estimationInfo;
+    _diskCapacityByLogDir = diskCapacityByLogDir;
+    _numCpuCores = numCpuCores;
+  }
+
+  /**
+   * BrokerCapacityInfo with the given capacity, per absolute logDir disk capacity, and number of CPU cores.
+   *
+   * @param capacity Capacity information for each resource.
+   * @param diskCapacityByLogDir Disk capacity by absolute logDir.
+   * @param numCpuCores Number of CPU cores.
+   */
+  public BrokerCapacityInfo(Map<Resource, Double> capacity, Map<String, Double> diskCapacityByLogDir, short numCpuCores) {
+    this(capacity, DEFAULT_ESTIMATION_INFO, diskCapacityByLogDir, numCpuCores);
+  }
+
+  /**
+   * BrokerCapacityInfo with the given capacity and number of CPU cores.
+   *
+   * @param capacity Capacity information for each resource.
+   * @param numCpuCores Number of CPU cores.
+   */
+  public BrokerCapacityInfo(Map<Resource, Double> capacity, short numCpuCores) {
+    this(capacity, DEFAULT_ESTIMATION_INFO, null, numCpuCores);
+  }
+
+  /**
+   * BrokerCapacityInfo with the given capacity, estimation, and per absolute logDir disk capacity.
+   *
+   * @param capacity Capacity information for each resource.
+   * @param estimationInfo Description if there is any capacity estimation, null or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
    * @param diskCapacityByLogDir Disk capacity by absolute logDir.
    */
-  public BrokerCapacityInfo(Map<Resource, Double> capacity, String estimationInfo,
-                            Map<String, Double> diskCapacityByLogDir) {
-    _capacity = capacity;
-    _estimationInfo = estimationInfo == null ? "" : estimationInfo;
-    _diskCapacityByLogDir = diskCapacityByLogDir;
+  public BrokerCapacityInfo(Map<Resource, Double> capacity, String estimationInfo, Map<String, Double> diskCapacityByLogDir) {
+    this(capacity, estimationInfo, diskCapacityByLogDir, DEFAULT_NUM_CPU_CORES);
   }
 
   /**
    * BrokerCapacityInfo with no capacity information specified per absolute logDir.
    *
    * @param capacity Capacity information for each resource.
-   * @param estimationInfo Description if there is any capacity estimation, null or empty string otherwise.
+   * @param estimationInfo Description if there is any capacity estimation, null or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
    */
   public BrokerCapacityInfo(Map<Resource, Double> capacity, String estimationInfo) {
-    this(capacity, estimationInfo, null);
+    this(capacity, estimationInfo, null, DEFAULT_NUM_CPU_CORES);
   }
 
   /**
@@ -44,7 +83,7 @@ public class BrokerCapacityInfo {
    * @param diskCapacityByLogDir Disk capacity by absolute logDir.
    */
   public BrokerCapacityInfo(Map<Resource, Double> capacity, Map<String, Double> diskCapacityByLogDir) {
-    this(capacity, null, diskCapacityByLogDir);
+    this(capacity, DEFAULT_ESTIMATION_INFO, diskCapacityByLogDir, DEFAULT_NUM_CPU_CORES);
   }
 
   /**
@@ -53,7 +92,7 @@ public class BrokerCapacityInfo {
    * @param capacity Capacity information for each resource.
    */
   public BrokerCapacityInfo(Map<Resource, Double> capacity) {
-    this(capacity, null, null);
+    this(capacity, DEFAULT_ESTIMATION_INFO, null, DEFAULT_NUM_CPU_CORES);
   }
 
   /**
@@ -71,7 +110,7 @@ public class BrokerCapacityInfo {
   }
 
   /**
-   * @return Empty string if no estimation, related estimation info otherwise.
+   * @return {@link #DEFAULT_ESTIMATION_INFO} if no estimation, related estimation info otherwise.
    */
   public String estimationInfo() {
     return _estimationInfo;
@@ -82,5 +121,12 @@ public class BrokerCapacityInfo {
    */
   public Map<String, Double> diskCapacityByLogDir() {
     return _diskCapacityByLogDir;
+  }
+
+  /**
+   * @return Number of CPU cores (if provided), {@link #DEFAULT_NUM_CPU_CORES} otherwise.
+   */
+  public short numCpuCores() {
+    return _numCpuCores;
   }
 }

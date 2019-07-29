@@ -1,0 +1,24 @@
+{
+  "brokerCapacities":[
+    {
+      "brokerId": "-1",
+      "capacity": {
+        "DISK": "100000",
+        "CPU": {"num.cores": "16"},
+        "NW_IN": "10000",
+        "NW_OUT": "10000"
+      },
+      "doc": "This is the default capacity. Capacity unit used for disk is in MB, cpu is in number of cores, network throughput is in KB."
+    },
+    {
+      "brokerId": "0",
+      "capacity": {
+        "DISK": "500000",
+        "CPU": {"num.cores": "32"},
+        "NW_IN": "50000",
+        "NW_OUT": "50000"
+      },
+      "doc": "This overrides the capacity for broker 0."
+    }
+  ]
+}

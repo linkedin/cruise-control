@@ -16,12 +16,13 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 public interface BrokerCapacityConfigResolver extends CruiseControlConfigurable, AutoCloseable {
   /**
    * Get the capacity of a broker based on rack, host and broker id.
-   * The map returned must contain all the resources defined in {@link Resource}. The units for each resource are:
+   * The response must contain all the resources defined in {@link Resource}. The units for each resource are:
    * DISK - MegaBytes
    * CPU - Percentage (0 - 100)
    * Network Inbound - KB/s
    * Network Outbounds - KB/s
    *
+   * The response also contains the number of CPU cores and may contain disk capacities by logDirs (i.e. for JBOD).
    * May estimate the capacity of a broker, if it is not directly available.
    *
    * @param rack The rack of the broker
