@@ -26,18 +26,18 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class PartitionLoadParameters extends AbstractParameters {
-  private Resource _resource;
-  private long _startMs;
-  private long _endMs;
-  private int _entries;
-  private Pattern _topic;
-  private int _partitionUpperBoundary;
-  private int _partitionLowerBoundary;
-  private Double _minValidPartitionRatio;
-  private boolean _allowCapacityEstimation;
-  private boolean _wantMaxLoad;
-  private boolean _wantAvgLoad;
-  private Set<Integer> _brokerIds;
+  protected Resource _resource;
+  protected long _startMs;
+  protected long _endMs;
+  protected int _entries;
+  protected Pattern _topic;
+  protected int _partitionUpperBoundary;
+  protected int _partitionLowerBoundary;
+  protected Double _minValidPartitionRatio;
+  protected boolean _allowCapacityEstimation;
+  protected boolean _wantMaxLoad;
+  protected boolean _wantAvgLoad;
+  protected Set<Integer> _brokerIds;
 
 
   public PartitionLoadParameters() {

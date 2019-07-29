@@ -29,13 +29,13 @@ import java.util.Map;
  * </pre>
  */
 public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameters {
-  private boolean _dryRun;
-  private Integer _concurrentInterBrokerPartitionMovements;
-  private Integer _concurrentLeaderMovements;
-  private boolean _skipHardGoalCheck;
-  private ReplicaMovementStrategy _replicaMovementStrategy;
-  private Long _replicationThrottle;
-  private Integer _reviewId;
+  protected boolean _dryRun;
+  protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _concurrentLeaderMovements;
+  protected boolean _skipHardGoalCheck;
+  protected ReplicaMovementStrategy _replicaMovementStrategy;
+  protected Long _replicationThrottle;
+  protected Integer _reviewId;
 
   public FixOfflineReplicasParameters() {
     super();

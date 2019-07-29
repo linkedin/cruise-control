@@ -22,9 +22,9 @@ import java.util.Set;
  * </pre>
  */
 public class ProposalsParameters extends GoalBasedOptimizationParameters {
-  private Set<Integer> _destinationBrokerIds;
-  private boolean _ignoreProposalCache;
-  private boolean _isRebalanceDiskMode;
+  protected Set<Integer> _destinationBrokerIds;
+  protected boolean _ignoreProposalCache;
+  protected boolean _isRebalanceDiskMode;
 
   public ProposalsParameters() {
     super();

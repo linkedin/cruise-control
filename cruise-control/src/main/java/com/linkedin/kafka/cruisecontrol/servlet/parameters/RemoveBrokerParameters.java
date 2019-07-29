@@ -27,8 +27,8 @@ import java.util.Set;
  * </pre>
  */
 public class RemoveBrokerParameters extends AddedOrRemovedBrokerParameters {
-  private boolean _throttleRemovedBrokers;
-  private Set<Integer> _destinationBrokerIds;
+  protected boolean _throttleRemovedBrokers;
+  protected Set<Integer> _destinationBrokerIds;
 
   public RemoveBrokerParameters() {
     super();

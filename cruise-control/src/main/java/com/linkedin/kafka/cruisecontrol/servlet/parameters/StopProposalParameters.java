@@ -23,7 +23,7 @@ import java.util.Map;
  * </pre>
  */
 public class StopProposalParameters extends AbstractParameters {
-  private Integer _reviewId;
+  protected Integer _reviewId;
 
   public StopProposalParameters() {
     super();

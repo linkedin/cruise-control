@@ -19,8 +19,8 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class KafkaClusterStateParameters extends AbstractParameters {
-  private boolean _isVerbose;
-  private Pattern _topic;
+  protected boolean _isVerbose;
+  protected Pattern _topic;
 
   public KafkaClusterStateParameters() {
     super();

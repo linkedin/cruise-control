@@ -44,31 +44,31 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 
 public class KafkaClusterState extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaClusterState.class);
-  private static final String TOPIC = "topic";
-  private static final String PARTITION = "partition";
-  private static final String LEADER = "leader";
-  private static final String REPLICAS = "replicas";
-  private static final String IN_SYNC = "in-sync";
-  private static final String OUT_OF_SYNC = "out-of-sync";
-  private static final String OFFLINE = "offline";
-  private static final String WITH_OFFLINE_REPLICAS = "with-offline-replicas";
-  private static final String URP = "urp";
-  private static final String UNDER_MIN_ISR = "under-min-isr";
-  private static final String OTHER = "other";
-  private static final String KAFKA_BROKER_STATE = "KafkaBrokerState";
-  private static final String KAFKA_PARTITION_STATE = "KafkaPartitionState";
-  private static final String LEADER_COUNT = "LeaderCountByBrokerId";
-  private static final String OUT_OF_SYNC_COUNT = "OutOfSyncCountByBrokerId";
-  private static final String REPLICA_COUNT = "ReplicaCountByBrokerId";
-  private static final String OFFLINE_REPLICA_COUNT = "OfflineReplicaCountByBrokerId";
-  private static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
-  private static final String ONLINE_LOGDIRS = "OnlineLogDirsByBrokerId";
-  private static final String OFFLINE_LOGDIRS = "OfflineLogDirsByBrokerId";
-  private static final int DEFAULT_MIN_INSYNC_REPLICAS = 1;
-  private final Map<String, Properties> _allTopicConfigs;
-  private final Properties _clusterConfigs;
-  private final Map<String, Object> _adminClientConfigs;
-  private Cluster _kafkaCluster;
+  protected static final String TOPIC = "topic";
+  protected static final String PARTITION = "partition";
+  protected static final String LEADER = "leader";
+  protected static final String REPLICAS = "replicas";
+  protected static final String IN_SYNC = "in-sync";
+  protected static final String OUT_OF_SYNC = "out-of-sync";
+  protected static final String OFFLINE = "offline";
+  protected static final String WITH_OFFLINE_REPLICAS = "with-offline-replicas";
+  protected static final String URP = "urp";
+  protected static final String UNDER_MIN_ISR = "under-min-isr";
+  protected static final String OTHER = "other";
+  protected static final String KAFKA_BROKER_STATE = "KafkaBrokerState";
+  protected static final String KAFKA_PARTITION_STATE = "KafkaPartitionState";
+  protected static final String LEADER_COUNT = "LeaderCountByBrokerId";
+  protected static final String OUT_OF_SYNC_COUNT = "OutOfSyncCountByBrokerId";
+  protected static final String REPLICA_COUNT = "ReplicaCountByBrokerId";
+  protected static final String OFFLINE_REPLICA_COUNT = "OfflineReplicaCountByBrokerId";
+  protected static final String MIN_INSYNC_REPLICAS = "min.insync.replicas";
+  protected static final String ONLINE_LOGDIRS = "OnlineLogDirsByBrokerId";
+  protected static final String OFFLINE_LOGDIRS = "OfflineLogDirsByBrokerId";
+  protected static final int DEFAULT_MIN_INSYNC_REPLICAS = 1;
+  protected final Map<String, Properties> _allTopicConfigs;
+  protected final Properties _clusterConfigs;
+  protected final Map<String, Object> _adminClientConfigs;
+  protected Cluster _kafkaCluster;
 
   public KafkaClusterState(Cluster kafkaCluster,
                            TopicConfigProvider topicConfigProvider,
@@ -81,7 +81,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     _adminClientConfigs = adminClientConfigs;
   }
 
-  private String getJSONString(CruiseControlParameters parameters) {
+  protected String getJSONString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure;
     KafkaClusterStateParameters kafkaClusterStateParams = (KafkaClusterStateParameters) parameters;
@@ -101,7 +101,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    *
    * @param topic Topic for which the {@link #MIN_INSYNC_REPLICAS} is queried
    */
-  private int minInsyncReplicas(String topic) {
+  protected int minInsyncReplicas(String topic) {
     Properties topicLevelConfig = _allTopicConfigs.get(topic);
     if (topicLevelConfig != null && topicLevelConfig.get(MIN_INSYNC_REPLICAS) != null) {
       return Integer.parseInt(topicLevelConfig.getProperty(MIN_INSYNC_REPLICAS));
@@ -124,7 +124,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * @param verbose true if requested to gather state of partitions other than offline or urp.
    * @param topicPattern regex of topic to filter partition states by, is null if no filter is to be applied
    */
-  private void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
+  protected void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
                                            Set<PartitionInfo> offlinePartitions,
                                            Set<PartitionInfo> otherPartitions,
                                            Set<PartitionInfo> partitionsWithOfflineReplicas,
@@ -168,7 +168,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * @param replicaCountByBrokerId Replica count by broker id.
    * @param offlineReplicaCountByBrokerId Offline replica count by broker id.
    */
-  private void populateKafkaBrokerState(Map<Integer, Integer> leaderCountByBrokerId,
+  protected void populateKafkaBrokerState(Map<Integer, Integer> leaderCountByBrokerId,
                                         Map<Integer, Integer> outOfSyncCountByBrokerId,
                                         Map<Integer, Integer> replicaCountByBrokerId,
                                         Map<Integer, Integer> offlineReplicaCountByBrokerId) {
@@ -206,7 +206,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     }
   }
 
-  private List<Object> getJsonPartitions(Set<PartitionInfo> partitions) {
+  protected List<Object> getJsonPartitions(Set<PartitionInfo> partitions) {
     List<Object> partitionList = new ArrayList<>();
     for (PartitionInfo partitionInfo : partitions) {
       List<Integer> replicas =
@@ -296,7 +296,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     return cruiseControlState;
   }
 
-  private void writeKafkaPartitionState(StringBuilder sb, SortedSet<PartitionInfo> partitions, int topicNameLength) {
+  protected void writeKafkaPartitionState(StringBuilder sb, SortedSet<PartitionInfo> partitions, int topicNameLength) {
     for (PartitionInfo partitionInfo : partitions) {
       List<String> replicas =
           Arrays.stream(partitionInfo.replicas()).map(Node::idString).collect(Collectors.toList());
@@ -318,7 +318,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     }
   }
 
-  private void populateKafkaBrokerLogDirState(Map<Integer, Set<String>> onlineLogDirsByBrokerId,
+  protected void populateKafkaBrokerLogDirState(Map<Integer, Set<String>> onlineLogDirsByBrokerId,
                                               Map<Integer, Set<String>> offlineLogDirsByBrokerId,
                                               Set<Integer> brokers)
       throws ExecutionException, InterruptedException {
@@ -353,7 +353,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     }
   }
 
-  private void writeKafkaBrokerLogDirState(StringBuilder sb, Set<Integer> brokers)
+  protected void writeKafkaBrokerLogDirState(StringBuilder sb, Set<Integer> brokers)
       throws ExecutionException, InterruptedException {
     Map<Integer, Set<String>> onlineLogDirsByBrokerId = new HashMap<>(brokers.size());
     Map<Integer, Set<String>> offlineLogDirsByBrokerId = new HashMap<>(brokers.size());
@@ -376,7 +376,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     }
   }
 
-  private void writeBrokerSummary(StringBuilder sb) throws ExecutionException, InterruptedException {
+  protected void writeBrokerSummary(StringBuilder sb) throws ExecutionException, InterruptedException {
     SortedMap<Integer, Integer> leaderCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> outOfSyncCountByBrokerId = new TreeMap<>();
     SortedMap<Integer, Integer> replicaCountByBrokerId = new TreeMap<>();
@@ -402,7 +402,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     writeKafkaBrokerLogDirState(sb, replicaCountByBrokerId.keySet());
   }
 
-  private void writePartitionSummary(StringBuilder sb, CruiseControlParameters parameters) {
+  protected void writePartitionSummary(StringBuilder sb, CruiseControlParameters parameters) {
     int topicNameLength = _kafkaCluster.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
     KafkaClusterStateParameters kafkaClusterStateParams = (KafkaClusterStateParameters) parameters;
     Pattern topic = kafkaClusterStateParams.topic();
@@ -449,7 +449,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     }
   }
 
-  private String getPlaintext(CruiseControlParameters parameters) {
+  protected String getPlaintext(CruiseControlParameters parameters) {
     StringBuilder sb = new StringBuilder();
     try {
       // Broker summary.

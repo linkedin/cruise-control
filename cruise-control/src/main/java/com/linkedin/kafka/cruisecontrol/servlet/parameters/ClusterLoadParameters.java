@@ -24,11 +24,11 @@ import java.util.Map;
  * </pre>
  */
 public class ClusterLoadParameters extends AbstractParameters {
-  private long _endMs;
-  private long _startMs;
-  private ModelCompletenessRequirements _requirements;
-  private boolean _allowCapacityEstimation;
-  private boolean _populateDiskInfo;
+  protected long _endMs;
+  protected long _startMs;
+  protected ModelCompletenessRequirements _requirements;
+  protected boolean _allowCapacityEstimation;
+  protected boolean _populateDiskInfo;
 
   public ClusterLoadParameters() {
     super();
