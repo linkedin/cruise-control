@@ -57,6 +57,17 @@ public class ModelUtils {
     }
   }
 
+  /**
+   * Estimate the leader CPU utilization for the partition with the given information as a double in [0.0,1.0].
+   *
+   * @param brokerCpuUtil A double in [0.0,1.0], representing the CPU usage of the broker hosting the partition leader.
+   * @param brokerLeaderBytesInRate Leader bytes in rate in the broker.
+   * @param brokerLeaderBytesOutRate  Leader bytes out rate in the broker.
+   * @param brokerFollowerBytesInRate Follower bytes in rate in the broker.
+   * @param partitionBytesInRate Leader bytes in rate for the partition.
+   * @param partitionBytesOutRate Total bytes out rate (i.e. leader/replication bytes out) for the partition.
+   * @return Estimated CPU utilization of the leader replica of the partition as a double in [0.0,1.0].
+   */
   public static double estimateLeaderCpuUtil(double brokerCpuUtil,
                                              double brokerLeaderBytesInRate,
                                              double brokerLeaderBytesOutRate,
@@ -69,24 +80,22 @@ public class ModelUtils {
       if (brokerLeaderBytesInRate == 0 || brokerLeaderBytesOutRate == 0) {
         return 0.0;
       } else if (brokerLeaderBytesInRate * ALLOWED_METRIC_ERROR_FACTOR < partitionBytesInRate
-          && brokerLeaderBytesInRate > UNSTABLE_METRIC_THROUGHPUT_THRESHOLD) {
+                 && brokerLeaderBytesInRate > UNSTABLE_METRIC_THROUGHPUT_THRESHOLD) {
         throw new IllegalArgumentException(String.format("The partition bytes in rate %f is greater than the broker "
-            + "bytes in rate %f", partitionBytesInRate, brokerLeaderBytesInRate));
+                                                         + "bytes in rate %f", partitionBytesInRate, brokerLeaderBytesInRate));
       } else if (brokerLeaderBytesOutRate * ALLOWED_METRIC_ERROR_FACTOR < partitionBytesOutRate
-          && brokerLeaderBytesOutRate > UNSTABLE_METRIC_THROUGHPUT_THRESHOLD) {
+                 && brokerLeaderBytesOutRate > UNSTABLE_METRIC_THROUGHPUT_THRESHOLD) {
         throw new IllegalArgumentException(String.format("The partition bytes out rate %f is greater than the broker "
-            + "bytes out rate %f", partitionBytesOutRate, brokerLeaderBytesOutRate));
+                                                         + "bytes out rate %f", partitionBytesOutRate, brokerLeaderBytesOutRate));
       } else {
         double brokerLeaderBytesInContribution = ModelParameters.CPU_WEIGHT_OF_LEADER_BYTES_IN_RATE * brokerLeaderBytesInRate;
         double brokerLeaderBytesOutContribution = ModelParameters.CPU_WEIGHT_OF_LEADER_BYTES_OUT_RATE * brokerLeaderBytesOutRate;
         double brokerFollowerBytesInContribution = ModelParameters.CPU_WEIGHT_OF_FOLLOWER_BYTES_IN_RATE * brokerFollowerBytesInRate;
         double totalContribution = brokerLeaderBytesInContribution + brokerLeaderBytesOutContribution + brokerFollowerBytesInContribution;
+        double leaderReplicaContribution = (brokerLeaderBytesInContribution * Math.min(1, partitionBytesInRate / brokerLeaderBytesInRate))
+                                           + (brokerLeaderBytesOutContribution * Math.min(1, partitionBytesOutRate / brokerLeaderBytesOutRate));
 
-        double leaderBytesInCpuContribution = brokerCpuUtil * (brokerLeaderBytesInContribution / totalContribution);
-        double leaderBytesOutCpuContribution = brokerCpuUtil * (brokerLeaderBytesOutContribution / totalContribution);
-
-        return leaderBytesInCpuContribution * Math.min(1, partitionBytesInRate / brokerLeaderBytesInRate)
-            + leaderBytesOutCpuContribution * Math.min(1, partitionBytesOutRate / brokerLeaderBytesOutRate);
+        return (brokerCpuUtil / totalContribution) * leaderReplicaContribution;
       }
     }
   }

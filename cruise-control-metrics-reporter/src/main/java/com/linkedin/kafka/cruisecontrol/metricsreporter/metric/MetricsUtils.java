@@ -135,8 +135,14 @@ public class MetricsUtils {
     return ccm;
   }
 
+  /**
+   * Returns the "recent CPU usage" for the JVM process as a double in [0.0,1.0].
+   */
   public static BrokerMetric getCpuMetric(long now, int brokerId) {
     double cpuUtil = ((com.sun.management.OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean()).getProcessCpuLoad();
+    if (cpuUtil < 0) {
+      throw new IllegalStateException("Java Virtual Machine recent CPU usage is not available.");
+    }
     return new BrokerMetric(RawMetricType.BROKER_CPU_UTIL, now, brokerId, cpuUtil);
   }
 
