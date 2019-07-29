@@ -4,7 +4,7 @@ Below are some (non-exhaustive) examples of how to use `cccli` to accomplish tas
   - [Add brokers to a cluster](#add-brokers-to-a-cluster)
 - [`admin`](#admin)
   - [Dynamically set the per-broker partition movement concurrency](#dynamically-set-the-per-broker-partition-movement-concurrency)
-  - [Dynamically set the per-cluster leadership movement concurrency ](#dynamically-set-the-per-cluster-leadership-movement-concurrency-)
+  - [Dynamically set the per-cluster leadership movement concurrency](#dynamically-set-the-per-cluster-leadership-movement-concurrency-)
   - [Enable self-healing](#enable-self-healing)
   - [Disable self-healing](#disable-self-healing)
 - [`kafka_cluster_state`](#kafka_cluster_state)
@@ -840,7 +840,7 @@ Starting long-running poll of http://someCruiseControlAddress:9090/kafkacruiseco
 
 ## `topic_configuration`
 ### Dynamically set the replication factor of one or more topics
-Note that `cruise-control` accepts a regular expression to denote which topics are intended.
+Note that `cruise-control` accepts a regular expression to denote which topics are intended.  
 [Be careful with this](https://xkcd.com/1171/).
 ```bash
 cccli -a someCruiseControlAddress:9090 topic-configuration --topic some-topic-regex --replication-factor 3
