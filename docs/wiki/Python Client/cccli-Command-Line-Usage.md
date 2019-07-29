@@ -4,7 +4,7 @@ Below are some (non-exhaustive) examples of how to use `cccli` to accomplish tas
   - [Add brokers to a cluster](#add-brokers-to-a-cluster)
 - [`admin`](#admin)
   - [Dynamically set the per-broker partition movement concurrency](#dynamically-set-the-per-broker-partition-movement-concurrency)
-  - [Dynamically set the per-cluster leadership movement concurrency](#dynamically-set-the-per-cluster-leadership-movement-concurrency-)
+  - [Dynamically set the per-cluster leadership movement concurrency](#dynamically-set-the-per-cluster-leadership-movement-concurrency)
   - [Enable self-healing](#enable-self-healing)
   - [Disable self-healing](#disable-self-healing)
 - [`kafka_cluster_state`](#kafka_cluster_state)
@@ -245,7 +245,7 @@ Starting long-running poll of http://someCruiseControlAddress:9090/kafkacruiseco
 ```
 </details>
 
-### Dynamically set the per-cluster leadership movement concurrency 
+### Dynamically set the per-cluster leadership movement concurrency
 Note that this only has an effect for an *ongoing* proposal execution.
 ```bash
 cccli -a someCruiseControlAddress:9090 admin --leader-concurrency 2
