@@ -183,8 +183,24 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
     return brokerCapacity.get(Resource.DISK) instanceof Map;
   }
 
-  private static boolean hasNumCores(Map<Resource, Object> brokerCapacity) {
-    return brokerCapacity.get(Resource.CPU) instanceof Map;
+  /**
+   * Get the number of cores specified by user -- i.e. requires the {@link Resource#CPU} capacity to specify
+   * {@link #NUM_CORES_CONFIG} in a Map.
+   *
+   * @param brokerCapacity Broker capacity for each resource.
+   * @return Number of cores if specified by user, {@code null} otherwise.
+   */
+  @SuppressWarnings("unchecked")
+  private static Short getUserSpecifiedNumCores(Map<Resource, Object> brokerCapacity) {
+    if (brokerCapacity.get(Resource.CPU) instanceof Map) {
+      String stringNumCores = ((Map<String, String>) brokerCapacity.get(Resource.CPU)).get(NUM_CORES_CONFIG);
+      if (stringNumCores == null) {
+        throw new IllegalArgumentException("Missing " + NUM_CORES_CONFIG + " config for brokers in capacity config file.");
+      }
+      return Short.parseShort(stringNumCores);
+    } else {
+      return null;
+    }
   }
 
   @SuppressWarnings("unchecked")
@@ -236,22 +252,6 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
     return diskCapacityByLogDir;
   }
 
-  /**
-   * Get number of cores (requires the {@link Resource#CPU} capacity to specify {@link #NUM_CORES_CONFIG}).
-   *
-   * @param brokerCapacity Broker capacity for each resource.
-   * @return Number of cores.
-   */
-  @SuppressWarnings("unchecked")
-  private static short getNumCores(Map<Resource, Object> brokerCapacity) {
-    String stringNumCores = ((Map<String, String>) brokerCapacity.get(Resource.CPU)).get(NUM_CORES_CONFIG);
-    if (stringNumCores == null) {
-      throw new IllegalArgumentException("Missing " + NUM_CORES_CONFIG + " config for brokers in capacity config file.");
-    }
-
-    return Short.parseShort(stringNumCores);
-  }
-
   private static void numCoresConfigConsistencyChecker(Set<Boolean> numCoresConfigConsistency) {
     if (numCoresConfigConsistency.size() > 1) {
       throw new IllegalArgumentException("Inconsistent " + NUM_CORES_CONFIG + " config for brokers in capacity config file. This "
@@ -260,7 +260,8 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
   }
 
   private BrokerCapacityInfo getBrokerCapacityInfo(BrokerCapacity bc, Set<Boolean> numCoresConfigConsistency) {
-    boolean hasNumCores = hasNumCores(bc.capacity);
+    Short userSpecifiedNumCores = getUserSpecifiedNumCores(bc.capacity);
+    boolean hasNumCores = userSpecifiedNumCores != null;
     numCoresConfigConsistency.add(hasNumCores);
     numCoresConfigConsistencyChecker(numCoresConfigConsistency);
     boolean isDefault = bc.brokerId == DEFAULT_CAPACITY_BROKER_ID;
@@ -269,10 +270,9 @@ public class BrokerCapacityConfigFileResolver implements BrokerCapacityConfigRes
 
     BrokerCapacityInfo brokerCapacityInfo;
     if (hasNumCores) {
-      short numCores = getNumCores(bc.capacity);
       brokerCapacityInfo
-          = isDefault ? new BrokerCapacityInfo(totalCapacity, "The default broker capacity.", diskCapacityByLogDir, numCores)
-                      : new BrokerCapacityInfo(totalCapacity, diskCapacityByLogDir, numCores);
+          = isDefault ? new BrokerCapacityInfo(totalCapacity, "The default broker capacity.", diskCapacityByLogDir, userSpecifiedNumCores)
+                      : new BrokerCapacityInfo(totalCapacity, diskCapacityByLogDir, userSpecifiedNumCores);
     } else {
       brokerCapacityInfo
           = isDefault ? new BrokerCapacityInfo(totalCapacity, "The default broker capacity.", diskCapacityByLogDir)

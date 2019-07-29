@@ -29,13 +29,13 @@ public class BrokerCapacityInfo {
                             Map<String, Double> diskCapacityByLogDir,
                             short numCpuCores) {
     _capacity = capacity;
-    _estimationInfo = estimationInfo == null ? "" : estimationInfo;
+    _estimationInfo = estimationInfo == null ? DEFAULT_ESTIMATION_INFO : estimationInfo;
     _diskCapacityByLogDir = diskCapacityByLogDir;
     _numCpuCores = numCpuCores;
   }
 
   /**
-   * BrokerCapacityInfo with the given capacity, estimation, and number of CPU cores.
+   * BrokerCapacityInfo with the given capacity, per absolute logDir disk capacity, and number of CPU cores.
    *
    * @param capacity Capacity information for each resource.
    * @param diskCapacityByLogDir Disk capacity by absolute logDir.
