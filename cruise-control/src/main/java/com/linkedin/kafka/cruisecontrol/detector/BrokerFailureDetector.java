@@ -136,7 +136,7 @@ public class BrokerFailureDetector {
   private boolean updateFailedBrokers(Set<Integer> aliveBrokers) {
     // We get the complete broker list from metadata. i.e. any broker that still has a partition assigned to it is
     // included in the broker list. If we cannot update metadata in 60 seconds, skip
-    Set<Integer> currentFailedBrokers = _loadMonitor.brokersWithPartitions(MAX_METADATA_WAIT_MS);
+    Set<Integer> currentFailedBrokers = _loadMonitor.brokersWithReplicas(MAX_METADATA_WAIT_MS);
     currentFailedBrokers.removeAll(aliveBrokers);
     LOG.debug("Alive brokers: {}, failed brokers: {}", aliveBrokers, currentFailedBrokers);
     // Remove broker that is no longer failed.

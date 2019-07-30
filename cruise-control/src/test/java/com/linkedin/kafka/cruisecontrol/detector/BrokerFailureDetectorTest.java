@@ -130,7 +130,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
   private BrokerFailureDetector createBrokerFailureDetector(Queue<Anomaly> anomalies, Time time) {
     LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
-    EasyMock.expect(mockLoadMonitor.brokersWithPartitions(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
+    EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
     EasyMock.replay(mockLoadMonitor);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().connectionString());
