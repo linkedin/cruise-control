@@ -27,6 +27,15 @@ public interface CruiseControlResponse {
    */
   void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException;
 
+
+  /**
+   * Write in progress response with the given parameters to the provided HTTP response.
+   *
+   * @param parameters Parameters of the HTTP request of user.
+   * @param response HTTP response to return to user.
+   */
+  void writeInProgressResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException;
+
   /**
    * Return the relevant response kept in-memory after {@link #discardIrrelevantResponse(CruiseControlParameters)} is called.
    *

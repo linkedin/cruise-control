@@ -11,6 +11,8 @@ import com.linkedin.kafka.cruisecontrol.servlet.handler.AbstractRequest;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ProgressResult;
+
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -40,6 +42,27 @@ public abstract class AbstractAsyncRequest extends AbstractRequest {
    * @return the corresponding {@link OperationFuture}.
    */
   protected abstract OperationFuture handle(String uuid);
+
+  /**
+   * Handle the request and populate the response.
+   *
+   * @param request Http servlet request.
+   * @param response Http servlet response.
+   */
+  @Override
+  public void handle(HttpServletRequest request, HttpServletResponse response)
+          throws IOException, ExecutionException, InterruptedException {
+    if (parameters().parseParameters(response)) {
+      LOG.warn("Failed to parse parameters: {} for request: {}.", request.getParameterMap(), request.getPathInfo());
+      return;
+    }
+    CruiseControlResponse ccResponse = getResponse(request, response);
+    if (ccResponse.getClass() == ProgressResult.class) {
+      ccResponse.writeInProgressResponse(parameters(), response);
+    } else {
+      ccResponse.writeSuccessResponse(parameters(), response);
+    }
+  }
 
   @Override
   public CruiseControlResponse getResponse(HttpServletRequest request, HttpServletResponse response)

@@ -12,6 +12,7 @@ import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeResponseToOutputStream;
 import static javax.servlet.http.HttpServletResponse.SC_OK;
+import static javax.servlet.http.HttpServletResponse.SC_ACCEPTED;
 
 
 public abstract class AbstractCruiseControlResponse implements CruiseControlResponse {
@@ -33,6 +34,13 @@ public abstract class AbstractCruiseControlResponse implements CruiseControlResp
     boolean json = parameters.json();
     discardIrrelevantResponse(parameters);
     writeResponseToOutputStream(response, SC_OK, json, _cachedResponse, _config);
+  }
+
+  @Override
+  public void writeInProgressResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException {
+    boolean json = parameters.json();
+    discardIrrelevantResponse(parameters);
+    writeResponseToOutputStream(response, SC_ACCEPTED, json, _cachedResponse, _config);
   }
 
   @Override
