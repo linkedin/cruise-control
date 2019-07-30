@@ -22,15 +22,15 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JS
 
 
 public class ReviewResult extends AbstractCruiseControlResponse {
-  private static final String ID = "Id";
-  private static final String SUBMITTER_ADDRESS = "SubmitterAddress";
-  private static final String SUBMISSION_TIME_MS = "SubmissionTimeMs";
-  private static final String STATUS = "Status";
-  private static final String ENDPOINT_WITH_PARAMS = "EndpointWithParams";
-  private static final String REASON = "Reason";
-  private static final String REQUEST_INFO = "RequestInfo";
-  private final Map<Integer, RequestInfo> _requestInfoById;
-  private final Set<Integer> _filteredRequestIds;
+  protected static final String ID = "Id";
+  protected static final String SUBMITTER_ADDRESS = "SubmitterAddress";
+  protected static final String SUBMISSION_TIME_MS = "SubmissionTimeMs";
+  protected static final String STATUS = "Status";
+  protected static final String ENDPOINT_WITH_PARAMS = "EndpointWithParams";
+  protected static final String REASON = "Reason";
+  protected static final String REQUEST_INFO = "RequestInfo";
+  protected final Map<Integer, RequestInfo> _requestInfoById;
+  protected final Set<Integer> _filteredRequestIds;
 
   /**
    * @param requestInfoById Request info by Id.
@@ -44,7 +44,7 @@ public class ReviewResult extends AbstractCruiseControlResponse {
     _filteredRequestIds = filteredRequestIds.isEmpty() ? _requestInfoById.keySet() : filteredRequestIds;
   }
 
-  private String getPlaintext() {
+  protected String getPlaintext() {
     StringBuilder sb = new StringBuilder();
     int padding = 2;
     // Plaintext response, each column name will be underscore-separated instead of case-separated.
@@ -104,7 +104,7 @@ public class ReviewResult extends AbstractCruiseControlResponse {
     return sb.toString();
   }
 
-  private String getJSONString() {
+  protected String getJSONString() {
     List<Map<String, Object>> jsonRequestInfoList = new ArrayList<>(_filteredRequestIds.size());
     for (Map.Entry<Integer, RequestInfo> entry : _requestInfoById.entrySet()) {
       if (_filteredRequestIds.contains(entry.getKey())) {
@@ -117,7 +117,7 @@ public class ReviewResult extends AbstractCruiseControlResponse {
     return new Gson().toJson(jsonResponse);
   }
 
-  private void addJSONRequestInfo(List<Map<String, Object>> jsonRequestInfoList, Map.Entry<Integer, RequestInfo> entry) {
+  protected void addJSONRequestInfo(List<Map<String, Object>> jsonRequestInfoList, Map.Entry<Integer, RequestInfo> entry) {
     Map<String, Object> jsonObjectMap = new HashMap<>();
     RequestInfo requestInfo = entry.getValue();
     jsonObjectMap.put(ID, entry.getKey());

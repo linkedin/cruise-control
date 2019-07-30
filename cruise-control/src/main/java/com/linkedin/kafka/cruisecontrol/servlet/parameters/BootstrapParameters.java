@@ -24,9 +24,9 @@ import java.util.Map;
  * </pre>
  */
 public class BootstrapParameters extends AbstractParameters {
-  private Long _startMs;
-  private Long _endMs;
-  private boolean _clearMetrics;
+  protected Long _startMs;
+  protected Long _endMs;
+  protected boolean _clearMetrics;
 
   public BootstrapParameters() {
     super();

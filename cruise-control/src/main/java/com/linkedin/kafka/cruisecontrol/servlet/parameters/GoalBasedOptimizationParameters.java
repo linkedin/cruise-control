@@ -69,7 +69,7 @@ public abstract class GoalBasedOptimizationParameters extends KafkaOptimizationP
     return _excludeRecentlyRemovedBrokers;
   }
 
-  private static ModelCompletenessRequirements getRequirements(ParameterUtils.DataFrom dataFrom) {
+  protected static ModelCompletenessRequirements getRequirements(ParameterUtils.DataFrom dataFrom) {
     return new ModelCompletenessRequirements(MIN_NUM_VALID_WINDOWS.get(dataFrom),
                                              MIN_VALID_PARTITIONS_RATIO.get(dataFrom),
                                              INCLUDE_ALL_TOPICS);

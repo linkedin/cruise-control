@@ -31,14 +31,14 @@ import java.util.Set;
  * </pre>
  */
 public class RebalanceParameters extends GoalBasedOptimizationParameters {
-  private boolean _dryRun;
-  private Integer _concurrentInterBrokerPartitionMovements;
-  private Integer _concurrentLeaderMovements;
-  private boolean _skipHardGoalCheck;
-  private ReplicaMovementStrategy _replicaMovementStrategy;
-  private boolean _ignoreProposalCache;
-  private Set<Integer> _destinationBrokerIds;
-  private Integer _reviewId;
+  protected boolean _dryRun;
+  protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _concurrentLeaderMovements;
+  protected boolean _skipHardGoalCheck;
+  protected ReplicaMovementStrategy _replicaMovementStrategy;
+  protected boolean _ignoreProposalCache;
+  protected Set<Integer> _destinationBrokerIds;
+  protected Integer _reviewId;
 
   public RebalanceParameters() {
     super();

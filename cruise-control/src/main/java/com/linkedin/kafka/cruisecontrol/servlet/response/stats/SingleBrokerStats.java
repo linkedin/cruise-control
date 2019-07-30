@@ -9,14 +9,14 @@ import java.util.Map;
 
 
 public class SingleBrokerStats {
-  private static final String HOST = "Host";
-  private static final String BROKER = "Broker";
-  private static final String BROKER_STATE = "BrokerState";
-  private final String _host;
-  private final int _id;
-  private final Broker.State _state;
-  private final BasicStats _basicStats;
-  private final boolean _isEstimated;
+  protected static final String HOST = "Host";
+  protected static final String BROKER = "Broker";
+  protected static final String BROKER_STATE = "BrokerState";
+  protected final String _host;
+  protected final int _id;
+  protected final Broker.State _state;
+  protected final BasicStats _basicStats;
+  protected final boolean _isEstimated;
 
   SingleBrokerStats(String host, int id, Broker.State state, double diskUtil, double cpuUtil, double leaderBytesInRate,
                     double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate, int numReplicas,

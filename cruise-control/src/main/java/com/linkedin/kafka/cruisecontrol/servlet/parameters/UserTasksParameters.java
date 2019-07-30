@@ -23,12 +23,12 @@ import java.util.UUID;
  * </pre>
  */
 public class UserTasksParameters extends AbstractParameters {
-  private Set<UUID> _userTaskIds;
-  private Set<String> _clientIds;
-  private Set<CruiseControlEndPoint> _endPoints;
-  private Set<UserTaskManager.TaskState> _types;
-  private int _entries;
-  private boolean _fetchCompletedTask;
+  protected Set<UUID> _userTaskIds;
+  protected Set<String> _clientIds;
+  protected Set<CruiseControlEndPoint> _endPoints;
+  protected Set<UserTaskManager.TaskState> _types;
+  protected int _entries;
+  protected boolean _fetchCompletedTask;
 
   public UserTasksParameters() {
     super();
