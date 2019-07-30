@@ -26,7 +26,7 @@ import java.util.Map;
  * </pre>
  */
 public class AddBrokerParameters extends AddedOrRemovedBrokerParameters {
-  private boolean _throttleAddedBrokers;
+  protected boolean _throttleAddedBrokers;
 
   public AddBrokerParameters() {
     super();

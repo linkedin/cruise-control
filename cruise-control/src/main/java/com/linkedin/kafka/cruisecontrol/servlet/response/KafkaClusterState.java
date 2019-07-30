@@ -30,28 +30,28 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JS
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
 public class KafkaClusterState extends AbstractCruiseControlResponse {
-  private static final String TOPIC = "topic";
-  private static final String PARTITION = "partition";
-  private static final String LEADER = "leader";
-  private static final String REPLICAS = "replicas";
-  private static final String IN_SYNC = "in-sync";
-  private static final String OUT_OF_SYNC = "out-of-sync";
-  private static final String OFFLINE = "offline";
-  private static final String URP = "urp";
-  private static final String OTHER = "other";
-  private static final String KAFKA_BROKER_STATE = "KafkaBrokerState";
-  private static final String KAFKA_PARTITION_STATE = "KafkaPartitionState";
-  private static final String LEADER_COUNT = "LeaderCountByBrokerId";
-  private static final String OUT_OF_SYNC_COUNT = "OutOfSyncCountByBrokerId";
-  private static final String REPLICA_COUNT = "ReplicaCountByBrokerId";
-  private Cluster _kafkaCluster;
+  protected static final String TOPIC = "topic";
+  protected static final String PARTITION = "partition";
+  protected static final String LEADER = "leader";
+  protected static final String REPLICAS = "replicas";
+  protected static final String IN_SYNC = "in-sync";
+  protected static final String OUT_OF_SYNC = "out-of-sync";
+  protected static final String OFFLINE = "offline";
+  protected static final String URP = "urp";
+  protected static final String OTHER = "other";
+  protected static final String KAFKA_BROKER_STATE = "KafkaBrokerState";
+  protected static final String KAFKA_PARTITION_STATE = "KafkaPartitionState";
+  protected static final String LEADER_COUNT = "LeaderCountByBrokerId";
+  protected static final String OUT_OF_SYNC_COUNT = "OutOfSyncCountByBrokerId";
+  protected static final String REPLICA_COUNT = "ReplicaCountByBrokerId";
+  protected Cluster _kafkaCluster;
 
   public KafkaClusterState(Cluster kafkaCluster, KafkaCruiseControlConfig config) {
     super(config);
     _kafkaCluster = kafkaCluster;
   }
 
-  private String getJSONString(CruiseControlParameters parameters) {
+  protected String getJSONString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
     KafkaClusterStateParameters kafkaClusterStateParams = (KafkaClusterStateParameters) parameters;
 
@@ -71,7 +71,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * @param verbose true if requested to gather state of partitions other than offline or urp.
    * @param topicPattern regex of topic to filter partition states by, is null if no filter is to be applied
    */
-  private void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
+  protected void populateKafkaPartitionState(Set<PartitionInfo> underReplicatedPartitions,
                                            Set<PartitionInfo> offlinePartitions,
                                            Set<PartitionInfo> otherPartitions,
                                            boolean verbose,
@@ -103,7 +103,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
    * @param outOfSyncCountByBrokerId Out of sync replica count by broker id.
    * @param replicaCountByBrokerId Replica count by broker id.
    */
-  private void populateKafkaBrokerState(Map<Integer, Integer> leaderCountByBrokerId,
+  protected void populateKafkaBrokerState(Map<Integer, Integer> leaderCountByBrokerId,
                                         Map<Integer, Integer> outOfSyncCountByBrokerId,
                                         Map<Integer, Integer> replicaCountByBrokerId) {
     // Part-1: Gather the states of brokers with replicas.
@@ -136,7 +136,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     }
   }
 
-  private List<Object> getJsonPartitions(Set<PartitionInfo> partitions) {
+  protected List<Object> getJsonPartitions(Set<PartitionInfo> partitions) {
     List<Object> partitionList = new ArrayList<>();
     for (PartitionInfo partitionInfo : partitions) {
       List<Integer> replicas =
@@ -198,7 +198,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     return cruiseControlState;
   }
 
-  private void writeKafkaClusterState(StringBuilder sb, SortedSet<PartitionInfo> partitions, int topicNameLength) {
+  protected void writeKafkaClusterState(StringBuilder sb, SortedSet<PartitionInfo> partitions, int topicNameLength) {
     for (PartitionInfo partitionInfo : partitions) {
       List<String> replicas =
           Arrays.stream(partitionInfo.replicas()).map(Node::idString).collect(Collectors.toList());
@@ -217,7 +217,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
     }
   }
 
-  private String getPlaintext(CruiseControlParameters parameters) {
+  protected String getPlaintext(CruiseControlParameters parameters) {
     StringBuilder sb = new StringBuilder();
 
     // Brokers summary.

@@ -22,8 +22,8 @@ import java.util.Set;
  * </pre>
  */
 public class ProposalsParameters extends GoalBasedOptimizationParameters {
-  private Set<Integer> _destinationBrokerIds;
-  private boolean _ignoreProposalCache;
+  protected Set<Integer> _destinationBrokerIds;
+  protected boolean _ignoreProposalCache;
 
   public ProposalsParameters() {
     super();

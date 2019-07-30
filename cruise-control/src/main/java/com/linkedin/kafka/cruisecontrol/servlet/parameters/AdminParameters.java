@@ -27,13 +27,13 @@ import java.util.Set;
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
-  private Set<AnomalyType> _disableSelfHealingFor;
-  private Set<AnomalyType> _enableSelfHealingFor;
-  private Integer _concurrentInterBrokerPartitionMovements;
-  private Integer _concurrentLeaderMovements;
-  private Integer _reviewId;
-  private Set<Integer> _dropRecentlyRemovedBrokers;
-  private Set<Integer> _dropRecentlyDemotedBrokers;
+  protected Set<AnomalyType> _disableSelfHealingFor;
+  protected Set<AnomalyType> _enableSelfHealingFor;
+  protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _concurrentLeaderMovements;
+  protected Integer _reviewId;
+  protected Set<Integer> _dropRecentlyRemovedBrokers;
+  protected Set<Integer> _dropRecentlyDemotedBrokers;
 
   public AdminParameters() {
     super();

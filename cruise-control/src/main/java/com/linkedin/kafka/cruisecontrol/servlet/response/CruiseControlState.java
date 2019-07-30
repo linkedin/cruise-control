@@ -32,16 +32,16 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.NO_T
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.STARTING_EXECUTION;
 
 public class CruiseControlState extends AbstractCruiseControlResponse {
-  private static final String INTER_BROKER_PARTITION_MOVEMENTS = "inter-broker partition movements";
-  private static final String LEADERSHIP_MOVEMENTS = "leadership movements";
-  private static final String MONITOR_STATE = "MonitorState";
-  private static final String EXECUTOR_STATE = "ExecutorState";
-  private static final String ANALYZER_STATE = "AnalyzerState";
-  private static final String ANOMALY_DETECTOR_STATE = "AnomalyDetectorState";
-  private ExecutorState _executorState;
-  private LoadMonitorState _monitorState;
-  private AnalyzerState _analyzerState;
-  private AnomalyDetectorState _anomalyDetectorState;
+  protected static final String INTER_BROKER_PARTITION_MOVEMENTS = "inter-broker partition movements";
+  protected static final String LEADERSHIP_MOVEMENTS = "leadership movements";
+  protected static final String MONITOR_STATE = "MonitorState";
+  protected static final String EXECUTOR_STATE = "ExecutorState";
+  protected static final String ANALYZER_STATE = "AnalyzerState";
+  protected static final String ANOMALY_DETECTOR_STATE = "AnomalyDetectorState";
+  protected ExecutorState _executorState;
+  protected LoadMonitorState _monitorState;
+  protected AnalyzerState _analyzerState;
+  protected AnomalyDetectorState _anomalyDetectorState;
 
   public CruiseControlState(ExecutorState executionState,
                             LoadMonitorState monitorState,
@@ -71,7 +71,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     return _anomalyDetectorState;
   }
 
-  private String getJSONString(CruiseControlParameters parameters) {
+  protected String getJSONString(CruiseControlParameters parameters) {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure(((CruiseControlStateParameters) parameters).isVerbose());
     jsonStructure.put(VERSION, JSON_VERSION);
@@ -100,7 +100,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     return cruiseControlState;
   }
 
-  private void writeVerboseMonitorState(StringBuilder sb) {
+  protected void writeVerboseMonitorState(StringBuilder sb) {
     if (_monitorState != null) {
       sb.append(String.format("%n%nMonitored Windows [Window End_Time=Data_Completeness]:%n"));
 
@@ -112,7 +112,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     }
   }
 
-  private void writeVerboseAnalyzerState(StringBuilder sb) {
+  protected void writeVerboseAnalyzerState(StringBuilder sb) {
     if (_analyzerState != null) {
       sb.append(String.format("%n%nGoal Readiness:%n"));
       for (Map.Entry<Goal, Boolean> entry : _analyzerState.readyGoals().entrySet()) {
@@ -123,7 +123,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     }
   }
 
-  private void writeVerboseExecutorState(StringBuilder sb) {
+  protected void writeVerboseExecutorState(StringBuilder sb) {
     if (_executorState != null) {
       // There is no execution task summary if executor is in idle state.
       if (_executorState.state() == NO_TASK_IN_PROGRESS || _executorState.state() == STARTING_EXECUTION) {
@@ -159,7 +159,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     }
   }
 
-  private void writeSuperVerbose(StringBuilder sb) {
+  protected void writeSuperVerbose(StringBuilder sb) {
     if (_monitorState != null) {
       sb.append(String.format("%n%nExtrapolated metric samples:%n"));
       Map<TopicPartition, List<SampleExtrapolation>> sampleFlaws = _monitorState.sampleExtrapolations();
@@ -176,7 +176,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
     }
   }
 
-  private String getPlaintext(CruiseControlParameters parameters) {
+  protected String getPlaintext(CruiseControlParameters parameters) {
     boolean verbose = ((CruiseControlStateParameters) parameters).isVerbose();
     boolean superVerbose = ((CruiseControlStateParameters) parameters).isSuperVerbose();
 
@@ -212,7 +212,7 @@ public class CruiseControlState extends AbstractCruiseControlResponse {
   public enum SubState {
     ANALYZER, MONITOR, EXECUTOR, ANOMALY_DETECTOR;
 
-    private static final List<SubState> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
+    protected static final List<SubState> CACHED_VALUES = Collections.unmodifiableList(Arrays.asList(values()));
 
     /**
      * Use this instead of values() because values() creates a new array each time.

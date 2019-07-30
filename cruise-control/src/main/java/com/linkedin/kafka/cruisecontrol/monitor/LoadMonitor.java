@@ -10,9 +10,7 @@ import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
-import com.linkedin.cruisecontrol.monitor.sampling.aggregator.Extrapolation;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleCompleteness;
-import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricValues;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.ValuesAndExtrapolations;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
@@ -23,9 +21,7 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.async.progress.GeneratingClusterModel;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForClusterModel;
-import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
@@ -37,7 +33,6 @@ import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -53,14 +48,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
-import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.internals.ClusterResourceListeners;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.PERCENTILE_TO_ABSOLUTE_VALUE;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.partitionSampleExtrapolations;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.populatePartitionLoad;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.setBadBrokerState;
 
 
 /**
@@ -430,19 +427,19 @@ public class LoadMonitor {
     long start = System.currentTimeMillis();
 
     MetadataClient.ClusterAndGeneration clusterAndGeneration = _metadataClient.refreshMetadata();
-    Cluster kafkaCluster = clusterAndGeneration.cluster();
+    Cluster cluster = clusterAndGeneration.cluster();
 
     // Get the metric aggregation result.
-    MetricSampleAggregationResult<String, PartitionEntity> metricSampleAggregationResult =
+    MetricSampleAggregationResult<String, PartitionEntity> partitionMetricSampleAggregationResult =
         _partitionMetricSampleAggregator.aggregate(clusterAndGeneration, from, to, requirements, operationProgress);
-    Map<PartitionEntity, ValuesAndExtrapolations> loadSnapshots = metricSampleAggregationResult.valuesAndExtrapolations();
-    GeneratingClusterModel step = new GeneratingClusterModel(loadSnapshots.size());
+    Map<PartitionEntity, ValuesAndExtrapolations> partitionValuesAndExtrapolations = partitionMetricSampleAggregationResult.valuesAndExtrapolations();
+    GeneratingClusterModel step = new GeneratingClusterModel(partitionValuesAndExtrapolations.size());
     operationProgress.addStep(step);
 
     // Create an empty cluster model first.
-    long currentLoadGeneration = metricSampleAggregationResult.generation();
+    long currentLoadGeneration = partitionMetricSampleAggregationResult.generation();
     ModelGeneration modelGeneration = new ModelGeneration(clusterAndGeneration.generation(), currentLoadGeneration);
-    MetricSampleCompleteness<String, PartitionEntity> completeness = metricSampleAggregationResult.completeness();
+    MetricSampleCompleteness<String, PartitionEntity> completeness = partitionMetricSampleAggregationResult.completeness();
     ClusterModel clusterModel = new ClusterModel(modelGeneration, completeness.validEntityRatio());
 
     final Timer.Context ctx = _clusterModelCreationTimer.time();
@@ -457,7 +454,7 @@ public class LoadMonitor {
       // To this end, Cruise Control handles the case that the first node is problematic so the capacity resolver does
       // not have the chance to get the capacity for the other nodes.
       // Shuffling the node order helps, as the problematic node is unlikely to always be the first node in the list.
-      List<Node> shuffledNodes = new ArrayList<>(kafkaCluster.nodes());
+      List<Node> shuffledNodes = new ArrayList<>(cluster.nodes());
       Collections.shuffle(shuffledNodes);
       for (Node node : shuffledNodes) {
         // If the rack is not specified, we use the host info as rack info.
@@ -469,15 +466,15 @@ public class LoadMonitor {
       }
 
       // Populate snapshots for the cluster model.
-      for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : loadSnapshots.entrySet()) {
+      for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : partitionValuesAndExtrapolations.entrySet()) {
         TopicPartition tp = entry.getKey().tp();
         ValuesAndExtrapolations leaderLoad = entry.getValue();
-        populateLoad(kafkaCluster, clusterModel, tp, leaderLoad);
+        populatePartitionLoad(cluster, clusterModel, tp, leaderLoad, _brokerCapacityConfigResolver);
         step.incrementPopulatedNumPartitions();
       }
+      // Set the state of bad brokers in clusterModel based on the Kafka cluster state.
+      setBadBrokerState(clusterModel, cluster);
 
-      // Get the dead brokers and mark them as dead.
-      deadBrokers(kafkaCluster).forEach(brokerId -> clusterModel.setBrokerState(brokerId, Broker.State.DEAD));
       if (LOG.isDebugEnabled()) {
         LOG.debug("Generated cluster model in {} ms", System.currentTimeMillis() - start);
       }
@@ -511,14 +508,14 @@ public class LoadMonitor {
   }
 
   /**
-   * Get all the active brokers in the cluster based on the partition assignment. If a metadata refresh failed due to
+   * Get all the active brokers in the cluster based on the replica assignment. If a metadata refresh failed due to
    * timeout, the current metadata information will be used. This is to handle the case that all the brokers are down.
    * @param timeout the timeout in milliseconds.
    * @return All the brokers in the cluster that has at least one replica assigned.
    */
-  public Set<Integer> brokersWithPartitions(long timeout) {
+  public Set<Integer> brokersWithReplicas(long timeout) {
     Cluster kafkaCluster = _metadataClient.refreshMetadata(timeout).cluster();
-    return brokersWithPartitions(kafkaCluster);
+    return MonitorUtils.brokersWithReplicas(kafkaCluster);
   }
 
   public MetadataClient.ClusterAndGeneration refreshClusterAndGeneration() {
@@ -564,147 +561,15 @@ public class LoadMonitor {
     return _partitionMetricSampleAggregator;
   }
 
-  private void populateLoad(Cluster kafkaCluster,
-                            ClusterModel clusterModel,
-                            TopicPartition tp,
-                            ValuesAndExtrapolations valuesAndExtrapolations) {
-    PartitionInfo partitionInfo = kafkaCluster.partition(tp);
-    // If partition info does not exist, the topic may have been deleted.
-    if (partitionInfo != null) {
-      boolean needToAdjustCpuUsage = true;
-      for (int index = 0; index < partitionInfo.replicas().length; index++) {
-        Node replica = partitionInfo.replicas()[index];
-        String rack = getRackHandleNull(replica);
-        // Note that we assume the capacity resolver can still return the broker capacity even if the broker
-        // is dead. We need this to get the host resource capacity.
-        BrokerCapacityInfo brokerCapacity =
-            _brokerCapacityConfigResolver.capacityForBroker(rack, replica.host(), replica.id());
-        clusterModel.handleDeadBroker(rack, replica.id(), brokerCapacity);
-        boolean isLeader;
-        if (partitionInfo.leader() == null) {
-          LOG.warn("Detected offline partition {}-{}, skipping", partitionInfo.topic(), partitionInfo.partition());
-          continue;
-        } else {
-          isLeader = replica.id() == partitionInfo.leader().id();
-        }
-        clusterModel.createReplica(rack, replica.id(), tp, index, isLeader);
-        clusterModel.setReplicaLoad(rack,
-                                    replica.id(),
-                                    tp,
-                                    getAggregatedMetricValues(valuesAndExtrapolations,
-                                                              kafkaCluster.partition(tp),
-                                                              isLeader,
-                                                              needToAdjustCpuUsage),
-                                    valuesAndExtrapolations.windows());
-        needToAdjustCpuUsage = false;
-      }
-    }
-  }
-
   /**
-   * Get the {@link AggregatedMetricValues} based on the replica role (leader/follower) and the replication factor.
-   *
-   * @param valuesAndExtrapolations the values and extrapolations of the leader replica.
-   * @param partitionInfo the partition info.
-   * @param isLeader whether the value is created for leader replica or follower replica.
-   * @param needToAdjustCpuUsage whether need to cast cpu usage metric for replica from absolute value to percentile.
-   * @return the {@link AggregatedMetricValues} to use for the given replica.
+   * Get all the dead brokers in the cluster based on the replica assignment. If a metadata refresh failed due to
+   * timeout, the current metadata information will be used. This is to handle the case that all the brokers are down.
+   * @param timeout the timeout in milliseconds.
+   * @return All the dead brokers which host some replicas in the cluster.
    */
-  private AggregatedMetricValues getAggregatedMetricValues(ValuesAndExtrapolations valuesAndExtrapolations,
-                                                           PartitionInfo partitionInfo,
-                                                           boolean isLeader,
-                                                           boolean needToAdjustCpuUsage) {
-    AggregatedMetricValues aggregatedMetricValues = valuesAndExtrapolations.metricValues();
-    if (needToAdjustCpuUsage) {
-      adjustCpuUsage(aggregatedMetricValues);
-    }
-    if (isLeader) {
-      return fillInReplicationBytesOut(aggregatedMetricValues, partitionInfo);
-    } else {
-      return MonitorUtils.toFollowerMetricValues(aggregatedMetricValues);
-    }
-  }
-
-  /**
-   * Convert replica's cpu usage metric from absolute value to percentage value since the cpu capacity reported by
-   * {@link BrokerCapacityConfigResolver} is percentage value.
-   *
-   * @param aggregatedMetricValues the {@link AggregatedMetricValues} for the replica.
-   */
-  private void adjustCpuUsage(AggregatedMetricValues aggregatedMetricValues) {
-    short cpuUsageId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.CPU_USAGE);
-    MetricValues cpuUsage = aggregatedMetricValues.valuesFor(cpuUsageId);
-    for (int i = 0; i < cpuUsage.length(); i++) {
-      cpuUsage.set(i, cpuUsage.get(i) * PERCENTILE_TO_ABSOLUTE_VALUE);
-    }
-  }
-
-  /**
-   * When the replica is a leader replica, we need to fill in the replication bytes out if it has not been filled in
-   * yet. This is because currently Kafka does not report this metric. We simply use the leader bytes in rate multiplied
-   * by the number of followers as the replication bytes out rate. The assumption is that all the followers will
-   * eventually keep up with the leader.
-   *
-   * We only fill in the replication bytes out rate when creating the cluster model because the replication factor
-   * may have changed since the time the PartitionMetricSample was created.
-   *
-   * @param aggregatedMetricValues the {@link AggregatedMetricValues} for the leader replica.
-   * @param info the partition info for the partition.
-   * @return the {@link AggregatedMetricValues} with the replication bytes out rate filled in.
-   */
-  private AggregatedMetricValues fillInReplicationBytesOut(AggregatedMetricValues aggregatedMetricValues,
-                                                           PartitionInfo info) {
-    int numFollowers = info.replicas().length - 1;
-    short leaderBytesInRateId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.LEADER_BYTES_IN);
-    short replicationBytesOutRateId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.REPLICATION_BYTES_OUT_RATE);
-
-    MetricValues leaderBytesInRate = aggregatedMetricValues.valuesFor(leaderBytesInRateId);
-    MetricValues replicationBytesOutRate = aggregatedMetricValues.valuesFor(replicationBytesOutRateId);
-    // If the replication bytes out rate is already reported, update it. Otherwise add a new MetricValues.
-    if (replicationBytesOutRate == null) {
-      replicationBytesOutRate = new MetricValues(leaderBytesInRate.length());
-      aggregatedMetricValues.add(replicationBytesOutRateId, replicationBytesOutRate);
-    }
-    for (int i = 0; i < leaderBytesInRate.length(); i++) {
-      replicationBytesOutRate.set(i, leaderBytesInRate.get(i) * numFollowers);
-    }
-
-    return aggregatedMetricValues;
-  }
-
-  private String getRackHandleNull(Node node) {
-    return node.rack() == null || node.rack().isEmpty() ? node.host() : node.rack();
-  }
-
-  private Set<Integer> brokersWithPartitions(Cluster kafkaCluster) {
-    Set<Integer> allBrokers = new HashSet<>();
-    for (String topic : kafkaCluster.topics()) {
-      for (PartitionInfo pi : kafkaCluster.partitionsForTopic(topic)) {
-        for (Node node : pi.replicas()) {
-          allBrokers.add(node.id());
-        }
-      }
-    }
-    return allBrokers;
-  }
-
-  private Set<Integer> deadBrokers(Cluster kafkaCluster) {
-    Set<Integer> brokersWithPartitions = brokersWithPartitions(kafkaCluster);
-    kafkaCluster.nodes().forEach(node -> brokersWithPartitions.remove(node.id()));
-    return brokersWithPartitions;
-  }
-
-  private Map<TopicPartition, List<SampleExtrapolation>> partitionSampleExtrapolations(Map<PartitionEntity, ValuesAndExtrapolations> valuesAndExtrapolations) {
-    Map<TopicPartition, List<SampleExtrapolation>> sampleExtrapolations = new HashMap<>();
-    for (Map.Entry<PartitionEntity, ValuesAndExtrapolations> entry : valuesAndExtrapolations.entrySet()) {
-      TopicPartition tp = entry.getKey().tp();
-      Map<Integer, Extrapolation> extrapolations = entry.getValue().extrapolations();
-      if (!extrapolations.isEmpty()) {
-        List<SampleExtrapolation> extrapolationForPartition = sampleExtrapolations.computeIfAbsent(tp, p -> new ArrayList<>());
-        extrapolations.forEach((t, imputation) -> extrapolationForPartition.add(new SampleExtrapolation(t, imputation)));
-      }
-    }
-    return sampleExtrapolations;
+  public Set<Integer> deadBrokersWithReplicas(long timeout) {
+    Cluster kafkaCluster = _metadataClient.refreshMetadata(timeout).cluster();
+    return MonitorUtils.deadBrokersWithReplicas(kafkaCluster);
   }
 
   private int numValidSnapshotWindows() {

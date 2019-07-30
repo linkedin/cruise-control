@@ -20,8 +20,8 @@ import java.util.Set;
  * </pre>
  */
 public class ReviewParameters extends AbstractParameters {
-  private String _reason;
-  private Map<ReviewStatus, Set<Integer>> _reviewRequests;
+  protected String _reason;
+  protected Map<ReviewStatus, Set<Integer>> _reviewRequests;
 
   public ReviewParameters() {
     super();

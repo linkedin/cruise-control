@@ -18,7 +18,7 @@ import java.util.Set;
  * </pre>
  */
 public class ReviewBoardParameters extends AbstractParameters {
-  private Set<Integer> _reviewIds;
+  protected Set<Integer> _reviewIds;
 
   public ReviewBoardParameters() {
     super();
