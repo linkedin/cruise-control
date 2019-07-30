@@ -533,11 +533,21 @@ class TopicConfigurationEndpoint(AbstractEndpoint):
     http_method = "POST"
     can_execute_proposal = True
     available_Parameters = (
+        CCParameter.AllowCapacityEstimationParameter,
+        CCParameter.ConcurrentLeaderMovementsParameter,
+        CCParameter.ConcurrentPartitionMovementsPerBrokerParameter,
+        CCParameter.DryRunParameter,
+        CCParameter.ExcludeRecentlyDemotedBrokersParameter,
+        CCParameter.ExcludeRecentlyRemovedBrokersParameter,
+        CCParameter.GoalsParameter,
         CCParameter.JSONParameter,
+        CCParameter.SkipHardGoalCheckParameter,
         CCParameter.SkipRackAwarenessCheckParameter,
+        CCParameter.ReplicaMovementStrategiesParameter,
         CCParameter.ReplicationFactorParameter,
         CCParameter.ReviewIDParameter,
-        CCParameter.TopicParameter
+        CCParameter.TopicParameter,
+        CCParameter.VerboseParameter
     )
     argparse_properties = {
         'args': (name,),
