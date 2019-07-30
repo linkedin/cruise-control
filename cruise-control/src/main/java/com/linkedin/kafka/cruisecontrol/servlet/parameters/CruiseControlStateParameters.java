@@ -20,9 +20,9 @@ import java.util.Set;
  * </pre>
  */
 public class CruiseControlStateParameters extends AbstractParameters {
-  private Set<CruiseControlState.SubState> _substates;
-  private boolean _isVerbose;
-  private boolean _isSuperVerbose;
+  protected Set<CruiseControlState.SubState> _substates;
+  protected boolean _isVerbose;
+  protected boolean _isSuperVerbose;
 
   public CruiseControlStateParameters() {
     super();

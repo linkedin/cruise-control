@@ -30,16 +30,16 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class TopicConfigurationParameters extends GoalBasedOptimizationParameters {
-  private Pattern _topic;
-  private short _replicationFactor;
-  private boolean _skipRackAwarenessCheck;
-  private Integer _reviewId;
-  private boolean _dryRun;
-  private Integer _concurrentInterBrokerPartitionMovements;
-  private Integer _concurrentLeaderMovements;
-  private boolean _skipHardGoalCheck;
-  private ReplicaMovementStrategy _replicaMovementStrategy;
-  private Long _replicationThrottle;
+  protected Pattern _topic;
+  protected short _replicationFactor;
+  protected boolean _skipRackAwarenessCheck;
+  protected Integer _reviewId;
+  protected boolean _dryRun;
+  protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _concurrentLeaderMovements;
+  protected boolean _skipHardGoalCheck;
+  protected ReplicaMovementStrategy _replicaMovementStrategy;
+  protected Long _replicationThrottle;
 
   public TopicConfigurationParameters() {
     super();

@@ -32,15 +32,15 @@ import java.util.Set;
  * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
-  private boolean _dryRun;
-  private Set<Integer> _brokerIds;
-  private Integer _concurrentLeaderMovements;
-  private boolean _skipUrpDemotion;
-  private boolean _excludeFollowerDemotion;
-  private ReplicaMovementStrategy _replicaMovementStrategy;
-  private Long _replicationThrottle;
-  private Integer _reviewId;
-  private Map<Integer, Set<String>> _logdirByBrokerId;
+  protected boolean _dryRun;
+  protected Set<Integer> _brokerIds;
+  protected Integer _concurrentLeaderMovements;
+  protected boolean _skipUrpDemotion;
+  protected boolean _excludeFollowerDemotion;
+  protected ReplicaMovementStrategy _replicaMovementStrategy;
+  protected Long _replicationThrottle;
+  protected Integer _reviewId;
+  protected Map<Integer, Set<String>> _logdirByBrokerId;
 
   public DemoteBrokerParameters() {
     super();

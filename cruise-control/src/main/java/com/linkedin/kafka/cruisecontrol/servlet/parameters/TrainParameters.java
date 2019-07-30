@@ -21,8 +21,8 @@ import java.util.Map;
  * </pre>
  */
 public class TrainParameters extends AbstractParameters {
-  private Long _startMs;
-  private Long _endMs;
+  protected Long _startMs;
+  protected Long _endMs;
 
   public TrainParameters() {
     super();

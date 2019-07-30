@@ -26,8 +26,8 @@ import java.util.Map;
  * </pre>
  */
 public class PauseResumeParameters extends AbstractParameters {
-  private String _reason;
-  private Integer _reviewId;
+  protected String _reason;
+  protected Integer _reviewId;
 
   public PauseResumeParameters() {
     super();
