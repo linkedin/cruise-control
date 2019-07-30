@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
 import java.util.HashMap;
@@ -15,16 +14,16 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ADMIN_PARAMETER_OBJECT_CONFIG;
+
 
 public class AdminRequest extends AbstractSyncRequest {
   private static final Logger LOG = LoggerFactory.getLogger(AdminRequest.class);
-  private final KafkaCruiseControl _kafkaCruiseControl;
-  private final AdminParameters _parameters;
+  private KafkaCruiseControl _kafkaCruiseControl;
+  private AdminParameters _parameters;
 
-  public AdminRequest(KafkaCruiseControlServlet servlet, AdminParameters parameters) {
-    super(servlet);
-    _kafkaCruiseControl = servlet.asyncKafkaCruiseControl();
-    _parameters = parameters;
+  public AdminRequest() {
+    super();
   }
 
   /**
@@ -85,7 +84,7 @@ public class AdminRequest extends AbstractSyncRequest {
     return new AdminResult(selfHealingBefore,
                            selfHealingAfter,
                            ongoingConcurrencyChangeRequest.isEmpty() ? null : ongoingConcurrencyChangeRequest,
-                           dropRecentBrokersRequest,
+                           dropRecentBrokersRequest.isEmpty() ? null : dropRecentBrokersRequest,
                            _kafkaCruiseControl.config());
   }
 
@@ -137,5 +136,15 @@ public class AdminRequest extends AbstractSyncRequest {
   @Override
   public String name() {
     return AdminRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _kafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
+    _parameters = (AdminParameters) configs.get(ADMIN_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

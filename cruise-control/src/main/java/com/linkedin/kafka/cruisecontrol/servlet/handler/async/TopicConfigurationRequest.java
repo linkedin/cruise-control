@@ -5,16 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
+import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG;
 
 
 public class TopicConfigurationRequest extends AbstractAsyncRequest {
-  private final TopicConfigurationParameters _parameters;
+  private TopicConfigurationParameters _parameters;
 
-  public TopicConfigurationRequest(KafkaCruiseControlServlet servlet, TopicConfigurationParameters parameters) {
-    super(servlet);
-    _parameters = parameters;
+  public TopicConfigurationRequest() {
+    super();
   }
 
   @Override
@@ -30,5 +31,14 @@ public class TopicConfigurationRequest extends AbstractAsyncRequest {
   @Override
   public String name() {
     return TopicConfigurationRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _parameters = (TopicConfigurationParameters) configs.get(TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

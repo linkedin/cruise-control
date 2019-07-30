@@ -4,39 +4,51 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
-import javax.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#LOAD}
+ * Parameters for {@link CruiseControlEndPoint#LOAD}
+ *
+ * <ul>
+ *   <li>Note that both parameter "time" and "end" are used to specify the end time for cluster model, thus they are mutually exclusive.</li>
+ *</ul>
  *
  * <pre>
  * Get the cluster load
- *    GET /kafkacruisecontrol/load?time=[TIMESTAMP]&amp;allow_capacity_estimation=[true/false]&amp;json=[true/false]
+ *    GET /kafkacruisecontrol/load?start=[START_TIMESTAMP]&amp;end=[END_TIMESTAMP]&amp;time=[END_TIMESTAMP]&amp;allow_capacity_estimation=[true/false]
+ *    &amp;json=[true/false]
  * </pre>
  */
 public class ClusterLoadParameters extends AbstractParameters {
-  private long _time;
-  private ModelCompletenessRequirements _requirements;
-  private boolean _allowCapacityEstimation;
+  protected long _endMs;
+  protected long _startMs;
+  protected ModelCompletenessRequirements _requirements;
+  protected boolean _allowCapacityEstimation;
 
-  public ClusterLoadParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public ClusterLoadParameters() {
+    super();
   }
 
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    _time = ParameterUtils.time(_request);
+    Long time = ParameterUtils.time(_request);
+    _endMs = time == null ? ParameterUtils.endMs(_request) : time;
+    _startMs = ParameterUtils.startMs(_request);
     _requirements = new ModelCompletenessRequirements(1, 0.0, true);
     _allowCapacityEstimation = ParameterUtils.allowCapacityEstimation(_request);
   }
 
-  public long time() {
-    return _time;
+  public long startMs() {
+    return _startMs;
+  }
+
+  public long endMs() {
+    return _endMs;
   }
 
   public ModelCompletenessRequirements requirements() {
@@ -45,5 +57,10 @@ public class ClusterLoadParameters extends AbstractParameters {
 
   public boolean allowCapacityEstimation() {
     return _allowCapacityEstimation;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

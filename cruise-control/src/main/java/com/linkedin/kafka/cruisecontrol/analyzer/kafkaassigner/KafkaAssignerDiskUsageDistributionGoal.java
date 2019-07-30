@@ -71,13 +71,9 @@ public class KafkaAssignerDiskUsageDistributionGoal implements Goal {
 
   @Override
   public void configure(Map<String, ?> configs) {
-    _balancingConstraint = new BalancingConstraint(new KafkaCruiseControlConfig(configs, false));
-    String minMonitoredPartitionPercentageString =
-        (String) configs.get(KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
-    if (minMonitoredPartitionPercentageString != null
-        && !minMonitoredPartitionPercentageString.isEmpty()) {
-      _minMonitoredPartitionPercentage = Double.parseDouble(minMonitoredPartitionPercentageString);
-    }
+    KafkaCruiseControlConfig parsedConfig = new KafkaCruiseControlConfig(configs, false);
+    _balancingConstraint = new BalancingConstraint(parsedConfig);
+    _minMonitoredPartitionPercentage = parsedConfig.getDouble(KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG);
   }
 
   @Override

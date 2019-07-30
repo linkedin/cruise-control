@@ -8,7 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
@@ -18,9 +18,9 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 
 
 public class TopicConfigurationResult extends AbstractCruiseControlResponse {
-  private final Set<String> _topics;
-  private final int _newReplicationFactor;
-  private static final String NEW_REPLICATION_FACTOR = "newReplicationFactor";
+  protected final Set<String> _topics;
+  protected final int _newReplicationFactor;
+  protected static final String NEW_REPLICATION_FACTOR = "newReplicationFactor";
 
   public TopicConfigurationResult(Set<String> topics, int newReplicationFactor, KafkaCruiseControlConfig config) {
     super(config);
@@ -28,7 +28,7 @@ public class TopicConfigurationResult extends AbstractCruiseControlResponse {
     _newReplicationFactor = newReplicationFactor;
   }
 
-  private String getJSONString() {
+  protected String getJSONString() {
     Map<String, Object> result = new HashMap<>(3);
     result.put(AnalyzerUtils.TOPICS, _topics);
     result.put(NEW_REPLICATION_FACTOR, _newReplicationFactor);
@@ -37,7 +37,7 @@ public class TopicConfigurationResult extends AbstractCruiseControlResponse {
     return gson.toJson(result);
   }
 
-  private String getPlaintext() {
+  protected String getPlaintext() {
     return String.format("The replication factor for topics %s is changed to %d.", _topics, _newReplicationFactor);
   }
 

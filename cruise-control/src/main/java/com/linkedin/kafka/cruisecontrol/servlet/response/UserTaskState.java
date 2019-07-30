@@ -5,11 +5,12 @@
 package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
+import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -30,21 +31,21 @@ import static java.lang.Math.max;
 
 
 public class UserTaskState extends AbstractCruiseControlResponse {
-  private static final String USER_TASK_ID = "UserTaskId";
-  private static final String REQUEST_URL = "RequestURL";
-  private static final String CLIENT_ID = "ClientIdentity";
-  private static final String START_MS = "StartMs";
-  private static final String STATUS = "Status";
-  private static final String USER_TASKS = "userTasks";
-  private static final String ORIGINAL_RESPONSE = "originalResponse";
-  private final List<UserTaskManager.UserTaskInfo> _userTasks;
+  protected static final String USER_TASK_ID = "UserTaskId";
+  protected static final String REQUEST_URL = "RequestURL";
+  protected static final String CLIENT_ID = "ClientIdentity";
+  protected static final String START_MS = "StartMs";
+  protected static final String STATUS = "Status";
+  protected static final String USER_TASKS = "userTasks";
+  protected static final String ORIGINAL_RESPONSE = "originalResponse";
+  protected final List<UserTaskManager.UserTaskInfo> _userTasks;
 
   public UserTaskState(List<UserTaskManager.UserTaskInfo> userTasks, KafkaCruiseControlConfig config) {
     super(config);
     _userTasks = userTasks;
   }
 
-  private String getJSONString(UserTasksParameters parameters) {
+  protected String getJSONString(UserTasksParameters parameters) {
     List<Map<String, Object>> jsonUserTaskList = new ArrayList<>();
     for (UserTaskManager.UserTaskInfo taskInfo : prepareResultList(parameters)) {
       addJSONTask(jsonUserTaskList,
@@ -68,7 +69,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     return resultList.subList(0, Math.min(entries, resultList.size()));
   }
 
-  private void addJSONTask(List<Map<String, Object>> jsonUserTaskList,
+  protected void addJSONTask(List<Map<String, Object>> jsonUserTaskList,
                            UserTaskManager.UserTaskInfo userTaskInfo,
                            boolean fetchCompletedTask) {
     Map<String, Object> jsonObjectMap = new HashMap<>(fetchCompletedTask ? 6 : 5);
@@ -85,7 +86,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     jsonUserTaskList.add(jsonObjectMap);
   }
 
-  private static <T> Predicate<UserTaskManager.UserTaskInfo> checkInputFilter(Set<T> set) {
+  protected static <T> Predicate<UserTaskManager.UserTaskInfo> checkInputFilter(Set<T> set) {
     if (set == null || set.isEmpty()) {
       return elem -> true;
     } else {
@@ -98,7 +99,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
    * result list. The ordering of the filters do not matter. We limit the returned result with entries so as to save
    * memory
    */
-  private static void populateFilteredTasks(List<UserTaskManager.UserTaskInfo> filteredTasks,
+  protected static void populateFilteredTasks(List<UserTaskManager.UserTaskInfo> filteredTasks,
                                             List<UserTaskManager.UserTaskInfo> userTasks,
                                             UserTasksParameters parameters,
                                             int entries) {
@@ -107,7 +108,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     }
     Set<UUID> requestedUserTaskIds = parameters.userTaskIds();
     Set<UserTaskManager.TaskState> requestedTaskStates = parameters.types();
-    Set<EndPoint> requestedEndPoints = parameters.endPoints();
+    Set<CruiseControlEndPoint> requestedEndPoints = parameters.endPoints();
     Set<String> requestedClientIds = parameters.clientIds();
 
     Consumer<UserTaskManager.UserTaskInfo> consumer = (elem) -> {
@@ -126,7 +127,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
                  .forEach(consumer);
   }
 
-  private String getPlaintext(UserTasksParameters parameters) {
+  protected String getPlaintext(UserTasksParameters parameters) {
     StringBuilder sb = new StringBuilder();
     int padding = 2;
     int userTaskIdLabelSize = 20;
@@ -181,7 +182,7 @@ public class UserTaskState extends AbstractCruiseControlResponse {
     return sb.toString();
   }
 
-  private static String completedTaskResponse(UserTaskManager.UserTaskInfo userTaskInfo) {
+  protected static String completedTaskResponse(UserTaskManager.UserTaskInfo userTaskInfo) {
     try {
       CruiseControlResponse response = userTaskInfo.futures().get(userTaskInfo.futures().size() - 1).get();
       return response.cachedResponse();

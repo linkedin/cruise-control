@@ -421,7 +421,9 @@ public class MetricSampleAggregator<G, E extends Entity<G>> extends LongGenerati
     }
   }
 
-  // package private for testing.
+  /**
+   * Package private for testing.
+   */
   MetricSampleAggregatorState<G, E> aggregatorState() {
     maybeUpdateAggregatorState();
     return _aggregatorState;

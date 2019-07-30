@@ -6,14 +6,14 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#ADMIN}
+ * Parameters for {@link CruiseControlEndPoint#ADMIN}
  *
  * <ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
@@ -27,18 +27,16 @@ import javax.servlet.http.HttpServletRequest;
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
-  private Set<AnomalyType> _disableSelfHealingFor;
-  private Set<AnomalyType> _enableSelfHealingFor;
-  private Integer _concurrentInterBrokerPartitionMovements;
-  private Integer _concurrentLeaderMovements;
-  private Integer _reviewId;
-  private final boolean _twoStepVerificationEnabled;
-  private Set<Integer> _dropRecentlyRemovedBrokers;
-  private Set<Integer> _dropRecentlyDemotedBrokers;
+  protected Set<AnomalyType> _disableSelfHealingFor;
+  protected Set<AnomalyType> _enableSelfHealingFor;
+  protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _concurrentLeaderMovements;
+  protected Integer _reviewId;
+  protected Set<Integer> _dropRecentlyRemovedBrokers;
+  protected Set<Integer> _dropRecentlyDemotedBrokers;
 
-  public AdminParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
-    _twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+  public AdminParameters() {
+    super();
   }
 
   @Override
@@ -51,7 +49,8 @@ public class AdminParameters extends AbstractParameters {
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false);
     _dropRecentlyRemovedBrokers = ParameterUtils.dropRecentlyRemovedBrokers(_request);
     _dropRecentlyDemotedBrokers = ParameterUtils.dropRecentlyDemotedBrokers(_request);
-    _reviewId = ParameterUtils.reviewId(_request, _twoStepVerificationEnabled);
+    boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
+    _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
   }
 
   @Override
@@ -85,5 +84,10 @@ public class AdminParameters extends AbstractParameters {
 
   public Set<Integer> dropRecentlyDemotedBrokers() {
     return _dropRecentlyDemotedBrokers;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

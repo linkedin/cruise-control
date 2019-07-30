@@ -4,11 +4,12 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus;
@@ -38,7 +39,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.currentUtcDate;
-import static com.linkedin.kafka.cruisecontrol.servlet.EndPoint.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
@@ -106,11 +107,30 @@ public class ParameterUtils {
   public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
   public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
   private static final int MAX_REASON_LENGTH = 50;
+  public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
 
-  private static final Map<EndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
+  public static final String STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG = "stop.proposal.parameter.object";
+  public static final String BOOTSTRAP_PARAMETER_OBJECT_CONFIG = "bootstrap.parameter.object";
+  public static final String TRAIN_PARAMETER_OBJECT_CONFIG = "train.parameter.object";
+  public static final String LOAD_PARAMETER_OBJECT_CONFIG = "load.parameter.object";
+  public static final String PARTITION_LOAD_PARAMETER_OBJECT_CONFIG = "partition.load.parameter.object";
+  public static final String PROPOSALS_PARAMETER_OBJECT_CONFIG = "proposals.parameter.object";
+  public static final String STATE_PARAMETER_OBJECT_CONFIG = "state.parameter.object";
+  public static final String KAFKA_CLUSTER_STATE_PARAMETER_OBJECT_CONFIG = "kafka.cluster.state.parameter.object";
+  public static final String USER_TASKS_PARAMETER_OBJECT_CONFIG = "user.tasks.parameter.object";
+  public static final String REVIEW_BOARD_PARAMETER_OBJECT_CONFIG = "review.board.parameter.object";
+  public static final String ADD_BROKER_PARAMETER_OBJECT_CONFIG = "add.broker.parameter.object";
+  public static final String REMOVE_BROKER_PARAMETER_OBJECT_CONFIG = "remove.broker.parameter.object";
+  public static final String REBALANCE_PARAMETER_OBJECT_CONFIG = "rebalance.parameter.object";
+  public static final String PAUSE_RESUME_PARAMETER_OBJECT_CONFIG = "pause.resume.parameter.object";
+  public static final String DEMOTE_BROKER_PARAMETER_OBJECT_CONFIG = "demote.broker.parameter.object";
+  public static final String ADMIN_PARAMETER_OBJECT_CONFIG = "admin.parameter.object";
+  public static final String REVIEW_PARAMETER_OBJECT_CONFIG = "review.parameter.object";
+  public static final String TOPIC_CONFIGURATION_PARAMETER_OBJECT_CONFIG = "topic.configuration.parameter.object";
+  private static final Map<CruiseControlEndPoint, Set<String>> VALID_ENDPOINT_PARAM_NAMES;
 
   static {
-    Map<EndPoint, Set<String>> validParamNames = new HashMap<>();
+    Map<CruiseControlEndPoint, Set<String>> validParamNames = new HashMap<>();
 
     Set<String> bootstrap = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     bootstrap.add(START_MS_PARAM);
@@ -125,6 +145,8 @@ public class ParameterUtils {
 
     Set<String> load = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     load.add(TIME_PARAM);
+    load.add(START_MS_PARAM);
+    load.add(END_MS_PARAM);
     load.add(JSON_PARAM);
     load.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
 
@@ -140,6 +162,7 @@ public class ParameterUtils {
     partitionLoad.add(TOPIC_PARAM);
     partitionLoad.add(PARTITION_PARAM);
     partitionLoad.add(MIN_VALID_PARTITION_RATIO_PARAM);
+    partitionLoad.add(BROKER_ID_PARAM);
 
     Set<String> proposals = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     proposals.add(VERBOSE_PARAM);
@@ -275,7 +298,18 @@ public class ParameterUtils {
     topicConfiguration.add(TOPIC_PARAM);
     topicConfiguration.add(REPLICATION_FACTOR_PARAM);
     topicConfiguration.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
-    topicConfiguration.add(REVIEW_IDS_PARAM);
+    topicConfiguration.add(DRY_RUN_PARAM);
+    topicConfiguration.add(GOALS_PARAM);
+    topicConfiguration.add(DATA_FROM_PARAM);
+    topicConfiguration.add(SKIP_HARD_GOAL_CHECK_PARAM);
+    topicConfiguration.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    topicConfiguration.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    topicConfiguration.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    topicConfiguration.add(EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM);
+    topicConfiguration.add(EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM);
+    topicConfiguration.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    topicConfiguration.add(VERBOSE_PARAM);
+    topicConfiguration.add(REVIEW_ID_PARAM);
 
     validParamNames.put(BOOTSTRAP, Collections.unmodifiableSet(bootstrap));
     validParamNames.put(TRAIN, Collections.unmodifiableSet(train));
@@ -303,21 +337,21 @@ public class ParameterUtils {
   private ParameterUtils() {
   }
 
-  public static EndPoint endPoint(HttpServletRequest request) {
-    List<EndPoint> supportedEndpoints;
+  public static CruiseControlEndPoint endPoint(HttpServletRequest request) {
+    List<CruiseControlEndPoint> supportedEndpoints;
     switch (request.getMethod()) {
       case GET_METHOD:
-        supportedEndpoints = EndPoint.getEndpoint();
+        supportedEndpoints = CruiseControlEndPoint.getEndpoints();
         break;
       case POST_METHOD:
-        supportedEndpoints = EndPoint.postEndpoint();
+        supportedEndpoints = CruiseControlEndPoint.postEndpoints();
         break;
       default:
-        throw new IllegalArgumentException("Unsupported request method: " + request.getMethod() + ".");
+        throw new UserRequestException("Unsupported request method: " + request.getMethod() + ".");
     }
 
     String path = request.getRequestURI().toUpperCase().replace(REQUEST_URI, "");
-    for (EndPoint endPoint : supportedEndpoints) {
+    for (CruiseControlEndPoint endPoint : supportedEndpoints) {
       if (endPoint.toString().equalsIgnoreCase(path)) {
         return endPoint;
       }
@@ -337,7 +371,7 @@ public class ParameterUtils {
 
   public static boolean hasValidParameters(HttpServletRequest request, HttpServletResponse response, KafkaCruiseControlConfig config)
       throws IOException {
-    EndPoint endPoint = endPoint(request);
+    CruiseControlEndPoint endPoint = endPoint(request);
     Set<String> validParamNames = VALID_ENDPOINT_PARAM_NAMES.get(endPoint);
     Set<String> userParams = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
     userParams.addAll(request.getParameterMap().keySet());
@@ -461,24 +495,31 @@ public class ParameterUtils {
                                   : getBooleanParam(request, THROTTLE_REMOVED_BROKER_PARAM, true);
   }
 
-  static long time(HttpServletRequest request) {
+  static Long time(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), TIME_PARAM);
     if (parameterString == null) {
-      return System.currentTimeMillis();
+      return null;
+    }
+
+    if (caseSensitiveParameterName(request.getParameterMap(), END_MS_PARAM) != null) {
+      throw new UserRequestException(String.format("Parameter %s and parameter %s are mutually exclusive and should "
+                                                   + "not be specified in the same request.", TIME_PARAM, END_MS_PARAM));
     }
 
     String timeString = request.getParameter(parameterString);
     return timeString.toUpperCase().equals("NOW") ? System.currentTimeMillis() : Long.parseLong(timeString);
   }
 
-  static Long startMs(HttpServletRequest request) {
+  static long startMs(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), START_MS_PARAM);
-    return parameterString == null ? null : Long.valueOf(request.getParameter(parameterString));
+    return parameterString == null ? DEFAULT_START_TIME_FOR_CLUSTER_MODEL
+                                   : Long.parseLong(request.getParameter(parameterString));
   }
 
-  static Long endMs(HttpServletRequest request) {
+  static long endMs(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), END_MS_PARAM);
-    return parameterString == null ? null : Long.valueOf(request.getParameter(parameterString));
+    return parameterString == null ? System.currentTimeMillis()
+                                   : Long.parseLong(request.getParameter(parameterString));
   }
 
   static Pattern topic(HttpServletRequest request) {
@@ -493,8 +534,8 @@ public class ParameterUtils {
     } else {
       Double minValidPartitionRatio = Double.parseDouble(request.getParameter(parameterString));
       if (minValidPartitionRatio > 1.0 || minValidPartitionRatio < 0.0) {
-        throw new IllegalArgumentException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
-                                           + minValidPartitionRatio.toString() + ").");
+        throw new UserRequestException("The requested minimum partition ratio must be in range [0.0, 1.0] (Requested: "
+                                       + minValidPartitionRatio.toString() + ").");
       }
       return minValidPartitionRatio;
     }
@@ -508,8 +549,8 @@ public class ParameterUtils {
   public static String reason(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REASON_PARAM);
     if (parameterString != null && parameterString.length() > MAX_REASON_LENGTH) {
-      throw new IllegalArgumentException(String.format("Reason cannot be longer than %d characters (attempted: %d).",
-                                                       MAX_REASON_LENGTH, parameterString.length()));
+      throw new UserRequestException(String.format("Reason cannot be longer than %d characters (attempted: %d).",
+                                                   MAX_REASON_LENGTH, parameterString.length()));
     }
     String ip = getClientIpAddress(request);
     return String.format("%s (Client: %s, Date: %s)", parameterString == null ? "No reason provided"
@@ -545,8 +586,8 @@ public class ParameterUtils {
         substates.add(CruiseControlState.SubState.valueOf(substateString.toUpperCase()));
       }
     } catch (IllegalArgumentException iae) {
-      throw new IllegalArgumentException(String.format("Unsupported substates in %s. Supported: %s",
-                                                       substatesString, CruiseControlState.SubState.cachedValues()));
+      throw new UserRequestException(String.format("Unsupported substates in %s. Supported: %s",
+                                                   substatesString, CruiseControlState.SubState.cachedValues()));
     }
 
     return Collections.unmodifiableSet(substates);
@@ -566,8 +607,8 @@ public class ParameterUtils {
         anomalyTypes.add(AnomalyType.valueOf(shfString.toUpperCase()));
       }
     } catch (IllegalArgumentException iae) {
-      throw new IllegalArgumentException(String.format("Unsupported anomaly types in %s. Supported: %s",
-                                                       selfHealingForString, AnomalyType.cachedValues()));
+      throw new UserRequestException(String.format("Unsupported anomaly types in %s. Supported: %s",
+                                                   selfHealingForString, AnomalyType.cachedValues()));
     }
 
     return Collections.unmodifiableSet(anomalyTypes);
@@ -629,7 +670,7 @@ public class ParameterUtils {
       if (supportedStrategiesByName.containsKey(strategyName)) {
         strategy = strategy == null ? supportedStrategiesByName.get(strategyName) : strategy.chain(supportedStrategiesByName.get(strategyName));
       } else {
-        throw new IllegalArgumentException("Strategy " + strategyName + " is not supported. Supported: " + supportedStrategiesByName.keySet());
+        throw new UserRequestException("Strategy " + strategyName + " is not supported. Supported: " + supportedStrategiesByName.keySet());
       }
     }
     // Chain the generated composite strategy with BaseReplicaMovementStrategy in the end to ensure the returned strategy can always
@@ -658,10 +699,24 @@ public class ParameterUtils {
   }
 
   /**
+   * @param values Integer values
+   * @return A set of negative integer values contained in the given set.
+   */
+  private static Set<Integer> getNegatives(Set<Integer> values) {
+    return values.stream().filter(v -> v < 0).collect(Collectors.toCollection(() -> new HashSet<>(values.size())));
+  }
+
+  /**
    * Default: An empty set.
    */
   public static Set<Integer> reviewIds(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<Integer> reviewIds = parseParamToIntegerSet(request, REVIEW_IDS_PARAM);
+    Set<Integer> negativeReviewIds = getNegatives(reviewIds);
+    if (!negativeReviewIds.isEmpty()) {
+      throw new UserRequestException(String.format("%s cannot contain negative values (requested: %s).",
+                                                   REVIEW_IDS_PARAM, negativeReviewIds));
+    }
+
     return Collections.unmodifiableSet(reviewIds);
   }
 
@@ -683,6 +738,8 @@ public class ParameterUtils {
       throw new UserRequestException(
           String.format("%s parameter must be mutually exclusive with other parameters (Request parameters: %s).",
                         REVIEW_ID_PARAM, request.getParameterMap()));
+    } else if (reviewId < 0) {
+      throw new UserRequestException(String.format("%s cannot be negative (requested: %d).", REVIEW_ID_PARAM, reviewId));
     }
 
     return reviewId;
@@ -700,8 +757,8 @@ public class ParameterUtils {
     }
     Integer concurrentMovementsPerBroker = Integer.parseInt(request.getParameter(parameterString));
     if (concurrentMovementsPerBroker <= 0) {
-      throw new IllegalArgumentException("The requested movement concurrency must be positive (Requested: "
-                                         + concurrentMovementsPerBroker.toString() + ").");
+      throw new UserRequestException("The requested movement concurrency must be positive (Requested: "
+                                     + concurrentMovementsPerBroker.toString() + ").");
     }
 
     return concurrentMovementsPerBroker;
@@ -727,15 +784,15 @@ public class ParameterUtils {
 
     String[] boundaries = partitionString.split("-");
     if (boundaries.length > 2) {
-      throw new IllegalArgumentException("The " + PARTITION_PARAM + " parameter cannot contain multiple dashes.");
+      throw new UserRequestException("The " + PARTITION_PARAM + " parameter cannot contain multiple dashes.");
     }
     return Integer.parseInt(boundaries[isUpperBound ? 1 : 0]);
   }
 
-  static Set<Integer> brokerIds(HttpServletRequest request) throws UnsupportedEncodingException {
+  static Set<Integer> brokerIds(HttpServletRequest request, boolean isOptional) throws UnsupportedEncodingException {
     Set<Integer> brokerIds = parseParamToIntegerSet(request, BROKER_ID_PARAM);
-    if (brokerIds.isEmpty()) {
-      throw new IllegalArgumentException("Target broker ID is not provided.");
+    if (!isOptional && brokerIds.isEmpty()) {
+      throw new UserRequestException("Target broker ID is not provided.");
     }
     return Collections.unmodifiableSet(brokerIds);
   }
@@ -826,13 +883,13 @@ public class ParameterUtils {
   /**
    * Default: An empty set.
    */
-  public static Set<EndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
+  public static Set<CruiseControlEndPoint> endPoints(HttpServletRequest request) throws UnsupportedEncodingException {
     Set<String> parsedEndPoints = parseParamToStringSet(request, ENDPOINTS_PARAM).stream()
                                                                                  .map(String::toUpperCase)
                                                                                  .collect(Collectors.toSet());
 
-    Set<EndPoint> endPoints = new HashSet<>();
-    for (EndPoint endPoint : EndPoint.cachedValues()) {
+    Set<CruiseControlEndPoint> endPoints = new HashSet<>();
+    for (CruiseControlEndPoint endPoint : CruiseControlEndPoint.cachedValues()) {
       if (parsedEndPoints.contains(endPoint.toString())) {
         endPoints.add(endPoint);
       }
@@ -885,7 +942,7 @@ public class ParameterUtils {
   static short replicationFactor(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_FACTOR_PARAM);
     if (parameterString == null) {
-      throw new IllegalArgumentException("Topic's replication factor is not specified.");
+      throw new UserRequestException("Topic's replication factor is not specified.");
     }
     return Short.parseShort(request.getParameter(parameterString));
   }

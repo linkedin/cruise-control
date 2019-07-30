@@ -22,6 +22,7 @@ import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
@@ -29,6 +30,7 @@ import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 import java.io.InputStream;
@@ -57,8 +59,8 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.isKafkaAssignerMode;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckNonExistingGoal;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckNoOfflineReplica;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.offlineReplicasForPartition;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.*;
 
 
@@ -108,9 +110,10 @@ public class KafkaCruiseControl {
         Executors.newSingleThreadExecutor(new KafkaCruiseControlThreadFactory("GoalOptimizerExecutor", true, null));
     long demotionHistoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG);
     long removalHistoryRetentionTimeMs = config.getLong(KafkaCruiseControlConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG);
-    _executor = new Executor(config, _time, dropwizardMetricRegistry, demotionHistoryRetentionTimeMs, removalHistoryRetentionTimeMs);
-    _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry, _executor);
     _anomalyDetector = new AnomalyDetector(config, _loadMonitor, this, _time, dropwizardMetricRegistry);
+    _executor = new Executor(config, _time, dropwizardMetricRegistry, demotionHistoryRetentionTimeMs,
+                             removalHistoryRetentionTimeMs, _anomalyDetector);
+    _goalOptimizer = new GoalOptimizer(config, _loadMonitor, _time, dropwizardMetricRegistry, _executor);
   }
 
   /**
@@ -179,7 +182,7 @@ public class KafkaCruiseControl {
    *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
    * @return The optimization result.
    *
-   * @throws KafkaCruiseControlException when any exception occurred during the decommission process.
+   * @throws KafkaCruiseControlException When any exception occurred during the decommission process.
    */
   public GoalOptimizer.OptimizerResult decommissionBrokers(Set<Integer> removedBrokers,
                                                            boolean dryRun,
@@ -324,14 +327,22 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Check if there is an ongoing execution and dryrun is false.
-   * This method helps to fail fast if a user attempts to start an execution during an ongoing execution.
+   * Sanity check that if current request is not a dryrun, there is
+   * (1) no ongoing execution in current Cruise Control deployment.
+   * (2) no ongoing partition reassignment, which could be triggered by other admin tools or previous Cruise Control deployment.
+   * This method helps to fail fast if a user attempts to start an execution during an ongoing admin operation.
    *
    * @param dryRun True if the request is just a dryrun, false if the intention is to start an execution.
    */
   private void sanityCheckDryRun(boolean dryRun) {
-    if (!dryRun && _executor.hasOngoingExecution()) {
+    if (dryRun) {
+      return;
+    }
+    if (_executor.hasOngoingExecution()) {
       throw new IllegalStateException("Cannot execute new proposals while there is an ongoing execution.");
+    }
+    if (_executor.hasOngoingPartitionReassignments()) {
+      throw new IllegalStateException("Cannot execute new proposals while there are ongoing partition reassignments.");
     }
   }
 
@@ -418,6 +429,7 @@ public class KafkaCruiseControl {
    * @param uuid UUID of the execution.
    * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
    * @return the optimization result.
+   * @throws KafkaCruiseControlException When any exception occurred during the broker demotion.
    */
   public GoalOptimizer.OptimizerResult demoteBrokers(Set<Integer> brokerIds,
                                                      boolean dryRun,
@@ -472,12 +484,12 @@ public class KafkaCruiseControl {
 
   /**
    * Get the cluster model cutting off at a certain timestamp.
-   * @param now time.
+   * @param now The current time in millisecond.
    * @param requirements the model completeness requirements.
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return the cluster workload model.
-   * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
+   * @throws KafkaCruiseControlException When the cluster model generation encounter errors.
    */
   public ClusterModel clusterModel(long now,
                                    ModelCompletenessRequirements requirements,
@@ -503,7 +515,7 @@ public class KafkaCruiseControl {
    * @param operationProgress the progress of the job to report.
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return the cluster workload model.
-   * @throws KafkaCruiseControlException when the cluster model generation encounter errors.
+   * @throws KafkaCruiseControlException When the cluster model generation encounter errors.
    */
   public ClusterModel clusterModel(long from,
                                    long to,
@@ -693,7 +705,7 @@ public class KafkaCruiseControl {
    * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
    *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
    * @return The optimization result.
-   * @throws KafkaCruiseControlException
+   * @throws KafkaCruiseControlException If anything goes wrong in optimization proposal calculation.
    */
   public GoalOptimizer.OptimizerResult getProposals(List<String> goals,
                                                     ModelCompletenessRequirements requirements,
@@ -759,11 +771,7 @@ public class KafkaCruiseControl {
       sanityCheckBrokerPresence(requestedDestinationBrokerIds);
     }
     synchronized (this) {
-      ExecutorState executorState = null;
-      if (excludeRecentlyDemotedBrokers || excludeRecentlyRemovedBrokers) {
-        executorState = state(operationProgress, Collections.singleton(EXECUTOR)).executorState();
-      }
-
+      ExecutorState executorState = _executor.state();
       Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
                                                                                 : Collections.emptySet();
 
@@ -777,7 +785,9 @@ public class KafkaCruiseControl {
                                           excludedBrokersForLeadership,
                                           excludedBrokersForReplicaMove,
                                           isTriggeredByGoalViolation,
-                                          requestedDestinationBrokerIds);
+                                          requestedDestinationBrokerIds,
+                                          null,
+                                          false);
     }
   }
 
@@ -889,33 +899,154 @@ public class KafkaCruiseControl {
   }
 
   /**
-   * Update the replication factor of Kafka topics.
-   * If partition's current replication factor is less than target replication factor, add new replicas to the partition
-   * in a rack-aware, round-robin way.
-   * There are two scenarios that rack awareness property is not guaranteed.
-   * <ul>
-   *   <li> If metadata does not have rack information about brokers, then it is only guaranteed that new replicas are
-   *   added to brokers, which currently do not host any replicas of partition.</li>
-   *   <li> If replication factor to set for the topic is larger than number of racks in the cluster and
-   *   skipTopicRackAwarenessCheck is set to true, then rack awareness property is ignored.</li>
-   * </ul>
-   * If partition's current replication factor is larger than target replication factor, remove one or more follower replicas
-   * from the partition.
+   * Update configuration of topics which match topic pattern. Currently only support changing topic's replication factor.
    *
-   * @param cluster The metadata of the cluster.
+   * If partition's current replication factor is less than target replication factor, new replicas are added to the partition
+   * in two steps.
+   * <ol>
+   *   <li>
+   *    Tentatively add new replicas in a rack-aware, round-robin way.
+   *    There are two scenarios that rack awareness property is not guaranteed.
+   *    <ul>
+   *      <li> If metadata does not have rack information about brokers, then it is only guaranteed that new replicas are
+   *      added to brokers, which currently do not host any replicas of partition.</li>
+   *      <li> If replication factor to set for the topic is larger than number of racks in the cluster and
+   *      skipTopicRackAwarenessCheck is set to true, then rack awareness property is ignored.</li>
+   *    </ul>
+   *   </li>
+   *   <li>
+   *     Further optimize new replica's location with provided {@link Goal} list.
+   *   </li>
+   * </ol>
+   *
+   * If partition's current replication factor is larger than target replication factor, remove one or more follower replicas
+   * from the partition. Replicas are removed following the reverse order of position in partition's replica list.
+   *
+   * @param topicPattern The name pattern of topics to apply the change. If no topic in the cluster matches the pattern, an
+   *                     exception will be thrown.
+   * @param goals The goals to be met during the new replica assignment. When empty all goals will be used.
    * @param replicationFactor The replication factor to set for the topics.
-   * @param topics The topics to apply the change.
    * @param skipTopicRackAwarenessCheck Whether ignore rack awareness property if number of rack in cluster is less
    *                                    than target replication factor.
-   * @return Execution proposals to increase replication factor of topics.
+   * @param requirements The cluster model completeness requirements.
+   * @param operationProgress The progress of the job to report.
+   * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
+   * @param concurrentInterBrokerPartitionMovements The maximum number of concurrent inter-broker partition movements per broker
+   *                                                (if null, use num.concurrent.partition.movements.per.broker).
+   * @param concurrentLeaderMovements The maximum number of concurrent leader movements
+   *                                  (if null, use num.concurrent.leader.movements).
+   * @param skipHardGoalCheck True if the provided {@code goals} do not have to contain all hard goals, false otherwise.
+   * @param replicaMovementStrategy The strategy used to determine the execution order of generated replica movement tasks
+   *                                (if null, use default.replica.movement.strategies).
+   * @param excludeRecentlyDemotedBrokers Exclude recently demoted brokers from proposal generation for leadership transfer.
+   * @param excludeRecentlyRemovedBrokers Exclude recently removed brokers from proposal generation for replica transfer.
+   * @param dryRun Whether it is a dry run or not.
+   * @param uuid UUID of the execution.
+   *
+   * @return The optimization result.
+   * @throws KafkaCruiseControlException When any exception occurred during the topic configuration updating.
    */
-  private Set<ExecutionProposal> maybeUpdateTopicReplicationFactor(Cluster cluster,
-                                                                   short replicationFactor,
-                                                                   Set<String> topics,
-                                                                   boolean skipTopicRackAwarenessCheck) {
+  public GoalOptimizer.OptimizerResult updateTopicConfiguration(Pattern topicPattern,
+                                                                List<String> goals,
+                                                                short replicationFactor,
+                                                                boolean skipTopicRackAwarenessCheck,
+                                                                ModelCompletenessRequirements requirements,
+                                                                OperationProgress operationProgress,
+                                                                boolean allowCapacityEstimation,
+                                                                Integer concurrentInterBrokerPartitionMovements,
+                                                                Integer concurrentLeaderMovements,
+                                                                boolean skipHardGoalCheck,
+                                                                ReplicaMovementStrategy replicaMovementStrategy,
+                                                                boolean excludeRecentlyDemotedBrokers,
+                                                                boolean excludeRecentlyRemovedBrokers,
+                                                                boolean dryRun,
+                                                                String uuid)
+      throws KafkaCruiseControlException {
+    sanityCheckDryRun(dryRun);
+    sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
+    List<Goal> goalsByPriority = goalsByPriority(goals);
+
+    Cluster cluster = kafkaCluster();
+    // Ensure there is no offline replica in the cluster.
+    sanityCheckNoOfflineReplica(cluster);
+    Set<String> topicsForReplicationFactorChange = topicsForReplicationFactorChange(topicPattern, cluster, replicationFactor);
+
+    // Generate cluster model and get proposal
+    GoalOptimizer.OptimizerResult result;
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
     Map<Integer, String> rackByBroker = new HashMap<>();
+    ModelCompletenessRequirements completenessRequirements = modelCompletenessRequirements(goalsByPriority).weaker(requirements);
+    try (AutoCloseable ignored = _loadMonitor.acquireForModelGeneration(operationProgress)) {
+      ExecutorState executorState = _executor.state();
+      Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
+                                                                                : Collections.emptySet();
+      Set<Integer> excludedBrokersForReplicaMove = excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
+                                                                                 : Collections.emptySet();
+      populateRackInfoForReplicationFactorChange(topicsForReplicationFactorChange, replicationFactor, cluster, excludedBrokersForReplicaMove,
+                                                 skipTopicRackAwarenessCheck, brokersByRack, rackByBroker);
+
+      ClusterModel clusterModel = _loadMonitor.clusterModel(-1,
+                                                            _time.milliseconds(),
+                                                            completenessRequirements,
+                                                            operationProgress);
+      sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
+      Map<TopicPartition, List<Integer>> initReplicaDistribution = clusterModel.getReplicaDistribution();
+
+      // First try to add and remove replicas to achieve the replication factor for topics of interest.
+      createOrDeleteReplicasInClusterModel(topicsForReplicationFactorChange, brokersByRack, rackByBroker, cluster, replicationFactor, clusterModel);
+
+      // Then further optimize the location of newly added replicas based on goals. Here we restrict the replica movement to
+      // only considering newly added replicas, in order to minimize the total bytes to move.
+      result = _goalOptimizer.optimizations(clusterModel,
+                                            goalsByPriority,
+                                            operationProgress,
+                                            null,
+                                            excludedBrokersForLeadership,
+                                            excludedBrokersForReplicaMove,
+                                            false,
+                                            Collections.emptySet(),
+                                            initReplicaDistribution,
+                                            true);
+      if (!dryRun) {
+        executeProposals(result.goalProposals(), Collections.emptySet(), false,
+                         concurrentInterBrokerPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy, uuid);
+      }
+    } catch (KafkaCruiseControlException kcce) {
+      throw kcce;
+    } catch (Exception e) {
+      throw new KafkaCruiseControlException(e);
+    }
+    return result;
+  }
+
+  private static Set<String> topicsForReplicationFactorChange(Pattern topicPattern, Cluster cluster, short replicationFactor) {
+    Set<String> topics = cluster.topics().stream().filter(t -> topicPattern.matcher(t).matches()).collect(Collectors.toSet());
+    // Ensure there are topics matching the requested topic pattern.
+    if (topics.isEmpty()) {
+      throw new IllegalStateException("There is no topic in cluster matching pattern " + topicPattern);
+    }
+
+    // Ensure there are some partitions which need to change its replication factor.
+    Set<String> topicsForReplicationFactorChange =
+        topics.stream().filter(t -> cluster.partitionsForTopic(t).stream().anyMatch(p -> p.replicas().length != replicationFactor)).collect(Collectors.toSet());
+    if (topicsForReplicationFactorChange.isEmpty()) {
+      throw new IllegalStateException(String.format("Topics %s already have replication factor of %d", topics, replicationFactor));
+    }
+    return topicsForReplicationFactorChange;
+  }
+
+  private static void populateRackInfoForReplicationFactorChange(Set<String> topics,
+                                                                 short replicationFactor,
+                                                                 Cluster cluster,
+                                                                 Set<Integer> excludedBrokersForReplicaMove,
+                                                                 boolean skipTopicRackAwarenessCheck,
+                                                                 Map<String, List<Integer>> brokersByRack,
+                                                                 Map<Integer, String> rackByBroker) {
     for (Node node : cluster.nodes()) {
+      // New follower replica is not assigned to brokers excluded for replica movement.
+      if (excludedBrokersForReplicaMove.contains(node.id())) {
+        continue;
+      }
       // If the rack is not specified, we use the broker id info as rack info.
       String rack = node.rack() == null || node.rack().isEmpty() ? String.valueOf(node.id()) : node.rack();
       brokersByRack.putIfAbsent(rack, new ArrayList<>());
@@ -925,17 +1056,36 @@ public class KafkaCruiseControl {
 
     if (replicationFactor > brokersByRack.size()) {
       if (skipTopicRackAwarenessCheck) {
-        LOG.info(String.format("Target replication factor for topics %s is larger than number of racks in cluster, rack-awareness "
-                               + "property may not be guaranteed.", topics));
+        LOG.info("Target replication factor for topics {} is larger than number of racks in cluster, rack-awareness "
+                 + "property will be violated to add new replicas.", topics);
       } else {
         throw new RuntimeException(String.format("Unable to change replication factor of topics %s to %d since there are only %d "
-                                                 + "racks in the cluster, to skip the rack-awareness check, set "
-                                                 + "skipTopicRackAwarenessCheck to true in the request.",
-                                                 topics, replicationFactor, brokersByRack.size()));
+                                                 + "racks in the cluster, to skip the rack-awareness check, set %s to true in the request.",
+                                                 topics, replicationFactor, brokersByRack.size(), ParameterUtils.SKIP_RACK_AWARENESS_CHECK_PARAM));
       }
     }
+  }
 
-    Set<ExecutionProposal> proposals = new HashSet<>();
+  /**
+   * For partitions of specified topics, create or delete replicas in given cluster model to change the partition's replication
+   * factor to target replication factor. New replicas for partition are added in a rack-aware, round-robin way.
+   *
+   * @param topics The potential topics to modify replication factor.
+   * @param brokersByRack A map from rack to broker.
+   * @param rackByBroker A map from broker to rack.
+   * @param cluster The metadata of the cluster.
+   * @param replicationFactor The replication factor to set for the topics.
+   * @param clusterModel The cluster model fo the cluster.
+   */
+  public static void createOrDeleteReplicasInClusterModel(Set<String> topics,
+                                                          Map<String, List<Integer>> brokersByRack,
+                                                          Map<Integer, String> rackByBroker,
+                                                          Cluster cluster,
+                                                          short replicationFactor,
+                                                          ClusterModel clusterModel) {
+    // After replica deletion of some topic partitions, the cluster's maximal replication factor may decrease.
+    boolean needToRefreshClusterMaxReplicationFactor = false;
+
     for (String topic : topics) {
       List<String> racks = new ArrayList<>(brokersByRack.keySet());
       int[] cursors = new int[racks.size()];
@@ -944,83 +1094,52 @@ public class KafkaCruiseControl {
         if (partitionInfo.replicas().length == replicationFactor) {
           continue;
         }
-
-        Set<Integer> offlineReplicas = offlineReplicasForPartition(partitionInfo, cluster.nodes());
-        if (!offlineReplicas.isEmpty()) {
-          throw new RuntimeException(String.format("Topic partition %s-%d has offline replicas on brokers %s, unable to update "
-                                     + "its replication factor.", partitionInfo.topic(), partitionInfo.partition(), offlineReplicas));
-        }
-        List<Integer> currentAssignedReplica = new ArrayList<>(partitionInfo.replicas().length);
         List<Integer> newAssignedReplica = new ArrayList<>();
         if (partitionInfo.replicas().length < replicationFactor) {
           Set<String> currentOccupiedRack = new HashSet<>();
           // Make sure the current replicas are in new replica list.
           for (Node node : partitionInfo.replicas()) {
-            currentAssignedReplica.add(node.id());
             newAssignedReplica.add(node.id());
             currentOccupiedRack.add(rackByBroker.get(node.id()));
           }
           // Add new replica to partition in rack-aware(if possible), round-robin way.
           while (newAssignedReplica.size() < replicationFactor) {
-            if (!currentOccupiedRack.contains(racks.get(rackCursor)) || currentOccupiedRack.size() == racks.size()) {
-              String rack = racks.get(rackCursor);
+            String rack = racks.get(rackCursor);
+            if (!currentOccupiedRack.contains(rack) || currentOccupiedRack.size() == racks.size()) {
               int cursor = cursors[rackCursor];
-              newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
-              currentOccupiedRack.add(rack);
+              Integer brokerId = brokersByRack.get(rack).get(cursor);
+              if (!newAssignedReplica.contains(brokerId)) {
+                newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
+                // Create a new replica in the cluster model and populate its load from the leader replica.
+                TopicPartition tp = new TopicPartition(topic, partitionInfo.partition());
+                Load load = clusterModel.partition(tp).leader().getFollowerLoadFromLeader();
+                clusterModel.createReplica(rack, brokerId, tp, partitionInfo.replicas().length, false, true);
+                clusterModel.setReplicaLoad(rack, brokerId, tp, load.loadByWindows(), load.windows());
+                currentOccupiedRack.add(rack);
+              }
               cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
             }
             rackCursor = (rackCursor + 1) % racks.size();
           }
-          // TODO: get the partition size and populate into execution proposal, check https://github.com/linkedin/cruise-control/issues/722
-          proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
-                                              0,
-                                              partitionInfo.leader().id(),
-                                              currentAssignedReplica,
-                                              newAssignedReplica));
         } else {
           // Make sure the leader replica is in new replica list.
           newAssignedReplica.add(partitionInfo.leader().id());
           for (Node node : partitionInfo.replicas()) {
-            currentAssignedReplica.add(node.id());
-            if (newAssignedReplica.size() < replicationFactor && node.id() != newAssignedReplica.get(0)) {
-              newAssignedReplica.add(node.id());
+            if (node.id() != newAssignedReplica.get(0)) {
+              if (newAssignedReplica.size() < replicationFactor) {
+                newAssignedReplica.add(node.id());
+              } else {
+                clusterModel.deleteReplica(new TopicPartition(topic, partitionInfo.partition()), node.id());
+                needToRefreshClusterMaxReplicationFactor = true;
+              }
             }
           }
-          // TODO: get the partition size and populate into execution proposal, check https://github.com/linkedin/cruise-control/issues/722
-          proposals.add(new ExecutionProposal(new TopicPartition(topic, partitionInfo.partition()),
-                                              0,
-                                              partitionInfo.leader().id(),
-                                              currentAssignedReplica,
-                                              newAssignedReplica));
         }
       }
     }
-    return proposals;
-  }
-
-  /**
-   * Update configuration of topic pattern. Currently only support change replication factor of topics from the given pattern.
-   *
-   * @param topic The name pattern of topics to apply the change.
-   * @param replicationFactor The replication factor to set for the topics.
-   * @param skipTopicRackAwarenessCheck Whether skip ignore rack awareness property if number of rack in cluster is less
-   *                                    than target replication factor.
-   * @param uuid UUID of the execution.
-   *
-   * @return Topics to apply the change.
-   */
-  public Set<String> updateTopicConfiguration(Pattern topic,
-                                              short replicationFactor,
-                                              boolean skipTopicRackAwarenessCheck,
-                                              String uuid) {
-    Cluster cluster = kafkaCluster();
-    Set<String> topics = cluster.topics().stream().filter(t -> topic.matcher(t).matches()).collect(Collectors.toSet());
-    Set<ExecutionProposal> proposals = maybeUpdateTopicReplicationFactor(cluster,
-                                                                         replicationFactor,
-                                                                         topics,
-                                                                         skipTopicRackAwarenessCheck);
-    _executor.executeProposals(proposals, null, null, _loadMonitor, null, null, null, uuid);
-    return topics;
+    if (needToRefreshClusterMaxReplicationFactor) {
+      clusterModel.refreshClusterMaxReplicationFactor();
+    }
   }
 
   /**
@@ -1042,6 +1161,10 @@ public class KafkaCruiseControl {
                                   substates.contains(ANALYZER) ? _goalOptimizer.state(clusterAndGeneration) : null,
                                   substates.contains(ANOMALY_DETECTOR) ? _anomalyDetector.anomalyDetectorState() : null,
                                   _config);
+  }
+
+  public ExecutorState.State executionState() {
+    return _executor.state().state();
   }
 
   /**
@@ -1133,7 +1256,7 @@ public class KafkaCruiseControl {
    * Sanity check whether the provided brokers exist in cluster or not.
    * @param brokerIds A set of broker ids.
    */
-  private void sanityCheckBrokerPresence(Set<Integer> brokerIds) {
+  public void sanityCheckBrokerPresence(Set<Integer> brokerIds) {
     Cluster cluster = _loadMonitor.refreshClusterAndGeneration().cluster();
     Set<Integer> invalidBrokerIds = brokerIds.stream().filter(id -> cluster.nodeById(id) == null).collect(Collectors.toSet());
     if (!invalidBrokerIds.isEmpty()) {

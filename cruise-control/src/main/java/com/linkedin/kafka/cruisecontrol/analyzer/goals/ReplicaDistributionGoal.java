@@ -119,6 +119,8 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     super.initGoalState(clusterModel, optimizationOptions);
     clusterModel.trackSortedReplicas(name(),
+                                     optimizationOptions.onlyMoveImmigrantReplicas() ? ReplicaSortFunctionFactory.selectImmigrants()
+                                                                                     : null,
                                      ReplicaSortFunctionFactory.prioritizeImmigrants(),
                                      ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()));
   }
@@ -166,10 +168,10 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     } else if (!clusterModel.newBrokers().isEmpty() && requireMoreReplicas && !broker.isNew()) {
       // return if we have new brokers and the current broker is not a new broker but requires more load.
       return;
-    } else if (!clusterModel.deadBrokers().isEmpty() && requireLessReplicas && broker.isAlive()
-        && broker.immigrantReplicas().isEmpty()) {
-      // return if the cluster is in self-healing mode and the broker requires less load, but does not have any
-      // immigrant replicas.
+    } else if (((!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) || optimizationOptions.onlyMoveImmigrantReplicas())
+               && requireLessReplicas && broker.immigrantReplicas().isEmpty()) {
+      // return if (1) cluster is in self-healing mode or (2) optimization option requires only moving immigrant replicas,
+      // and the broker requires less load but does not have any immigrant replicas.
       return;
     }
 
@@ -204,9 +206,9 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
 
     // Get the replicas to rebalance. Replicas are sorted from smallest to largest disk usage.
     List<Replica> replicasToMove = broker.trackedSortedReplicas(name()).sortedReplicas();
-    // If cluster has dead brokers, but this broker is alive, then limit moving replica to immigrant replica.
+    // If cluster has dead brokers but this broker is alive, then limit moving replica to immigrant replica.
     if (!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) {
-      replicasToMove = replicasToMove.stream().filter(r -> broker.immigrantReplicas().contains(r)).collect(Collectors.toList());
+      replicasToMove = replicasToMove.stream().filter(Replica::isImmigrant).collect(Collectors.toList());
     }
     // Now let's move things around.
     for (Replica replica : replicasToMove) {
@@ -255,9 +257,9 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
       Broker sourceBroker = eligibleBrokers.poll();
       // Get the replicas to rebalance. Replicas are sorted from smallest to largest disk usage.
       List<Replica> replicasToMove = sourceBroker.trackedSortedReplicas(name()).sortedReplicas();
-      // If cluster has dead brokers, but this broker is alive, then limit moving replica to immigrant replica.
-      if (!clusterModel.deadBrokers().isEmpty() && broker.isAlive()) {
-        replicasToMove = replicasToMove.stream().filter(r -> sourceBroker.immigrantReplicas().contains(r)).collect(Collectors.toList());
+      // If cluster has dead brokers but source broker is alive, then limit moving replica to immigrant replica.
+      if (!clusterModel.deadBrokers().isEmpty() && sourceBroker.isAlive()) {
+        replicasToMove = replicasToMove.stream().filter(Replica::isImmigrant).collect(Collectors.toList());
       }
       for (Replica replica : replicasToMove) {
         if (shouldExclude(replica, excludedTopics)) {

@@ -4,8 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.purgatory;
 
-import com.linkedin.kafka.cruisecontrol.servlet.EndPoint;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.EndPoint;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import java.util.Arrays;
 import java.util.Collections;

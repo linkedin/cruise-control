@@ -9,31 +9,30 @@ import java.util.Map;
 
 
 class BasicStats {
-  private static final String DISK_MB = "DiskMB";
-  private static final String DISK_PCT = "DiskPct";
-  private static final String CPU_PCT = "CpuPct";
-  private static final String LEADER_NW_IN_RATE = "LeaderNwInRate";
-  private static final String FOLLOWER_NW_IN_RATE = "FollowerNwInRate";
-  private static final String NW_OUT_RATE = "NwOutRate";
-  private static final String PNW_OUT_RATE = "PnwOutRate";
-  private static final String REPLICAS = "Replicas";
-  private static final String LEADERS = "Leaders";
-  private double _diskUtil;
-  private double _cpuUtil;
-  private double _leaderBytesInRate;
-  private double _followerBytesInRate;
-  private double _bytesOutRate;
-  private double _potentialBytesOutRate;
-  private int _numReplicas;
-  private int _numLeaders;
-  private double _diskCapacity;
+  protected static final String DISK_MB = "DiskMB";
+  protected static final String DISK_PCT = "DiskPct";
+  protected static final String CPU_PCT = "CpuPct";
+  protected static final String LEADER_NW_IN_RATE = "LeaderNwInRate";
+  protected static final String FOLLOWER_NW_IN_RATE = "FollowerNwInRate";
+  protected static final String NW_OUT_RATE = "NwOutRate";
+  protected static final String PNW_OUT_RATE = "PnwOutRate";
+  protected static final String REPLICAS = "Replicas";
+  protected static final String LEADERS = "Leaders";
+  protected double _diskUtil;
+  protected double _cpuUtil;
+  protected double _leaderBytesInRate;
+  protected double _followerBytesInRate;
+  protected double _bytesOutRate;
+  protected double _potentialBytesOutRate;
+  protected int _numReplicas;
+  protected int _numLeaders;
+  protected double _diskCapacity;
 
   BasicStats(double diskUtil, double cpuUtil, double leaderBytesInRate,
              double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
              int numReplicas, int numLeaders, double diskCapacity) {
     _diskUtil = diskUtil < 0.0 ? 0.0 : diskUtil;
-    // Convert cpu util b/c full utilization should look like 100% instead of 1
-    _cpuUtil = cpuUtil < 0.0 ? 0.0 : 100 * cpuUtil;
+    _cpuUtil = cpuUtil < 0.0 ? 0.0 : cpuUtil;
     _leaderBytesInRate = leaderBytesInRate < 0.0 ? 0.0 : leaderBytesInRate;
     _followerBytesInRate = followerBytesInRate < 0.0 ? 0.0 : followerBytesInRate;
     _bytesOutRate = bytesOutRate < 0.0 ? 0.0 : bytesOutRate;

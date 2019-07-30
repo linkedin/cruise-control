@@ -10,10 +10,12 @@ import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddedOrRemovedBrokerParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaOptimizationParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,20 +30,20 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 
 public class OptimizationResult extends AbstractCruiseControlResponse {
   private static final Logger LOG = LoggerFactory.getLogger(OptimizationResult.class);
-  private static final String SUMMARY = "summary";
-  private static final String PROPOSALS = "proposals";
-  private static final String GOAL = "goal";
-  private static final String GOAL_SUMMARY = "goalSummary";
-  private static final String STATUS = "status";
-  private static final String CLUSTER_MODEL_STATS = "clusterModelStats";
-  private static final String LOAD_AFTER_OPTIMIZATION = "loadAfterOptimization";
-  private static final String LOAD_BEFORE_OPTIMIZATION = "loadBeforeOptimization";
-  private static final String VIOLATED = "VIOLATED";
-  private static final String FIXED = "FIXED";
-  private static final String NO_ACTION = "NO-ACTION";
-  private GoalOptimizer.OptimizerResult _optimizerResult;
-  private String _cachedJSONResponse;
-  private String _cachedPlaintextResponse;
+  protected static final String SUMMARY = "summary";
+  protected static final String PROPOSALS = "proposals";
+  protected static final String GOAL = "goal";
+  protected static final String GOAL_SUMMARY = "goalSummary";
+  protected static final String STATUS = "status";
+  protected static final String CLUSTER_MODEL_STATS = "clusterModelStats";
+  protected static final String LOAD_AFTER_OPTIMIZATION = "loadAfterOptimization";
+  protected static final String LOAD_BEFORE_OPTIMIZATION = "loadBeforeOptimization";
+  protected static final String VIOLATED = "VIOLATED";
+  protected static final String FIXED = "FIXED";
+  protected static final String NO_ACTION = "NO-ACTION";
+  protected GoalOptimizer.OptimizerResult _optimizerResult;
+  protected String _cachedJSONResponse;
+  protected String _cachedPlaintextResponse;
 
   public OptimizationResult(GoalOptimizer.OptimizerResult optimizerResult,
                             KafkaCruiseControlConfig config) {
@@ -69,8 +71,8 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     return _cachedPlaintextResponse;
   }
 
-  private static String getPlaintextPretext(CruiseControlParameters parameters) {
-    switch (parameters.endPoint()) {
+  protected String getPlaintextPretext(CruiseControlParameters parameters) {
+    switch ((CruiseControlEndPoint) parameters.endPoint()) {
       case ADD_BROKER:
         return String.format("%n%nCluster load after adding broker %s:%n", ((AddedOrRemovedBrokerParameters) parameters).brokerIds());
       case REMOVE_BROKER:
@@ -81,13 +83,16 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
         return String.format("%n%nCluster load after rebalance:%n");
       case DEMOTE_BROKER:
         return String.format("%n%nCluster load after demoting broker %s:%n", ((DemoteBrokerParameters) parameters).brokerIds());
+      case TOPIC_CONFIGURATION:
+        return String.format("%n%nCluster load after updating replication factor of topics %s to %d:%n",
+                             _optimizerResult.topicsWithReplicationFactorChange(), ((TopicConfigurationParameters) parameters).replicationFactor());
       default:
         LOG.error("Unrecognized endpoint.");
         return "Unrecognized endpoint.";
     }
   }
 
-  private String getPlaintext(boolean isVerbose, String pretext) {
+  protected String getPlaintext(boolean isVerbose, String pretext) {
     StringBuilder sb = new StringBuilder();
     if (isVerbose) {
       sb.append(_optimizerResult.goalProposals().toString());
@@ -128,7 +133,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     }
   }
 
-  private String getJSONString(boolean isVerbose) {
+  protected String getJSONString(boolean isVerbose) {
     Map<String, Object> optimizationResult = new HashMap<>();
     if (isVerbose) {
       optimizationResult.put(PROPOSALS, _optimizerResult.goalProposals().stream()
@@ -154,7 +159,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     return gson.toJson(optimizationResult);
   }
 
-  private void writeProposalSummary(StringBuilder sb) {
+  protected void writeProposalSummary(StringBuilder sb) {
     sb.append(_optimizerResult.getProposalSummary());
     for (Map.Entry<String, ClusterModelStats> entry : _optimizerResult.statsByGoalName().entrySet()) {
       String goalName = entry.getKey();
@@ -163,7 +168,7 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
     }
   }
 
-  private String goalResultDescription(String goalName) {
+  protected String goalResultDescription(String goalName) {
     return _optimizerResult.violatedGoalsBeforeOptimization().contains(goalName) ?
            _optimizerResult.violatedGoalsAfterOptimization().contains(goalName) ? VIOLATED : FIXED : NO_ACTION;
   }
