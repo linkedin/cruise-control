@@ -45,7 +45,6 @@ public class KafkaCruiseControlUtils {
       Collections.unmodifiableSet(new HashSet<>(Arrays.asList(KafkaAssignerEvenRackAwareGoal.class.getSimpleName(),
                                                               KafkaAssignerDiskUsageDistributionGoal.class.getSimpleName())));
   public static final String OPERATION_LOGGER = "operationLogger";
-  public static final double PERCENTILE_TO_ABSOLUTE_VALUE = 100.0;
 
   private KafkaCruiseControlUtils() {
 
