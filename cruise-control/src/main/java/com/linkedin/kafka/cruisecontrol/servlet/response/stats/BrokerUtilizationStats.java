@@ -18,7 +18,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 /**
  * Get broker level stats related to resource utilization in human readable format.
  */
-public class BrokerUtilizationStats extends BrokerStats{
+public class BrokerUtilizationStats extends BrokerStats {
   private static final String HOST = "Host";
   private static final String HOSTS = "hosts";
   private final List<SingleBrokerStats> _brokerStats;
