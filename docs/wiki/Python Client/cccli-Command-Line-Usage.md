@@ -26,7 +26,7 @@ Below are some (non-exhaustive) examples of how to use `cccli` to accomplish tas
 ## `add_broker`
 ### Add brokers to a cluster
 ```bash
-cccli -a someCruiseControlAddress:9090 add-broker 1500 -n
+cccli -a someCruiseControlAddress:9090 add-broker 1500 --dry-run
 ```
 <details>
 <summary>sample response</summary>  
