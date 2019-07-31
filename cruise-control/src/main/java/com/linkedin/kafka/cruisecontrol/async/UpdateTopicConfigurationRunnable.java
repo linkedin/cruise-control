@@ -12,16 +12,17 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationPar
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.List;
 
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * The async runnable for {@link KafkaCruiseControl#updateTopicConfiguration(Pattern, List, short, boolean, ModelCompletenessRequirements,
+ * The async runnable for {@link KafkaCruiseControl#updateTopicConfiguration(Map, List, boolean, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, ReplicaMovementStrategy, Long,
  * boolean, boolean, boolean, String)}.
  */
 public class UpdateTopicConfigurationRunnable extends OperationRunnable {
-  private final Pattern _topic;
-  private final short _replicationFactor;
+  private final Map<Short, Set<Pattern>> _topicPatternsByReplicationFactor;
   private final boolean _skipRackAwarenessCheck;
   private final String _uuid;
   private final KafkaCruiseControlConfig _config;
@@ -44,9 +45,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                    KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
     _uuid = uuid;
-    _topic = parameters.topic();
+    _topicPatternsByReplicationFactor = parameters.topicPatternsByReplicationFactor();
     _goals = parameters.goals();
-    _replicationFactor = parameters.replicationFactor();
     _skipRackAwarenessCheck = parameters.skipRackAwarenessCheck();
     _dryRun = parameters.dryRun();
     _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
@@ -63,9 +63,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
 
   @Override
   protected OptimizationResult getResult() throws Exception {
-    return new OptimizationResult(_kafkaCruiseControl.updateTopicConfiguration(_topic,
+    return new OptimizationResult(_kafkaCruiseControl.updateTopicConfiguration(_topicPatternsByReplicationFactor,
                                                                                _goals,
-                                                                               _replicationFactor,
                                                                                _skipRackAwarenessCheck,
                                                                                _modelCompletenessRequirements,
                                                                                _future.operationProgress(),

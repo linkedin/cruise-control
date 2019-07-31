@@ -575,6 +575,27 @@ public class ParameterUtils {
     return parameterString == null ? null : Pattern.compile(request.getParameter(parameterString));
   }
 
+  static Map<Short, Set<Pattern>> topicPatternsByReplicationFactor(HttpServletRequest request) {
+    Map<Short, Set<Pattern>> topicPatternsByReplicationFactor = new HashMap<>();
+    try {
+      request.getReader().lines().forEach((line) -> {
+        String [] subStrings = line.split(":");
+        if (subStrings.length != 2) {
+          throw new UserRequestException("Illegal request body, please specify in format of \"target replication factor\"" +
+                                         " : \"topic name regex\".");
+        }
+        Short replicationFactor = Short.parseShort(subStrings[0].trim());
+        Pattern topicPattern = Pattern.compile(subStrings[1].trim());
+        topicPatternsByReplicationFactor.putIfAbsent(replicationFactor, new HashSet<>());
+        topicPatternsByReplicationFactor.get(replicationFactor).add(topicPattern);
+      });
+    } catch (IOException ioe) {
+      throw new UserRequestException("Illegal request body, please specify in format of \"target replication factor\"" +
+                                     " : \"topic name regex\".");
+    }
+    return topicPatternsByReplicationFactor;
+  }
+
   static Double minValidPartitionRatio(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), MIN_VALID_PARTITION_RATIO_PARAM);
     if (parameterString == null) {
@@ -1040,10 +1061,10 @@ public class ParameterUtils {
     return getBooleanParam(request, EXCLUDE_FOLLOWER_DEMOTION_PARAM, false);
   }
 
-  static short replicationFactor(HttpServletRequest request) {
+  static Short replicationFactor(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_FACTOR_PARAM);
     if (parameterString == null) {
-      throw new UserRequestException("Topic's replication factor is not specified.");
+      return null;
     }
     return Short.parseShort(request.getParameter(parameterString));
   }

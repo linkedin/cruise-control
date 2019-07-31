@@ -178,7 +178,8 @@ public class ReplicationFactorChangeTest {
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
     Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
 
-    createOrDeleteReplicasInClusterModel(_topics, _brokersByRack, _rackByBroker, _cluster, _replicationFactor, _clusterModel);
+    createOrDeleteReplicasInClusterModel(Collections.singletonMap(_replicationFactor, _topics), _brokersByRack, _rackByBroker,
+                                         _cluster, _clusterModel);
     if (_exceptionClass == null) {
       if (_expectedToOptimize) {
         assertTrue("Replication factor change test with goal " + _goal.name() + " failed.",
