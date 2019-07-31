@@ -21,10 +21,10 @@ import java.util.regex.Pattern;
  * <ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
  *   <li>If topics to change replication factor and target replication factor is not specified in URL, they can also be
- *   specified in request body. The body format will be
+ *   specified in request body. The body format is expected to be valid JSON format. e.g.
  *   {
- *     target_replicaiton_factor_1 : topic_regex_1
- *     target_replication_factor_2 : topic_regex_2
+ *     target_replicaiton_factor_1 : topic_regex_1,
+ *     target_replication_factor_2 : topic_regex_2,
  *     ...
  *   }.
  *   If it is specified both in URL and body, what specified in URL will be picked up by Cruise Control.</li>

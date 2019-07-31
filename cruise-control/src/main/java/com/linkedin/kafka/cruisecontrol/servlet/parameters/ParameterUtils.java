@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskUsageDistributionGoal;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
@@ -575,23 +576,21 @@ public class ParameterUtils {
     return parameterString == null ? null : Pattern.compile(request.getParameter(parameterString));
   }
 
+  @SuppressWarnings("unchecked")
   static Map<Short, Set<Pattern>> topicPatternsByReplicationFactor(HttpServletRequest request) {
     Map<Short, Set<Pattern>> topicPatternsByReplicationFactor = new HashMap<>();
     try {
-      request.getReader().lines().forEach((line) -> {
-        String [] subStrings = line.split(":");
-        if (subStrings.length != 2) {
-          throw new UserRequestException("Illegal request body, please specify in format of \"target replication factor\"" +
-                                         " : \"topic name regex\".");
-        }
-        Short replicationFactor = Short.parseShort(subStrings[0].trim());
-        Pattern topicPattern = Pattern.compile(subStrings[1].trim());
+      Gson gson = new Gson();
+      Map<String, String> json = gson.fromJson(request.getReader(), Map.class);
+      for (Map.Entry<String, String> entry : json.entrySet()) {
+        Short replicationFactor = Short.parseShort(entry.getKey().trim());
+        Pattern topicPattern = Pattern.compile(entry.getValue().trim());
         topicPatternsByReplicationFactor.putIfAbsent(replicationFactor, new HashSet<>());
         topicPatternsByReplicationFactor.get(replicationFactor).add(topicPattern);
-      });
+      }
     } catch (IOException ioe) {
-      throw new UserRequestException("Illegal request body, please specify in format of \"target replication factor\"" +
-                                     " : \"topic name regex\".");
+      throw new UserRequestException("Illegal request body, please specify in valid JSON format consisting of pair "
+                                     + "\"target replication factor\" : \"topic name regex\".");
     }
     return topicPatternsByReplicationFactor;
   }

@@ -1211,6 +1211,15 @@ public class KafkaCruiseControl {
     if (topicsToChangeByReplicationFactor.isEmpty()) {
       throw new IllegalStateException("All Topics matching given pattern already have target replication factor.");
     }
+    // Sanity check that no topic is set with more than one target replication factor.
+    Set<String> topicsToChange = new HashSet<>();
+    for (Set<String> topics : topicsToChangeByReplicationFactor.values()) {
+      for (String topic : topics) {
+        if (!topicsToChange.add(topic)) {
+          throw new IllegalStateException(String.format("Topic %s is requested with more than one target replication factor.", topic));
+        }
+      }
+    }
     return topicsToChangeByReplicationFactor;
   }
 
