@@ -1196,7 +1196,7 @@ public class KafkaCruiseControl {
     Set<String> topicsForReplicationFactorChange =
         topics.stream().filter(t -> cluster.partitionsForTopic(t).stream().anyMatch(p -> p.replicas().length != replicationFactor)).collect(Collectors.toSet());
     if (topicsForReplicationFactorChange.isEmpty()) {
-      throw new IllegalStateException(String.format("Topics %s already have replication factor of %d", topics, replicationFactor));
+      throw new IllegalStateException(String.format("All matching topics (%s) in cluster already have replication factor of %d", topics, replicationFactor));
     }
     return topicsForReplicationFactorChange;
   }
