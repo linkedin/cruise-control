@@ -46,6 +46,7 @@ public class KafkaCruiseControlServletUtils {
   private static final String ACCESS_CONTROL_ALLOW_ORIGIN = "Access-Control-Allow-Origin";
   private static final String ACCESS_CONTROL_ALLOW_METHODS = "Access-Control-Allow-Methods";
   private static final String ACCESS_CONTROL_ALLOW_HEADERS = "Access-Control-Allow-Headers";
+  private static final String ACCESS_CONTROL_ALLOW_CREDENTIALS = "Access-Control-Allow-Credentials";
   private static final String ACCESS_CONTROL_MAX_AGE = "Access-Control-Max-Age";
   private static final String ACCESS_CONTROL_MAX_AGE_IN_SEC = "1728000";
   private static final Map<EndPoint, RequestParameterWrapper> REQUEST_PARAMETER_CONFIGS;
@@ -258,6 +259,7 @@ public class KafkaCruiseControlServletUtils {
       // This is required only as part of pre-flight response
       response.setHeader(ACCESS_CONTROL_ALLOW_METHODS, config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_ALLOWMETHODS_CONFIG));
       response.setHeader(ACCESS_CONTROL_ALLOW_HEADERS, config.getString(KafkaCruiseControlConfig.WEBSERVER_HTTP_CORS_EXPOSEHEADERS_CONFIG));
+      response.setHeader(ACCESS_CONTROL_ALLOW_CREDENTIALS, "true");
       response.setHeader(ACCESS_CONTROL_MAX_AGE, ACCESS_CONTROL_MAX_AGE_IN_SEC);
     }
   }
