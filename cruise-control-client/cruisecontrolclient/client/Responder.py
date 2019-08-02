@@ -74,22 +74,11 @@ class CruiseControlResponder(requests.Session):
         if 'params' in kwargs:
             if 'json' in kwargs['params']:
                 json_val = kwargs['params']['json']
-                if (type(json_val) is bool and not json_val) or\
+                if (type(json_val) is bool and not json_val) or \
                         (type(json_val) is str and json_val.lower() != 'true'):
                     raise ValueError(f"Parameter 'json':{kwargs['params']['json']} is not supported")
 
-        # Convenience closure to not have to copy-paste the parameters from
-        # this current environment.
-        def inner_request_helper():
-            return self.request(method, url, **kwargs)
-
-        response = inner_request_helper()
-        while 'progress' in response.json().keys():
-            display_response(response)
-            response = inner_request_helper()
-
-        # return the requests.response object
-        return response
+        return self.request(method, url, **kwargs)
 
     def retrieve_response_from_Endpoint(self,
                                         cc_socket_address: str,

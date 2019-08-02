@@ -7,6 +7,7 @@ from cruisecontrolclient.client.Endpoint import AbstractEndpoint
 # To be able to signify deprecation
 import warnings
 
+
 def generate_url_from_cc_socket_address(cc_socket_address: str, endpoint: AbstractEndpoint) -> str:
     warnings.warn("This function is deprecated as of 1.0.0. "
                   "It may be removed entirely in future versions.",
@@ -25,7 +26,6 @@ def generate_url_from_cc_socket_address(cc_socket_address: str, endpoint: Abstra
     """
     url = f"http://{cc_socket_address}/kafkacruisecontrol/{endpoint.compose_endpoint()}"
     return url
-
 
 
 def generate_base_url_from_cc_socket_address(cc_socket_address: str, endpoint: AbstractEndpoint) -> str:
