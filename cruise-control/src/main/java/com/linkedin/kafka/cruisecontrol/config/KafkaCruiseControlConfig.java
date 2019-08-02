@@ -879,6 +879,12 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String TWO_STEP_PURGATORY_MAX_REQUESTS_DOC = "The maximum number of requests in two-step "
       + "(verification) purgatory.";
 
+  /**
+   * <code>logdir.response.timeout.ms</code>
+   */
+  public static final String LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG = "logdir.response.timeout.ms";
+  private static final String LOGDIR_RESPONSE_TIMEOUT_MS_DOC = "Timeout in ms for broker logdir to respond";
+
   static {
     CONFIG = new ConfigDef()
         .define(WEBSERVER_HTTP_PORT_CONFIG, ConfigDef.Type.INT, 9090, atLeast(0), ConfigDef.Importance.HIGH,
@@ -1640,6 +1646,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 KafkaTopicConfigProvider.class.getName(),
                 ConfigDef.Importance.LOW,
                 TOPIC_CONFIG_PROVIDER_CLASS_DOC)
+        .define(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG,
+                ConfigDef.Type.LONG,
+                10000L,
+                ConfigDef.Importance.LOW,
+                LOGDIR_RESPONSE_TIMEOUT_MS_DOC)
         .withClientSslSupport()
         .withClientSaslSupport();
   }

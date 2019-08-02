@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartitionReplica;
@@ -23,7 +25,7 @@ import org.apache.kafka.common.protocol.Errors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 import static org.apache.kafka.common.requests.DescribeLogDirsResponse.LogDirInfo;
 
@@ -42,7 +44,8 @@ public class ExecutorAdminUtils {
    * @return Replica logdir information by task.
    */
   static Map<ExecutionTask, ReplicaLogDirInfo> getLogdirInfoForExecutionTask(Collection<ExecutionTask> tasks,
-                                                                              AdminClient adminClient) {
+                                                                             AdminClient adminClient,
+                                                                             KafkaCruiseControlConfig config) {
     Set<TopicPartitionReplica> replicasToCheck = new HashSet<>(tasks.size());
     Map<ExecutionTask, ReplicaLogDirInfo> logdirInfoByTask = new HashMap<>(tasks.size());
     Map<TopicPartitionReplica, ExecutionTask> taskByReplica = new HashMap<>(tasks.size());
@@ -54,7 +57,7 @@ public class ExecutorAdminUtils {
     Map<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> logDirsByReplicas = adminClient.describeReplicaLogDirs(replicasToCheck).values();
     for (Map.Entry<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> entry : logDirsByReplicas.entrySet()) {
       try {
-        ReplicaLogDirInfo info = entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        ReplicaLogDirInfo info = entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);
         logdirInfoByTask.put(taskByReplica.get(entry.getKey()), info);
       } catch (InterruptedException | ExecutionException | TimeoutException e) {
         LOG.warn("Encounter exception {} when fetching logdir information for replica {}", e.getMessage(), entry.getKey());
@@ -72,7 +75,8 @@ public class ExecutorAdminUtils {
    */
   static void executeIntraBrokerReplicaMovements(List<ExecutionTask> tasksToExecute,
                                                  AdminClient adminClient,
-                                                 ExecutionTaskManager executionTaskManager) {
+                                                 ExecutionTaskManager executionTaskManager,
+                                                 KafkaCruiseControlConfig config) {
     Map<TopicPartitionReplica, String> replicaAssignment = new HashMap<>(tasksToExecute.size());
     Map<TopicPartitionReplica, ExecutionTask> replicaToTask = new HashMap<>(tasksToExecute.size());
     tasksToExecute.forEach(t -> {
@@ -82,7 +86,7 @@ public class ExecutorAdminUtils {
     });
     for (Map.Entry<TopicPartitionReplica, KafkaFuture<Void>> entry: adminClient.alterReplicaLogDirs(replicaAssignment).values().entrySet()) {
       try {
-        entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);
       } catch (InterruptedException | ExecutionException | TimeoutException |
                LogDirNotFoundException | KafkaStorageException | ReplicaNotAvailableException e) {
         LOG.warn("Encounter exception {} when trying to execute task {}, mark task dead.", e.getMessage(), replicaToTask.get(entry.getKey()));
@@ -98,11 +102,12 @@ public class ExecutorAdminUtils {
    * @param adminClient The adminClient to send describeLogDirs request.
    * @return True if there is ongoing intra-broker replica movement.
    */
-  static boolean isOngoingIntraBrokerReplicaMovement(Collection<Integer> brokersToCheck, AdminClient adminClient) {
+  static boolean isOngoingIntraBrokerReplicaMovement(Collection<Integer> brokersToCheck, AdminClient adminClient,
+                                                     KafkaCruiseControlConfig config) {
     Map<Integer, KafkaFuture<Map<String, LogDirInfo>>> logDirsByBrokerId = adminClient.describeLogDirs(brokersToCheck).values();
     for (Map.Entry<Integer, KafkaFuture<Map<String, LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
       try {
-        Map<String, LogDirInfo> logInfos = entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        Map<String, LogDirInfo> logInfos = entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);
         for (LogDirInfo info : logInfos.values()) {
           if (info.error == Errors.NONE) {
             if (info.replicaInfos.values().stream().anyMatch(i -> i.isFuture)) {
