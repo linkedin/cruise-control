@@ -1741,7 +1741,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    *
    * The number of samples at a given window cannot exceed a predefined maximum limit.
    *
-   * Metrics reporting frequency should be larger than metric sampling frequency to ensure there is always data to be collected.
+   * Metrics sampling frequency should be larger than the metric reporting frequency to ensure there is always data to be collected.
    */
   private void sanityCheckSamplingPeriod(Map<?, ?> originals) {
     long samplingIntervalMs = getLong(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
@@ -1773,7 +1773,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                                               KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG));
     }
 
-    // Ensure reporting frequency is larger than sampling frequency.
+    // Ensure sampling frequency is larger or equal to the reporting frequency.
     CruiseControlMetricsReporterConfig reporterConfig = new CruiseControlMetricsReporterConfig(originals, false);
     long reportingIntervalMs = reporterConfig.getLong(CruiseControlMetricsReporterConfig.CRUISE_CONTROL_METRICS_REPORTER_INTERVAL_MS_CONFIG);
     if (reportingIntervalMs > samplingIntervalMs) {
