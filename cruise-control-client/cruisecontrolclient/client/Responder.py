@@ -7,6 +7,12 @@ from cruisecontrolclient.client.Display import display_response
 # Use convenience function to redirect printing to stderr
 from cruisecontrolclient.util.print import print_error
 
+# To be able to use the Endpoint class to retrieve a response from cruise-control
+from cruisecontrolclient.client.Endpoint import AbstractEndpoint
+
+# To be able to more-easily retrieve the base url of cruise-control
+from cruisecontrolclient.client.Query import generate_base_url_from_cc_socket_address
+
 # To be able to make HTTP calls
 import requests
 
@@ -16,21 +22,115 @@ from typing import Callable, Dict  # noqa
 # To be able to define a multithreaded way of interacting with cruise-control
 from threading import Thread
 
+# To be able to deprecate classes
+import warnings
+
+
+class CruiseControlResponder(requests.Session):
+    """
+    This class is intented to lightly wrap requests' Session class,
+    in order to provide the cruise-control-client with some basic
+    sanity checking and session-management functionality.
+    """
+
+    def send(self, request, **kwargs):
+        # Alert the humans to long-running poll
+        print_error(f"Starting long-running {request.method} of {request.url}")
+        if request.body:
+            print_error(f"body:{request.body.decode()}")
+
+        # Convenience closure to not have to copy-paste the parameters from
+        # this current environment.
+        def inner_send_helper():
+            return super(CruiseControlResponder, self).send(request, **kwargs)
+
+        # Loop our requests until we get a "final" response
+        response = inner_send_helper()
+        while 'progress' in response.json().keys():
+            display_response(response)
+            response = inner_send_helper()
+
+        return response
+
+    def retrieve_response(self, method, url, **kwargs) -> requests.Response:
+        """
+        Returns a final requests.Response object from cruise-control
+        where Response.text is JSON-formatted.
+
+        :return: requests.Response
+        """
+        # cruise-control's JSON response has a 'progress' key in it so long
+        # as the response is not final.
+        #
+        # Once the response is final, it does not contain the 'progress' key.
+        #
+        # Accordingly, keep getting the response from this session and checking
+        # it for the 'progress' key.
+        #
+        # Return the response as JSON once we get a valid JSON response that we
+        # think is 'final'.
+
+        # Validate that we're asking cruise-control for a JSON-formatted body.
+        if 'params' in kwargs:
+            if 'json' in kwargs['params']:
+                json_val = kwargs['params']['json']
+                if (type(json_val) is bool and not json_val) or\
+                        (type(json_val) is str and json_val.lower() != 'true'):
+                    raise ValueError(f"Parameter 'json':{kwargs['params']['json']} is not supported")
+
+        # Convenience closure to not have to copy-paste the parameters from
+        # this current environment.
+        def inner_request_helper():
+            return self.request(method, url, **kwargs)
+
+        response = inner_request_helper()
+        while 'progress' in response.json().keys():
+            display_response(response)
+            response = inner_request_helper()
+
+        # return the requests.response object
+        return response
+
+    def retrieve_response_from_Endpoint(self,
+                                        cc_socket_address: str,
+                                        endpoint: AbstractEndpoint,
+                                        **kwargs):
+        """
+        Returns a final requests.Response object from cruise-control
+        where Response.text is JSON-formatted.
+
+        This method is a convenience wrapper around the more-general retrieve_response.
+
+        :return: requests.Response
+        :param cc_socket_address: like someCruiseControlAddress:9090
+        :param endpoint: an instance of an Endpoint
+        :return:
+        """
+        return self.retrieve_response(
+            method=endpoint.http_method,
+            url=generate_base_url_from_cc_socket_address(cc_socket_address, endpoint),
+            params=endpoint.get_composed_params(),
+            **kwargs
+        )
+
 
 class AbstractResponder(object):
     """
     This abstract class provides the skeleton for returning a final requests.Response
     object from cruise-control.
-
     This class should not be used directly, since the HTTP method is not defined
     in this class.
-
     See the children of AbstractJSONResponder and of AbstractTextResponder
     for the concrete classes that use GET and POST to retrieve a response
     from cruise-control.
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
+        warnings.warn("This class is deprecated as of 1.0.0. "
+                      "It may be removed entirely in future versions.",
+                      DeprecationWarning,
+                      stacklevel=2)
+
         self.url: str = url
         self.headers: Dict[str, str] = headers
 
@@ -49,15 +149,18 @@ class AbstractTextResponder(AbstractResponder):
     """
     This abstract class provides the skeleton for returning a final requests.Response
     object from cruise-control where request.text is text-formatted.
-
     This class should not be used directly, since the HTTP method is not defined
     in this class.
-
     TextResponderGet and TextResponderPost are the concrete classes for
     using GET and POST to retrieve a response from cruise-control.
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
+        warnings.warn("This class is deprecated as of 1.0.0. "
+                      "It may be removed entirely in future versions.",
+                      DeprecationWarning,
+                      stacklevel=2)
+
         if 'json=true' in url:
             raise ValueError("url must not contain the \"json=true\" parameter")
         AbstractResponder.__init__(self, url, headers)
@@ -66,7 +169,6 @@ class AbstractTextResponder(AbstractResponder):
         """
         Returns a final requests.Response object from cruise-control
         where Response.text is text-formatted.
-
         :return: requests.Response
         """
         # There's actually not a good way at present to do this with
@@ -81,17 +183,19 @@ class AbstractJSONResponder(AbstractResponder):
     """
     This abstract class provides the skeleton for returning a final requests.Response
     object from cruise-control where request.text is JSON-formatted.
-
     This class should not be used directly, since the HTTP method is not defined
     in this class.
-
     JSONResponderGet and JSONResponderPost are the concrete classes for
     using GET and POST to retrieve a response from cruise-control.
-
     This class does NOT display intermediate responses to humans.
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
+        warnings.warn("This class is deprecated as of 1.0.0. "
+                      "It may be removed entirely in future versions.",
+                      DeprecationWarning,
+                      stacklevel=2)
+
         if 'json=true' not in url:
             raise ValueError("url must contain the \"json=true\" parameter")
         AbstractResponder.__init__(self, url, headers)
@@ -101,7 +205,6 @@ class AbstractJSONResponder(AbstractResponder):
         """
         Returns a final requests.Response object from cruise-control
         where Response.text is JSON-formatted.
-
         :return: requests.Response
         """
         # cruise-control's JSON response has a 'progress' key in it so long
@@ -145,6 +248,11 @@ class JSONDisplayingResponderGet(AbstractJSONDisplayingResponder):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
+        warnings.warn("This class is deprecated as of 1.0.0. "
+                      "It may be removed entirely in future versions.",
+                      DeprecationWarning,
+                      stacklevel=2)
+
         AbstractJSONDisplayingResponder.__init__(self, url, headers)
         self.session_http_method = self.session.get
 
@@ -156,6 +264,11 @@ class JSONDisplayingResponderPost(AbstractJSONDisplayingResponder):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
+        warnings.warn("This class is deprecated as of 1.0.0. "
+                      "It may be removed entirely in future versions.",
+                      DeprecationWarning,
+                      stacklevel=2)
+
         AbstractJSONDisplayingResponder.__init__(self, url, headers)
         self.session_http_method = self.session.post
 
@@ -164,15 +277,18 @@ class AbstractJSONResponderThread(Thread):
     """
     This abstract class defines a Thread whose purpose is to communicate with
     cruise-control and return a requests.Response object.
-
     This class should not be used directly, since the HTTP method is not defined
     in this class.
-
     JSONResponderGetThread and JSONResponderPostThread are the concrete classes
     for using GET and POST to retrieve a response from cruise-control.
     """
 
     def __init__(self):
+        warnings.warn("This class is deprecated as of 1.0.0. "
+                      "It may be removed entirely in future versions.",
+                      DeprecationWarning,
+                      stacklevel=2)
+
         Thread.__init__(self)
         # This abstract class does not define which concrete JSONResponder class to use
         self.json_responder = None
@@ -195,6 +311,11 @@ class JSONResponderGetThread(AbstractJSONResponderThread):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
+        warnings.warn("This class is deprecated as of 1.0.0. "
+                      "It may be removed entirely in future versions.",
+                      DeprecationWarning,
+                      stacklevel=2)
+
         AbstractJSONResponderThread.__init__(self)
         self.json_responder = JSONDisplayingResponderGet(url, headers)
 
@@ -206,5 +327,10 @@ class JSONResponderPostThread(AbstractJSONResponderThread):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
+        warnings.warn("This class is deprecated as of 1.0.0. "
+                      "It may be removed entirely in future versions.",
+                      DeprecationWarning,
+                      stacklevel=2)
+
         AbstractJSONResponderThread.__init__(self)
         self.json_responder = JSONDisplayingResponderPost(url, headers)

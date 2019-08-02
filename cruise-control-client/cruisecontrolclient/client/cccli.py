@@ -15,12 +15,8 @@ from cruisecontrolclient.client.Display import display_response
 # To be able to instantiate Endpoint objects
 import cruisecontrolclient.client.Endpoint as Endpoint
 
-# To be able to make requests and get a response given a URL to cruise-control
-from cruisecontrolclient.client.Responder import AbstractResponder, JSONDisplayingResponderGet, \
-    JSONDisplayingResponderPost
-
-# To be able to compose a URL to hand to requests
-from cruisecontrolclient.client.Query import generate_url_from_cc_socket_address
+# To be able to make long-running requests to cruise-control
+from cruisecontrolclient.client.Responder import CruiseControlResponder
 
 
 def get_endpoint(args: argparse.Namespace,
@@ -144,19 +140,6 @@ def get_endpoint(args: argparse.Namespace,
     return endpoint
 
 
-def get_responder(endpoint: Endpoint.AbstractEndpoint,
-                  url: str) -> AbstractResponder:
-    # Handle instantiating the correct Responder
-    if endpoint.http_method == "GET":
-        json_responder = JSONDisplayingResponderGet(url)
-    elif endpoint.http_method == "POST":
-        json_responder = JSONDisplayingResponderPost(url)
-    else:
-        raise ValueError(f"Unexpected http_method {endpoint.http_method} in endpoint")
-
-    return json_responder
-
-
 def build_argument_parser(execution_context: ExecutionContext) -> argparse.ArgumentParser:
     """
     Builds and returns an argument parser for interacting with cruise-control via CLI.
@@ -245,15 +228,9 @@ def main():
     # Get the socket address for the cruise-control we're communicating with
     cc_socket_address = args.socket_address
 
-    # Generate the correct URL from the endpoint and the socket address
-    url = generate_url_from_cc_socket_address(cc_socket_address=cc_socket_address,
-                                              endpoint=endpoint)
-
-    # Get a responder from the given URL and endpoint
-    json_responder = get_responder(endpoint=endpoint, url=url)
-
     # Retrieve the response and display it
-    response = json_responder.retrieve_response()
+    json_responder = CruiseControlResponder()
+    response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint)
     display_response(response)
 
 
