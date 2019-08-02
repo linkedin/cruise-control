@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,20 +22,20 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
 
 
 public class PartitionLoadState extends AbstractCruiseControlResponse {
-  private static final String TOPIC = "topic";
-  private static final String PARTITION = "partition";
-  private static final String LEADER = "leader";
-  private static final String FOLLOWERS = "followers";
-  private static final String MSG_IN = "msg_in";
-  private static final String RECORDS = "records";
-  private final List<Partition> _sortedPartitions;
-  private final boolean _wantMaxLoad;
-  private final boolean _wantAvgLoad;
-  private final int _entries;
-  private final int _partitionUpperBoundary;
-  private final int _partitionLowerBoundary;
-  private final int _topicNameLength;
-  private Pattern _topic;
+  protected static final String TOPIC = "topic";
+  protected static final String PARTITION = "partition";
+  protected static final String LEADER = "leader";
+  protected static final String FOLLOWERS = "followers";
+  protected static final String MSG_IN = "msg_in";
+  protected static final String RECORDS = "records";
+  protected final List<Partition> _sortedPartitions;
+  protected final boolean _wantMaxLoad;
+  protected final boolean _wantAvgLoad;
+  protected final int _entries;
+  protected final int _partitionUpperBoundary;
+  protected final int _partitionLowerBoundary;
+  protected final int _topicNameLength;
+  protected Pattern _topic;
 
   public PartitionLoadState(List<Partition> sortedPartitions,
                             boolean wantMaxLoad,
@@ -57,7 +57,7 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
     _topicNameLength = topicNameLength;
   }
 
-  private String getPlaintext() {
+  protected String getPlaintext() {
     StringBuilder sb = new StringBuilder();
     sb.append(String.format("%" + _topicNameLength + "s%10s%30s%20s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
                             "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)", "MSG_IN (#/s)"));
@@ -94,7 +94,7 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
     _topic = null;
   }
 
-  private String getJSONString() {
+  protected String getJSONString() {
     Map<String, Object> partitionMap = new HashMap<>();
     List<Object> partitionList = new ArrayList<>();
     partitionMap.put(VERSION, JSON_VERSION);

@@ -6,12 +6,13 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
-import javax.servlet.http.HttpServletRequest;
+import java.util.Map;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#FIX_OFFLINE_REPLICAS}
+ * Parameters for {@link CruiseControlEndPoint#FIX_OFFLINE_REPLICAS}
  *<ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
  *</ul>
@@ -28,16 +29,16 @@ import javax.servlet.http.HttpServletRequest;
  * </pre>
  */
 public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameters {
-  private boolean _dryRun;
-  private Integer _concurrentInterBrokerPartitionMovements;
-  private Integer _concurrentLeaderMovements;
-  private boolean _skipHardGoalCheck;
-  private ReplicaMovementStrategy _replicaMovementStrategy;
-  private Long _replicationThrottle;
-  private Integer _reviewId;
+  protected boolean _dryRun;
+  protected Integer _concurrentInterBrokerPartitionMovements;
+  protected Integer _concurrentLeaderMovements;
+  protected boolean _skipHardGoalCheck;
+  protected ReplicaMovementStrategy _replicaMovementStrategy;
+  protected Long _replicationThrottle;
+  protected Integer _reviewId;
 
-  public FixOfflineReplicasParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public FixOfflineReplicasParameters() {
+    super();
   }
 
   @Override
@@ -84,5 +85,10 @@ public class FixOfflineReplicasParameters extends GoalBasedOptimizationParameter
 
   public Long replicationThrottle() {
     return _replicationThrottle;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

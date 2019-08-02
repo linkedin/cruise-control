@@ -5,16 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters;
+import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEMOTE_BROKER_PARAMETER_OBJECT_CONFIG;
 
 
 public class DemoteRequest extends AbstractAsyncRequest {
-  private final DemoteBrokerParameters _parameters;
+  private DemoteBrokerParameters _parameters;
 
-  public DemoteRequest(KafkaCruiseControlServlet servlet, DemoteBrokerParameters parameters) {
-    super(servlet);
-    _parameters = parameters;
+  public DemoteRequest() {
+    super();
   }
 
   @Override
@@ -30,5 +31,14 @@ public class DemoteRequest extends AbstractAsyncRequest {
   @Override
   public String name() {
     return DemoteRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _parameters = (DemoteBrokerParameters) configs.get(DEMOTE_BROKER_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

@@ -5,16 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
+import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REBALANCE_PARAMETER_OBJECT_CONFIG;
 
 
 public class RebalanceRequest extends AbstractAsyncRequest {
-  private final RebalanceParameters _parameters;
+  private RebalanceParameters _parameters;
 
-  public RebalanceRequest(KafkaCruiseControlServlet servlet, RebalanceParameters parameters) {
-    super(servlet);
-    _parameters = parameters;
+  public RebalanceRequest() {
+    super();
   }
 
   @Override
@@ -30,5 +31,14 @@ public class RebalanceRequest extends AbstractAsyncRequest {
   @Override
   public String name() {
     return RebalanceRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _parameters = (RebalanceParameters) configs.get(REBALANCE_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

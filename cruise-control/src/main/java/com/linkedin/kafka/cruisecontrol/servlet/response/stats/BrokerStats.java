@@ -8,7 +8,7 @@ import com.google.gson.Gson;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.DiskStats;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AbstractCruiseControlResponse;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,16 +25,16 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VE
  * Get broker level stats in human readable format.
  */
 public class BrokerStats extends AbstractCruiseControlResponse {
-  private static final String HOST = "Host";
-  private static final String HOSTS = "hosts";
-  private static final String BROKERS = "brokers";
-  private final List<SingleBrokerStats> _brokerStats;
-  private final SortedMap<String, BasicStats> _hostStats;
-  private int _hostFieldLength;
-  private int _logdirFieldLength;
-  private String _cachedPlainTextResponse;
-  private String _cachedJSONResponse;
-  private boolean _isBrokerStatsEstimated;
+  protected static final String HOST = "Host";
+  protected static final String HOSTS = "hosts";
+  protected static final String BROKERS = "brokers";
+  protected final List<SingleBrokerStats> _brokerStats;
+  protected final SortedMap<String, BasicStats> _hostStats;
+  protected int _hostFieldLength;
+  protected int _logdirFieldLength;
+  protected String _cachedPlainTextResponse;
+  protected String _cachedJSONResponse;
+  protected boolean _isBrokerStatsEstimated;
 
   public BrokerStats(KafkaCruiseControlConfig config) {
     super(config);
@@ -71,7 +71,7 @@ public class BrokerStats extends AbstractCruiseControlResponse {
     return _isBrokerStatsEstimated;
   }
 
-  private String getJSONString() {
+  protected String getJSONString() {
     Gson gson = new Gson();
     Map<String, Object> jsonStructure = getJsonStructure();
     jsonStructure.put(VERSION, JSON_VERSION);

@@ -5,16 +5,17 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters;
+import java.util.Map;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.LOAD_PARAMETER_OBJECT_CONFIG;
 
 
 public class ClusterLoadRequest extends AbstractAsyncRequest {
-  private final ClusterLoadParameters _parameters;
+  private ClusterLoadParameters _parameters;
 
-  public ClusterLoadRequest(KafkaCruiseControlServlet servlet, ClusterLoadParameters parameters) {
-    super(servlet);
-    _parameters = parameters;
+  public ClusterLoadRequest() {
+    super();
   }
 
   @Override
@@ -30,5 +31,14 @@ public class ClusterLoadRequest extends AbstractAsyncRequest {
   @Override
   public String name() {
     return ClusterLoadRequest.class.getSimpleName();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
+    _parameters = (ClusterLoadParameters) configs.get(LOAD_PARAMETER_OBJECT_CONFIG);
+    if (_parameters == null) {
+      throw new IllegalArgumentException("Parameter configuration is missing from the request.");
+    }
   }
 }

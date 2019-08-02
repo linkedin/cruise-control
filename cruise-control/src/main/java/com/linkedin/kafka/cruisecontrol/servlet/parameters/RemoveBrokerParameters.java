@@ -4,14 +4,14 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 import java.util.Set;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#REMOVE_BROKER}
+ * Parameters for {@link CruiseControlEndPoint#REMOVE_BROKER}
  *<ul>
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
  *</ul>
@@ -27,11 +27,11 @@ import javax.servlet.http.HttpServletRequest;
  * </pre>
  */
 public class RemoveBrokerParameters extends AddedOrRemovedBrokerParameters {
-  private boolean _throttleRemovedBrokers;
-  private Set<Integer> _destinationBrokerIds;
+  protected boolean _throttleRemovedBrokers;
+  protected Set<Integer> _destinationBrokerIds;
 
-  public RemoveBrokerParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public RemoveBrokerParameters() {
+    super();
   }
 
   @Override
@@ -47,6 +47,11 @@ public class RemoveBrokerParameters extends AddedOrRemovedBrokerParameters {
 
   public Set<Integer> destinationBrokerIds() {
     return _destinationBrokerIds;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }
 

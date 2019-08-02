@@ -5,16 +5,16 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.common.Resource;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
+import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import javax.servlet.http.HttpServletRequest;
 
 
 /**
- * Parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.EndPoint#PARTITION_LOAD}
+ * Parameters for {@link CruiseControlEndPoint#PARTITION_LOAD}
  *
  * <pre>
  * Get the partition load sorted by the utilization of a given resource and filtered by given topic regular expression
@@ -26,22 +26,22 @@ import javax.servlet.http.HttpServletRequest;
  * </pre>
  */
 public class PartitionLoadParameters extends AbstractParameters {
-  private Resource _resource;
-  private long _startMs;
-  private long _endMs;
-  private int _entries;
-  private Pattern _topic;
-  private int _partitionUpperBoundary;
-  private int _partitionLowerBoundary;
-  private Double _minValidPartitionRatio;
-  private boolean _allowCapacityEstimation;
-  private boolean _wantMaxLoad;
-  private boolean _wantAvgLoad;
-  private Set<Integer> _brokerIds;
+  protected Resource _resource;
+  protected long _startMs;
+  protected long _endMs;
+  protected int _entries;
+  protected Pattern _topic;
+  protected int _partitionUpperBoundary;
+  protected int _partitionLowerBoundary;
+  protected Double _minValidPartitionRatio;
+  protected boolean _allowCapacityEstimation;
+  protected boolean _wantMaxLoad;
+  protected boolean _wantAvgLoad;
+  protected Set<Integer> _brokerIds;
 
 
-  public PartitionLoadParameters(HttpServletRequest request, KafkaCruiseControlConfig config) {
-    super(request, config);
+  public PartitionLoadParameters() {
+    super();
   }
 
   @Override
@@ -117,5 +117,10 @@ public class PartitionLoadParameters extends AbstractParameters {
 
   public Set<Integer> brokerIds() {
     return _brokerIds;
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    super.configure(configs);
   }
 }

@@ -8,7 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,17 +18,17 @@ import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JS
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
 public class ProgressResult extends AbstractCruiseControlResponse {
-  private static final String PROGRESS = "progress";
-  private static final String OPERATION = "operation";
-  private static final String OPERATION_PROGRESS = "operationProgress";
-  private List<OperationFuture> _futures;
+  protected static final String PROGRESS = "progress";
+  protected static final String OPERATION = "operation";
+  protected static final String OPERATION_PROGRESS = "operationProgress";
+  protected List<OperationFuture> _futures;
 
   public ProgressResult(List<OperationFuture> futures, KafkaCruiseControlConfig config) {
     super(config);
     _futures = futures;
   }
 
-  private String getJSONString() {
+  protected String getJSONString() {
     Map<String, Object> jsonResponse = new HashMap<>(2);
     jsonResponse.put(VERSION, JSON_VERSION);
     List<Object> progress = new ArrayList<>(_futures.size());
@@ -44,7 +44,7 @@ public class ProgressResult extends AbstractCruiseControlResponse {
     return gson.toJson(jsonResponse);
   }
 
-  private String getPlaintext() {
+  protected String getPlaintext() {
     StringBuilder sb = new StringBuilder();
     for (OperationFuture operationFuture: _futures) {
       sb.append(String.format("%s:%n%s", operationFuture.operation(), operationFuture.progressString()));

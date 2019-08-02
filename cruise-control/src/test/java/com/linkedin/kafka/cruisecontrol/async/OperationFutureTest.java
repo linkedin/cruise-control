@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.async;
 
-import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
+import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ResumeSamplingResult;
 import java.util.concurrent.CancellationException;

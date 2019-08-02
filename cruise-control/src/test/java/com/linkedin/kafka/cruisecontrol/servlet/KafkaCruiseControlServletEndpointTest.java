@@ -5,10 +5,10 @@
 package com.linkedin.kafka.cruisecontrol.servlet;
 
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
-import com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlParameters;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
-import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlResponse;
+import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.servlet.response.UserTaskState;
 import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
@@ -29,6 +29,11 @@ import org.easymock.EasyMock;
 import org.junit.Assert;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.LOAD;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.PROPOSALS;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REBALANCE;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REMOVE_BROKER;
+import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.USER_TASKS;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.GET_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 
@@ -109,12 +114,12 @@ public class KafkaCruiseControlServletEndpointTest {
   private void initializeServletRequests(HttpSession mockHttpSession, UserTaskManager.UUIDGenerator mockUUIDGenerator) {
     Collection<Object[]> allParams = new ArrayList<>();
 
-    allParams.add(inputRequestParams(null, "0.0.0.1", EndPoint.LOAD.toString(), EMPTY_PARAM, false, GET_METHOD));
-    allParams.add(inputRequestParams(null, "0.0.0.1", EndPoint.PROPOSALS.toString(), EMPTY_PARAM, false, GET_METHOD));
-    allParams.add(inputRequestParams(null, "0.0.0.2", EndPoint.REBALANCE.toString(), EMPTY_PARAM, false, POST_METHOD));
-    allParams.add(inputRequestParams(null, "0.0.0.3", EndPoint.REBALANCE.toString(), DIFF_PARAM, false, POST_METHOD));
-    allParams.add(inputRequestParams(repeatUUID, "0.0.0.1", EndPoint.REMOVE_BROKER.toString(), EMPTY_PARAM, false, POST_METHOD));
-    allParams.add(inputRequestParams(repeatUUID, "0.0.0.4", EndPoint.REMOVE_BROKER.toString(), EMPTY_PARAM, true, POST_METHOD));
+    allParams.add(inputRequestParams(null, "0.0.0.1", LOAD.toString(), EMPTY_PARAM, false, GET_METHOD));
+    allParams.add(inputRequestParams(null, "0.0.0.1", PROPOSALS.toString(), EMPTY_PARAM, false, GET_METHOD));
+    allParams.add(inputRequestParams(null, "0.0.0.2", REBALANCE.toString(), EMPTY_PARAM, false, POST_METHOD));
+    allParams.add(inputRequestParams(null, "0.0.0.3", REBALANCE.toString(), DIFF_PARAM, false, POST_METHOD));
+    allParams.add(inputRequestParams(repeatUUID, "0.0.0.1", REMOVE_BROKER.toString(), EMPTY_PARAM, false, POST_METHOD));
+    allParams.add(inputRequestParams(repeatUUID, "0.0.0.4", REMOVE_BROKER.toString(), EMPTY_PARAM, true, POST_METHOD));
 
     for (Object[] params : allParams) {
       HttpServletRequest mockHttpServletRequest = prepareTestRequest(mockHttpSession, params[0], params[1], params[2],
@@ -153,8 +158,8 @@ public class KafkaCruiseControlServletEndpointTest {
     // Test Case 1: Get all PROPOSAL or REBALANCE tasks
     Map<String,  String []> answerQueryParam1 = new HashMap<>();
     answerQueryParam1.put("param", new String[]{"true"});
-    answerQueryParam1.put("endpoints", new String[]{EndPoint.PROPOSALS.toString() + "," + EndPoint.REBALANCE.toString()});
-    HttpServletRequest answerQueryRequest1 = prepareRequest(_mockHttpSession, null, "", EndPoint.USER_TASKS.toString(), answerQueryParam1, GET_METHOD);
+    answerQueryParam1.put("endpoints", new String[]{PROPOSALS.toString() + "," + REBALANCE.toString()});
+    HttpServletRequest answerQueryRequest1 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam1, GET_METHOD);
     UserTasksParameters parameters1 = mockUserTasksParameters(answerQueryRequest1);
     List<UserTaskManager.UserTaskInfo> result1 = userTaskState.prepareResultList(parameters1);
     // Test Case 1 result
@@ -166,7 +171,7 @@ public class KafkaCruiseControlServletEndpointTest {
     Map<String,  String []> answerQueryParam2 = new HashMap<>();
     answerQueryParam2.put("param", new String[]{"true"});
     answerQueryParam2.put("client_ids", new String[]{"0.0.0.1"});
-    HttpServletRequest answerQueryRequest2 = prepareRequest(_mockHttpSession, null, "", EndPoint.USER_TASKS.toString(), answerQueryParam2, GET_METHOD);
+    HttpServletRequest answerQueryRequest2 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam2, GET_METHOD);
     UserTasksParameters parameters2 = mockUserTasksParameters(answerQueryRequest2);
     List<UserTaskManager.UserTaskInfo> result2 = userTaskState.prepareResultList(parameters2);
     // Test Case 2 result
@@ -178,8 +183,8 @@ public class KafkaCruiseControlServletEndpointTest {
     Map<String,  String []> answerQueryParam3 = new HashMap<>();
     answerQueryParam3.put("param", new String[]{"true"});
     answerQueryParam3.put("client_ids", new String[]{"0.0.0.1"});
-    answerQueryParam3.put("endpoints", new String[]{EndPoint.PROPOSALS.toString() + "," + EndPoint.REMOVE_BROKER.toString()});
-    HttpServletRequest answerQueryRequest3 = prepareRequest(_mockHttpSession, null, "", EndPoint.USER_TASKS.toString(), answerQueryParam3, GET_METHOD);
+    answerQueryParam3.put("endpoints", new String[]{PROPOSALS.toString() + "," + REMOVE_BROKER.toString()});
+    HttpServletRequest answerQueryRequest3 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam3, GET_METHOD);
     UserTasksParameters parameters3 = mockUserTasksParameters(answerQueryRequest3);
     List<UserTaskManager.UserTaskInfo> result3 = userTaskState.prepareResultList(parameters3);
     // Test Case 3 result
@@ -191,7 +196,7 @@ public class KafkaCruiseControlServletEndpointTest {
     Map<String,  String []> answerQueryParam4 = new HashMap<>();
     answerQueryParam4.put("param", new String[]{"true"});
     answerQueryParam4.put("entries", new String[]{"4"});
-    HttpServletRequest answerQueryRequest4 = prepareRequest(_mockHttpSession, null, "", EndPoint.USER_TASKS.toString(), answerQueryParam4, GET_METHOD);
+    HttpServletRequest answerQueryRequest4 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam4, GET_METHOD);
     UserTasksParameters parameters4 = mockUserTasksParameters(answerQueryRequest4);
     List<UserTaskManager.UserTaskInfo> result4 = userTaskState.prepareResultList(parameters4);
     // Test Case 4 result
@@ -211,10 +216,10 @@ public class KafkaCruiseControlServletEndpointTest {
     // Test Case 5: Get all LOAD or REMOVE_BROKER tasks that's completed and with user task id repeatUUID
     Map<String,  String []> answerQueryParam5 = new HashMap<>();
     answerQueryParam5.put("param", new String[]{"true"});
-    answerQueryParam5.put("endpoints", new String[]{EndPoint.LOAD.toString() + "," + EndPoint.REMOVE_BROKER.toString()});
+    answerQueryParam5.put("endpoints", new String[]{LOAD.toString() + "," + REMOVE_BROKER.toString()});
     answerQueryParam5.put("user_task_ids", new String[]{repeatUUID.toString()});
     answerQueryParam5.put("types", new String[]{UserTaskManager.TaskState.COMPLETED.toString()});
-    HttpServletRequest answerQueryRequest5 = prepareRequest(_mockHttpSession, null, "", EndPoint.USER_TASKS.toString(), answerQueryParam5, GET_METHOD);
+    HttpServletRequest answerQueryRequest5 = prepareRequest(_mockHttpSession, null, "", USER_TASKS.toString(), answerQueryParam5, GET_METHOD);
     UserTasksParameters parameters5 = mockUserTasksParameters(answerQueryRequest5);
     List<UserTaskManager.UserTaskInfo> result5 = userTaskState2.prepareResultList(parameters5);
     // Test Case 5 result

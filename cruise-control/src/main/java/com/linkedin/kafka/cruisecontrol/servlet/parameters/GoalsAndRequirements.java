@@ -12,8 +12,8 @@ import java.util.List;
  * A helper class for goals and requirements.
  */
 public class GoalsAndRequirements {
-  private final List<String> _goals;
-  private final ModelCompletenessRequirements _requirements;
+  protected final List<String> _goals;
+  protected final ModelCompletenessRequirements _requirements;
 
   public GoalsAndRequirements(List<String> goals, ModelCompletenessRequirements requirements) {
     _goals = goals; // An empty list indicates the default goals.

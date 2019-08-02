@@ -38,6 +38,7 @@ import java.util.Set;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters.ModelCoefficient.LEADER_BYTES_OUT;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.TO_PERCENTAGE_UTILIZATION;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.DISK_USAGE;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.LEADER_BYTES_IN;
@@ -81,11 +82,12 @@ public class KafkaPartitionMetricSampleAggregatorTest {
         Collection<Short> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
         double expectedValue = (resource == Resource.DISK ?
             (NUM_WINDOWS - 1 - i) * 10 + MIN_SAMPLES_PER_WINDOW - 1 :
-            (NUM_WINDOWS - 1 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0) * metricIds.size();
+            (NUM_WINDOWS - 1 - i) * 10 + (MIN_SAMPLES_PER_WINDOW - 1) / 2.0)
+            / (resource == Resource.CPU ? TO_PERCENTAGE_UTILIZATION : 1.0) * metricIds.size();
         assertEquals("The utilization for " + resource + " should be " + expectedValue,
                      expectedValue, partitionValuesAndExtrapolations.metricValues().valuesForGroup(resource.name(),
                                                                             KafkaMetricDef.commonMetricDef(),
-                                                                            true).get(i), 0);
+                                                                            true).get(i), 0.01);
       }
     }
 
@@ -321,12 +323,12 @@ public class KafkaPartitionMetricSampleAggregatorTest {
     ValuesAndExtrapolations partitionValuesAndExtrapolations = valuesAndExtrapolations.get(PE);
     for (Resource resource : Resource.cachedValues()) {
       Collection<Short> metricIds = KafkaMetricDef.resourceToMetricIds(resource);
-      double expectedValue = (resource == Resource.DISK ?
-          MIN_SAMPLES_PER_WINDOW - 1 : (MIN_SAMPLES_PER_WINDOW - 1) / 2.0) * metricIds.size();
+      double expectedValue = (resource == Resource.DISK ? MIN_SAMPLES_PER_WINDOW - 1 : (MIN_SAMPLES_PER_WINDOW - 1) / 2.0)
+                             / (resource == Resource.CPU ? TO_PERCENTAGE_UTILIZATION : 1.0) * metricIds.size();
       assertEquals("The utilization for " + resource + " should be " + expectedValue,
                    expectedValue, partitionValuesAndExtrapolations.metricValues().valuesForGroup(resource.name(),
                                                                           KafkaMetricDef.commonMetricDef(),
-                                                                          true).get(NUM_WINDOWS - 1), 0);
+                                                                          true).get(NUM_WINDOWS - 1), 0.01);
     }
   }
 
