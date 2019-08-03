@@ -46,8 +46,8 @@ public class ExecutionTaskManagerTest {
   public void testStateChangeSequences() {
     TopicPartition tp = new TopicPartition("topic", 0);
     ExecutionTaskManager taskManager = new ExecutionTaskManager(1, 1, 1,
-                                                                null, null, new MetricRegistry(), new SystemTime(),
-                                                                new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
+            null, null, new MetricRegistry(), new SystemTime(),
+            new KafkaCruiseControlConfig(KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties()));
 
     List<List<ExecutionTask.State>> testSequences = new ArrayList<>();
     // Completed successfully.
