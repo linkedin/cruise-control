@@ -41,6 +41,7 @@ public class ExecutorAdminUtils {
    *
    * @param tasks The tasks to check.
    * @param adminClient The adminClient to send describeReplicaLogDirs request.
+   * @param config The config object that holds all the Cruise Control related configs
    * @return Replica logdir information by task.
    */
   static Map<ExecutionTask, ReplicaLogDirInfo> getLogdirInfoForExecutionTask(Collection<ExecutionTask> tasks,
@@ -72,6 +73,7 @@ public class ExecutorAdminUtils {
    * @param tasksToExecute The tasks to execute.
    * @param adminClient The adminClient to send alterReplicaLogDirs request.
    * @param executionTaskManager The task manager to do bookkeeping for task execution state.
+   * @param config The config object that holds all the Cruise Control related configs
    */
   static void executeIntraBrokerReplicaMovements(List<ExecutionTask> tasksToExecute,
                                                  AdminClient adminClient,
@@ -100,6 +102,7 @@ public class ExecutorAdminUtils {
    * Check whether there is ongoing intra-broker replica movement.
    * @param brokersToCheck List of broker to check.
    * @param adminClient The adminClient to send describeLogDirs request.
+   * @param config The config object that holds all the Cruise Control related configs
    * @return True if there is ongoing intra-broker replica movement.
    */
   static boolean isOngoingIntraBrokerReplicaMovement(Collection<Integer> brokersToCheck, AdminClient adminClient,
