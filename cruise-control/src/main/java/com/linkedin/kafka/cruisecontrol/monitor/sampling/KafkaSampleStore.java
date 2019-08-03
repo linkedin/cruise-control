@@ -7,6 +7,8 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;

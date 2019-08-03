@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
@@ -34,6 +35,9 @@ import org.apache.kafka.common.serialization.StringDeserializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager.BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.sanityCheckOffsetFetch;
+
 
 public class CruiseControlMetricsReporterSampler implements MetricSampler {
   private static final Logger LOG = LoggerFactory.getLogger(CruiseControlMetricsReporterSampler.class);
@@ -48,8 +52,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
   private static final String DEFAULT_METRIC_REPORTER_SAMPLER_GROUP_ID = "CruiseControlMetricsReporterSampler";
   private static final long DEFAULT_RECONNECT_BACKOFF_MS = 50L;
   private static final long ACCEPTABLE_NETWORK_DELAY_MS = 100L;
-  // static metric processor for metrics aggregation.
-  private static final CruiseControlMetricsProcessor METRICS_PROCESSOR = new CruiseControlMetricsProcessor();
+  private CruiseControlMetricsProcessor _metricsProcessor;
   // static random token to avoid group conflict.
   private static final Random RANDOM = new Random();
 
@@ -116,7 +119,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
                     + "partition {} at offset {}.", record.value(), endTimeMs, tp, record.offset());
           partitionsToPause.add(tp);
         } else {
-          METRICS_PROCESSOR.addMetric(record.value());
+          _metricsProcessor.addMetric(cluster, record.value());
           totalMetricsAdded++;
         }
       }
@@ -130,7 +133,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
 
     try {
       if (totalMetricsAdded > 0) {
-        return METRICS_PROCESSOR.process(cluster, assignedPartitions, mode);
+        return _metricsProcessor.process(cluster, assignedPartitions, mode);
       } else {
         return new Samples(Collections.emptySet(), Collections.emptySet());
       }
@@ -138,7 +141,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
       LOG.error("Unrecognized serde version detected during metric sampling.", e);
       return new Samples(Collections.emptySet(), Collections.emptySet());
     } finally {
-      METRICS_PROCESSOR.clear();
+      _metricsProcessor.clear();
     }
   }
 
@@ -157,23 +160,6 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
       }
     }
     return true;
-  }
-
-  private void sanityCheckOffsetFetch(Map<TopicPartition, Long> endOffsets,
-                                      Map<TopicPartition, OffsetAndTimestamp> offsetsForTimes)
-      throws MetricSamplingException {
-    Set<TopicPartition> failedToFetchOffsets = new HashSet<>();
-    for (Map.Entry<TopicPartition, OffsetAndTimestamp> entry : offsetsForTimes.entrySet()) {
-      if (entry.getValue() == null && endOffsets.get(entry.getKey()) == null) {
-        failedToFetchOffsets.add(entry.getKey());
-      }
-    }
-
-    if (!failedToFetchOffsets.isEmpty()) {
-      throw new MetricSamplingException(String.format("Metric consumer failed to fetch offsets for %s. Consider "
-                                                      + "decreasing reconnect.backoff.ms to mitigate consumption failures"
-                                                      + " due to transient network issues.", failedToFetchOffsets));
-    }
   }
 
   /**
@@ -215,6 +201,13 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
       throw new ConfigException("CruiseControlMetricsReporterSampler is not thread safe. Please change " +
                                     KafkaCruiseControlConfig.NUM_METRIC_FETCHERS_CONFIG + " to 1");
     }
+
+    BrokerCapacityConfigResolver capacityResolver = (BrokerCapacityConfigResolver) configs.get(BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG);
+    if (capacityResolver == null) {
+      throw new IllegalArgumentException("Metrics reporter sampler configuration is missing broker capacity config resolver object.");
+    }
+    boolean allowCpuCapacityEstimation = (Boolean) configs.get(KafkaCruiseControlConfig.SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG);
+    _metricsProcessor = new CruiseControlMetricsProcessor(capacityResolver, allowCpuCapacityEstimation);
 
     String bootstrapServers = (String) configs.get(METRIC_REPORTER_SAMPLER_BOOTSTRAP_SERVERS);
     if (bootstrapServers == null) {

@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.monitor.task;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.common.KafkaCruiseControlThreadFactory;
 import com.linkedin.kafka.cruisecontrol.common.MetadataClient;
@@ -63,6 +64,7 @@ public class LoadMonitorTaskRunner {
    * @param metricDef The metric definitions.
    * @param time The time object.
    * @param dropwizardMetricRegistry The metric registry that holds all the metrics for monitoring Cruise Control.
+   * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
    */
   public LoadMonitorTaskRunner(KafkaCruiseControlConfig config,
                                KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
@@ -70,10 +72,11 @@ public class LoadMonitorTaskRunner {
                                MetadataClient metadataClient,
                                MetricDef metricDef,
                                Time time,
-                               MetricRegistry dropwizardMetricRegistry) {
+                               MetricRegistry dropwizardMetricRegistry,
+                               BrokerCapacityConfigResolver brokerCapacityConfigResolver) {
     this(config,
         new MetricFetcherManager(config, partitionMetricSampleAggregator, brokerMetricSampleAggregator, metadataClient,
-                                 metricDef, time, dropwizardMetricRegistry),
+                                 metricDef, time, dropwizardMetricRegistry, brokerCapacityConfigResolver),
         partitionMetricSampleAggregator,
         brokerMetricSampleAggregator,
         metadataClient,

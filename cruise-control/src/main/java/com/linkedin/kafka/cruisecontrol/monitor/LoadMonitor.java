@@ -25,12 +25,12 @@ import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.async.progress.WaitingForClusterModel;
 import com.linkedin.kafka.cruisecontrol.config.TopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.MetricSampleAggregationResult;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
@@ -165,7 +165,7 @@ public class LoadMonitor {
 
     _loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, _partitionMetricSampleAggregator, _brokerMetricSampleAggregator,
-                                  _metadataClient, metricDef, time, dropwizardMetricRegistry);
+                                  _metadataClient, metricDef, time, dropwizardMetricRegistry, _brokerCapacityConfigResolver);
     _clusterModelCreationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("LoadMonitor",
                                                                                     "cluster-model-creation-timer"));
     _loadMonitorExecutor = Executors.newScheduledThreadPool(2,
@@ -501,8 +501,7 @@ public class LoadMonitor {
         // If the rack is not specified, we use the host info as rack info.
         String rack = getRackHandleNull(node);
         clusterModel.createRack(rack);
-        BrokerCapacityInfo brokerCapacity =
-            _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
+        BrokerCapacityInfo brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
         LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.",
                   node.id(), brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
         clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity, populateReplicaPlacementInfo);
