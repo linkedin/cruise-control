@@ -511,7 +511,7 @@ public class LoadMonitor {
       // Populate replica placement information for the cluster model if requested.
       Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo = null;
       if (populateReplicaPlacementInfo) {
-        replicaPlacementInfo = getReplicaPlacementInfo(clusterModel, cluster, _adminClient);
+        replicaPlacementInfo = getReplicaPlacementInfo(clusterModel, cluster, _adminClient, _config);
       }
 
       // Populate snapshots for the cluster model.

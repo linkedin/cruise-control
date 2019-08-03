@@ -167,7 +167,8 @@ public class Executor {
                                  config.getList(KafkaCruiseControlConfig.DEFAULT_REPLICA_MOVEMENT_STRATEGIES_CONFIG),
                                  _adminClient,
                                  dropwizardMetricRegistry,
-                                 time);
+                                 time,
+                                 config);
     _metadataClient = metadataClient != null ? metadataClient
                                              : new MetadataClient(config,
                                                                   new Metadata(METADATA_REFRESH_BACKOFF, METADATA_EXPIRY_MS, false),

@@ -47,7 +47,6 @@ public class KafkaCruiseControlUtils {
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
   public static final long ADMIN_CLIENT_CLOSE_TIMEOUT_MS = 10000;
-  public static final long LOGDIR_RESPONSE_TIMEOUT_MS = 10000;
   public static final String DATE_FORMAT = "YYYY-MM-dd_HH:mm:ss z";
   public static final String DATE_FORMAT2 = "dd/MM/yyyy HH:mm:ss";
   public static final String TIME_ZONE = "UTC";

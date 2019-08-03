@@ -38,7 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.describeLogDirs;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
 
@@ -338,7 +338,7 @@ public class KafkaClusterState extends AbstractCruiseControlResponse {
       offlineLogDirsByBrokerId.put(entry.getKey(), new HashSet<>());
 
       try {
-        entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((key, value) -> {
+        entry.getValue().get(_config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS).forEach((key, value) -> {
           if (value.error == Errors.NONE) {
             onlineLogDirsByBrokerId.get(entry.getKey()).add(key);
           } else {

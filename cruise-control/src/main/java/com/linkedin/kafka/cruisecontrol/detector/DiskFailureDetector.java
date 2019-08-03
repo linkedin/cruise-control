@@ -25,7 +25,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
 
@@ -44,6 +44,7 @@ public class DiskFailureDetector implements Runnable {
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
   private final List<String> _selfHealingGoals;
+  private final KafkaCruiseControlConfig _config;
 
   public DiskFailureDetector(KafkaCruiseControlConfig config,
                              LoadMonitor loadMonitor,
@@ -62,6 +63,7 @@ public class DiskFailureDetector implements Runnable {
     _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
     _selfHealingGoals = selfHealingGoals;
+    _config = config;
   }
 
   /**
@@ -104,7 +106,7 @@ public class DiskFailureDetector implements Runnable {
       Set<Integer> aliveBrokers = _loadMonitor.kafkaCluster().nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toSet());
       _adminClient.describeLogDirs(aliveBrokers).values().forEach((broker, future) -> {
         try {
-          future.get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
+          future.get(_config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
             if (info.error != Errors.NONE) {
               failedDisksByBroker.putIfAbsent(broker, new HashMap<>());
               failedDisksByBroker.get(broker).put(logdir, _time.milliseconds());
