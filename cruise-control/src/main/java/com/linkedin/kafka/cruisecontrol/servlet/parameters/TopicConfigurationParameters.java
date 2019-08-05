@@ -9,9 +9,7 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrateg
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
-import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 
@@ -22,12 +20,16 @@ import java.util.regex.Pattern;
  *   <li>Note that "review_id" is mutually exclusive to the other parameters -- i.e. they cannot be used together.</li>
  *   <li>If topics to change replication factor and target replication factor is not specified in URL, they can also be
  *   specified in request body. The body format is expected to be valid JSON format. e.g.
+ *    <pre><code>
  *   {
- *     target_replicaiton_factor_1 : topic_regex_1,
- *     target_replication_factor_2 : topic_regex_2,
- *     ...
- *   }.
- *   If it is specified both in URL and body, what specified in URL will be picked up by Cruise Control.</li>
+ *     topic_by_replication_factor : {
+ *         target_replication_factor_1 : topic_regex_1,
+ *         target_replication_factor_2 : topic_regex_2,
+ *         ...
+ *     }
+ *   }
+ *   </code></pre>
+ *   If user specifies new replication factor in both URL and body, an exception will be thrown.</li>
  * </ul>
  *
  * <pre>
@@ -41,7 +43,7 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class TopicConfigurationParameters extends GoalBasedOptimizationParameters {
-  protected Map<Short, Set<Pattern>> _topicPatternsByReplicationFactor;
+  protected Map<Short, Pattern> _topicPatternByReplicationFactor;
   protected boolean _skipRackAwarenessCheck;
   protected Integer _reviewId;
   protected boolean _dryRun;
@@ -58,19 +60,9 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    Pattern topic = ParameterUtils.topic(_request);
-    Short replicationFactor = ParameterUtils.replicationFactor(_request);
-    if (topic != null && replicationFactor != null) {
-      _topicPatternsByReplicationFactor = Collections.singletonMap(replicationFactor, Collections.singleton(topic));
-    } else if (topic == null && replicationFactor == null) {
-      _topicPatternsByReplicationFactor = ParameterUtils.topicPatternsByReplicationFactor(_request);
-    } else if (topic == null) {
-      throw new UserRequestException("Topic to update configuration is not specified in URL while target replication factor is specified.");
-    } else {
-      throw new UserRequestException("Topic's replication factor is not specified in URL while subject topic is specified.");
-    }
-    if (_topicPatternsByReplicationFactor.keySet().stream().anyMatch(rf -> rf < 1)) {
-      throw new IllegalArgumentException("Target replication factor cannot be set to smaller than 1.");
+    _topicPatternByReplicationFactor = ParameterUtils.topicPatternByReplicationFactor(_request);
+    if (_topicPatternByReplicationFactor.keySet().stream().anyMatch(rf -> rf < 1)) {
+      throw new UserRequestException("Target replication factor cannot be set to smaller than 1.");
     }
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
@@ -83,8 +75,8 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
   }
 
-  public Map<Short, Set<Pattern>> topicPatternsByReplicationFactor() {
-    return _topicPatternsByReplicationFactor;
+  public Map<Short, Pattern> topicPatternByReplicationFactor() {
+    return _topicPatternByReplicationFactor;
   }
 
   public boolean skipRackAwarenessCheck() {

@@ -13,7 +13,6 @@ import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.List;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -22,7 +21,7 @@ import java.util.regex.Pattern;
  * boolean, boolean, boolean, String)}.
  */
 public class UpdateTopicConfigurationRunnable extends OperationRunnable {
-  private final Map<Short, Set<Pattern>> _topicPatternsByReplicationFactor;
+  private final Map<Short, Pattern> _topicPatternByReplicationFactor;
   private final boolean _skipRackAwarenessCheck;
   private final String _uuid;
   private final KafkaCruiseControlConfig _config;
@@ -45,7 +44,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                    KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
     _uuid = uuid;
-    _topicPatternsByReplicationFactor = parameters.topicPatternsByReplicationFactor();
+    _topicPatternByReplicationFactor = parameters.topicPatternByReplicationFactor();
     _goals = parameters.goals();
     _skipRackAwarenessCheck = parameters.skipRackAwarenessCheck();
     _dryRun = parameters.dryRun();
@@ -63,7 +62,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
 
   @Override
   protected OptimizationResult getResult() throws Exception {
-    return new OptimizationResult(_kafkaCruiseControl.updateTopicConfiguration(_topicPatternsByReplicationFactor,
+    return new OptimizationResult(_kafkaCruiseControl.updateTopicConfiguration(_topicPatternByReplicationFactor,
                                                                                _goals,
                                                                                _skipRackAwarenessCheck,
                                                                                _modelCompletenessRequirements,

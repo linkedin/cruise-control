@@ -1086,8 +1086,8 @@ public class KafkaCruiseControl {
    * If partition's current replication factor is larger than target replication factor, remove one or more follower replicas
    * from the partition. Replicas are removed following the reverse order of position in partition's replica list.
    *
-   * @param topicPatternsByReplicationFactor The name patterns of topics to apply the change with the target replication factor.
-   *                                         If no topic in the cluster matches the pattern, an exception will be thrown.
+   * @param topicPatternByReplicationFactor The name patterns of topic to apply the change with the target replication factor.
+   *                                        If no topic in the cluster matches the patterns, an exception will be thrown.
    * @param goals The goals to be met during the new replica assignment. When empty all goals will be used.
    * @param skipTopicRackAwarenessCheck Whether ignore rack awareness property if number of rack in cluster is less
    *                                    than target replication factor.
@@ -1111,7 +1111,7 @@ public class KafkaCruiseControl {
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the topic configuration updating.
    */
-  public OptimizerResult updateTopicConfiguration(Map<Short, Set<Pattern>> topicPatternsByReplicationFactor,
+  public OptimizerResult updateTopicConfiguration(Map<Short, Pattern> topicPatternByReplicationFactor,
                                                   List<String> goals,
                                                   boolean skipTopicRackAwarenessCheck,
                                                   ModelCompletenessRequirements requirements,
@@ -1134,7 +1134,7 @@ public class KafkaCruiseControl {
     Cluster cluster = kafkaCluster();
     // Ensure there is no offline replica in the cluster.
     sanityCheckNoOfflineReplica(cluster);
-    Map<Short, Set<String>> topicsToChangeByReplicationFactor = topicsForReplicationFactorChange(topicPatternsByReplicationFactor, cluster);
+    Map<Short, Set<String>> topicsToChangeByReplicationFactor = topicsForReplicationFactorChange(topicPatternByReplicationFactor, cluster);
 
     // Generate cluster model and get proposal
     OptimizerResult result;
@@ -1184,27 +1184,22 @@ public class KafkaCruiseControl {
     return result;
   }
 
-  private static Map<Short, Set<String>> topicsForReplicationFactorChange(Map<Short, Set<Pattern>> topicPatternsByReplicationFactor,
+  private static Map<Short, Set<String>> topicsForReplicationFactorChange(Map<Short, Pattern> topicPatternByReplicationFactor,
                                                                           Cluster cluster) {
-    Map<Short, Set<String>> topicsToChangeByReplicationFactor = new HashMap<>(topicPatternsByReplicationFactor.size());
-    for (Map.Entry<Short, Set<Pattern>> entry : topicPatternsByReplicationFactor.entrySet()) {
+    Map<Short, Set<String>> topicsToChangeByReplicationFactor = new HashMap<>(topicPatternByReplicationFactor.size());
+    for (Map.Entry<Short, Pattern> entry : topicPatternByReplicationFactor.entrySet()) {
       short replicationFactor = entry.getKey();
-      for (Pattern topicPattern : entry.getValue()) {
-        Set<String> topics = cluster.topics().stream().filter(t -> topicPattern.matcher(t).matches()).collect(Collectors.toSet());
-        // Ensure there are topics matching the requested topic pattern.
-        if (topics.isEmpty()) {
-          throw new IllegalStateException("There is no topic in cluster matching pattern " + topicPattern);
-        }
-        Set<String> topicsToChange = topics.stream()
-                                           .filter(t -> cluster.partitionsForTopic(t).stream().anyMatch(p -> p.replicas().length != replicationFactor))
-                                           .collect(Collectors.toSet());
-        if (!topicsToChange.isEmpty()) {
-          if (topicsToChangeByReplicationFactor.containsKey(replicationFactor)) {
-            topicsToChangeByReplicationFactor.get(replicationFactor).addAll(topicsToChange);
-          } else  {
-            topicsToChangeByReplicationFactor.put(replicationFactor, topicsToChange);
-          }
-        }
+      Pattern topicPattern = entry.getValue();
+      Set<String> topics = cluster.topics().stream().filter(t -> topicPattern.matcher(t).matches()).collect(Collectors.toSet());
+      // Ensure there are topics matching the requested topic pattern.
+      if (topics.isEmpty()) {
+        throw new IllegalStateException("There is no topic in cluster matching pattern " + topicPattern);
+      }
+      Set<String> topicsToChange = topics.stream()
+                                         .filter(t -> cluster.partitionsForTopic(t).stream().anyMatch(p -> p.replicas().length != replicationFactor))
+                                         .collect(Collectors.toSet());
+      if (!topicsToChange.isEmpty()) {
+        topicsToChangeByReplicationFactor.put(replicationFactor, topicsToChange);
       }
     }
 

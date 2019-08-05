@@ -112,6 +112,7 @@ public class ParameterUtils {
   public static final String POPULATE_DISK_INFO_PARAM = "populate_disk_info";
   public static final String BROKER_ID_AND_LOGDIRS_PARAM = "brokerid_and_logdirs";
   public static final String REPLICATION_FACTOR_PARAM = "replication_factor";
+  public static final String TOPIC_BY_REPLICATION_FACTOR_PARAM = "topic_by_replication_factor";
   public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
   public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
   private static final int MAX_REASON_LENGTH = 50;
@@ -577,22 +578,49 @@ public class ParameterUtils {
   }
 
   @SuppressWarnings("unchecked")
-  static Map<Short, Set<Pattern>> topicPatternsByReplicationFactor(HttpServletRequest request) {
-    Map<Short, Set<Pattern>> topicPatternsByReplicationFactor = new HashMap<>();
+  static Map<Short, Pattern> topicPatternByReplicationFactorFromBody(HttpServletRequest request) {
+    Map<Short, Pattern> topicPatternByReplicationFactor;
     try {
       Gson gson = new Gson();
-      Map<String, String> json = gson.fromJson(request.getReader(), Map.class);
-      for (Map.Entry<String, String> entry : json.entrySet()) {
+      Map<String, Object> json = gson.fromJson(request.getReader(), Map.class);
+      if (!json.containsKey(TOPIC_BY_REPLICATION_FACTOR_PARAM)) {
+        return null;
+      }
+      topicPatternByReplicationFactor = new HashMap<>();
+      for (Map.Entry<String, String> entry : ((Map<String, String>) json.get(TOPIC_BY_REPLICATION_FACTOR_PARAM)).entrySet()) {
         Short replicationFactor = Short.parseShort(entry.getKey().trim());
         Pattern topicPattern = Pattern.compile(entry.getValue().trim());
-        topicPatternsByReplicationFactor.putIfAbsent(replicationFactor, new HashSet<>());
-        topicPatternsByReplicationFactor.get(replicationFactor).add(topicPattern);
+        topicPatternByReplicationFactor.putIfAbsent(replicationFactor, topicPattern);
       }
     } catch (IOException ioe) {
-      throw new UserRequestException("Illegal request body, please specify in valid JSON format consisting of pair "
-                                     + "\"target replication factor\" : \"topic name regex\".");
+      throw new UserRequestException(String.format("Illegal value for field %s in body, please specify in pairs of \"target replication "
+                                                   + "factor\" : \"topic name regex\".", TOPIC_BY_REPLICATION_FACTOR_PARAM));
     }
-    return topicPatternsByReplicationFactor;
+    return topicPatternByReplicationFactor;
+  }
+
+    static Map<Short, Pattern> topicPatternByReplicationFactor(HttpServletRequest request) {
+    Pattern topic = topic(request);
+    Short replicationFactor = replicationFactor(request);
+    Map<Short, Pattern> topicPatternByReplicationFactorFromBody = topicPatternByReplicationFactorFromBody(request);
+    if (topicPatternByReplicationFactorFromBody != null) {
+      if (topic != null || replicationFactor != null) {
+        throw new UserRequestException("Requesting topic replication factor change from both HTTP request parameter and body"
+                                       + " is forbidden.");
+      }
+      return topicPatternByReplicationFactorFromBody;
+    } else {
+      if (topic == null && replicationFactor != null) {
+        throw new UserRequestException("Topic is not specified in URL while target replication factor is specified.");
+      }
+      if ((topic != null && replicationFactor == null)) {
+        throw new UserRequestException("Topic's replication factor is not specified in URL while subject topic is specified.");
+      }
+      if (topic != null && replicationFactor != null) {
+        return Collections.singletonMap(replicationFactor, topic);
+      }
+    }
+    return Collections.emptyMap();
   }
 
   static Double minValidPartitionRatio(HttpServletRequest request) {
