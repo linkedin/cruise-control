@@ -120,7 +120,8 @@ public class BrokerLoad {
   private double topicMetrics(String dotHandledTopic, RawMetricType rawMetricType, boolean convertUnit) {
     sanityCheckMetricScope(rawMetricType, TOPIC);
     if (!allDotHandledTopicMetricsAvailable(dotHandledTopic)) {
-      throw new IllegalArgumentException(String.format("Topic metric %s does not exist.", rawMetricType));
+      throw new IllegalArgumentException(String.format("Topic metric %s does not exist for dot handled topic name %s.",
+                                                       rawMetricType, dotHandledTopic));
     }
     RawMetricsHolder rawMetricsHolder = _dotHandledTopicMetrics.get(dotHandledTopic);
     if (rawMetricsHolder == null || rawMetricsHolder.metricValue(rawMetricType) == null) {
@@ -134,7 +135,8 @@ public class BrokerLoad {
     sanityCheckMetricScope(rawMetricType, PARTITION);
     RawMetricsHolder metricsHolder = _dotHandledPartitionMetrics.get(new TopicPartition(dotHandledTopic, partition));
     if (metricsHolder == null || metricsHolder.metricValue(rawMetricType) == null) {
-      throw new IllegalArgumentException(String.format("Partition metric %s does not exist.", rawMetricType));
+      throw new IllegalArgumentException(String.format("Partition metric %s does not exist for dot handled topic name %s"
+                                                       + " and partition %d.", rawMetricType, dotHandledTopic, partition));
     } else {
       return convertUnit(metricsHolder.metricValue(rawMetricType).value(), rawMetricType);
     }

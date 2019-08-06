@@ -65,14 +65,22 @@ public class CruiseControlMetricsProcessor {
       brokerLoad.recordMetric(metric);
       return brokerLoad;
     });
+  }
 
-    // Compute cached number of cores by broker id if they have not been cached already.
-    Node node = cluster.nodeById(brokerId);
-    _cachedNumCoresByBroker.computeIfAbsent(brokerId, bid -> {
-      BrokerCapacityInfo capacity = _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid);
-      // No mapping shall be recorded if capacity is estimated, but estimation is not allowed.
-      return (!_allowCpuCapacityEstimation && capacity.isEstimated()) ? null : capacity.numCpuCores();
-    });
+  /**
+   * Update the cached number of cores by broker id. The cache is refreshed only for brokers with missing number of cores.
+   * @param cluster Kafka cluster.
+   */
+  private void updateCachedNumCoresByBroker(Cluster cluster) {
+    for (int brokerId : _brokerLoad.keySet()) {
+      // Compute cached number of cores by broker id if they have not been cached already.
+      _cachedNumCoresByBroker.computeIfAbsent(brokerId, bid -> {
+        Node node = cluster.nodeById(bid);
+        BrokerCapacityInfo capacity = _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid);
+        // No mapping shall be recorded if capacity is estimated, but estimation is not allowed.
+        return (!_allowCpuCapacityEstimation && capacity.isEstimated()) ? null : capacity.numCpuCores();
+      });
+    }
   }
 
   /**
@@ -95,6 +103,7 @@ public class CruiseControlMetricsProcessor {
                                 Collection<TopicPartition> partitionsDotNotHandled,
                                 MetricSampler.SamplingMode samplingMode) throws UnknownVersionException {
     Map<Integer, Map<String, Integer>> leaderDistributionStats = leaderDistributionStats(cluster);
+    updateCachedNumCoresByBroker(cluster);
     // Theoretically we should not move forward at all if a broker reported a different all topic bytes in from all
     // its resident replicas. However, it is not clear how often this would happen yet. At this point we still
     // continue process the other brokers. Later on if in practice all topic bytes in and the aggregation value is
@@ -227,6 +236,13 @@ public class CruiseControlMetricsProcessor {
                                                            TopicPartition tpWithDotHandled,
                                                            int leaderId,
                                                            BrokerLoad brokerLoad) {
+    // TODO: Handle the following case:
+    /*throw new IllegalArgumentException(String.format("Broker capacity config resolver provided an estimated CPU capacity "
+                                                     + "for broker %d, but capacity estimation is not allowed. Please "
+                                                     + "ensure that either the broker capacity config resolver can provide"
+                                                     + " the number of CPU cores without estimation or allow CPU capacity "
+                                                     + "estimation during sampling (i.e. set %s to true).",
+                                                     leaderId, SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG));*/
     // Ensure broker load is available.
     if (brokerLoad == null || !brokerLoad.brokerMetricAvailable(BROKER_CPU_UTIL)) {
       LOG.debug("Skip generating metric sample for partition {} because broker metric for broker {} is unavailable.",

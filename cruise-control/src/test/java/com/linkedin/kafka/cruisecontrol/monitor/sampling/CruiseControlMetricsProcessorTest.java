@@ -118,7 +118,7 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testWithCpuCapacityEstimation() {
+  public void testWithCpuCapacityEstimation() throws UnknownVersionException {
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     Cluster cluster = getCluster();
     // All estimated.
@@ -131,6 +131,8 @@ public class CruiseControlMetricsProcessorTest {
     for (CruiseControlMetric cruiseControlMetric : metrics) {
       processor.addMetric(cluster, cruiseControlMetric);
     }
+
+    processor.process(cluster, Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
     for (Node node : cluster.nodes()) {
       assertNull(processor.cachedNumCoresByBroker().get(node.id()));
     }
@@ -146,6 +148,7 @@ public class CruiseControlMetricsProcessorTest {
     for (CruiseControlMetric metric : metrics) {
       processor.addMetric(cluster, metric);
     }
+    processor.process(cluster, Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
     assertEquals(MOCK_NUM_CPU_CORES, (short) processor.cachedNumCoresByBroker().get(BROKER_ID_0));
     assertNull(processor.cachedNumCoresByBroker().get(BROKER_ID_1));
   }
@@ -156,12 +159,12 @@ public class CruiseControlMetricsProcessorTest {
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     Cluster cluster = getCluster();
     metrics.forEach(metric -> processor.addMetric(cluster, metric));
-    for (Node node : cluster.nodes()) {
-      assertEquals(MOCK_NUM_CPU_CORES, (short) processor.cachedNumCoresByBroker().get(node.id()));
-    }
 
     MetricSampler.Samples samples =
         processor.process(cluster, Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+    for (Node node : cluster.nodes()) {
+      assertEquals(MOCK_NUM_CPU_CORES, (short) processor.cachedNumCoresByBroker().get(node.id()));
+    }
 
     assertEquals(4, samples.partitionMetricSamples().size());
     assertEquals(2, samples.brokerMetricSamples().size());

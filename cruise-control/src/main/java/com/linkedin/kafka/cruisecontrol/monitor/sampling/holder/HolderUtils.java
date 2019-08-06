@@ -34,8 +34,9 @@ class HolderUtils {
 
   static void sanityCheckMetricScope(RawMetricType rawMetricType, RawMetricType.MetricScope expectedMetricScope) {
     if (rawMetricType.metricScope() != expectedMetricScope) {
-      throw new IllegalArgumentException(String.format("Metric scope %s does not match the expected metric scope %s",
-                                                       rawMetricType.metricScope(), expectedMetricScope));
+      throw new IllegalArgumentException(
+          String.format("Metric scope %s of raw metric type with id %d does not match the expected metric scope %s.",
+                        rawMetricType.metricScope(), rawMetricType.id(), expectedMetricScope));
     }
   }
 

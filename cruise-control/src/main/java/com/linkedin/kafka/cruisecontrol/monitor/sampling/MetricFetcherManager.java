@@ -81,7 +81,7 @@ public class MetricFetcherManager {
    * @param time        The time object.
    * @param dropwizardMetricRegistry The Metric Registry object.
    * @param brokerCapacityConfigResolver The resolver for retrieving broker capacities.
-   * @param fetcher Metric fetcher or {@code null} to create one using {@link KafkaCruiseControlConfig#METRIC_SAMPLER_CLASS_CONFIG}.
+   * @param sampler Metric fetcher or {@code null} to create one using {@link KafkaCruiseControlConfig#METRIC_SAMPLER_CLASS_CONFIG}.
    */
   public MetricFetcherManager(KafkaCruiseControlConfig config,
                               KafkaPartitionMetricSampleAggregator partitionMetricSampleAggregator,
@@ -91,7 +91,7 @@ public class MetricFetcherManager {
                               Time time,
                               MetricRegistry dropwizardMetricRegistry,
                               BrokerCapacityConfigResolver brokerCapacityConfigResolver,
-                              MetricSampler fetcher) {
+                              MetricSampler sampler) {
     _time = time;
     _partitionMetricSampleAggregator = partitionMetricSampleAggregator;
     _brokerMetricSampleAggregator = brokerMetricSampleAggregator;
@@ -112,11 +112,11 @@ public class MetricFetcherManager {
     _trainingSamplesFetcherFailureRate = dropwizardMetricRegistry.meter(MetricRegistry.name("MetricFetcherManager",
                                                                                              "training-samples-fetcher-failure-rate"));
 
-    _metricSampler = fetcher == null
+    _metricSampler = sampler == null
                      ? config.getConfiguredInstance(KafkaCruiseControlConfig.METRIC_SAMPLER_CLASS_CONFIG, MetricSampler.class,
                                                     Collections.singletonMap(BROKER_CAPACITY_CONFIG_RESOLVER_OBJECT_CONFIG,
                                                                              brokerCapacityConfigResolver))
-                     : fetcher;
+                     : sampler;
   }
 
   /**

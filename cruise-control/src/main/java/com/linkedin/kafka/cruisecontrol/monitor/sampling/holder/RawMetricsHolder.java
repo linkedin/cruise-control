@@ -35,7 +35,7 @@ class RawMetricsHolder {
    *
    * @param rawMetricType the raw metric type to set value for.
    * @param value the value to set
-   * @param time the time to
+   * @param time the time to set
    */
   void setRawMetricValue(RawMetricType rawMetricType, double value, long time) {
     _rawMetricsByType.compute(rawMetricType, (type, vh) -> {
@@ -59,10 +59,11 @@ class RawMetricsHolder {
     KafkaMetricDef kafkaMetricDef = KafkaMetricDef.forRawMetricType(rawMetricType);
     switch (kafkaMetricDef.valueComputingStrategy()) {
       case AVG:
+        return new ValueAndCount();
       case MAX:
-        return new ValueAndCount();
+        return new ValueMax();
       case LATEST:
-        return new ValueAndCount();
+        return new ValueAndTime();
       default:
         throw new IllegalStateException("Should never be here");
     }

@@ -6,9 +6,10 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling.holder;
 
 
 /**
- * A class to give the latest of the recorded values.
+ * A class to give average of the recorded values.
  */
 class ValueAndCount implements ValueHolder {
+  static double NO_RECORD_EXISTS = -1.0;
   private double _value = 0.0;
   private int _count = 0;
 
@@ -26,11 +27,14 @@ class ValueAndCount implements ValueHolder {
 
   @Override
   public double value() {
-    return value(false);
+    return _count == 0 ? 0.0 : _value / _count;
   }
 
+  /**
+   * Assumes that the average of recorded values cannot be {@link #NO_RECORD_EXISTS} when assertNonZeroCount is true.
+   */
   @Override
   public double value(boolean assertNonZeroCount) {
-    return _count == 0 ? (assertNonZeroCount ? -1.0 : 0.0) : _value / _count;
+    return _count == 0 ? (assertNonZeroCount ? NO_RECORD_EXISTS : 0.0) : _value / _count;
   }
 }

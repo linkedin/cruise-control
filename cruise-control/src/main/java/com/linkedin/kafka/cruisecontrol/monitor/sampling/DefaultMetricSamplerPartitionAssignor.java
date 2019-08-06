@@ -11,7 +11,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +48,7 @@ public class DefaultMetricSamplerPartitionAssignor implements MetricSamplerParti
 
   @Override
   public Set<TopicPartition> assignPartitions(Cluster cluster) {
-    // Create an array to host the assignment of all the metric fetchers.
+    // Create an array to host the assignment of the metric fetcher.
     Set<TopicPartition> assignment = new HashSet<>();
     for (String topic : cluster.topics()) {
       List<PartitionInfo> partitionsForTopic = cluster.partitionsForTopic(topic);
@@ -57,9 +56,7 @@ public class DefaultMetricSamplerPartitionAssignor implements MetricSamplerParti
         assignment.add(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
       }
     }
-    if (LOG.isTraceEnabled()) {
-      LOG.trace("Partition assignment for metric fetcher: {}", Arrays.toString(assignment.toArray()));
-    }
+    LOG.trace("Partition assignment for metric fetcher: {}", assignment);
     return assignment;
   }
 }
