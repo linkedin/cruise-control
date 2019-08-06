@@ -67,6 +67,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityChe
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckNonExistingGoal;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckNoOfflineReplica;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckOfflineReplicaPresence;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckTargetReplicationFactorForTopic;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.*;
 
@@ -1111,21 +1112,21 @@ public class KafkaCruiseControl {
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the topic configuration updating.
    */
-  public OptimizerResult updateTopicConfiguration(Map<Short, Pattern> topicPatternByReplicationFactor,
-                                                  List<String> goals,
-                                                  boolean skipTopicRackAwarenessCheck,
-                                                  ModelCompletenessRequirements requirements,
-                                                  OperationProgress operationProgress,
-                                                  boolean allowCapacityEstimation,
-                                                  Integer concurrentInterBrokerPartitionMovements,
-                                                  Integer concurrentLeaderMovements,
-                                                  boolean skipHardGoalCheck,
-                                                  ReplicaMovementStrategy replicaMovementStrategy,
-                                                  Long replicationThrottle,
-                                                  boolean excludeRecentlyDemotedBrokers,
-                                                  boolean excludeRecentlyRemovedBrokers,
-                                                  boolean dryRun,
-                                                  String uuid)
+  public OptimizerResult updateTopicReplicationFactor(Map<Short, Pattern> topicPatternByReplicationFactor,
+                                                                    List<String> goals,
+                                                                    boolean skipTopicRackAwarenessCheck,
+                                                                    ModelCompletenessRequirements requirements,
+                                                                    OperationProgress operationProgress,
+                                                                    boolean allowCapacityEstimation,
+                                                                    Integer concurrentInterBrokerPartitionMovements,
+                                                                    Integer concurrentLeaderMovements,
+                                                                    boolean skipHardGoalCheck,
+                                                                    ReplicaMovementStrategy replicaMovementStrategy,
+                                                                    Long replicationThrottle,
+                                                                    boolean excludeRecentlyDemotedBrokers,
+                                                                    boolean excludeRecentlyRemovedBrokers,
+                                                                    boolean dryRun,
+                                                                    String uuid)
       throws KafkaCruiseControlException {
     sanityCheckDryRun(dryRun);
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
@@ -1193,7 +1194,7 @@ public class KafkaCruiseControl {
       Set<String> topics = cluster.topics().stream().filter(t -> topicPattern.matcher(t).matches()).collect(Collectors.toSet());
       // Ensure there are topics matching the requested topic pattern.
       if (topics.isEmpty()) {
-        throw new IllegalStateException("There is no topic in cluster matching pattern " + topicPattern);
+        throw new IllegalStateException(String.format("There is no topic in cluster matching pattern '%s'.", topicPattern));
       }
       Set<String> topicsToChange = topics.stream()
                                          .filter(t -> cluster.partitionsForTopic(t).stream().anyMatch(p -> p.replicas().length != replicationFactor))
@@ -1204,17 +1205,11 @@ public class KafkaCruiseControl {
     }
 
     if (topicsToChangeByReplicationFactor.isEmpty()) {
-      throw new IllegalStateException("All Topics matching given pattern already have target replication factor.");
+      throw new IllegalStateException(String.format("All topics matching given pattern already have target replication factor. requested "
+                                                    + "topic pattern by replication factor: %s.", topicPatternByReplicationFactor));
     }
     // Sanity check that no topic is set with more than one target replication factor.
-    Set<String> topicsToChange = new HashSet<>();
-    for (Set<String> topics : topicsToChangeByReplicationFactor.values()) {
-      for (String topic : topics) {
-        if (!topicsToChange.add(topic)) {
-          throw new IllegalStateException(String.format("Topic %s is requested with more than one target replication factor.", topic));
-        }
-      }
-    }
+    sanityCheckTargetReplicationFactorForTopic(topicsToChangeByReplicationFactor);
     return topicsToChangeByReplicationFactor;
   }
 

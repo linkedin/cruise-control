@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * The async runnable for {@link KafkaCruiseControl#updateTopicConfiguration(Map, List, boolean, ModelCompletenessRequirements,
+ * The async runnable for {@link KafkaCruiseControl#updateTopicReplicationFactor(Map, List, boolean, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, ReplicaMovementStrategy, Long,
  * boolean, boolean, boolean, String)}.
  */
@@ -62,21 +62,21 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
 
   @Override
   protected OptimizationResult getResult() throws Exception {
-    return new OptimizationResult(_kafkaCruiseControl.updateTopicConfiguration(_topicPatternByReplicationFactor,
-                                                                               _goals,
-                                                                               _skipRackAwarenessCheck,
-                                                                               _modelCompletenessRequirements,
-                                                                               _future.operationProgress(),
-                                                                               _allowCapacityEstimation,
-                                                                               _concurrentInterBrokerPartitionMovements,
-                                                                               _concurrentLeaderMovements,
-                                                                               _skipHardGoalCheck,
-                                                                               _replicaMovementStrategy,
-                                                                               _replicationThrottle,
-                                                                               _excludeRecentlyDemotedBrokers,
-                                                                               _excludeRecentlyRemovedBrokers,
-                                                                               _dryRun,
-                                                                               _uuid),
+    return new OptimizationResult(_kafkaCruiseControl.updateTopicReplicationFactor(_topicPatternByReplicationFactor,
+                                                                                   _goals,
+                                                                                   _skipRackAwarenessCheck,
+                                                                                   _modelCompletenessRequirements,
+                                                                                   _future.operationProgress(),
+                                                                                   _allowCapacityEstimation,
+                                                                                   _concurrentInterBrokerPartitionMovements,
+                                                                                   _concurrentLeaderMovements,
+                                                                                   _skipHardGoalCheck,
+                                                                                   _replicaMovementStrategy,
+                                                                                   _replicationThrottle,
+                                                                                   _excludeRecentlyDemotedBrokers,
+                                                                                   _excludeRecentlyRemovedBrokers,
+                                                                                   _dryRun,
+                                                                                   _uuid),
                                   _config);
   }
 }

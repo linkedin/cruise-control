@@ -112,12 +112,12 @@ public class ParameterUtils {
   public static final String POPULATE_DISK_INFO_PARAM = "populate_disk_info";
   public static final String BROKER_ID_AND_LOGDIRS_PARAM = "brokerid_and_logdirs";
   public static final String REPLICATION_FACTOR_PARAM = "replication_factor";
-  public static final String TOPIC_BY_REPLICATION_FACTOR_PARAM = "topic_by_replication_factor";
   public static final String SKIP_RACK_AWARENESS_CHECK_PARAM = "skip_rack_awareness_check";
   public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
   private static final int MAX_REASON_LENGTH = 50;
   private static final String DELIMITER_BETWEEN_BROKER_ID_AND_LOGDIR = "-";
   public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
+  public static final String TOPIC_BY_REPLICATION_FACTOR = "topic_by_replication_factor";
 
   public static final String STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG = "stop.proposal.parameter.object";
   public static final String BOOTSTRAP_PARAMETER_OBJECT_CONFIG = "bootstrap.parameter.object";
@@ -583,18 +583,18 @@ public class ParameterUtils {
     try {
       Gson gson = new Gson();
       Map<String, Object> json = gson.fromJson(request.getReader(), Map.class);
-      if (!json.containsKey(TOPIC_BY_REPLICATION_FACTOR_PARAM)) {
+      if (!json.containsKey(TOPIC_BY_REPLICATION_FACTOR)) {
         return null;
       }
       topicPatternByReplicationFactor = new HashMap<>();
-      for (Map.Entry<String, String> entry : ((Map<String, String>) json.get(TOPIC_BY_REPLICATION_FACTOR_PARAM)).entrySet()) {
+      for (Map.Entry<String, String> entry : ((Map<String, String>) json.get(TOPIC_BY_REPLICATION_FACTOR)).entrySet()) {
         Short replicationFactor = Short.parseShort(entry.getKey().trim());
         Pattern topicPattern = Pattern.compile(entry.getValue().trim());
         topicPatternByReplicationFactor.putIfAbsent(replicationFactor, topicPattern);
       }
     } catch (IOException ioe) {
       throw new UserRequestException(String.format("Illegal value for field %s in body, please specify in pairs of \"target replication "
-                                                   + "factor\" : \"topic name regex\".", TOPIC_BY_REPLICATION_FACTOR_PARAM));
+                                                   + "factor\" : \"topic name regex\".", TOPIC_BY_REPLICATION_FACTOR));
     }
     return topicPatternByReplicationFactor;
   }

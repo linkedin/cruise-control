@@ -406,4 +406,20 @@ public class KafkaCruiseControlUtils {
   public static boolean isKafkaAssignerMode(Collection<String> goals) {
     return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
   }
+
+  /**
+   * Check that only one target replication factor is set for each topic.
+   *
+   * @param topicsToChangeByReplicationFactor Topics to change replication factor by target replication factor.
+   */
+  public static void sanityCheckTargetReplicationFactorForTopic(Map<Short, Set<String>> topicsToChangeByReplicationFactor) {
+    Set<String> topicsToChange = new HashSet<>();
+    for (Set<String> topics : topicsToChangeByReplicationFactor.values()) {
+      for (String topic : topics) {
+        if (!topicsToChange.add(topic)) {
+          throw new IllegalStateException(String.format("Topic %s is requested with more than one target replication factor.", topic));
+        }
+      }
+    }
+  }
 }

@@ -29,7 +29,8 @@ import java.util.regex.Pattern;
  *     }
  *   }
  *   </code></pre>
- *   If user specifies new replication factor in both URL and body, an exception will be thrown.</li>
+ *   If user specifies new replication factor in both URL (via combination of `topic` and `replication_factor` parameter)
+ *   and body, an exception will be thrown.</li>
  * </ul>
  *
  * <pre>

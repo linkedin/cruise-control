@@ -53,7 +53,7 @@ import java.util.concurrent.Executors;
  * boolean, Integer, Integer, Integer, boolean, java.util.regex.Pattern,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, Long, String, boolean, boolean, boolean,
  * boolean, Set, boolean)}</li>
- * <li>{@link KafkaCruiseControl#updateTopicConfiguration(java.util.Map, java.util.List, boolean,
+ * <li>{@link KafkaCruiseControl#updateTopicReplicationFactor(java.util.Map, java.util.List, boolean,
  * ModelCompletenessRequirements, OperationProgress, boolean, Integer, Integer, boolean,
  * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, Long, boolean, boolean, boolean, String)}</li>
  * </ul>
@@ -180,7 +180,7 @@ public class AsyncKafkaCruiseControl extends KafkaCruiseControl {
   }
 
   /**
-   * @see KafkaCruiseControl#updateTopicConfiguration(java.util.Map, java.util.List, boolean, ModelCompletenessRequirements,
+   * @see KafkaCruiseControl#updateTopicReplicationFactor(java.util.Map, java.util.List, boolean, ModelCompletenessRequirements,
    * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean,
    * com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy, Long, boolean, boolean, boolean, String)}
    */
