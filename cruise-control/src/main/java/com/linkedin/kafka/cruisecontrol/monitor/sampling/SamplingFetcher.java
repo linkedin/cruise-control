@@ -7,16 +7,15 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.Timer;
 import com.linkedin.cruisecontrol.metricdef.MetricDef;
-import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
-import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerMetricSample;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Set;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
@@ -24,6 +23,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.estimateLeaderCpuUtilUsingLinearRegressionModel;
 
 
 /**
@@ -131,7 +131,7 @@ class SamplingFetcher extends MetricFetcher {
           // we fill in the cpu utilization based on the model in case user did not fill it in.
           if (_useLinearRegressionModel && ModelParameters.trainingCompleted()) {
             partitionMetricSample.record(KafkaMetricDef.commonMetricDef().metricInfo(CPU_USAGE.name()),
-                                         estimateCpuUtil(partitionMetricSample));
+                                         estimateLeaderCpuUtilUsingLinearRegressionModel(partitionMetricSample));
           }
           // we close the metric sample in case the implementation forgot to do so.
           partitionMetricSample.close(_endTimeMs);
@@ -181,23 +181,5 @@ class SamplingFetcher extends MetricFetcher {
     } else {
       LOG.warn("Failed to collect broker metrics samples.");
     }
-  }
-
-  private double estimateCpuUtil(PartitionMetricSample partitionMetricSample) {
-    List<Short> cpuId = KafkaMetricDef.resourceToMetricIds(Resource.CPU);
-    List<Short> networkOutId = KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT);
-    Double cpuUsage = sumOfMetrics(partitionMetricSample, cpuId);
-    Double networkOutUsage = sumOfMetrics(partitionMetricSample, networkOutId);
-    return ModelUtils.estimateLeaderCpuUtilUsingLinearRegressionModel(cpuUsage, networkOutUsage);
-  }
-
-  // Add all the values of the given metric ids up.
-  // TODO: remove this once we completely move to metric def.
-  private Double sumOfMetrics(PartitionMetricSample partitionMetricSample, List<Short> metricIds) {
-    double result = 0;
-    for (short id : metricIds) {
-      result += partitionMetricSample.metricValue(id);
-    }
-    return result;
   }
 }

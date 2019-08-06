@@ -11,11 +11,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager.SUPPORTED_NUM_METRIC_FETCHER;
+
 
 /**
  * The default implementation of metric sampler partition assignor.
@@ -35,36 +37,26 @@ public class DefaultMetricSamplerPartitionAssignor implements MetricSamplerParti
 
   @Override
   public List<Set<TopicPartition>> assignPartitions(Cluster cluster, int numMetricFetchers) {
+    if (numMetricFetchers != SUPPORTED_NUM_METRIC_FETCHER) {
+      throw new IllegalArgumentException("DefaultMetricSamplerPartitionAssignor supports only a single metric fetcher.");
+    }
     // Create an array to host the assignment of all the metric fetchers.
     List<Set<TopicPartition>> assignments = new ArrayList<>();
-    for (int i = 0; i < numMetricFetchers; i++) {
-      assignments.add(new HashSet<>());
-    }
-    int index = 0;
-    // The total number of partitions that has been assigned.
-    int totalPartitionAssigned = 0;
-    for (String topic : cluster.topics()) {
-      while (assignments.get(index % numMetricFetchers).size() > totalPartitionAssigned / numMetricFetchers) {
-        index++;
-      }
-      Set<TopicPartition> assignmentForFetcher = assignments.get(index % numMetricFetchers);
-      List<PartitionInfo> partitionsForTopic = cluster.partitionsForTopic(topic);
-      for (PartitionInfo partitionInfo : partitionsForTopic) {
-        assignmentForFetcher.add(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
-      }
-      totalPartitionAssigned += partitionsForTopic.size();
-    }
-    if (LOG.isTraceEnabled()) {
-      maybeDumpAssignments(assignments);
-    }
+    assignments.add(assignPartitions(cluster));
     return assignments;
   }
 
-  private void maybeDumpAssignments(List<Set<TopicPartition>> assignments) {
-    int i = 0;
-    LOG.trace("Partition assignment for metric fetchers:");
-    for (Set<TopicPartition> assignment : assignments) {
-      LOG.trace("Assignment {}: {}", i++, Arrays.toString(assignment.toArray()));
+  @Override
+  public Set<TopicPartition> assignPartitions(Cluster cluster) {
+    // Create an array to host the assignment of the metric fetcher.
+    Set<TopicPartition> assignment = new HashSet<>();
+    for (String topic : cluster.topics()) {
+      List<PartitionInfo> partitionsForTopic = cluster.partitionsForTopic(topic);
+      for (PartitionInfo partitionInfo : partitionsForTopic) {
+        assignment.add(new TopicPartition(partitionInfo.topic(), partitionInfo.partition()));
+      }
     }
+    LOG.trace("Partition assignment for metric fetcher: {}", assignment);
+    return assignment;
   }
 }

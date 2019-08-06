@@ -18,14 +18,12 @@ import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricSampler;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampleStore;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionMetricSample;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionMetricSample;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaBrokerMetricSampleAggregator;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.KafkaPartitionMetricSampleAggregator;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -55,7 +53,6 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
   private static final int NUM_WINDOWS = 5;
   private static final int NUM_TOPICS = 100;
   private static final int NUM_PARTITIONS = 4;
-  private static final int NUM_METRIC_FETCHERS = 4;
   private static final long SAMPLING_INTERVAL = 100000L;
   private static final MetricDef METRIC_DEF = KafkaMetricDef.commonMetricDef();
   // Using autoTick = 1
@@ -89,14 +86,11 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
         new MockPartitionMetricSampleAggregator(config, metadata);
     KafkaBrokerMetricSampleAggregator mockBrokerMetricSampleAggregator =
         EasyMock.mock(KafkaBrokerMetricSampleAggregator.class);
-    List<MetricSampler> samplers = new ArrayList<>();
     MetricRegistry dropwizardMetricRegistry = new MetricRegistry();
-    for (int i = 0; i < NUM_METRIC_FETCHERS; i++) {
-      samplers.add(new MockSampler(0));
-    }
+    MetricSampler sampler = new MockSampler(0);
     MetricFetcherManager fetcherManager =
         new MetricFetcherManager(config, mockPartitionMetricSampleAggregator, mockBrokerMetricSampleAggregator,
-                                 metadataClient, METRIC_DEF, TIME, dropwizardMetricRegistry, samplers);
+                                 metadataClient, METRIC_DEF, TIME, dropwizardMetricRegistry, null, sampler);
     LoadMonitorTaskRunner loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, fetcherManager, mockPartitionMetricSampleAggregator,
                                   mockBrokerMetricSampleAggregator, metadataClient, TIME);
@@ -138,14 +132,11 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
         new MockPartitionMetricSampleAggregator(config, metadata);
     KafkaBrokerMetricSampleAggregator mockBrokerMetricSampleAggregator =
         EasyMock.mock(KafkaBrokerMetricSampleAggregator.class);
-    List<MetricSampler> samplers = new ArrayList<>();
     MetricRegistry dropwizardMetricRegistry = new MetricRegistry();
-    for (int i = 0; i < NUM_METRIC_FETCHERS; i++) {
-      samplers.add(new MockSampler(i));
-    }
+    MetricSampler sampler = new MockSampler(0);
     MetricFetcherManager fetcherManager =
         new MetricFetcherManager(config, mockMetricSampleAggregator, mockBrokerMetricSampleAggregator, metadataClient,
-                                 METRIC_DEF, TIME, dropwizardMetricRegistry, samplers);
+                                 METRIC_DEF, TIME, dropwizardMetricRegistry, null, sampler);
     LoadMonitorTaskRunner loadMonitorTaskRunner =
         new LoadMonitorTaskRunner(config, fetcherManager, mockMetricSampleAggregator, mockBrokerMetricSampleAggregator,
                                   metadataClient, TIME);
@@ -163,13 +154,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
         numSamples++;
       }
     }
-    // We should have NUM_METRIC_FETCHER rounds of sampling. The first round only has one metric fetcher returns
-    // samples, two fetchers return samples for the second round, three for the third and four for the forth round.
-    // So the first round only has 1/4 of the total samples, then 2/4, 3/4 and all the samples.
-    int expectedNumSamples = 0;
-    for (int i = 0; i < NUM_METRIC_FETCHERS; i++) {
-      expectedNumSamples += (NUM_TOPICS * NUM_PARTITIONS) * (i + 1) / NUM_METRIC_FETCHERS;
-    }
+    int expectedNumSamples = NUM_TOPICS * NUM_PARTITIONS;
     assertEquals("Only see " + numSamples + " samples. Expecting " + expectedNumSamples + " samples",
         expectedNumSamples, numSamples);
     fetcherManager.shutdown();
@@ -182,7 +167,6 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     props.setProperty(KafkaCruiseControlConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG, Integer.toString(NUM_WINDOWS));
     // The configuration does not matter here, we pass in the fetcher explicitly.
     props.setProperty(KafkaCruiseControlConfig.METRIC_SAMPLER_CLASS_CONFIG, MockSampler.class.getName());
-    props.setProperty(KafkaCruiseControlConfig.NUM_METRIC_FETCHERS_CONFIG, Integer.toString(NUM_METRIC_FETCHERS));
     props.setProperty(KafkaCruiseControlConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG, "2");
     props.setProperty(KafkaCruiseControlConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG, Long.toString(SAMPLING_INTERVAL));
     props.setProperty(KafkaCruiseControlConfig.SAMPLE_STORE_CLASS_CONFIG, NoopSampleStore.class.getName());
@@ -191,7 +175,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
 
   // A simple metric sampler that increment the mock time by 1
   private class MockSampler implements MetricSampler {
-    private int _exceptionsLeft = 0;
+    private int _exceptionsLeft;
 
     MockSampler(int numExceptions) {
       _exceptionsLeft = numExceptions;
@@ -232,7 +216,7 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
     }
 
     @Override
-    public void close() throws Exception {
+    public void close() {
 
     }
   }
@@ -241,9 +225,8 @@ public class LoadMonitorTaskRunnerTest extends AbstractKafkaIntegrationTestHarne
    * A clock that you can manually advance by calling sleep.
    */
   private static class MockTime implements Time {
-
-    private long _nanos = 0;
-    private long _autoTickMs = 0;
+    private long _nanos;
+    private final long _autoTickMs;
 
     public MockTime(long autoTickMs) {
       _nanos = 0;

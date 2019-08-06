@@ -16,7 +16,7 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.PartitionEntity;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.PartitionEntity;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.aggregator.SampleExtrapolation;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -277,7 +277,7 @@ public class MonitorUtils {
    * @param node The node whose rack is requested.
    * @return Rack of the given node if the corresponding value is not null and not empty, the host of the node otherwise.
    */
-  static String getRackHandleNull(Node node) {
+  public static String getRackHandleNull(Node node) {
     return node.rack() == null || node.rack().isEmpty() ? node.host() : node.rack();
   }
 
