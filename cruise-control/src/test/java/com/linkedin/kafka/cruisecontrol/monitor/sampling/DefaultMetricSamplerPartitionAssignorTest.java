@@ -13,7 +13,6 @@ import org.junit.Test;
 
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Random;
 import java.util.Set;
 
@@ -26,7 +25,6 @@ import static org.junit.Assert.assertTrue;
 public class DefaultMetricSamplerPartitionAssignorTest {
   private static final String TOPIC_PREFIX = "topic-";
   private static final int NUM_TOPICS = 100;
-  private static final int NUM_FETCHERS = 4;
   private final Random _random = new Random();
 
   /**
@@ -58,25 +56,22 @@ public class DefaultMetricSamplerPartitionAssignorTest {
     metadata.update(cluster, Collections.emptySet(), 0);
 
     MetricSamplerPartitionAssignor assignor = new DefaultMetricSamplerPartitionAssignor();
-    List<Set<TopicPartition>> assignments = assignor.assignPartitions(metadata.fetch(), NUM_FETCHERS);
+    Set<TopicPartition> assignment = assignor.assignPartitions(metadata.fetch());
 
     int maxAssignedNumPartitionsForFetcher = -1;
     int minAssignedNumPartitionsForFetcher = Integer.MAX_VALUE;
     int totalAssignedNumPartitions = 0;
-    Set<TopicPartition> uniqueAssignedPartitions = new HashSet<>();
-    for (Set<TopicPartition> assignment : assignments) {
-      maxAssignedNumPartitionsForFetcher = Math.max(maxAssignedNumPartitionsForFetcher, assignment.size());
-      minAssignedNumPartitionsForFetcher = Math.min(minAssignedNumPartitionsForFetcher, assignment.size());
-      uniqueAssignedPartitions.addAll(assignment);
-      totalAssignedNumPartitions += assignment.size();
-    }
+    maxAssignedNumPartitionsForFetcher = Math.max(maxAssignedNumPartitionsForFetcher, assignment.size());
+    minAssignedNumPartitionsForFetcher = Math.min(minAssignedNumPartitionsForFetcher, assignment.size());
+    Set<TopicPartition> uniqueAssignedPartitions = new HashSet<>(assignment);
+    totalAssignedNumPartitions += assignment.size();
     // Make sure all the partitions are assigned and there is no double assignment.
     assertEquals("Total assigned number of partitions should be " + totalNumPartitions,
         totalNumPartitions, totalAssignedNumPartitions);
     assertEquals("Total number of unique assigned partitions should be " + totalNumPartitions,
         totalNumPartitions, uniqueAssignedPartitions.size());
 
-    int avgAssignedPartitionsPerFetcher = totalNumPartitions / NUM_FETCHERS;
+    int avgAssignedPartitionsPerFetcher = totalNumPartitions;
     assertTrue("In the worst case the max number of partitions assigned to a metric fetchers should not differ by " +
             "more than the partition number of the biggest topic, which is " + maxNumPartitionsForTopic,
         maxAssignedNumPartitionsForFetcher - avgAssignedPartitionsPerFetcher <= maxNumPartitionsForTopic);

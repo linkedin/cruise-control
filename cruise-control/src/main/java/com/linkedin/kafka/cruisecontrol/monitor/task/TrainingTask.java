@@ -8,7 +8,6 @@ import com.linkedin.kafka.cruisecontrol.model.LinearRegressionModelParameters;
 import com.linkedin.kafka.cruisecontrol.model.ModelParameters;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.MetricFetcherManager;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.SampleStore;
-import java.util.concurrent.TimeoutException;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,14 +60,10 @@ class TrainingTask implements Runnable {
     long trainingTaskStartingMs = _time.milliseconds();
     try {
       do {
-        try {
-          _metricFetcherManager.fetchBrokerMetricSamples(_nextSamplingStartingMs,
-                                                         _nextSamplingEndMs,
-                                                         _samplingIntervalMs,
-                                                         _sampleStore);
-        } catch (TimeoutException e) {
-          // Let it go.
-        }
+        _metricFetcherManager.fetchBrokerMetricSamples(_nextSamplingStartingMs,
+                                                       _nextSamplingEndMs,
+                                                       _samplingIntervalMs,
+                                                       _sampleStore);
         _nextSamplingStartingMs += _configuredSnapshotWindowMs;
         _nextSamplingEndMs = Math.min(_trainingEndMs, _nextSamplingStartingMs + _configuredSnapshotWindowMs);
       } while (!isDone());

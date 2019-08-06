@@ -190,6 +190,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "maintain.";
 
   /**
+   * @deprecated (i.e. cannot be configured to a value other than 1).
    * <code>num.metric.fetchers</code>
    */
   public static final String NUM_METRIC_FETCHERS_CONFIG = "num.metric.fetchers";
@@ -591,6 +592,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final String ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG = "anomaly.detection.allow.capacity.estimation";
   private static final String ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_DOC = "The flag to indicate whether anomaly "
       + "detection threads allow capacity estimation in the generated cluster model they use.";
+
+  /**
+   * <code>sampling.allow.cpu.capacity.estimation</code>
+   */
+  public static final String SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG = "sampling.allow.cpu.capacity.estimation";
+  private static final String SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_DOC = "The flag to indicate whether sampling "
+      + "process allows CPU capacity estimation of brokers used for CPU utilization estimation.";
 
   /**
    * <code>anomaly.detection.goals</code>
@@ -1588,6 +1596,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 true,
                 ConfigDef.Importance.LOW,
                 ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_DOC)
+        .define(SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                true,
+                ConfigDef.Importance.LOW,
+                SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_DOC)
         .define(ANOMALY_DETECTION_GOALS_CONFIG,
                 ConfigDef.Type.LIST,
                 new StringJoiner(",")

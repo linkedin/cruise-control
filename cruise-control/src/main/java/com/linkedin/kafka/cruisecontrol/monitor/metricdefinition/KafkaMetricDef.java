@@ -33,9 +33,10 @@ import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMet
  * linear regression model (in development).
  *
  * The metrics in KafkaCruiseControl fall into two categories.
- * 1. Broker only metrics. e.g. request queue size.
- * 2. Common metrics share by brokers and replicas. E.g. bytes in/out rate.
- *
+ * <ul>
+ * <li>Broker only metrics (i.e. {@link DefScope#BROKER_ONLY}) -- e.g. request queue size.</li>
+ * <li>Common metrics share by brokers and replicas (i.e. {@link DefScope#COMMON}) -- e.g. bytes in/out rate.</li>
+ * </ul>
  * As of now, we do not have replica/partition only metrics.
  */
 public enum KafkaMetricDef {

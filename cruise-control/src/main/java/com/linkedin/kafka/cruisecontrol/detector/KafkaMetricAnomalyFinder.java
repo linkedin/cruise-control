@@ -8,7 +8,7 @@ import com.linkedin.cruisecontrol.config.CruiseControlConfig;
 import com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
-import com.linkedin.kafka.cruisecontrol.monitor.sampling.BrokerEntity;
+import com.linkedin.kafka.cruisecontrol.monitor.sampling.holder.BrokerEntity;
 import java.util.List;
 import java.util.Map;
 import java.util.StringJoiner;
