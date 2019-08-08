@@ -85,15 +85,15 @@ public class MonitorUtils {
       }
     }
     MetricValues followerCpu = new MetricValues(aggregatedMetricValues.length());
-    MetricValues totalNetworkIn =
+    MetricValues leaderBytesInRate =
         aggregatedMetricValues.valuesForGroup(Resource.NW_IN.name(), KafkaMetricDef.commonMetricDef(), false);
-    MetricValues totalNetworkOut =
+    MetricValues leaderBytesOutRate =
         aggregatedMetricValues.valuesForGroup(Resource.NW_OUT.name(), KafkaMetricDef.commonMetricDef(), false);
-    MetricValues totalCpuUsage = aggregatedMetricValues.valuesFor(KafkaMetricDef.commonMetricDefId(CPU_USAGE));
+    MetricValues leaderCpuUtilization = aggregatedMetricValues.valuesFor(KafkaMetricDef.commonMetricDefId(CPU_USAGE));
     for (int i = 0; i < aggregatedMetricValues.length(); i++) {
-      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(totalNetworkIn.get(i),
-                                                                           totalNetworkOut.get(i),
-                                                                           totalCpuUsage.get(i));
+      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(leaderBytesInRate.get(i),
+                                                                           leaderBytesOutRate.get(i),
+                                                                           leaderCpuUtilization.get(i));
       followerCpu.set(i, followerCpuUtil);
     }
     for (short nwOutMetricId : KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT)) {

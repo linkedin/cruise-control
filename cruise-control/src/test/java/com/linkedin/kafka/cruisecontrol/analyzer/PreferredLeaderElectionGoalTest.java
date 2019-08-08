@@ -294,10 +294,10 @@ public class PreferredLeaderElectionGoalTest {
                                                                      new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY);
     int i = 0;
     for (; i < 2; i++) {
-      clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo, populateDiskInfo);
+      clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo);
     }
     for (int j = 1; j < NUM_RACKS; j++, i++) {
-      clusterModel.createBroker("r" + j, "h" + i, i, commonBrokerCapacityInfo, populateDiskInfo);
+      clusterModel.createBroker("r" + j, "h" + i, i, commonBrokerCapacityInfo);
     }
 
     createReplicaAndSetLoad(clusterModel, "r0", 0, logdir(populateDiskInfo, 0, 0), T0P0, 0, true);

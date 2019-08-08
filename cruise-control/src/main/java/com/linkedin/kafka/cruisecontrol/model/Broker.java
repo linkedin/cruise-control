@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.model;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -52,32 +53,18 @@ public class Broker implements Serializable, Comparable<Broker> {
   private final Map<String, Map<Integer, Replica>> _topicReplicas;
   private final Load _load;
   private final Load _leadershipLoadForNwResources;
+  private final SortedMap<String, Disk> _diskByLogdir;
   private State _state;
-  private SortedMap<String, Disk> _diskByLogdir;
-
-  /**
-   * Constructor for Broker class with no disk capacity specified per absolute logDir.
-   *
-   * @param host           The host this broker is on
-   * @param id             The id of the broker.
-   * @param brokerCapacity The capacity of the broker.
-   */
-  Broker(Host host, int id, Map<Resource, Double> brokerCapacity) {
-    this(host, id, brokerCapacity, null);
-  }
 
   /**
    * Constructor for Broker class.
    *
    * @param host           The host this broker is on
    * @param id             The id of the broker.
-   * @param brokerCapacity The capacity of the broker.
-   * @param diskCapacityByLogDir Disk capacity by absolute logDir.
+   * @param brokerCapacityInfo Capacity information of the created broker.
    */
-  Broker(Host host,
-         int id,
-         Map<Resource, Double> brokerCapacity,
-         Map<String, Double> diskCapacityByLogDir) {
+  Broker(Host host, int id, BrokerCapacityInfo brokerCapacityInfo) {
+    Map<Resource, Double> brokerCapacity = brokerCapacityInfo.capacity();
     if (brokerCapacity == null) {
       throw new IllegalArgumentException("Attempt to create broker " + id + " on host " + host.name() + " with null capacity.");
     }
@@ -85,9 +72,12 @@ public class Broker implements Serializable, Comparable<Broker> {
     _id = id;
     _brokerCapacity = new double[Resource.cachedValues().size()];
     for (Map.Entry<Resource, Double> entry : brokerCapacity.entrySet()) {
-      _brokerCapacity[entry.getKey().id()] = entry.getValue();
+      Resource resource = entry.getKey();
+      _brokerCapacity[resource.id()] = (resource == Resource.CPU) ? (entry.getValue() * brokerCapacityInfo.numCpuCores())
+                                                                  : entry.getValue();
     }
 
+    Map<String, Double> diskCapacityByLogDir = brokerCapacityInfo.diskCapacityByLogDir();
     if (diskCapacityByLogDir != null) {
       _diskByLogdir = new TreeMap<>();
       diskCapacityByLogDir.forEach((key, value) -> _diskByLogdir.put(key, new Disk(key, this, value)));

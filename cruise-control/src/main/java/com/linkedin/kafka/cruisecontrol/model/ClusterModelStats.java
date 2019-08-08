@@ -20,6 +20,8 @@ import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.averageDiskUtilizationPercentage;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.diskUtilizationPercentage;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.*;
+
 
 public class ClusterModelStats {
   private final Map<Statistic, Map<Resource, Double>> _resourceUtilizationStats;
@@ -37,7 +39,7 @@ public class ClusterModelStats {
   private BalancingConstraint _balancingConstraint;
   private double[][] _utilizationMatrix;
   private int _numSnapshotWindows;
-  private double _monitoredPartitionsPercentage;
+  private double _monitoredPartitionsRatio;
   // Number of unbalanced disks in the cluster.
   private int _numUnbalancedDisks;
   // Aggregated standard deviation of disk utilization for the cluster.
@@ -81,7 +83,7 @@ public class ClusterModelStats {
     numForAvgTopicReplicas(clusterModel);
     _utilizationMatrix = clusterModel.utilizationMatrix();
     _numSnapshotWindows = clusterModel.load().numWindows();
-    _monitoredPartitionsPercentage = clusterModel.monitoredPartitionsPercentage();
+    _monitoredPartitionsRatio = clusterModel.monitoredPartitionsRatio();
     populateStatsForDisks(clusterModel, balancingConstraint);
     return this;
   }
@@ -175,7 +177,7 @@ public class ClusterModelStats {
    * Get the monitored partition percentage of this cluster model;
    */
   public double monitoredPartitionsPercentage() {
-    return _monitoredPartitionsPercentage;
+    return _monitoredPartitionsRatio * TO_PERCENTAGE_UTILIZATION;
   }
 
   /**

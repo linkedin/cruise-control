@@ -445,7 +445,7 @@ public class DeterministicCluster {
     BrokerCapacityInfo commonBrokerCapacityInfo = new BrokerCapacityInfo(brokerCapacity);
     // Create brokers and assign a broker to each rack.
     rackByBroker.forEach(
-        (key, value) -> cluster.createBroker(value.toString(), Integer.toString(key), key, commonBrokerCapacityInfo, false));
+        (key, value) -> cluster.createBroker(value.toString(), Integer.toString(key), key, commonBrokerCapacityInfo));
     return cluster;
   }
 }

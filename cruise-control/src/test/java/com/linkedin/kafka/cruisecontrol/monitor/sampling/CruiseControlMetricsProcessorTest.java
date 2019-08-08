@@ -6,7 +6,6 @@ package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.BrokerMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricType;
@@ -80,27 +79,32 @@ public class CruiseControlMetricsProcessorTest {
   private static final double T1P1_BYTES_SIZE = 300.0;
   private static final double T2P0_BYTES_SIZE = 200.0;
   private static final double T2P1_BYTES_SIZE = 500.0;
-  private static final Map<TopicPartition, Double> CPU_UTIL = new HashMap<>();
+  private static final Set<TopicPartition> TEST_PARTITIONS = Collections.unmodifiableSet(new HashSet<>(Arrays.asList(T1P0, T1P1, T2P0, T2P1)));
+  private static final Map<TopicPartition, Double> CPU_UTIL = new HashMap<>(4);
   static {
-    CPU_UTIL.put(T1P0, estimateLeaderCpuUtil(B0_CPU,
+    CPU_UTIL.put(T1P0, MOCK_NUM_CPU_CORES *
+                       estimateLeaderCpuUtil(B0_CPU,
                                              B0_ALL_TOPIC_BYTES_IN,
                                              B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
                                              B0_TOPIC1_REPLICATION_BYTES_IN,
                                              B0_TOPIC1_BYTES_IN,
                                              B0_TOPIC1_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT));
-    CPU_UTIL.put(T1P1, estimateLeaderCpuUtil(B1_CPU,
+    CPU_UTIL.put(T1P1, MOCK_NUM_CPU_CORES *
+                       estimateLeaderCpuUtil(B1_CPU,
                                              B1_ALL_TOPIC_BYTES_IN,
                                              B1_ALL_TOPIC_BYTES_OUT + B1_TOPIC1_REPLICATION_BYTES_OUT,
                                              B1_TOPIC1_REPLICATION_BYTES_IN + B1_TOPIC2_REPLICATION_BYTES_IN,
                                              B1_TOPIC1_BYTES_IN,
                                              B1_TOPIC1_BYTES_OUT + B1_TOPIC1_REPLICATION_BYTES_OUT));
-    CPU_UTIL.put(T2P0, estimateLeaderCpuUtil(B0_CPU,
+    CPU_UTIL.put(T2P0, MOCK_NUM_CPU_CORES *
+                       estimateLeaderCpuUtil(B0_CPU,
                                              B0_ALL_TOPIC_BYTES_IN,
                                              B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
                                              B0_TOPIC1_REPLICATION_BYTES_IN,
                                              B0_TOPIC2_BYTES_IN / 2,
                                              (B0_TOPIC2_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT) / 2));
-    CPU_UTIL.put(T2P1, estimateLeaderCpuUtil(B0_CPU,
+    CPU_UTIL.put(T2P1, MOCK_NUM_CPU_CORES *
+                       estimateLeaderCpuUtil(B0_CPU,
                                              B0_ALL_TOPIC_BYTES_IN,
                                              B0_ALL_TOPIC_BYTES_OUT + B0_TOPIC1_REPLICATION_BYTES_OUT + B0_TOPIC2_REPLICATION_BYTES_OUT,
                                              B0_TOPIC1_REPLICATION_BYTES_IN,
@@ -118,9 +122,8 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testWithCpuCapacityEstimation() throws UnknownVersionException {
+  public void testWithCpuCapacityEstimation() {
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
-    Cluster cluster = getCluster();
     // All estimated.
     BrokerCapacityConfigResolver brokerCapacityConfigResolverAllEstimated = EasyMock.mock(BrokerCapacityConfigResolver.class);
     EasyMock.expect(brokerCapacityConfigResolverAllEstimated.capacityForBroker(EasyMock.anyString(), EasyMock.anyString(), EasyMock.anyInt()))
@@ -129,10 +132,11 @@ public class CruiseControlMetricsProcessorTest {
 
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(brokerCapacityConfigResolverAllEstimated, false);
     for (CruiseControlMetric cruiseControlMetric : metrics) {
-      processor.addMetric(cluster, cruiseControlMetric);
+      processor.addMetric(cruiseControlMetric);
     }
 
-    processor.process(cluster, Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+    Cluster cluster = getCluster();
+    processor.process(cluster, TEST_PARTITIONS, MetricSampler.SamplingMode.ALL);
     for (Node node : cluster.nodes()) {
       assertNull(processor.cachedNumCoresByBroker().get(node.id()));
     }
@@ -146,22 +150,21 @@ public class CruiseControlMetricsProcessorTest {
 
     processor = new CruiseControlMetricsProcessor(brokerCapacityConfigResolverSomeEstimated, false);
     for (CruiseControlMetric metric : metrics) {
-      processor.addMetric(cluster, metric);
+      processor.addMetric(metric);
     }
-    processor.process(cluster, Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+    processor.process(cluster, TEST_PARTITIONS, MetricSampler.SamplingMode.ALL);
     assertEquals(MOCK_NUM_CPU_CORES, (short) processor.cachedNumCoresByBroker().get(BROKER_ID_0));
     assertNull(processor.cachedNumCoresByBroker().get(BROKER_ID_1));
   }
 
   @Test
-  public void testBasic() throws UnknownVersionException {
+  public void testBasic() {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(mockBrokerCapacityConfigResolver(), false);
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     Cluster cluster = getCluster();
-    metrics.forEach(metric -> processor.addMetric(cluster, metric));
+    metrics.forEach(processor::addMetric);
 
-    MetricSampler.Samples samples =
-        processor.process(cluster, Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+    MetricSampler.Samples samples = processor.process(cluster, TEST_PARTITIONS, MetricSampler.SamplingMode.ALL);
     for (Node node : cluster.nodes()) {
       assertEquals(MOCK_NUM_CPU_CORES, (short) processor.cachedNumCoresByBroker().get(node.id()));
     }
@@ -202,25 +205,24 @@ public class CruiseControlMetricsProcessorTest {
   }
 
   @Test
-  public void testMissingBrokerCpuUtilization() throws UnknownVersionException {
+  public void testMissingBrokerCpuUtilization() {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(mockBrokerCapacityConfigResolver(), false);
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
-    Cluster cluster = getCluster();
     for (CruiseControlMetric metric : metrics) {
       if (metric.rawMetricType() == RawMetricType.BROKER_CPU_UTIL && metric.brokerId() == BROKER_ID_0) {
         // Do nothing and skip the metric.
       } else {
-        processor.addMetric(cluster, metric);
+        processor.addMetric(metric);
       }
     }
-    MetricSampler.Samples samples =
-        processor.process(cluster, Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+    Cluster cluster = getCluster();
+    MetricSampler.Samples samples = processor.process(cluster, TEST_PARTITIONS, MetricSampler.SamplingMode.ALL);
     assertEquals("Should have ignored partitions on broker 0", 1, samples.partitionMetricSamples().size());
     assertEquals("Should have ignored broker 0", 1, samples.brokerMetricSamples().size());
   }
 
   @Test
-  public void testMissingOtherBrokerMetrics() throws UnknownVersionException {
+  public void testMissingOtherBrokerMetrics() {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(mockBrokerCapacityConfigResolver(), false);
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     Cluster cluster = getCluster();
@@ -228,20 +230,18 @@ public class CruiseControlMetricsProcessorTest {
       if (metric.rawMetricType() == RawMetricType.BROKER_CONSUMER_FETCH_LOCAL_TIME_MS_MAX && metric.brokerId() == BROKER_ID_0) {
         // Do nothing and skip the metric.
       } else {
-        processor.addMetric(cluster, metric);
+        processor.addMetric(metric);
       }
     }
-    MetricSampler.Samples samples =
-        processor.process(cluster, Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+    MetricSampler.Samples samples = processor.process(cluster, TEST_PARTITIONS, MetricSampler.SamplingMode.ALL);
     assertEquals("Should have all 4 partition metrics.", 4, samples.partitionMetricSamples().size());
     assertEquals("Should have ignored broker 0", 1, samples.brokerMetricSamples().size());
   }
 
   @Test
-  public void testMissingPartitionSizeMetric() throws UnknownVersionException {
+  public void testMissingPartitionSizeMetric() {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(mockBrokerCapacityConfigResolver(), false);
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
-    Cluster cluster = getCluster();
     for (CruiseControlMetric metric : metrics) {
       boolean shouldAdd = true;
       if (metric.rawMetricType() == RawMetricType.PARTITION_SIZE) {
@@ -251,24 +251,23 @@ public class CruiseControlMetricsProcessorTest {
         }
       }
       if (shouldAdd) {
-        processor.addMetric(cluster, metric);
+        processor.addMetric(metric);
       }
     }
-    MetricSampler.Samples samples =
-        processor.process(cluster, Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
+    Cluster cluster = getCluster();
+    MetricSampler.Samples samples = processor.process(cluster, TEST_PARTITIONS, MetricSampler.SamplingMode.ALL);
     assertEquals("Should have ignored partition " + T1P0, 3, samples.partitionMetricSamples().size());
     assertEquals("Should have reported both brokers", 2, samples.brokerMetricSamples().size());
   }
 
   @Test
-  public void testMissingTopicBytesInMetric() throws UnknownVersionException {
+  public void testMissingTopicBytesInMetric() {
     CruiseControlMetricsProcessor processor = new CruiseControlMetricsProcessor(mockBrokerCapacityConfigResolver(), false);
     Set<CruiseControlMetric> metrics = getCruiseControlMetrics();
     Set<RawMetricType> metricTypeToExclude = new HashSet<>(Arrays.asList(TOPIC_BYTES_IN,
                                                                          TOPIC_BYTES_OUT,
                                                                          TOPIC_REPLICATION_BYTES_IN,
                                                                          TOPIC_REPLICATION_BYTES_OUT));
-    Cluster cluster = getCluster();
     for (CruiseControlMetric metric : metrics) {
       if (metricTypeToExclude.contains(metric.rawMetricType())) {
         TopicMetric tm = (TopicMetric) metric;
@@ -276,12 +275,11 @@ public class CruiseControlMetricsProcessorTest {
           continue;
         }
       }
-      processor.addMetric(cluster, metric);
+      processor.addMetric(metric);
     }
 
-    MetricSampler.Samples samples =
-        processor.process(cluster, Arrays.asList(T1P0, T1P1, T2P0, T2P1), MetricSampler.SamplingMode.ALL);
-
+    Cluster cluster = getCluster();
+    MetricSampler.Samples samples = processor.process(cluster, TEST_PARTITIONS, MetricSampler.SamplingMode.ALL);
     assertEquals(4, samples.partitionMetricSamples().size());
     assertEquals(2, samples.brokerMetricSamples().size());
 

@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol;
 
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.PreferredLeaderElectionGoal;
@@ -192,23 +193,23 @@ public class KafkaCruiseControl {
    *
    * @throws KafkaCruiseControlException When any exception occurred during the decommission process.
    */
-  public GoalOptimizer.OptimizerResult decommissionBrokers(Set<Integer> removedBrokers,
-                                                           boolean dryRun,
-                                                           boolean throttleDecommissionedBroker,
-                                                           List<String> goals,
-                                                           ModelCompletenessRequirements requirements,
-                                                           OperationProgress operationProgress,
-                                                           boolean allowCapacityEstimation,
-                                                           Integer concurrentInterBrokerPartitionMovements,
-                                                           Integer concurrentLeaderMovements,
-                                                           boolean skipHardGoalCheck,
-                                                           Pattern excludedTopics,
-                                                           ReplicaMovementStrategy replicaMovementStrategy,
-                                                           Long replicationThrottle,
-                                                           String uuid,
-                                                           boolean excludeRecentlyDemotedBrokers,
-                                                           boolean excludeRecentlyRemovedBrokers,
-                                                           Set<Integer> requestedDestinationBrokerIds)
+  public OptimizerResult decommissionBrokers(Set<Integer> removedBrokers,
+                                             boolean dryRun,
+                                             boolean throttleDecommissionedBroker,
+                                             List<String> goals,
+                                             ModelCompletenessRequirements requirements,
+                                             OperationProgress operationProgress,
+                                             boolean allowCapacityEstimation,
+                                             Integer concurrentInterBrokerPartitionMovements,
+                                             Integer concurrentLeaderMovements,
+                                             boolean skipHardGoalCheck,
+                                             Pattern excludedTopics,
+                                             ReplicaMovementStrategy replicaMovementStrategy,
+                                             Long replicationThrottle,
+                                             String uuid,
+                                             boolean excludeRecentlyDemotedBrokers,
+                                             boolean excludeRecentlyRemovedBrokers,
+                                             Set<Integer> requestedDestinationBrokerIds)
       throws KafkaCruiseControlException {
     sanityCheckDryRun(dryRun);
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
@@ -220,15 +221,15 @@ public class KafkaCruiseControl {
                                                             operationProgress);
       sanityCheckBrokersHavingOfflineReplicasOnBadDisks(goals, clusterModel);
       removedBrokers.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
-      GoalOptimizer.OptimizerResult result = getProposals(clusterModel,
-                                                          goalsByPriority,
-                                                          operationProgress,
-                                                          allowCapacityEstimation,
-                                                          excludedTopics,
-                                                          excludeRecentlyDemotedBrokers,
-                                                          excludeRecentlyRemovedBrokers,
-                                                          false,
-                                                          requestedDestinationBrokerIds);
+      OptimizerResult result = getProposals(clusterModel,
+                                            goalsByPriority,
+                                            operationProgress,
+                                            allowCapacityEstimation,
+                                            excludedTopics,
+                                            excludeRecentlyDemotedBrokers,
+                                            excludeRecentlyRemovedBrokers,
+                                            false,
+                                            requestedDestinationBrokerIds);
       if (!dryRun) {
         executeRemoval(result.goalProposals(), throttleDecommissionedBroker, removedBrokers, isKafkaAssignerMode(goals),
                        concurrentInterBrokerPartitionMovements, concurrentLeaderMovements, replicaMovementStrategy,
@@ -267,20 +268,20 @@ public class KafkaCruiseControl {
    *
    * @throws KafkaCruiseControlException when any exception occurred during the process of fixing offline replicas.
    */
-  public GoalOptimizer.OptimizerResult fixOfflineReplicas(boolean dryRun,
-                                                          List<String> goals,
-                                                          ModelCompletenessRequirements requirements,
-                                                          OperationProgress operationProgress,
-                                                          boolean allowCapacityEstimation,
-                                                          Integer concurrentInterBrokerPartitionMovements,
-                                                          Integer concurrentLeaderMovements,
-                                                          boolean skipHardGoalCheck,
-                                                          Pattern excludedTopics,
-                                                          ReplicaMovementStrategy replicaMovementStrategy,
-                                                          Long replicationThrottle,
-                                                          String uuid,
-                                                          boolean excludeRecentlyDemotedBrokers,
-                                                          boolean excludeRecentlyRemovedBrokers)
+  public OptimizerResult fixOfflineReplicas(boolean dryRun,
+                                            List<String> goals,
+                                            ModelCompletenessRequirements requirements,
+                                            OperationProgress operationProgress,
+                                            boolean allowCapacityEstimation,
+                                            Integer concurrentInterBrokerPartitionMovements,
+                                            Integer concurrentLeaderMovements,
+                                            boolean skipHardGoalCheck,
+                                            Pattern excludedTopics,
+                                            ReplicaMovementStrategy replicaMovementStrategy,
+                                            Long replicationThrottle,
+                                            String uuid,
+                                            boolean excludeRecentlyDemotedBrokers,
+                                            boolean excludeRecentlyRemovedBrokers)
       throws KafkaCruiseControlException {
     sanityCheckDryRun(dryRun);
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
@@ -292,15 +293,15 @@ public class KafkaCruiseControl {
                                                             operationProgress);
       // Ensure that the generated cluster model contains offline replicas.
       sanityCheckOfflineReplicaPresence(clusterModel);
-      GoalOptimizer.OptimizerResult result = getProposals(clusterModel,
-                                                          goalsByPriority,
-                                                          operationProgress,
-                                                          allowCapacityEstimation,
-                                                          excludedTopics,
-                                                          excludeRecentlyDemotedBrokers,
-                                                          excludeRecentlyRemovedBrokers,
-                                                          false,
-                                                          Collections.emptySet());
+      OptimizerResult result = getProposals(clusterModel,
+                                            goalsByPriority,
+                                            operationProgress,
+                                            allowCapacityEstimation,
+                                            excludedTopics,
+                                            excludeRecentlyDemotedBrokers,
+                                            excludeRecentlyRemovedBrokers,
+                                            false,
+                                            Collections.emptySet());
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          Collections.emptySet(),
@@ -365,22 +366,22 @@ public class KafkaCruiseControl {
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the broker addition.
    */
-  public GoalOptimizer.OptimizerResult addBrokers(Set<Integer> brokerIds,
-                                                  boolean dryRun,
-                                                  boolean throttleAddedBrokers,
-                                                  List<String> goals,
-                                                  ModelCompletenessRequirements requirements,
-                                                  OperationProgress operationProgress,
-                                                  boolean allowCapacityEstimation,
-                                                  Integer concurrentInterBrokerPartitionMovements,
-                                                  Integer concurrentLeaderMovements,
-                                                  boolean skipHardGoalCheck,
-                                                  Pattern excludedTopics,
-                                                  ReplicaMovementStrategy replicaMovementStrategy,
-                                                  Long replicationThrottle,
-                                                  String uuid,
-                                                  boolean excludeRecentlyDemotedBrokers,
-                                                  boolean excludeRecentlyRemovedBrokers) throws KafkaCruiseControlException {
+  public OptimizerResult addBrokers(Set<Integer> brokerIds,
+                                    boolean dryRun,
+                                    boolean throttleAddedBrokers,
+                                    List<String> goals,
+                                    ModelCompletenessRequirements requirements,
+                                    OperationProgress operationProgress,
+                                    boolean allowCapacityEstimation,
+                                    Integer concurrentInterBrokerPartitionMovements,
+                                    Integer concurrentLeaderMovements,
+                                    boolean skipHardGoalCheck,
+                                    Pattern excludedTopics,
+                                    ReplicaMovementStrategy replicaMovementStrategy,
+                                    Long replicationThrottle,
+                                    String uuid,
+                                    boolean excludeRecentlyDemotedBrokers,
+                                    boolean excludeRecentlyRemovedBrokers) throws KafkaCruiseControlException {
     sanityCheckDryRun(dryRun);
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
@@ -393,15 +394,15 @@ public class KafkaCruiseControl {
                                                             operationProgress);
       sanityCheckBrokersHavingOfflineReplicasOnBadDisks(goals, clusterModel);
       brokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.NEW));
-      GoalOptimizer.OptimizerResult result = getProposals(clusterModel,
-                                                          goalsByPriority,
-                                                          operationProgress,
-                                                          allowCapacityEstimation,
-                                                          excludedTopics,
-                                                          excludeRecentlyDemotedBrokers,
-                                                          excludeRecentlyRemovedBrokers,
-                                                          false,
-                                                          Collections.emptySet());
+      OptimizerResult result = getProposals(clusterModel,
+                                            goalsByPriority,
+                                            operationProgress,
+                                            allowCapacityEstimation,
+                                            excludedTopics,
+                                            excludeRecentlyDemotedBrokers,
+                                            excludeRecentlyRemovedBrokers,
+                                            false,
+                                            Collections.emptySet());
       if (!dryRun) {
         executeProposals(result.goalProposals(),
                          throttleAddedBrokers ? Collections.emptySet() : brokerIds,
@@ -472,34 +473,34 @@ public class KafkaCruiseControl {
    * @return The optimization result.
    * @throws KafkaCruiseControlException When the rebalance encounter errors.
    */
-  public GoalOptimizer.OptimizerResult rebalance(List<String> goals,
-                                                 boolean dryRun,
-                                                 ModelCompletenessRequirements requirements,
-                                                 OperationProgress operationProgress,
-                                                 boolean allowCapacityEstimation,
-                                                 Integer concurrentInterBrokerPartitionMovements,
-                                                 Integer concurrentIntraBrokerPartitionMovements,
-                                                 Integer concurrentLeaderMovements,
-                                                 boolean skipHardGoalCheck,
-                                                 Pattern excludedTopics,
-                                                 ReplicaMovementStrategy replicaMovementStrategy,
-                                                 Long replicationThrottle,
-                                                 String uuid,
-                                                 boolean excludeRecentlyDemotedBrokers,
-                                                 boolean excludeRecentlyRemovedBrokers,
-                                                 boolean ignoreProposalCache,
-                                                 boolean isTriggeredByGoalViolation,
-                                                 Set<Integer> requestedDestinationBrokerIds,
-                                                 boolean isRebalanceDiskMode) throws KafkaCruiseControlException {
+  public OptimizerResult rebalance(List<String> goals,
+                                   boolean dryRun,
+                                   ModelCompletenessRequirements requirements,
+                                   OperationProgress operationProgress,
+                                   boolean allowCapacityEstimation,
+                                   Integer concurrentInterBrokerPartitionMovements,
+                                   Integer concurrentIntraBrokerPartitionMovements,
+                                   Integer concurrentLeaderMovements,
+                                   boolean skipHardGoalCheck,
+                                   Pattern excludedTopics,
+                                   ReplicaMovementStrategy replicaMovementStrategy,
+                                   Long replicationThrottle,
+                                   String uuid,
+                                   boolean excludeRecentlyDemotedBrokers,
+                                   boolean excludeRecentlyRemovedBrokers,
+                                   boolean ignoreProposalCache,
+                                   boolean isTriggeredByGoalViolation,
+                                   Set<Integer> requestedDestinationBrokerIds,
+                                   boolean isRebalanceDiskMode) throws KafkaCruiseControlException {
     sanityCheckDryRun(dryRun);
-    GoalOptimizer.OptimizerResult result = getProposals(goals, requirements, operationProgress,
-                                                        allowCapacityEstimation, skipHardGoalCheck,
-                                                        excludedTopics, excludeRecentlyDemotedBrokers,
-                                                        excludeRecentlyRemovedBrokers,
-                                                        ignoreProposalCache,
-                                                        isTriggeredByGoalViolation,
-                                                        requestedDestinationBrokerIds,
-                                                        isRebalanceDiskMode);
+    OptimizerResult result = getProposals(goals, requirements, operationProgress,
+                                          allowCapacityEstimation, skipHardGoalCheck,
+                                          excludedTopics, excludeRecentlyDemotedBrokers,
+                                          excludeRecentlyRemovedBrokers,
+                                          ignoreProposalCache,
+                                          isTriggeredByGoalViolation,
+                                          requestedDestinationBrokerIds,
+                                          isRebalanceDiskMode);
     if (!dryRun) {
       executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(goals),
                        concurrentInterBrokerPartitionMovements, concurrentIntraBrokerPartitionMovements, concurrentLeaderMovements,
@@ -539,18 +540,18 @@ public class KafkaCruiseControl {
    * @return the optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the broker demotion.
    */
-  public GoalOptimizer.OptimizerResult demoteBrokers(Set<Integer> brokerIds,
-                                                     Map<Integer, Set<String>> brokerIdAndLogdirs,
-                                                     boolean dryRun,
-                                                     OperationProgress operationProgress,
-                                                     boolean allowCapacityEstimation,
-                                                     Integer concurrentLeaderMovements,
-                                                     boolean skipUrpDemotion,
-                                                     boolean excludeFollowerDemotion,
-                                                     ReplicaMovementStrategy replicaMovementStrategy,
-                                                     Long replicationThrottle,
-                                                     String uuid,
-                                                     boolean excludeRecentlyDemotedBrokers)
+  public OptimizerResult demoteBrokers(Set<Integer> brokerIds,
+                                       Map<Integer, Set<String>> brokerIdAndLogdirs,
+                                       boolean dryRun,
+                                       OperationProgress operationProgress,
+                                       boolean allowCapacityEstimation,
+                                       Integer concurrentLeaderMovements,
+                                       boolean skipUrpDemotion,
+                                       boolean excludeFollowerDemotion,
+                                       ReplicaMovementStrategy replicaMovementStrategy,
+                                       Long replicationThrottle,
+                                       String uuid,
+                                       boolean excludeRecentlyDemotedBrokers)
       throws KafkaCruiseControlException {
     sanityCheckDryRun(dryRun);
     PreferredLeaderElectionGoal goal = new PreferredLeaderElectionGoal(skipUrpDemotion,
@@ -581,15 +582,15 @@ public class KafkaCruiseControl {
         }
       });
       List<Goal> goalsByPriority = goalsByPriority(Collections.singletonList(goal.getClass().getSimpleName()));
-      GoalOptimizer.OptimizerResult result = getProposals(clusterModel,
-                                                          goalsByPriority,
-                                                          operationProgress,
-                                                          allowCapacityEstimation,
-                                                          null,
-                                                          excludeRecentlyDemotedBrokers,
-                                                          false,
-                                                          false,
-                                                          Collections.emptySet());
+      OptimizerResult result = getProposals(clusterModel,
+                                            goalsByPriority,
+                                            operationProgress,
+                                            allowCapacityEstimation,
+                                            null,
+                                            excludeRecentlyDemotedBrokers,
+                                            false,
+                                            false,
+                                            Collections.emptySet());
       if (!dryRun) {
         executeDemotion(result.goalProposals(), brokerIds, concurrentLeaderMovements, replicaMovementStrategy,
                         replicationThrottle, uuid);
@@ -786,8 +787,8 @@ public class KafkaCruiseControl {
    * @param allowCapacityEstimation Allow capacity estimation in cluster model if the requested broker capacity is unavailable.
    * @return The optimization result.
    */
-  public GoalOptimizer.OptimizerResult getProposals(OperationProgress operationProgress,
-                                                    boolean allowCapacityEstimation)
+  public OptimizerResult getProposals(OperationProgress operationProgress,
+                                      boolean allowCapacityEstimation)
       throws KafkaCruiseControlException {
     try {
       return _goalOptimizer.optimizations(operationProgress, allowCapacityEstimation);
@@ -853,20 +854,20 @@ public class KafkaCruiseControl {
    * @return The optimization result.
    * @throws KafkaCruiseControlException If anything goes wrong in optimization proposal calculation.
    */
-  public GoalOptimizer.OptimizerResult getProposals(List<String> goals,
-                                                    ModelCompletenessRequirements requirements,
-                                                    OperationProgress operationProgress,
-                                                    boolean allowCapacityEstimation,
-                                                    boolean skipHardGoalCheck,
-                                                    Pattern excludedTopics,
-                                                    boolean excludeRecentlyDemotedBrokers,
-                                                    boolean excludeRecentlyRemovedBrokers,
-                                                    boolean ignoreProposalCache,
-                                                    boolean isTriggeredByGoalViolation,
-                                                    Set<Integer> requestedDestinationBrokerIds,
-                                                    boolean isRebalanceDiskMode)
+  public OptimizerResult getProposals(List<String> goals,
+                                      ModelCompletenessRequirements requirements,
+                                      OperationProgress operationProgress,
+                                      boolean allowCapacityEstimation,
+                                      boolean skipHardGoalCheck,
+                                      Pattern excludedTopics,
+                                      boolean excludeRecentlyDemotedBrokers,
+                                      boolean excludeRecentlyRemovedBrokers,
+                                      boolean ignoreProposalCache,
+                                      boolean isTriggeredByGoalViolation,
+                                      Set<Integer> requestedDestinationBrokerIds,
+                                      boolean isRebalanceDiskMode)
       throws KafkaCruiseControlException {
-    GoalOptimizer.OptimizerResult result;
+    OptimizerResult result;
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
     List<Goal> goalsByPriority = goalsByPriority(goals);
     ModelCompletenessRequirements completenessRequirements = modelCompletenessRequirements(goalsByPriority).weaker(requirements);
@@ -906,15 +907,15 @@ public class KafkaCruiseControl {
     return result;
   }
 
-  private GoalOptimizer.OptimizerResult getProposals(ClusterModel clusterModel,
-                                                     List<Goal> goalsByPriority,
-                                                     OperationProgress operationProgress,
-                                                     boolean allowCapacityEstimation,
-                                                     Pattern requestedExcludedTopics,
-                                                     boolean excludeRecentlyDemotedBrokers,
-                                                     boolean excludeRecentlyRemovedBrokers,
-                                                     boolean isTriggeredByGoalViolation,
-                                                     Set<Integer> requestedDestinationBrokerIds)
+  private OptimizerResult getProposals(ClusterModel clusterModel,
+                                       List<Goal> goalsByPriority,
+                                       OperationProgress operationProgress,
+                                       boolean allowCapacityEstimation,
+                                       Pattern requestedExcludedTopics,
+                                       boolean excludeRecentlyDemotedBrokers,
+                                       boolean excludeRecentlyRemovedBrokers,
+                                       boolean isTriggeredByGoalViolation,
+                                       Set<Integer> requestedDestinationBrokerIds)
       throws KafkaCruiseControlException {
     sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
     if (!requestedDestinationBrokerIds.isEmpty()) {
@@ -1111,22 +1112,22 @@ public class KafkaCruiseControl {
    * @return The optimization result.
    * @throws KafkaCruiseControlException When any exception occurred during the topic configuration updating.
    */
-  public GoalOptimizer.OptimizerResult updateTopicConfiguration(Pattern topicPattern,
-                                                                List<String> goals,
-                                                                short replicationFactor,
-                                                                boolean skipTopicRackAwarenessCheck,
-                                                                ModelCompletenessRequirements requirements,
-                                                                OperationProgress operationProgress,
-                                                                boolean allowCapacityEstimation,
-                                                                Integer concurrentInterBrokerPartitionMovements,
-                                                                Integer concurrentLeaderMovements,
-                                                                boolean skipHardGoalCheck,
-                                                                ReplicaMovementStrategy replicaMovementStrategy,
-                                                                Long replicationThrottle,
-                                                                boolean excludeRecentlyDemotedBrokers,
-                                                                boolean excludeRecentlyRemovedBrokers,
-                                                                boolean dryRun,
-                                                                String uuid)
+  public OptimizerResult updateTopicConfiguration(Pattern topicPattern,
+                                                  List<String> goals,
+                                                  short replicationFactor,
+                                                  boolean skipTopicRackAwarenessCheck,
+                                                  ModelCompletenessRequirements requirements,
+                                                  OperationProgress operationProgress,
+                                                  boolean allowCapacityEstimation,
+                                                  Integer concurrentInterBrokerPartitionMovements,
+                                                  Integer concurrentLeaderMovements,
+                                                  boolean skipHardGoalCheck,
+                                                  ReplicaMovementStrategy replicaMovementStrategy,
+                                                  Long replicationThrottle,
+                                                  boolean excludeRecentlyDemotedBrokers,
+                                                  boolean excludeRecentlyRemovedBrokers,
+                                                  boolean dryRun,
+                                                  String uuid)
       throws KafkaCruiseControlException {
     sanityCheckDryRun(dryRun);
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck);
@@ -1138,7 +1139,7 @@ public class KafkaCruiseControl {
     Set<String> topicsForReplicationFactorChange = topicsForReplicationFactorChange(topicPattern, cluster, replicationFactor);
 
     // Generate cluster model and get proposal
-    GoalOptimizer.OptimizerResult result;
+    OptimizerResult result;
     Map<String, List<Integer>> brokersByRack = new HashMap<>();
     Map<Integer, String> rackByBroker = new HashMap<>();
     ModelCompletenessRequirements completenessRequirements = modelCompletenessRequirements(goalsByPriority).weaker(requirements);
