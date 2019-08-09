@@ -20,7 +20,7 @@ def generate_url_from_cc_socket_address(cc_socket_address: str, endpoint: Abstra
     :return: URL, the correct URL to perform the Endpoint's operation
              on the given cruise-control host, _including parameters_.
     """
-    warnings.warn("This function is deprecated as of 1.0.0. "
+    warnings.warn("This function is deprecated as of 0.2.0. "
                   "It may be removed entirely in future versions.",
                   DeprecationWarning,
                   stacklevel=2)

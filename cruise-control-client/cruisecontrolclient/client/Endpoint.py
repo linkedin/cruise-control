@@ -172,7 +172,7 @@ class AbstractEndpoint(metaclass=ABCMeta):
             'state'
             'stop_proposal_execution'
         """
-        warnings.warn("This method is deprecated as of 1.0.0, as it needlessly recreates requests functionality. "
+        warnings.warn("This method is deprecated as of 0.2.0, as it needlessly recreates requests functionality. "
                       "It may be removed entirely in future versions. "
                       "Please use get_composed_params instead.",
                       DeprecationWarning,

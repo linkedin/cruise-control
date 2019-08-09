@@ -115,7 +115,7 @@ class AbstractResponder(object):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
-        warnings.warn("This class is deprecated as of 1.0.0. "
+        warnings.warn("This class is deprecated as of 0.2.0. "
                       "It may be removed entirely in future versions.",
                       DeprecationWarning,
                       stacklevel=2)
@@ -145,7 +145,7 @@ class AbstractTextResponder(AbstractResponder):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
-        warnings.warn("This class is deprecated as of 1.0.0. "
+        warnings.warn("This class is deprecated as of 0.2.0. "
                       "It may be removed entirely in future versions.",
                       DeprecationWarning,
                       stacklevel=2)
@@ -180,7 +180,7 @@ class AbstractJSONResponder(AbstractResponder):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
-        warnings.warn("This class is deprecated as of 1.0.0. "
+        warnings.warn("This class is deprecated as of 0.2.0. "
                       "It may be removed entirely in future versions.",
                       DeprecationWarning,
                       stacklevel=2)
@@ -237,7 +237,7 @@ class JSONDisplayingResponderGet(AbstractJSONDisplayingResponder):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
-        warnings.warn("This class is deprecated as of 1.0.0. "
+        warnings.warn("This class is deprecated as of 0.2.0. "
                       "It may be removed entirely in future versions.",
                       DeprecationWarning,
                       stacklevel=2)
@@ -253,7 +253,7 @@ class JSONDisplayingResponderPost(AbstractJSONDisplayingResponder):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
-        warnings.warn("This class is deprecated as of 1.0.0. "
+        warnings.warn("This class is deprecated as of 0.2.0. "
                       "It may be removed entirely in future versions.",
                       DeprecationWarning,
                       stacklevel=2)
@@ -273,7 +273,7 @@ class AbstractJSONResponderThread(Thread):
     """
 
     def __init__(self):
-        warnings.warn("This class is deprecated as of 1.0.0. "
+        warnings.warn("This class is deprecated as of 0.2.0. "
                       "It may be removed entirely in future versions.",
                       DeprecationWarning,
                       stacklevel=2)
@@ -300,7 +300,7 @@ class JSONResponderGetThread(AbstractJSONResponderThread):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
-        warnings.warn("This class is deprecated as of 1.0.0. "
+        warnings.warn("This class is deprecated as of 0.2.0. "
                       "It may be removed entirely in future versions.",
                       DeprecationWarning,
                       stacklevel=2)
@@ -316,7 +316,7 @@ class JSONResponderPostThread(AbstractJSONResponderThread):
     """
 
     def __init__(self, url: str, headers: Dict[str, str] = None):
-        warnings.warn("This class is deprecated as of 1.0.0. "
+        warnings.warn("This class is deprecated as of 0.2.0. "
                       "It may be removed entirely in future versions.",
                       DeprecationWarning,
                       stacklevel=2)

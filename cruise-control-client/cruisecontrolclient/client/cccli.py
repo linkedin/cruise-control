@@ -157,7 +157,7 @@ def get_responder(endpoint: Endpoint.AbstractEndpoint,
     :param fully_composed_url: The full cruise-control URL, including paths and parameters
     :return: An instantiation of the correct JSONDisplayingResponder.
     """
-    warnings.warn("This function is deprecated as of 1.0.0, as "
+    warnings.warn("This function is deprecated as of 0.2.0, as "
                   "it only exists to facilitate the use of deprecated classes. "
                   "It may be removed entirely in future versions.",
                   DeprecationWarning,
