@@ -281,11 +281,6 @@ public class SamplingUtils {
       LOG.debug("{}partition {} because broker {} has no metric or topic metrics are not available", SKIP_BUILDING_SAMPLE_PREFIX,
                 tpDotNotHandled, leaderId);
       return true;
-    } else if (!brokerLoad.partitionMetricAvailable(tpWithDotHandled, PARTITION_SIZE)) {
-      // This broker is no longer the leader.
-      LOG.debug("{}partition {} because broker {} no long host the partition.", SKIP_BUILDING_SAMPLE_PREFIX,
-                tpDotNotHandled, leaderId);
-      return true;
     }
     return false;
   }

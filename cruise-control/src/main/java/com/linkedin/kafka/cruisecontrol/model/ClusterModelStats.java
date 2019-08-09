@@ -20,7 +20,7 @@ import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.averageDiskUtilizationPercentage;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.diskUtilizationPercentage;
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.*;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
 
 
 public class ClusterModelStats {
@@ -177,7 +177,7 @@ public class ClusterModelStats {
    * Get the monitored partition percentage of this cluster model;
    */
   public double monitoredPartitionsPercentage() {
-    return _monitoredPartitionsRatio * TO_PERCENTAGE_UTILIZATION;
+    return _monitoredPartitionsRatio * UNIT_INTERVAL_TO_PERCENTAGE;
   }
 
   /**

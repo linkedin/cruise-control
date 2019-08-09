@@ -144,7 +144,7 @@ public class OptimizerResult {
   private List<Number> getMovementStats() {
     int numInterBrokerReplicaMovements = 0;
     int numIntraBrokerReplicaMovements = 0;
-    int numLeaderMovements = 0;
+    int numLeadershipMovements = 0;
     long interBrokerDataToMove = 0L;
     long intraBrokerDataToMove = 0L;
     for (ExecutionProposal p : _proposals) {
@@ -155,12 +155,12 @@ public class OptimizerResult {
         numIntraBrokerReplicaMovements += p.replicasToMoveBetweenDisksByBroker().size();
         intraBrokerDataToMove += p.intraBrokerDataToMoveInMB() * p.replicasToMoveBetweenDisksByBroker().size();
       } else {
-        numLeaderMovements++;
+        numLeadershipMovements++;
       }
     }
     return Arrays.asList(numInterBrokerReplicaMovements, interBrokerDataToMove,
                          numIntraBrokerReplicaMovements, intraBrokerDataToMove,
-                         numLeaderMovements);
+                         numLeadershipMovements);
   }
 
   public String getProposalSummary() {

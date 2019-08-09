@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.kafka.common.TopicPartition;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.*;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
 
 
 /**
@@ -1179,7 +1179,7 @@ public class ClusterModel implements Serializable {
     BrokerStats brokerStats = new BrokerStats(config);
     brokers().forEach(broker -> {
       double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
-      double cpuUsagePercent = TO_PERCENTAGE_UTILIZATION * broker.load().expectedUtilizationFor(Resource.CPU)
+      double cpuUsagePercent = UNIT_INTERVAL_TO_PERCENTAGE * broker.load().expectedUtilizationFor(Resource.CPU)
                                / broker.capacityFor(Resource.CPU);
       brokerStats.addSingleBrokerStats(broker.host().name(),
                                        broker.id(),

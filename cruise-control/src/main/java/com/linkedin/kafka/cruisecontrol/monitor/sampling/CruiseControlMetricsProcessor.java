@@ -182,6 +182,7 @@ public class CruiseControlMetricsProcessor {
         }
       } catch (UnknownVersionException e) {
         LOG.error("Unrecognized serde version detected during broker metric sampling.", e);
+        skippedBroker++;
       } catch (Exception e) {
         LOG.error("Error building broker metric sample for {}.", node.id(), e);
         skippedBroker++;

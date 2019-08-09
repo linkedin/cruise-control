@@ -53,8 +53,8 @@ import static java.lang.Thread.sleep;
  * A util class for Monitor.
  */
 public class MonitorUtils {
-  // A utility variable for utilization conversion of [0, 1.0] -> [0, 100.0].
-  public static final double TO_PERCENTAGE_UTILIZATION = 100.0;
+  // A utility variable for conversion of unit interval to percentage -- i.e. [0, 1.0] -> [0, 100.0].
+  public static final double UNIT_INTERVAL_TO_PERCENTAGE = 100.0;
   private static final Logger LOG = LoggerFactory.getLogger(MonitorUtils.class);
 
   private MonitorUtils() {
@@ -224,7 +224,7 @@ public class MonitorUtils {
     short cpuUsageId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.CPU_USAGE);
     MetricValues cpuUsage = aggregatedMetricValues.valuesFor(cpuUsageId);
     for (int i = 0; i < cpuUsage.length(); i++) {
-      cpuUsage.set(i, cpuUsage.get(i) * TO_PERCENTAGE_UTILIZATION);
+      cpuUsage.set(i, cpuUsage.get(i) * UNIT_INTERVAL_TO_PERCENTAGE);
     }
   }
 
