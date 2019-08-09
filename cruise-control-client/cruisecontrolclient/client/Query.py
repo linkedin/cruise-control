@@ -9,10 +9,6 @@ import warnings
 
 
 def generate_url_from_cc_socket_address(cc_socket_address: str, endpoint: AbstractEndpoint) -> str:
-    warnings.warn("This function is deprecated as of 1.0.0. "
-                  "It may be removed entirely in future versions.",
-                  DeprecationWarning,
-                  stacklevel=2)
     """
     Given a cruise-control hostname[:port] and an Endpoint, return the correct URL
     for this cruise-control operation.
@@ -24,6 +20,10 @@ def generate_url_from_cc_socket_address(cc_socket_address: str, endpoint: Abstra
     :return: URL, the correct URL to perform the Endpoint's operation
              on the given cruise-control host, _including parameters_.
     """
+    warnings.warn("This function is deprecated as of 1.0.0. "
+                  "It may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     url = f"http://{cc_socket_address}/kafkacruisecontrol/{endpoint.compose_endpoint()}"
     return url
 

@@ -161,11 +161,6 @@ class AbstractEndpoint(metaclass=ABCMeta):
         return combined_parameter_to_value
 
     def compose_endpoint(self) -> str:
-        warnings.warn("This method is deprecated as of 1.0.0, as it needlessly recreates requests functionality. "
-                      "It may be removed entirely in future versions. "
-                      "Please use get_composed_params instead.",
-                      DeprecationWarning,
-                      stacklevel=2)
         """
         Returns a valid URL suffix of this endpoint and any parameters
         that have been defined for it.
@@ -177,6 +172,11 @@ class AbstractEndpoint(metaclass=ABCMeta):
             'state'
             'stop_proposal_execution'
         """
+        warnings.warn("This method is deprecated as of 1.0.0, as it needlessly recreates requests functionality. "
+                      "It may be removed entirely in future versions. "
+                      "Please use get_composed_params instead.",
+                      DeprecationWarning,
+                      stacklevel=2)
         combined_parameter_to_value = self.get_composed_params()
 
         # If we have any mappings, urlencode them and return the full string
