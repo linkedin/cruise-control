@@ -28,7 +28,7 @@ import warnings
 
 class CruiseControlResponder(requests.Session):
     """
-    This class is intented to lightly wrap requests' Session class,
+    This class is intended to lightly wrap requests' Session class,
     in order to provide the cruise-control-client with some basic
     sanity checking and session-management functionality.
     """
