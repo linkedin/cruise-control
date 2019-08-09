@@ -19,11 +19,7 @@ At high-level, the decision is made in a 2 steps.
 # Instruction
 To access this new utility, a new POST endpoint,`topic_configuration` is added to Cruise Control. This `POST` endpoint takes the following arguments:
 
-    POST /kafkacruisecontrol/topic_configuration?json=[true/false]&verbose=[true/false]&topic=[topic]&replication_factor=[target_replication_factor]&skip_rack_awareness_check=[true/false]&dryRun=[true/false]&goals=[goal1,goal2...]&skip_hard_goal_check=[true/false]
-&allow_capacity_estimation=[true/false]&concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]
-&concurrent_leader_movements=[POSITIVE-INTEGER]&exclude_recently_demoted_brokers=[true/false]
-&exclude_recently_removed_brokers=[true/false]&replica_movement_strategies=[strategy1,strategy2...]`
-&review_id=[id]
+    POST /kafkacruisecontrol/topic_configuration?json=[true/false]&verbose=[true/false]&topic=[topic]&replication_factor=[target_replication_factor]&skip_rack_awareness_check=[true/false]&dryRun=[true/false]&goals=[goal1,goal2...]&skip_hard_goal_check=[true/false]&allow_capacity_estimation=[true/false]&concurrent_partition_movements_per_broker=[POSITIVE-INTEGER]&concurrent_leader_movements=[POSITIVE-INTEGER]&exclude_recently_demoted_brokers=[true/false]&exclude_recently_removed_brokers=[true/false]&replica_movement_strategies=[strategy1,strategy2...]&review_id=[id]
 
 Note that the parameters for this endpoint is very similar to the ones of `rebalance` endpoint, the two unique parameters are `topic` and `replication_factor`. `replication_factor` is used to set the target replication factor, and  `topic` parameter is used to set topics to apply the change. What set for `topic` parameter will be treated as a regular expression, so user can do tricks like `topic=.*` to change replication factor for all topics in the cluster.
 
