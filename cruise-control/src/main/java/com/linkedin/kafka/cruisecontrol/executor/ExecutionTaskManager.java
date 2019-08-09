@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.codahale.metrics.MetricRegistry;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import java.util.Collection;
 import java.util.HashMap;
@@ -59,6 +60,7 @@ public class ExecutionTaskManager {
    * @param adminClient The adminClient use to query logdir information of replicas.
    * @param dropwizardMetricRegistry The metric registry.
    * @param time The time object to get the time.
+   * @param config config object that holds all Kafka Cruise control related configs
    */
   public ExecutionTaskManager(int defaultInterBrokerPartitionMovementConcurrency,
                               int defaultIntraBrokerPartitionMovementConcurrency,
@@ -66,12 +68,13 @@ public class ExecutionTaskManager {
                               List<String> replicaMovementStrategies,
                               AdminClient adminClient,
                               MetricRegistry dropwizardMetricRegistry,
-                              Time time) {
+                              Time time,
+                              KafkaCruiseControlConfig config) {
     _inProgressInterBrokerReplicaMovementsByBrokerId = new HashMap<>();
     _inProgressIntraBrokerReplicaMovementsByBrokerId = new HashMap<>();
     _inProgressPartitionsForInterBrokerMovement = new HashSet<>();
     _executionTaskTracker = new ExecutionTaskTracker(dropwizardMetricRegistry, time);
-    _executionTaskPlanner = new ExecutionTaskPlanner(adminClient, replicaMovementStrategies);
+    _executionTaskPlanner = new ExecutionTaskPlanner(adminClient, replicaMovementStrategies, config);
     _defaultInterBrokerPartitionMovementConcurrency = defaultInterBrokerPartitionMovementConcurrency;
     _defaultIntraBrokerPartitionMovementConcurrency = defaultIntraBrokerPartitionMovementConcurrency;
     _defaultLeadershipMovementConcurrency = defaultLeadershipMovementConcurrency;

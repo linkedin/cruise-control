@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ModelUtils;
@@ -43,7 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import scala.collection.JavaConversions;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEAD;
 import static com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef.CPU_USAGE;
 import static java.lang.Thread.sleep;
@@ -373,19 +374,22 @@ public class MonitorUtils {
    *
    * @param clusterModel The cluster model to populate replica placement information.
    * @param cluster Kafka cluster.
+   * @param adminClient Admin client to send request to kafka cluster
+   * @param config Kafka Cruise Control relate config object
    * @return A map from topic partition to replica placement information.
    *
    */
   static Map<TopicPartition, Map<Integer, String>> getReplicaPlacementInfo(ClusterModel clusterModel,
                                                                            Cluster cluster,
-                                                                           AdminClient adminClient) {
+                                                                           AdminClient adminClient,
+                                                                           KafkaCruiseControlConfig config) {
     Map<TopicPartition, Map<Integer, String>> replicaPlacementInfo = new HashMap<>();
     Map<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> logDirsByBrokerId =
         adminClient.describeLogDirs(cluster.nodes().stream().mapToInt(Node::id).boxed().collect(Collectors.toList())).values();
     for (Map.Entry<Integer, KafkaFuture<Map<String, DescribeLogDirsResponse.LogDirInfo>>> entry : logDirsByBrokerId.entrySet()) {
       Integer brokerId = entry.getKey();
       try {
-        entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
+        entry.getValue().get(config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS).forEach((logdir, info) -> {
           if (info.error == Errors.NONE) {
             for (Map.Entry<TopicPartition, DescribeLogDirsResponse.ReplicaInfo> e : info.replicaInfos.entrySet()) {
               if (!e.getValue().isFuture) {

@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.executor;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.BaseReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaPlacementInfo;
@@ -32,7 +33,7 @@ import org.apache.kafka.common.TopicPartitionReplica;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.LOGDIR_RESPONSE_TIMEOUT_MS;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 
@@ -65,14 +66,23 @@ public class ExecutionTaskPlanner {
   private long _executionId;
   private ReplicaMovementStrategy _defaultReplicaMovementTaskStrategy;
   private final AdminClient _adminClient;
+  private final KafkaCruiseControlConfig _config;
 
-  public ExecutionTaskPlanner(AdminClient adminClient, List<String> defaultReplicaMovementStrategies) {
+  /**
+   *
+   * @param adminClient The adminClient to send describeReplicaLogDirs request.
+   * @param defaultReplicaMovementStrategies  List of replica movement strategies.
+   * @param config The config object that holds all the Cruise Control related configs.
+   */
+  public ExecutionTaskPlanner(AdminClient adminClient, List<String> defaultReplicaMovementStrategies,
+                              KafkaCruiseControlConfig config) {
     _executionId = 0L;
     _interPartMoveTaskByBrokerId = new HashMap<>();
     _intraPartMoveTaskByBrokerId = new HashMap<>();
     _remainingInterBrokerReplicaMovements = new HashSet<>();
     _remainingIntraBrokerReplicaMovements = new HashSet<>();
     _remainingLeadershipMovements = new HashMap<>();
+    _config = config;
     _adminClient = adminClient;
     if (defaultReplicaMovementStrategies == null || defaultReplicaMovementStrategies.isEmpty()) {
       _defaultReplicaMovementTaskStrategy = new BaseReplicaMovementStrategy();
@@ -197,7 +207,7 @@ public class ExecutionTaskPlanner {
           _adminClient.describeReplicaLogDirs(replicasToCheckLogdir).values();
       for (Map.Entry<TopicPartitionReplica, KafkaFuture<ReplicaLogDirInfo>> entry : logDirsByReplicas.entrySet()) {
         try {
-          ReplicaLogDirInfo info = entry.getValue().get(LOGDIR_RESPONSE_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+          ReplicaLogDirInfo info = entry.getValue().get(_config.getLong(LOGDIR_RESPONSE_TIMEOUT_MS_CONFIG), TimeUnit.MILLISECONDS);
           currentLogdirByReplica.put(entry.getKey(), info.getCurrentReplicaLogDir());
         } catch (InterruptedException | ExecutionException | TimeoutException e) {
           LOG.warn("Encounter exception {} when fetching logdir information for replica {}.", e.getMessage(), entry.getKey());
