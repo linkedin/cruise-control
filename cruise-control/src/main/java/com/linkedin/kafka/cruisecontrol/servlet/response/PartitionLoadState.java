@@ -60,12 +60,10 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
   protected String getPlaintext() {
     StringBuilder sb = new StringBuilder();
     sb.append(String.format("%" + _topicNameLength + "s%10s%30s%20s%20s%20s%20s%20s%n", "PARTITION", "LEADER", "FOLLOWERS",
-                            "CPU (%)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)", "MSG_IN (#/s)"));
+                            "CPU (%_CORES)", "DISK (MB)", "NW_IN (KB/s)", "NW_OUT (KB/s)", "MSG_IN (#/s)"));
     int numEntries = 0;
     for (Partition p : _sortedPartitions) {
-      if ((_topic != null && !_topic.matcher(p.topicPartition().topic()).matches()) ||
-          p.topicPartition().partition() < _partitionLowerBoundary ||
-          p.topicPartition().partition() > _partitionUpperBoundary) {
+      if (shouldSkipPartition(p)) {
         continue;
       }
       if (++numEntries > _entries) {
@@ -85,6 +83,18 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
     return sb.toString();
   }
 
+  /**
+   * Skips the partition if it does not match the requested topic pattern, or is out of the requested partition scope.
+   *
+   * @param partition Partition to check whether be included in the response.
+   * @return True to skip partition, false otherwise.
+   */
+  private boolean shouldSkipPartition(Partition partition) {
+    return (_topic != null && !_topic.matcher(partition.topicPartition().topic()).matches())
+           || partition.topicPartition().partition() < _partitionLowerBoundary
+           || partition.topicPartition().partition() > _partitionUpperBoundary;
+  }
+
   @Override
   protected void discardIrrelevantAndCacheRelevant(CruiseControlParameters parameters) {
     // Cache relevant response.
@@ -100,16 +110,13 @@ public class PartitionLoadState extends AbstractCruiseControlResponse {
     partitionMap.put(VERSION, JSON_VERSION);
     int numEntries = 0;
     for (Partition p : _sortedPartitions) {
-      if ((_topic != null && !_topic.matcher(p.topicPartition().topic()).matches()) ||
-          p.topicPartition().partition() < _partitionLowerBoundary ||
-          p.topicPartition().partition() > _partitionUpperBoundary) {
+      if (shouldSkipPartition(p)) {
         continue;
       }
       if (++numEntries > _entries) {
         break;
       }
-      List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(
-          Collectors.toList());
+      List<Integer> followers = p.followers().stream().map((replica) -> replica.broker().id()).collect(Collectors.toList());
       Map<String, Object> record = new HashMap<>();
       record.put(TOPIC, p.leader().topicPartition().topic());
       record.put(PARTITION, p.leader().topicPartition().partition());

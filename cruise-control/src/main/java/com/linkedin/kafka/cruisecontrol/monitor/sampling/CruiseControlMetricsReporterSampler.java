@@ -9,7 +9,6 @@ import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.MetricSamplingException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporterConfig;
-import com.linkedin.kafka.cruisecontrol.metricsreporter.exception.UnknownVersionException;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.CruiseControlMetric;
 import com.linkedin.kafka.cruisecontrol.metricsreporter.metric.MetricSerde;
 import java.time.Duration;
@@ -119,7 +118,7 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
                     + "partition {} at offset {}.", record.value(), endTimeMs, tp, record.offset());
           partitionsToPause.add(tp);
         } else {
-          _metricsProcessor.addMetric(cluster, record.value());
+          _metricsProcessor.addMetric(record.value());
           totalMetricsAdded++;
         }
       }
@@ -137,9 +136,6 @@ public class CruiseControlMetricsReporterSampler implements MetricSampler {
       } else {
         return new Samples(Collections.emptySet(), Collections.emptySet());
       }
-    } catch (UnknownVersionException e) {
-      LOG.error("Unrecognized serde version detected during metric sampling.", e);
-      return new Samples(Collections.emptySet(), Collections.emptySet());
     } finally {
       _metricsProcessor.clear();
     }

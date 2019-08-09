@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.kafka.cruisecontrol.common.TestConstants;
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Test;
 
@@ -139,10 +140,10 @@ public class SortedReplicasTest {
     }
   }
 
-  private Broker generateBroker(int numReplicas) {
+  private static Broker generateBroker(int numReplicas) {
     Rack rack = new Rack("rack");
     Host host = new Host("host", rack);
-    Broker broker = new Broker(host, 0, TestConstants.BROKER_CAPACITY);
+    Broker broker = new Broker(host, 0, new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY));
 
     for (int i = 0; i < numReplicas; i++) {
       Replica r = new Replica(new TopicPartition(TOPIC0, i), broker, i % 3 == 0);

@@ -11,6 +11,7 @@ import java.util.Map;
 public class BrokerCapacityInfo {
   public final static short DEFAULT_NUM_CPU_CORES = 1;
   private final static String DEFAULT_ESTIMATION_INFO = "";
+  private final static Map<String, Double> DEFAULT_DISK_CAPACITY_BY_LOGDIR = null;
   private final Map<Resource, Double> _capacity;
   private final String _estimationInfo;
   private final Map<String, Double> _diskCapacityByLogDir;
@@ -52,7 +53,7 @@ public class BrokerCapacityInfo {
    * @param numCpuCores Number of CPU cores.
    */
   public BrokerCapacityInfo(Map<Resource, Double> capacity, short numCpuCores) {
-    this(capacity, DEFAULT_ESTIMATION_INFO, null, numCpuCores);
+    this(capacity, DEFAULT_ESTIMATION_INFO, DEFAULT_DISK_CAPACITY_BY_LOGDIR, numCpuCores);
   }
 
   /**
@@ -73,7 +74,7 @@ public class BrokerCapacityInfo {
    * @param estimationInfo Description if there is any capacity estimation, null or {@link #DEFAULT_ESTIMATION_INFO} otherwise.
    */
   public BrokerCapacityInfo(Map<Resource, Double> capacity, String estimationInfo) {
-    this(capacity, estimationInfo, null, DEFAULT_NUM_CPU_CORES);
+    this(capacity, estimationInfo, DEFAULT_DISK_CAPACITY_BY_LOGDIR, DEFAULT_NUM_CPU_CORES);
   }
 
   /**
@@ -92,7 +93,7 @@ public class BrokerCapacityInfo {
    * @param capacity Capacity information for each resource.
    */
   public BrokerCapacityInfo(Map<Resource, Double> capacity) {
-    this(capacity, DEFAULT_ESTIMATION_INFO, null, DEFAULT_NUM_CPU_CORES);
+    this(capacity, DEFAULT_ESTIMATION_INFO, DEFAULT_DISK_CAPACITY_BY_LOGDIR, DEFAULT_NUM_CPU_CORES);
   }
 
   /**
@@ -117,7 +118,7 @@ public class BrokerCapacityInfo {
   }
 
   /**
-   * @return Disk capacity by absolute logDir if the capacity is specified per logDir, null otherwise.
+   * @return Disk capacity by absolute logDir if specified, {@link #DEFAULT_DISK_CAPACITY_BY_LOGDIR} otherwise.
    */
   public Map<String, Double> diskCapacityByLogDir() {
     return _diskCapacityByLogDir;

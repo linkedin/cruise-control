@@ -55,7 +55,7 @@ public class OfflineProposalGenerator {
                                                     new MetricRegistry(),
                                                     EasyMock.mock(Executor.class));
     start = System.currentTimeMillis();
-    GoalOptimizer.OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel, new OperationProgress());
+    OptimizerResult optimizerResult = goalOptimizer.optimizations(clusterModel, new OperationProgress());
     end = System.currentTimeMillis();
     duration = (end - start) / 1000.0;
     String loadAfterOptimization = clusterModel.brokerStats(null).toString();

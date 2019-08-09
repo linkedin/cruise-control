@@ -54,8 +54,8 @@ import static java.lang.Thread.sleep;
  * A util class for Monitor.
  */
 public class MonitorUtils {
-  // A utility variable for utilization conversion of [0, 1.0] -> [0, 100.0].
-  public static final double TO_PERCENTAGE_UTILIZATION = 100.0;
+  // A utility variable for conversion of unit interval to percentage -- i.e. [0, 1.0] -> [0, 100.0].
+  public static final double UNIT_INTERVAL_TO_PERCENTAGE = 100.0;
   private static final Logger LOG = LoggerFactory.getLogger(MonitorUtils.class);
 
   private MonitorUtils() {
@@ -86,15 +86,15 @@ public class MonitorUtils {
       }
     }
     MetricValues followerCpu = new MetricValues(aggregatedMetricValues.length());
-    MetricValues totalNetworkIn =
+    MetricValues leaderBytesInRate =
         aggregatedMetricValues.valuesForGroup(Resource.NW_IN.name(), KafkaMetricDef.commonMetricDef(), false);
-    MetricValues totalNetworkOut =
+    MetricValues leaderBytesOutRate =
         aggregatedMetricValues.valuesForGroup(Resource.NW_OUT.name(), KafkaMetricDef.commonMetricDef(), false);
-    MetricValues totalCpuUsage = aggregatedMetricValues.valuesFor(KafkaMetricDef.commonMetricDefId(CPU_USAGE));
+    MetricValues leaderCpuUtilization = aggregatedMetricValues.valuesFor(KafkaMetricDef.commonMetricDefId(CPU_USAGE));
     for (int i = 0; i < aggregatedMetricValues.length(); i++) {
-      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(totalNetworkIn.get(i),
-                                                                           totalNetworkOut.get(i),
-                                                                           totalCpuUsage.get(i));
+      double followerCpuUtil = ModelUtils.getFollowerCpuUtilFromLeaderLoad(leaderBytesInRate.get(i),
+                                                                           leaderBytesOutRate.get(i),
+                                                                           leaderCpuUtilization.get(i));
       followerCpu.set(i, followerCpuUtil);
     }
     for (short nwOutMetricId : KafkaMetricDef.resourceToMetricIds(Resource.NW_OUT)) {
@@ -225,7 +225,7 @@ public class MonitorUtils {
     short cpuUsageId = KafkaMetricDef.commonMetricDefId(KafkaMetricDef.CPU_USAGE);
     MetricValues cpuUsage = aggregatedMetricValues.valuesFor(cpuUsageId);
     for (int i = 0; i < cpuUsage.length(); i++) {
-      cpuUsage.set(i, cpuUsage.get(i) * TO_PERCENTAGE_UTILIZATION);
+      cpuUsage.set(i, cpuUsage.get(i) * UNIT_INTERVAL_TO_PERCENTAGE);
     }
   }
 

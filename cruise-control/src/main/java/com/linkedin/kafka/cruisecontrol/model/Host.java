@@ -6,6 +6,7 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -22,6 +23,7 @@ import org.apache.kafka.common.TopicPartition;
 import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 
 public class Host implements Serializable {
+  private static final double DEAD_HOST_CAPACITY = -1.0;
   private final Map<Integer, Broker> _brokers;
   private final Set<Replica> _replicas;
   private final Rack _rack;
@@ -89,8 +91,7 @@ public class Host implements Serializable {
    * @return Alive host capacity of the resource.
    */
   public double capacityFor(Resource resource) {
-    return _aliveBrokers > 0 ? _hostCapacity[resource.id()] : -1.0;
-    // TODO: Consider the capacity when there are broken disks.
+    return _aliveBrokers > 0 ? _hostCapacity[resource.id()] : DEAD_HOST_CAPACITY;
   }
 
   /**
@@ -133,15 +134,21 @@ public class Host implements Serializable {
     return _name;
   }
 
-  // Model manipulation.
-  Broker createBroker(Integer brokerId,
-                      Map<Resource, Double> brokerCapacity,
-                      Map<String, Double> diskCapacityByLogDir) {
-    Broker broker = new Broker(this, brokerId, brokerCapacity, diskCapacityByLogDir);
+  /**
+   * Create a broker under this host, and get the created broker.
+   *
+   * @param brokerId Id of the broker to be created.
+   * @param brokerCapacityInfo Capacity information of the created broker.
+   * @return Created broker.
+   */
+  Broker createBroker(Integer brokerId, BrokerCapacityInfo brokerCapacityInfo) {
+    Broker broker = new Broker(this, brokerId, brokerCapacityInfo);
     _brokers.put(brokerId, broker);
     _aliveBrokers++;
-    for (Map.Entry<Resource, Double> entry : brokerCapacity.entrySet()) {
-      _hostCapacity[entry.getKey().id()] += entry.getValue();
+    for (Map.Entry<Resource, Double> entry : brokerCapacityInfo.capacity().entrySet()) {
+      Resource resource = entry.getKey();
+      _hostCapacity[resource.id()] += (resource == Resource.CPU) ? (entry.getValue() * brokerCapacityInfo.numCpuCores())
+                                                                 : entry.getValue();
     }
     return broker;
   }

@@ -504,7 +504,7 @@ public class LoadMonitor {
         BrokerCapacityInfo brokerCapacity = _brokerCapacityConfigResolver.capacityForBroker(rack, node.host(), node.id());
         LOG.debug("Get capacity info for broker {}: total capacity {}, capacity by logdir {}.",
                   node.id(), brokerCapacity.capacity().get(Resource.DISK), brokerCapacity.diskCapacityByLogDir());
-        clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity, populateReplicaPlacementInfo);
+        clusterModel.createBroker(rack, node.host(), node.id(), brokerCapacity);
       }
 
       // Populate replica placement information for the cluster model if requested.

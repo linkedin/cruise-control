@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol.model;
 import com.linkedin.cruisecontrol.monitor.sampling.aggregator.AggregatedMetricValues;
 import com.linkedin.kafka.cruisecontrol.common.Resource;
 
+import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityInfo;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.Serializable;
@@ -247,19 +248,19 @@ public class Rack implements Serializable {
    *
    * @param brokerId Id of the broker to be created.
    * @param hostName The hostName of the broker
-   * @param brokerCapacity Capacity of the created broker.
-   * @param diskCapacityByLogDir Disk capacity by absolute logDir.
+   * @param brokerCapacityInfo Capacity information of the created broker.
    * @return Created broker.
    */
   Broker createBroker(int brokerId,
                       String hostName,
-                      Map<Resource, Double> brokerCapacity,
-                      Map<String, Double> diskCapacityByLogDir) {
+                      BrokerCapacityInfo brokerCapacityInfo) {
     Host host = _hosts.computeIfAbsent(hostName, name -> new Host(name, this));
-    Broker broker = host.createBroker(brokerId, brokerCapacity, diskCapacityByLogDir);
+    Broker broker = host.createBroker(brokerId, brokerCapacityInfo);
     _brokers.put(brokerId, broker);
-    for (Map.Entry<Resource, Double> entry : brokerCapacity.entrySet()) {
-      _rackCapacity[entry.getKey().id()] += entry.getValue();
+    for (Map.Entry<Resource, Double> entry : brokerCapacityInfo.capacity().entrySet()) {
+      Resource resource = entry.getKey();
+      _rackCapacity[resource.id()] += (resource == Resource.CPU) ? (entry.getValue() * brokerCapacityInfo.numCpuCores())
+                                                                 : entry.getValue();
     }
     return broker;
   }
