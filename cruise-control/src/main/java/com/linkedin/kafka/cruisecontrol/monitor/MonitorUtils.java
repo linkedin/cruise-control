@@ -374,6 +374,8 @@ public class MonitorUtils {
    *
    * @param clusterModel The cluster model to populate replica placement information.
    * @param cluster Kafka cluster.
+   * @param adminClient Admin client to send request to kafka cluster
+   * @param config Kafka Cruise Control relate config object
    * @return A map from topic partition to replica placement information.
    *
    */

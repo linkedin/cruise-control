@@ -71,8 +71,8 @@ public class ExecutionTaskPlanner {
   /**
    *
    * @param adminClient The adminClient to send describeReplicaLogDirs request.
-   * @param defaultReplicaMovementStrategies
-   * @param config The config object that holds all the Cruise Control related configs
+   * @param defaultReplicaMovementStrategies  List of replica movement strategies.
+   * @param config The config object that holds all the Cruise Control related configs.
    */
   public ExecutionTaskPlanner(AdminClient adminClient, List<String> defaultReplicaMovementStrategies,
                               KafkaCruiseControlConfig config) {
