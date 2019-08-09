@@ -1,14 +1,5 @@
 from typing import Set, Union, Collection  # noqa
 
-# To allow for warnings that don't break the program.
-#
-# Specifically, we don't want this client to break forward compatibility with
-# new cruise-control features and parameter choices.
-#
-# Accordingly, for enums, we want to warn, but not raise an Exception, when
-# a provided value is outside of that enum
-from warnings import warn
-
 from cruisecontrolclient.client.CCParameter.Parameter import AbstractParameter
 
 
@@ -21,12 +12,7 @@ class AbstractSetOfChoicesParameter(AbstractParameter):
         AbstractParameter.__init__(self, value)
 
     def validate_value(self):
-        if type(self.value) == str:
-            for i in self.value.split(','):
-                # Assume that cruise-control uses case-insensitive enums
-                if i.lower() not in self.lowercase_set_of_choices:
-                    warn(f"{i} is not in the valid set of choices")
-        else:
+        if type(self.value) != str and type(self.value) != Collection:
             raise ValueError(f"{self.value} must be either a string or a Collection")
 
 
@@ -38,7 +24,7 @@ class DisableSelfHealingForParameter(AbstractSetOfChoicesParameter):
     argparse_properties = {
         'args': ('--disable-self-healing-for', '--disable-self-healing'),
         # nargs='+' allows for multiple of the set to be specified
-        'kwargs': dict(help=description, metavar='ANOMALY_DETECTOR', choices=lowercase_set_of_choices, nargs='+')
+        'kwargs': dict(help=description, metavar='ANOMALY_DETECTOR', choices=lowercase_set_of_choices, nargs='+', type=str.lower)
 
     }
 
@@ -51,7 +37,7 @@ class EnableSelfHealingForParameter(AbstractSetOfChoicesParameter):
     argparse_properties = {
         'args': ('--enable-self-healing-for', '--enable-self-healing'),
         # nargs='+' allows for multiple of the set to be specified
-        'kwargs': dict(help=description, metavar='ANOMALY_DETECTOR', choices=lowercase_set_of_choices, nargs='+')
+        'kwargs': dict(help=description, metavar='ANOMALY_DETECTOR', choices=lowercase_set_of_choices, nargs='+', type=str.lower)
     }
 
 
@@ -62,7 +48,7 @@ class ResourceParameter(AbstractSetOfChoicesParameter):
     description = "The host and broker-level resource by which to sort the cruise-control response"
     argparse_properties = {
         'args': ('--resource',),
-        'kwargs': dict(help=description, metavar='RESOURCE', choices=lowercase_set_of_choices)
+        'kwargs': dict(help=description, metavar='RESOURCE', choices=lowercase_set_of_choices, type=str.lower)
     }
 
 
@@ -74,5 +60,5 @@ class SubstatesParameter(AbstractSetOfChoicesParameter):
     argparse_properties = {
         'args': ('--substate', '--substates'),
         # nargs='+' allows for multiple of the set to be specified
-        'kwargs': dict(help=description, metavar='SUBSTATE', choices=lowercase_set_of_choices, nargs='+')
+        'kwargs': dict(help=description, metavar='SUBSTATE', choices=lowercase_set_of_choices, nargs='+', type=str.lower)
     }
