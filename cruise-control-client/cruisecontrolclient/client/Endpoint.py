@@ -13,6 +13,9 @@ from typing import Callable, ClassVar, Dict, List, Tuple, Union  # noqa
 # To help us generate the right parameter string from a dict of parameters
 from urllib.parse import urlencode
 
+# To be able to deprecate methods
+import warnings
+
 
 class AbstractEndpoint(metaclass=ABCMeta):
     """
@@ -133,17 +136,13 @@ class AbstractEndpoint(metaclass=ABCMeta):
         elif parameter_name in self.parameter_name_to_value:
             self.parameter_name_to_value.pop(parameter_name)
 
-    def compose_endpoint(self) -> str:
+    def get_composed_params(self) -> Dict[str, Union[bool, int, str]]:
         """
-        Returns a valid URL suffix of this endpoint and any parameters
-        that have been defined for it.
+        Returns a requests-compatible dictionary of this Endpoint's current parameters.
 
-        Note that the ordering of the parameters is not guaranteed.
-
-        :return: A string like:
-            'rebalance?dryrun=false&allow_capacity_estimation=false&concurrent_partition_movements_per_broker=5'
-            'state'
-            'stop_proposal_execution'
+        :return: A dict like:
+            {'json': True,
+             'allow_capacity_estimation': False}
         """
         # All parameter:value mappings that have been specified for this endpoint.
         #
@@ -158,6 +157,27 @@ class AbstractEndpoint(metaclass=ABCMeta):
         # Update our mapping with parameter: value pairs that lack Parameter objects
         if self.parameter_name_to_value:
             combined_parameter_to_value.update(self.parameter_name_to_value)
+
+        return combined_parameter_to_value
+
+    def compose_endpoint(self) -> str:
+        """
+        Returns a valid URL suffix of this endpoint and any parameters
+        that have been defined for it.
+
+        Note that the ordering of the parameters is not guaranteed.
+
+        :return: A string like:
+            'rebalance?dryrun=false&allow_capacity_estimation=false&concurrent_partition_movements_per_broker=5'
+            'state'
+            'stop_proposal_execution'
+        """
+        warnings.warn("This method is deprecated as of 0.2.0, as it needlessly recreates requests functionality. "
+                      "It may be removed entirely in future versions. "
+                      "Please use get_composed_params instead.",
+                      DeprecationWarning,
+                      stacklevel=2)
+        combined_parameter_to_value = self.get_composed_params()
 
         # If we have any mappings, urlencode them and return the full string
         if combined_parameter_to_value:

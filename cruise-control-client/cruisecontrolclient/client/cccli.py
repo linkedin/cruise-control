@@ -6,6 +6,9 @@
 # To be able to easily parse command-line arguments
 import argparse
 
+# To be able to signify deprecation
+import warnings
+
 # To be able to easily pass around the available endpoints and parameters
 from cruisecontrolclient.client.ExecutionContext import ExecutionContext
 
@@ -15,12 +18,9 @@ from cruisecontrolclient.client.Display import display_response
 # To be able to instantiate Endpoint objects
 import cruisecontrolclient.client.Endpoint as Endpoint
 
-# To be able to make requests and get a response given a URL to cruise-control
-from cruisecontrolclient.client.Responder import AbstractResponder, JSONDisplayingResponderGet, \
-    JSONDisplayingResponderPost
-
-# To be able to compose a URL to hand to requests
-from cruisecontrolclient.client.Query import generate_url_from_cc_socket_address
+# To be able to make long-running requests to cruise-control
+from cruisecontrolclient.client.Responder import AbstractResponder, \
+    CruiseControlResponder, JSONDisplayingResponderGet, JSONDisplayingResponderPost
 
 
 def get_endpoint(args: argparse.Namespace,
@@ -145,12 +145,28 @@ def get_endpoint(args: argparse.Namespace,
 
 
 def get_responder(endpoint: Endpoint.AbstractEndpoint,
-                  url: str) -> AbstractResponder:
+                  fully_composed_url: str) -> AbstractResponder:
+    """
+    Given an Endpoint and fully-composed URL, return an instantiation of
+    the correct JSONDisplayingResponder.
+
+    This is needed because the JSONDisplayingResponder classes do not dynamically
+    determine from the given Endpoint which type of HTTP request they must make.
+
+    :param endpoint: A built Endpoint object
+    :param fully_composed_url: The full cruise-control URL, including paths and parameters
+    :return: An instantiation of the correct JSONDisplayingResponder.
+    """
+    warnings.warn("This function is deprecated as of 0.2.0, as "
+                  "it only exists to facilitate the use of deprecated classes. "
+                  "It may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     # Handle instantiating the correct Responder
     if endpoint.http_method == "GET":
-        json_responder = JSONDisplayingResponderGet(url)
+        json_responder = JSONDisplayingResponderGet(fully_composed_url)
     elif endpoint.http_method == "POST":
-        json_responder = JSONDisplayingResponderPost(url)
+        json_responder = JSONDisplayingResponderPost(fully_composed_url)
     else:
         raise ValueError(f"Unexpected http_method {endpoint.http_method} in endpoint")
 
@@ -245,15 +261,9 @@ def main():
     # Get the socket address for the cruise-control we're communicating with
     cc_socket_address = args.socket_address
 
-    # Generate the correct URL from the endpoint and the socket address
-    url = generate_url_from_cc_socket_address(cc_socket_address=cc_socket_address,
-                                              endpoint=endpoint)
-
-    # Get a responder from the given URL and endpoint
-    json_responder = get_responder(endpoint=endpoint, url=url)
-
     # Retrieve the response and display it
-    response = json_responder.retrieve_response()
+    json_responder = CruiseControlResponder()
+    response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint)
     display_response(response)
 
 
