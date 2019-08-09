@@ -34,6 +34,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
 import org.apache.kafka.common.TopicPartition;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
+
 
 /**
  * A class that holds the information of the cluster, including topology, liveness and load for racks, brokers and
@@ -43,7 +45,7 @@ import org.apache.kafka.common.TopicPartition;
 public class ClusterModel implements Serializable {
   private static final long serialVersionUID = -6840253566423285966L;
   // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
-  private static final Broker GENESIS_BROKER = new Broker(null, -1, Collections.emptyMap());
+  private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(Collections.emptyMap()));
 
   private final ModelGeneration _generation;
   private final Map<String, Rack> _racksById;
@@ -54,7 +56,7 @@ public class ClusterModel implements Serializable {
   private final Set<Broker> _aliveBrokers;
   private final SortedSet<Broker> _deadBrokers;
   private final SortedSet<Broker> _brokers;
-  private final double _monitoredPartitionsPercentage;
+  private final double _monitoredPartitionsRatio;
   private final double[] _clusterCapacity;
   private Load _load;
   // An integer to keep track of the maximum replication factor that a partition was ever created with.
@@ -69,7 +71,7 @@ public class ClusterModel implements Serializable {
    * Constructor for the cluster class. It creates data structures to hold a list of racks, a map for partitions by
    * topic partition, topic replica collocation by topic.
    */
-  public ClusterModel(ModelGeneration generation, double monitoredPartitionsPercentage) {
+  public ClusterModel(ModelGeneration generation, double monitoredPartitionsRatio) {
     _generation = generation;
     _racksById = new HashMap<>();
     _brokerIdToRack = new HashMap<>();
@@ -91,7 +93,7 @@ public class ClusterModel implements Serializable {
     _maxReplicationFactor = 1;
     _replicationFactorByTopic = new HashMap<>();
     _potentialLeadershipLoadByBrokerId = new HashMap<>();
-    _monitoredPartitionsPercentage = monitoredPartitionsPercentage;
+    _monitoredPartitionsRatio = monitoredPartitionsRatio;
     _unknownHostId = 0;
     _capacityEstimationInfoByBrokerId = new HashMap<>();
   }
@@ -106,8 +108,8 @@ public class ClusterModel implements Serializable {
   /**
    * Get the coverage of this cluster model. This shows how representative the cluster is.
    */
-  public double monitoredPartitionsPercentage() {
-    return _monitoredPartitionsPercentage;
+  public double monitoredPartitionsRatio() {
+    return _monitoredPartitionsRatio;
   }
 
   /**
@@ -779,7 +781,10 @@ public class ClusterModel implements Serializable {
    * @param brokerCapacityInfo Capacity information of the created broker.
    * @return Created broker.
    */
-  public Broker createBroker(String rackId, String host, int brokerId, BrokerCapacityInfo brokerCapacityInfo) {
+  public Broker createBroker(String rackId,
+                             String host,
+                             int brokerId,
+                             BrokerCapacityInfo brokerCapacityInfo) {
     _potentialLeadershipLoadByBrokerId.putIfAbsent(brokerId, new Load());
     Rack rack = rack(rackId);
     _brokerIdToRack.put(brokerId, rack);
@@ -787,7 +792,7 @@ public class ClusterModel implements Serializable {
     if (brokerCapacityInfo.isEstimated()) {
       _capacityEstimationInfoByBrokerId.put(brokerId, brokerCapacityInfo.estimationInfo());
     }
-    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo.capacity());
+    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo);
     _aliveBrokers.add(broker);
     _brokers.add(broker);
     refreshCapacity();
@@ -879,22 +884,6 @@ public class ClusterModel implements Serializable {
       aliveBrokersOverThreshold.add(aliveBroker);
     }
     return aliveBrokersOverThreshold;
-  }
-
-  /**
-   * Sort replicas in ascending order of resource quantity present in the broker that they reside in terms of the
-   * requested resource.
-   *
-   * @param replicas A list of replicas to be sorted by the amount of resources that their broker contains.
-   * @param resource Resource for which the given replicas will be sorted.
-   */
-  public void sortReplicasInAscendingOrderByBrokerResourceUtilization(List<Replica> replicas, Resource resource) {
-    replicas.sort((r1, r2) -> {
-      Double expectedBrokerLoad1 = r1.broker().load().expectedUtilizationFor(resource);
-      Double expectedBrokerLoad2 = r2.broker().load().expectedUtilizationFor(resource);
-      int result = Double.compare(expectedBrokerLoad1, expectedBrokerLoad2);
-      return result == 0 ? Integer.compare(r1.broker().id(), r2.broker().id()) : result;
-    });
   }
 
   /**
@@ -1074,11 +1063,13 @@ public class ClusterModel implements Serializable {
     BrokerStats brokerStats = new BrokerStats(config);
     brokers().forEach(broker -> {
       double leaderBytesInRate = broker.leadershipLoadForNwResources().expectedUtilizationFor(Resource.NW_IN);
+      double cpuUsagePercent = UNIT_INTERVAL_TO_PERCENTAGE * broker.load().expectedUtilizationFor(Resource.CPU)
+                               / broker.capacityFor(Resource.CPU);
       brokerStats.addSingleBrokerStats(broker.host().name(),
                                        broker.id(),
                                        broker.state(),
                                        broker.replicas().isEmpty() ? 0 : broker.load().expectedUtilizationFor(Resource.DISK),
-                                       broker.load().expectedUtilizationFor(Resource.CPU),
+                                       cpuUsagePercent,
                                        leaderBytesInRate,
                                        broker.load().expectedUtilizationFor(Resource.NW_IN) - leaderBytesInRate,
                                        broker.load().expectedUtilizationFor(Resource.NW_OUT),
@@ -1158,12 +1149,8 @@ public class ClusterModel implements Serializable {
 
   @Override
   public String toString() {
-    StringBuilder bldr = new StringBuilder();
-    bldr.append("ClusterModel[brokerCount=").append(this.brokers().size())
-        .append(",partitionCount=").append(_partitionsByTopicPartition.size())
-        .append(",aliveBrokerCount=").append(_aliveBrokers.size())
-        .append(']');
-    return bldr.toString();
+    return String.format("ClusterModel[brokerCount=%d,partitionCount=%d,aliveBrokerCount=%d]",
+                         _brokers.size(), _partitionsByTopicPartition.size(), _aliveBrokers.size());
   }
 
   private void refreshCapacity() {

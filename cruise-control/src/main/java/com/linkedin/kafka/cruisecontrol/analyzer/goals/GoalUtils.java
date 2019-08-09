@@ -313,4 +313,20 @@ public class GoalUtils {
     double brokerCapacity = broker.capacityFor(resource);
     return brokerCapacity > 0 ? broker.load().expectedUtilizationFor(resource) / brokerCapacity : DEAD_BROKER_UTILIZATION;
   }
+
+  /**
+   * Sort replicas in ascending order of resource quantity present in the broker that they reside in terms of the
+   * requested resource.
+   *
+   * @param replicas A list of replicas to be sorted by the amount of resources that their broker contains.
+   * @param resource Resource for which the given replicas will be sorted.
+   */
+  static void sortReplicasInAscendingOrderByBrokerResourceUtilization(List<Replica> replicas, Resource resource) {
+    replicas.sort((r1, r2) -> {
+      double expectedBrokerLoad1 = r1.broker().load().expectedUtilizationFor(resource);
+      double expectedBrokerLoad2 = r2.broker().load().expectedUtilizationFor(resource);
+      int result = Double.compare(expectedBrokerLoad1, expectedBrokerLoad2);
+      return result == 0 ? Integer.compare(r1.broker().id(), r2.broker().id()) : result;
+    });
+  }
 }

@@ -6,7 +6,7 @@ package com.linkedin.kafka.cruisecontrol.servlet.response;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutionProposal;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
@@ -41,19 +41,18 @@ public class OptimizationResult extends AbstractCruiseControlResponse {
   protected static final String VIOLATED = "VIOLATED";
   protected static final String FIXED = "FIXED";
   protected static final String NO_ACTION = "NO-ACTION";
-  protected GoalOptimizer.OptimizerResult _optimizerResult;
+  protected OptimizerResult _optimizerResult;
   protected String _cachedJSONResponse;
   protected String _cachedPlaintextResponse;
 
-  public OptimizationResult(GoalOptimizer.OptimizerResult optimizerResult,
-                            KafkaCruiseControlConfig config) {
+  public OptimizationResult(OptimizerResult optimizerResult, KafkaCruiseControlConfig config) {
     super(config);
     _optimizerResult = optimizerResult;
     _cachedJSONResponse = null;
     _cachedPlaintextResponse = null;
   }
 
-  public GoalOptimizer.OptimizerResult optimizerResult() {
+  public OptimizerResult optimizerResult() {
     return _optimizerResult;
   }
 
