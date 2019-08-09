@@ -31,7 +31,7 @@ class ClearMetricsParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--clearmetrics', '--clear-metrics'),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -54,7 +54,7 @@ class ExcludeFollowerDemotionParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--exclude-follower-demotion',),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -65,7 +65,7 @@ class ExcludeRecentlyDemotedBrokersParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--exclude-recently-demoted-brokers', '--exclude-recently-demoted', '--exclude-demoted'),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -76,7 +76,7 @@ class ExcludeRecentlyRemovedBrokersParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--exclude-recently-removed-brokers', '--exclude-recently-removed', '--exclude-removed'),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -87,7 +87,7 @@ class IgnoreProposalCacheParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--ignore-proposal-cache',),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -98,7 +98,7 @@ class JSONParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--json', '--json-response'),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -109,7 +109,7 @@ class MaxLoadParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--max-load',),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -120,7 +120,7 @@ class SkipHardGoalCheckParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--skip-hard-goal-check', '--skip-hard-goal-checks'),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -142,7 +142,7 @@ class SkipURPDemotionParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--skip-urp-demotion',),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -153,7 +153,7 @@ class SuperVerboseParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--super-verbose',),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -164,7 +164,7 @@ class ThrottleRemovedBrokerParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--throttle-removed-broker',),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -175,7 +175,7 @@ class UseReadyDefaultGoalsParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--use-ready-default-goals',),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
 
 
@@ -186,5 +186,5 @@ class VerboseParameter(AbstractBooleanParameter):
     argparse_properties = {
         'args': ('--verbose',),
         # There is no sensible default here; allow for ternary state
-        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL')
+        'kwargs': dict(help=description, choices=set_of_choices, metavar='BOOL', type=str.lower)
     }
