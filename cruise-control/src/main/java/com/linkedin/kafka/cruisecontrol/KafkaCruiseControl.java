@@ -61,14 +61,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ensureDisJoint;
-import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEMOTED;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.isKafkaAssignerMode;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckBrokersHavingOfflineReplicasOnBadDisks;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckNonExistingGoal;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckNoOfflineReplica;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckOfflineReplicaPresence;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckTargetReplicationFactorForTopic;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.shouldRefreshClusterAndGeneration;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.topicsForReplicationFactorChange;
+import static com.linkedin.kafka.cruisecontrol.model.Disk.State.DEMOTED;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.*;
 
 
@@ -1183,34 +1183,6 @@ public class KafkaCruiseControl {
       throw new KafkaCruiseControlException(e);
     }
     return result;
-  }
-
-  private static Map<Short, Set<String>> topicsForReplicationFactorChange(Map<Short, Pattern> topicPatternByReplicationFactor,
-                                                                          Cluster cluster) {
-    Map<Short, Set<String>> topicsToChangeByReplicationFactor = new HashMap<>(topicPatternByReplicationFactor.size());
-    for (Map.Entry<Short, Pattern> entry : topicPatternByReplicationFactor.entrySet()) {
-      short replicationFactor = entry.getKey();
-      Pattern topicPattern = entry.getValue();
-      Set<String> topics = cluster.topics().stream().filter(t -> topicPattern.matcher(t).matches()).collect(Collectors.toSet());
-      // Ensure there are topics matching the requested topic pattern.
-      if (topics.isEmpty()) {
-        throw new IllegalStateException(String.format("There is no topic in cluster matching pattern '%s'.", topicPattern));
-      }
-      Set<String> topicsToChange = topics.stream()
-                                         .filter(t -> cluster.partitionsForTopic(t).stream().anyMatch(p -> p.replicas().length != replicationFactor))
-                                         .collect(Collectors.toSet());
-      if (!topicsToChange.isEmpty()) {
-        topicsToChangeByReplicationFactor.put(replicationFactor, topicsToChange);
-      }
-    }
-
-    if (topicsToChangeByReplicationFactor.isEmpty()) {
-      throw new IllegalStateException(String.format("All topics matching given pattern already have target replication factor. requested "
-                                                    + "topic pattern by replication factor: %s.", topicPatternByReplicationFactor));
-    }
-    // Sanity check that no topic is set with more than one target replication factor.
-    sanityCheckTargetReplicationFactorForTopic(topicsToChangeByReplicationFactor);
-    return topicsToChangeByReplicationFactor;
   }
 
   private static void populateRackInfoForReplicationFactorChange(Map<Short, Set<String>> topicsByReplicationFactor,

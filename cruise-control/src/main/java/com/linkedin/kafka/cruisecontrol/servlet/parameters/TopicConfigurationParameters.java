@@ -22,11 +22,12 @@ import java.util.regex.Pattern;
  *   specified in request body. The body format is expected to be valid JSON format. e.g.
  *    <pre><code>
  *   {
- *     topic_by_replication_factor : {
- *         target_replication_factor_1 : topic_regex_1,
- *         target_replication_factor_2 : topic_regex_2,
- *         ...
- *     }
+ *       replication_factor: {
+ *           topic_by_replication_factor : {
+ *               target_replication_factor_1 : topic_regex_1,
+ *               target_replication_factor_2 : topic_regex_2,
+ *               ...
+ *       }
  *   }
  *   </code></pre>
  *   If user specifies new replication factor in both URL (via combination of `topic` and `replication_factor` parameter)
@@ -120,5 +121,12 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+  }
+
+  /**
+   * Supported topic configuration type to be changed via {@link CruiseControlEndPoint#TOPIC_CONFIGURATION} endpoint.
+   */
+  public enum TopicConfigurationType {
+    REPLICATION_FACTOR
   }
 }

@@ -47,6 +47,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters.TopicConfigurationType.REPLICATION_FACTOR;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.APPROVED;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.DISCARDED;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
@@ -578,17 +579,21 @@ public class ParameterUtils {
   }
 
   @SuppressWarnings("unchecked")
-  static Map<Short, Pattern> topicPatternByReplicationFactorFromBody(HttpServletRequest request) {
+  private static Map<Short, Pattern> topicPatternByReplicationFactorFromBody(HttpServletRequest request) {
     Map<Short, Pattern> topicPatternByReplicationFactor;
     try {
       Gson gson = new Gson();
       Map<String, Object> json = gson.fromJson(request.getReader(), Map.class);
-      if (!json.containsKey(TOPIC_BY_REPLICATION_FACTOR)) {
+      if (!json.containsKey(REPLICATION_FACTOR.name())) {
+        return null;
+      }
+      Map<String, Object> replicationFactorParams = (Map<String, Object>) json.get(REPLICATION_FACTOR.name());
+      if (!replicationFactorParams.containsKey(TOPIC_BY_REPLICATION_FACTOR)) {
         return null;
       }
       topicPatternByReplicationFactor = new HashMap<>();
-      for (Map.Entry<String, String> entry : ((Map<String, String>) json.get(TOPIC_BY_REPLICATION_FACTOR)).entrySet()) {
-        Short replicationFactor = Short.parseShort(entry.getKey().trim());
+      for (Map.Entry<String, String> entry : ((Map<String, String>) replicationFactorParams.get(TOPIC_BY_REPLICATION_FACTOR)).entrySet()) {
+        short replicationFactor = Short.parseShort(entry.getKey().trim());
         Pattern topicPattern = Pattern.compile(entry.getValue().trim());
         topicPatternByReplicationFactor.putIfAbsent(replicationFactor, topicPattern);
       }
@@ -616,7 +621,7 @@ public class ParameterUtils {
       if ((topic != null && replicationFactor == null)) {
         throw new UserRequestException("Topic's replication factor is not specified in URL while subject topic is specified.");
       }
-      if (topic != null && replicationFactor != null) {
+      if (topic != null) {
         return Collections.singletonMap(replicationFactor, topic);
       }
     }

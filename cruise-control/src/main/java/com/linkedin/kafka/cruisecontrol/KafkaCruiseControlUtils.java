@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -414,12 +415,51 @@ public class KafkaCruiseControlUtils {
    */
   public static void sanityCheckTargetReplicationFactorForTopic(Map<Short, Set<String>> topicsToChangeByReplicationFactor) {
     Set<String> topicsToChange = new HashSet<>();
+    Set<String> topicsHavingMultipleTargetReplicationFactors = new HashSet<>();
     for (Set<String> topics : topicsToChangeByReplicationFactor.values()) {
       for (String topic : topics) {
         if (!topicsToChange.add(topic)) {
-          throw new IllegalStateException(String.format("Topic %s is requested with more than one target replication factor.", topic));
+          topicsHavingMultipleTargetReplicationFactors.add(topic);
         }
       }
     }
+    if (!topicsHavingMultipleTargetReplicationFactors.isEmpty()) {
+      throw new IllegalStateException(String.format("Topics %s are requested with more than one target replication factor.",
+                                                    topicsHavingMultipleTargetReplicationFactors));
+    }
+  }
+
+  /**
+   * Populate topics to change replication factor based on the request and current cluster state.
+   * @param topicPatternByReplicationFactor Requested topic patterns to change replication factor by target replication factor.
+   * @param cluster Current cluster state.
+   * @return Topics to change replication factor by target replication factor.
+   */
+  public static Map<Short, Set<String>> topicsForReplicationFactorChange(Map<Short, Pattern> topicPatternByReplicationFactor,
+                                                                         Cluster cluster) {
+    Map<Short, Set<String>> topicsToChangeByReplicationFactor = new HashMap<>(topicPatternByReplicationFactor.size());
+    for (Map.Entry<Short, Pattern> entry : topicPatternByReplicationFactor.entrySet()) {
+      short replicationFactor = entry.getKey();
+      Pattern topicPattern = entry.getValue();
+      Set<String> topics = cluster.topics().stream().filter(t -> topicPattern.matcher(t).matches()).collect(Collectors.toSet());
+      // Ensure there are topics matching the requested topic pattern.
+      if (topics.isEmpty()) {
+        throw new IllegalStateException(String.format("There is no topic in cluster matching pattern '%s'.", topicPattern));
+      }
+      Set<String> topicsToChange = topics.stream()
+                                         .filter(t -> cluster.partitionsForTopic(t).stream().anyMatch(p -> p.replicas().length != replicationFactor))
+                                         .collect(Collectors.toSet());
+      if (!topicsToChange.isEmpty()) {
+        topicsToChangeByReplicationFactor.put(replicationFactor, topicsToChange);
+      }
+    }
+
+    if (topicsToChangeByReplicationFactor.isEmpty()) {
+      throw new IllegalStateException(String.format("All topics matching given pattern already have target replication factor. Requested "
+                                                    + "topic pattern by replication factor: %s.", topicPatternByReplicationFactor));
+    }
+    // Sanity check that no topic is set with more than one target replication factor.
+    sanityCheckTargetReplicationFactorForTopic(topicsToChangeByReplicationFactor);
+    return topicsToChangeByReplicationFactor;
   }
 }
