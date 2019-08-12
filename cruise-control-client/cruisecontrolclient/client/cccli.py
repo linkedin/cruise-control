@@ -25,10 +25,15 @@ from cruisecontrolclient.client.Responder import AbstractResponder, \
 
 def get_endpoint(args: argparse.Namespace,
                  execution_context: ExecutionContext) -> Endpoint.AbstractEndpoint:
-    # Deepcopy the args so that we can delete keys from it as we handle them.
+    # Use a __dict__ view of args for a more pythonic processing idiom.
     #
-    # Otherwise successive iterations will step on each other's toes.
-    arg_dict = vars(args)
+    # Also, shallow copy this dict, since otherwise deletions of keys from
+    # this dict would have the unintended consequence of mutating `args` outside
+    # of the scope of this function.
+    #
+    # A deep copy is not needed here since in this method we're only ever
+    # removing properties, not mutating the objects which those properties reference.
+    arg_dict = vars(args).copy()
 
     # If we have a broker list, we need to make it into a comma-separated list
     # and pass it to the Endpoint at instantiation.
