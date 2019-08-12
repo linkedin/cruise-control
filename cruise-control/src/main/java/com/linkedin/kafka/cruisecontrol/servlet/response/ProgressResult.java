@@ -9,13 +9,18 @@ import com.google.gson.GsonBuilder;
 import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
+
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeResponseToOutputStream;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.JSON_VERSION;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.VERSION;
+import static javax.servlet.http.HttpServletResponse.SC_ACCEPTED;
 
 public class ProgressResult extends AbstractCruiseControlResponse {
   protected static final String PROGRESS = "progress";
@@ -50,6 +55,13 @@ public class ProgressResult extends AbstractCruiseControlResponse {
       sb.append(String.format("%s:%n%s", operationFuture.operation(), operationFuture.progressString()));
     }
     return sb.toString();
+  }
+
+  @Override
+  public void writeSuccessResponse(CruiseControlParameters parameters, HttpServletResponse response) throws IOException {
+    boolean json = parameters.json();
+    discardIrrelevantResponse(parameters);
+    writeResponseToOutputStream(response, SC_ACCEPTED, json, _cachedResponse, _config);
   }
 
   @Override
