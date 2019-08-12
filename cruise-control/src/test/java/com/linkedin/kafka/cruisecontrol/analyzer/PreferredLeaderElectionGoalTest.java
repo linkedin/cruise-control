@@ -280,8 +280,7 @@ public class PreferredLeaderElectionGoalTest {
     }
   }
 
-  private ClusterModelAndInfo createClusterModel(boolean skipClusterInfoGeneration,
-                                                 boolean populateDiskInfo) {
+  private ClusterModelAndInfo createClusterModel(boolean skipClusterInfoGeneration, boolean populateDiskInfo) {
 
     ClusterModel clusterModel = new ClusterModel(new ModelGeneration(0, 0),
                                                  1.0);
@@ -294,10 +293,10 @@ public class PreferredLeaderElectionGoalTest {
                                                                      new BrokerCapacityInfo(TestConstants.BROKER_CAPACITY);
     int i = 0;
     for (; i < 2; i++) {
-      clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo);
+      clusterModel.createBroker("r0", "h" + i, i, commonBrokerCapacityInfo, populateDiskInfo);
     }
     for (int j = 1; j < NUM_RACKS; j++, i++) {
-      clusterModel.createBroker("r" + j, "h" + i, i, commonBrokerCapacityInfo);
+      clusterModel.createBroker("r" + j, "h" + i, i, commonBrokerCapacityInfo, populateDiskInfo);
     }
 
     createReplicaAndSetLoad(clusterModel, "r0", 0, logdir(populateDiskInfo, 0, 0), T0P0, 0, true);

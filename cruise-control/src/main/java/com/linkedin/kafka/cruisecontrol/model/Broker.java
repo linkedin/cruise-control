@@ -62,8 +62,9 @@ public class Broker implements Serializable, Comparable<Broker> {
    * @param host           The host this broker is on
    * @param id             The id of the broker.
    * @param brokerCapacityInfo Capacity information of the created broker.
+   * @param populateReplicaPlacementInfo Whether populate replica placement over disk information or not.
    */
-  Broker(Host host, int id, BrokerCapacityInfo brokerCapacityInfo) {
+  Broker(Host host, int id, BrokerCapacityInfo brokerCapacityInfo, boolean populateReplicaPlacementInfo) {
     Map<Resource, Double> brokerCapacity = brokerCapacityInfo.capacity();
     if (brokerCapacity == null) {
       throw new IllegalArgumentException("Attempt to create broker " + id + " on host " + host.name() + " with null capacity.");
@@ -77,10 +78,9 @@ public class Broker implements Serializable, Comparable<Broker> {
                                                                   : entry.getValue();
     }
 
-    Map<String, Double> diskCapacityByLogDir = brokerCapacityInfo.diskCapacityByLogDir();
-    if (diskCapacityByLogDir != null) {
+    if (populateReplicaPlacementInfo) {
       _diskByLogdir = new TreeMap<>();
-      diskCapacityByLogDir.forEach((key, value) -> _diskByLogdir.put(key, new Disk(key, this, value)));
+      brokerCapacityInfo.diskCapacityByLogDir().forEach((key, value) -> _diskByLogdir.put(key, new Disk(key, this, value)));
     } else {
       _diskByLogdir = Collections.emptySortedMap();
     }

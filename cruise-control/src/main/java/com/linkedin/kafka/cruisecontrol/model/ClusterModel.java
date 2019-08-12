@@ -45,7 +45,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVA
 public class ClusterModel implements Serializable {
   private static final long serialVersionUID = -6840253566423285966L;
   // Hypothetical broker that indicates the original broker of replicas to be created in the existing cluster model.
-  private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(Collections.emptyMap()));
+  private static final Broker GENESIS_BROKER = new Broker(null, -1, new BrokerCapacityInfo(Collections.emptyMap()), false);
 
   private final ModelGeneration _generation;
   private final Map<String, Rack> _racksById;
@@ -754,7 +754,7 @@ public class ClusterModel implements Serializable {
       createRack(rackId);
     }
     if (broker(brokerId) == null) {
-      createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacityInfo);
+      createBroker(rackId, String.format("UNKNOWN_HOST-%d", _unknownHostId++), brokerId, brokerCapacityInfo, false);
     }
   }
 
@@ -895,12 +895,14 @@ public class ClusterModel implements Serializable {
    * @param host The host of this broker
    * @param brokerId Id of the broker to be created.
    * @param brokerCapacityInfo Capacity information of the created broker.
+   * @param populateReplicaPlacementInfo Whether populate replica placement over disk information or not.
    * @return Created broker.
    */
   public Broker createBroker(String rackId,
                              String host,
                              int brokerId,
-                             BrokerCapacityInfo brokerCapacityInfo) {
+                             BrokerCapacityInfo brokerCapacityInfo,
+                             boolean populateReplicaPlacementInfo) {
     _potentialLeadershipLoadByBrokerId.putIfAbsent(brokerId, new Load());
     Rack rack = rack(rackId);
     _brokerIdToRack.put(brokerId, rack);
@@ -908,7 +910,7 @@ public class ClusterModel implements Serializable {
     if (brokerCapacityInfo.isEstimated()) {
       _capacityEstimationInfoByBrokerId.put(brokerId, brokerCapacityInfo.estimationInfo());
     }
-    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo);
+    Broker broker = rack.createBroker(brokerId, host, brokerCapacityInfo, populateReplicaPlacementInfo);
     _aliveBrokers.add(broker);
     _brokers.add(broker);
     refreshCapacity();

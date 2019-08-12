@@ -249,13 +249,15 @@ public class Rack implements Serializable {
    * @param brokerId Id of the broker to be created.
    * @param hostName The hostName of the broker
    * @param brokerCapacityInfo Capacity information of the created broker.
+   * @param populateReplicaPlacementInfo Whether populate replica placement over disk information or not.
    * @return Created broker.
    */
   Broker createBroker(int brokerId,
                       String hostName,
-                      BrokerCapacityInfo brokerCapacityInfo) {
+                      BrokerCapacityInfo brokerCapacityInfo,
+                      boolean populateReplicaPlacementInfo) {
     Host host = _hosts.computeIfAbsent(hostName, name -> new Host(name, this));
-    Broker broker = host.createBroker(brokerId, brokerCapacityInfo);
+    Broker broker = host.createBroker(brokerId, brokerCapacityInfo, populateReplicaPlacementInfo);
     _brokers.put(brokerId, broker);
     for (Map.Entry<Resource, Double> entry : brokerCapacityInfo.capacity().entrySet()) {
       Resource resource = entry.getKey();
