@@ -49,7 +49,6 @@ import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControl.createOrDeleteReplicasInClusterModel;
 import static com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUnitTestUtils.goal;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.smallClusterModel;
 import static com.linkedin.kafka.cruisecontrol.common.DeterministicCluster.mediumClusterModel;
@@ -178,7 +177,8 @@ public class ReplicationFactorChangeTest {
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = _clusterModel.getReplicaDistribution();
     Map<TopicPartition, ReplicaPlacementInfo> initLeaderDistribution = _clusterModel.getLeaderDistribution();
 
-    createOrDeleteReplicasInClusterModel(_topics, _brokersByRack, _rackByBroker, _cluster, _replicationFactor, _clusterModel);
+    _clusterModel.createOrDeleteReplicas(Collections.singletonMap(_replicationFactor, _topics), _brokersByRack, _rackByBroker,
+                                         _cluster);
     if (_exceptionClass == null) {
       if (_expectedToOptimize) {
         assertTrue("Replication factor change test with goal " + _goal.name() + " failed.",

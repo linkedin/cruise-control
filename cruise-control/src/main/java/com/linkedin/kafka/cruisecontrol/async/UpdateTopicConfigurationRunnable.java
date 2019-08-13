@@ -12,16 +12,16 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationPar
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.List;
 
+import java.util.Map;
 import java.util.regex.Pattern;
 
 /**
- * The async runnable for {@link KafkaCruiseControl#updateTopicConfiguration(Pattern, List, short, boolean, ModelCompletenessRequirements,
+ * The async runnable for {@link KafkaCruiseControl#updateTopicReplicationFactor(Map, List, boolean, ModelCompletenessRequirements,
  * com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress, boolean, Integer, Integer, boolean, ReplicaMovementStrategy, Long,
  * boolean, boolean, boolean, String)}.
  */
 public class UpdateTopicConfigurationRunnable extends OperationRunnable {
-  private final Pattern _topic;
-  private final short _replicationFactor;
+  private final Map<Short, Pattern> _topicPatternByReplicationFactor;
   private final boolean _skipRackAwarenessCheck;
   private final String _uuid;
   private final KafkaCruiseControlConfig _config;
@@ -44,9 +44,8 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                    KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
     _uuid = uuid;
-    _topic = parameters.topic();
+    _topicPatternByReplicationFactor = parameters.topicPatternByReplicationFactor();
     _goals = parameters.goals();
-    _replicationFactor = parameters.replicationFactor();
     _skipRackAwarenessCheck = parameters.skipRackAwarenessCheck();
     _dryRun = parameters.dryRun();
     _modelCompletenessRequirements = parameters.modelCompletenessRequirements();
@@ -63,22 +62,21 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
 
   @Override
   protected OptimizationResult getResult() throws Exception {
-    return new OptimizationResult(_kafkaCruiseControl.updateTopicConfiguration(_topic,
-                                                                               _goals,
-                                                                               _replicationFactor,
-                                                                               _skipRackAwarenessCheck,
-                                                                               _modelCompletenessRequirements,
-                                                                               _future.operationProgress(),
-                                                                               _allowCapacityEstimation,
-                                                                               _concurrentInterBrokerPartitionMovements,
-                                                                               _concurrentLeaderMovements,
-                                                                               _skipHardGoalCheck,
-                                                                               _replicaMovementStrategy,
-                                                                               _replicationThrottle,
-                                                                               _excludeRecentlyDemotedBrokers,
-                                                                               _excludeRecentlyRemovedBrokers,
-                                                                               _dryRun,
-                                                                               _uuid),
+    return new OptimizationResult(_kafkaCruiseControl.updateTopicReplicationFactor(_topicPatternByReplicationFactor,
+                                                                                   _goals,
+                                                                                   _skipRackAwarenessCheck,
+                                                                                   _modelCompletenessRequirements,
+                                                                                   _future.operationProgress(),
+                                                                                   _allowCapacityEstimation,
+                                                                                   _concurrentInterBrokerPartitionMovements,
+                                                                                   _concurrentLeaderMovements,
+                                                                                   _skipHardGoalCheck,
+                                                                                   _replicaMovementStrategy,
+                                                                                   _replicationThrottle,
+                                                                                   _excludeRecentlyDemotedBrokers,
+                                                                                   _excludeRecentlyRemovedBrokers,
+                                                                                   _dryRun,
+                                                                                   _uuid),
                                   _config);
   }
 }

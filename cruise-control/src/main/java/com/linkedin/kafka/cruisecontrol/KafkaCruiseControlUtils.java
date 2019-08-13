@@ -7,9 +7,11 @@ package com.linkedin.kafka.cruisecontrol;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -22,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import kafka.zk.KafkaZkClient;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
@@ -37,12 +40,15 @@ import org.apache.kafka.common.config.SslConfigs;
 import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.SystemTime;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 /**
  * Util class for convenience.
  */
 public class KafkaCruiseControlUtils {
+  private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlUtils.class);
   public static final int ZK_SESSION_TIMEOUT = 30000;
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
@@ -405,5 +411,104 @@ public class KafkaCruiseControlUtils {
    */
   public static boolean isKafkaAssignerMode(Collection<String> goals) {
     return goals.stream().anyMatch(KAFKA_ASSIGNER_GOALS::contains);
+  }
+
+  /**
+   * Check that only one target replication factor is set for each topic.
+   *
+   * @param topicsToChangeByReplicationFactor Topics to change replication factor by target replication factor.
+   */
+  private static void sanityCheckTargetReplicationFactorForTopic(Map<Short, Set<String>> topicsToChangeByReplicationFactor) {
+    Set<String> topicsToChange = new HashSet<>();
+    Set<String> topicsHavingMultipleTargetReplicationFactors = new HashSet<>();
+    for (Set<String> topics : topicsToChangeByReplicationFactor.values()) {
+      for (String topic : topics) {
+        if (!topicsToChange.add(topic)) {
+          topicsHavingMultipleTargetReplicationFactors.add(topic);
+        }
+      }
+    }
+    if (!topicsHavingMultipleTargetReplicationFactors.isEmpty()) {
+      throw new IllegalStateException(String.format("Topics %s are requested with more than one target replication factor.",
+                                                    topicsHavingMultipleTargetReplicationFactors));
+    }
+  }
+
+  /**
+   * Populate topics to change replication factor based on the request and current cluster state.
+   * @param topicPatternByReplicationFactor Requested topic patterns to change replication factor by target replication factor.
+   * @param cluster Current cluster state.
+   * @return Topics to change replication factor by target replication factor.
+   */
+  public static Map<Short, Set<String>> topicsForReplicationFactorChange(Map<Short, Pattern> topicPatternByReplicationFactor,
+                                                                         Cluster cluster) {
+    Map<Short, Set<String>> topicsToChangeByReplicationFactor = new HashMap<>(topicPatternByReplicationFactor.size());
+    for (Map.Entry<Short, Pattern> entry : topicPatternByReplicationFactor.entrySet()) {
+      short replicationFactor = entry.getKey();
+      Pattern topicPattern = entry.getValue();
+      Set<String> topics = cluster.topics().stream().filter(t -> topicPattern.matcher(t).matches()).collect(Collectors.toSet());
+      // Ensure there are topics matching the requested topic pattern.
+      if (topics.isEmpty()) {
+        throw new IllegalStateException(String.format("There is no topic in cluster matching pattern '%s'.", topicPattern));
+      }
+      Set<String> topicsToChange = topics.stream()
+                                         .filter(t -> cluster.partitionsForTopic(t).stream().anyMatch(p -> p.replicas().length != replicationFactor))
+                                         .collect(Collectors.toSet());
+      if (!topicsToChange.isEmpty()) {
+        topicsToChangeByReplicationFactor.put(replicationFactor, topicsToChange);
+      }
+    }
+
+    if (topicsToChangeByReplicationFactor.isEmpty()) {
+      throw new IllegalStateException(String.format("All topics matching given pattern already have target replication factor. Requested "
+                                                    + "topic pattern by replication factor: %s.", topicPatternByReplicationFactor));
+    }
+    // Sanity check that no topic is set with more than one target replication factor.
+    sanityCheckTargetReplicationFactorForTopic(topicsToChangeByReplicationFactor);
+    return topicsToChangeByReplicationFactor;
+  }
+
+  /**
+   * Populate cluster rack information for topics to change replication factor. In the process this method also conducts a sanity
+   * check to ensure that there are enough racks in the cluster to allocate new replicas to racks which do not host replica
+   * of the same partition.
+   *
+   * @param topicsByReplicationFactor Topics to change replication factor by target replication factor.
+   * @param cluster Current cluster state.
+   * @param excludedBrokersForReplicaMove Set of brokers which do not host new replicas.
+   * @param skipTopicRackAwarenessCheck Whether to skip the rack awareness sanity check or not.
+   * @param brokersByRack Mapping from rack to broker.
+   * @param rackByBroker Mapping from broker to rack.
+   */
+  public static void populateRackInfoForReplicationFactorChange(Map<Short, Set<String>> topicsByReplicationFactor,
+                                                                Cluster cluster,
+                                                                Set<Integer> excludedBrokersForReplicaMove,
+                                                                boolean skipTopicRackAwarenessCheck,
+                                                                Map<String, List<Integer>> brokersByRack,
+                                                                Map<Integer, String> rackByBroker) {
+    for (Node node : cluster.nodes()) {
+      // New follower replica is not assigned to brokers excluded for replica movement.
+      if (excludedBrokersForReplicaMove.contains(node.id())) {
+        continue;
+      }
+      // If the rack is not specified, we use the broker id info as rack info.
+      String rack = node.rack() == null || node.rack().isEmpty() ? String.valueOf(node.id()) : node.rack();
+      brokersByRack.putIfAbsent(rack, new ArrayList<>());
+      brokersByRack.get(rack).add(node.id());
+      rackByBroker.put(node.id(), rack);
+    }
+
+    topicsByReplicationFactor.forEach((replicationFactor, topics) -> {
+      if (replicationFactor > brokersByRack.size()) {
+        if (skipTopicRackAwarenessCheck) {
+          LOG.info("Target replication factor for topics {} is {}, which is larger than number of racks in cluster. Rack-awareness "
+                   + "property will be violated to add new replicas.", topics, replicationFactor);
+        } else {
+          throw new RuntimeException(String.format("Unable to change replication factor of topics %s to %d since there are only %d "
+                                                   + "racks in the cluster, to skip the rack-awareness check, set %s to true in the request.",
+                                                   topics, replicationFactor, brokersByRack.size(), ParameterUtils.SKIP_RACK_AWARENESS_CHECK_PARAM));
+        }
+      }
+    });
   }
 }
