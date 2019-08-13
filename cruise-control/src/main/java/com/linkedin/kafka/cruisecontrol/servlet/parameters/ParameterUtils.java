@@ -584,10 +584,14 @@ public class ParameterUtils {
     try {
       Gson gson = new Gson();
       Map<String, Object> json = gson.fromJson(request.getReader(), Map.class);
-      if (!json.containsKey(REPLICATION_FACTOR.name())) {
+      if (json == null) {
         return null;
       }
-      Map<String, Object> replicationFactorParams = (Map<String, Object>) json.get(REPLICATION_FACTOR.name());
+      String replicationFactorKey = REPLICATION_FACTOR.name().toLowerCase();
+      if (!json.containsKey(replicationFactorKey)) {
+        return null;
+      }
+      Map<String, Object> replicationFactorParams = (Map<String, Object>) json.get(replicationFactorKey);
       if (!replicationFactorParams.containsKey(TOPIC_BY_REPLICATION_FACTOR)) {
         return null;
       }
