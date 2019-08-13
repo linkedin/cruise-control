@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
+import com.google.gson.Gson;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
@@ -44,6 +45,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServlet
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.REQUEST_URI;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.getClientIpAddress;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters.TopicConfigurationType.REPLICATION_FACTOR;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.APPROVED;
 import static com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus.DISCARDED;
 import static com.linkedin.kafka.cruisecontrol.servlet.response.ResponseUtils.writeErrorResponse;
@@ -108,6 +110,7 @@ public class ParameterUtils {
   public static final String FETCH_COMPLETED_TASK_PARAM = "fetch_completed_task";
   private static final int MAX_REASON_LENGTH = 50;
   public static final long DEFAULT_START_TIME_FOR_CLUSTER_MODEL = -1L;
+  public static final String TOPIC_BY_REPLICATION_FACTOR = "topic_by_replication_factor";
 
   public static final String STOP_PROPOSAL_PARAMETER_OBJECT_CONFIG = "stop.proposal.parameter.object";
   public static final String BOOTSTRAP_PARAMETER_OBJECT_CONFIG = "bootstrap.parameter.object";
@@ -527,6 +530,60 @@ public class ParameterUtils {
     return parameterString == null ? null : Pattern.compile(request.getParameter(parameterString));
   }
 
+  @SuppressWarnings("unchecked")
+  private static Map<Short, Pattern> topicPatternByReplicationFactorFromBody(HttpServletRequest request) {
+    Map<Short, Pattern> topicPatternByReplicationFactor;
+    try {
+      Gson gson = new Gson();
+      Map<String, Object> json = gson.fromJson(request.getReader(), Map.class);
+      if (json == null) {
+        return null;
+      }
+      String replicationFactorKey = REPLICATION_FACTOR.name().toLowerCase();
+      if (!json.containsKey(replicationFactorKey)) {
+        return null;
+      }
+      Map<String, Object> replicationFactorParams = (Map<String, Object>) json.get(replicationFactorKey);
+      if (!replicationFactorParams.containsKey(TOPIC_BY_REPLICATION_FACTOR)) {
+        return null;
+      }
+      topicPatternByReplicationFactor = new HashMap<>();
+      for (Map.Entry<String, String> entry : ((Map<String, String>) replicationFactorParams.get(TOPIC_BY_REPLICATION_FACTOR)).entrySet()) {
+        short replicationFactor = Short.parseShort(entry.getKey().trim());
+        Pattern topicPattern = Pattern.compile(entry.getValue().trim());
+        topicPatternByReplicationFactor.putIfAbsent(replicationFactor, topicPattern);
+      }
+    } catch (IOException ioe) {
+      throw new UserRequestException(String.format("Illegal value for field %s in body, please specify in pairs of \"target replication "
+                                                   + "factor\" : \"topic name regex\".", TOPIC_BY_REPLICATION_FACTOR));
+    }
+    return topicPatternByReplicationFactor;
+  }
+
+    static Map<Short, Pattern> topicPatternByReplicationFactor(HttpServletRequest request) {
+    Pattern topic = topic(request);
+    Short replicationFactor = replicationFactor(request);
+    Map<Short, Pattern> topicPatternByReplicationFactorFromBody = topicPatternByReplicationFactorFromBody(request);
+    if (topicPatternByReplicationFactorFromBody != null) {
+      if (topic != null || replicationFactor != null) {
+        throw new UserRequestException("Requesting topic replication factor change from both HTTP request parameter and body"
+                                       + " is forbidden.");
+      }
+      return topicPatternByReplicationFactorFromBody;
+    } else {
+      if (topic == null && replicationFactor != null) {
+        throw new UserRequestException("Topic is not specified in URL while target replication factor is specified.");
+      }
+      if ((topic != null && replicationFactor == null)) {
+        throw new UserRequestException("Topic's replication factor is not specified in URL while subject topic is specified.");
+      }
+      if (topic != null) {
+        return Collections.singletonMap(replicationFactor, topic);
+      }
+    }
+    return Collections.emptyMap();
+  }
+
   static Double minValidPartitionRatio(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), MIN_VALID_PARTITION_RATIO_PARAM);
     if (parameterString == null) {
@@ -939,10 +996,10 @@ public class ParameterUtils {
     return getBooleanParam(request, EXCLUDE_FOLLOWER_DEMOTION_PARAM, false);
   }
 
-  static short replicationFactor(HttpServletRequest request) {
+  static Short replicationFactor(HttpServletRequest request) {
     String parameterString = caseSensitiveParameterName(request.getParameterMap(), REPLICATION_FACTOR_PARAM);
     if (parameterString == null) {
-      throw new UserRequestException("Topic's replication factor is not specified.");
+      return null;
     }
     return Short.parseShort(request.getParameter(parameterString));
   }
