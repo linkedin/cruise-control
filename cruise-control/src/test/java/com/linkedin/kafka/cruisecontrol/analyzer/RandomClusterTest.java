@@ -203,7 +203,7 @@ public class RandomClusterTest {
       }
 
       BrokerCapacityInfo brokerCapacityInfo = new BrokerCapacityInfo(brokerCapacity);
-      clusterWithNewBroker.createBroker(b.rack().id(), Integer.toString(b.id()), b.id(), brokerCapacityInfo);
+      clusterWithNewBroker.createBroker(b.rack().id(), Integer.toString(b.id()), b.id(), brokerCapacityInfo, false);
     }
 
     for (Map.Entry<String, List<Partition>> entry : clusterModel.getPartitionsByTopic().entrySet()) {
@@ -229,7 +229,8 @@ public class RandomClusterTest {
       clusterWithNewBroker.createBroker(Integer.toString(i),
                                         Integer.toString(i + clusterModel.brokers().size() - 1),
                                         i + clusterModel.brokers().size() - 1,
-                                        commonBrokerCapacityInfo);
+                                        commonBrokerCapacityInfo,
+                                        false);
       clusterWithNewBroker.setBrokerState(i + clusterModel.brokers().size() - 1, Broker.State.NEW);
     }
 
