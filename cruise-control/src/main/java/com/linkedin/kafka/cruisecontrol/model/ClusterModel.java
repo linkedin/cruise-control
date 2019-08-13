@@ -32,6 +32,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.apache.commons.math3.stat.descriptive.moment.Variance;
+import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
@@ -924,6 +927,82 @@ public class ClusterModel implements Serializable {
   public Rack createRack(String rackId) {
     Rack rack = new Rack(rackId);
     return _racksById.putIfAbsent(rackId, rack);
+  }
+
+  /**
+   * For partitions of specified topics, create or delete replicas in given cluster model to change the partition's replication
+   * factor to target replication factor. New replicas for partition are added in a rack-aware, round-robin way.
+   *
+   * @param topicsByReplicationFactor The topics to modify replication factor with target replication factor.
+   * @param brokersByRack A map from rack to broker.
+   * @param rackByBroker A map from broker to rack.
+   * @param cluster The metadata of the cluster.
+   */
+  public void createOrDeleteReplicas(Map<Short, Set<String>> topicsByReplicationFactor,
+                                     Map<String, List<Integer>> brokersByRack,
+                                     Map<Integer, String> rackByBroker,
+                                     Cluster cluster) {
+    // After replica deletion of some topic partitions, the cluster's maximal replication factor may decrease.
+    boolean needToRefreshClusterMaxReplicationFactor = false;
+
+    for (Map.Entry<Short, Set<String>> entry : topicsByReplicationFactor.entrySet()) {
+      short replicationFactor = entry.getKey();
+      Set<String> topics = entry.getValue();
+      for (String topic : topics) {
+        List<String> racks = new ArrayList<>(brokersByRack.keySet());
+        int[] cursors = new int[racks.size()];
+        int rackCursor = 0;
+        for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
+          if (partitionInfo.replicas().length == replicationFactor) {
+            continue;
+          }
+          List<Integer> newAssignedReplica = new ArrayList<>();
+          if (partitionInfo.replicas().length < replicationFactor) {
+            Set<String> currentOccupiedRack = new HashSet<>();
+            // Make sure the current replicas are in new replica list.
+            for (Node node : partitionInfo.replicas()) {
+              newAssignedReplica.add(node.id());
+              currentOccupiedRack.add(rackByBroker.get(node.id()));
+            }
+            // Add new replica to partition in rack-aware(if possible), round-robin way.
+            while (newAssignedReplica.size() < replicationFactor) {
+              String rack = racks.get(rackCursor);
+              if (!currentOccupiedRack.contains(rack) || currentOccupiedRack.size() == racks.size()) {
+                int cursor = cursors[rackCursor];
+                Integer brokerId = brokersByRack.get(rack).get(cursor);
+                if (!newAssignedReplica.contains(brokerId)) {
+                  newAssignedReplica.add(brokersByRack.get(rack).get(cursor));
+                  // Create a new replica in the cluster model and populate its load from the leader replica.
+                  TopicPartition tp = new TopicPartition(topic, partitionInfo.partition());
+                  Load load = partition(tp).leader().getFollowerLoadFromLeader();
+                  createReplica(rack, brokerId, tp, partitionInfo.replicas().length, false, false, null, true);
+                  setReplicaLoad(rack, brokerId, tp, load.loadByWindows(), load.windows());
+                  currentOccupiedRack.add(rack);
+                }
+                cursors[rackCursor] = (cursor + 1) % brokersByRack.get(rack).size();
+              }
+              rackCursor = (rackCursor + 1) % racks.size();
+            }
+          } else {
+            // Make sure the leader replica is in new replica list.
+            newAssignedReplica.add(partitionInfo.leader().id());
+            for (Node node : partitionInfo.replicas()) {
+              if (node.id() != newAssignedReplica.get(0)) {
+                if (newAssignedReplica.size() < replicationFactor) {
+                  newAssignedReplica.add(node.id());
+                } else {
+                  deleteReplica(new TopicPartition(topic, partitionInfo.partition()), node.id());
+                  needToRefreshClusterMaxReplicationFactor = true;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    if (needToRefreshClusterMaxReplicationFactor) {
+      refreshClusterMaxReplicationFactor();
+    }
   }
 
   /**
