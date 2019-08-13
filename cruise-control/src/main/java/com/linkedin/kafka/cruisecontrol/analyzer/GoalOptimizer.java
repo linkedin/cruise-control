@@ -396,6 +396,8 @@ public class GoalOptimizer implements Runnable {
       throws KafkaCruiseControlException {
     if (clusterModel == null) {
       throw new IllegalArgumentException("The cluster model cannot be null");
+    } else if (goalsByPriority.isEmpty()) {
+      throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
     }
 
     // Sanity check for optimizing goals.
