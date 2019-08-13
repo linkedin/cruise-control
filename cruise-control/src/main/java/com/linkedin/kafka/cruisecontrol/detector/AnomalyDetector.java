@@ -4,6 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.codahale.metrics.Gauge;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
@@ -96,6 +97,8 @@ public class AnomalyDetector {
     _anomalyInProgress = null;
     _numCheckedWithDelay = 0L;
     _shutdownLock = new Object();
+    dropwizardMetricRegistry.register(MetricRegistry.name(METRIC_REGISTRY_NAME, "balancedness-score"),
+                                      (Gauge<Double>) _goalViolationDetector::balancednessScore);
     _anomalyDetectorState = new AnomalyDetectorState(time,
                                                      _anomalyNotifier.selfHealingEnabled(),
                                                      numCachedRecentAnomalyStates,
@@ -189,7 +192,7 @@ public class AnomalyDetector {
   }
 
   public synchronized AnomalyDetectorState anomalyDetectorState() {
-    _anomalyDetectorState.refreshMetrics(_anomalyNotifier.selfHealingEnabledRatio());
+    _anomalyDetectorState.refreshMetrics(_anomalyNotifier.selfHealingEnabledRatio(), _goalViolationDetector.balancednessScore());
     return _anomalyDetectorState;
   }
 

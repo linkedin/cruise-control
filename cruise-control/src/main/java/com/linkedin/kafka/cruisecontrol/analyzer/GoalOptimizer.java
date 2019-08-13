@@ -46,6 +46,7 @@ import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.BOOTSTRAPPING;
 import static com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner.LoadMonitorTaskRunnerState.LOADING;
 
@@ -75,6 +76,8 @@ public class GoalOptimizer implements Runnable {
   private final ModelCompletenessRequirements _requirementsWithAvailableValidWindows;
   private final Executor _executor;
   private volatile boolean _hasOngoingExplicitPrecomputation;
+  private final double _priorityWeight;
+  private final double _strictnessWeight;
 
   /**
    * Constructor for Goal Optimizer takes the goals as input. The order of the list determines the priority of goals
@@ -112,6 +115,8 @@ public class GoalOptimizer implements Runnable {
     _proposalComputationTimer = dropwizardMetricRegistry.timer(MetricRegistry.name("GoalOptimizer", "proposal-computation-timer"));
     _executor = executor;
     _hasOngoingExplicitPrecomputation = false;
+    _priorityWeight = config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);
+    _strictnessWeight = config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG);
   }
 
   @Override
@@ -409,7 +414,7 @@ public class GoalOptimizer implements Runnable {
     Set<Goal> optimizedGoals = new HashSet<>(goalsByPriority.size());
     Set<String> violatedGoalNamesBeforeOptimization = new HashSet<>();
     Set<String> violatedGoalNamesAfterOptimization = new HashSet<>();
-    Map<Goal, ClusterModelStats> statsByGoalPriority = new LinkedHashMap<>(goalsByPriority.size());
+    LinkedHashMap<Goal, ClusterModelStats> statsByGoalPriority = new LinkedHashMap<>(goalsByPriority.size());
     Map<TopicPartition, List<ReplicaPlacementInfo>> preOptimizedReplicaDistribution = null;
     Map<TopicPartition, ReplicaPlacementInfo> preOptimizedLeaderDistribution = null;
     Set<String> excludedTopics = excludedTopics(clusterModel, requestedExcludedTopics);
@@ -469,7 +474,8 @@ public class GoalOptimizer implements Runnable {
                                clusterModel.generation(),
                                clusterModel.getClusterStats(_balancingConstraint),
                                clusterModel.capacityEstimationInfoByBrokerId(),
-                               optimizationOptions);
+                               optimizationOptions,
+                               balancednessCostByGoal(goalsByPriority, _priorityWeight, _strictnessWeight));
   }
 
   private Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {

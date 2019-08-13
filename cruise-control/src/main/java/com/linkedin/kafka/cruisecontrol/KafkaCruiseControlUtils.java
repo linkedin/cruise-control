@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
  */
 public class KafkaCruiseControlUtils {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlUtils.class);
+  public static final double MAX_BALANCEDNESS_SCORE = 100.0;
   public static final int ZK_SESSION_TIMEOUT = 30000;
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
@@ -510,5 +511,35 @@ public class KafkaCruiseControlUtils {
         }
       }
     });
+  }
+
+  /**
+   * Get the balancedness cost of violating goals by their name, where the sum of costs is {@link #MAX_BALANCEDNESS_SCORE}.
+   *
+   * @param goals The goals to be used for balancing (sorted by priority).
+   * @param priorityWeight The impact of having one level higher goal priority on the relative balancedness score.
+   * @param strictnessWeight The impact of strictness on the relative balancedness score.
+   * @return the balancedness cost of violating goals by their name.
+   */
+  public static Map<String, Double> balancednessCostByGoal(List<Goal> goals, double priorityWeight, double strictnessWeight) {
+    if (goals.isEmpty()) {
+      throw new IllegalArgumentException("At least one goal must be provided to get the balancedness cost.");
+    }
+    Map<String, Double> balancednessCostByGoal = new HashMap<>(goals.size());
+    // Step-1: Get weights.
+    double weightSum = 0.0;
+    for (int i = goals.size() - 1; i >= 0; i--) {
+      Goal goal = goals.get(i);
+      double cost = Math.pow(priorityWeight, (goals.size() - 1 - i)) * (goal.isHardGoal() ? strictnessWeight : 1);
+      weightSum += cost;
+      balancednessCostByGoal.put(goal.name(), cost);
+    }
+
+    // Step-2: Set costs.
+    for (Map.Entry<String, Double> entry : balancednessCostByGoal.entrySet()) {
+      entry.setValue(MAX_BALANCEDNESS_SCORE * entry.getValue() / weightSum);
+    }
+
+    return balancednessCostByGoal;
   }
 }

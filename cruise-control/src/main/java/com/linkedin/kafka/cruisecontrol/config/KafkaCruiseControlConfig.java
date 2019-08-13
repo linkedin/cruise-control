@@ -775,6 +775,22 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String MAX_ACTIVE_USER_TASKS_DOC = "The maximum number of user tasks for concurrently running in "
        + "async endpoints across all users.";
 
+  /**
+   * <code>goal.balancedness.priority.weight</code>
+   */
+  public static final String GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG = "goal.balancedness.priority.weight";
+  private static final String GOAL_BALANCEDNESS_PRIORITY_WEIGHT_DOC = "The impact of having one level higher goal priority"
+       + " on the relative balancedness score. For example, 1.1 means that a goal with higher priority will have the 1.1x"
+       + " balancedness weight of the lower priority goal (assuming the same goal.balancedness.strictness.weight values).";
+
+  /**
+   * <code>goal.balancedness.strictness.weight</code>
+   */
+  public static final String GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG = "goal.balancedness.strictness.weight";
+  private static final String GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_DOC = "The impact of strictness on the relative "
+       + " balancedness score. For example, 1.5 means that a hard goal will have the 1.5x balancedness weight of a soft "
+       + "goal (assuming goal.balancedness.priority.weight is 1).";
+
   // Web Server Configurations
   /**
    * <code>webserver.http.port</code>
@@ -1126,6 +1142,16 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 BrokerCapacityConfigFileResolver.class.getName(),
                 ConfigDef.Importance.MEDIUM,
                 BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_DOC)
+        .define(GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                1.1,
+                between(1, 2),
+                ConfigDef.Importance.LOW, GOAL_BALANCEDNESS_PRIORITY_WEIGHT_DOC)
+        .define(GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG,
+                ConfigDef.Type.DOUBLE,
+                1.5,
+                between(1, 2),
+                ConfigDef.Importance.LOW, GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_DOC)
         .define(MIN_VALID_PARTITION_RATIO_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 0.995,
