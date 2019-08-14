@@ -73,13 +73,26 @@ class CruiseControlResponder(requests.Session):
                     # and a non-202 status code.
                     #
                     # This response may not be final, but we have no
-                    # way of doing further guessing, so presume finality.
-                    warnings.warn(f"json=False passed to version of cruise-control "
-                                  f"({response.headers.get('Cruise-Control-Version', 'unable to determine version')}) "
-                                  f"that does not support 202 response codes. "
-                                  f"Please upgrade cruise-control to >=2.0.61, or "
-                                  f"Use json=True with cruise-control-client. "
-                                  f"Returning a potentially non-final response.")
+                    # way of doing further guessing, so warn the humans
+                    # as best as we can, then presume finality.
+                    cc_version = response.headers.get('Cruise-Control-Version')
+                    if cc_version is not None:
+                        warnings.warn(
+                            f"json=False received from cruise-control version ({cc_version}) "
+                            f"that does not support 202 response codes. "
+                            f"Please upgrade cruise-control to >=2.0.61, or "
+                            f"use json=True with cruise-control-client. "
+                            f"Returning a potentially non-final response.")
+                    # No cc_version in the response headers
+                    else:
+                        # cruise-control won't return version information if
+                        # servlet receives too-large-URI request
+                        if response.status_code == 414:
+                            pass
+                        else:
+                            warnings.warn(
+                                "Unable to determine cruise-control version. "
+                                "Returning a potentially non-final response.")
                     return True
 
             # We're talking to a version of cruise-control that supports
@@ -97,7 +110,8 @@ class CruiseControlResponder(requests.Session):
                     # 202 is not supported and was not returned; guess further
                     else:
                         return json_or_text_guesser()
-                # This version of cruise-control is _very_ old; guess further
+                # Probably we're getting a response (like a 414) before cruise-control
+                # can decorate the headers with version information
                 else:
                     return json_or_text_guesser()
 
