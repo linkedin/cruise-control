@@ -22,6 +22,9 @@ import json
 # To be able to indent the correct level for conveying JSON descent
 import textwrap
 
+# To be able to deprecate functions
+import warnings
+
 
 def get_key_to_display_function() -> Dict[str, Callable]:
     """
@@ -29,6 +32,13 @@ def get_key_to_display_function() -> Dict[str, Callable]:
 
     :return: a mapping of keys to expected functions
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     return {
         'AnomalyDetectorState': display_anomaly_detector_state,
         'brokers': display_brokers,
@@ -51,6 +61,13 @@ def print_with_indent(s: str, level=0) -> None:
     :param level:
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     print_error(textwrap.indent(s, "\t" * level))
 
 
@@ -62,6 +79,13 @@ def display_anomaly_detector_state(AnomalyDetectorState_json: dict, level=0) -> 
             'AnomalyDetectorState' key.
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     for key in AnomalyDetectorState_json:
         if key == "recentGoalViolations":
             print_with_indent(f"\t'{key}:", level)
@@ -86,6 +110,13 @@ def display_brokers(brokers_list: list, level=0) -> None:
     :param brokers_list: the list structure referenced by the 'brokers' key.
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     df = DataFrame(brokers_list)
     df.set_index('Broker', inplace=True)
     print_with_indent(df.to_string(), level)
@@ -98,6 +129,13 @@ def display_hosts(hosts_list: list, level=0) -> None:
     :param hosts_list: the list structure referenced by the 'hosts' key.
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     df = DataFrame(hosts_list)
     df.set_index('Host', inplace=True)
     print_with_indent(df.to_string(), level)
@@ -111,6 +149,13 @@ def display_load_after_optimization(loadAfterOptimization_json: dict, level=0) -
             'loadAfterOptimization' key.
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     # Make and print the dataframe from the 'brokers' subset of the JSON
     df = DataFrame(loadAfterOptimization_json['brokers'])
     df.set_index('Broker', inplace=True)
@@ -125,6 +170,13 @@ def display_kafka_broker_state(KafkaBrokerState_json: dict, level=0) -> None:
             'KafkaBrokerState' key.
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     # Handle list-like values, which we expect for 'OnlineLogDirsByBrokerId' and
     # 'OfflineLogDirsByBrokerId'
     log_dir_df = None
@@ -167,6 +219,13 @@ def display_kafka_partition_state(KafkaPartitionState_json: dict, level=0) -> No
             'KafkaPartitionState' key.
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     # We expect KafkaPartitionState_json to contain 'offline': [...] and 'urp': [...]
     for key in KafkaPartitionState_json:
         if type(KafkaPartitionState_json[key] == list):
@@ -190,6 +249,13 @@ def display_goal_readiness(goalReadiness_list: list, level=0) -> None:
             'goalReadiness' key.
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     for elem in goalReadiness_list:
         print_with_indent(f"{elem['name']}: {elem['status']}", level)
         print_with_indent(pformat(elem['modelCompleteRequirement']))
@@ -203,6 +269,13 @@ def display_goal_summary(goalSummary_json: dict, level=0) -> None:
     :param goalSummary_json: the JSON structure referenced by the 'goalSummary' key.
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     # Make and print a dataframe for each of the goals in clusterModelState
     for elem in goalSummary_json:
         print_with_indent(f"{elem['goal']}: {elem['status']}", level)
@@ -218,6 +291,13 @@ def display_progress(progress_list: list, level=0) -> None:
     :param progress_list: the list structure referenced by the 'progress' key.
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     for elem in progress_list:
         print_error(f"operation: {elem['operation']}")
         df = DataFrame(elem['operationProgress'])
@@ -242,6 +322,13 @@ def display_records(records_list: list, level=0) -> None:
     :param records_list: the list structure referenced by the 'records' key.
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     df = DataFrame(records_list)
     df.set_index(['topic', 'partition'], inplace=True)
     df.sort_index(inplace=True)
@@ -256,6 +343,13 @@ def display_response(response: Response) -> None:
     :param response:
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     # Set pandas display options
     # Display floats with a ',' 1000s separator, to two decimal places
     set_option('display.float_format', "{:,.2f}".format)
@@ -270,8 +364,14 @@ def display_response(response: Response) -> None:
     # sparsifying makes it harder to do bash-type processing of tabular data
     set_option('display.multi_sparse', False)
 
-    j: dict = response.json()
+    # Handle non-JSON (presumably plain-text) responses
+    try:
+        j: dict = response.json()
+    except json.decoder.JSONDecodeError:
+        print_error(response.text)
+        return
 
+    # Handle JSON responses
     try:
         display_dict(j)
     except Exception as e:
@@ -288,6 +388,13 @@ def display_dict(j: dict, level=0) -> None:
     :param j:
     :return:
     """
+    warnings.warn("This function is deprecated as of 0.3.0, as cruise-control already "
+                  "provides human-readable text when supplied the parameter json=false. "
+                  "Please ensure that your Cruise-Control-Version is 2.0.61 or higher, "
+                  "and use json=false for retrieving human-readable text. "
+                  "This function may be removed entirely in future versions.",
+                  DeprecationWarning,
+                  stacklevel=2)
     for key in j.keys():
         print_with_indent(f"'{key}':", level)
         # Display the contents of this key with its key-specific function, if possible.

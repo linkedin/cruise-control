@@ -22,6 +22,9 @@ from typing import Callable, Dict  # noqa
 # To be able to define a multithreaded way of interacting with cruise-control
 from threading import Thread
 
+# For composing a full URL to display to the humans
+from urllib.parse import urlencode
+
 # To be able to deprecate classes
 import warnings
 
@@ -32,25 +35,6 @@ class CruiseControlResponder(requests.Session):
     in order to provide the cruise-control-client with some basic
     sanity checking and session-management functionality.
     """
-
-    def send(self, request, **kwargs):
-        # Alert the humans to long-running poll
-        print_error(f"Starting long-running {request.method} of {request.url}")
-        if request.body:
-            print_error(f"body:{request.body.decode()}")
-
-        # Convenience closure to not have to copy-paste the parameters from
-        # this current environment.
-        def inner_send_helper():
-            return super(CruiseControlResponder, self).send(request, **kwargs)
-
-        # Loop our requests until we get a "final" response
-        response = inner_send_helper()
-        while 'progress' in response.json().keys():
-            display_response(response)
-            response = inner_send_helper()
-
-        return response
 
     def retrieve_response(self, method, url, **kwargs) -> requests.Response:
         """
@@ -72,13 +56,63 @@ class CruiseControlResponder(requests.Session):
 
         # Validate that we're asking cruise-control for a JSON-formatted body.
         if 'params' in kwargs:
-            if 'json' in kwargs['params']:
-                json_val = kwargs['params']['json']
-                if (type(json_val) is bool and not json_val) or \
-                        (type(json_val) is str and json_val.lower() != 'true'):
-                    raise ValueError(f"Parameter 'json':{kwargs['params']['json']} is not supported")
+            url_with_params = f"{url}?{urlencode(kwargs['params'])}"
+        else:
+            url_with_params = url
+        print_error(f"Starting long-running poll of {url_with_params}")
+        for key, value in kwargs.items():
+            if key == 'params':
+                continue
+            else:
+                print_error(f"{key}: {value}")
 
-        return self.request(method, url, **kwargs)
+        # Convenience closure to not have to copy-paste the parameters from
+        # this current environment.
+        def inner_request_helper():
+            return self.request(method, url, **kwargs)
+
+        def is_response_final(response: requests.Response):
+            # We're talking to a version of cruise-control that supports
+            # 202: accepted, and we know that this response is not final.
+            if response.status_code == 202:
+                return False
+            else:
+                # Guess about whether this version of cruise-control supports
+                # 202: accepted
+                if "Cruise-Control-Version" in response.headers:
+                    integer_semver = lambda x: [int(elem) for elem in x.split('.')]
+                    cc_version = integer_semver(response.headers["Cruise-Control-Version"])
+                    # 202: accepted is supported and was not returned; response final.
+                    if cc_version >= [2, 0, 61]:
+                        return True
+                    else:
+                        try:
+                            # Try to guess whether the JSON response is final
+                            return "progress" not in response.json().keys()
+
+                        except ValueError:
+                            # We have a non-JSON (probably plain text) response,
+                            # and a non-202 status code.
+                            #
+                            # This response may not be final, but we have no
+                            # way of doing further guessing, so presume finality.
+                            warnings.warn(f"json=False passed to version of cruise-control "
+                                          f"({response.headers['Cruise-Control-Version']}) "
+                                          f"that does not support 202 response codes. "
+                                          f"Please upgrade cruise-control to >=2.0.61, or "
+                                          f"Use json=True with cruise-control-client. "
+                                          f"Returning a potentially non-final response.")
+                            return True
+
+        response = inner_request_helper()
+        final_response = is_response_final(response)
+        while not final_response:
+            display_response(response)
+            response = inner_request_helper()
+            final_response = is_response_final(response)
+
+        # return the requests.response object
+        return response
 
     def retrieve_response_from_Endpoint(self,
                                         cc_socket_address: str,
