@@ -43,18 +43,7 @@ class CruiseControlResponder(requests.Session):
 
         :return: requests.Response
         """
-        # cruise-control's JSON response has a 'progress' key in it so long
-        # as the response is not final.
-        #
-        # Once the response is final, it does not contain the 'progress' key.
-        #
-        # Accordingly, keep getting the response from this session and checking
-        # it for the 'progress' key.
-        #
-        # Return the response as JSON once we get a valid JSON response that we
-        # think is 'final'.
-
-        # Validate that we're asking cruise-control for a JSON-formatted body.
+        # Alert the humans that long-running request is starting
         if 'params' in kwargs:
             url_with_params = f"{url}?{urlencode(kwargs['params'])}"
         else:
@@ -72,37 +61,45 @@ class CruiseControlResponder(requests.Session):
             return self.request(method, url, **kwargs)
 
         def is_response_final(response: requests.Response):
+            # Define an inner convenience closure to avoid
+            # repeating ourselves
+            def json_or_text_guesser():
+                try:
+                    # Try to guess whether the JSON response is final
+                    return "progress" not in response.json().keys()
+
+                except ValueError:
+                    # We have a non-JSON (probably plain text) response,
+                    # and a non-202 status code.
+                    #
+                    # This response may not be final, but we have no
+                    # way of doing further guessing, so presume finality.
+                    warnings.warn(f"json=False passed to version of cruise-control "
+                                  f"({response.headers.get('Cruise-Control-Version', 'unable to determine version')}) "
+                                  f"that does not support 202 response codes. "
+                                  f"Please upgrade cruise-control to >=2.0.61, or "
+                                  f"Use json=True with cruise-control-client. "
+                                  f"Returning a potentially non-final response.")
+                    return True
+
             # We're talking to a version of cruise-control that supports
             # 202: accepted, and we know that this response is not final.
             if response.status_code == 202:
                 return False
             else:
-                # Guess about whether this version of cruise-control supports
-                # 202: accepted
+                # Guess about whether this version of cruise-control supports 202
                 if "Cruise-Control-Version" in response.headers:
                     integer_semver = lambda x: [int(elem) for elem in x.split('.')]
                     cc_version = integer_semver(response.headers["Cruise-Control-Version"])
-                    # 202: accepted is supported and was not returned; response final.
+                    # 202 is supported and was not returned; response final
                     if cc_version >= [2, 0, 61]:
                         return True
+                    # 202 is not supported and was not returned; guess further
                     else:
-                        try:
-                            # Try to guess whether the JSON response is final
-                            return "progress" not in response.json().keys()
-
-                        except ValueError:
-                            # We have a non-JSON (probably plain text) response,
-                            # and a non-202 status code.
-                            #
-                            # This response may not be final, but we have no
-                            # way of doing further guessing, so presume finality.
-                            warnings.warn(f"json=False passed to version of cruise-control "
-                                          f"({response.headers['Cruise-Control-Version']}) "
-                                          f"that does not support 202 response codes. "
-                                          f"Please upgrade cruise-control to >=2.0.61, or "
-                                          f"Use json=True with cruise-control-client. "
-                                          f"Returning a potentially non-final response.")
-                            return True
+                        return json_or_text_guesser()
+                # This version of cruise-control is _very_ old; guess further
+                else:
+                    return json_or_text_guesser()
 
         response = inner_request_helper()
         final_response = is_response_final(response)
