@@ -528,11 +528,14 @@ public class KafkaCruiseControlUtils {
     Map<String, Double> balancednessCostByGoal = new HashMap<>(goals.size());
     // Step-1: Get weights.
     double weightSum = 0.0;
+    double previousGoalPriorityWeight = 1;
     for (int i = goals.size() - 1; i >= 0; i--) {
       Goal goal = goals.get(i);
-      double cost = Math.pow(priorityWeight, (goals.size() - 1 - i)) * (goal.isHardGoal() ? strictnessWeight : 1);
+      double currentGoalPriorityWeight = priorityWeight * previousGoalPriorityWeight;
+      double cost = currentGoalPriorityWeight * (goal.isHardGoal() ? strictnessWeight : 1);
       weightSum += cost;
       balancednessCostByGoal.put(goal.name(), cost);
+      previousGoalPriorityWeight = currentGoalPriorityWeight;
     }
 
     // Step-2: Set costs.

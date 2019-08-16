@@ -6,20 +6,16 @@ package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.cruisecontrol.detector.Anomaly;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.monitor.LoadMonitor;
 import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
-import java.util.Collections;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.util.ArrayList;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
 
 /**
@@ -73,18 +69,16 @@ public class AnomalyDetectorUtils {
    *
    * @return True to skip anomaly detection, false otherwise.
    */
-  static boolean shouldSkipAnomalyDetection(LoadMonitor loadMonitor,
-                                            KafkaCruiseControl kafkaCruiseControl) {
+  static boolean shouldSkipAnomalyDetection(LoadMonitor loadMonitor, KafkaCruiseControl kafkaCruiseControl) {
     LoadMonitorTaskRunner.LoadMonitorTaskRunnerState loadMonitorTaskRunnerState = loadMonitor.taskRunnerState();
     if (!ViolationUtils.isLoadMonitorReady(loadMonitorTaskRunnerState)) {
       LOG.info("Skipping anomaly detection because load monitor is in {} state.", loadMonitorTaskRunnerState);
       return true;
     }
 
-    ExecutorState.State executorState = kafkaCruiseControl.state(
-        new OperationProgress(), Collections.singleton(EXECUTOR)).executorState().state();
-    if (executorState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
-      LOG.info("Skipping anomaly detection because the executor is in {} state.", executorState);
+    ExecutorState.State executionState = kafkaCruiseControl.executionState();
+    if (executionState != ExecutorState.State.NO_TASK_IN_PROGRESS) {
+      LOG.info("Skipping anomaly detection because the executor is in {} state.", executionState);
       return true;
     }
 

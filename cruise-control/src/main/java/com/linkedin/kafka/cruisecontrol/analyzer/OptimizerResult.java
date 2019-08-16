@@ -36,8 +36,8 @@ public class OptimizerResult {
   private static final String EXCLUDED_TOPICS = "excludedTopics";
   private static final String EXCLUDED_BROKERS_FOR_LEADERSHIP = "excludedBrokersForLeadership";
   private static final String EXCLUDED_BROKERS_FOR_REPLICA_MOVE = "excludedBrokersForReplicaMove";
-  private static final String BALANCEDNESS_SCORE_AFTER = "balancednessScoreAfter";
-  private static final String BALANCEDNESS_SCORE_BEFORE = "balancednessScoreBefore";
+  private static final String ON_DEMAND_BALANCEDNESS_SCORE_AFTER = "onDemandBalancednessScoreAfter";
+  private static final String ON_DEMAND_BALANCEDNESS_SCORE_BEFORE = "onDemandBalancednessScoreBefore";
   private final Map<String, Goal.ClusterModelStatsComparator> _clusterModelStatsComparatorByGoalName;
   private final LinkedHashMap<String, ClusterModelStats> _statsByGoalName;
   private final Set<ExecutionProposal> _proposals;
@@ -49,8 +49,8 @@ public class OptimizerResult {
   private final ClusterModelStats _clusterModelStats;
   private final Map<Integer, String> _capacityEstimationInfoByBrokerId;
   private final OptimizationOptions _optimizationOptions;
-  private final double _balancednessScoreBefore;
-  private final double _balancednessScoreAfter;
+  private final double _onDemandBalancednessScoreBefore;
+  private final double _onDemandBalancednessScoreAfter;
 
   OptimizerResult(LinkedHashMap<Goal, ClusterModelStats> statsByGoalPriority,
                   Set<String> violatedGoalNamesBeforeOptimization,
@@ -81,19 +81,19 @@ public class OptimizerResult {
     _clusterModelStats = clusterModelStats;
     _capacityEstimationInfoByBrokerId = capacityEstimationInfoByBrokerId;
     _optimizationOptions = optimizationOptions;
-    // Populate balancedness score before and after.
-    _balancednessScoreBefore = balancednessScore(balancednessCostByGoal, _violatedGoalNamesBeforeOptimization);
-    _balancednessScoreAfter = balancednessScore(balancednessCostByGoal, _violatedGoalNamesAfterOptimization);
+    // Populate on-demand balancedness score before and after.
+    _onDemandBalancednessScoreBefore = onDemandBalancednessScore(balancednessCostByGoal, _violatedGoalNamesBeforeOptimization);
+    _onDemandBalancednessScoreAfter = onDemandBalancednessScore(balancednessCostByGoal, _violatedGoalNamesAfterOptimization);
   }
 
-  private double balancednessScore(Map<String, Double> balancednessCostByGoal, Set<String> violatedGoals) {
-    double balancednessScore = MAX_BALANCEDNESS_SCORE;
+  private double onDemandBalancednessScore(Map<String, Double> balancednessCostByGoal, Set<String> violatedGoals) {
+    double onDemandBalancednessScore = MAX_BALANCEDNESS_SCORE;
     for (String goalName : _statsByGoalName.keySet()) {
       if (violatedGoals.contains(goalName)) {
-        balancednessScore -= balancednessCostByGoal.get(goalName);
+        onDemandBalancednessScore -= balancednessCostByGoal.get(goalName);
       }
     }
-    return balancednessScore;
+    return onDemandBalancednessScore;
   }
 
   public Map<String, Goal.ClusterModelStatsComparator> clusterModelStatsComparatorByGoalName() {
@@ -191,12 +191,12 @@ public class OptimizerResult {
     return String.format("%n%nOptimization has %d inter-broker replica(%d MB) moves, %d intra-broker replica(%d MB) moves"
                          + " and %d leadership moves with a cluster model of %d recent windows and %.3f%% of the partitions"
                          + " covered.%nExcluded Topics: %s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers For "
-                         + "Replica Move: %s.%nCounts: %s%nBalancedness Score Before (%.3f) After(%.3f).",
+                         + "Replica Move: %s.%nCounts: %s%nOn-demand Balancedness Score Before (%.3f) After(%.3f).",
                          moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(),
                          moveStats.get(3).longValue(), moveStats.get(4).intValue(), _clusterModelStats.numSnapshotWindows(),
                          _clusterModelStats.monitoredPartitionsPercentage(), excludedTopics(),
                          excludedBrokersForLeadership(), excludedBrokersForReplicaMove(), _clusterModelStats.toStringCounts(),
-                         _balancednessScoreBefore, _balancednessScoreAfter);
+                         _onDemandBalancednessScoreBefore, _onDemandBalancednessScoreAfter);
   }
 
   public Map<String, Object> getProposalSummaryForJson() {
@@ -212,8 +212,8 @@ public class OptimizerResult {
     ret.put(EXCLUDED_TOPICS, excludedTopics());
     ret.put(EXCLUDED_BROKERS_FOR_LEADERSHIP, excludedBrokersForLeadership());
     ret.put(EXCLUDED_BROKERS_FOR_REPLICA_MOVE, excludedBrokersForReplicaMove());
-    ret.put(BALANCEDNESS_SCORE_BEFORE, _balancednessScoreBefore);
-    ret.put(BALANCEDNESS_SCORE_AFTER, _balancednessScoreAfter);
+    ret.put(ON_DEMAND_BALANCEDNESS_SCORE_BEFORE, _onDemandBalancednessScoreBefore);
+    ret.put(ON_DEMAND_BALANCEDNESS_SCORE_AFTER, _onDemandBalancednessScoreAfter);
     return ret;
   }
 }

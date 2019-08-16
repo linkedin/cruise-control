@@ -112,10 +112,9 @@ public class GoalViolationDetector implements Runnable {
 
     Set<Integer> brokersWithOfflineReplicas = _loadMonitor.brokersWithOfflineReplicas(MAX_METADATA_WAIT_MS);
     if (!brokersWithOfflineReplicas.isEmpty()) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("Skipping goal violation detection because there is dead broker/disk in the cluster, flawed broker: {}",
-                  brokersWithOfflineReplicas);
-      }
+      LOG.info("Skipping goal violation detection because there are dead brokers/disks in the cluster, flawed brokers: {}",
+                brokersWithOfflineReplicas);
+      setBalancednessWithOfflineReplicas();
       return true;
     }
 
@@ -164,11 +163,9 @@ public class GoalViolationDetector implements Runnable {
                                                      goal.clusterModelCompletenessRequirements(),
                                                      new OperationProgress());
 
-            // If the clusterModel contains dead brokers, goal violation detector will ignore any goal violations.
-            // Detection and fix for dead brokers is the responsibility of broker failure detector and its self-healer.
-            if (!clusterModel.deadBrokers().isEmpty()) {
-              LOG.info("Skipping goal violation detection due to dead brokers {}, which are reported by broker failure "
-                       + "detector, and fixed if its self healing configuration is enabled.", clusterModel.deadBrokers());
+            // If the clusterModel contains dead brokers or disks, goal violation detector will ignore any goal violations.
+            // Detection and fix for dead brokers/disks is the responsibility of broker/disk failure detector.
+            if (skipDueToOfflineReplicas(clusterModel)) {
               return;
             }
             KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation,
@@ -201,6 +198,30 @@ public class GoalViolationDetector implements Runnable {
       }
       LOG.debug("Goal violation detection finished.");
     }
+  }
+
+  /**
+   * @param clusterModel The state of the cluster.
+   * @return True to skip goal violation detection due to offline replicas in the cluster model.
+   */
+  private boolean skipDueToOfflineReplicas(ClusterModel clusterModel) {
+    if (!clusterModel.deadBrokers().isEmpty()) {
+      LOG.info("Skipping goal violation detection due to dead brokers {}, which are reported by broker failure "
+               + "detector, and fixed if its self healing configuration is enabled.", clusterModel.deadBrokers());
+      setBalancednessWithOfflineReplicas();
+      return true;
+    } else if (!clusterModel.brokersWithBadDisks().isEmpty()) {
+      LOG.info("Skipping goal violation detection due to brokers with bad disks {}, which are reported by disk failure "
+               + "detector, and fixed if its self healing configuration is enabled.", clusterModel.brokersWithBadDisks());
+      setBalancednessWithOfflineReplicas();
+      return true;
+    }
+
+    return false;
+  }
+
+  private void setBalancednessWithOfflineReplicas() {
+    _balancednessScore = 0.0;
   }
 
   private void refreshBalancednessScore(Map<Boolean, List<String>> violatedGoalsByFixability) {
