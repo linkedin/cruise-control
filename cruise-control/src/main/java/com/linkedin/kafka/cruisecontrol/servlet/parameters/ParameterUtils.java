@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -1107,6 +1108,16 @@ public class ParameterUtils {
 
   static boolean fetchCompletedTask(HttpServletRequest request) {
     return getBooleanParam(request, FETCH_COMPLETED_TASK_PARAM, false);
+  }
+
+  /**
+   * Sanity check to ensure that at least one of the optional parameter is not specified.
+   * @param optionalParameters Optional parameters to check.
+   */
+  static void sanityCheckOptionalParameters(Optional... optionalParameters) {
+    if (Arrays.stream(optionalParameters).noneMatch(Optional::isPresent)) {
+      throw new IllegalArgumentException("Nothing executable found in request.");
+    }
   }
 
   public enum DataFrom {

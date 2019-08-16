@@ -7,6 +7,9 @@ package com.linkedin.kafka.cruisecontrol.servlet.handler.sync;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.ChangeExecutionConcurrencyParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.DropRecentBrokersParameters;
+import com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHealingParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.AdminResult;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,67 +42,84 @@ public class AdminRequest extends AbstractSyncRequest {
    */
   @Override
   protected AdminResult handle() {
-    String ongoingConcurrencyChangeRequest = "";
-    // 1.1. Change inter-broker partition concurrency.
-    Integer concurrentInterBrokerPartitionMovements = _parameters.concurrentInterBrokerPartitionMovements();
-    if (concurrentInterBrokerPartitionMovements != null) {
-      _kafkaCruiseControl.setRequestedInterBrokerPartitionMovementConcurrency(concurrentInterBrokerPartitionMovements);
-      ongoingConcurrencyChangeRequest += String.format("Inter-broker partition movement concurrency is set to %d%n",
-                                                       concurrentInterBrokerPartitionMovements);
-      LOG.info("Inter-broker partition movement concurrency is set to: {} by user.", concurrentInterBrokerPartitionMovements);
-    }
-    // 1.2. Change intra-broker partition concurrency.
-    Integer concurrentIntraBrokerPartitionMovements = _parameters.concurrentIntraBrokerPartitionMovements();
-    if (concurrentIntraBrokerPartitionMovements != null) {
-      _kafkaCruiseControl.setRequestedIntraBrokerPartitionMovementConcurrency(concurrentIntraBrokerPartitionMovements);
-      ongoingConcurrencyChangeRequest += String.format("Intra-broker partition movement concurrency is set to %d%n",
-                                                       concurrentIntraBrokerPartitionMovements);
-      LOG.info("Intra-broker partition movement concurrency is set to: {} by user.", concurrentIntraBrokerPartitionMovements);
-    }
-    // 1.3. Change leadership concurrency.
-    Integer concurrentLeaderMovements = _parameters.concurrentLeaderMovements();
-    if (concurrentLeaderMovements != null) {
-      _kafkaCruiseControl.setRequestedLeadershipMovementConcurrency(concurrentLeaderMovements);
-      ongoingConcurrencyChangeRequest += String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements);
-      LOG.info("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
-    }
+    // 1. Increase/decrease the specified proposal execution concurrency.
+    String ongoingConcurrencyChangeRequest = processChangeExecutionConcurrencyRequest();
 
-    // 2. Enable/disable the specified anomaly detectors
-    Set<AnomalyType> disableSelfHealingFor = _parameters.disableSelfHealingFor();
-    Set<AnomalyType> enableSelfHealingFor = _parameters.enableSelfHealingFor();
-
-    Map<AnomalyType, Boolean>
-        selfHealingBefore = new HashMap<>(disableSelfHealingFor.size() + enableSelfHealingFor.size());
-    Map<AnomalyType, Boolean> selfHealingAfter = new HashMap<>(disableSelfHealingFor.size() + enableSelfHealingFor.size());
-
-    for (AnomalyType anomalyType : disableSelfHealingFor) {
-      selfHealingBefore.put(anomalyType, _kafkaCruiseControl.setSelfHealingFor(anomalyType, false));
-      selfHealingAfter.put(anomalyType, false);
-    }
-
-    for (AnomalyType anomalyType : enableSelfHealingFor) {
-      selfHealingBefore.put(anomalyType, _kafkaCruiseControl.setSelfHealingFor(anomalyType, true));
-      selfHealingAfter.put(anomalyType, true);
-    }
-
-    if (!disableSelfHealingFor.isEmpty() || !enableSelfHealingFor.isEmpty()) {
-      LOG.info("Self healing state is modified by user (before: {} after: {}).", selfHealingBefore, selfHealingAfter);
-    }
+    // 2. Enable/disable the specified anomaly detectors.
+    Map<AnomalyType, Boolean> selfHealingBefore = new HashMap<>(AnomalyType.cachedValues().size());
+    Map<AnomalyType, Boolean> selfHealingAfter = new HashMap<>(AnomalyType.cachedValues().size());
+    processUpdateSelfHealingRequest(selfHealingBefore, selfHealingAfter);
 
     // 3. Drop selected recently removed/demoted brokers.
     String dropRecentBrokersRequest = processDropRecentBrokersRequest();
 
     return new AdminResult(selfHealingBefore,
                            selfHealingAfter,
-                           ongoingConcurrencyChangeRequest.isEmpty() ? null : ongoingConcurrencyChangeRequest,
-                           dropRecentBrokersRequest.isEmpty() ? null : dropRecentBrokersRequest,
+                           ongoingConcurrencyChangeRequest,
+                           dropRecentBrokersRequest,
                            _kafkaCruiseControl.config());
   }
 
-  protected String processDropRecentBrokersRequest() {
+  private String processChangeExecutionConcurrencyRequest() {
+    if (!_parameters.changeExecutionConcurrencyParameters().isPresent()) {
+      return null;
+    }
+    ChangeExecutionConcurrencyParameters changeExecutionConcurrencyParameters = _parameters.changeExecutionConcurrencyParameters().get();
+    StringBuilder sb = new StringBuilder();
+    // 1. Change inter-broker partition concurrency.
+    Integer concurrentInterBrokerPartitionMovements = changeExecutionConcurrencyParameters.concurrentInterBrokerPartitionMovements();
+    if (concurrentInterBrokerPartitionMovements != null) {
+      _kafkaCruiseControl.setRequestedInterBrokerPartitionMovementConcurrency(concurrentInterBrokerPartitionMovements);
+      sb.append(String.format("Inter-broker partition movement concurrency is set to %d%n", concurrentInterBrokerPartitionMovements));
+      LOG.info("Inter-broker partition movement concurrency is set to: {} by user.", concurrentInterBrokerPartitionMovements);
+    }
+    // 2. Change intra-broker partition concurrency.
+    Integer concurrentIntraBrokerPartitionMovements = changeExecutionConcurrencyParameters.concurrentIntraBrokerPartitionMovements();
+    if (concurrentIntraBrokerPartitionMovements != null) {
+      _kafkaCruiseControl.setRequestedIntraBrokerPartitionMovementConcurrency(concurrentIntraBrokerPartitionMovements);
+      sb.append(String.format("Intra-broker partition movement concurrency is set to %d%n", concurrentIntraBrokerPartitionMovements));
+      LOG.info("Intra-broker partition movement concurrency is set to: {} by user.", concurrentIntraBrokerPartitionMovements);
+    }
+    // 3. Change leadership concurrency.
+    Integer concurrentLeaderMovements = changeExecutionConcurrencyParameters.concurrentLeaderMovements();
+    if (concurrentLeaderMovements != null) {
+      _kafkaCruiseControl.setRequestedLeadershipMovementConcurrency(concurrentLeaderMovements);
+      sb.append(String.format("Leadership movement concurrency is set to %d%n", concurrentLeaderMovements));
+      LOG.info("Leadership movement concurrency is set to: {} by user.", concurrentLeaderMovements);
+    }
+    return sb.toString();
+  }
+
+  private void processUpdateSelfHealingRequest(Map<AnomalyType, Boolean> selfHealingBefore, Map<AnomalyType, Boolean> selfHealingAfter) {
+    if (_parameters.updateSelfHealingParameters().isPresent()) {
+      UpdateSelfHealingParameters updateSelfHealingParameters = _parameters.updateSelfHealingParameters().get();
+      Set<AnomalyType> disableSelfHealingFor = updateSelfHealingParameters.disableSelfHealingFor();
+      Set<AnomalyType> enableSelfHealingFor = updateSelfHealingParameters.enableSelfHealingFor();
+
+      for (AnomalyType anomalyType : disableSelfHealingFor) {
+        selfHealingBefore.put(anomalyType, _kafkaCruiseControl.setSelfHealingFor(anomalyType, false));
+        selfHealingAfter.put(anomalyType, false);
+      }
+
+      for (AnomalyType anomalyType : enableSelfHealingFor) {
+        selfHealingBefore.put(anomalyType, _kafkaCruiseControl.setSelfHealingFor(anomalyType, true));
+        selfHealingAfter.put(anomalyType, true);
+      }
+
+      if (!disableSelfHealingFor.isEmpty() || !enableSelfHealingFor.isEmpty()) {
+        LOG.info("Self healing state is modified by user (before: {} after: {}).", selfHealingBefore, selfHealingAfter);
+      }
+    }
+  }
+
+  private String processDropRecentBrokersRequest() {
+    if (!_parameters.dropRecentBrokersParameters().isPresent()) {
+      return null;
+    }
+    DropRecentBrokersParameters dropRecentBrokersParameters = _parameters.dropRecentBrokersParameters().get();
     StringBuilder sb = new StringBuilder();
 
-    Set<Integer> brokersToDropFromRecentlyRemoved = _parameters.dropRecentlyRemovedBrokers();
+    Set<Integer> brokersToDropFromRecentlyRemoved = dropRecentBrokersParameters.dropRecentlyRemovedBrokers();
     if (!brokersToDropFromRecentlyRemoved.isEmpty()) {
       if (!_kafkaCruiseControl.dropRecentBrokers(brokersToDropFromRecentlyRemoved, true)) {
         Set<Integer> recentlyRemovedBrokers = _kafkaCruiseControl.recentBrokers(true);
@@ -116,7 +136,7 @@ public class AdminRequest extends AbstractSyncRequest {
       }
     }
 
-    Set<Integer> brokersToDropFromRecentlyDemoted = _parameters.dropRecentlyDemotedBrokers();
+    Set<Integer> brokersToDropFromRecentlyDemoted = dropRecentBrokersParameters.dropRecentlyDemotedBrokers();
     if (!brokersToDropFromRecentlyDemoted.isEmpty()) {
       if (!_kafkaCruiseControl.dropRecentBrokers(brokersToDropFromRecentlyDemoted, false)) {
         Set<Integer> recentlyDemotedBrokers = _kafkaCruiseControl.recentBrokers(false);

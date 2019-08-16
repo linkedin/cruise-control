@@ -9,7 +9,9 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
-import java.util.Set;
+import java.util.Optional;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.sanityCheckOptionalParameters;
 
 
 /**
@@ -27,14 +29,11 @@ import java.util.Set;
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
-  protected Set<AnomalyType> _disableSelfHealingFor;
-  protected Set<AnomalyType> _enableSelfHealingFor;
-  protected Integer _concurrentInterBrokerPartitionMovements;
-  protected Integer _concurrentIntraBrokerPartitionMovements;
-  protected Integer _concurrentLeaderMovements;
   protected Integer _reviewId;
-  protected Set<Integer> _dropRecentlyRemovedBrokers;
-  protected Set<Integer> _dropRecentlyDemotedBrokers;
+  protected Map<String, ?> _configs;
+  protected Optional<DropRecentBrokersParameters> _dropBrokersParameters;
+  protected Optional<UpdateSelfHealingParameters> _updateSelfHealingParameters;
+  protected Optional<ChangeExecutionConcurrencyParameters> _changeExecutionConcurrencyParameters;
 
   public AdminParameters() {
     super();
@@ -43,16 +42,12 @@ public class AdminParameters extends AbstractParameters {
   @Override
   protected void initParameters() throws UnsupportedEncodingException {
     super.initParameters();
-    Map<Boolean, Set<AnomalyType>> selfHealingFor = ParameterUtils.selfHealingFor(_request);
-    _enableSelfHealingFor = selfHealingFor.get(true);
-    _disableSelfHealingFor = selfHealingFor.get(false);
-    _concurrentInterBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, true, false);
-    _concurrentIntraBrokerPartitionMovements = ParameterUtils.concurrentMovements(_request, false, true);
-    _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
-    _dropRecentlyRemovedBrokers = ParameterUtils.dropRecentlyRemovedBrokers(_request);
-    _dropRecentlyDemotedBrokers = ParameterUtils.dropRecentlyDemotedBrokers(_request);
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
+    _dropBrokersParameters = DropRecentBrokersParameters.maybeCreateInstance(_configs);
+    _updateSelfHealingParameters = UpdateSelfHealingParameters.maybeCreateInstance(_configs);
+    _changeExecutionConcurrencyParameters = ChangeExecutionConcurrencyParameters.maybeCreateInstance(_configs);
+    sanityCheckOptionalParameters(_dropBrokersParameters, _updateSelfHealingParameters, _changeExecutionConcurrencyParameters);
   }
 
   @Override
@@ -64,36 +59,27 @@ public class AdminParameters extends AbstractParameters {
     return _reviewId;
   }
 
-  public Set<AnomalyType> disableSelfHealingFor() {
-    return _disableSelfHealingFor;
+  public Optional<DropRecentBrokersParameters> dropRecentBrokersParameters() {
+    return _dropBrokersParameters;
+  }
+  public Optional<UpdateSelfHealingParameters> updateSelfHealingParameters() {
+    return _updateSelfHealingParameters;
   }
 
-  public Set<AnomalyType> enableSelfHealingFor() {
-    return _enableSelfHealingFor;
-  }
-
-  public Integer concurrentInterBrokerPartitionMovements() {
-    return _concurrentInterBrokerPartitionMovements;
-  }
-
-  public Integer concurrentIntraBrokerPartitionMovements() {
-    return _concurrentIntraBrokerPartitionMovements;
-  }
-
-  public Integer concurrentLeaderMovements() {
-    return _concurrentLeaderMovements;
-  }
-
-  public Set<Integer> dropRecentlyRemovedBrokers() {
-    return _dropRecentlyRemovedBrokers;
-  }
-
-  public Set<Integer> dropRecentlyDemotedBrokers() {
-    return _dropRecentlyDemotedBrokers;
+  public Optional<ChangeExecutionConcurrencyParameters> changeExecutionConcurrencyParameters() {
+    return _changeExecutionConcurrencyParameters;
   }
 
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+    _configs = configs;
+  }
+
+  /**
+   * Supported topic configuration type to be changed via {@link CruiseControlEndPoint#ADMIN} endpoint.
+   */
+  public enum AdminType {
+    UPDATE_SELF_HEALING, CHANGE_CONCURRENCY, DROP_RECENT_BROKERS
   }
 }
