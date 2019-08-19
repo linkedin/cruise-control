@@ -52,6 +52,7 @@ public class AnomalyDetectorState {
   private static final String METRICS = "metrics";
   private static final String MEAN_TIME_BETWEEN_ANOMALIES_MS = "meanTimeBetweenAnomaliesMs";
   private static final String MEAN_TIME_TO_START_FIX_MS = "meanTimeToStartFixMs";
+  private static final String BALANCEDNESS_SCORE = "balancednessScore";
   // Package private for testing.
   static final String NUM_SELF_HEALING_STARTED = "numSelfHealingStarted";
   private static final String ONGOING_ANOMALY_DURATION_MS = "ongoingAnomalyDurationMs";
@@ -73,6 +74,7 @@ public class AnomalyDetectorState {
   private final Time _time;
   private AtomicLong _numSelfHealingStarted;
   private final Map<AnomalyType, Meter> _anomalyRateByType;
+  private double _balancednessScore;
 
   public AnomalyDetectorState(Time time,
                               Map<AnomalyType, Boolean> selfHealingEnabled,
@@ -137,8 +139,10 @@ public class AnomalyDetectorState {
    * Refresh the anomaly metrics.
    *
    * @param selfHealingEnabledRatio The ratio
+   * @param balancednessScore A metric to quantify how well the load distribution on a cluster satisfies the anomaly
+   * detection goals.
    */
-  synchronized void refreshMetrics(Map<AnomalyType, Float> selfHealingEnabledRatio) {
+  synchronized void refreshMetrics(Map<AnomalyType, Float> selfHealingEnabledRatio, double balancednessScore) {
     if (selfHealingEnabledRatio == null) {
       throw new IllegalArgumentException("Attempt to set selfHealingEnabledRatio with null.");
     }
@@ -152,6 +156,7 @@ public class AnomalyDetectorState {
     _metrics = new AnomalyMetrics(meanTimeBetweenAnomaliesMs, meanTimeToStartFixMs(), _numSelfHealingStarted.get(), ongoingAnomalyDurationMs());
     _selfHealingEnabledRatio = new HashMap<>(selfHealingEnabledRatio.size());
     selfHealingEnabledRatio.forEach((key, value) -> _selfHealingEnabledRatio.put(key.name(), value));
+    _balancednessScore = balancednessScore;
   }
 
   /**
@@ -350,7 +355,7 @@ public class AnomalyDetectorState {
   }
 
   public synchronized Map<String, Object> getJsonStructure() {
-    Map<String, Object> anomalyDetectorState = new HashMap<>(_recentAnomaliesByType.size() + (_ongoingSelfHealingAnomaly == null ? 3 : 4));
+    Map<String, Object> anomalyDetectorState = new HashMap<>(_recentAnomaliesByType.size() + (_ongoingSelfHealingAnomaly == null ? 4 : 5));
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
     anomalyDetectorState.put(SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true));
     anomalyDetectorState.put(SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false));
@@ -362,13 +367,14 @@ public class AnomalyDetectorState {
     if (_ongoingSelfHealingAnomaly != null) {
       anomalyDetectorState.put(ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly.anomalyId());
     }
+    anomalyDetectorState.put(BALANCEDNESS_SCORE, _balancednessScore);
     return anomalyDetectorState;
   }
 
   @Override
   public synchronized String toString() {
     Map<Boolean, Set<String>> selfHealingByEnableStatus = getSelfHealingByEnableStatus();
-    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s}%n",
+    return String.format("{%s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%s, %s:%.3f}%n",
                          SELF_HEALING_ENABLED, selfHealingByEnableStatus.get(true),
                          SELF_HEALING_DISABLED, selfHealingByEnableStatus.get(false),
                          SELF_HEALING_ENABLED_RATIO, selfHealingEnabledRatio(),
@@ -376,6 +382,8 @@ public class AnomalyDetectorState {
                          RECENT_BROKER_FAILURES, recentAnomalies(BROKER_FAILURE, false),
                          RECENT_METRIC_ANOMALIES, recentAnomalies(METRIC_ANOMALY, false),
                          METRICS, _metrics,
-                         ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly == null ? "None" : _ongoingSelfHealingAnomaly.anomalyId());
+                         ONGOING_SELF_HEALING_ANOMALY, _ongoingSelfHealingAnomaly == null
+                                                       ? "None" : _ongoingSelfHealingAnomaly.anomalyId(),
+                         BALANCEDNESS_SCORE, _balancednessScore);
   }
 }

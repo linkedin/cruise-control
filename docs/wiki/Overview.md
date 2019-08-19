@@ -26,7 +26,7 @@ Each metric fetcher will be assigned a few number of partitions in the cluster t
 * The partitions of the same topic are assigned to the same metric fetcher
 
 #### Metric Sample Aggregator
-Metric Sample Aggregator is a module that organize all the metric samples. The metric sample aggregator will put each metric sample into a Workload Snapshot according to the timestamp of the metric sample.  A workload snapshot is the aggregated metric information during a given time window. For example, if the snapshot time window is 1 hour, and user configured to keep 168 snapshots. Kafka Cruise Control will store 7 days of hourly workload information.
+Metric Sample Aggregator is a module that organize all the metric samples. The metric sample aggregator will put each metric sample into a Workload Snapshot according to the timestamp of the metric sample. A workload snapshot is the aggregated metric information during a given time window. For example, if the snapshot time window is 1 hour, and user configured to keep 168 snapshots. Kafka Cruise Control will store 7 days of hourly workload information.
 
 When asked, the metric sampler aggregator will give all the aggregated workload snapshot back to the load monitor. Users can define a minimum number of metric samples required in each workload snapshot to ensure the workload snapshot has enough metric samples. For example, if user specified snapshot window to be 1 hour and the sampling interval is 5 minutes. Ideally each snapshots should have 12 metric samples. User can define that a snapshot window with less than 10 metric samples is invalid and should not be included into the cluster workload model.
 
