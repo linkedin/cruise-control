@@ -18,6 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALANCEDNESS_SCORE;
+
 
 /**
  * A class for representing the results of goal optimizer. The results include stats by goal priority and
@@ -34,8 +36,10 @@ public class OptimizerResult {
   private static final String EXCLUDED_TOPICS = "excludedTopics";
   private static final String EXCLUDED_BROKERS_FOR_LEADERSHIP = "excludedBrokersForLeadership";
   private static final String EXCLUDED_BROKERS_FOR_REPLICA_MOVE = "excludedBrokersForReplicaMove";
+  private static final String ON_DEMAND_BALANCEDNESS_SCORE_AFTER = "onDemandBalancednessScoreAfter";
+  private static final String ON_DEMAND_BALANCEDNESS_SCORE_BEFORE = "onDemandBalancednessScoreBefore";
   private final Map<String, Goal.ClusterModelStatsComparator> _clusterModelStatsComparatorByGoalName;
-  private final Map<String, ClusterModelStats> _statsByGoalName;
+  private final LinkedHashMap<String, ClusterModelStats> _statsByGoalName;
   private final Set<ExecutionProposal> _proposals;
   private final Set<String> _violatedGoalNamesBeforeOptimization;
   private final Set<String> _violatedGoalNamesAfterOptimization;
@@ -45,8 +49,10 @@ public class OptimizerResult {
   private final ClusterModelStats _clusterModelStats;
   private final Map<Integer, String> _capacityEstimationInfoByBrokerId;
   private final OptimizationOptions _optimizationOptions;
+  private final double _onDemandBalancednessScoreBefore;
+  private final double _onDemandBalancednessScoreAfter;
 
-  OptimizerResult(Map<Goal, ClusterModelStats> statsByGoalPriority,
+  OptimizerResult(LinkedHashMap<Goal, ClusterModelStats> statsByGoalPriority,
                   Set<String> violatedGoalNamesBeforeOptimization,
                   Set<String> violatedGoalNamesAfterOptimization,
                   Set<ExecutionProposal> proposals,
@@ -55,7 +61,8 @@ public class OptimizerResult {
                   ModelGeneration modelGeneration,
                   ClusterModelStats clusterModelStats,
                   Map<Integer, String> capacityEstimationInfoByBrokerId,
-                  OptimizationOptions optimizationOptions) {
+                  OptimizationOptions optimizationOptions,
+                  Map<String, Double> balancednessCostByGoal) {
     _clusterModelStatsComparatorByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
     _statsByGoalName = new LinkedHashMap<>(statsByGoalPriority.size());
     for (Map.Entry<Goal, ClusterModelStats> entry : statsByGoalPriority.entrySet()) {
@@ -74,13 +81,29 @@ public class OptimizerResult {
     _clusterModelStats = clusterModelStats;
     _capacityEstimationInfoByBrokerId = capacityEstimationInfoByBrokerId;
     _optimizationOptions = optimizationOptions;
+    // Populate on-demand balancedness score before and after.
+    _onDemandBalancednessScoreBefore = onDemandBalancednessScore(balancednessCostByGoal, _violatedGoalNamesBeforeOptimization);
+    _onDemandBalancednessScoreAfter = onDemandBalancednessScore(balancednessCostByGoal, _violatedGoalNamesAfterOptimization);
+  }
+
+  private double onDemandBalancednessScore(Map<String, Double> balancednessCostByGoal, Set<String> violatedGoals) {
+    double onDemandBalancednessScore = MAX_BALANCEDNESS_SCORE;
+    for (String goalName : _statsByGoalName.keySet()) {
+      if (violatedGoals.contains(goalName)) {
+        onDemandBalancednessScore -= balancednessCostByGoal.get(goalName);
+      }
+    }
+    return onDemandBalancednessScore;
   }
 
   public Map<String, Goal.ClusterModelStatsComparator> clusterModelStatsComparatorByGoalName() {
     return _clusterModelStatsComparatorByGoalName;
   }
 
-  public Map<String, ClusterModelStats> statsByGoalName() {
+  /**
+   * @return Stats by goal name ordered by priority.
+   */
+  public LinkedHashMap<String, ClusterModelStats> statsByGoalName() {
     return _statsByGoalName;
   }
 
@@ -168,16 +191,17 @@ public class OptimizerResult {
     return String.format("%n%nOptimization has %d inter-broker replica(%d MB) moves, %d intra-broker replica(%d MB) moves"
                          + " and %d leadership moves with a cluster model of %d recent windows and %.3f%% of the partitions"
                          + " covered.%nExcluded Topics: %s.%nExcluded Brokers For Leadership: %s.%nExcluded Brokers For "
-                         + "Replica Move: %s.%nCounts: %s",
+                         + "Replica Move: %s.%nCounts: %s%nOn-demand Balancedness Score Before (%.3f) After(%.3f).",
                          moveStats.get(0).intValue(), moveStats.get(1).longValue(), moveStats.get(2).intValue(),
                          moveStats.get(3).longValue(), moveStats.get(4).intValue(), _clusterModelStats.numSnapshotWindows(),
                          _clusterModelStats.monitoredPartitionsPercentage(), excludedTopics(),
-                         excludedBrokersForLeadership(), excludedBrokersForReplicaMove(), _clusterModelStats.toStringCounts());
+                         excludedBrokersForLeadership(), excludedBrokersForReplicaMove(), _clusterModelStats.toStringCounts(),
+                         _onDemandBalancednessScoreBefore, _onDemandBalancednessScoreAfter);
   }
 
   public Map<String, Object> getProposalSummaryForJson() {
     List<Number> moveStats = getMovementStats();
-    Map<String, Object> ret = new HashMap<>();
+    Map<String, Object> ret = new HashMap<>(12);
     ret.put(NUM_INTER_BROKER_REPLICA_MOVEMENTS, moveStats.get(0).intValue());
     ret.put(INTER_BROKER_DATA_TO_MOVE_MB, moveStats.get(1).longValue());
     ret.put(NUM_INTRA_BROKER_REPLICA_MOVEMENTS, moveStats.get(2).intValue());
@@ -188,6 +212,8 @@ public class OptimizerResult {
     ret.put(EXCLUDED_TOPICS, excludedTopics());
     ret.put(EXCLUDED_BROKERS_FOR_LEADERSHIP, excludedBrokersForLeadership());
     ret.put(EXCLUDED_BROKERS_FOR_REPLICA_MOVE, excludedBrokersForReplicaMove());
+    ret.put(ON_DEMAND_BALANCEDNESS_SCORE_BEFORE, _onDemandBalancednessScoreBefore);
+    ret.put(ON_DEMAND_BALANCEDNESS_SCORE_AFTER, _onDemandBalancednessScoreAfter);
     return ret;
   }
 }

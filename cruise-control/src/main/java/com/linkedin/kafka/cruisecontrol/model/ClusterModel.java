@@ -190,7 +190,7 @@ public class ClusterModel implements Serializable {
 
   /**
    * Get the leadership load for given broker id. Leadership load is the accumulated outbound network load for leader
-   * of each replica in a broker.  This is the hypothetical maximum that would be realized if the specified broker
+   * of each replica in a broker. This is the hypothetical maximum that would be realized if the specified broker
    * became the leader of all the replicas it currently owns.
    *
    * @param brokerId Broker id.

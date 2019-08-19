@@ -191,7 +191,7 @@ public class AnalyzerUtils {
    *
    * @param orig the utilization matrix from the original cluster
    * @param optimized the utilization matrix from the optimized cluster
-   * @return The P value that the various derived resources come from the same probability distribution.  The probability
+   * @return The P value that the various derived resources come from the same probability distribution. The probability
    * that the null hypothesis is correct.
    */
   public static double[] testDifference(double[][] orig, double[][] optimized) {

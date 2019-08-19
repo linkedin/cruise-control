@@ -49,6 +49,7 @@ import org.slf4j.LoggerFactory;
  */
 public class KafkaCruiseControlUtils {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaCruiseControlUtils.class);
+  public static final double MAX_BALANCEDNESS_SCORE = 100.0;
   public static final int ZK_SESSION_TIMEOUT = 30000;
   public static final int ZK_CONNECTION_TIMEOUT = 30000;
   public static final long KAFKA_ZK_CLIENT_CLOSE_TIMEOUT_MS = 10000;
@@ -510,5 +511,41 @@ public class KafkaCruiseControlUtils {
         }
       }
     });
+  }
+
+  /**
+   * Get the balancedness cost of violating goals by their name, where the sum of costs is {@link #MAX_BALANCEDNESS_SCORE}.
+   *
+   * @param goals The goals to be used for balancing (sorted by priority).
+   * @param priorityWeight The impact of having one level higher goal priority on the relative balancedness score.
+   * @param strictnessWeight The impact of strictness on the relative balancedness score.
+   * @return the balancedness cost of violating goals by their name.
+   */
+  public static Map<String, Double> balancednessCostByGoal(List<Goal> goals, double priorityWeight, double strictnessWeight) {
+    if (goals.isEmpty()) {
+      throw new IllegalArgumentException("At least one goal must be provided to get the balancedness cost.");
+    } else if (priorityWeight <= 0 || strictnessWeight <= 0) {
+      throw new IllegalArgumentException(String.format("Balancedness weights must be positive (priority:%f, strictness:%f).",
+                                                       priorityWeight, strictnessWeight));
+    }
+    Map<String, Double> balancednessCostByGoal = new HashMap<>(goals.size());
+    // Step-1: Get weights.
+    double weightSum = 0.0;
+    double previousGoalPriorityWeight = (1 / priorityWeight);
+    for (int i = goals.size() - 1; i >= 0; i--) {
+      Goal goal = goals.get(i);
+      double currentGoalPriorityWeight = priorityWeight * previousGoalPriorityWeight;
+      double cost = currentGoalPriorityWeight * (goal.isHardGoal() ? strictnessWeight : 1);
+      weightSum += cost;
+      balancednessCostByGoal.put(goal.name(), cost);
+      previousGoalPriorityWeight = currentGoalPriorityWeight;
+    }
+
+    // Step-2: Set costs.
+    for (Map.Entry<String, Double> entry : balancednessCostByGoal.entrySet()) {
+      entry.setValue(MAX_BALANCEDNESS_SCORE * entry.getValue() / weightSum);
+    }
+
+    return balancednessCostByGoal;
   }
 }
