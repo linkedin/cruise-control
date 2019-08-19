@@ -789,7 +789,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public static final String GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG = "goal.balancedness.strictness.weight";
   private static final String GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_DOC = "The impact of strictness (i.e. hard or soft goal)"
-       + " on the relative  balancedness score. For example, 1.5 means that a hard goal will have the 1.5x balancedness "
+       + " on the relative balancedness score. For example, 1.5 means that a hard goal will have the 1.5x balancedness "
        + "weight of a soft goal (assuming goal.balancedness.priority.weight is 1).";
 
   // Web Server Configurations

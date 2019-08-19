@@ -259,10 +259,10 @@ def display_response(response: Response) -> None:
     # Set pandas display options
     # Display floats with a ',' 1000s separator, to two decimal places
     set_option('display.float_format', "{:,.2f}".format)
-    # Display all rows and columns in the dataframe.  Don't leave any out
+    # Display all rows and columns in the dataframe. Don't leave any out
     set_option('display.max_rows', int(1E12))
     set_option('display.max_columns', int(1E12))
-    # Display the full column width, even if it's very wide.  Don't truncate it.
+    # Display the full column width, even if it's very wide. Don't truncate it.
     set_option('display.max_colwidth', 10000)
     # Don't wrap the table we show
     set_option('display.expand_frame_repr', False)

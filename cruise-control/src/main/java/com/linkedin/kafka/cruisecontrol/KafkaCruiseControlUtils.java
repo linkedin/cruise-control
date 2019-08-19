@@ -524,11 +524,14 @@ public class KafkaCruiseControlUtils {
   public static Map<String, Double> balancednessCostByGoal(List<Goal> goals, double priorityWeight, double strictnessWeight) {
     if (goals.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get the balancedness cost.");
+    } else if (priorityWeight <= 0 || strictnessWeight <= 0) {
+      throw new IllegalArgumentException(String.format("Balancedness weights must be positive (priority:%f, strictness:%f).",
+                                                       priorityWeight, strictnessWeight));
     }
     Map<String, Double> balancednessCostByGoal = new HashMap<>(goals.size());
     // Step-1: Get weights.
     double weightSum = 0.0;
-    double previousGoalPriorityWeight = 1;
+    double previousGoalPriorityWeight = (1 / priorityWeight);
     for (int i = goals.size() - 1; i >= 0; i--) {
       Goal goal = goals.get(i);
       double currentGoalPriorityWeight = priorityWeight * previousGoalPriorityWeight;
