@@ -19,8 +19,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 public class AdminRequest extends AbstractSyncRequest {
   private static final Logger LOG = LoggerFactory.getLogger(AdminRequest.class);
-  private KafkaCruiseControl _kafkaCruiseControl;
-  private AdminParameters _parameters;
+  protected KafkaCruiseControl _kafkaCruiseControl;
+  protected AdminParameters _parameters;
 
   public AdminRequest() {
     super();
@@ -96,7 +96,7 @@ public class AdminRequest extends AbstractSyncRequest {
                            _kafkaCruiseControl.config());
   }
 
-  private String processDropRecentBrokersRequest() {
+  protected String processDropRecentBrokersRequest() {
     StringBuilder sb = new StringBuilder();
 
     Set<Integer> brokersToDropFromRecentlyRemoved = _parameters.dropRecentlyRemovedBrokers();

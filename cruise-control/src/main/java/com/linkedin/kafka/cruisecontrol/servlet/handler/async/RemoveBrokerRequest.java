@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class RemoveBrokerRequest extends AbstractAsyncRequest {
-  private RemoveBrokerParameters _parameters;
+  protected RemoveBrokerParameters _parameters;
 
   public RemoveBrokerRequest() {
     super();

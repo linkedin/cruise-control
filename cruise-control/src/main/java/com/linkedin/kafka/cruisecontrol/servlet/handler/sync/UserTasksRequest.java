@@ -15,9 +15,9 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class UserTasksRequest extends AbstractSyncRequest {
-  private List<UserTaskManager.UserTaskInfo> _userTasks;
-  private KafkaCruiseControlConfig _config;
-  private UserTasksParameters _parameters;
+  protected List<UserTaskManager.UserTaskInfo> _userTasks;
+  protected KafkaCruiseControlConfig _config;
+  protected UserTasksParameters _parameters;
 
   public UserTasksRequest() {
     super();

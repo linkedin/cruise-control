@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class FixOfflineReplicasRequest extends AbstractAsyncRequest {
-  private FixOfflineReplicasParameters _parameters;
+  protected FixOfflineReplicasParameters _parameters;
 
   public FixOfflineReplicasRequest() {
     super();
