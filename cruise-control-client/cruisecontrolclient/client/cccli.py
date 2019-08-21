@@ -79,16 +79,6 @@ def get_endpoint(args: argparse.Namespace,
     if 'destination_broker' in arg_dict:
         del arg_dict['destination_broker']
 
-    # Handle hacking in json=true, if the user hasn't specified
-    #
-    # This is because it is easier to know when a JSON response is final,
-    # compared to a text response.
-    #
-    # In fact, because it is not possible programmatically to know when a
-    # text response is final, Responder actually does not support text responses.
-    if not endpoint.has_param('json'):
-        endpoint.add_param('json', 'true')
-
     # Handle add-parameter and remove-parameter flags
     #
     # Handle deconflicting adding and removing parameters, but don't
