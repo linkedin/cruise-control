@@ -148,8 +148,9 @@ public class GoalOptimizer implements Runnable {
             clearCachedProposal();
 
             long start = System.nanoTime();
-            // Proposal precomputation runs with the default topics to exclude.
-            computeCachedProposal();
+            // Proposal precomputation runs with the default topics to exclude, and allows capacity estimation.
+            // TODO: Make allowing/disallowing capacity estimation during proposal precomputation configurable.
+            computeCachedProposal(true);
             _proposalComputationTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
           } else {
             LOG.debug("Skipping proposal precomputing because the cached proposal result is still valid. "
@@ -178,9 +179,9 @@ public class GoalOptimizer implements Runnable {
     return _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 2;
   }
 
-  private void computeCachedProposal() {
+  private void computeCachedProposal(boolean allowCapacityEstimation) {
     long start = _time.milliseconds();
-    Future future = _proposalPrecomputingExecutor.submit(new ProposalCandidateComputer());
+    Future future = _proposalPrecomputingExecutor.submit(new ProposalCandidateComputer(allowCapacityEstimation));
 
     try {
       boolean done = false;
@@ -287,7 +288,7 @@ public class GoalOptimizer implements Runnable {
             } else if (!_hasOngoingExplicitPrecomputation) {
               // Submit background computation if there is no ongoing explicit precomputation and wait for the cache update.
               _hasOngoingExplicitPrecomputation = true;
-              _proposalPrecomputingExecutor.submit(this::computeCachedProposal);
+              _proposalPrecomputingExecutor.submit(() -> computeCachedProposal(allowCapacityEstimation));
             }
             operationProgress.refer(_proposalPrecomputingProgress);
             _cacheLock.wait();
@@ -305,9 +306,7 @@ public class GoalOptimizer implements Runnable {
         LOG.debug("Returning optimization result from cache. Model generation (cached: {}, current: {}).",
                   _cachedProposals.modelGeneration(), _loadMonitor.clusterModelGeneration());
       }
-      // If the cached proposals are estimated, and the user requested for no estimation, we invalidate the cache and
-      // calculate cached proposals just once. If the returned result still involves an estimation, throw an exception.
-      KafkaCruiseControl.sanityCheckCapacityEstimation(allowCapacityEstimation, _cachedProposals.capacityEstimationInfoByBrokerId());
+
       return _cachedProposals;
     }
   }
@@ -531,8 +530,9 @@ public class GoalOptimizer implements Runnable {
    * A class that precomputes the proposal candidates and find the cached proposals.
    */
   private class ProposalCandidateComputer implements Runnable {
-    ProposalCandidateComputer() {
-
+    private final boolean _allowCapacityEstimation;
+    ProposalCandidateComputer(boolean allowCapacityEstimation) {
+      _allowCapacityEstimation = allowCapacityEstimation;
     }
 
     @Override
@@ -551,6 +551,7 @@ public class GoalOptimizer implements Runnable {
         ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements) ?
                                                      _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
         ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, operationProgress);
+        KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
         if (!clusterModel.topics().isEmpty()) {
           OptimizerResult result = optimizations(clusterModel, _goalsByPriority, operationProgress);
           LOG.debug("Generated a proposal candidate in {} ms.", _time.milliseconds() - startMs);
