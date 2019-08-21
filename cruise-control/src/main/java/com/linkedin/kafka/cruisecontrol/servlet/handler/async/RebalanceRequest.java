@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class RebalanceRequest extends AbstractAsyncRequest {
-  private RebalanceParameters _parameters;
+  protected RebalanceParameters _parameters;
 
   public RebalanceRequest() {
     super();

@@ -16,10 +16,10 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class KafkaClusterStateRequest extends AbstractSyncRequest {
-  private Cluster _kafkaCluster;
-  private KafkaCruiseControlConfig _config;
-  private KafkaClusterStateParameters _parameters;
-  private TopicConfigProvider _topicConfigProvider;
+  protected Cluster _kafkaCluster;
+  protected KafkaCruiseControlConfig _config;
+  protected KafkaClusterStateParameters _parameters;
+  protected TopicConfigProvider _topicConfigProvider;
 
   public KafkaClusterStateRequest() {
     super();

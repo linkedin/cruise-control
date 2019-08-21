@@ -13,8 +13,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class ReviewRequest extends AbstractSyncRequest {
-  private Purgatory _purgatory;
-  private ReviewParameters _parameters;
+  protected Purgatory _purgatory;
+  protected ReviewParameters _parameters;
 
   public ReviewRequest() {
     super();

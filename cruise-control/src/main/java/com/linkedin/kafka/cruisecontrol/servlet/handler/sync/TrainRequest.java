@@ -13,8 +13,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class TrainRequest extends AbstractSyncRequest {
-  private KafkaCruiseControl _kafkaCruiseControl;
-  private TrainParameters _parameters;
+  protected KafkaCruiseControl _kafkaCruiseControl;
+  protected TrainParameters _parameters;
 
   public TrainRequest() {
     super();
