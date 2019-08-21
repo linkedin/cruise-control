@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class DemoteRequest extends AbstractAsyncRequest {
-  private DemoteBrokerParameters _parameters;
+  protected DemoteBrokerParameters _parameters;
 
   public DemoteRequest() {
     super();

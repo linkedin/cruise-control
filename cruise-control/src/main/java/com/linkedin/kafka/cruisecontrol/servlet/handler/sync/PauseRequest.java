@@ -13,8 +13,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class PauseRequest extends AbstractSyncRequest {
-  private KafkaCruiseControl _kafkaCruiseControl;
-  private PauseResumeParameters _parameters;
+  protected KafkaCruiseControl _kafkaCruiseControl;
+  protected PauseResumeParameters _parameters;
 
   public PauseRequest() {
     super();

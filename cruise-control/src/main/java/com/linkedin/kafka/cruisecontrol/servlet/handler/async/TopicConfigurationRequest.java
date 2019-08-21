@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class TopicConfigurationRequest extends AbstractAsyncRequest {
-  private TopicConfigurationParameters _parameters;
+  protected TopicConfigurationParameters _parameters;
 
   public TopicConfigurationRequest() {
     super();

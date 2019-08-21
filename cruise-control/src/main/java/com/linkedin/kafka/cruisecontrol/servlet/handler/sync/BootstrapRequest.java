@@ -13,8 +13,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class BootstrapRequest extends AbstractSyncRequest {
-  private KafkaCruiseControl _kafkaCruiseControl;
-  private BootstrapParameters _parameters;
+  protected KafkaCruiseControl _kafkaCruiseControl;
+  protected BootstrapParameters _parameters;
 
   public BootstrapRequest() {
     super();

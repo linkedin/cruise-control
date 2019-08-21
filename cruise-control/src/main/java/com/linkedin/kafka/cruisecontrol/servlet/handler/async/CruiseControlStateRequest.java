@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class CruiseControlStateRequest extends AbstractAsyncRequest {
-  private CruiseControlStateParameters _parameters;
+  protected CruiseControlStateParameters _parameters;
 
   public CruiseControlStateRequest() {
     super();

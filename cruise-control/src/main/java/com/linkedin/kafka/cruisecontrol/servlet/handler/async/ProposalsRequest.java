@@ -12,7 +12,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class ProposalsRequest extends AbstractAsyncRequest {
-  private ProposalsParameters _parameters;
+  protected ProposalsParameters _parameters;
 
   public ProposalsRequest() {
     super();

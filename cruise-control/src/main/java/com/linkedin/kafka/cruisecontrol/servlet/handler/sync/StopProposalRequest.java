@@ -13,8 +13,8 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 
 
 public class StopProposalRequest extends AbstractSyncRequest {
-  private KafkaCruiseControl _kafkaCruiseControl;
-  private StopProposalParameters _parameters;
+  protected KafkaCruiseControl _kafkaCruiseControl;
+  protected StopProposalParameters _parameters;
 
   public StopProposalRequest() {
     super();
