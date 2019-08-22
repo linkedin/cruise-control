@@ -71,6 +71,8 @@ public class GoalOptimizer implements Runnable {
   private volatile OptimizerResult _cachedProposals;
   private volatile boolean _shutdown = false;
   private Thread _proposalPrecomputingSchedulerThread;
+  // TODO: Make allowing/disallowing capacity estimation during proposal precomputation configurable.
+  private final boolean _allowCapacityEstimationDuringProposalPrecomputing;
   private final Timer _proposalComputationTimer;
   private final ModelCompletenessRequirements _defaultModelCompletenessRequirements;
   private final ModelCompletenessRequirements _requirementsWithAvailableValidWindows;
@@ -117,6 +119,7 @@ public class GoalOptimizer implements Runnable {
     _hasOngoingExplicitPrecomputation = false;
     _priorityWeight = config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);
     _strictnessWeight = config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG);
+    _allowCapacityEstimationDuringProposalPrecomputing = true;
   }
 
   @Override
@@ -149,8 +152,7 @@ public class GoalOptimizer implements Runnable {
 
             long start = System.nanoTime();
             // Proposal precomputation runs with the default topics to exclude, and allows capacity estimation.
-            // TODO: Make allowing/disallowing capacity estimation during proposal precomputation configurable.
-            computeCachedProposal(true);
+            computeCachedProposal(_allowCapacityEstimationDuringProposalPrecomputing);
             _proposalComputationTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
           } else {
             LOG.debug("Skipping proposal precomputing because the cached proposal result is still valid. "
@@ -282,7 +284,7 @@ public class GoalOptimizer implements Runnable {
         while (!validCachedProposal()) {
           try {
             operationProgress.clear();
-            if (_numPrecomputingThreads > 0) {
+            if (_numPrecomputingThreads > 0 && (allowCapacityEstimation || !_allowCapacityEstimationDuringProposalPrecomputing)) {
               // Wake up the proposal precomputing scheduler and wait for the cache update.
               _proposalPrecomputingSchedulerThread.interrupt();
             } else if (!_hasOngoingExplicitPrecomputation) {
