@@ -1,7 +1,7 @@
 ## Metric Sampler
 The metric sampler is one of the most important pluggables in Kafka Cruise Control, it allows user to easily deploy Cruise Control to various environment and work with the existing metric system.
 
-The default implementation of metric sampler is reading the broker metrics produced by `CruiseControlMetricsReporter` on the broker. This is assuming that users are running Kafka brokers by setting the `metric.reporters` configuration on the Kafka brokers to be `com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter`.
+The default implementation of metric sampler is reading the broker metrics produced by `CruiseControlMetricsReporter` on the broker. This is assuming that users are running Kafka brokers by setting the `metric.reporters` configuration on the Kafka brokers to be `com.linkedin.kafka.cruisecontrol.metricsreporter.CruiseControlMetricsReporter`(see [quick start](https://github.com/linkedin/cruise-control#quick-start) on how to do that).
 
 ## Metric Sampler Partition Assignor
 When users have multiple metric sampler threads, the metric sampler partition assignor is responsible for assign the partitions to the metric samplers. This is useful when users have some existing metric system. The default implementation assigns all the partitions of the same topic to the same metric sampler.
@@ -41,10 +41,24 @@ The goals in Kafka Cruise Control are pluggable with different priorities. The d
 
 * **TopicReplicaDistributionGoal**: Attempt to make the replicas of the same topic are evenly distributed across the entire cluster.
 
+* **LeaderReplicaDistributionGoal**: Attempt to make all the brokers in a cluster to have the similar number of leader replicas.
+
+* **PreferredLeaderElectionGoal**: Attempt to make the first replica in replica list leader replica of the partition for all topic partition.
+
+* **KafkaAssignerGoals**: These goals are used to make Cruise Control behaves like [Kafka assigner tool](https://github.com/linkedin/kafka-tools/wiki/Kafka-Assigner). These goals will be picked up if `kafka_assigner` parameter is set to true in corresponding request(e.g. [rebalance request](https://github.com/linkedin/cruise-control/wiki/REST-APIs#trigger-a-workload-balance)).
+    * **KafkaAssignerDiskUsageDistributionGoal**: A goal that ensures all the replicas of each partition are assigned in a rack aware manner. 
+    * **KafkaAssignerEvenRackAwareGoal**: Attempt to make all the brokers in a cluster to have the similar number of replicas.
+
+* **IntraBrokerDiskCapacityGoal**: Goals that ensures the disk resource utilization is below a given threshold. This goal will be pick up if `rebalance_disk` parameter is set to `true` in [rebalance request](https://github.com/linkedin/cruise-control/wiki/REST-APIs#trigger-a-workload-balance). Only available in `migrate_to_kafka_2_0` branch. 
+
+* **IntraBrokerDiskUsageDistributionGoal**: Attempt to make the utilization variance among all the disks within same broker are within a certain range. This goal will be pick up if `rebalance_disk` parameter is set to `true` in [rebalance request](https://github.com/linkedin/cruise-control/wiki/REST-APIs#trigger-a-workload-balance). Only available in `migrate_to_kafka_2_0` branch. 
+
 ## Anomaly Notifier
 The anomaly notifier is a communication channel between cruise control and users. It notify the users about the anomaly detected in the cluster and let users make decision on what action to take about the anomaly. The anomalies include:
 * Broker failure
 * Goal violation
+* Metric Anomaly
+* Disk failure(Only available in `migrate_to_kafka_2_0` branch)
 
 The actions users can take are:
 * Fix the anomaly
@@ -53,3 +67,10 @@ The actions users can take are:
 
 By default Cruise Control is configured to use `NoopNotifier` which ignores all the anomalies.
 
+## Replica Movement Strategy
+The strategy determine the execution order for generated proposals. By default `BaseReplicaMovementStrategy` is used, which is totally random. Sometimes this could result in prolonged execution time due to some long tail tasks in each execution batches. Other available strategies includes:
+* **PrioritizeSmallReplicaMovementStrategy**: first move small sized replicas
+* **PrioritizeLargeReplicaMovementStrategy**: first move large sized replicas
+* **PostponeUrpReplicaMovementStrategy**: first move replicas for partition having no out-of-sync replica
+
+The strategies can be chained to use and can be dynamically set using `replica_movement_strategies` in corresponding request(e.g. [rebalance request](https://github.com/linkedin/cruise-control/wiki/REST-APIs#trigger-a-workload-balance)).
