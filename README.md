@@ -26,18 +26,21 @@ Cruise Control for Apache Kafka
     * Leader traffic distribution
     * Replica distribution for topics
     * Global replica distribution
+    * Global leader replica distribution
     * Custom goals that you wrote and plugged in
   
   * Anomaly detection, alerting, and self-healing for the Kafka cluster, including:
     * Goal violation
     * Broker failure detection
     * Metric anomaly detection
+    * Disk failure detection(only available in `migrate_to_kafka_2_0` branch)
   
   * Admin operations, including:
     * Add brokers
     * Decommission brokers
     * Demote brokers
     * Rebalance the cluster
+    * Fix offline replicas(only available in `migrate_to_kafka_2_0` branch)
     * Perform preferred leader election (PLE)
     * Fix offline replicas
 
@@ -145,28 +148,31 @@ The goals in Cruise Control are pluggable with different priorities. The default
  * **RackAwareGoal** - Ensures that all replicas of each partition are assigned in a rack aware manner -- i.e. no more than one replica of 
  each partition resides in the same rack.
  * **ReplicaCapacityGoal** - Ensures that the maximum number of replicas per broker is under the specified maximum limit.
- * **CpuCapacityGoal** - Ensures that CPU utilization of each broker is below a given threshold.
  * **DiskCapacityGoal** - Ensures that Disk space usage of each broker is below a given threshold.
  * **NetworkInboundCapacityGoal** - Ensures that inbound network utilization of each broker is below a given threshold.
  * **NetworkOutboundCapacityGoal** - Ensures that outbound network utilization of each broker is below a given threshold.
+ * **CpuCapacityGoal** - Ensures that CPU utilization of each broker is below a given threshold.
+ * **ReplicaDistributionGoal** - Attempts to make all the brokers in a cluster have a similar number of replicas.
  * **PotentialNwOutGoal** - Ensures that the potential network output (when all the replicas in the broker become leaders) on each of the broker do 
  not exceed the broker’s network outbound bandwidth capacity.
- * **CpuUsageDistributionGoal** - Attempts to keep the CPU usage variance among brokers within a certain range relative to the average CPU utilization.
  * **DiskUsageDistributionGoal** - Attempts to keep the Disk space usage variance among brokers within a certain range relative to the average Disk utilization.
  * **NetworkInboundUsageDistributionGoal** - Attempts to keep the inbound network utilization variance among brokers within a certain range relative to the average inbound network utilization.
  * **NetworkOutboundUsageDistributionGoal** - Attempts to keep the outbound network utilization variance among brokers within a certain range relative to the average outbound network utilization.
+ * **CpuUsageDistributionGoal** - Attempts to keep the CPU usage variance among brokers within a certain range relative to the average CPU utilization.
+ * **LeaderReplicaDistributionGoal** - Attempts to make all the brokers in a cluster have a similar number of leader replicas.
  * **LeaderBytesInDistributionGoal** - Attempts to equalize the leader bytes in rate on each host.
  * **TopicReplicaDistributionGoal** - Attempts to maintain an even distribution of any topic's partitions across the entire cluster.
- * **ReplicaDistributionGoal** - Attempts to make all the brokers in a cluster have a similar number of replicas.
  * **PreferredLeaderElectionGoal** - Simply move the leaders to the first replica of each partition.
  * **KafkaAssignerDiskUsageDistributionGoal** - (Kafka-assigner mode) Attempts to distribute disk usage evenly among brokers based on swap.
- * **KafkaAssignerEvenRackAwareGoal** - (Kafka-assigner mode) Attempts to achieve rack aware even replica distribution.
+ * **IntraBrokerDiskCapacityGoal** - (Rebalance-disk mode, only available in `migrate_to_kafka_2_0` branch) Ensures that Disk space usage of each disk is below a given threshold.
+ * **IntraBrokerDiskUsageDistributionGoal** - (Rebalance-disk mode, only available in `migrate_to_kafka_2_0` branch) Attempts to keep the Disk space usage variance among disks within a certain range relative to the average broker Disk utilization.
 
 #### Anomaly Notifier ####
 The anomaly notifier allows users to be notified when an anomaly is detected. Anomalies include:
  * Broker failure
  * Goal violation
  * Metric anomaly
+ * Disk failure(only available in `migrate_to_kafka_2_0` branch)
  
 In addition to anomaly notifications users can specify actions to be taken in response to an anomaly. The following actions are supported:
  * **fix** - fix the problem right away
