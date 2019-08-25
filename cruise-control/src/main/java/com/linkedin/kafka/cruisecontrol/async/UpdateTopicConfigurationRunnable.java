@@ -31,7 +31,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                    TopicConfigurationParameters parameters,
                                    KafkaCruiseControlConfig config) {
     super(kafkaCruiseControl, future);
-    _topicReplicationFactorChangeParameters = parameters.topicReplicationFactorChangeParameters().orElse(null);
+    _topicReplicationFactorChangeParameters = parameters.topicReplicationFactorChangeParameters();
     _uuid = uuid;
     _config = config;
   }
@@ -58,6 +58,6 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
           _config);
     }
     // Never reaches here.
-    return new OptimizationResult(null, null);
+    throw new IllegalArgumentException("Nothing executable found in request.");
   }
 }

@@ -32,7 +32,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -1111,11 +1111,11 @@ public class ParameterUtils {
   }
 
   /**
-   * Sanity check to ensure that at least one of the optional parameter is not specified.
+   * Sanity check to ensure that at least one of the optional parameter is specified.
    * @param optionalParameters Optional parameters to check.
    */
-  static void sanityCheckOptionalParameters(Optional... optionalParameters) {
-    if (Arrays.stream(optionalParameters).noneMatch(Optional::isPresent)) {
+  static void sanityCheckOptionalParameters(AbstractParameters... optionalParameters) {
+    if (Arrays.stream(optionalParameters).allMatch(Objects::isNull)) {
       throw new IllegalArgumentException("Nothing executable found in request.");
     }
   }

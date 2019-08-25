@@ -8,9 +8,9 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
-import java.util.Optional;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.sanityCheckOptionalParameters;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicReplicationFactorChangeParameters.maybeBuildTopicReplicationFactorChangeParameters;
 
 
 /**
@@ -46,7 +46,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  */
 public class TopicConfigurationParameters extends GoalBasedOptimizationParameters {
   protected Integer _reviewId;
-  protected Optional<TopicReplicationFactorChangeParameters> _topicReplicationFactorChangeParameters;
+  protected TopicReplicationFactorChangeParameters _topicReplicationFactorChangeParameters;
   protected Map<String, ?> _configs;
 
   public TopicConfigurationParameters() {
@@ -58,7 +58,7 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
     super.initParameters();
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
-    _topicReplicationFactorChangeParameters = TopicReplicationFactorChangeParameters.maybeCreateInstance(_configs);
+    _topicReplicationFactorChangeParameters = maybeBuildTopicReplicationFactorChangeParameters(_configs);
     sanityCheckOptionalParameters(_topicReplicationFactorChangeParameters);
   }
 
@@ -78,7 +78,7 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
     _configs = configs;
   }
 
-  public Optional<TopicReplicationFactorChangeParameters> topicReplicationFactorChangeParameters() {
+  public TopicReplicationFactorChangeParameters topicReplicationFactorChangeParameters() {
     return _topicReplicationFactorChangeParameters;
   }
 

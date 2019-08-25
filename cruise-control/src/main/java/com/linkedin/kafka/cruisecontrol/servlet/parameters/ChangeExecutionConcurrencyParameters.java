@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
-import java.util.Optional;
 
 
 /**
@@ -32,7 +31,7 @@ public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
   }
 
-  static Optional<ChangeExecutionConcurrencyParameters> maybeCreateInstance(Map<String, ?> configs)
+  static ChangeExecutionConcurrencyParameters maybeBuildChangeExecutionConcurrencyParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {
     ChangeExecutionConcurrencyParameters changeExecutionConcurrencyParameters = new ChangeExecutionConcurrencyParameters();
     changeExecutionConcurrencyParameters.configure(configs);
@@ -41,9 +40,9 @@ public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
     if (changeExecutionConcurrencyParameters.concurrentInterBrokerPartitionMovements() == null
         && changeExecutionConcurrencyParameters.concurrentIntraBrokerPartitionMovements() == null
         && changeExecutionConcurrencyParameters.concurrentLeaderMovements() == null) {
-      return Optional.empty();
+      return null;
     }
-    return Optional.of(changeExecutionConcurrencyParameters);
+    return changeExecutionConcurrencyParameters;
   }
 
   public Integer concurrentInterBrokerPartitionMovements() {

@@ -61,10 +61,11 @@ public class AdminRequest extends AbstractSyncRequest {
   }
 
   private String processChangeExecutionConcurrencyRequest() {
-    if (!_parameters.changeExecutionConcurrencyParameters().isPresent()) {
+    ChangeExecutionConcurrencyParameters changeExecutionConcurrencyParameters = _parameters.changeExecutionConcurrencyParameters();
+    if (changeExecutionConcurrencyParameters == null) {
       return null;
     }
-    ChangeExecutionConcurrencyParameters changeExecutionConcurrencyParameters = _parameters.changeExecutionConcurrencyParameters().get();
+
     StringBuilder sb = new StringBuilder();
     // 1. Change inter-broker partition concurrency.
     Integer concurrentInterBrokerPartitionMovements = changeExecutionConcurrencyParameters.concurrentInterBrokerPartitionMovements();
@@ -91,8 +92,8 @@ public class AdminRequest extends AbstractSyncRequest {
   }
 
   private void processUpdateSelfHealingRequest(Map<AnomalyType, Boolean> selfHealingBefore, Map<AnomalyType, Boolean> selfHealingAfter) {
-    if (_parameters.updateSelfHealingParameters().isPresent()) {
-      UpdateSelfHealingParameters updateSelfHealingParameters = _parameters.updateSelfHealingParameters().get();
+    UpdateSelfHealingParameters updateSelfHealingParameters = _parameters.updateSelfHealingParameters();
+    if (updateSelfHealingParameters != null) {
       Set<AnomalyType> disableSelfHealingFor = updateSelfHealingParameters.disableSelfHealingFor();
       Set<AnomalyType> enableSelfHealingFor = updateSelfHealingParameters.enableSelfHealingFor();
 
@@ -113,12 +114,12 @@ public class AdminRequest extends AbstractSyncRequest {
   }
 
   private String processDropRecentBrokersRequest() {
-    if (!_parameters.dropRecentBrokersParameters().isPresent()) {
+    DropRecentBrokersParameters dropRecentBrokersParameters = _parameters.dropRecentBrokersParameters();
+    if (dropRecentBrokersParameters == null) {
       return null;
     }
-    DropRecentBrokersParameters dropRecentBrokersParameters = _parameters.dropRecentBrokersParameters().get();
-    StringBuilder sb = new StringBuilder();
 
+    StringBuilder sb = new StringBuilder();
     Set<Integer> brokersToDropFromRecentlyRemoved = dropRecentBrokersParameters.dropRecentlyRemovedBrokers();
     if (!brokersToDropFromRecentlyRemoved.isEmpty()) {
       if (!_kafkaCruiseControl.dropRecentBrokers(brokersToDropFromRecentlyRemoved, true)) {

@@ -9,9 +9,11 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
-import java.util.Optional;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.sanityCheckOptionalParameters;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ChangeExecutionConcurrencyParameters.maybeBuildChangeExecutionConcurrencyParameters;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.DropRecentBrokersParameters.maybeBuildDropRecentBrokersParameters;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHealingParameters.maybeBuildUpdateSelfHealingParameters;
 
 
 /**
@@ -31,9 +33,9 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
 public class AdminParameters extends AbstractParameters {
   protected Integer _reviewId;
   protected Map<String, ?> _configs;
-  protected Optional<DropRecentBrokersParameters> _dropBrokersParameters;
-  protected Optional<UpdateSelfHealingParameters> _updateSelfHealingParameters;
-  protected Optional<ChangeExecutionConcurrencyParameters> _changeExecutionConcurrencyParameters;
+  protected DropRecentBrokersParameters _dropBrokersParameters;
+  protected UpdateSelfHealingParameters _updateSelfHealingParameters;
+  protected ChangeExecutionConcurrencyParameters _changeExecutionConcurrencyParameters;
 
   public AdminParameters() {
     super();
@@ -44,9 +46,9 @@ public class AdminParameters extends AbstractParameters {
     super.initParameters();
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
-    _dropBrokersParameters = DropRecentBrokersParameters.maybeCreateInstance(_configs);
-    _updateSelfHealingParameters = UpdateSelfHealingParameters.maybeCreateInstance(_configs);
-    _changeExecutionConcurrencyParameters = ChangeExecutionConcurrencyParameters.maybeCreateInstance(_configs);
+    _dropBrokersParameters = maybeBuildDropRecentBrokersParameters(_configs);
+    _updateSelfHealingParameters = maybeBuildUpdateSelfHealingParameters(_configs);
+    _changeExecutionConcurrencyParameters = maybeBuildChangeExecutionConcurrencyParameters(_configs);
     sanityCheckOptionalParameters(_dropBrokersParameters, _updateSelfHealingParameters, _changeExecutionConcurrencyParameters);
   }
 
@@ -59,14 +61,15 @@ public class AdminParameters extends AbstractParameters {
     return _reviewId;
   }
 
-  public Optional<DropRecentBrokersParameters> dropRecentBrokersParameters() {
+  public DropRecentBrokersParameters dropRecentBrokersParameters() {
     return _dropBrokersParameters;
   }
-  public Optional<UpdateSelfHealingParameters> updateSelfHealingParameters() {
+
+  public UpdateSelfHealingParameters updateSelfHealingParameters() {
     return _updateSelfHealingParameters;
   }
 
-  public Optional<ChangeExecutionConcurrencyParameters> changeExecutionConcurrencyParameters() {
+  public ChangeExecutionConcurrencyParameters changeExecutionConcurrencyParameters() {
     return _changeExecutionConcurrencyParameters;
   }
 

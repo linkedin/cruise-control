@@ -8,7 +8,6 @@ import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrateg
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
-import java.util.Optional;
 import java.util.regex.Pattern;
 
 /**
@@ -46,16 +45,16 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
   }
 
-  static Optional<TopicReplicationFactorChangeParameters> maybeCreateInstance(Map<String, ?> configs)
+  static TopicReplicationFactorChangeParameters maybeBuildTopicReplicationFactorChangeParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {
     TopicReplicationFactorChangeParameters topicReplicationFactorChangeParameters = new TopicReplicationFactorChangeParameters();
     topicReplicationFactorChangeParameters.configure(configs);
     topicReplicationFactorChangeParameters.initParameters();
     // If non-optional parameter is not specified in request, returns an empty instance.
     if (topicReplicationFactorChangeParameters.topicPatternByReplicationFactor().isEmpty()) {
-      return Optional.empty();
+      return null;
     }
-  return Optional.of(topicReplicationFactorChangeParameters);
+  return topicReplicationFactorChangeParameters;
   }
 
   public Map<Short, Pattern> topicPatternByReplicationFactor() {

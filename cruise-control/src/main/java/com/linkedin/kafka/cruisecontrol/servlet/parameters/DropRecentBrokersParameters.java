@@ -7,7 +7,6 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -30,7 +29,7 @@ public class DropRecentBrokersParameters extends AbstractParameters {
     _dropRecentlyDemotedBrokers = ParameterUtils.dropRecentlyDemotedBrokers(_request);
   }
 
-  static Optional<DropRecentBrokersParameters> maybeCreateInstance(Map<String, ?> configs)
+  static DropRecentBrokersParameters maybeBuildDropRecentBrokersParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {
     DropRecentBrokersParameters dropRecentBrokersParameters = new DropRecentBrokersParameters();
     dropRecentBrokersParameters.configure(configs);
@@ -38,9 +37,9 @@ public class DropRecentBrokersParameters extends AbstractParameters {
     // If non-optional parameter is not specified in request, returns an empty instance.
     if (dropRecentBrokersParameters.dropRecentlyDemotedBrokers().isEmpty()
         && dropRecentBrokersParameters.dropRecentlyRemovedBrokers().isEmpty()) {
-      return Optional.empty();
+      return null;
     }
-    return Optional.of(dropRecentBrokersParameters);
+    return dropRecentBrokersParameters;
   }
 
   public Set<Integer> dropRecentlyRemovedBrokers() {

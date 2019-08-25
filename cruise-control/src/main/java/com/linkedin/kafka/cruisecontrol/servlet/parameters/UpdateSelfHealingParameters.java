@@ -8,7 +8,6 @@ import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -32,7 +31,7 @@ public class UpdateSelfHealingParameters extends AbstractParameters {
     _disableSelfHealingFor = selfHealingFor.get(false);
   }
 
-  static Optional<UpdateSelfHealingParameters> maybeCreateInstance(Map<String, ?> configs)
+  static UpdateSelfHealingParameters maybeBuildUpdateSelfHealingParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {
     UpdateSelfHealingParameters selfHealingUpdateParameters = new UpdateSelfHealingParameters();
     selfHealingUpdateParameters.configure(configs);
@@ -40,9 +39,9 @@ public class UpdateSelfHealingParameters extends AbstractParameters {
     // If non-optional parameter is not specified in request, returns an empty instance.
     if (selfHealingUpdateParameters.enableSelfHealingFor().isEmpty()
         && selfHealingUpdateParameters.disableSelfHealingFor().isEmpty()) {
-      return Optional.empty();
+      return null;
     }
-    return Optional.of(selfHealingUpdateParameters);
+    return selfHealingUpdateParameters;
   }
 
   public Set<AnomalyType> disableSelfHealingFor() {
