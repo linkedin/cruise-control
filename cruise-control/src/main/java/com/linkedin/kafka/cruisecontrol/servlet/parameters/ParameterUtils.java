@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.google.gson.Gson;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.IntraBrokerDiskUsageDistributionGoal;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
@@ -1111,13 +1112,13 @@ public class ParameterUtils {
   }
 
   /**
-   * Sanity check to ensure that at least one of the optional parameter is specified.
-   * @param optionalParameters Optional parameters to check.
+   * Check whether all the passed-in parameters are null or not.
+   *
+   * @param optionalParameters Arbitrary number of parameters to check.
+   * @return True if all parameters are null; false otherwise.
    */
-  static void sanityCheckOptionalParameters(AbstractParameters... optionalParameters) {
-    if (Arrays.stream(optionalParameters).allMatch(Objects::isNull)) {
-      throw new IllegalArgumentException("Nothing executable found in request.");
-    }
+  static boolean areAllParametersNull(CruiseControlParameters... parameters) {
+    return Arrays.stream(parameters).allMatch(Objects::isNull);
   }
 
   public enum DataFrom {

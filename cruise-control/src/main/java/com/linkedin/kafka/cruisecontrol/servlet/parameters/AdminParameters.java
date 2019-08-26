@@ -10,7 +10,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.sanityCheckOptionalParameters;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.areAllParametersNull;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ChangeExecutionConcurrencyParameters.maybeBuildChangeExecutionConcurrencyParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.DropRecentBrokersParameters.maybeBuildDropRecentBrokersParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHealingParameters.maybeBuildUpdateSelfHealingParameters;
@@ -49,7 +49,9 @@ public class AdminParameters extends AbstractParameters {
     _dropBrokersParameters = maybeBuildDropRecentBrokersParameters(_configs);
     _updateSelfHealingParameters = maybeBuildUpdateSelfHealingParameters(_configs);
     _changeExecutionConcurrencyParameters = maybeBuildChangeExecutionConcurrencyParameters(_configs);
-    sanityCheckOptionalParameters(_dropBrokersParameters, _updateSelfHealingParameters, _changeExecutionConcurrencyParameters);
+    if (areAllParametersNull(_dropBrokersParameters, _updateSelfHealingParameters, _changeExecutionConcurrencyParameters)) {
+      throw new IllegalArgumentException("Nothing executable found in request.");
+    }
   }
 
   @Override

@@ -25,7 +25,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
   protected ReplicaMovementStrategy _replicaMovementStrategy;
   protected Long _replicationThrottle;
 
-  private TopicReplicationFactorChangeParameters() {
+  protected TopicReplicationFactorChangeParameters() {
     super();
   }
 
@@ -45,12 +45,19 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
     _replicationThrottle = ParameterUtils.replicationThrottle(_request, _config);
   }
 
+  /**
+   * Try to create a TopicReplicationFactorChangeParameters object from the request.
+   *
+   * @param configs Information collected from request and Cruise Control configs.
+   * @return a TopicReplicationFactorChangeParameters object; or null if any required parameter is not specified in the request.
+   */
   static TopicReplicationFactorChangeParameters maybeBuildTopicReplicationFactorChangeParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {
     TopicReplicationFactorChangeParameters topicReplicationFactorChangeParameters = new TopicReplicationFactorChangeParameters();
     topicReplicationFactorChangeParameters.configure(configs);
     topicReplicationFactorChangeParameters.initParameters();
-    // If non-optional parameter is not specified in request, returns an empty instance.
+    // At least one pair of target topic pattern and target replication factor should be explicitly specified in the request;
+    // otherwise, return null.
     if (topicReplicationFactorChangeParameters.topicPatternByReplicationFactor().isEmpty()) {
       return null;
     }

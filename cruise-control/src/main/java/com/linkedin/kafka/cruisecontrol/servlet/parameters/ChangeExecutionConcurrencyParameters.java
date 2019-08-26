@@ -14,12 +14,11 @@ import java.util.Map;
  * This class holds all the request parameters for {@link AdminParameters.AdminType#CHANGE_CONCURRENCY}.
  */
 public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
-
   protected Integer _concurrentInterBrokerPartitionMovements;
   protected Integer _concurrentIntraBrokerPartitionMovements;
   protected Integer _concurrentLeaderMovements;
 
-  private ChangeExecutionConcurrencyParameters() {
+  protected ChangeExecutionConcurrencyParameters() {
     super();
   }
 
@@ -31,12 +30,18 @@ public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
     _concurrentLeaderMovements = ParameterUtils.concurrentMovements(_request, false, false);
   }
 
+  /**
+   * Try to create a ChangeExecutionConcurrencyParameters object from the request.
+   *
+   * @param configs Information collected from request and Cruise Control configs.
+   * @return a ChangeExecutionConcurrencyParameters object; or null if any required parameters is not specified in the request.
+   */
   static ChangeExecutionConcurrencyParameters maybeBuildChangeExecutionConcurrencyParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {
     ChangeExecutionConcurrencyParameters changeExecutionConcurrencyParameters = new ChangeExecutionConcurrencyParameters();
     changeExecutionConcurrencyParameters.configure(configs);
     changeExecutionConcurrencyParameters.initParameters();
-    // If non-optional parameter is not specified in request, returns an empty instance.
+    // At least new concurrency for one type of task should be explicitly specified in the request; otherwise, return null.
     if (changeExecutionConcurrencyParameters.concurrentInterBrokerPartitionMovements() == null
         && changeExecutionConcurrencyParameters.concurrentIntraBrokerPartitionMovements() == null
         && changeExecutionConcurrencyParameters.concurrentLeaderMovements() == null) {

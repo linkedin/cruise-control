@@ -15,11 +15,10 @@ import java.util.Set;
  * This class holds all the request parameters for {@link AdminParameters.AdminType#UPDATE_SELF_HEALING}.
  */
 public class UpdateSelfHealingParameters extends AbstractParameters {
-
   protected Set<AnomalyType> _disableSelfHealingFor;
   protected Set<AnomalyType> _enableSelfHealingFor;
 
-  private UpdateSelfHealingParameters() {
+  protected UpdateSelfHealingParameters() {
     super();
   }
 
@@ -31,12 +30,18 @@ public class UpdateSelfHealingParameters extends AbstractParameters {
     _disableSelfHealingFor = selfHealingFor.get(false);
   }
 
+  /**
+   * Try to create a UpdateSelfHealingParameters object from the request.
+   *
+   * @param configs Information collected from request and Cruise Control configs.
+   * @return a UpdateSelfHealingParameters object; or null if any required parameter is not specified in the request.
+   */
   static UpdateSelfHealingParameters maybeBuildUpdateSelfHealingParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {
     UpdateSelfHealingParameters selfHealingUpdateParameters = new UpdateSelfHealingParameters();
     selfHealingUpdateParameters.configure(configs);
     selfHealingUpdateParameters.initParameters();
-    // If non-optional parameter is not specified in request, returns an empty instance.
+    // At least self-healing for one anomaly type should requested to enable/disable; otherwise, return null.
     if (selfHealingUpdateParameters.enableSelfHealingFor().isEmpty()
         && selfHealingUpdateParameters.disableSelfHealingFor().isEmpty()) {
       return null;

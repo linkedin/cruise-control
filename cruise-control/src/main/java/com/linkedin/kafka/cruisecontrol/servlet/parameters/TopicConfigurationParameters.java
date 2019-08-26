@@ -9,7 +9,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Map;
 
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.sanityCheckOptionalParameters;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.areAllParametersNull;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicReplicationFactorChangeParameters.maybeBuildTopicReplicationFactorChangeParameters;
 
 
@@ -59,7 +59,9 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
     boolean twoStepVerificationEnabled = _config.getBoolean(KafkaCruiseControlConfig.TWO_STEP_VERIFICATION_ENABLED_CONFIG);
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
     _topicReplicationFactorChangeParameters = maybeBuildTopicReplicationFactorChangeParameters(_configs);
-    sanityCheckOptionalParameters(_topicReplicationFactorChangeParameters);
+    if (areAllParametersNull(_topicReplicationFactorChangeParameters)) {
+      throw new IllegalArgumentException("Nothing executable found in request.");
+    }
   }
 
 

@@ -14,11 +14,10 @@ import java.util.Set;
  * This class holds all the request parameters for {@link AdminParameters.AdminType#DROP_RECENT_BROKERS}.
  */
 public class DropRecentBrokersParameters extends AbstractParameters {
-
   protected Set<Integer> _dropRecentlyRemovedBrokers;
   protected Set<Integer> _dropRecentlyDemotedBrokers;
 
-  private DropRecentBrokersParameters() {
+  protected DropRecentBrokersParameters() {
     super();
   }
 
@@ -29,12 +28,18 @@ public class DropRecentBrokersParameters extends AbstractParameters {
     _dropRecentlyDemotedBrokers = ParameterUtils.dropRecentlyDemotedBrokers(_request);
   }
 
+  /**
+   * Try to create a DropRecentBrokersParameters object from the request.
+   *
+   * @param configs Information collected from request and Cruise Control configs.
+   * @return a DropRecentBrokersParameters object; or null if any required parameter is not specified in the request.
+   */
   static DropRecentBrokersParameters maybeBuildDropRecentBrokersParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {
     DropRecentBrokersParameters dropRecentBrokersParameters = new DropRecentBrokersParameters();
     dropRecentBrokersParameters.configure(configs);
     dropRecentBrokersParameters.initParameters();
-    // If non-optional parameter is not specified in request, returns an empty instance.
+    // At least one recently removed/demoted broker should be specified to drop; otherwise, return null.
     if (dropRecentBrokersParameters.dropRecentlyDemotedBrokers().isEmpty()
         && dropRecentBrokersParameters.dropRecentlyRemovedBrokers().isEmpty()) {
       return null;
