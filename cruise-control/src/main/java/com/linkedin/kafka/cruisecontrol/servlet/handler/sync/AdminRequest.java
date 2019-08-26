@@ -60,7 +60,7 @@ public class AdminRequest extends AbstractSyncRequest {
                            _kafkaCruiseControl.config());
   }
 
-  private String processChangeExecutionConcurrencyRequest() {
+  protected String processChangeExecutionConcurrencyRequest() {
     ChangeExecutionConcurrencyParameters changeExecutionConcurrencyParameters = _parameters.changeExecutionConcurrencyParameters();
     if (changeExecutionConcurrencyParameters == null) {
       return null;
@@ -91,7 +91,7 @@ public class AdminRequest extends AbstractSyncRequest {
     return sb.toString();
   }
 
-  private void processUpdateSelfHealingRequest(Map<AnomalyType, Boolean> selfHealingBefore, Map<AnomalyType, Boolean> selfHealingAfter) {
+  protected void processUpdateSelfHealingRequest(Map<AnomalyType, Boolean> selfHealingBefore, Map<AnomalyType, Boolean> selfHealingAfter) {
     UpdateSelfHealingParameters updateSelfHealingParameters = _parameters.updateSelfHealingParameters();
     if (updateSelfHealingParameters != null) {
       Set<AnomalyType> disableSelfHealingFor = updateSelfHealingParameters.disableSelfHealingFor();
@@ -113,7 +113,7 @@ public class AdminRequest extends AbstractSyncRequest {
     }
   }
 
-  private String processDropRecentBrokersRequest() {
+  protected String processDropRecentBrokersRequest() {
     DropRecentBrokersParameters dropRecentBrokersParameters = _parameters.dropRecentBrokersParameters();
     if (dropRecentBrokersParameters == null) {
       return null;
