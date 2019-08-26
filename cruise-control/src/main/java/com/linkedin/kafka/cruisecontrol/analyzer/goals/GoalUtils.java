@@ -44,7 +44,7 @@ public class GoalUtils {
    * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#LEADERSHIP_MOVEMENT}, then brokers excluded for
    * leadership are not eligible.</li>
    * <li>{@link com.linkedin.kafka.cruisecontrol.analyzer.ActionType#INTER_BROKER_REPLICA_MOVEMENT} for a leader replica,
-   * then unless the source leader replica is dead, brokers excluded for leadership are not eligible.</li>
+   * then brokers excluded for leadership are not eligible.</li>
    * </ul>
    *
    * Note that this function supports only the above actions.
