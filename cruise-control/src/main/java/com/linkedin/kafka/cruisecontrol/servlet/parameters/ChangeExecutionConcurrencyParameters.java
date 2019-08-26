@@ -31,7 +31,7 @@ public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
   }
 
   /**
-   * Try to create a ChangeExecutionConcurrencyParameters object from the request.
+   * Create a {@link ChangeExecutionConcurrencyParameters} object from the request.
    *
    * @param configs Information collected from request and Cruise Control configs.
    * @return a ChangeExecutionConcurrencyParameters object; or null if any required parameters is not specified in the request.

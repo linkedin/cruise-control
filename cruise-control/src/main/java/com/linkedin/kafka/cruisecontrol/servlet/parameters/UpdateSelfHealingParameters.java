@@ -31,7 +31,7 @@ public class UpdateSelfHealingParameters extends AbstractParameters {
   }
 
   /**
-   * Try to create a UpdateSelfHealingParameters object from the request.
+   * Create a {@link UpdateSelfHealingParameters} object from the request.
    *
    * @param configs Information collected from request and Cruise Control configs.
    * @return a UpdateSelfHealingParameters object; or null if any required parameter is not specified in the request.

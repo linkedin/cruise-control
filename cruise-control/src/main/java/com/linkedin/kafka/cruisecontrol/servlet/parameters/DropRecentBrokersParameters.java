@@ -29,7 +29,7 @@ public class DropRecentBrokersParameters extends AbstractParameters {
   }
 
   /**
-   * Try to create a DropRecentBrokersParameters object from the request.
+   * Create a {@link DropRecentBrokersParameters} object from the request.
    *
    * @param configs Information collected from request and Cruise Control configs.
    * @return a DropRecentBrokersParameters object; or null if any required parameter is not specified in the request.
