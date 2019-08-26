@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.google.gson.Gson;
+import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
@@ -1006,6 +1008,16 @@ public class ParameterUtils {
 
   static boolean fetchCompletedTask(HttpServletRequest request) {
     return getBooleanParam(request, FETCH_COMPLETED_TASK_PARAM, false);
+  }
+
+  /**
+   * Check whether all the passed-in parameters are null or not.
+   *
+   * @param parameters Arbitrary number of parameters to check.
+   * @return True if all parameters are null; false otherwise.
+   */
+  static boolean areAllParametersNull(CruiseControlParameters... parameters) {
+    return Arrays.stream(parameters).allMatch(Objects::isNull);
   }
 
   public enum DataFrom {
