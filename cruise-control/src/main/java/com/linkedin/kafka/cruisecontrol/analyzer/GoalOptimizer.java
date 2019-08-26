@@ -70,6 +70,8 @@ public class GoalOptimizer implements Runnable {
   private volatile OptimizerResult _cachedProposals;
   private volatile boolean _shutdown = false;
   private Thread _proposalPrecomputingSchedulerThread;
+  // TODO: Make allowing/disallowing capacity estimation during proposal precomputation configurable.
+  private final boolean _allowCapacityEstimationDuringProposalPrecomputing;
   private final Timer _proposalComputationTimer;
   private final ModelCompletenessRequirements _defaultModelCompletenessRequirements;
   private final ModelCompletenessRequirements _requirementsWithAvailableValidWindows;
@@ -116,6 +118,7 @@ public class GoalOptimizer implements Runnable {
     _hasOngoingExplicitPrecomputation = false;
     _priorityWeight = config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG);
     _strictnessWeight = config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG);
+    _allowCapacityEstimationDuringProposalPrecomputing = true;
   }
 
   @Override
@@ -147,8 +150,8 @@ public class GoalOptimizer implements Runnable {
             clearCachedProposal();
 
             long start = System.nanoTime();
-            // Proposal precomputation runs with the default topics to exclude.
-            computeCachedProposal();
+            // Proposal precomputation runs with the default topics to exclude, and allows capacity estimation.
+            computeCachedProposal(_allowCapacityEstimationDuringProposalPrecomputing);
             _proposalComputationTimer.update(System.nanoTime() - start, TimeUnit.NANOSECONDS);
           } else {
             LOG.debug("Skipping proposal precomputing because the cached proposal result is still valid. "
@@ -177,9 +180,9 @@ public class GoalOptimizer implements Runnable {
     return _numPrecomputingThreads > 0 ? _numPrecomputingThreads : 2;
   }
 
-  private void computeCachedProposal() {
+  private void computeCachedProposal(boolean allowCapacityEstimation) {
     long start = _time.milliseconds();
-    Future future = _proposalPrecomputingExecutor.submit(new ProposalCandidateComputer());
+    Future future = _proposalPrecomputingExecutor.submit(new ProposalCandidateComputer(allowCapacityEstimation));
 
     try {
       boolean done = false;
@@ -280,13 +283,13 @@ public class GoalOptimizer implements Runnable {
         while (!validCachedProposal()) {
           try {
             operationProgress.clear();
-            if (_numPrecomputingThreads > 0) {
+            if (_numPrecomputingThreads > 0 && (allowCapacityEstimation || !_allowCapacityEstimationDuringProposalPrecomputing)) {
               // Wake up the proposal precomputing scheduler and wait for the cache update.
               _proposalPrecomputingSchedulerThread.interrupt();
             } else if (!_hasOngoingExplicitPrecomputation) {
               // Submit background computation if there is no ongoing explicit precomputation and wait for the cache update.
               _hasOngoingExplicitPrecomputation = true;
-              _proposalPrecomputingExecutor.submit(this::computeCachedProposal);
+              _proposalPrecomputingExecutor.submit(() -> computeCachedProposal(allowCapacityEstimation));
             }
             operationProgress.refer(_proposalPrecomputingProgress);
             _cacheLock.wait();
@@ -304,9 +307,7 @@ public class GoalOptimizer implements Runnable {
         LOG.debug("Returning optimization result from cache. Model generation (cached: {}, current: {}).",
                   _cachedProposals.modelGeneration(), _loadMonitor.clusterModelGeneration());
       }
-      // If the cached proposals are estimated, and the user requested for no estimation, we invalidate the cache and
-      // calculate cached proposals just once. If the returned result still involves an estimation, throw an exception.
-      KafkaCruiseControl.sanityCheckCapacityEstimation(allowCapacityEstimation, _cachedProposals.capacityEstimationInfoByBrokerId());
+
       return _cachedProposals;
     }
   }
@@ -530,8 +531,9 @@ public class GoalOptimizer implements Runnable {
    * A class that precomputes the proposal candidates and find the cached proposals.
    */
   private class ProposalCandidateComputer implements Runnable {
-    ProposalCandidateComputer() {
-
+    private final boolean _allowCapacityEstimation;
+    ProposalCandidateComputer(boolean allowCapacityEstimation) {
+      _allowCapacityEstimation = allowCapacityEstimation;
     }
 
     @Override
@@ -550,6 +552,7 @@ public class GoalOptimizer implements Runnable {
         ModelCompletenessRequirements requirements = _loadMonitor.meetCompletenessRequirements(_defaultModelCompletenessRequirements) ?
                                                      _defaultModelCompletenessRequirements : _requirementsWithAvailableValidWindows;
         ClusterModel clusterModel = _loadMonitor.clusterModel(_time.milliseconds(), requirements, operationProgress);
+        KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
         if (!clusterModel.topics().isEmpty()) {
           OptimizerResult result = optimizations(clusterModel, _goalsByPriority, operationProgress);
           LOG.debug("Generated a proposal candidate in {} ms.", _time.milliseconds() - startMs);
