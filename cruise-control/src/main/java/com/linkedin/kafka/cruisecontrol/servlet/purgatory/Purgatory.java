@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REVIEW;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.httpServletRequestToString;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.POST_METHOD;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.hasValidParameterNames;
 
 
 /**
@@ -114,6 +115,9 @@ public class Purgatory implements Closeable {
       CruiseControlParameters parameters = _config.getConfiguredInstance(classConfig,
                                                                          CruiseControlParameters.class,
                                                                          parameterConfigOverrides);
+      if (!hasValidParameterNames(request, response, _config, parameters)) {
+        throw new IllegalArgumentException("Attempt to add request with invalid parameter names to purgatory.");
+      }
       if (!parameters.parseParameters(response)) {
         // Add request to purgatory and return ReviewResult.
         ReviewResult reviewResult = addRequest(request, parameters);

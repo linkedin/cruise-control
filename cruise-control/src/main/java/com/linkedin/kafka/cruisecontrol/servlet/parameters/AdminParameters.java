@@ -7,10 +7,15 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.areAllParametersNull;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ChangeExecutionConcurrencyParameters.maybeBuildChangeExecutionConcurrencyParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.DropRecentBrokersParameters.maybeBuildDropRecentBrokersParameters;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHealingParameters.maybeBuildUpdateSelfHealingParameters;
@@ -31,6 +36,16 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.UpdateSelfHeal
  * </pre>
  */
 public class AdminParameters extends AbstractParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(REVIEW_ID_PARAM);
+    validParameterNames.addAll(DropRecentBrokersParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    validParameterNames.addAll(UpdateSelfHealingParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    validParameterNames.addAll(ChangeExecutionConcurrencyParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected Integer _reviewId;
   protected Map<String, ?> _configs;
   protected DropRecentBrokersParameters _dropBrokersParameters;
@@ -50,7 +65,7 @@ public class AdminParameters extends AbstractParameters {
     _updateSelfHealingParameters = maybeBuildUpdateSelfHealingParameters(_configs);
     _changeExecutionConcurrencyParameters = maybeBuildChangeExecutionConcurrencyParameters(_configs);
     if (areAllParametersNull(_dropBrokersParameters, _updateSelfHealingParameters, _changeExecutionConcurrencyParameters)) {
-      throw new IllegalArgumentException("Nothing executable found in request.");
+      throw new UserRequestException("Nothing executable found in request.");
     }
   }
 
@@ -79,6 +94,11 @@ public class AdminParameters extends AbstractParameters {
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
     _configs = configs;
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 
   /**

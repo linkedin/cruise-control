@@ -9,8 +9,6 @@ import com.linkedin.cruisecontrol.servlet.EndPoint;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.RequestParameterWrapper;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.io.StringWriter;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -195,7 +193,7 @@ public class KafkaCruiseControlServletUtils {
                                           request.getPathInfo(), method, method.equals(GET_METHOD)
                                                                          ? CruiseControlEndPoint.getEndpoints()
                                                                          : CruiseControlEndPoint.postEndpoints());
-      writeErrorResponse(response, "", errorMessage, SC_NOT_FOUND, wantJSON(request), config);
+      writeErrorResponse(response, null, errorMessage, SC_NOT_FOUND, wantJSON(request), config);
       return null;
     }
     return endPoint;
@@ -210,9 +208,7 @@ public class KafkaCruiseControlServletUtils {
                                            KafkaCruiseControlConfig config)
       throws IOException {
     String errorMessage = String.format("Bad %s request '%s' due to '%s'.", request.getMethod(), request.getPathInfo(), ure.getMessage());
-    StringWriter sw = new StringWriter();
-    ure.printStackTrace(new PrintWriter(sw));
-    writeErrorResponse(response, sw.toString(), errorMessage, SC_BAD_REQUEST, wantJSON(request), config);
+    writeErrorResponse(response, ure, errorMessage, SC_BAD_REQUEST, wantJSON(request), config);
     return errorMessage;
   }
 
@@ -224,11 +220,9 @@ public class KafkaCruiseControlServletUtils {
                                       HttpServletResponse response,
                                       KafkaCruiseControlConfig config)
       throws IOException {
-    StringWriter sw = new StringWriter();
-    ce.printStackTrace(new PrintWriter(sw));
     String errorMessage = String.format("Cannot process %s request '%s' due to: '%s'.",
                                         request.getMethod(), request.getPathInfo(), ce.getMessage());
-    writeErrorResponse(response, sw.toString(), errorMessage, SC_FORBIDDEN, wantJSON(request), config);
+    writeErrorResponse(response, ce, errorMessage, SC_FORBIDDEN, wantJSON(request), config);
     return errorMessage;
   }
 
@@ -240,11 +234,9 @@ public class KafkaCruiseControlServletUtils {
                                 HttpServletResponse response,
                                 KafkaCruiseControlConfig config)
       throws IOException {
-    StringWriter sw = new StringWriter();
-    e.printStackTrace(new PrintWriter(sw));
     String errorMessage = String.format("Error processing %s request '%s' due to: '%s'.",
                                         request.getMethod(), request.getPathInfo(), e.getMessage());
-    writeErrorResponse(response, sw.toString(), errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request), config);
+    writeErrorResponse(response, e, errorMessage, SC_INTERNAL_SERVER_ERROR, wantJSON(request), config);
     return errorMessage;
   }
 

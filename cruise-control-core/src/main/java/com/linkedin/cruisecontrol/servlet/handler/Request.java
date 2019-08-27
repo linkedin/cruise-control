@@ -11,6 +11,11 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 
+/**
+ * This is the interface of the request handled by Cruise Control. Users can implement this interface and add the
+ * implementation class name to Cruise Control request configuration so that Cruise Control will handle the corresponding
+ * request as specified in the custom logic.
+ */
 public interface Request extends CruiseControlConfigurable {
 
   /**

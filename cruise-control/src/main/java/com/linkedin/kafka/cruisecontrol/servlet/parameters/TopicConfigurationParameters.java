@@ -6,10 +6,15 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
+import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.areAllParametersNull;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicReplicationFactorChangeParameters.maybeBuildTopicReplicationFactorChangeParameters;
 
 
@@ -44,7 +49,15 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicReplicati
  *    &amp;review_id=[id]&amp;replication_throttle=[bytes_per_second]
  * </pre>
  */
-public class TopicConfigurationParameters extends GoalBasedOptimizationParameters {
+public class TopicConfigurationParameters extends AbstractParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(REVIEW_ID_PARAM);
+    validParameterNames.addAll(TopicReplicationFactorChangeParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected Integer _reviewId;
   protected TopicReplicationFactorChangeParameters _topicReplicationFactorChangeParameters;
   protected Map<String, ?> _configs;
@@ -60,7 +73,7 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
     _reviewId = ParameterUtils.reviewId(_request, twoStepVerificationEnabled);
     _topicReplicationFactorChangeParameters = maybeBuildTopicReplicationFactorChangeParameters(_configs);
     if (areAllParametersNull(_topicReplicationFactorChangeParameters)) {
-      throw new IllegalArgumentException("Nothing executable found in request.");
+      throw new UserRequestException("Nothing executable found in request.");
     }
   }
 
@@ -89,5 +102,10 @@ public class TopicConfigurationParameters extends GoalBasedOptimizationParameter
    */
   public enum TopicConfigurationType {
     REPLICATION_FACTOR
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }

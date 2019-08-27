@@ -8,8 +8,21 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DRY_RUN_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_URP_DEMOTION_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.EXCLUDE_FOLLOWER_DEMOTION_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_AND_LOGDIRS_PARAM;
 
 
 /**
@@ -32,6 +45,21 @@ import java.util.Set;
  * </pre>
  */
 public class DemoteBrokerParameters extends KafkaOptimizationParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(DRY_RUN_PARAM);
+    validParameterNames.add(BROKER_ID_PARAM);
+    validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(SKIP_URP_DEMOTION_PARAM);
+    validParameterNames.add(EXCLUDE_FOLLOWER_DEMOTION_PARAM);
+    validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    validParameterNames.add(REPLICATION_THROTTLE_PARAM);
+    validParameterNames.add(REVIEW_ID_PARAM);
+    validParameterNames.add(BROKER_ID_AND_LOGDIRS_PARAM);
+    validParameterNames.addAll(KafkaOptimizationParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected boolean _dryRun;
   protected Set<Integer> _brokerIds;
   protected Integer _concurrentLeaderMovements;
@@ -106,5 +134,10 @@ public class DemoteBrokerParameters extends KafkaOptimizationParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }

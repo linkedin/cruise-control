@@ -9,6 +9,11 @@ import java.io.IOException;
 import javax.servlet.http.HttpServletResponse;
 
 
+/**
+ * This is the interface of the response used by Cruise Control. Users can implement this interface and add the
+ * implementation class name to Cruise Control response configuration so that Cruise Control will return the response
+ * upon handling the corresponding request.
+ */
 public interface CruiseControlResponse {
 
   /**
