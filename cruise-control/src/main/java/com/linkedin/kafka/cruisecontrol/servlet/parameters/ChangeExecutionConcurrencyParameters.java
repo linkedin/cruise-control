@@ -6,7 +6,13 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
 
 
 /**
@@ -14,6 +20,14 @@ import java.util.Map;
  * This class holds all the request parameters for {@link AdminParameters.AdminType#CHANGE_CONCURRENCY}.
  */
 public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected Integer _concurrentInterBrokerPartitionMovements;
   protected Integer _concurrentLeaderMovements;
 
@@ -34,7 +48,7 @@ public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
    * @param configs Information collected from request and Cruise Control configs.
    * @return a ChangeExecutionConcurrencyParameters object; or null if any required parameters is not specified in the request.
    */
-  static ChangeExecutionConcurrencyParameters maybeBuildChangeExecutionConcurrencyParameters(Map<String, ?> configs)
+  public static ChangeExecutionConcurrencyParameters maybeBuildChangeExecutionConcurrencyParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {
     ChangeExecutionConcurrencyParameters changeExecutionConcurrencyParameters = new ChangeExecutionConcurrencyParameters();
     changeExecutionConcurrencyParameters.configure(configs);
@@ -53,5 +67,10 @@ public class ChangeExecutionConcurrencyParameters  extends AbstractParameters {
 
   public Integer concurrentLeaderMovements() {
     return _concurrentLeaderMovements;
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }

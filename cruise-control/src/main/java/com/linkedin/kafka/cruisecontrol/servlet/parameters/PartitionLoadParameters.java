@@ -8,9 +8,24 @@ import com.linkedin.kafka.cruisecontrol.common.Resource;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.RESOURCE_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.START_MS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.END_MS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ENTRIES_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ALLOW_CAPACITY_ESTIMATION_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MAX_LOAD_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.AVG_LOAD_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TOPIC_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.PARTITION_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.MIN_VALID_PARTITION_RATIO_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.BROKER_ID_PARAM;
 
 
 /**
@@ -26,6 +41,23 @@ import java.util.regex.Pattern;
  * </pre>
  */
 public class PartitionLoadParameters extends AbstractParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(RESOURCE_PARAM);
+    validParameterNames.add(START_MS_PARAM);
+    validParameterNames.add(END_MS_PARAM);
+    validParameterNames.add(ENTRIES_PARAM);
+    validParameterNames.add(TOPIC_PARAM);
+    validParameterNames.add(PARTITION_PARAM);
+    validParameterNames.add(MIN_VALID_PARTITION_RATIO_PARAM);
+    validParameterNames.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    validParameterNames.add(MAX_LOAD_PARAM);
+    validParameterNames.add(AVG_LOAD_PARAM);
+    validParameterNames.add(BROKER_ID_PARAM);
+    validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected Resource _resource;
   protected long _startMs;
   protected long _endMs;
@@ -38,7 +70,6 @@ public class PartitionLoadParameters extends AbstractParameters {
   protected boolean _wantMaxLoad;
   protected boolean _wantAvgLoad;
   protected Set<Integer> _brokerIds;
-
 
   public PartitionLoadParameters() {
     super();
@@ -122,5 +153,10 @@ public class PartitionLoadParameters extends AbstractParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }

@@ -9,6 +9,8 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -53,38 +55,63 @@ public class ResponseUtils {
   static void writeResponseToOutputStream(HttpServletResponse response,
                                           int responseCode,
                                           boolean json,
-                                          String responseMsg,
-                                          KafkaCruiseControlConfig config
-                                         )
+                                          String responseMessage,
+                                          KafkaCruiseControlConfig config)
       throws IOException {
     OutputStream out = response.getOutputStream();
     setResponseCode(response, responseCode, json, config);
     response.addHeader("Cruise-Control-Version", KafkaCruiseControl.cruiseControlVersion());
     response.addHeader("Cruise-Control-Commit_Id", KafkaCruiseControl.cruiseControlCommitId());
-    response.setContentLength(responseMsg.length());
-    out.write(responseMsg.getBytes(StandardCharsets.UTF_8));
+    response.setContentLength(responseMessage.length());
+    out.write(responseMessage.getBytes(StandardCharsets.UTF_8));
     out.flush();
   }
 
+  /**
+   * Retrieve stack trace (if any).
+   *
+   * @param e Exception from which the stack trace will be retrieved.
+   * @return Stack trace if the given exception is not {@code null}, empty string otherwise.
+   */
+  private static String stackTrace(Exception e) {
+    if (e == null) {
+      return "";
+    }
+
+    StringWriter sw = new StringWriter();
+    e.printStackTrace(new PrintWriter(sw));
+    return sw.toString();
+  }
+
+  /**
+   * Write error response to the output stream.
+   *
+   * @param response HTTP response to return to user.
+   * @param e Exception (if any) corresponding to the error, {@code null} otherwise.
+   * @param errorMessage Error message to return in the response message.
+   * @param responseCode HTTP Status code to indicate the error.
+   * @param json True if json, false otherwise.
+   * @param config The configurations for Cruise Control.
+   */
   public static void writeErrorResponse(HttpServletResponse response,
-                                        String stackTrace,
+                                        Exception e,
                                         String errorMessage,
                                         int responseCode,
                                         boolean json,
                                         KafkaCruiseControlConfig config)
       throws IOException {
-    String responseMsg;
+    String responseMessage;
     if (json) {
       Map<String, Object> exceptionMap = new HashMap<>();
       exceptionMap.put(VERSION, JSON_VERSION);
-      exceptionMap.put(STACK_TRACE, stackTrace);
+      exceptionMap.put(STACK_TRACE, stackTrace(e));
       exceptionMap.put(ERROR_MESSAGE, errorMessage);
       Gson gson = new Gson();
-      responseMsg = gson.toJson(exceptionMap);
+      responseMessage = gson.toJson(exceptionMap);
     } else {
-      responseMsg = errorMessage == null ? "" : errorMessage;
+      responseMessage = errorMessage == null ? "" : errorMessage;
     }
     // Send the CORS Task ID header as part of this error response if 2-step verification is enabled.
-    writeResponseToOutputStream(response, responseCode, json, responseMsg, config);
+    writeResponseToOutputStream(response, responseCode, json, responseMessage, config);
   }
 }
