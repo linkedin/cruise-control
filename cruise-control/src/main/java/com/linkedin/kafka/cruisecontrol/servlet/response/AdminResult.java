@@ -50,15 +50,15 @@ public class AdminResult extends AbstractCruiseControlResponse {
 
   protected String getJSONString() {
     // Set initial capacity to max possible capacity to avoid rehashing.
-    Map<String, Object> jsonStructure = new HashMap<>(4);
+    Map<String, Object> jsonStructure = new HashMap<>(5);
     if (!_selfHealingEnabledBefore.isEmpty()) {
       jsonStructure.put(SELF_HEALING_ENABLED_BEFORE, _selfHealingEnabledBefore);
       jsonStructure.put(SELF_HEALING_ENABLED_AFTER, _selfHealingEnabledAfter);
     }
-    if (_ongoingConcurrencyChangeRequest != null) {
+    if (_ongoingConcurrencyChangeRequest != null && !_ongoingConcurrencyChangeRequest.isEmpty()) {
       jsonStructure.put(ONGOING_CONCURRENCY_CHANGE_REQUEST, _ongoingConcurrencyChangeRequest);
     }
-    if (_dropRecentBrokersRequest != null) {
+    if (_dropRecentBrokersRequest != null && !_dropRecentBrokersRequest.isEmpty()) {
       jsonStructure.put(DROP_RECENT_BROKERS_REQUEST, _dropRecentBrokersRequest);
     }
     jsonStructure.put(VERSION, JSON_VERSION);
@@ -72,10 +72,10 @@ public class AdminResult extends AbstractCruiseControlResponse {
       sb.append(String.format("%s: %s, %s: %s%n", SELF_HEALING_ENABLED_BEFORE, _selfHealingEnabledBefore,
                               SELF_HEALING_ENABLED_AFTER, _selfHealingEnabledAfter));
     }
-    if (_ongoingConcurrencyChangeRequest != null) {
+    if (_ongoingConcurrencyChangeRequest != null && !_ongoingConcurrencyChangeRequest.isEmpty()) {
       sb.append(String.format("%s: %s%n", ONGOING_CONCURRENCY_CHANGE_REQUEST, _ongoingConcurrencyChangeRequest));
     }
-    if (_dropRecentBrokersRequest != null) {
+    if (_dropRecentBrokersRequest != null && !_dropRecentBrokersRequest.isEmpty()) {
       sb.append(String.format("%s: %s%n", DROP_RECENT_BROKERS_REQUEST, _dropRecentBrokersRequest));
     }
     sb.append("}");

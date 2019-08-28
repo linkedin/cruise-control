@@ -7,15 +7,43 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.servlet.UserRequestException;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
 import java.util.regex.Pattern;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TOPIC_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_FACTOR_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_RACK_AWARENESS_CHECK_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DRY_RUN_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
+
 
 /**
  * Optional parameters for {@link com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint#TOPIC_CONFIGURATION}.
  * This class holds all the request parameters for {@link TopicConfigurationParameters.TopicConfigurationType#REPLICATION_FACTOR}.
  */
 public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizationParameters {
-
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(TOPIC_PARAM);
+    validParameterNames.add(REPLICATION_FACTOR_PARAM);
+    validParameterNames.add(SKIP_RACK_AWARENESS_CHECK_PARAM);
+    validParameterNames.add(DRY_RUN_PARAM);
+    validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
+    validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
+    validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
+    validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
+    validParameterNames.add(REPLICATION_THROTTLE_PARAM);
+    validParameterNames.addAll(GoalBasedOptimizationParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected Map<Short, Pattern> _topicPatternByReplicationFactor;
   protected boolean _skipRackAwarenessCheck;
   protected boolean _dryRun;
@@ -61,7 +89,7 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
     if (topicReplicationFactorChangeParameters.topicPatternByReplicationFactor().isEmpty()) {
       return null;
     }
-  return topicReplicationFactorChangeParameters;
+    return topicReplicationFactorChangeParameters;
   }
 
   public Map<Short, Pattern> topicPatternByReplicationFactor() {
@@ -94,5 +122,10 @@ public class TopicReplicationFactorChangeParameters extends GoalBasedOptimizatio
 
   public Long replicationThrottle() {
     return _replicationThrottle;
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }

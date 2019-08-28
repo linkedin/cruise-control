@@ -6,14 +6,29 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DROP_RECENTLY_REMOVED_BROKERS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DROP_RECENTLY_DEMOTED_BROKERS_PARAM;
+
 
 /**
  * Optional Parameters for {@link CruiseControlEndPoint#ADMIN}.
  * This class holds all the request parameters for {@link AdminParameters.AdminType#DROP_RECENT_BROKERS}.
  */
 public class DropRecentBrokersParameters extends AbstractParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(DROP_RECENTLY_REMOVED_BROKERS_PARAM);
+    validParameterNames.add(DROP_RECENTLY_DEMOTED_BROKERS_PARAM);
+    validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected Set<Integer> _dropRecentlyRemovedBrokers;
   protected Set<Integer> _dropRecentlyDemotedBrokers;
 
@@ -34,7 +49,7 @@ public class DropRecentBrokersParameters extends AbstractParameters {
    * @param configs Information collected from request and Cruise Control configs.
    * @return a DropRecentBrokersParameters object; or null if any required parameter is not specified in the request.
    */
-  static DropRecentBrokersParameters maybeBuildDropRecentBrokersParameters(Map<String, ?> configs)
+  public static DropRecentBrokersParameters maybeBuildDropRecentBrokersParameters(Map<String, ?> configs)
       throws UnsupportedEncodingException {
     DropRecentBrokersParameters dropRecentBrokersParameters = new DropRecentBrokersParameters();
     dropRecentBrokersParameters.configure(configs);
@@ -53,5 +68,10 @@ public class DropRecentBrokersParameters extends AbstractParameters {
 
   public Set<Integer> dropRecentlyDemotedBrokers() {
     return _dropRecentlyDemotedBrokers;
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }

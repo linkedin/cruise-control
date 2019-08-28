@@ -7,7 +7,16 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.TIME_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.END_MS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.START_MS_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.ALLOW_CAPACITY_ESTIMATION_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.POPULATE_DISK_INFO_PARAM;
 
 
 /**
@@ -24,6 +33,17 @@ import java.util.Map;
  * </pre>
  */
 public class ClusterLoadParameters extends AbstractParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(TIME_PARAM);
+    validParameterNames.add(END_MS_PARAM);
+    validParameterNames.add(START_MS_PARAM);
+    validParameterNames.add(ALLOW_CAPACITY_ESTIMATION_PARAM);
+    validParameterNames.add(POPULATE_DISK_INFO_PARAM);
+    validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected long _endMs;
   protected long _startMs;
   protected ModelCompletenessRequirements _requirements;
@@ -68,5 +88,10 @@ public class ClusterLoadParameters extends AbstractParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }

@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REVIEW;
 import static com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint.REVIEW_BOARD;
 import static com.linkedin.kafka.cruisecontrol.servlet.KafkaCruiseControlServletUtils.*;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.hasValidParameters;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.hasValidParameterNames;
 
 
 /**
@@ -111,7 +111,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     try {
       _asyncOperationStep.set(0);
       CruiseControlEndPoint endPoint = getValidEndpoint(request, response, _config);
-      if (endPoint != null && hasValidParameters(request, response, _config)) {
+      if (endPoint != null) {
         _requestMeter.get(endPoint).mark();
         Map<String, Object> requestConfigOverrides = new HashMap<>();
         requestConfigOverrides.put(KAFKA_CRUISE_CONTROL_SERVLET_OBJECT_CONFIG, this);
@@ -150,20 +150,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   }
 
   /**
-   * The GET method allows users to perform the following actions:
-   *
-   * <pre>
-   * 1. Bootstrap the load monitor (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.BootstrapParameters}).
-   * 2. Train the Kafka Cruise Control linear regression model (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.TrainParameters}).
-   * 3. Get the cluster load (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.ClusterLoadParameters}).
-   * 4. Get the partition load (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters}).
-   * 5. Get an optimization proposal (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters}).
-   * 6. Get the state of Cruise Control (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.CruiseControlStateParameters}).
-   * 7. Get the Kafka cluster state (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.KafkaClusterStateParameters}).
-   * 8. Get active user tasks (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters}).
-   * 9. Get reviews in the review board (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewBoardParameters}).
-   * <b>NOTE: All the timestamps are epoch time in second granularity.</b>
-   * </pre>
+   * The GET method allows users to perform actions supported by {@link CruiseControlEndPoint#getEndpoints()}.
    */
   private void handleGet(HttpServletRequest request,
                          HttpServletResponse response,
@@ -181,28 +168,16 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     CruiseControlParameters parameters = _config.getConfiguredInstance(requestParameter.parametersClass(),
                                                                        CruiseControlParameters.class,
                                                                        parameterConfigOverrides);
-    requestConfigOverrides.put(requestParameter.parameterObject(), parameters);
-    Request ccRequest = _config.getConfiguredInstance(requestParameter.requestClass(), Request.class, requestConfigOverrides);
+    if (hasValidParameterNames(request, response, _config, parameters)) {
+      requestConfigOverrides.put(requestParameter.parameterObject(), parameters);
+      Request ccRequest = _config.getConfiguredInstance(requestParameter.requestClass(), Request.class, requestConfigOverrides);
 
-    ccRequest.handle(request, response);
+      ccRequest.handle(request, response);
+    }
   }
 
   /**
-   * The POST method allows users to perform the following actions:
-   *
-   * <pre>
-   * 1. Decommission a broker (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveBrokerParameters}).
-   * 2. Add a broker (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.AddBrokerParameters}).
-   * 3. Trigger a workload balance (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters}).
-   * 4. Stop the proposal execution (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.StopProposalParameters}).
-   * 5. Pause metrics sampling (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters}).
-   * 6. Resume metrics sampling (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.PauseResumeParameters}).
-   * 7. Demote a broker (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.DemoteBrokerParameters}).
-   * 8. Admin operations on Cruise Control (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.AdminParameters}).
-   * 9. Change topic configurations (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters}).
-   * 10. Review requests for two-step verification (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.ReviewParameters}).
-   * 11. Fix offline replicas (See {@link com.linkedin.kafka.cruisecontrol.servlet.parameters.FixOfflineReplicasParameters}).
-   * </pre>
+   * The POST method allows users to perform actions supported by {@link CruiseControlEndPoint#postEndpoints()}.
    */
   private void handlePost(HttpServletRequest request,
                           HttpServletResponse response,
@@ -211,7 +186,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
                           Map<String, Object> parameterConfigOverrides)
       throws InterruptedException, ExecutionException, IOException {
     CruiseControlParameters parameters;
-    Request ccRequest = null;
     RequestParameterWrapper requestParameter = requestParameterFor(endPoint);
     if (endPoint == REVIEW) {
       // Sanity check: if the request is for REVIEW, two step verification must be enabled.
@@ -221,10 +195,21 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       }
 
       parameters = _config.getConfiguredInstance(requestParameter.parametersClass(), CruiseControlParameters.class, parameterConfigOverrides);
+      if (!hasValidParameterNames(request, response, _config, parameters)) {
+        return;
+      }
+    } else if (!_twoStepVerification) {
+      // Do not add to the purgatory if the two-step verification is disabled.
+      parameters = _config.getConfiguredInstance(requestParameter.parametersClass(), CruiseControlParameters.class, parameterConfigOverrides);
+      if (!hasValidParameterNames(request, response, _config, parameters)) {
+        return;
+      }
     } else {
-      parameters = evaluateReviewableParams(request, response, requestParameter.parametersClass(), parameterConfigOverrides);
+      // Add to the purgatory if the two-step verification is enabled.
+      parameters = _purgatory.maybeAddToPurgatory(request, response, requestParameter.parametersClass(), parameterConfigOverrides, _userTaskManager);
     }
 
+    Request ccRequest = null;
     if (parameters != null) {
       requestConfigOverrides.put(requestParameter.parameterObject(), parameters);
       ccRequest = _config.getConfiguredInstance(requestParameter.requestClass(), Request.class, requestConfigOverrides);
@@ -233,19 +218,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     if (ccRequest != null) {
       // ccRequest would be null if request is added to Purgatory.
       ccRequest.handle(request, response);
-    }
-  }
-
-  private CruiseControlParameters evaluateReviewableParams(HttpServletRequest request,
-                                                           HttpServletResponse response,
-                                                           String classConfig,
-                                                           Map<String, Object> parameterConfigOverrides)
-      throws IOException {
-    // Do not add to the purgatory if the two-step verification is disabled.
-    if (!_twoStepVerification) {
-      return _config.getConfiguredInstance(classConfig, CruiseControlParameters.class, parameterConfigOverrides);
-    } else {
-      return _purgatory.maybeAddToPurgatory(request, response, classConfig, parameterConfigOverrides, _userTaskManager);
     }
   }
 

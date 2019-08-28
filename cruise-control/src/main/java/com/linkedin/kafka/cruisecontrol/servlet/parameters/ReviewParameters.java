@@ -7,8 +7,15 @@ package com.linkedin.kafka.cruisecontrol.servlet.parameters;
 import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import com.linkedin.kafka.cruisecontrol.servlet.purgatory.ReviewStatus;
 import java.io.UnsupportedEncodingException;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
+import java.util.SortedSet;
+import java.util.TreeSet;
+
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.APPROVE_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DISCARD_PARAM;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REASON_PARAM;
 
 
 /**
@@ -20,6 +27,15 @@ import java.util.Set;
  * </pre>
  */
 public class ReviewParameters extends AbstractParameters {
+  protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
+  static {
+    SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    validParameterNames.add(REASON_PARAM);
+    validParameterNames.add(APPROVE_PARAM);
+    validParameterNames.add(DISCARD_PARAM);
+    validParameterNames.addAll(AbstractParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
+  }
   protected String _reason;
   protected Map<ReviewStatus, Set<Integer>> _reviewRequests;
 
@@ -45,5 +61,10 @@ public class ReviewParameters extends AbstractParameters {
   @Override
   public void configure(Map<String, ?> configs) {
     super.configure(configs);
+  }
+
+  @Override
+  public SortedSet<String> caseInsensitiveParameterNames() {
+    return CASE_INSENSITIVE_PARAMETER_NAMES;
   }
 }
