@@ -46,6 +46,11 @@ public class RequestInfo {
   private volatile boolean _accessToAlreadySubmittedRequest;
 
   public <P extends CruiseControlParameters> RequestInfo(HttpServletRequest request, P parameters) {
+    if (request == null) {
+      throw new IllegalArgumentException("Request is missing from the request info.");
+    } else if (parameters == null) {
+      throw new IllegalArgumentException("Parameter is missing from the request info.");
+    }
     _submitterAddress = getClientIpAddress(request);
     _submissionTimeMs = System.currentTimeMillis();
     _parameterMap = request.getParameterMap();

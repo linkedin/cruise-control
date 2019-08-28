@@ -206,11 +206,7 @@ public class KafkaCruiseControlServlet extends HttpServlet {
       }
     } else {
       // Add to the purgatory if the two-step verification is enabled.
-      try {
-        parameters = _purgatory.maybeAddToPurgatory(request, response, requestParameter.parametersClass(), parameterConfigOverrides, _userTaskManager);
-      } catch (IllegalArgumentException iae) {
-        return;
-      }
+      parameters = _purgatory.maybeAddToPurgatory(request, response, requestParameter.parametersClass(), parameterConfigOverrides, _userTaskManager);
     }
 
     Request ccRequest = null;

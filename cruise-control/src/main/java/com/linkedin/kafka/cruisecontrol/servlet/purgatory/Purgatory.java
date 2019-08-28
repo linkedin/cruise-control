@@ -97,6 +97,22 @@ public class Purgatory implements Closeable {
     return result;
   }
 
+  /**
+   * Add the given request to the purgatory unless:
+   * <ul>
+   *   <li>Request is already in the purgatory and contains the corresponding reviewId to retrieve its parameters.</li>
+   *   <li>Request contains invalid parameter names.</li>
+   *   <li>Parameters specified in the request cannot be parsed.</li>
+   * </ul>
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param response HTTP response of Cruise Control. Populated in case the request is not already in the purgatory.
+   * @param classConfig Config indicating the class of the pluggable parameter.
+   * @param parameterConfigOverrides Configs to override upon creating the pluggable parameter.
+   * @param userTaskManager a reference to {@link UserTaskManager}
+   * @return Parameters of the request if it is in the purgatory, and requested with the corresponding reviewId,
+   * {@code null} otherwise.
+   */
   public CruiseControlParameters maybeAddToPurgatory(HttpServletRequest request,
                                                      HttpServletResponse response,
                                                      String classConfig,
@@ -115,10 +131,7 @@ public class Purgatory implements Closeable {
       CruiseControlParameters parameters = _config.getConfiguredInstance(classConfig,
                                                                          CruiseControlParameters.class,
                                                                          parameterConfigOverrides);
-      if (!hasValidParameterNames(request, response, _config, parameters)) {
-        throw new IllegalArgumentException("Attempt to add request with invalid parameter names to purgatory.");
-      }
-      if (!parameters.parseParameters(response)) {
+      if (hasValidParameterNames(request, response, _config, parameters) && !parameters.parseParameters(response)) {
         // Add request to purgatory and return ReviewResult.
         ReviewResult reviewResult = addRequest(request, parameters);
         reviewResult.writeSuccessResponse(parameters, response);

@@ -173,6 +173,16 @@ public class ParameterUtils {
     writeErrorResponse(response, e, errorMessage, SC_BAD_REQUEST, json, config);
   }
 
+  /**
+   * Check whether the request has valid parameter names. If not, populate the HTTP response with the corresponding
+   * error message and return false, return true otherwise.
+   *
+   * @param request HTTP request received by Cruise Control.
+   * @param response HTTP response of Cruise Control. Populated in case of an error.
+   * @param config The configurations for Cruise Control.
+   * @param parameters Request parameters
+   * @return True if the request has valid parameter names, false otherwise (and response is populated).
+   */
   public static boolean hasValidParameterNames(HttpServletRequest request,
                                                HttpServletResponse response,
                                                KafkaCruiseControlConfig config,
