@@ -35,6 +35,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
 public class SamplingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(SamplingUtils.class);
   private static final String SKIP_BUILDING_SAMPLE_PREFIX = "Skip generating metric sample for ";
+  public static final int UNRECOGNIZED_BROKER_ID = -1;
 
   private SamplingUtils() {
   }
@@ -185,7 +186,7 @@ public class SamplingUtils {
     Node leaderNode = cluster.leaderFor(tpDotNotHandled);
     if (leaderNode == null) {
       LOG.trace("Partition {} has no current leader.", tpDotNotHandled);
-      skippedPartitionByBroker.merge(-1, 1, Integer::sum);
+      skippedPartitionByBroker.merge(UNRECOGNIZED_BROKER_ID, 1, Integer::sum);
       return null;
     }
     int leaderId = leaderNode.id();

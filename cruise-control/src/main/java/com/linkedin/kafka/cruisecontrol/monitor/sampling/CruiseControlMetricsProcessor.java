@@ -22,10 +22,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getRackHandleNull;
+import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.UNRECOGNIZED_BROKER_ID;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.buildBrokerMetricSample;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.buildPartitionMetricSample;
 import static com.linkedin.kafka.cruisecontrol.monitor.sampling.SamplingUtils.leaderDistribution;
-
 
 /**
  * Process the raw metrics collected by {@link CruiseControlMetricsReporterSampler} from the Kafka cluster.
@@ -73,7 +73,7 @@ public class CruiseControlMetricsProcessor {
       _cachedNumCoresByBroker.computeIfAbsent(brokerId, bid -> {
         Node node = cluster.nodeById(bid);
         if (node == null) {
-          LOG.error("Received metrics from unrecognized broker {}.", bid);
+          LOG.warn("Received metrics from unrecognized broker {}.", bid);
           return null;
         }
         BrokerCapacityInfo capacity = _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid);
@@ -110,10 +110,10 @@ public class CruiseControlMetricsProcessor {
     _brokerLoad.forEach((broker, load) -> load.prepareBrokerMetrics(cluster, broker, _maxMetricTimestamp));
 
     // Get partition metric samples.
-    Map<Integer, Integer> skippedPartition = null;
+    Map<Integer, Integer> skippedPartitionByBroker = null;
     Set<PartitionMetricSample> partitionMetricSamples = new HashSet<>();
     if (samplingMode == MetricSampler.SamplingMode.ALL || samplingMode == MetricSampler.SamplingMode.PARTITION_METRICS_ONLY) {
-      skippedPartition = addPartitionMetricSamples(cluster, partitionsDotNotHandled, partitionMetricSamples);
+      skippedPartitionByBroker = addPartitionMetricSamples(cluster, partitionsDotNotHandled, partitionMetricSamples);
     }
 
     // Get broker metric samples.
@@ -124,12 +124,9 @@ public class CruiseControlMetricsProcessor {
     }
 
     LOG.info("Generated {}{} partition metric samples and {}{} broker metric samples for timestamp {}.",
-             partitionMetricSamples.size(),
-             skippedPartition != null ? String.format("(%s skipped by broker %s)",
-                                                      skippedPartition.values().stream().mapToInt(v -> v).sum(), skippedPartition)
-                                      : "",
-             brokerMetricSamples.size(), skippedBroker > 0 ? "(" + skippedBroker + " skipped)" : "",
-             _maxMetricTimestamp);
+             partitionMetricSamples.size(), (skippedPartitionByBroker != null && !skippedPartitionByBroker.isEmpty()) ?
+             String.format("(%s skipped by broker %s)", skippedPartitionByBroker.values().stream().mapToInt(v -> v).sum(), skippedPartitionByBroker) : "",
+             brokerMetricSamples.size(), skippedBroker > 0 ? "(" + skippedBroker + " skipped)" : "", _maxMetricTimestamp);
     return new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples);
   }
 
@@ -144,7 +141,8 @@ public class CruiseControlMetricsProcessor {
    * @param cluster Kafka cluster
    * @param partitionsDotNotHandled The partitions to get samples. The topic partition name may have dots.
    * @param partitionMetricSamples The set to add the partition samples to.
-   * @return The number of skipped partitions by broker ids.
+   * @return The number of skipped partitions by broker ids. A broker id of {@link SamplingUtils#UNRECOGNIZED_BROKER_ID}
+   *         indicates unrecognized broker.
    */
   private Map<Integer, Integer> addPartitionMetricSamples(Cluster cluster,
                                                           Set<TopicPartition> partitionsDotNotHandled,
@@ -161,7 +159,7 @@ public class CruiseControlMetricsProcessor {
         }
       } catch (Exception e) {
         LOG.error("Error building partition metric sample for {}.", tpDotNotHandled, e);
-        skippedPartitionByBroker.merge(-1, 1, Integer::sum);
+        skippedPartitionByBroker.merge(UNRECOGNIZED_BROKER_ID, 1, Integer::sum);
       }
     }
     return skippedPartitionByBroker;
