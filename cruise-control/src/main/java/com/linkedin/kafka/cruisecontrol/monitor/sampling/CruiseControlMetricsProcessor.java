@@ -72,6 +72,10 @@ public class CruiseControlMetricsProcessor {
       // Compute cached number of cores by broker id if they have not been cached already.
       _cachedNumCoresByBroker.computeIfAbsent(brokerId, bid -> {
         Node node = cluster.nodeById(bid);
+        if (node == null) {
+          LOG.error("Received metrics from unrecognized broker {}.", bid);
+          return null;
+        }
         BrokerCapacityInfo capacity = _brokerCapacityConfigResolver.capacityForBroker(getRackHandleNull(node), node.host(), bid);
         // No mapping shall be recorded if capacity is estimated, but estimation is not allowed.
         return (!_allowCpuCapacityEstimation && capacity.isEstimated()) ? null : capacity.numCpuCores();
@@ -106,7 +110,7 @@ public class CruiseControlMetricsProcessor {
     _brokerLoad.forEach((broker, load) -> load.prepareBrokerMetrics(cluster, broker, _maxMetricTimestamp));
 
     // Get partition metric samples.
-    int skippedPartition = 0;
+    Map<Integer, Integer> skippedPartition = null;
     Set<PartitionMetricSample> partitionMetricSamples = new HashSet<>();
     if (samplingMode == MetricSampler.SamplingMode.ALL || samplingMode == MetricSampler.SamplingMode.PARTITION_METRICS_ONLY) {
       skippedPartition = addPartitionMetricSamples(cluster, partitionsDotNotHandled, partitionMetricSamples);
@@ -120,7 +124,10 @@ public class CruiseControlMetricsProcessor {
     }
 
     LOG.info("Generated {}{} partition metric samples and {}{} broker metric samples for timestamp {}.",
-             partitionMetricSamples.size(), skippedPartition > 0 ? "(" + skippedPartition + " skipped)" : "",
+             partitionMetricSamples.size(),
+             skippedPartition != null ? String.format("(%s skipped by broker %s)",
+                                                      skippedPartition.values().stream().mapToInt(v -> v).sum(), skippedPartition)
+                                      : "",
              brokerMetricSamples.size(), skippedBroker > 0 ? "(" + skippedBroker + " skipped)" : "",
              _maxMetricTimestamp);
     return new MetricSampler.Samples(partitionMetricSamples, brokerMetricSamples);
@@ -137,29 +144,27 @@ public class CruiseControlMetricsProcessor {
    * @param cluster Kafka cluster
    * @param partitionsDotNotHandled The partitions to get samples. The topic partition name may have dots.
    * @param partitionMetricSamples The set to add the partition samples to.
-   * @return The number of skipped partitions.
+   * @return The number of skipped partitions by broker ids.
    */
-  private int addPartitionMetricSamples(Cluster cluster,
-                                        Set<TopicPartition> partitionsDotNotHandled,
-                                        Set<PartitionMetricSample> partitionMetricSamples) {
-    int skippedPartition = 0;
+  private Map<Integer, Integer> addPartitionMetricSamples(Cluster cluster,
+                                                          Set<TopicPartition> partitionsDotNotHandled,
+                                                          Set<PartitionMetricSample> partitionMetricSamples) {
+    Map<Integer, Integer> skippedPartitionByBroker = new HashMap<>();
     Map<Integer, Map<String, Integer>> leaderDistribution = leaderDistribution(cluster);
     for (TopicPartition tpDotNotHandled : partitionsDotNotHandled) {
       try {
-        PartitionMetricSample sample = buildPartitionMetricSample(cluster, leaderDistribution, tpDotNotHandled,
-                                                                  _brokerLoad, _maxMetricTimestamp, _cachedNumCoresByBroker);
+        PartitionMetricSample sample = buildPartitionMetricSample(cluster, leaderDistribution, tpDotNotHandled, _brokerLoad,
+                                                                  _maxMetricTimestamp, _cachedNumCoresByBroker, skippedPartitionByBroker);
         if (sample != null) {
           LOG.trace("Added partition metrics sample for {}.", tpDotNotHandled);
           partitionMetricSamples.add(sample);
-        } else {
-          skippedPartition++;
         }
       } catch (Exception e) {
         LOG.error("Error building partition metric sample for {}.", tpDotNotHandled, e);
-        skippedPartition++;
+        skippedPartitionByBroker.merge(-1, 1, Integer::sum);
       }
     }
-    return skippedPartition;
+    return skippedPartitionByBroker;
   }
 
   /**

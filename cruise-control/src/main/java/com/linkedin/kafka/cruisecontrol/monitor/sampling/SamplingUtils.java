@@ -172,6 +172,7 @@ public class SamplingUtils {
    * @param brokerLoadById Load information for brokers by the broker id.
    * @param maxMetricTimestamp Maximum timestamp of the sampled metric during the sampling process.
    * @param cachedNumCoresByBroker Cached number of cores by broker.
+   * @param skippedPartitionByBroker Number of skipped partition samples by broker ids.
    * @return Metric sample populated with topic and partition metrics, or {@code null} if sample generation is skipped.
    */
   static PartitionMetricSample buildPartitionMetricSample(Cluster cluster,
@@ -179,10 +180,12 @@ public class SamplingUtils {
                                                           TopicPartition tpDotNotHandled,
                                                           Map<Integer, BrokerLoad> brokerLoadById,
                                                           long maxMetricTimestamp,
-                                                          Map<Integer, Short> cachedNumCoresByBroker) {
+                                                          Map<Integer, Short> cachedNumCoresByBroker,
+                                                          Map<Integer, Integer> skippedPartitionByBroker) {
     Node leaderNode = cluster.leaderFor(tpDotNotHandled);
     if (leaderNode == null) {
       LOG.trace("Partition {} has no current leader.", tpDotNotHandled);
+      skippedPartitionByBroker.merge(-1, 1, Integer::sum);
       return null;
     }
     int leaderId = leaderNode.id();
@@ -190,6 +193,7 @@ public class SamplingUtils {
     BrokerLoad brokerLoad = brokerLoadById.get(leaderId);
     TopicPartition tpWithDotHandled = partitionHandleDotInTopicName(tpDotNotHandled);
     if (skipBuildingPartitionMetricSample(tpDotNotHandled, tpWithDotHandled, leaderId, brokerLoad, cachedNumCoresByBroker)) {
+      skippedPartitionByBroker.merge(leaderId, 1, Integer::sum);
       return null;
     }
 
