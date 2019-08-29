@@ -35,6 +35,7 @@ import static com.linkedin.kafka.cruisecontrol.metricsreporter.metric.RawMetricT
 public class SamplingUtils {
   private static final Logger LOG = LoggerFactory.getLogger(SamplingUtils.class);
   private static final String SKIP_BUILDING_SAMPLE_PREFIX = "Skip generating metric sample for ";
+  public static final int UNRECOGNIZED_BROKER_ID = -1;
 
   private SamplingUtils() {
   }
@@ -172,6 +173,7 @@ public class SamplingUtils {
    * @param brokerLoadById Load information for brokers by the broker id.
    * @param maxMetricTimestamp Maximum timestamp of the sampled metric during the sampling process.
    * @param cachedNumCoresByBroker Cached number of cores by broker.
+   * @param skippedPartitionByBroker Number of skipped partition samples by broker ids.
    * @return Metric sample populated with topic and partition metrics, or {@code null} if sample generation is skipped.
    */
   static PartitionMetricSample buildPartitionMetricSample(Cluster cluster,
@@ -179,10 +181,12 @@ public class SamplingUtils {
                                                           TopicPartition tpDotNotHandled,
                                                           Map<Integer, BrokerLoad> brokerLoadById,
                                                           long maxMetricTimestamp,
-                                                          Map<Integer, Short> cachedNumCoresByBroker) {
+                                                          Map<Integer, Short> cachedNumCoresByBroker,
+                                                          Map<Integer, Integer> skippedPartitionByBroker) {
     Node leaderNode = cluster.leaderFor(tpDotNotHandled);
     if (leaderNode == null) {
       LOG.trace("Partition {} has no current leader.", tpDotNotHandled);
+      skippedPartitionByBroker.merge(UNRECOGNIZED_BROKER_ID, 1, Integer::sum);
       return null;
     }
     int leaderId = leaderNode.id();
@@ -190,6 +194,7 @@ public class SamplingUtils {
     BrokerLoad brokerLoad = brokerLoadById.get(leaderId);
     TopicPartition tpWithDotHandled = partitionHandleDotInTopicName(tpDotNotHandled);
     if (skipBuildingPartitionMetricSample(tpDotNotHandled, tpWithDotHandled, leaderId, brokerLoad, cachedNumCoresByBroker)) {
+      skippedPartitionByBroker.merge(leaderId, 1, Integer::sum);
       return null;
     }
 
