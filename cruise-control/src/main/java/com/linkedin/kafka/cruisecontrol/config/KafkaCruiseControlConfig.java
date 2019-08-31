@@ -251,7 +251,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   private void sanityCheckSamplingPeriod(Map<?, ?> originals) {
     long samplingIntervalMs = getLong(MonitorConfig.METRIC_SAMPLING_INTERVAL_MS_CONFIG);
-    long metadataTimeoutMs = getLong(MonitorConfig.METADATA_MAX_AGE_CONFIG);
+    long metadataTimeoutMs = getInt(MonitorConfig.METADATA_MAX_AGE_CONFIG);
     if (metadataTimeoutMs > samplingIntervalMs) {
       throw new ConfigException("Attempt to set metadata refresh timeout [" + metadataTimeoutMs +
                                 "] to be longer than sampling period [" + samplingIntervalMs + "].");

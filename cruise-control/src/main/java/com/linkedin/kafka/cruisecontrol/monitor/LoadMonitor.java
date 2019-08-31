@@ -51,13 +51,10 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.internals.ClusterResourceListeners;
-import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,13 +120,7 @@ public class LoadMonitor {
                      MetricRegistry dropwizardMetricRegistry,
                      MetricDef metricDef) {
     this(config,
-         new MetadataClient(config,
-                            new Metadata(METADATA_REFRESH_BACKOFF,
-                                         config.getLong(MonitorConfig.METADATA_MAX_AGE_CONFIG),
-                                         new LogContext(),
-                                         new ClusterResourceListeners()),
-                            METADATA_TTL,
-                            time),
+         new MetadataClient(config, METADATA_TTL, time),
          KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config)),
          time,
          executor,
@@ -159,7 +150,7 @@ public class LoadMonitor {
                                                                  TopicConfigProvider.class);
     _numPartitionMetricSampleWindows = config.getInt(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG);
 
-    _partitionMetricSampleAggregator = new KafkaPartitionMetricSampleAggregator(config, metadataClient.metadata());
+    _partitionMetricSampleAggregator = new KafkaPartitionMetricSampleAggregator(config, metadataClient.cluster());
 
     _brokerMetricSampleAggregator = new KafkaBrokerMetricSampleAggregator(config);
 
@@ -570,7 +561,7 @@ public class LoadMonitor {
    * @param timeout the timeout in milliseconds.
    * @return All the brokers in the cluster that has at least one replica assigned.
    */
-  public Set<Integer> brokersWithReplicas(long timeout) {
+  public Set<Integer> brokersWithReplicas(int timeout) {
     Cluster kafkaCluster = _metadataClient.refreshMetadata(timeout).cluster();
     return MonitorUtils.brokersWithReplicas(kafkaCluster);
   }
@@ -627,7 +618,7 @@ public class LoadMonitor {
    * @param timeout the timeout in milliseconds.
    * @return All the dead brokers which host some replicas in the cluster.
    */
-  public Set<Integer> deadBrokersWithReplicas(long timeout) {
+  public Set<Integer> deadBrokersWithReplicas(int timeout) {
     Cluster kafkaCluster = _metadataClient.refreshMetadata(timeout).cluster();
     return MonitorUtils.deadBrokersWithReplicas(kafkaCluster);
   }
@@ -638,7 +629,7 @@ public class LoadMonitor {
    * @param timeout the timeout in milliseconds.
    * @return All the brokers in the cluster that has at least one offline replica.
    */
-  public Set<Integer> brokersWithOfflineReplicas(long timeout) {
+  public Set<Integer> brokersWithOfflineReplicas(int timeout) {
     Cluster kafkaCluster = _metadataClient.refreshMetadata(timeout).cluster();
     return MonitorUtils.brokersWithOfflineReplicas(kafkaCluster);
   }

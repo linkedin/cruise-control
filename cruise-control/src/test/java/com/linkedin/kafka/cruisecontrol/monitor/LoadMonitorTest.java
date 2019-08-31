@@ -27,14 +27,19 @@ import com.linkedin.kafka.cruisecontrol.monitor.task.LoadMonitorTaskRunner;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Properties;
-import org.apache.kafka.clients.Metadata;
+import java.util.Set;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.DescribeLogDirsResult;
+import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.KafkaFuture;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.protocol.Errors;
 import org.apache.kafka.common.requests.DescribeLogDirsResponse;
@@ -45,7 +50,6 @@ import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.getMetadata;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.noTaskInProgress;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 import static org.apache.kafka.common.KafkaFuture.completedFuture;
@@ -484,20 +488,19 @@ public class LoadMonitorTest {
 
   private TestContext prepareContext(int numWindowToPreserve, boolean isClusterJBOD) {
     // Create mock metadata client.
-    Metadata metadata = getMetadata(Arrays.asList(T0P0, T0P1, T1P0, T1P1));
+    Cluster cluster = getCluster(Arrays.asList(T0P0, T0P1, T1P0, T1P1));
     MetadataClient mockMetadataClient = EasyMock.mock(MetadataClient.class);
     EasyMock.expect(mockMetadataClient.cluster())
-            .andReturn(metadata.fetch())
+            .andReturn(cluster)
             .anyTimes();
     EasyMock.expect(mockMetadataClient.clusterAndGeneration())
-            .andReturn(new MetadataClient.ClusterAndGeneration(metadata.fetch(), 0))
+            .andReturn(new MetadataClient.ClusterAndGeneration(cluster, 0))
             .anyTimes();
-    EasyMock.expect(mockMetadataClient.metadata()).andReturn(metadata).anyTimes();
     EasyMock.expect(mockMetadataClient.refreshMetadata())
-            .andReturn(new MetadataClient.ClusterAndGeneration(metadata.fetch(), 0))
+            .andReturn(new MetadataClient.ClusterAndGeneration(cluster, 0))
             .anyTimes();
-    EasyMock.expect(mockMetadataClient.refreshMetadata(anyLong()))
-            .andReturn(new MetadataClient.ClusterAndGeneration(metadata.fetch(), 0))
+    EasyMock.expect(mockMetadataClient.refreshMetadata(anyInt()))
+            .andReturn(new MetadataClient.ClusterAndGeneration(cluster, 0))
             .anyTimes();
     EasyMock.replay(mockMetadataClient);
 
@@ -549,7 +552,21 @@ public class LoadMonitorTest {
       }
     }
 
-    return new TestContext(loadMonitor, aggregator, config, metadata);
+    return new TestContext(loadMonitor, aggregator, config, cluster);
+  }
+
+  private Cluster getCluster(Collection<TopicPartition> partitions) {
+    Node node0 = new Node(0, "localhost", 100, "rack0");
+    Node node1 = new Node(1, "localhost", 100, "rack1");
+    Node[] nodes = {node0, node1};
+    Set<Node> allNodes = new HashSet<>(2);
+    allNodes.add(node0);
+    allNodes.add(node1);
+    Set<PartitionInfo> parts = new HashSet<>(partitions.size());
+    for (TopicPartition tp : partitions) {
+      parts.add(new PartitionInfo(tp.topic(), tp.partition(), node0, nodes, nodes));
+    }
+    return new Cluster("cluster-id", allNodes, parts, Collections.emptySet(), Collections.emptySet());
   }
 
   private DescribeLogDirsResult getDescribeLogDirsResult() {
@@ -589,16 +606,16 @@ public class LoadMonitorTest {
     private final LoadMonitor _loadMonitor;
     private final KafkaPartitionMetricSampleAggregator _aggregator;
     private final KafkaCruiseControlConfig _config;
-    private final Metadata _metadata;
+    private final Cluster _cluster;
 
     private TestContext(LoadMonitor loadMonitor,
                         KafkaPartitionMetricSampleAggregator aggregator,
                         KafkaCruiseControlConfig config,
-                        Metadata metadata) {
+                        Cluster cluster) {
       _loadMonitor = loadMonitor;
       _aggregator = aggregator;
       _config = config;
-      _metadata = metadata;
+      _cluster = cluster;
     }
 
     private LoadMonitor loadmonitor() {
@@ -613,8 +630,8 @@ public class LoadMonitorTest {
       return _config;
     }
 
-    private Metadata metadata() {
-      return _metadata;
+    private Cluster cluster() {
+      return _cluster;
     }
   }
 }

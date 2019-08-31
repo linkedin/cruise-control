@@ -33,14 +33,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import kafka.zk.KafkaZkClient;
 import kafka.zk.ZkVersion;
-import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.internals.ClusterResourceListeners;
-import org.apache.kafka.common.utils.LogContext;
 import org.apache.kafka.common.utils.Time;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -181,13 +178,7 @@ public class Executor {
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     _executionTaskManager = new ExecutionTaskManager(_adminClient, dropwizardMetricRegistry, time, config);
     _metadataClient = metadataClient != null ? metadataClient
-                                             : new MetadataClient(config,
-                                                                  new Metadata(METADATA_REFRESH_BACKOFF,
-                                                                               METADATA_EXPIRY_MS,
-                                                                               new LogContext(),
-                                                                               new ClusterResourceListeners()),
-                                                                  -1L,
-                                                                  time);
+                                             : new MetadataClient(config, -1L, time);
     _defaultExecutionProgressCheckIntervalMs = config.getLong(ExecutorConfig.EXECUTION_PROGRESS_CHECK_INTERVAL_MS_CONFIG);
     _leaderMovementTimeoutMs = config.getLong(ExecutorConfig.LEADER_MOVEMENT_TIMEOUT_MS_CONFIG);
     _requestedExecutionProgressCheckIntervalMs = null;

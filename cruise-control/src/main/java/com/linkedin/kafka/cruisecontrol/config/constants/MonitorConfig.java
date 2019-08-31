@@ -4,7 +4,6 @@
 
 package com.linkedin.kafka.cruisecontrol.config.constants;
 
-import com.linkedin.kafka.cruisecontrol.common.KafkaNetworkClientProvider;
 import com.linkedin.kafka.cruisecontrol.config.BrokerCapacityConfigFileResolver;
 import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.CruiseControlMetricsReporterSampler;
@@ -94,15 +93,6 @@ public class MonitorConfig {
   public static final String NUM_PARTITION_METRICS_WINDOWS_CONFIG = "num.partition.metrics.windows";
   public static final String NUM_PARTITION_METRICS_WINDOWS_DOC = "The total number of windows to keep for partition "
       + "metric samples";
-
-  /**
-   * <code>network.client.provider.class</code>
-   */
-  public static final String NETWORK_CLIENT_PROVIDER_CLASS_CONFIG = "network.client.provider.class";
-  // We have to define this to support the use of network clients with different Kafka client versions.
-  public static final String DEFAULT_NETWORK_CLIENT_PROVIDER_CLASS = KafkaNetworkClientProvider.class.getName();
-  public static final String NETWORK_CLIENT_PROVIDER_CLASS_DOC = "The network client provider class to generate a "
-      + "network client with given properties.";
 
   /**
    * <code>skip.loading.samples</code>
@@ -316,7 +306,7 @@ public class MonitorConfig {
                             ConfigDef.Importance.MEDIUM,
                             SECURITY_PROTOCOL_DOC)
                     .define(METADATA_MAX_AGE_CONFIG,
-                            ConfigDef.Type.LONG,
+                            ConfigDef.Type.INT,
                             55 * 1000,
                             atLeast(0),
                             ConfigDef.Importance.LOW,
@@ -367,11 +357,6 @@ public class MonitorConfig {
                             atLeast(1),
                             ConfigDef.Importance.HIGH,
                             NUM_PARTITION_METRICS_WINDOWS_DOC)
-                    .define(NETWORK_CLIENT_PROVIDER_CLASS_CONFIG,
-                            ConfigDef.Type.CLASS,
-                            DEFAULT_NETWORK_CLIENT_PROVIDER_CLASS,
-                            ConfigDef.Importance.LOW,
-                            NETWORK_CLIENT_PROVIDER_CLASS_DOC)
                     .define(SKIP_LOADING_SAMPLES_CONFIG,
                             ConfigDef.Type.BOOLEAN,
                             false,

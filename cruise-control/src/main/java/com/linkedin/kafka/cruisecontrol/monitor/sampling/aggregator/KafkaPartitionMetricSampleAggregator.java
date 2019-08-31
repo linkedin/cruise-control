@@ -24,7 +24,6 @@ import java.util.SortedMap;
 import java.util.SortedSet;
 import java.util.TreeMap;
 import java.util.TreeSet;
-import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.PartitionInfo;
@@ -45,21 +44,21 @@ import org.slf4j.LoggerFactory;
 public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator<String, PartitionEntity> {
   private static final Logger LOG = LoggerFactory.getLogger(KafkaPartitionMetricSampleAggregator.class);
   private final int _maxAllowedExtrapolationsPerPartition;
-  private final Metadata _metadata;
+  private final Cluster _cluster;
 
   /**
    * Construct the metric sample aggregator.
    *
    * @param config   The load monitor configurations.
-   * @param metadata The metadata of the cluster.
+   * @param cluster The metadata of the cluster.
    */
-  public KafkaPartitionMetricSampleAggregator(KafkaCruiseControlConfig config, Metadata metadata) {
+  public KafkaPartitionMetricSampleAggregator(KafkaCruiseControlConfig config, Cluster cluster) {
     super(config.getInt(MonitorConfig.NUM_PARTITION_METRICS_WINDOWS_CONFIG),
           config.getLong(MonitorConfig.PARTITION_METRICS_WINDOW_MS_CONFIG),
           config.getInt(MonitorConfig.MIN_SAMPLES_PER_PARTITION_METRICS_WINDOW_CONFIG).byteValue(),
           config.getInt(MonitorConfig.PARTITION_METRIC_SAMPLE_AGGREGATOR_COMPLETENESS_CACHE_SIZE_CONFIG),
           KafkaMetricDef.commonMetricDef());
-    _metadata = metadata;
+    _cluster = cluster;
     _maxAllowedExtrapolationsPerPartition =
         config.getInt(MonitorConfig.MAX_ALLOWED_EXTRAPOLATIONS_PER_PARTITION_CONFIG);
     _sampleType = SampleType.PARTITION;
@@ -266,7 +265,7 @@ public class KafkaPartitionMetricSampleAggregator extends MetricSampleAggregator
   private boolean isValidSample(PartitionMetricSample sample, boolean leaderValidation) {
     boolean validLeader = true;
     if (leaderValidation) {
-      Node leader = _metadata.fetch().leaderFor(sample.entity().tp());
+      Node leader = _cluster.leaderFor(sample.entity().tp());
       validLeader = (leader != null) && (sample.brokerId() == leader.id());
       if (!validLeader) {
         LOG.warn("The metric sample is discarded due to invalid leader. Current leader {}, Sample: {}", leader, sample);

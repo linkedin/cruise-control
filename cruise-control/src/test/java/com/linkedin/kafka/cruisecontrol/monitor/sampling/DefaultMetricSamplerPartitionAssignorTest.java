@@ -4,22 +4,10 @@
 
 package com.linkedin.kafka.cruisecontrol.monitor.sampling;
 
-import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import org.apache.kafka.clients.Metadata;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
-import org.apache.kafka.common.internals.ClusterResourceListeners;
-import org.apache.kafka.common.protocol.Errors;
-import org.apache.kafka.common.record.RecordBatch;
-import org.apache.kafka.common.requests.MetadataResponse;
-import org.apache.kafka.common.utils.LogContext;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -27,8 +15,6 @@ import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_REFRESH_BACKOFF;
-import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.METADATA_EXPIRY_MS;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.NODE_0;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUnitTestUtils.nodes;
 import static org.junit.Assert.assertEquals;
@@ -61,38 +47,8 @@ public class DefaultMetricSamplerPartitionAssignorTest {
       }
     }
     Cluster cluster = new Cluster("cluster", Arrays.asList(nodes()), partitions, Collections.emptySet(), Collections.emptySet());
-    Metadata metadata = new Metadata(METADATA_REFRESH_BACKOFF,
-                                     METADATA_EXPIRY_MS,
-                                     new LogContext(),
-                                     new ClusterResourceListeners());
-
-    Map<String, Set<PartitionInfo>> topicToTopicPartitions = new HashMap<>(partitions.size());
-    for (PartitionInfo tp : partitions) {
-      topicToTopicPartitions.putIfAbsent(tp.topic(), new HashSet<>());
-      topicToTopicPartitions.get(tp.topic()).add(tp);
-    }
-
-    List<MetadataResponse.TopicMetadata> topicMetadata = new ArrayList<>(partitions.size());
-    for (Map.Entry<String, Set<PartitionInfo>> entry : topicToTopicPartitions.entrySet()) {
-      List<MetadataResponse.PartitionMetadata> partitionMetadata = new ArrayList<>(entry.getValue().size());
-      for (PartitionInfo tp : entry.getValue()) {
-        partitionMetadata.add(new MetadataResponse.PartitionMetadata(Errors.NONE, tp.partition(), NODE_0,
-                                                                     Optional.of(RecordBatch.NO_PARTITION_LEADER_EPOCH),
-                                                                     Arrays.asList(nodes()), Arrays.asList(nodes()),
-                                                                     Collections.emptyList()));
-      }
-      topicMetadata.add(new MetadataResponse.TopicMetadata(Errors.NONE, entry.getKey(), false, partitionMetadata));
-    }
-
-    MetadataResponse metadataResponse = KafkaCruiseControlUtils.prepareMetadataResponse(cluster.nodes(),
-                                                                                        cluster.clusterResource().clusterId(),
-                                                                                        MetadataResponse.NO_CONTROLLER_ID,
-                                                                                        topicMetadata);
-    metadata.update(KafkaCruiseControlUtils.REQUEST_VERSION_UPDATE, metadataResponse, 0);
-
-
     MetricSamplerPartitionAssignor assignor = new DefaultMetricSamplerPartitionAssignor();
-    Set<TopicPartition> assignment = assignor.assignPartitions(metadata.fetch());
+    Set<TopicPartition> assignment = assignor.assignPartitions(cluster);
 
     int maxAssignedNumPartitionsForFetcher = -1;
     int minAssignedNumPartitionsForFetcher = Integer.MAX_VALUE;

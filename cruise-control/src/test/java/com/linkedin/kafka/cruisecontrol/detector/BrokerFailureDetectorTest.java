@@ -27,7 +27,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.anomalyComparator;
-import static org.easymock.EasyMock.anyLong;
+import static org.easymock.EasyMock.anyInt;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils.ANOMALY_DETECTOR_INITIAL_QUEUE_SIZE;
@@ -133,7 +133,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
   private BrokerFailureDetector createBrokerFailureDetector(Queue<Anomaly> anomalies, Time time) {
     LoadMonitor mockLoadMonitor = EasyMock.mock(LoadMonitor.class);
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
-    EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyLong())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
+    EasyMock.expect(mockLoadMonitor.brokersWithReplicas(anyInt())).andAnswer(() -> new HashSet<>(Arrays.asList(0, 1))).anyTimes();
     EasyMock.replay(mockLoadMonitor);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
     props.setProperty(ExecutorConfig.ZOOKEEPER_CONNECT_CONFIG, zookeeper().connectionString());
