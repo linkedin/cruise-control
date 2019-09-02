@@ -19,6 +19,7 @@ import com.linkedin.kafka.cruisecontrol.model.Load;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.List;
 import java.util.Set;
@@ -30,6 +31,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.sortReplicasInAscendingOrderByBrokerResourceUtilization;
 
 
@@ -173,16 +175,24 @@ public abstract class CapacityGoal extends AbstractGoal {
                             + "capacity %f (capacity threshold: %f).", name(), resource(), existingUtilization, allowedCapacity,
                         _balancingConstraint.capacityThreshold(resource())));
     }
-    clusterModel.trackSortedReplicas(sortName(),
-                                     optimizationOptions.onlyMoveImmigrantReplicas() ? ReplicaSortFunctionFactory.selectImmigrants()
-                                                                                     : null,
-                                         ReplicaSortFunctionFactory.deprioritizeOfflineReplicasThenImmigrants(),
-                                     ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
-    clusterModel.trackSortedReplicas(sortNameByLeader(),
-                                     optimizationOptions.onlyMoveImmigrantReplicas() ? ReplicaSortFunctionFactory.selectImmigrantLeaders()
-                                                                                     : ReplicaSortFunctionFactory.selectLeaders(),
-                                     ReplicaSortFunctionFactory.deprioritizeImmigrants(),
-                                     ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
+
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
+    // Sort all replicas for each broker based on resource utilization.
+    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
+                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
+                              .addScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
+                              .trackSortedReplicasFor(replicaSortName(this, true, false), clusterModel);
+
+    // Sort leader replicas for each broker based on resource utilization.
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+                              .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
+                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
+                              .addScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
+                              .trackSortedReplicasFor(replicaSortName(this, true, true), clusterModel);
   }
 
   /**
@@ -205,8 +215,7 @@ public abstract class CapacityGoal extends AbstractGoal {
       GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
       finish();
     } finally {
-      clusterModel.untrackSortedReplicas(sortName());
-      clusterModel.untrackSortedReplicas(sortNameByLeader());
+      clusterModel.clearSortedReplicas();
     }
   }
 
@@ -289,18 +298,12 @@ public abstract class CapacityGoal extends AbstractGoal {
       return;
     }
 
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // First try REBALANCE BY LEADERSHIP MOVEMENT:
     if (currentResource == Resource.NW_OUT || currentResource == Resource.CPU) {
       // Sort replicas by descending order of preference to relocate. Preference is based on resource cost.
       // Only leaders in the source broker are sorted.
       // Note that if the replica is offline, it cannot currently be a leader.
-      List<Replica> sortedLeadersInSourceBroker =
-          broker.trackedSortedReplicas(sortNameByLeader()).reverselySortedReplicas();
-      for (Replica leader : sortedLeadersInSourceBroker) {
-        if (shouldExclude(leader, excludedTopics)) {
-          continue;
-        }
+      for (Replica leader : broker.trackedSortedReplicas(replicaSortName(this, true, true)).sortedReplicas(true)) {
         // Get online followers of this leader and sort them in ascending order by their broker resource utilization.
         List<Replica> onlineFollowers = clusterModel.partition(leader.topicPartition()).onlineFollowers();
         sortReplicasInAscendingOrderByBrokerResourceUtilization(onlineFollowers, currentResource);
@@ -329,10 +332,7 @@ public abstract class CapacityGoal extends AbstractGoal {
       // Move replicas that are sorted in descending order of preference to relocate (preference is based on
       // utilization) until the source broker utilization gets under the capacity limit. If the capacity limit cannot
       // be satisfied, throw an exception.
-      for (Replica replica : broker.trackedSortedReplicas(sortName()).reverselySortedReplicas()) {
-        if (shouldExclude(replica, excludedTopics)) {
-          continue;
-        }
+      for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, true, false)).sortedReplicas(true)) {
         // Unless the target broker would go over the host- and/or broker-level capacity,
         // the movement will be successful.
         Broker b = maybeApplyBalancingAction(clusterModel, replica, sortedAliveBrokersUnderCapacityLimit,
@@ -377,14 +377,6 @@ public abstract class CapacityGoal extends AbstractGoal {
     if (!broker.currentOfflineReplicas().isEmpty()) {
       throw new OptimizationFailureException("Failed to remove offline replicas from broker " + broker.id() + ".");
     }
-  }
-
-  private String sortName() {
-    return name() + "-" + resource().name() + "-ALL";
-  }
-
-  private String sortNameByLeader() {
-    return name() + "-" + resource().name() + "-LEADER";
   }
 
   /**

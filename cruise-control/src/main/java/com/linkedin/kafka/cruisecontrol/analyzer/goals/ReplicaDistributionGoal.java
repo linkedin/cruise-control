@@ -18,6 +18,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionAbstractGoal.ChangeType.*;
 import static com.linkedin.kafka.cruisecontrol.common.Resource.DISK;
 
@@ -118,11 +120,18 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
   @Override
   protected void initGoalState(ClusterModel clusterModel, OptimizationOptions optimizationOptions) {
     super.initGoalState(clusterModel, optimizationOptions);
-    clusterModel.trackSortedReplicas(name(),
-                                     optimizationOptions.onlyMoveImmigrantReplicas() ? ReplicaSortFunctionFactory.selectImmigrants()
-                                                                                     : null,
-                                     ReplicaSortFunctionFactory.prioritizeOfflineReplicasThenImmigrants(),
-                                     ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()));
+    //Sort replicas for each broker in the cluster.
+    for (Broker broker : clusterModel.brokers()) {
+      new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
+                                                       optimizationOptions.onlyMoveImmigrantReplicas())
+                                .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(optimizationOptions.excludedTopics()))
+                                .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrantOrOfflineReplicas(),
+                                                       !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
+                                .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
+                                .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
+                                .addScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()))
+                                .trackSortedReplicasFor(replicaSortName(this, false, false), broker);
+    }
   }
 
   /**
@@ -201,7 +210,6 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
                                                ClusterModel clusterModel,
                                                Set<Goal> optimizedGoals,
                                                OptimizationOptions optimizationOptions) {
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // Get the eligible brokers.
     SortedSet<Broker> candidateBrokers = new TreeSet<>(Comparator.comparingInt((Broker b) -> b.replicas().size()).thenComparingInt(Broker::id));
 
@@ -211,22 +219,12 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
         .filter(b -> b.replicas().size() < _balanceUpperLimit)
         .collect(Collectors.toSet()));
 
-    // Get the replicas to rebalance. Replicas are sorted from smallest to largest disk usage.
-    List<Replica> replicasToMove = broker.trackedSortedReplicas(name()).sortedReplicas();
-    // If cluster has offline replicas, but this broker is alive, then limit moving replica to offline and immigrant replicas.
-    if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive()) {
-      replicasToMove = replicasToMove.stream()
-                                     .filter(r -> broker.currentOfflineReplicas().contains(r) || broker.immigrantReplicas().contains(r))
-                                     .collect(Collectors.toList());
-    }
     // Now let's move things around.
     boolean wasUnableToMoveOfflineReplica = false;
-    for (Replica replica : replicasToMove) {
+    for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
       if (wasUnableToMoveOfflineReplica && !replica.isCurrentOffline() && broker.replicas().size() <= _balanceUpperLimit) {
         // Was unable to move offline replicas from the broker, and remaining replica count is under the balance limit.
         return false;
-      } else if (shouldExclude(replica, excludedTopics)) {
-        continue;
       }
 
       Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,
@@ -253,7 +251,6 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
                                               ClusterModel clusterModel,
                                               Set<Goal> optimizedGoals,
                                               OptimizationOptions optimizationOptions) {
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
     PriorityQueue<Broker> eligibleBrokers = new PriorityQueue<>((b1, b2) -> {
       // Brokers are sorted by (1) current offline replica count then (2) all replica count then (3) broker id.
       int resultByOfflineReplicas = Integer.compare(b2.currentOfflineReplicas().size(), b1.currentOfflineReplicas().size());
@@ -281,18 +278,7 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
     // Stop when no replicas can be moved in anymore.
     while (!eligibleBrokers.isEmpty()) {
       Broker sourceBroker = eligibleBrokers.poll();
-      // Get the replicas to rebalance. Replicas are sorted from smallest to largest disk usage.
-      List<Replica> replicasToMove = sourceBroker.trackedSortedReplicas(name()).sortedReplicas();
-      // If cluster has offline replicas, but this broker is alive, then limit moving replica to offline and immigrant replicas.
-      if (!clusterModel.selfHealingEligibleReplicas().isEmpty() && sourceBroker.isAlive()) {
-        replicasToMove = replicasToMove.stream()
-            .filter(r -> sourceBroker.currentOfflineReplicas().contains(r) || sourceBroker.immigrantReplicas().contains(r))
-            .collect(Collectors.toList());
-      }
-      for (Replica replica : replicasToMove) {
-        if (shouldExclude(replica, excludedTopics)) {
-          continue;
-        }
+      for (Replica replica : sourceBroker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
         Broker b = maybeApplyBalancingAction(clusterModel, replica, candidateBrokers, ActionType.INTER_BROKER_REPLICA_MOVEMENT,
                                              optimizedGoals, optimizationOptions);
         // Only need to check status if the action is taken. This will also handle the case that the source broker

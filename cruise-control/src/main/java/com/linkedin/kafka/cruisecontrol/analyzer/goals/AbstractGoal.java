@@ -11,7 +11,6 @@ import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerUtils;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingConstraint;
 import com.linkedin.kafka.cruisecontrol.analyzer.BalancingAction;
 import com.linkedin.kafka.cruisecontrol.analyzer.ActionType;
-import com.linkedin.kafka.cruisecontrol.analyzer.goals.internals.CandidateBroker;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.OptimizationFailureException;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
@@ -106,17 +105,6 @@ public abstract class AbstractGoal implements Goal {
 
   @Override
   public abstract String name();
-
-  /**
-   * Check whether the replica should be excluded from the rebalance. A replica should be excluded if (1) its topic
-   * is in the excluded topics and set, (2) its original broker and its original disk is alive.
-   * @param replica the replica to check.
-   * @param excludedTopics the excluded topics set.
-   * @return true if the replica should be excluded, false otherwise.
-   */
-  protected static boolean shouldExclude(Replica replica, Set<String> excludedTopics) {
-    return excludedTopics.contains(replica.topicPartition().topic()) && !replica.isOriginalOffline();
-  }
 
   /**
    * Get sorted brokers that the rebalance process will go over to apply balancing actions to replicas they contain.
@@ -236,15 +224,17 @@ public abstract class AbstractGoal implements Goal {
    *
    * @param clusterModel The state of the cluster.
    * @param sourceReplica Replica to be swapped with.
-   * @param cb Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
+   * @param candidateReplicas Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
    * @param optimizedGoals Optimized goals.
+   * @param optimizationOptions Options to take into account during optimization -- e.g. excluded brokers for leadership.
    * @return The swapped in replica if succeeded, null otherwise.
    */
   Replica maybeApplySwapAction(ClusterModel clusterModel,
                                Replica sourceReplica,
-                               CandidateBroker cb,
-                               Set<Goal> optimizedGoals) {
-    SortedSet<Replica> eligibleReplicas = eligibleReplicasForSwap(clusterModel, sourceReplica, cb);
+                               SortedSet<Replica> candidateReplicas,
+                               Set<Goal> optimizedGoals,
+                               OptimizationOptions optimizationOptions) {
+    SortedSet<Replica> eligibleReplicas = eligibleReplicasForSwap(clusterModel, sourceReplica, candidateReplicas, optimizationOptions);
     if (eligibleReplicas.isEmpty()) {
       return null;
     }
@@ -340,18 +330,13 @@ public abstract class AbstractGoal implements Goal {
    * @param sourceReplica Replica to be swapped with.
    * @param candidateReplicas Candidate replicas to swap with the source replica in the order of attempts to swap.
    * @param optimizedGoals Optimized goals.
-   * @param excludedTopics The topics that should be excluded from the optimization proposals.
    * @return The swapped in replica if succeeded, null otherwise.
    */
   Replica maybeSwapReplicaBetweenDisks(ClusterModel clusterModel,
                                        Replica sourceReplica,
-                                       List<Replica> candidateReplicas,
-                                       Set<Goal> optimizedGoals,
-                                       Set<String> excludedTopics) {
+                                       SortedSet<Replica> candidateReplicas,
+                                       Set<Goal> optimizedGoals) {
     for (Replica destinationReplica : candidateReplicas) {
-      if (excludedTopics.contains(destinationReplica.topicPartition().topic())) {
-        continue;
-      }
       BalancingAction swapProposal = new BalancingAction(sourceReplica.topicPartition(),
                                                          sourceReplica.disk(),
                                                          destinationReplica.disk(),

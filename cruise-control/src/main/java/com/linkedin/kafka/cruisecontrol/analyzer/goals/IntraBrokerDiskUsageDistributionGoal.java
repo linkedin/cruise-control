@@ -16,6 +16,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Disk;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
 import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -33,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.*;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.averageDiskUtilizationPercentage;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.diskUtilizationPercentage;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 import static java.lang.Math.abs;
 
 
@@ -87,6 +89,19 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
       _balanceUpperThresholdByBroker.put(broker, averageDiskUtilization * (1 + balancePercentageWithMargin));
       _balanceLowerThresholdByBroker.put(broker, averageDiskUtilization * Math.max(0, (1 - balancePercentageWithMargin)));
     }
+
+    // Sort all the replicas for each disk based on disk utilization.
+    Set<String> excludedTopics = optimizationOptions.excludedTopics();
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectOnlineReplicas())
+                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeDiskImmigrants())
+                              .addScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(RESOURCE.name()))
+                              .trackSortedReplicasFor(replicaSortName(this, true, false), clusterModel);
+    new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectOnlineReplicas())
+                              .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeDiskImmigrants())
+                              .addScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()))
+                              .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 
   /**
@@ -123,6 +138,7 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
       LOG.warn("Disks {} are below balance lower limit after optimization.", disksBelowBalanceLowerLimit);
       _succeeded = false;
     }
+    clusterModel.clearSortedReplicas();
     finish();
   }
 
@@ -277,7 +293,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
                                           OptimizationOptions optimizationOptions) {
     Broker broker = disk.broker();
     double brokerUtilization = averageDiskUtilizationPercentage(broker);
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
 
     PriorityQueue<Disk> candidateDiskPQ = new PriorityQueue<>(
         (d1, d2) -> Double.compare(diskUtilizationPercentage(d2), diskUtilizationPercentage(d1)));
@@ -290,22 +305,14 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
 
     while (!candidateDiskPQ.isEmpty()) {
       Disk candidateDisk = candidateDiskPQ.poll();
-      candidateDisk.trackSortedReplicas(name(),
-                                        ReplicaSortFunctionFactory.selectOnlineReplicas(),
-                                        ReplicaSortFunctionFactory.deprioritizeDiskImmigrants(),
-                                        ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()));
-      for (Iterator<Replica> iterator = candidateDisk.trackedSortedReplicas(name()).reverselySortedReplicas().iterator();
+      for (Iterator<Replica> iterator = candidateDisk.trackedSortedReplicas(replicaSortName(this, true, false)).sortedReplicas(true).iterator();
           iterator.hasNext(); ) {
         Replica replica = iterator.next();
-        if (excludedTopics.contains(replica.topicPartition().topic())) {
-          continue;
-        }
         Disk d = maybeMoveReplicaBetweenDisks(clusterModel, replica, Collections.singleton(disk), optimizedGoals);
         // Only need to check status if the action is taken. This will also handle the case that the source disk
         // has nothing to move in. In that case we will never re-enqueue that source disk.
         if (d != null) {
           if (diskUtilizationPercentage(disk) > _balanceLowerThresholdByBroker.get(broker)) {
-            candidateDisk.untrackSortedReplicas(name());
             return false;
           }
           iterator.remove();
@@ -317,7 +324,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
           }
         }
       }
-      candidateDisk.untrackSortedReplicas(name());
     }
     return true;
   }
@@ -337,12 +343,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
                                            OptimizationOptions optimizationOptions) {
     Broker broker = disk.broker();
     double brokerUtilization = averageDiskUtilizationPercentage(broker);
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    disk.trackSortedReplicas(name(),
-                             ReplicaSortFunctionFactory.selectOnlineReplicas(),
-                             ReplicaSortFunctionFactory.deprioritizeDiskImmigrants(),
-                             ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()));
-
     PriorityQueue<Disk> candidateDiskPQ = new PriorityQueue<>(
         (d1, d2) -> Double.compare(diskUtilizationPercentage(d1), diskUtilizationPercentage(d2)));
     for (Disk candidateDisk : broker.disks()) {
@@ -354,18 +354,14 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
 
     while (!candidateDiskPQ.isEmpty()) {
       Disk candidateDisk = candidateDiskPQ.poll();
-      for (Iterator<Replica> iterator = disk.trackedSortedReplicas(name()).reverselySortedReplicas().iterator();
+      for (Iterator<Replica> iterator = disk.trackedSortedReplicas(replicaSortName(this, true, false)).sortedReplicas(true).iterator();
           iterator.hasNext(); ) {
         Replica replica = iterator.next();
-        if (excludedTopics.contains(replica.topicPartition().topic())) {
-          continue;
-        }
         Disk d = maybeMoveReplicaBetweenDisks(clusterModel, replica, Collections.singleton(candidateDisk), optimizedGoals);
         // Only need to check status if the action is taken. This will also handle the case that no replica can be
         // move to destination disk. In that case we will never re-enqueue that destination disk.
         if (d != null) {
           if (diskUtilizationPercentage(disk) < _balanceUpperThresholdByBroker.get(broker)) {
-            disk.untrackSortedReplicas(name());
             return false;
           }
           iterator.remove();
@@ -378,7 +374,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
         }
       }
     }
-    disk.untrackSortedReplicas(name());
     return true;
   }
 
@@ -396,10 +391,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
                                          OptimizationOptions optimizationOptions) {
     long swapStartTimeMs = System.currentTimeMillis();
     Broker broker = disk.broker();
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    disk.trackSortedReplicas(name(),
-                             ReplicaSortFunctionFactory.selectOnlineReplicas(),
-                             ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()));
 
     PriorityQueue<Disk> candidateDiskPQ = new PriorityQueue<>(
         (d1, d2) -> Double.compare(diskUtilizationPercentage(d1), diskUtilizationPercentage(d2)));
@@ -412,32 +403,22 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
 
     while (!candidateDiskPQ.isEmpty()) {
       Disk candidateDisk = candidateDiskPQ.poll();
-      candidateDisk.trackSortedReplicas(name(),
-                                        ReplicaSortFunctionFactory.selectOnlineReplicas(),
-                                        ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()));
-      for (Iterator<Replica> iterator = disk.trackedSortedReplicas(name()).reverselySortedReplicas().iterator();
+      for (Iterator<Replica> iterator = disk.trackedSortedReplicas(replicaSortName(this, true, false)).sortedReplicas(false).iterator();
           iterator.hasNext(); ) {
         Replica sourceReplica = iterator.next();
-        if (shouldExclude(sourceReplica, excludedTopics)) {
-          continue;
-        }
         // Try swapping the source with the candidate replicas. Get the swapped in replica if successful, null otherwise.
         Replica swappedIn = maybeSwapReplicaBetweenDisks(clusterModel,
                                                          sourceReplica,
-                                                         candidateDisk.trackedSortedReplicas(name()).sortedReplicas(),
-                                                         optimizedGoals,
-                                                         excludedTopics);
+                                                         candidateDisk.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(false),
+                                                         optimizedGoals);
         if (swappedIn != null) {
           if (diskUtilizationPercentage(disk) < _balanceUpperThresholdByBroker.get(broker)) {
             // Successfully balanced this broker by swapping in.
-            disk.untrackSortedReplicas(name());
-            candidateDisk.untrackSortedReplicas(name());
             return;
           }
           break;
         }
       }
-      candidateDisk.untrackSortedReplicas(name());
       if (remainingPerDiskSwapTimeMs(swapStartTimeMs) <= 0) {
         LOG.debug("Swap load out timeout for disk {}.", disk.logDir());
         break;
@@ -446,7 +427,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
         candidateDiskPQ.add(candidateDisk);
       }
     }
-    disk.untrackSortedReplicas(name());
   }
 
   /**
@@ -463,10 +443,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
                                         OptimizationOptions optimizationOptions) {
     long swapStartTimeMs = System.currentTimeMillis();
     Broker broker = disk.broker();
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    disk.trackSortedReplicas(name(),
-                             ReplicaSortFunctionFactory.selectOnlineReplicas(),
-                             ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()));
 
     PriorityQueue<Disk> candidateDiskPQ = new PriorityQueue<>(
         (d1, d2) -> Double.compare(diskUtilizationPercentage(d2), diskUtilizationPercentage(d1)));
@@ -479,32 +455,22 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
 
     while (!candidateDiskPQ.isEmpty()) {
       Disk candidateDisk = candidateDiskPQ.poll();
-      candidateDisk.trackSortedReplicas(name(),
-                                        ReplicaSortFunctionFactory.selectOnlineReplicas(),
-                                        ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()));
-      for (Iterator<Replica> iterator = disk.trackedSortedReplicas(name()).sortedReplicas().iterator();
+      for (Iterator<Replica> iterator = disk.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(false).iterator();
           iterator.hasNext(); ) {
         Replica sourceReplica = iterator.next();
-        if (shouldExclude(sourceReplica, excludedTopics)) {
-          continue;
-        }
         // Try swapping the source with the candidate replicas. Get the swapped in replica if successful, null otherwise.
         Replica swappedIn = maybeSwapReplicaBetweenDisks(clusterModel,
                                                          sourceReplica,
-                                                         candidateDisk.trackedSortedReplicas(name()).reverselySortedReplicas(),
-                                                         optimizedGoals,
-                                                         excludedTopics);
+                                                         candidateDisk.trackedSortedReplicas(replicaSortName(this, true, false)).sortedReplicas(false),
+                                                         optimizedGoals);
         if (swappedIn != null) {
           if (diskUtilizationPercentage(disk) > _balanceLowerThresholdByBroker.get(broker)) {
             // Successfully balanced this broker by swapping in.
-            disk.untrackSortedReplicas(name());
-            candidateDisk.untrackSortedReplicas(name());
             return;
           }
           break;
         }
       }
-      candidateDisk.untrackSortedReplicas(name());
       if (remainingPerDiskSwapTimeMs(swapStartTimeMs) <= 0) {
         LOG.debug("Swap load out timeout for disk {}.", disk.logDir());
         break;
@@ -513,7 +479,6 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
         candidateDiskPQ.add(candidateDisk);
       }
     }
-    disk.untrackSortedReplicas(name());
   }
 
   /**

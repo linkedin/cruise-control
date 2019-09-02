@@ -383,21 +383,26 @@ public class Broker implements Serializable, Comparable<Broker> {
   }
 
   /**
-   * Track the sorted replicas using the given score function. The sort first uses the priority function to
-   * sort the replicas, then use the score function to sort the replicas(i.e. replicas of same priority are sorted in
-   * ascending order of score). The priority function is useful to priorities a particular type of replicas, e.g leader
-   * replicas, immigrant replicas, etc.
+   * Track the sorted replicas using the given score function. The sort first uses the priority functions to
+   * sort the replicas, then use the score function to sort the replicas(i.e. priority functions are first applied one by one,
+   * i.e. if two replicas are of same priority regards to first priority function, the second priority function will be used
+   * to sort. If all priority are applied and the replicas are unable to be sorted, the score function will be used and replicas
+   * will be sorted in ascending order of score). The priority functions are useful to priorities particular types of replicas,
+   * e.g leader replicas, immigrant replicas, etc.
    *
    * @param sortName the name of the tracked sorted replicas.
-   * @param selectionFunc the selection function to decide which replicas to include.
-   * @param priorityFunc the priority function to sort replicas.
+   * @param selectionFuncs A set of selection functions to decide which replicas to include.
+   * @param priorityFuncs A list of priority functions to sort replicas.
    * @param scoreFunc the score function to sort replicas.
    */
   void trackSortedReplicas(String sortName,
-                           Function<Replica, Boolean> selectionFunc,
-                           Function<Replica, Integer> priorityFunc,
+                           Set<Function<Replica, Boolean>> selectionFuncs,
+                           List<Function<Replica, Integer>> priorityFuncs,
                            Function<Replica, Double> scoreFunc) {
-    _sortedReplicas.putIfAbsent(sortName, new SortedReplicas(this, selectionFunc, priorityFunc, scoreFunc));
+    _sortedReplicas.putIfAbsent(sortName, new SortedReplicas(this, selectionFuncs, priorityFuncs, scoreFunc));
+    for (Disk disk : _diskByLogdir.values()) {
+      disk.trackSortedReplicas(sortName, selectionFuncs, priorityFuncs, scoreFunc);
+    }
   }
 
   /**
@@ -405,8 +410,21 @@ public class Broker implements Serializable, Comparable<Broker> {
    *
    * @param sortName the name of the tracked sorted replicas.
    */
-  void untrackSortedReplicas(String sortName) {
+  public void untrackSortedReplicas(String sortName) {
     _sortedReplicas.remove(sortName);
+    for (Disk disk : _diskByLogdir.values()) {
+      disk.untrackSortedReplicas(sortName);
+    }
+  }
+
+  /**
+   * Clear all cached sorted replicas. This helps release memory.
+   */
+  public void clearSortedReplicas() {
+    _sortedReplicas.clear();
+    for (Disk disk : _diskByLogdir.values()) {
+      disk.clearSortedReplicas();
+    }
   }
 
   private void updateSortedReplicas(Replica replica) {

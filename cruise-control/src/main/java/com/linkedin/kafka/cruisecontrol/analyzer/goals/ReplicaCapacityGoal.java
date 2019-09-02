@@ -15,6 +15,8 @@ import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModelStats;
 import com.linkedin.kafka.cruisecontrol.model.Replica;
+import com.linkedin.kafka.cruisecontrol.model.ReplicaSortFunctionFactory;
+import com.linkedin.kafka.cruisecontrol.model.SortedReplicasHelper;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -30,6 +32,7 @@ import org.slf4j.LoggerFactory;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.ACCEPT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.ActionAcceptance.REPLICA_REJECT;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
+import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 
 
 /**
@@ -163,6 +166,12 @@ public class ReplicaCapacityGoal extends AbstractGoal {
                         name(), totalReplicasInCluster, maxReplicasInCluster, clusterModel.aliveBrokers().size(),
                         _balancingConstraint.maxReplicasPerBroker()));
     }
+
+    // Filter out some replicas based on optimization options.
+    new SortedReplicasHelper().maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(),
+                                                     optimizationOptions.onlyMoveImmigrantReplicas())
+                              .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
+                              .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 
   /**
@@ -188,18 +197,24 @@ public class ReplicaCapacityGoal extends AbstractGoal {
    */
   @Override
   protected void updateGoalState(ClusterModel clusterModel, Set<String> excludedTopics) throws OptimizationFailureException {
-    // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
-    GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
-    // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
-    GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
+    try {
+      // Sanity check: No self-healing eligible replica should remain at a dead broker/disk.
+      GoalUtils.ensureNoOfflineReplicas(clusterModel, name());
+      // Sanity check: No replica should be moved to a broker, which used to host any replica of the same partition on its broken disk.
+      GoalUtils.ensureReplicasMoveOffBrokersWithBadDisks(clusterModel, name());
 
-    if (!_isSelfHealingMode) {
-      // One pass in non-self-healing mode is sufficient to satisfy or alert impossibility of this goal.
-      // Sanity check to confirm that the final distribution has less than the allowed number of replicas per broker.
-      ensureReplicaCapacitySatisfied(clusterModel);
-      finish();
-    } else {
-      _isSelfHealingMode = false;
+      if (!_isSelfHealingMode) {
+        // One pass in non-self-healing mode is sufficient to satisfy or alert impossibility of this goal.
+        // Sanity check to confirm that the final distribution has less than the allowed number of replicas per broker.
+        ensureReplicaCapacitySatisfied(clusterModel);
+        clusterModel.clearSortedReplicas();
+        finish();
+      } else {
+        _isSelfHealingMode = false;
+      }
+    } catch (Exception e) {
+      clusterModel.clearSortedReplicas();
+      throw e;
     }
   }
 
@@ -238,21 +253,12 @@ public class ReplicaCapacityGoal extends AbstractGoal {
                                     OptimizationOptions optimizationOptions)
       throws OptimizationFailureException {
     LOG.debug("balancing broker {}, optimized goals = {}", broker, optimizedGoals);
-    Set<String> excludedTopics = optimizationOptions.excludedTopics();
-    boolean onlyMoveImmigrantReplicas = optimizationOptions.onlyMoveImmigrantReplicas();
-    for (Replica replica : new TreeSet<>(broker.replicas())) {
+    for (Replica replica : broker.trackedSortedReplicas(replicaSortName(this, false, false)).sortedReplicas(true)) {
       boolean isReplicaOffline = replica.isCurrentOffline();
       if (broker.replicas().size() <= _balancingConstraint.maxReplicasPerBroker() && !isReplicaOffline) {
         // The loop uses a TreeSet over replicas with the default replica comparator. This comparator prioritizes offline
         // replicas; hence, if the current replica is not offline, it means there is no other offline replica on the broker.
         break;
-      }
-      if (shouldExclude(replica, excludedTopics)) {
-        continue;
-      }
-
-      if (onlyMoveImmigrantReplicas && !replica.isImmigrant()) {
-        continue;
       }
 
       // The goal requirements are violated. Move replica to an eligible broker.
