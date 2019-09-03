@@ -118,7 +118,7 @@ class CruiseControlResponder(requests.Session):
         response = inner_request_helper()
         final_response = is_response_final(response)
         while not final_response:
-            display_response(response)
+            print_error(response.text)
             response = inner_request_helper()
             final_response = is_response_final(response)
 

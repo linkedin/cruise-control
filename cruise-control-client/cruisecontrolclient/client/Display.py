@@ -366,7 +366,7 @@ def display_response(response: Response) -> None:
 
     # Handle non-JSON (presumably plain-text) responses
     try:
-        j: dict = response.json()
+        j: dict = json.loads(response.text)
     except json.decoder.JSONDecodeError:
         print_error(response.text)
         return

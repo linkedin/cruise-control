@@ -12,9 +12,6 @@ import warnings
 # To be able to easily pass around the available endpoints and parameters
 from cruisecontrolclient.client.ExecutionContext import ExecutionContext
 
-# Convenience functions for displaying the retrieved Response
-from cruisecontrolclient.client.Display import display_response
-
 # To be able to instantiate Endpoint objects
 import cruisecontrolclient.client.Endpoint as Endpoint
 
@@ -259,7 +256,7 @@ def main():
     # Retrieve the response and display it
     json_responder = CruiseControlResponder()
     response = json_responder.retrieve_response_from_Endpoint(cc_socket_address, endpoint)
-    display_response(response)
+    print(response.text)
 
 
 if __name__ == "__main__":
