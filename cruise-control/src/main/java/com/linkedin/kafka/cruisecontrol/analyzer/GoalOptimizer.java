@@ -454,7 +454,6 @@ public class GoalOptimizer implements Runnable {
       }
     }
 
-    clusterModel.sanityCheck();
     // Broker level stats in the final cluster state.
     if (LOG.isTraceEnabled()) {
       LOG.trace("Broker level stats after optimization: {}%n", clusterModel.brokerStats(null));
