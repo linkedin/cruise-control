@@ -18,7 +18,7 @@ public enum Resource {
   CPU("cpu", 0, true, true, 0.001),
   NW_IN("networkInbound", 1, true, false, 10),
   NW_OUT("networkOutbound", 2, true, false, 10),
-  DISK("disk", 3, false, true, 200);
+  DISK("disk", 3, false, true, 100);
 
   // EPSILON_PERCENT defines the acceptable nuance when comparing the utilization of the resource.
   // This nuance is generated due to precision loss when summing up float type utilization value.
