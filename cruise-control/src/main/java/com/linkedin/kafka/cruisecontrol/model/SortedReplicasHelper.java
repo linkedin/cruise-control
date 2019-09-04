@@ -7,18 +7,18 @@ package com.linkedin.kafka.cruisecontrol.model;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
+import java.util.LinkedHashSet;
 import java.util.Set;
 import java.util.function.Function;
 
 
 /**
- * A helper class to create new {@link SortedReplicas} for cluster/broker/disk.
- * This class provides fluent API to enable user to customize {@link SortedReplicas} by adding new selection/priority/score
- * functions one by one.
+ * A helper class to create new {@link SortedReplicas} to track for {@link ClusterModel}/{@link Broker}/{@link Disk}.
+ * This class provides fluent API to enable user to conveniently customize {@link SortedReplicas} by adding any
+ * selection/priority/score functions before creating {@link SortedReplicas}.
  *
- * One example is as follows( to register a SortedReplica to clusterModel which includes only follower replicas, prioritize offline
- * replicas and sort replicas based on replica'disk utilization).
+ * One example is as follows. Here we want to create a SortedReplica inside clusterModel which includes only follower replicas,
+ * prioritize offline replicas and sort replicas based on disk utilization of replica.
  * <p>
  * <pre>
  * {@code
@@ -32,23 +32,23 @@ import java.util.function.Function;
 public class SortedReplicasHelper {
 
   private Set<Function<Replica, Boolean>> _selectionFuncs;
-  private List<Function<Replica, Integer>> _priorityFuncs;
+  private Set<Function<Replica, Integer>> _priorityFuncs;
   private Function<Replica, Double> _scoreFunc;
 
   public SortedReplicasHelper() {
     _selectionFuncs = new HashSet<>();
-    _priorityFuncs = new ArrayList<>();
+    _priorityFuncs = new LinkedHashSet<>();
   }
 
   /**
-   * If condition hold, add a selection function to the {@link SortedReplicas} to be created.
+   * If condition holds, add a selection function to the {@link SortedReplicas} to be created.
    *
    * @param selectionFunc The selection function to add.
-   * @param condition Whether add the selection function or not.
+   * @param addConditionSatisfied Whether condition to add the selection function is satisfied or not.
    * @return The helper object itself.
    */
-  public SortedReplicasHelper maybeAddSelectionFunc(Function<Replica, Boolean> selectionFunc, boolean condition) {
-    if (condition) {
+  public SortedReplicasHelper maybeAddSelectionFunc(Function<Replica, Boolean> selectionFunc, boolean addConditionSatisfied) {
+    if (addConditionSatisfied) {
       _selectionFuncs.add(selectionFunc);
     }
     return this;
@@ -66,17 +66,18 @@ public class SortedReplicasHelper {
 
 
   /**
-   * If condition hold, add a priority function to the {@link SortedReplicas} to be created.
-   * Note the order adding priority function matters. Each call of this method or {@link this#addPriorityFunc(Function)}
-   * will add new priority function to the end of priority function list, which will be applied only when all the previous
-   * priority functions cannot resolve two replica's priority.
+   * If condition holds, add a priority function to the {@link SortedReplicas} to be created.
+   * Note the order of adding priority function matters. Each call of this method (if condition holds)
+   * will add a new priority function to the end of priority function linked hash set, which means when sorting two replicas
+   * by priority, this priority function will be applied only if all previous priority functions are unable to decide
+   * the priority between two replicas.
    *
    * @param priorityFunc The priority function to add.
-   * @param condition Whether add the priority function or not.
+   * @param addConditionSatisfied Whether condition to add the selection function is satisfied or not.
    * @return The helper object itself.
    */
-  public SortedReplicasHelper maybeAddPriorityFunc(Function<Replica, Integer> priorityFunc, boolean condition) {
-    if (condition && !_priorityFuncs.contains(priorityFunc)) {
+  public SortedReplicasHelper maybeAddPriorityFunc(Function<Replica, Integer> priorityFunc, boolean addConditionSatisfied) {
+    if (addConditionSatisfied) {
       _priorityFuncs.add(priorityFunc);
     }
     return this;
@@ -84,9 +85,9 @@ public class SortedReplicasHelper {
 
   /**
    * Add a priority function to the {@link SortedReplicas} to be created.
-   * Note the order adding priority function matters. Each call of this method or {@link this#maybeAddPriorityFunc(Function, boolean)}
-   * will add new priority function to the end of priority function list, which will be applied only when all the previous
-   * priority functions cannot resolve two replica's priority.
+   * Note the order of adding priority function matters. Each call of this method will add a new priority function to the
+   * end of priority function linked hash set, which means when sorting two replicas by priority, this priority function
+   * will be applied only if all previous priority functions are unable to decide the priority between two replicas.
    *
    * @param priorityFunc The priority function to add.
    * @return The helper object itself.
@@ -96,34 +97,21 @@ public class SortedReplicasHelper {
   }
 
   /**
-   * If condition hold, add a score function to the {@link SortedReplicas} to be created.
+   * Set score function in the {@link SortedReplicas} to be created.
    *
-   * @param scoreFunc The score function to add.
-   * @param condition Whether add the score function or not.
+   * @param scoreFunc The score function.
    * @return The helper object itself.
    */
-  public SortedReplicasHelper maybeAddScoreFunc(Function<Replica, Double> scoreFunc, boolean condition) {
-    if (condition) {
-      _scoreFunc = scoreFunc;
-    }
+  public SortedReplicasHelper setScoreFunc(Function<Replica, Double> scoreFunc) {
+    _scoreFunc = scoreFunc;
     return this;
-  }
-
-  /**
-   * Add a score function to the {@link SortedReplicas} to be created.
-   *
-   * @param scoreFunc The score function to add.
-   * @return The helper object itself.
-   */
-  public SortedReplicasHelper addScoreFunc(Function<Replica, Double> scoreFunc) {
-    return maybeAddScoreFunc(scoreFunc, true);
   }
 
   /**
    * Create {@link SortedReplicas} for given {@link Disk} with added selection/priority/score functions.
    *
    * @param sortName The name of {@link SortedReplicas}.
-   * @param disk The disk to create {@link SortedReplicas}.
+   * @param disk The disk to create {@link SortedReplicas} to track.
    */
   public void trackSortedReplicasFor(String sortName, Disk disk) {
     disk.trackSortedReplicas(sortName, new HashSet<>(_selectionFuncs), new ArrayList<>(_priorityFuncs), _scoreFunc);
@@ -133,7 +121,7 @@ public class SortedReplicasHelper {
    * Create {@link SortedReplicas} for given {@link Broker} with added selection/priority/score functions.
    *
    * @param sortName The name of {@link SortedReplicas}.
-   * @param broker The broker to create {@link SortedReplicas}.
+   * @param broker The broker to create {@link SortedReplicas} to track.
    */
   public void trackSortedReplicasFor(String sortName, Broker broker) {
     broker.trackSortedReplicas(sortName, new HashSet<>(_selectionFuncs), new ArrayList<>(_priorityFuncs), _scoreFunc);
@@ -143,7 +131,7 @@ public class SortedReplicasHelper {
    * Create {@link SortedReplicas} for each brokers in the given {@link ClusterModel} with added selection/priority/score functions.
    *
    * @param sortName The name of {@link SortedReplicas}.
-   * @param clusterModel The cluster model to create {@link SortedReplicas}.
+   * @param clusterModel The cluster model to create {@link SortedReplicas}  to track.
    */
   public void trackSortedReplicasFor(String sortName, ClusterModel clusterModel) {
     clusterModel.trackSortedReplicas(sortName, new HashSet<>(_selectionFuncs), new ArrayList<>(_priorityFuncs), _scoreFunc);

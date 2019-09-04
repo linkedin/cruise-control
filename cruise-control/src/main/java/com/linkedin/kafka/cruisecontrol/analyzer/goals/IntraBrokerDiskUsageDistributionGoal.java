@@ -95,12 +95,12 @@ public class IntraBrokerDiskUsageDistributionGoal extends AbstractGoal {
     new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectOnlineReplicas())
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeDiskImmigrants())
-                              .addScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(RESOURCE.name()))
+                              .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(RESOURCE.name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, false), clusterModel);
     new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectOnlineReplicas())
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeDiskImmigrants())
-                              .addScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()))
+                              .setScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(RESOURCE.name()))
                               .trackSortedReplicasFor(replicaSortName(this, false, false), clusterModel);
   }
 

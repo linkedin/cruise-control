@@ -35,7 +35,7 @@ public class SortedReplicasTest {
     Broker broker = generateBroker(NUM_REPLICAS);
     new SortedReplicasHelper().addSelectionFunc(SELECTION_FUNC)
                               .addPriorityFunc(PRIORITY_FUNC)
-                              .addScoreFunc(SCORE_FUNC)
+                              .setScoreFunc(SCORE_FUNC)
                               .trackSortedReplicasFor(SORT_NAME, broker);
     SortedReplicas sr = broker.trackedSortedReplicas(SORT_NAME);
 
@@ -95,7 +95,7 @@ public class SortedReplicasTest {
   public void testPriorityFunction() {
     Broker broker = generateBroker(NUM_REPLICAS);
     new SortedReplicasHelper().addPriorityFunc(PRIORITY_FUNC)
-                              .addScoreFunc(SCORE_FUNC)
+                              .setScoreFunc(SCORE_FUNC)
                               .trackSortedReplicasFor(SORT_NAME, broker);
     SortedReplicas sr = broker.trackedSortedReplicas(SORT_NAME);
 
@@ -109,7 +109,7 @@ public class SortedReplicasTest {
     Broker broker = generateBroker(NUM_REPLICAS);
     new SortedReplicasHelper().addSelectionFunc(SELECTION_FUNC)
                               .addPriorityFunc(PRIORITY_FUNC)
-                              .addScoreFunc(SCORE_FUNC)
+                              .setScoreFunc(SCORE_FUNC)
                               .trackSortedReplicasFor(SORT_NAME, broker);
     SortedReplicas sr = broker.trackedSortedReplicas(SORT_NAME);
 

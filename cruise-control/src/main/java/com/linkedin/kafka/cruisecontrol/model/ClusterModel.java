@@ -535,11 +535,11 @@ public class ClusterModel implements Serializable {
   }
 
   /**
-   * Ask the cluster model to keep track of the replicas sorted with the given priority functions and score function.
+   * Ask the cluster model to keep track of the replicas sorted with the given selection functions, priority functions and score function.
    *
-   * The sort will first use the priority functions then the score function. The priority function allows the
-   * caller to prioritize a certain type of replicas, e.g immigrant replicas. The selection functions determines
-   * which replicas to be included in the sorted replicas.
+   * The selection functions determine which replicas to be included in the sorted replicas. Then the sort will first
+   * use the priority functions then the score function. The priority functions allow the caller to prioritize a certain
+   * type of replicas, e.g immigrant replicas.
    *
    * It is recommended to use the functions from {@link ReplicaSortFunctionFactory} so the functions can be maintained
    * in a single place.
@@ -550,14 +550,13 @@ public class ClusterModel implements Serializable {
    *
    * The sorted replicas are named using the given sortName, and can be accessed using
    * {@link Broker#trackedSortedReplicas(String)}. If the sorted replicas are no longer needed,
-   * {@link #untrackSortedReplicas(String)} or {@link #clearSortedReplicas()}to release memory.
+   * call {@link #untrackSortedReplicas(String)} or {@link #clearSortedReplicas()}to release memory.
    *
-   * @param sortName the name of the sorted replicas.
-   * @param selectionFuncs A set of selection functions to decide which replicas to include in the sort. If it is {@code null}
+   * @param sortName the name of the tracked sorted replicas.
+   * @param selectionFuncs A set of selection functions to decide which replica to include in the sort. If it is {@code null}
    *                      or empty, all the replicas are to be included.
-   * @param priorityFuncs A list of priority functions to sort the replicas. Priority functions are applied one by one, i.e.
-   *                      if two replicas are of same priority regards to the first priority function, the second will be applied;
-   *                      otherwise the first determines the order.
+   * @param priorityFuncs A list of priority functions to sort the replicas. Priority functions are applied one by one until
+   *                      two replicas are of different priority regards to the current priority function.
    * @param scoreFunc the score function to sort the replicas with the same priority, replicas are sorted in ascending
    *                  order of score.
    * @see SortedReplicas

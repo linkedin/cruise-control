@@ -183,7 +183,7 @@ public abstract class CapacityGoal extends AbstractGoal {
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
-                              .addScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
+                              .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, false), clusterModel);
 
     // Sort leader replicas for each broker based on resource utilization.
@@ -191,7 +191,7 @@ public abstract class CapacityGoal extends AbstractGoal {
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
                               .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), onlyMoveImmigrantReplicas)
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
-                              .addScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
+                              .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, true), clusterModel);
   }
 

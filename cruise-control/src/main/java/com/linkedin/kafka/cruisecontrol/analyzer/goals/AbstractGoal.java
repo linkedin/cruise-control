@@ -224,7 +224,8 @@ public abstract class AbstractGoal implements Goal {
    *
    * @param clusterModel The state of the cluster.
    * @param sourceReplica Replica to be swapped with.
-   * @param candidateReplicas Candidate broker containing candidate replicas to swap with the source replica in the order of attempts to swap.
+   * @param candidateReplicas Candidate replicas (from the same candidate broker) to swap with the source replica in the
+   *                          order of attempts to swap.
    * @param optimizedGoals Optimized goals.
    * @param optimizationOptions Options to take into account during optimization -- e.g. excluded brokers for leadership.
    * @return The swapped in replica if succeeded, null otherwise.

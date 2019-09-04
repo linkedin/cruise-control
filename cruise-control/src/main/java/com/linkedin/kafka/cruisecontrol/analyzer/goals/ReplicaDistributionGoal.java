@@ -129,7 +129,7 @@ public class ReplicaDistributionGoal extends ReplicaDistributionAbstractGoal {
                                                        !clusterModel.selfHealingEligibleReplicas().isEmpty() && broker.isAlive())
                                 .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
                                 .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
-                                .addScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()))
+                                .setScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(DISK.name()))
                                 .trackSortedReplicasFor(replicaSortName(this, false, false), broker);
     }
   }

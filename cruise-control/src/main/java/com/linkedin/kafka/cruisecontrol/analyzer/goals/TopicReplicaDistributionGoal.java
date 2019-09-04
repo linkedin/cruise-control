@@ -41,6 +41,7 @@ import static com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributio
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.MIN_NUM_VALID_WINDOWS_FOR_SELF_HEALING;
 import static com.linkedin.kafka.cruisecontrol.analyzer.goals.GoalUtils.replicaSortName;
 
+
 /**
  * SOFT GOAL: Balance collocations of replicas of the same topic.
  * <ul>

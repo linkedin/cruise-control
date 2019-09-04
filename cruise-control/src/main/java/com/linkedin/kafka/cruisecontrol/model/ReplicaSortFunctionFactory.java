@@ -37,7 +37,7 @@ public class ReplicaSortFunctionFactory {
   /** Select online replicas only */
   private static final Function<Replica, Boolean> SELECT_ONLINE_REPLICAS = r -> !r.isCurrentOffline();
   /** Select offline replicas only */
-  private static final Function<Replica, Boolean> SELECT_OFFLINE_REPLICAS = r -> r.isCurrentOffline();
+  private static final Function<Replica, Boolean> SELECT_OFFLINE_REPLICAS = Replica::isCurrentOffline;
   /** Select immigrants only */
   private static final Function<Replica, Boolean> SELECT_IMMIGRANTS = r -> r.originalBroker() != r.broker();
   /** Select immigrant or offline replicas only */
@@ -47,7 +47,7 @@ public class ReplicaSortFunctionFactory {
   /**
    * @param metricGroup the metric group to score
    * @return a score function to score by the metric group value of the given metric group in positive way, i.e. the higher
-   *         the value, the higher the score.
+   *         the metric group value, the higher the score.
    */
   public static Function<Replica, Double> sortByMetricGroupValue(String metricGroup) {
     return r -> {
@@ -61,7 +61,7 @@ public class ReplicaSortFunctionFactory {
   /**
    * @param metricGroup the metric group to score
    * @return a score function to score by the metric group value of the given metric group in negative way, i.e. the higher
-   *         the value, the lower the score.
+   *         the metric group value, the lower the score.
    */
   public static Function<Replica, Double> reverseSortByMetricGroupValue(String metricGroup) {
     return r -> {
@@ -145,14 +145,14 @@ public class ReplicaSortFunctionFactory {
   }
 
   /**
-   * @return a selection function that only includes replicas whose metric value for certain resource is above certain limit.
+   * @return a selection function that only includes replicas whose metric value for certain resource is above limit.
    */
   public static Function<Replica, Boolean> selectReplicasAboveLimit(Resource resource, Double limit) {
     return r ->  r.load().expectedUtilizationFor(resource) > limit;
   }
 
   /**
-   * @return a selection function that only includes replicas whose metric value for certain resource is below certain limit.
+   * @return a selection function that only includes replicas whose metric value for certain resource is below limit.
    */
   public static Function<Replica, Boolean> selectReplicasBelowLimit(Resource resource, Double limit) {
     return r ->  r.load().expectedUtilizationFor(resource) < limit;

@@ -184,7 +184,7 @@ public class GoalUtils {
    *
    * @param clusterModel The state of the cluster.
    * @param sourceReplica Source replica for intended swap operation.
-   * @param candidateReplicas Candidate replicas(from the same candidate broker) to swap with the source replica in the order
+   * @param candidateReplicas Candidate replicas (from the same candidate broker) to swap with the source replica in the order
    *                          of attempts to swap.
    * @param optimizationOptions Options to take into account while applying the given action.
    * @return Eligible replicas for swap.
@@ -349,12 +349,13 @@ public class GoalUtils {
   }
 
   /**
-   * Generate the name for the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracked in {@link ClusterModel}.
+   * Generate the name of {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas}, which can be used to retrieve sorted
+   * replicas in {@link ClusterModel}/{@link Broker}//{@link Disk}.
    *
-   * @param goal The {@link Goal} which registers new {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} to track.
-   * @param reverse The associated {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks replicas in descending order or not.
-   * @param leaderOnly The associated {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks only leader replica or not.
-   * @return A descriptive name for the associated {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas}.
+   * @param goal The {@link Goal} which requests for new {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas}.
+   * @param reverse Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks replicas in descending order or not.
+   * @param leaderOnly Whether the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas} tracks only leader replicas or all replicas.
+   * @return A descriptive name for the {@link com.linkedin.kafka.cruisecontrol.model.SortedReplicas}.
    */
   static String replicaSortName(Goal goal, boolean reverse, boolean leaderOnly) {
     return String.format("%s%s%s", goal.name(), reverse ? "-REVERSE" : "", leaderOnly ? "-LEADER" : "");

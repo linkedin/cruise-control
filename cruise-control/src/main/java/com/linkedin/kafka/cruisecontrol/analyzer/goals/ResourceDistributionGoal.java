@@ -56,18 +56,23 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
   private boolean _fixOfflineReplicasOnly;
   private double _balanceUpperThreshold;
   private double _balanceLowerThreshold;
+  private Comparator<Broker> _brokerComparator;
 
   /**
    * Constructor for Resource Distribution Goal.
    */
   public ResourceDistributionGoal() {
-
+    _brokerComparator = (b1, b2) -> {
+      int result = Double.compare(utilizationPercentage(b1, resource()), utilizationPercentage(b2, resource()));
+      return result != 0 ? result : b1.compareTo(b2);
+    };
   }
 
   /**
    * Package private for unit test.
    */
   ResourceDistributionGoal(BalancingConstraint constraint) {
+    this();
     _balancingConstraint = constraint;
   }
 
@@ -371,7 +376,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     // If this broker is excluded for leadership, then it can move in only followers.
     boolean moveFollowersOnly = optimizationOptions.excludedBrokersForLeadership().contains(broker.id());
-    PriorityQueue<Broker> candidateBrokerPQ = new PriorityQueue<>(brokerComparator().reversed());
+    PriorityQueue<Broker> candidateBrokerPQ = new PriorityQueue<>(_brokerComparator.reversed());
 
     double clusterUtilization = clusterModel.load().expectedUtilizationFor(resource()) / clusterModel.capacityFor(resource());
     String replicaSortName = null;
@@ -438,18 +443,17 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
    * @param isAscending True if sort requested in ascending order, false otherwise.
    * @param followersOnly Candidate replicas contain only the followers.
    * @param leadersOnly Candidate replicas contain only the leaders.
-   * @param immigrantsOnly Candidate replicas contain only the immigrants.
-   * @return The name of registered sorted replicas.
+   * @param immigrantsOnly Candidate replicas contain only the immigrant replicas.
+   * @return The name of tracked sorted replicas.
    */
   private String sortedCandidateReplicas(Broker broker,
-                                       Set<String> excludedTopics,
-                                       double loadLimit,
-                                       boolean isAscending,
-                                       boolean followersOnly,
-                                       boolean leadersOnly,
-                                       boolean immigrantsOnly) {
+                                         Set<String> excludedTopics,
+                                         double loadLimit,
+                                         boolean isAscending,
+                                         boolean followersOnly,
+                                         boolean leadersOnly,
+                                         boolean immigrantsOnly) {
     SortedReplicasHelper helper = new SortedReplicasHelper();
-
     helper.maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectFollowers(), followersOnly)
           .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectLeaders(), leadersOnly)
           .maybeAddSelectionFunc(ReplicaSortFunctionFactory.selectImmigrants(), immigrantsOnly)
@@ -457,10 +461,10 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
           .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas());
     if (isAscending) {
       helper.addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasBelowLimit(resource(), loadLimit))
-            .addScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
+            .setScoreFunc(ReplicaSortFunctionFactory.sortByMetricGroupValue(resource().name()));
     } else {
       helper.addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasAboveLimit(resource(), loadLimit))
-            .addScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()));
+            .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()));
     }
     String replicaSortName = replicaSortName(this, !isAscending, leadersOnly);
     helper.trackSortedReplicasFor(replicaSortName, broker);
@@ -525,7 +529,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // If this broker is excluded for leadership, then it can swapped with only followers.
     double maxSourceReplicaLoad = getMaxReplicaLoad(sourceReplicas);
     boolean swapWithFollowersOnly = optimizationOptions.excludedBrokersForLeadership().contains(broker.id());
-    PriorityQueue<Broker> candidateBrokerPQ = new PriorityQueue<>(brokerComparator());
+    PriorityQueue<Broker> candidateBrokerPQ = new PriorityQueue<>(_brokerComparator);
     String candidateReplicaSortName = null;
     for (Broker candidate : clusterModel.aliveBrokersUnderThreshold(resource(), _balanceUpperThreshold)
                                         .stream().filter(b -> !b.replicas().isEmpty()).collect(Collectors.toSet())) {
@@ -573,6 +577,8 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
 
       if (swappedInReplica != null) {
         sourceReplicas = broker.trackedSortedReplicas(sourceReplicaSortName).sortedReplicas(false);
+        // The broker is still considered as an eligible candidate replica, because the swap was successful -- i.e. there
+        // might be other potential candidate replicas on it to swap with.
         candidateBrokerPQ.add(cb);
       }
     }
@@ -620,7 +626,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     // If this broker is excluded for leadership, then it can swapped with only followers.
     double minSourceReplicaLoad = getMinReplicaLoad(sourceReplicas);
     boolean swapWithFollowersOnly = optimizationOptions.excludedBrokersForLeadership().contains(broker.id());
-    PriorityQueue<Broker> candidateBrokerPQ = new PriorityQueue<>(brokerComparator().reversed());
+    PriorityQueue<Broker> candidateBrokerPQ = new PriorityQueue<>(_brokerComparator.reversed());
     String candidateReplicaSortName = null;
     for (Broker candidate : clusterModel.aliveBrokersOverThreshold(resource(), _balanceLowerThreshold)) {
       // Get candidate replicas on candidate broker to try swapping with -- sorted in the order of trial (descending load).
@@ -702,7 +708,7 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeOfflineReplicas())
                               .addPriorityFunc(ReplicaSortFunctionFactory.prioritizeImmigrants())
-                              .addScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
+                              .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(resource().name()))
                               .trackSortedReplicasFor(replicaSortName(this, true, actionType == LEADERSHIP_MOVEMENT), broker);
     SortedSet<Replica> replicasToMove = broker.trackedSortedReplicas(replicaSortName(this, true, actionType == LEADERSHIP_MOVEMENT)).sortedReplicas(true);
 
@@ -981,13 +987,6 @@ public abstract class ResourceDistributionGoal extends AbstractGoal {
     public String explainLastComparison() {
       return _reasonForLastNegativeResult;
     }
-  }
-
-  private Comparator<Broker> brokerComparator() {
-    return (b1, b2) -> {
-      int result = Double.compare(utilizationPercentage(b1, resource()), utilizationPercentage(b2, resource()));
-      return result != 0 ? result : b1.compareTo(b2);
-    };
   }
 
   /**

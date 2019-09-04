@@ -22,8 +22,8 @@ import java.util.function.Function;
  *  <ul>
  *     <li>
  *      <tt>ScoreFunction</tt>(optional): the score function generates a score for each replica to sort. The replicas are
- *      sorted based on their score in ascending order. Those who want a descending order need to use
- *      the descending iterator of {@link #sortedReplicas(boolean)}.
+ *      sorted based on their score in ascending order. Those who want a descending order need to use the descending iterator
+ *      of {@link #sortedReplicas(boolean)}.
  *    </li>
  *    <li>
  *      <tt>SelectionFunction</tt>(optional): the selection function decides which replicas to include in the sorted
@@ -68,29 +68,26 @@ public class SortedReplicas {
                  boolean initialize) {
     _broker = broker;
     _disk = disk;
-    _replicaComparator =  new Comparator<Replica>() {
-      @Override
-      public int compare(Replica r1, Replica r2) {
-        // First apply priority functions.
-        int result = comparePriority(r1, r2);
-        if (result != 0) {
-          return result;
-        }
-        // Then apply score function.
-        if (_scoreFunc != null) {
-          result = Double.compare(_scoreFunc.apply(r1), _scoreFunc.apply(r2));
-          if (result != 0) {
-            return result;
-          }
-        }
-        // Fall back to replica's own comparing method.
-        return r1.compareTo(r2);
-      }
-    };
-    _sortedReplicas = new TreeSet<>(_replicaComparator);
     _selectionFuncs = selectionFuncs;
     _scoreFunc = scoreFunc;
     _priorityFuncs = priorityFuncs;
+    _replicaComparator =  (Replica r1, Replica r2) -> {
+      // First apply priority functions.
+      int result = comparePriority(r1, r2);
+      if (result != 0) {
+        return result;
+      }
+      // Then apply score function.
+      if (_scoreFunc != null) {
+        result = Double.compare(_scoreFunc.apply(r1), _scoreFunc.apply(r2));
+        if (result != 0) {
+          return result;
+        }
+      }
+      // Fall back to replica's own comparing method.
+      return r1.compareTo(r2);
+    };
+    _sortedReplicas = new TreeSet<>(_replicaComparator);
     // If the sorted replicas need to be initialized, we set the initialized to false and initialize the replicas
     // lazily. If the sorted replicas do not need to be initialized, we simply set the initialized to true, so that
     // all the methods will function normally.
@@ -101,7 +98,7 @@ public class SortedReplicas {
    * Get the sorted replicas in the ascending order of their priority and score.
    * This method initialize the sorted replicas if it hasn't been initialized.
    *
-   * @param clone whether return a clone of the book-kept replica set or the set itself.
+   * @param clone whether return a clone of the replica set or the set itself.
    * @return the sorted replicas in the ascending order of their priority and score.
    */
   public SortedSet<Replica> sortedReplicas(boolean clone) {

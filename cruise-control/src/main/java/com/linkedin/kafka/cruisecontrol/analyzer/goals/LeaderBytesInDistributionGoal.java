@@ -170,7 +170,7 @@ public class LeaderBytesInDistributionGoal extends AbstractGoal {
     Set<String> excludedTopics = optimizationOptions.excludedTopics();
     new SortedReplicasHelper().addSelectionFunc(ReplicaSortFunctionFactory.selectReplicasNotFromExcludedTopics(excludedTopics))
                               .addSelectionFunc(ReplicaSortFunctionFactory.selectLeaders())
-                              .addScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(Resource.NW_IN.toString()))
+                              .setScoreFunc(ReplicaSortFunctionFactory.reverseSortByMetricGroupValue(Resource.NW_IN.toString()))
                               .trackSortedReplicasFor(replicaSortName(this, true, true), clusterModel);
   }
 
