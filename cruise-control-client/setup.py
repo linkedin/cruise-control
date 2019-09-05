@@ -11,7 +11,7 @@ It comes with a command-line interface to the client (`cccli`) (see [README](htt
 
 setuptools.setup(
     name='cruise-control-client',
-    version='0.3.1',
+    version='1.0.0',
     author='mgrubent',
     author_email='mgrubentrejo@linkedin.com',
     description='A Python client for cruise-control',
@@ -25,7 +25,6 @@ setuptools.setup(
     },
     packages=setuptools.find_packages(),
     install_requires=[
-        'pandas',
         'requests'
     ],
     license='Copyright 2019 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License").'

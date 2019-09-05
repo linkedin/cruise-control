@@ -5,7 +5,7 @@
 import cruisecontrolclient.client.Endpoint as Endpoint
 
 # To be able to make more precise type hints
-from typing import Dict, Tuple, Type  # noqa
+from typing import Dict, Tuple, Type
 
 
 class ExecutionContext:
