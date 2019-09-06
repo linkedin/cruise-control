@@ -35,9 +35,9 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALANCEDNESS_SCORE;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
-import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
 
 
 /**
@@ -139,7 +139,7 @@ public class GoalViolationDetector implements Runnable {
       // Retrieve excluded brokers for leadership and replica move.
       ExecutorState executorState = null;
       if (_excludeRecentlyDemotedBrokers || _excludeRecentlyRemovedBrokers) {
-        executorState = _kafkaCruiseControl.state(new OperationProgress(), Collections.singleton(EXECUTOR)).executorState();
+        executorState = _kafkaCruiseControl.executorState();
       }
 
       Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
@@ -168,8 +168,7 @@ public class GoalViolationDetector implements Runnable {
             if (skipDueToOfflineReplicas(clusterModel)) {
               return;
             }
-            KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation,
-                                                             clusterModel.capacityEstimationInfoByBrokerId());
+            sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
             _lastCheckedModelGeneration = clusterModel.generation();
           }
           newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations, excludedBrokersForLeadership, excludedBrokersForReplicaMove);

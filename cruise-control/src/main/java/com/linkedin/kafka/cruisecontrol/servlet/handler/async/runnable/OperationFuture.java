@@ -2,7 +2,7 @@
  * Copyright 2017 LinkedIn Corp. Licensed under the BSD 2-Clause License (the "License"). See License in the project root for license information.
  */
 
-package com.linkedin.kafka.cruisecontrol.async;
+package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
 
 import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
@@ -16,10 +16,10 @@ import java.util.concurrent.ExecutionException;
  */
 public class OperationFuture extends CompletableFuture<CruiseControlResponse> {
   // The url encoded request url
-  private final String _operation;
-  private final OperationProgress _operationProgress;
-  private volatile Thread _executionThread = null;
-  private long _finishTimeNs;
+  protected final String _operation;
+  protected final OperationProgress _operationProgress;
+  protected volatile Thread _executionThread = null;
+  protected long _finishTimeNs;
 
   public OperationFuture(String operation) {
     _operation = operation;
@@ -51,7 +51,7 @@ public class OperationFuture extends CompletableFuture<CruiseControlResponse> {
         Field f = Throwable.class.getDeclaredField("detailMessage");
         f.setAccessible(true);
         f.set(t, String.format("Operation '%s' received exception. ", _operation)
-            + (t.getMessage() == null ? "" : t.getMessage()));
+                 + (t.getMessage() == null ? "" : t.getMessage()));
       } catch (IllegalAccessException | NoSuchFieldException e) {
         // let it go
       }
@@ -101,7 +101,7 @@ public class OperationFuture extends CompletableFuture<CruiseControlResponse> {
    * @return the {@link OperationProgress} of this operation.
    */
   public OperationProgress operationProgress() {
-     return _operationProgress;
+    return _operationProgress;
   }
 
   /**

@@ -50,6 +50,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorAdminUtils.*;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 
 /**
@@ -797,11 +798,10 @@ public class Executor {
         long finishedDataMovementInMB = _executionTaskManager.finishedInterBrokerDataMovementInMB();
         LOG.info("{}/{} ({}%) inter-broker partition movements completed. {}/{} ({}%) MB have been moved.",
                  numFinishedPartitionMovements, numTotalPartitionMovements,
-                 String.format(java.util.Locale.US, "%.2f",
-                               numFinishedPartitionMovements * 100.0 / numTotalPartitionMovements),
+                 String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
                  finishedDataMovementInMB, totalDataToMoveInMB,
-                 totalDataToMoveInMB == 0 ? 100 : String.format(java.util.Locale.US, "%.2f",
-                                                  (finishedDataMovementInMB * 100.0) / totalDataToMoveInMB));
+                 totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataMovementInMB * UNIT_INTERVAL_TO_PERCENTAGE
+                                                                        / totalDataToMoveInMB));
         throttleHelper.clearThrottles(completedTasks, tasksToExecute.stream().filter(t -> t.state() == IN_PROGRESS).collect(Collectors.toList()));
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
@@ -858,16 +858,15 @@ public class Executor {
         long finishedDataToMoveInMB = _executionTaskManager.finishedIntraBrokerDataToMoveInMB();
         LOG.info("{}/{} ({}%) intra-broker partition movements completed. {}/{} ({}%) MB have been moved.",
             numFinishedPartitionMovements, numTotalPartitionMovements,
-            String.format(java.util.Locale.US, "%.2f",
-                          numFinishedPartitionMovements * 100.0 / numTotalPartitionMovements),
+            String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
             finishedDataToMoveInMB, totalDataToMoveInMB,
-            totalDataToMoveInMB == 0 ? 100 : String.format(java.util.Locale.US, "%.2f",
-                                                           (finishedDataToMoveInMB * 100.0) / totalDataToMoveInMB));
+            totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataToMoveInMB * UNIT_INTERVAL_TO_PERCENTAGE
+                                                                   / totalDataToMoveInMB));
       }
       Set<ExecutionTask> inExecutionTasks = _executionTaskManager.inExecutionTasks();
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish", inExecutionTasks.size(),
-                 _executionTaskManager.inExecutionIntraBrokerDataMovementInMB(), inExecutionTasks);
+                 _executionTaskManager.inExecutionIntraBrokerDataMovementInMB());
         waitForExecutionTaskToFinish();
         inExecutionTasks = _executionTaskManager.inExecutionTasks();
       }

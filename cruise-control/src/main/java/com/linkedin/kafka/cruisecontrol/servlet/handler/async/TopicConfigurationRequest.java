@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.UpdateTopicConfigurationRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import java.util.Map;
 
@@ -20,7 +21,10 @@ public class TopicConfigurationRequest extends AbstractAsyncRequest {
 
   @Override
   protected OperationFuture handle(String uuid) {
-    return _asyncKafkaCruiseControl.updateTopicConfiguration(_parameters, uuid);
+    OperationFuture future = new OperationFuture("Update Topic Configuration");
+    pending(future.operationProgress());
+    _asyncKafkaCruiseControl.sessionExecutor().submit(new UpdateTopicConfigurationRunnable(_asyncKafkaCruiseControl, future, uuid, _parameters));
+    return future;
   }
 
   @Override

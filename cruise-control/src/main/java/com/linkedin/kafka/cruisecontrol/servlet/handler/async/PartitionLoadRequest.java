@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.PartitionLoadRunnable;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParameters;
 import java.util.Map;
 
@@ -20,7 +21,10 @@ public class PartitionLoadRequest extends AbstractAsyncRequest {
 
   @Override
   protected OperationFuture handle(String uuid) {
-    return _asyncKafkaCruiseControl.partitionLoadState(_parameters);
+    OperationFuture future = new OperationFuture(String.format("Get partition load from %d to %d", _parameters.startMs(), _parameters.endMs()));
+    pending(future.operationProgress());
+    _asyncKafkaCruiseControl.sessionExecutor().submit(new PartitionLoadRunnable(_asyncKafkaCruiseControl, future, _parameters));
+    return future;
   }
 
   @Override

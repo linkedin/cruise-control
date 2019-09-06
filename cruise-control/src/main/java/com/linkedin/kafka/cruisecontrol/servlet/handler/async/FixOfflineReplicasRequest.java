@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.FixOfflineReplicasRunnable;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.FixOfflineReplicasParameters;
 import java.util.Map;
 
@@ -20,7 +21,10 @@ public class FixOfflineReplicasRequest extends AbstractAsyncRequest {
 
   @Override
   protected OperationFuture handle(String uuid) {
-    return _asyncKafkaCruiseControl.fixOfflineReplicas(_parameters, uuid);
+    OperationFuture future = new OperationFuture("Fix offline replicas");
+    pending(future.operationProgress());
+    _asyncKafkaCruiseControl.sessionExecutor().submit(new FixOfflineReplicasRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid));
+    return future;
   }
 
   @Override

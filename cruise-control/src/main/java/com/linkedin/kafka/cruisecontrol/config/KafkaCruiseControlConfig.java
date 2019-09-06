@@ -63,6 +63,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   private static final String DEFAULT_NETWORK_CLIENT_PROVIDER_CLASS = KafkaNetworkClientProvider.class.getName();
   private static final String DEFAULT_EXECUTOR_NOTIFIER_CLASS = ExecutorNoopNotifier.class.getName();
   private static final String DEFAULT_METRIC_ANOMALY_FINDER_CLASS = NoopMetricAnomalyFinder.class.getName();
+  public static final boolean DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG = true;
+  public static final boolean DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG = true;
+  public static final boolean DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG = true;
 
   private static final ConfigDef CONFIG;
 
@@ -1628,7 +1631,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ANOMALY_DETECTION_INTERVAL_MS_DOC)
         .define(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
                 ConfigDef.Type.BOOLEAN,
-                true,
+                DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
                 ConfigDef.Importance.LOW,
                 ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_DOC)
         .define(SAMPLING_ALLOW_CPU_CAPACITY_ESTIMATION_CONFIG,
@@ -1645,23 +1648,21 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Importance.MEDIUM,
                 ANOMALY_DETECTION_GOALS_DOC)
         .define(BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
-                ConfigDef.Type.BOOLEAN,
-                true,
+                ConfigDef.Type.BOOLEAN, DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
                 BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
         .define(BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
-                ConfigDef.Type.BOOLEAN,
-                true,
+                ConfigDef.Type.BOOLEAN, DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
                 BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
         .define(GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
                 ConfigDef.Type.BOOLEAN,
-                true,
+                DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
                 GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
         .define(GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
                 ConfigDef.Type.BOOLEAN,
-                true,
+                DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
                 GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
         .define(FAILED_BROKERS_ZK_PATH_CONFIG,

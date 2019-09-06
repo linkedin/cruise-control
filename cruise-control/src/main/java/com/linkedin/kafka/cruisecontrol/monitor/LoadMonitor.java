@@ -63,6 +63,7 @@ import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.getReplicaPl
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.partitionSampleExtrapolations;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.populatePartitionLoad;
 import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.setBadBrokerState;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 
 /**
  * The LoadMonitor monitors the workload of a Kafka cluster. It periodically triggers the metric sampling and
@@ -419,7 +420,7 @@ public class LoadMonitor {
                                    ModelCompletenessRequirements requirements,
                                    OperationProgress operationProgress)
       throws NotEnoughValidWindowsException {
-    ClusterModel clusterModel = clusterModel(-1L, now, requirements, operationProgress);
+    ClusterModel clusterModel = clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, now, requirements, operationProgress);
     // Micro optimization: put the broker stats construction out of the lock.
     BrokerStats brokerStats = clusterModel.brokerStats(_config);
     // update the cached brokerLoadStats
@@ -566,6 +567,11 @@ public class LoadMonitor {
     return MonitorUtils.brokersWithReplicas(kafkaCluster);
   }
 
+  /**
+   * Refresh the cluster metadata and get the corresponding cluster and generation information.
+   *
+   * @return Cluster and generation information after refreshing the cluster metadata.
+   */
   public MetadataClient.ClusterAndGeneration refreshClusterAndGeneration() {
     return _metadataClient.refreshMetadata();
   }

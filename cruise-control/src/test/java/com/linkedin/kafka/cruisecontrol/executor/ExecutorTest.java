@@ -261,7 +261,6 @@ public class ExecutorTest extends CCKafkaIntegrationTestHarness {
         .andReturn(expectUserTaskInfo ? mockUserTaskInfo : null).once();
     mockUserTaskManager.markTaskExecutionFinished(uuid);
     mockExecutorNotifier.sendNotification(EasyMock.capture(captureNotification));
-    EasyMock.expectLastCall();
 
     EasyMock.replay(mockUserTaskInfo);
     EasyMock.replay(mockUserTaskManager);

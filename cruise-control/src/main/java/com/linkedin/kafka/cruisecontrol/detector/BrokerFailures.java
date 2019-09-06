@@ -5,12 +5,10 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RemoveBrokersRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -23,14 +21,9 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateStr
  */
 public class BrokerFailures extends KafkaAnomaly {
   private static final String ID_PREFIX = AnomalyType.BROKER_FAILURE.toString();
-  private final KafkaCruiseControl _kafkaCruiseControl;
   private final Map<Integer, Long> _failedBrokers;
-  private final boolean _allowCapacityEstimation;
-  private final boolean _excludeRecentlyDemotedBrokers;
-  private final boolean _excludeRecentlyRemovedBrokers;
   private final String _anomalyId;
-  private final List<String> _selfHealingGoals;
-  private final Long _replicationThrottle;
+  private final RemoveBrokersRunnable _removeBrokersRunnable;
 
   /**
    * An anomaly to indicate broker failure(s).
@@ -48,22 +41,20 @@ public class BrokerFailures extends KafkaAnomaly {
                         boolean excludeRecentlyDemotedBrokers,
                         boolean excludeRecentlyRemovedBrokers,
                         List<String> selfHealingGoals) {
-    _kafkaCruiseControl = kafkaCruiseControl;
     _failedBrokers = failedBrokers;
     if (_failedBrokers != null && _failedBrokers.isEmpty()) {
       throw new IllegalArgumentException("Missing broker ids for failed brokers.");
     }
-    _allowCapacityEstimation = allowCapacityEstimation;
-    _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
-    _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
     _optimizationResult = null;
-    _selfHealingGoals = selfHealingGoals;
-    if (_kafkaCruiseControl != null && _kafkaCruiseControl.config() != null) {
-      _replicationThrottle = _kafkaCruiseControl.config().getLong(KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
-    } else {
-      _replicationThrottle = null;
-    }
+    _removeBrokersRunnable = _failedBrokers != null ? new RemoveBrokersRunnable(kafkaCruiseControl,
+                                                                                _failedBrokers.keySet(),
+                                                                                selfHealingGoals,
+                                                                                allowCapacityEstimation,
+                                                                                excludeRecentlyDemotedBrokers,
+                                                                                excludeRecentlyRemovedBrokers,
+                                                                                _anomalyId)
+                                                    : null;
   }
 
   /**
@@ -81,25 +72,8 @@ public class BrokerFailures extends KafkaAnomaly {
   @Override
   public boolean fix() throws KafkaCruiseControlException {
     // Fix the cluster by removing the failed brokers (mode: non-Kafka_assigner).
-    if (_failedBrokers != null && !_failedBrokers.isEmpty()) {
-      _optimizationResult = new OptimizationResult(_kafkaCruiseControl.decommissionBrokers(_failedBrokers.keySet(),
-                                                                                           false,
-                                                                                           false,
-                                                                                           _selfHealingGoals,
-                                                                                           null,
-                                                                                           new OperationProgress(),
-                                                                                           _allowCapacityEstimation,
-                                                                                           null,
-                                                                                           null,
-                                                                                           false,
-                                                                                           null,
-                                                                                           null,
-                                                                                           _replicationThrottle,
-                                                                                           _anomalyId,
-                                                                                           _excludeRecentlyDemotedBrokers,
-                                                                                           _excludeRecentlyRemovedBrokers,
-                                                                                           Collections.emptySet()),
-                                                   null);
+    if (_removeBrokersRunnable != null) {
+      _optimizationResult = new OptimizationResult(_removeBrokersRunnable.removeBrokers(), null);
       // Ensure that only the relevant response is cached to avoid memory pressure.
       _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
       return true;

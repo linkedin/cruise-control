@@ -23,7 +23,7 @@ import org.apache.kafka.common.utils.SystemTime;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.State.*;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 
 public class ExecutionTaskManagerTest {

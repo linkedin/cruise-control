@@ -52,10 +52,10 @@ public class RandomCluster {
     boolean populateReplicaPlacementInfo = clusterProperties.get(ClusterProperty.POPULATE_REPLICA_PLACEMENT_INFO).intValue() > 0;
     if (populateReplicaPlacementInfo) {
       configFileResolver.configure(Collections.singletonMap(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE,
-                                   RandomCluster.class.getClassLoader().getResource(JBOD_BROKER_CAPACITY_CONFIG_FILE).getFile()));
+                                                            RandomCluster.class.getClassLoader().getResource(JBOD_BROKER_CAPACITY_CONFIG_FILE).getFile()));
     } else {
       configFileResolver.configure(Collections.singletonMap(BrokerCapacityConfigFileResolver.CAPACITY_CONFIG_FILE,
-                                   RandomCluster.class.getClassLoader().getResource(DEFAULT_BROKER_CAPACITY_CONFIG_FILE).getFile()));
+                                                            RandomCluster.class.getClassLoader().getResource(DEFAULT_BROKER_CAPACITY_CONFIG_FILE).getFile()));
     }
 
     if (numRacks > numBrokers || numBrokers <= 0 || numRacks <= 0) {
@@ -483,6 +483,24 @@ public class RandomCluster {
     return totalTopicReplicas;
   }
 
+  public static ClusterModel singleBrokerWithBadDisk() {
+    Map<ClusterProperty, Number> singleBrokerWithBadDisk = new HashMap<>();
+    singleBrokerWithBadDisk.put(ClusterProperty.NUM_BROKERS, 3);
+    singleBrokerWithBadDisk.put(ClusterProperty.NUM_RACKS, 3);
+    singleBrokerWithBadDisk.put(ClusterProperty.NUM_BROKERS_WITH_BAD_DISK, 1);
+    singleBrokerWithBadDisk.put(ClusterProperty.NUM_REPLICAS, 3);
+    singleBrokerWithBadDisk.put(ClusterProperty.NUM_TOPICS, 1);
+
+    Map<ClusterProperty, Number> clusterProperties = new HashMap<>(TestConstants.BASE_PROPERTIES);
+    clusterProperties.putAll(singleBrokerWithBadDisk);
+
+    ClusterModel clusterModel = RandomCluster.generate(clusterProperties);
+    RandomCluster.populate(clusterModel, clusterProperties, TestConstants.Distribution.UNIFORM, true,
+                           true, Collections.emptySet());
+
+    return clusterModel;
+  }
+
   /**
    * A helper class for random cluster generator to keep track of topic related metadata including the name,
    * replication factor, and number of leaders of the topic.
@@ -533,7 +551,7 @@ public class RandomCluster {
     @Override
     public String toString() {
       return String.format("<TopicMetadata name=\"%s\" replicationFactor=\"%d\" " + "numTopicLeaders=\"%d\">"
-          + "%n</TopicMetadata>%n", _topic, _replicationFactor, _numTopicLeaders);
+                           + "%n</TopicMetadata>%n", _topic, _replicationFactor, _numTopicLeaders);
     }
   }
 }
