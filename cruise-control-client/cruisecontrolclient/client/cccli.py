@@ -6,9 +6,6 @@
 # To be able to easily parse command-line arguments
 import argparse
 
-# To be able to signify deprecation
-import warnings
-
 # To be able to easily pass around the available endpoints and parameters
 from cruisecontrolclient.client.ExecutionContext import ExecutionContext
 
@@ -16,8 +13,7 @@ from cruisecontrolclient.client.ExecutionContext import ExecutionContext
 import cruisecontrolclient.client.Endpoint as Endpoint
 
 # To be able to make long-running requests to cruise-control
-from cruisecontrolclient.client.Responder import AbstractResponder, \
-    CruiseControlResponder, JSONDisplayingResponderGet, JSONDisplayingResponderPost
+from cruisecontrolclient.client.Responder import CruiseControlResponder
 
 
 def get_endpoint(args: argparse.Namespace,
@@ -134,35 +130,6 @@ def get_endpoint(args: argparse.Namespace,
             endpoint.remove_param(parameter)
 
     return endpoint
-
-
-def get_responder(endpoint: Endpoint.AbstractEndpoint,
-                  fully_composed_url: str) -> AbstractResponder:
-    """
-    Given an Endpoint and fully-composed URL, return an instantiation of
-    the correct JSONDisplayingResponder.
-
-    This is needed because the JSONDisplayingResponder classes do not dynamically
-    determine from the given Endpoint which type of HTTP request they must make.
-
-    :param endpoint: A built Endpoint object
-    :param fully_composed_url: The full cruise-control URL, including paths and parameters
-    :return: An instantiation of the correct JSONDisplayingResponder.
-    """
-    warnings.warn("This function is deprecated as of 0.2.0, as "
-                  "it only exists to facilitate the use of deprecated classes. "
-                  "It may be removed entirely in future versions.",
-                  DeprecationWarning,
-                  stacklevel=2)
-    # Handle instantiating the correct Responder
-    if endpoint.http_method == "GET":
-        json_responder = JSONDisplayingResponderGet(fully_composed_url)
-    elif endpoint.http_method == "POST":
-        json_responder = JSONDisplayingResponderPost(fully_composed_url)
-    else:
-        raise ValueError(f"Unexpected http_method {endpoint.http_method} in endpoint")
-
-    return json_responder
 
 
 def build_argument_parser(execution_context: ExecutionContext) -> argparse.ArgumentParser:
