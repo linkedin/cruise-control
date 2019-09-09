@@ -12,6 +12,7 @@ import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.model.Partition;
 import java.util.List;
 import java.util.stream.Collectors;
+import static java.lang.Thread.sleep;
 
 /**
  * The async runnable for {@link KafkaCruiseControl#clusterModel(long, long, Double,
@@ -33,7 +34,7 @@ class GetClusterModelInRangeRunnable extends OperationRunnable {
   @Override
   protected PartitionLoadState getResult() throws Exception {
     _kafkaCruiseControl.sanityCheckBrokerPresence(_parameters.brokerIds());
-
+    sleep(10000);
     ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(_parameters.startMs(),
                                                                  _parameters.endMs(),
                                                                  _parameters.minValidPartitionRatio(),

@@ -13,16 +13,16 @@ class BasicCapacityStats {
     private static final String CPU_CAPACITY = "CpuCapacity";
     private static final String NW_IN_CAPACITY = "NwInCapacity";
     private static final String NW_OUT_CAPACITY = "NwOutCapacity";
-    private double _diskCapacity;
-    private double _cpuCapacity;
-    private double _bytesInCapacity;
-    private double _bytesOutCapacity;
+    private final double _diskCapacity;
+    private final double _cpuCapacity;
+    private final double _bytesInCapacity;
+    private final double _bytesOutCapacity;
 
   BasicCapacityStats(double diskCapacity, double cpuCapacity, double nwInCapacity, double nwOutCapacity) {
-    _diskCapacity = diskCapacity < 0.0 ? 0.0 : diskCapacity;
-    _cpuCapacity = cpuCapacity < 0.0 ? 0.0 : cpuCapacity;
-    _bytesInCapacity = nwInCapacity < 0.0 ? 0.0 : nwInCapacity;
-    _bytesOutCapacity = nwOutCapacity < 0.0 ? 0.0 : nwOutCapacity;
+    _diskCapacity = diskCapacity < 0.0 ? -1.0 : diskCapacity;
+    _cpuCapacity = cpuCapacity < 0.0 ? -1.0 : cpuCapacity;
+    _bytesInCapacity = nwInCapacity < 0.0 ? -1.0 : nwInCapacity;
+    _bytesOutCapacity = nwOutCapacity < 0.0 ? -1.0 : nwOutCapacity;
   }
 
   double diskCapacity() {
