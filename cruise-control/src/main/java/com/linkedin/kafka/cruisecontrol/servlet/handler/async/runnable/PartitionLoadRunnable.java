@@ -12,6 +12,9 @@ import com.linkedin.kafka.cruisecontrol.model.Partition;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG;
+
+
 /**
  * The async runnable to get partition load in the cluster.
  */
@@ -30,7 +33,11 @@ public class PartitionLoadRunnable extends OperationRunnable {
     _kafkaCruiseControl.sanityCheckBrokerPresence(_parameters.brokerIds());
 
     LoadRunnable loadRunnable = new LoadRunnable(_kafkaCruiseControl, _future, _parameters);
-    ClusterModel clusterModel = loadRunnable.clusterModel(_parameters.minValidPartitionRatio());
+    Double minValidPartitionRatio = _parameters.minValidPartitionRatio();
+    if (minValidPartitionRatio == null) {
+      minValidPartitionRatio = _kafkaCruiseControl.config().getDouble(MIN_VALID_PARTITION_RATIO_CONFIG);
+    }
+    ClusterModel clusterModel = loadRunnable.clusterModel(minValidPartitionRatio);
     int topicNameLength = clusterModel.topics().stream().mapToInt(String::length).max().orElse(20) + 5;
     List<Partition> partitionList = clusterModel.replicasSortedByUtilization(_parameters.resource(),
                                                                              _parameters.wantMaxLoad(),

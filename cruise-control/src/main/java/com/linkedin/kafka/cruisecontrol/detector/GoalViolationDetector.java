@@ -60,13 +60,13 @@ public class GoalViolationDetector implements Runnable {
   private final Map<String, Double> _balancednessCostByGoal;
   private volatile double _balancednessScore;
 
-  public GoalViolationDetector(KafkaCruiseControlConfig config,
-                               LoadMonitor loadMonitor,
+  public GoalViolationDetector(LoadMonitor loadMonitor,
                                Queue<Anomaly> anomalies,
                                Time time,
                                KafkaCruiseControl kafkaCruiseControl,
                                List<String> selfHealingGoals) {
     _loadMonitor = loadMonitor;
+    KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     // Notice that we use a separate set of Goal instances for anomaly detector to avoid interference.
     _detectionGoals = config.getConfiguredInstances(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG, Goal.class);
     _anomalies = anomalies;

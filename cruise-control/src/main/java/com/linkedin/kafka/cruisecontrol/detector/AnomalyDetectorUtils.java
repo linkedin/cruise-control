@@ -23,13 +23,9 @@ import org.slf4j.LoggerFactory;
  */
 public class AnomalyDetectorUtils {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorUtils.class);
+  public static final String KAFKA_CRUISE_CONTROL_OBJECT_CONFIG = "kafka.cruise.control.object";
   public static final long MAX_METADATA_WAIT_MS = 60000L;
-  public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
-                                                                    null,
-                                                                    true,
-                                                                    true,
-                                                                    true,
-                                                                    null);
+  public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures();
 
   private AnomalyDetectorUtils() {
   }

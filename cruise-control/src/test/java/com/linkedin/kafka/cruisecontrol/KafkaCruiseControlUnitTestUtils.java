@@ -12,9 +12,11 @@ import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.config.KafkaTopicConfigProvider;
 import com.linkedin.kafka.cruisecontrol.monitor.metricdefinition.KafkaMetricDef;
 import com.linkedin.kafka.cruisecontrol.monitor.sampling.NoopSampler;
-
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
+
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG;
 
 
 /**
@@ -43,6 +45,13 @@ public class KafkaCruiseControlUnitTestUtils {
     props.setProperty(KafkaCruiseControlConfig.DEMOTION_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(TimeUnit.HOURS.toMillis(24)));
     props.setProperty(KafkaCruiseControlConfig.REMOVAL_HISTORY_RETENTION_TIME_MS_CONFIG, Long.toString(TimeUnit.HOURS.toMillis(12)));
     props.setProperty(KafkaCruiseControlConfig.GOAL_VIOLATION_DISTRIBUTION_THRESHOLD_MULTIPLIER_CONFIG, "2.0");
+    props.setProperty(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG,
+                      Boolean.toString(DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG));
+    props.setProperty(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
+                      Boolean.toString(DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG));
+    props.setProperty(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
+                      Boolean.toString(DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG));
+    props.setProperty(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG, "");
     props.setProperty(
         KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG,
         "com.linkedin.kafka.cruisecontrol.analyzer.goals.RackAwareGoal,"

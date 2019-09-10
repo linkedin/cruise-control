@@ -20,6 +20,8 @@ import org.apache.kafka.common.utils.Time;
 import org.easymock.EasyMock;
 import org.junit.Test;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -29,8 +31,6 @@ import static org.junit.Assert.assertTrue;
  * Unit test for SelfHealingNotifier.
  */
 public class SelfHealingNotifierTest {
-  private static final boolean EXCLUDE_RECENTLY_DEMOTED_BROKERS = true;
-  private static final boolean EXCLUDE_RECENTLY_REMOVED_BROKERS = true;
 
   @Test
   public void testOnBrokerFailure() {
@@ -39,7 +39,8 @@ public class SelfHealingNotifierTest {
     final long startTime = 500L;
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).atLeastOnce();
+    KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).atLeastOnce();
     EasyMock.replay(mockKafkaCruiseControl);
     Time mockTime = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
     TestingBrokerFailureAutoFixNotifier anomalyNotifier = new TestingBrokerFailureAutoFixNotifier(mockTime);
@@ -48,13 +49,14 @@ public class SelfHealingNotifierTest {
     Map<Integer, Long> failedBrokers = new HashMap<>();
     failedBrokers.put(1, failureTime1);
     failedBrokers.put(2, failureTime2);
-    boolean allowCapacityEstimation = true;
-    AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
-                                                                                          failedBrokers,
-                                                                                          allowCapacityEstimation,
-                                                                                          EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                                          EXCLUDE_RECENTLY_REMOVED_BROKERS,
-                                                                                          Collections.emptyList()));
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+    parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
+
+    AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(
+        kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+                                                       BrokerFailures.class,
+                                                       parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(SelfHealingNotifier.DEFAULT_ALERT_THRESHOLD_MS + failureTime1 - mockTime.milliseconds(),
                  result.delay());
@@ -62,12 +64,10 @@ public class SelfHealingNotifierTest {
 
     // Sleep to 1 ms before alert.
     mockTime.sleep(result.delay() - 1);
-    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
-                                                                failedBrokers,
-                                                                allowCapacityEstimation,
-                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS,
-                                                                Collections.emptyList()));
+    result = anomalyNotifier.onBrokerFailure(
+        kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+                                                       BrokerFailures.class,
+                                                       parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
     assertFalse(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -75,12 +75,10 @@ public class SelfHealingNotifierTest {
     // Sleep 1 ms
     mockTime.sleep(1);
     anomalyNotifier.resetAlert(AnomalyType.BROKER_FAILURE);
-    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
-                                                                failedBrokers,
-                                                                allowCapacityEstimation,
-                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS,
-                                                                Collections.emptyList()));
+    result = anomalyNotifier.onBrokerFailure(
+        kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+                                                       BrokerFailures.class,
+                                                       parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(SelfHealingNotifier.DEFAULT_AUTO_FIX_THRESHOLD_MS + failureTime1 - mockTime.milliseconds(),
                  result.delay());
@@ -89,12 +87,10 @@ public class SelfHealingNotifierTest {
     // Sleep to 1 ms before alert.
     mockTime.sleep(result.delay() - 1);
     anomalyNotifier.resetAlert(AnomalyType.BROKER_FAILURE);
-    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
-                                                                failedBrokers,
-                                                                allowCapacityEstimation,
-                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS,
-                                                                Collections.emptyList()));
+    result = anomalyNotifier.onBrokerFailure(
+        kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+                                                       BrokerFailures.class,
+                                                       parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.CHECK, result.action());
     assertEquals(1, result.delay());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -103,12 +99,10 @@ public class SelfHealingNotifierTest {
     // Sleep 1 ms
     mockTime.sleep(1);
     anomalyNotifier.resetAlert(AnomalyType.BROKER_FAILURE);
-    result = anomalyNotifier.onBrokerFailure(new BrokerFailures(mockKafkaCruiseControl,
-                                                                failedBrokers,
-                                                                allowCapacityEstimation,
-                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS,
-                                                                Collections.emptyList()));
+    result = anomalyNotifier.onBrokerFailure(
+        kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+                                                       BrokerFailures.class,
+                                                       parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.FIX, result.action());
     assertEquals(-1L, result.delay());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
@@ -123,7 +117,8 @@ public class SelfHealingNotifierTest {
     Time mockTime = new MockTime(startTime);
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).atLeastOnce();
+    KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).atLeastOnce();
     EasyMock.replay(mockKafkaCruiseControl);
     TestingBrokerFailureAutoFixNotifier anomalyNotifier = new TestingBrokerFailureAutoFixNotifier(mockTime);
 
@@ -144,13 +139,13 @@ public class SelfHealingNotifierTest {
 
     mockTime.sleep(SelfHealingNotifier.DEFAULT_AUTO_FIX_THRESHOLD_MS + failureTime1);
     anomalyNotifier.resetAlert(AnomalyType.BROKER_FAILURE);
+    Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
+    parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+    parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
     AnomalyNotificationResult result = anomalyNotifier.onBrokerFailure(
-        new BrokerFailures(mockKafkaCruiseControl,
-                           failedBrokers,
-                           true,
-                           EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                           EXCLUDE_RECENTLY_REMOVED_BROKERS,
-                           Collections.emptyList()));
+        kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+                                                       BrokerFailures.class,
+                                                       parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.BROKER_FAILURE));
     assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.BROKER_FAILURE));
@@ -159,8 +154,8 @@ public class SelfHealingNotifierTest {
     anomalyNotifier.resetAlert(AnomalyType.GOAL_VIOLATION);
     result = anomalyNotifier.onGoalViolation(new GoalViolations(mockKafkaCruiseControl,
                                                                 true,
-                                                                EXCLUDE_RECENTLY_DEMOTED_BROKERS,
-                                                                EXCLUDE_RECENTLY_REMOVED_BROKERS,
+                                                                true,
+                                                                true,
                                                                 Collections.emptyList()));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.GOAL_VIOLATION));

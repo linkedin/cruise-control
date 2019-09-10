@@ -34,6 +34,8 @@ import org.easymock.EasyMock;
 import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorState.NUM_SELF_HEALING_STARTED;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.model.RandomCluster.singleBrokerWithBadDisk;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RebalanceRunnable.SELF_HEALING_IGNORE_PROPOSAL_CACHE;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RebalanceRunnable.SELF_HEALING_IS_REBALANCE_DISK_MODE;
@@ -141,7 +143,8 @@ public class AnomalyDetectorTest {
             .andReturn(AnomalyNotificationResult.check(MOCK_DELAY_CHECK_MS));
     EasyMock.expect(mockAnomalyNotifier.selfHealingEnabledRatio()).andReturn(MOCK_SELF_HEALING_ENABLED_RATIO);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).times(1, 2);
+    KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(1, 2);
 
     startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector, executorService);
     // Schedule a delayed check
@@ -163,9 +166,12 @@ public class AnomalyDetectorTest {
 
     try {
       anomalyDetector.startDetection();
-      anomalies.add(new BrokerFailures(mockKafkaCruiseControl, Collections.singletonMap(0, 100L),
-                                       false, true, true,
-                                       Collections.emptyList()));
+      Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
+      parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+      parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, Collections.singletonMap(0, 100L));
+      anomalies.add(kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+                                                                   BrokerFailures.class,
+                                                                   parameterConfigOverrides));
       while (anomalyDetector.numCheckedWithDelay() < 1) {
         // Wait for the anomaly to be checked with delay before attempting to shutdown the anomaly detector.
       }
@@ -234,7 +240,7 @@ public class AnomalyDetectorTest {
 
       EasyMock.expect(mockKafkaCruiseControl.getProposals(EasyMock.anyObject(),
                                                           EasyMock.eq(KafkaCruiseControlConfig.DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG)))
-                                            .andReturn(mockOptimizerResult);
+              .andReturn(mockOptimizerResult);
 
       mockKafkaCruiseControl.executeProposals(EasyMock.anyObject(),
                                               EasyMock.anyObject(),

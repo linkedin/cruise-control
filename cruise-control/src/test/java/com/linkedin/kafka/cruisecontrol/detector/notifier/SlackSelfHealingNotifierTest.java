@@ -8,7 +8,6 @@ import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUnitTestUtils;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
-import java.util.Collections;
 import java.util.Properties;
 import org.apache.kafka.common.utils.MockTime;
 import org.apache.kafka.common.utils.Time;
@@ -23,6 +22,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.BrokerFailureDetector.FAILED_BROKERS_OBJECT_CONFIG;
 import static org.junit.Assert.assertEquals;
 
 public class SlackSelfHealingNotifierTest {
@@ -36,14 +37,18 @@ public class SlackSelfHealingNotifierTest {
         MOCK_TIME = new MockTime(0, startTime, TimeUnit.NANOSECONDS.convert(startTime, TimeUnit.MILLISECONDS));
         KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
         Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-        EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).anyTimes();
+        KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
+        EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).anyTimes();
         EasyMock.replay(mockKafkaCruiseControl);
         Map<Integer, Long> failedBrokers = new HashMap<>();
         failedBrokers.put(1, 200L);
         failedBrokers.put(2, 400L);
-        FAILURES = new BrokerFailures(mockKafkaCruiseControl, failedBrokers, true,
-                                      true, true,
-                                      Collections.emptyList());
+        Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
+        parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+        parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers);
+        FAILURES = kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+                                                                  BrokerFailures.class,
+                                                                  parameterConfigOverrides);
     }
 
     @Test

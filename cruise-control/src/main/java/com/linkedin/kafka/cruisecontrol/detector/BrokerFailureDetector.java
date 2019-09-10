@@ -33,6 +33,7 @@ import scala.collection.JavaConversions;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ZK_SESSION_TIMEOUT;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.ZK_CONNECTION_TIMEOUT;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static java.util.stream.Collectors.toSet;
 
 
@@ -41,6 +42,7 @@ import static java.util.stream.Collectors.toSet;
  */
 public class BrokerFailureDetector {
   private static final Logger LOG = LoggerFactory.getLogger(BrokerFailureDetector.class);
+  public static final String FAILED_BROKERS_OBJECT_CONFIG = "failed.brokers.object.config";
   private static final String ZK_BROKER_FAILURE_METRIC_GROUP = "CruiseControlAnomaly";
   private static final String ZK_BROKER_FAILURE_METRIC_TYPE = "BrokerFailure";
   private final KafkaCruiseControl _kafkaCruiseControl;
@@ -51,34 +53,25 @@ public class BrokerFailureDetector {
   private final LoadMonitor _loadMonitor;
   private final Queue<Anomaly> _anomalies;
   private final Time _time;
-  private final boolean _allowCapacityEstimation;
-  private final boolean _excludeRecentlyDemotedBrokers;
-  private final boolean _excludeRecentlyRemovedBrokers;
-  private final List<String> _selfHealingGoals;
 
-  public BrokerFailureDetector(KafkaCruiseControlConfig config,
-                               LoadMonitor loadMonitor,
+  public BrokerFailureDetector(LoadMonitor loadMonitor,
                                Queue<Anomaly> anomalies,
                                Time time,
-                               KafkaCruiseControl kafkaCruiseControl,
-                               List<String> selfHealingGoals) {
+                               KafkaCruiseControl kafkaCruiseControl) {
+    KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     String zkUrl = config.getString(KafkaCruiseControlConfig.ZOOKEEPER_CONNECT_CONFIG);
     boolean zkSecurityEnabled = config.getBoolean(KafkaCruiseControlConfig.ZOOKEEPER_SECURITY_ENABLED_CONFIG);
     ZkConnection zkConnection = new ZkConnection(zkUrl, ZK_SESSION_TIMEOUT);
     _zkClient = new ZkClient(zkConnection, ZK_CONNECTION_TIMEOUT, new ZkStringSerializer());
     // Do not support secure ZK at this point.
     _kafkaZkClient = KafkaCruiseControlUtils.createKafkaZkClient(zkUrl, ZK_BROKER_FAILURE_METRIC_GROUP, ZK_BROKER_FAILURE_METRIC_TYPE,
-        zkSecurityEnabled);
+                                                                 zkSecurityEnabled);
     _failedBrokers = new HashMap<>();
     _failedBrokersZkPath = config.getString(KafkaCruiseControlConfig.FAILED_BROKERS_ZK_PATH_CONFIG);
     _loadMonitor = loadMonitor;
     _anomalies = anomalies;
     _time = time;
     _kafkaCruiseControl = kafkaCruiseControl;
-    _allowCapacityEstimation = config.getBoolean(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
-    _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
-    _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
-    _selfHealingGoals = selfHealingGoals;
   }
 
   void startDetection() {
@@ -184,12 +177,14 @@ public class BrokerFailureDetector {
 
   private void reportBrokerFailures() {
     if (!_failedBrokers.isEmpty()) {
-      _anomalies.add(new BrokerFailures(_kafkaCruiseControl,
-                                        failedBrokers(),
-                                        _allowCapacityEstimation,
-                                        _excludeRecentlyDemotedBrokers,
-                                        _excludeRecentlyRemovedBrokers,
-                                        _selfHealingGoals));
+      Map<String, Object> parameterConfigOverrides = new HashMap<>(2);
+      parameterConfigOverrides.put(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
+      parameterConfigOverrides.put(FAILED_BROKERS_OBJECT_CONFIG, failedBrokers());
+
+      BrokerFailures brokerFailures = _kafkaCruiseControl.config().getConfiguredInstance(KafkaCruiseControlConfig.BROKER_FAILURES_CLASS_CONFIG,
+                                                                                         BrokerFailures.class,
+                                                                                         parameterConfigOverrides);
+      _anomalies.add(brokerFailures);
     }
   }
 

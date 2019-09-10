@@ -23,6 +23,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaCapacityGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaNetworkClientProvider;
+import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorNoopNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
@@ -66,6 +67,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final boolean DEFAULT_GOAL_VIOLATION_EXCLUDE_RECENT_BROKERS_CONFIG = true;
   public static final boolean DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG = true;
   public static final boolean DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG = true;
+  public static final String DEFAULT_BROKER_FAILURES_CLASS = BrokerFailures.class.getName();
 
   private static final ConfigDef CONFIG;
 
@@ -233,6 +235,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
       + "class name. The broker capacity configuration resolver is responsible for getting the broker capacity. The "
       + "default implementation is a file based solution.";
 
+  /**
+   * <code>broker.failures.class</code>
+   */
+  public static final String BROKER_FAILURES_CLASS_CONFIG = "broker.failures.class";
+  private static final String BROKER_FAILURES_CLASS_DOC = "The broker failures class that extends broker failures.";
   /**
    * <code>min.valid.partition.ratio</code>
    */
@@ -1146,6 +1153,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 BrokerCapacityConfigFileResolver.class.getName(),
                 ConfigDef.Importance.MEDIUM,
                 BROKER_CAPACITY_CONFIG_RESOLVER_CLASS_DOC)
+        .define(BROKER_FAILURES_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_BROKER_FAILURES_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                BROKER_FAILURES_CLASS_DOC)
         .define(GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 1.1,
@@ -1817,7 +1829,9 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
     // Ensure that goals used for self-healing are supported goals.
     List<String> selfHealingGoalNames = getList(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG);
     if (selfHealingGoalNames.stream().anyMatch(g -> !defaultGoalNames.contains(g))) {
-      throw new ConfigException("Attempt to configure self healing goals with unsupported goals.");
+      throw new ConfigException(String.format("Attempt to configure self healing goals with unsupported goals (%s:%s and %s:%s).",
+                                              KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG, selfHealingGoalNames,
+                                              KafkaCruiseControlConfig.DEFAULT_GOALS_CONFIG, defaultGoalNames));
     }
 
     // Ensure that goals used for anomaly detection are a subset of goals used for fixing the anomaly.

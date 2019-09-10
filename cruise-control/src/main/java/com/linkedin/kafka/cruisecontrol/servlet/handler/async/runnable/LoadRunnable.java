@@ -14,6 +14,7 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.PartitionLoadParamete
 import com.linkedin.kafka.cruisecontrol.servlet.response.stats.BrokerStats;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.MIN_VALID_PARTITION_RATIO_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
 
 
@@ -34,7 +35,11 @@ public class LoadRunnable extends OperationRunnable {
     super(kafkaCruiseControl, future);
     _start = parameters.startMs();
     _end = parameters.endMs();
-    _modelCompletenessRequirements = new ModelCompletenessRequirements(1, parameters.minValidPartitionRatio(), true);
+    Double minValidPartitionRatio = parameters.minValidPartitionRatio();
+    if (minValidPartitionRatio == null) {
+      minValidPartitionRatio = kafkaCruiseControl.config().getDouble(MIN_VALID_PARTITION_RATIO_CONFIG);
+    }
+    _modelCompletenessRequirements = new ModelCompletenessRequirements(1, minValidPartitionRatio, true);
     _allowCapacityEstimation = parameters.allowCapacityEstimation();
     _populateDiskInfo = false;
   }
