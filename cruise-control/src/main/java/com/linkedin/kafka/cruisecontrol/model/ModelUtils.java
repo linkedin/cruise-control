@@ -94,7 +94,7 @@ public class ModelUtils {
         double leaderReplicaContribution = (brokerLeaderBytesInContribution * Math.min(1, partitionBytesInRate / brokerLeaderBytesInRate))
                                            + (brokerLeaderBytesOutContribution * Math.min(1, partitionBytesOutRate / brokerLeaderBytesOutRate));
 
-        return (brokerCpuUtil / totalContribution) * leaderReplicaContribution;
+        return (leaderReplicaContribution / totalContribution) * brokerCpuUtil;
       }
     }
   }
