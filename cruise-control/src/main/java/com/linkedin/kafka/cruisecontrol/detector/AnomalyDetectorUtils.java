@@ -47,7 +47,7 @@ public class AnomalyDetectorUtils {
   /**
    * Get a list of names for goals {@link KafkaCruiseControlConfig#SELF_HEALING_GOALS_CONFIG} in the order of priority.
    */
-  static List<String> getSelfHealingGoalNames(KafkaCruiseControlConfig config) {
+  public static List<String> getSelfHealingGoalNames(KafkaCruiseControlConfig config) {
     List<Goal> goals = config.getConfiguredInstances(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG, Goal.class);
     List<String> selfHealingGoalNames = new ArrayList<>(goals.size());
     for (Goal goal : goals) {
