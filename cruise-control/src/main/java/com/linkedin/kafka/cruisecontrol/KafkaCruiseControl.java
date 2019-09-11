@@ -7,6 +7,7 @@ package com.linkedin.kafka.cruisecontrol;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.cruisecontrol.exception.NotEnoughValidWindowsException;
 import com.linkedin.kafka.cruisecontrol.analyzer.AnalyzerState;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.analyzer.GoalOptimizer;
@@ -53,7 +54,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 
 
 /**
@@ -295,6 +295,20 @@ public class KafkaCruiseControl {
   }
 
   /**
+   * Add the given brokers to the recently removed/demoted brokers permanently -- i.e. until they are explicitly dropped by user.
+   *
+   * @param brokersToAdd Brokers to add to the recently removed or demoted brokers.
+   * @param isRemoved True to add to recently removed brokers, false to add recently demoted brokers
+   */
+  public void addRecentBrokersPermanently(Set<Integer> brokersToAdd, boolean isRemoved) {
+    if (isRemoved) {
+      _executor.addRecentlyRemovedBrokers(brokersToAdd);
+    } else {
+      _executor.addRecentlyDemotedBrokers(brokersToAdd);
+    }
+  }
+
+  /**
    * Get {@link Executor#recentlyRemovedBrokers()} if isRemoved is true, {@link Executor#recentlyDemotedBrokers()} otherwise.
    *
    * @param isRemoved True to get recently removed brokers, false to get recently demoted brokers
@@ -396,65 +410,23 @@ public class KafkaCruiseControl {
            || !requestedDestinationBrokerIds.isEmpty() || isRebalanceDiskMode;
   }
 
-  public OptimizerResult getProposals(ClusterModel clusterModel,
-                                      List<Goal> goalsByPriority,
-                                      OperationProgress operationProgress,
-                                      boolean allowCapacityEstimation,
-                                      Pattern requestedExcludedTopics,
-                                      boolean excludeRecentlyDemotedBrokers,
-                                      boolean excludeRecentlyRemovedBrokers,
-                                      boolean isTriggeredByGoalViolation,
-                                      Set<Integer> requestedDestinationBrokerIds)
+  /**
+   * See {@link GoalOptimizer#optimizations(ClusterModel, List, OperationProgress, Map, OptimizationOptions)}.
+   */
+  public synchronized OptimizerResult optimizations(ClusterModel clusterModel,
+                                                    List<Goal> goalsByPriority,
+                                                    OperationProgress operationProgress,
+                                                    Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution,
+                                                    OptimizationOptions optimizationOptions)
       throws KafkaCruiseControlException {
-    sanityCheckCapacityEstimation(allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
-    if (!requestedDestinationBrokerIds.isEmpty()) {
-      sanityCheckBrokerPresence(requestedDestinationBrokerIds);
-    }
-    synchronized (this) {
-      ExecutorState executorState = executorState();
-      Set<Integer> excludedBrokersForLeadership = excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
-                                                                                : Collections.emptySet();
-
-      Set<Integer> excludedBrokersForReplicaMove = excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
-                                                                                 : Collections.emptySet();
-
-      return _goalOptimizer.optimizations(clusterModel,
-                                          goalsByPriority,
-                                          operationProgress,
-                                          requestedExcludedTopics,
-                                          excludedBrokersForLeadership,
-                                          excludedBrokersForReplicaMove,
-                                          isTriggeredByGoalViolation,
-                                          requestedDestinationBrokerIds,
-                                          null,
-                                          false);
-    }
+    return _goalOptimizer.optimizations(clusterModel, goalsByPriority, operationProgress, initReplicaDistribution, optimizationOptions);
   }
 
   /**
-   * See {@link GoalOptimizer#optimizations(ClusterModel, List, OperationProgress, Pattern, Set, Set, boolean, Set, Map, boolean)}.
+   * See {@link GoalOptimizer#excludedTopics(ClusterModel, Pattern)}.
    */
-  public OptimizerResult optimizations(ClusterModel clusterModel,
-                                       List<Goal> goalsByPriority,
-                                       OperationProgress operationProgress,
-                                       Pattern requestedExcludedTopics,
-                                       Set<Integer> excludedBrokersForLeadership,
-                                       Set<Integer> excludedBrokersForReplicaMove,
-                                       boolean isTriggeredByGoalViolation,
-                                       Set<Integer> requestedDestinationBrokerIds,
-                                       Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistributionForProposalGeneration,
-                                       boolean onlyMoveImmigrantReplicas)
-      throws KafkaCruiseControlException {
-    return _goalOptimizer.optimizations(clusterModel,
-                                        goalsByPriority,
-                                        operationProgress,
-                                        requestedExcludedTopics,
-                                        excludedBrokersForLeadership,
-                                        excludedBrokersForReplicaMove,
-                                        isTriggeredByGoalViolation,
-                                        requestedDestinationBrokerIds,
-                                        initReplicaDistributionForProposalGeneration,
-                                        onlyMoveImmigrantReplicas);
+  public Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
+    return _goalOptimizer.excludedTopics(clusterModel, requestedExcludedTopics);
   }
 
   public KafkaCruiseControlConfig config() {
@@ -573,7 +545,7 @@ public class KafkaCruiseControl {
   /**
    * Request the executor to stop any ongoing execution.
    */
-  public synchronized void userTriggeredStopExecution() {
+  public void userTriggeredStopExecution() {
     _executor.userTriggeredStopExecution();
   }
 

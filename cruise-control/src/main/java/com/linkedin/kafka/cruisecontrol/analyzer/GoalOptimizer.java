@@ -331,28 +331,38 @@ public class GoalOptimizer implements Runnable {
 
   /**
    * Provides optimization
-   * (1) using {@link #_defaultExcludedTopics}, and
-   * (2) does not exclude any brokers for receiving leadership.
-   * (3) does not exclude any brokers for receiving replicas.
-   * (4) assumes that the optimization is not triggered by anomaly detector.
-   * (5) does not specify the destination brokers for replica move explicitly.
+   * <ul>
+   *   <li>using {@link #_defaultExcludedTopics}.</li>
+   *   <li>does not exclude any brokers for receiving leadership.</li>
+   *   <li>does not exclude any brokers for receiving replicas.</li>
+   *   <li>assumes that the optimization is not triggered by anomaly detector.</li>
+   *   <li>does not specify the destination brokers for replica move explicitly.</li>
+   *   <li>does not keep the movements limited to immigrant replicas.</li>
+   * </ul>
    *
-   * See {@link #optimizations(ClusterModel, List, OperationProgress, Pattern, Set, Set, boolean, Set, Map, boolean)}.
+   * See {@link GoalOptimizer#optimizations(ClusterModel, List, OperationProgress, Map, OptimizationOptions)}.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        List<Goal> goalsByPriority,
                                        OperationProgress operationProgress)
       throws KafkaCruiseControlException {
-    return optimizations(clusterModel,
-                         goalsByPriority,
-                         operationProgress,
-                         null,
-                         Collections.emptySet(),
-                         Collections.emptySet(),
-                         false,
-                         Collections.emptySet(),
-                         null,
-                         false);
+    if (clusterModel == null) {
+      throw new IllegalArgumentException("The cluster model cannot be null");
+    } else if (goalsByPriority.isEmpty()) {
+      throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
+    } else if (!clusterModel.isClusterAlive()) {
+      throw new IllegalArgumentException("All brokers are dead in the cluster.");
+    }
+
+    Set<String> excludedTopics = excludedTopics(clusterModel, null);
+    LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
+    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
+                                                                      Collections.emptySet(),
+                                                                      Collections.emptySet(),
+                                                                      false,
+                                                                      Collections.emptySet(),
+                                                                      false);
+    return optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
   }
 
   /**
@@ -361,51 +371,32 @@ public class GoalOptimizer implements Runnable {
    * (2) Self-healing: Generates proposals to move replicas away from decommissioned brokers and broken disks.
    * Returns a map from goal names to stats. Initial stats are returned under goal name "init".
    *
+   * <ul>
+   *   Assumptions:
+   *   <li>The cluster model cannot be null.</li>
+   *   <li>At least one goal has been provided in goalsByPriority.</li>
+   *   <li>There is at least one alive broker in the cluster.</li>
+   * </ul>
+   *
    * @param clusterModel The state of the cluster over which the balancing proposal will be applied. Function execution
    *                     updates the cluster state with balancing proposals. If the cluster model is specified, the
    *                     cached proposal will be ignored.
    * @param goalsByPriority the goals ordered by priority.
    * @param operationProgress to report the job progress.
-   * @param requestedExcludedTopics Topics requested to be excluded from partition movement (if null,
-   *                                use {@link #_defaultExcludedTopics})
-   * @param excludedBrokersForLeadership Brokers excluded from receiving leadership upon proposal generation.
-   * @param excludedBrokersForReplicaMove Brokers excluded from receiving replicas upon proposal generation.
-   * @param isTriggeredByGoalViolation True if optimization of goals is triggered by goal violation, false otherwise.
-   * @param requestedDestinationBrokerIds Explicitly requested destination broker Ids to limit the replica movement to
-   *                                      these brokers (if empty, no explicit filter is enforced -- cannot be null).
-   * @param initReplicaDistributionForProposalGeneration The initial replica distribution of the cluster. This is only needed
-   *                                                     if the passed in clusterModel is not the original cluster model so
-   *                                                     that initial replica distribution can not be deducted from that
-   *                                                     cluster model, otherwise it is null. One case explicitly specifying
-   *                                                     initial replica distribution needed is to increase/decrease specific
-   *                                                     topic partition's replication factor, in this case some replicas
-   *                                                     are tentatively deleted/added in cluster model before passing it
-   *                                                     in to generate proposals.
-   * @param onlyMoveImmigrantReplicas Whether restrict replica movement only to immigrant replicas or not.
+   * @param initReplicaDistributionForProposalGeneration The initial replica distribution of the cluster. This is only needed if the passed
+   *                                in clusterModel is not the original cluster model so that initial replica distribution
+   *                                can not be deducted from that cluster model, otherwise it is null. One case explicitly
+   *                                specifying initial replica distribution needed is to increase/decrease specific topic
+   *                                partition's replication factor, in this case some replicas are tentatively deleted/added
+   *                                in cluster model before passing it in to generate proposals.
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,
                                        List<Goal> goalsByPriority,
                                        OperationProgress operationProgress,
-                                       Pattern requestedExcludedTopics,
-                                       Set<Integer> excludedBrokersForLeadership,
-                                       Set<Integer> excludedBrokersForReplicaMove,
-                                       boolean isTriggeredByGoalViolation,
-                                       Set<Integer> requestedDestinationBrokerIds,
                                        Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistributionForProposalGeneration,
-                                       boolean onlyMoveImmigrantReplicas)
+                                       OptimizationOptions optimizationOptions)
       throws KafkaCruiseControlException {
-    if (clusterModel == null) {
-      throw new IllegalArgumentException("The cluster model cannot be null");
-    } else if (goalsByPriority.isEmpty()) {
-      throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
-    }
-
-    // Sanity check for optimizing goals.
-    if (!clusterModel.isClusterAlive()) {
-      throw new IllegalArgumentException("All brokers are dead in the cluster.");
-    }
-
     LOG.trace("Cluster before optimization is {}", clusterModel);
     BrokerStats brokerStatsBeforeOptimization = clusterModel.brokerStats(null);
     Map<TopicPartition, List<ReplicaPlacementInfo>> initReplicaDistribution = clusterModel.getReplicaDistribution();
@@ -420,14 +411,7 @@ public class GoalOptimizer implements Runnable {
     LinkedHashMap<Goal, ClusterModelStats> statsByGoalPriority = new LinkedHashMap<>(goalsByPriority.size());
     Map<TopicPartition, List<ReplicaPlacementInfo>> preOptimizedReplicaDistribution = null;
     Map<TopicPartition, ReplicaPlacementInfo> preOptimizedLeaderDistribution = null;
-    Set<String> excludedTopics = excludedTopics(clusterModel, requestedExcludedTopics);
-    LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
-    OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
-                                                                      excludedBrokersForLeadership,
-                                                                      excludedBrokersForReplicaMove,
-                                                                      isTriggeredByGoalViolation,
-                                                                      requestedDestinationBrokerIds,
-                                                                      onlyMoveImmigrantReplicas);
+
     for (Goal goal : goalsByPriority) {
       preOptimizedReplicaDistribution = preOptimizedReplicaDistribution == null ? initReplicaDistribution : clusterModel.getReplicaDistribution();
       preOptimizedLeaderDistribution = preOptimizedLeaderDistribution == null ? initLeaderDistribution : clusterModel.getLeaderDistribution();
@@ -480,7 +464,14 @@ public class GoalOptimizer implements Runnable {
                                balancednessCostByGoal(goalsByPriority, _priorityWeight, _strictnessWeight));
   }
 
-  private Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
+  /**
+   * Get set of excluded topics in the given cluster model.
+   *
+   * @param clusterModel The state of the cluster.
+   * @param requestedExcludedTopics Pattern used to exclude topics, or if {@code null}, use {@link #_defaultExcludedTopics}.
+   * @return Set of excluded topics in the given cluster model.
+   */
+  public Set<String> excludedTopics(ClusterModel clusterModel, Pattern requestedExcludedTopics) {
     Pattern topicsToExclude = requestedExcludedTopics != null ? requestedExcludedTopics : _defaultExcludedTopics;
     return clusterModel.topics()
                        .stream()

@@ -256,15 +256,17 @@ public class AnomalyDetectorTest {
     } else if (anomalyType == AnomalyType.DISK_FAILURE) {
       ClusterModel singleBrokerWithBadDisk = singleBrokerWithBadDisk();
       EasyMock.expect(mockKafkaCruiseControl.clusterModel(EasyMock.anyObject(), EasyMock.anyObject())).andReturn(singleBrokerWithBadDisk);
-      EasyMock.expect(mockKafkaCruiseControl.getProposals(EasyMock.eq(singleBrokerWithBadDisk),
-                                                          EasyMock.anyObject(),
-                                                          EasyMock.anyObject(),
-                                                          EasyMock.eq(KafkaCruiseControlConfig.DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG),
-                                                          EasyMock.eq(SELF_HEALING_EXCLUDED_TOPICS),
-                                                          EasyMock.eq(KafkaCruiseControlConfig.DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG),
-                                                          EasyMock.eq(KafkaCruiseControlConfig.DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG),
-                                                          EasyMock.eq(false),
-                                                          EasyMock.eq(SELF_HEALING_DESTINATION_BROKER_IDS)))
+      ExecutorState executorState = EasyMock.mock(ExecutorState.class);
+      EasyMock.expect(mockKafkaCruiseControl.executorState()).andReturn(executorState);
+      EasyMock.expect(executorState.recentlyDemotedBrokers()).andReturn(Collections.emptySet());
+      EasyMock.expect(executorState.recentlyRemovedBrokers()).andReturn(Collections.emptySet());
+      EasyMock.replay(executorState);
+      EasyMock.expect(mockKafkaCruiseControl.excludedTopics(singleBrokerWithBadDisk, SELF_HEALING_EXCLUDED_TOPICS)).andReturn(Collections.emptySet());
+      EasyMock.expect(mockKafkaCruiseControl.optimizations(EasyMock.eq(singleBrokerWithBadDisk),
+                                                           EasyMock.anyObject(),
+                                                           EasyMock.anyObject(),
+                                                           EasyMock.eq(null),
+                                                           EasyMock.anyObject()))
               .andReturn(mockOptimizerResult);
 
       mockKafkaCruiseControl.executeProposals(EasyMock.anyObject(),

@@ -65,6 +65,7 @@ public class Executor {
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
   private static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
+  private static final long PERMANENT_TIMESTAMP = 0L;
   // The maximum time to wait for a leader movement to finish. A leader movement will be marked as failed if
   // it takes longer than this time to finish.
   private static final long LEADER_ACTION_TIMEOUT_MS = 180000L;
@@ -277,6 +278,26 @@ public class Executor {
    */
   public boolean dropRecentlyDemotedBrokers(Set<Integer> brokersToDrop) {
     return _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> (brokersToDrop.contains(entry.getKey())));
+  }
+
+  /**
+   * Add the given brokers to the recently removed brokers permanently -- i.e. until they are explicitly dropped by user.
+   * If given set has brokers that were already removed recently, they become a permanent part of recently removed brokers.
+   *
+   * @param brokersToAdd Brokers to add to the {@link #_latestRemoveStartTimeMsByBrokerId}.
+   */
+  public void addRecentlyRemovedBrokers(Set<Integer> brokersToAdd) {
+    brokersToAdd.forEach(brokerId -> _latestRemoveStartTimeMsByBrokerId.put(brokerId, PERMANENT_TIMESTAMP));
+  }
+
+  /**
+   * Add the given brokers from the recently demoted brokers permanently -- i.e. until they are explicitly dropped by user.
+   * If given set has brokers that were already demoted recently, they become a permanent part of recently demoted brokers.
+   *
+   * @param brokersToAdd Brokers to add to the {@link #_latestDemoteStartTimeMsByBrokerId}.
+   */
+  public void addRecentlyDemotedBrokers(Set<Integer> brokersToAdd) {
+    brokersToAdd.forEach(brokerId -> _latestDemoteStartTimeMsByBrokerId.put(brokerId, PERMANENT_TIMESTAMP));
   }
 
   /**

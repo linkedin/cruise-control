@@ -5,10 +5,12 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
@@ -16,13 +18,16 @@ import com.linkedin.kafka.cruisecontrol.servlet.parameters.FixOfflineReplicasPar
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckHardGoalPresence;
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DRYRUN;
-import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DESTINATION_BROKER_IDS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_EXCLUDED_TOPICS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_CONCURRENT_MOVEMENTS;
@@ -35,6 +40,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  * The async runnable for fixing offline replicas.
  */
 public class FixOfflineReplicasRunnable extends OperationRunnable {
+  private static final Logger LOG = LoggerFactory.getLogger(FixOfflineReplicasRunnable.class);
   protected final boolean _dryRun;
   protected final List<String> _goals;
   protected final ModelCompletenessRequirements _modelCompletenessRequirements;
@@ -110,6 +116,9 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
     _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
     sanityCheckHardGoalPresence(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
+    if (goalsByPriority.isEmpty()) {
+      throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
+    }
     ModelCompletenessRequirements modelCompletenessRequirements =
         _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority).weaker(_modelCompletenessRequirements);
     OperationProgress operationProgress = _future.operationProgress();
@@ -117,15 +126,27 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
       ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(modelCompletenessRequirements, operationProgress);
       // Ensure that the generated cluster model contains offline replicas.
       sanityCheckOfflineReplicaPresence(clusterModel);
-      OptimizerResult result = _kafkaCruiseControl.getProposals(clusterModel,
-                                                                goalsByPriority,
-                                                                operationProgress,
-                                                                _allowCapacityEstimation,
-                                                                _excludedTopics,
-                                                                _excludeRecentlyDemotedBrokers,
-                                                                _excludeRecentlyRemovedBrokers,
-                                                                false,
-                                                                SELF_HEALING_DESTINATION_BROKER_IDS);
+      if (!clusterModel.isClusterAlive()) {
+        throw new IllegalArgumentException("All brokers are dead in the cluster.");
+      }
+      sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
+      ExecutorState executorState = _kafkaCruiseControl.executorState();
+      Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
+                                                                                 : Collections.emptySet();
+
+      Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
+                                                                                  : Collections.emptySet();
+
+      Set<String> excludedTopics = _kafkaCruiseControl.excludedTopics(clusterModel, _excludedTopics);
+      LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
+      OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
+                                                                        excludedBrokersForLeadership,
+                                                                        excludedBrokersForReplicaMove,
+                                                                        false,
+                                                                        Collections.emptySet(),
+                                                                        false);
+
+      OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
       if (!_dryRun) {
         _kafkaCruiseControl.executeProposals(result.goalProposals(),
                                              Collections.emptySet(),

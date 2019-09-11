@@ -5,6 +5,7 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
@@ -25,6 +26,8 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import org.apache.kafka.common.Cluster;
 import org.apache.kafka.common.TopicPartition;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
@@ -38,6 +41,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  * The async runnable for updating topic configuration.
  */
 public class UpdateTopicConfigurationRunnable extends OperationRunnable {
+  private static final Logger LOG = LoggerFactory.getLogger(UpdateTopicConfigurationRunnable.class);
   protected final TopicReplicationFactorChangeParameters _topicReplicationFactorChangeParameters;
   protected final String _uuid;
 
@@ -137,6 +141,9 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
     _kafkaCruiseControl.sanityCheckDryRun(dryRun);
     sanityCheckHardGoalPresence(goals, skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(goals, _kafkaCruiseControl.config());
+    if (goalsByPriority.isEmpty()) {
+      throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
+    }
 
     Cluster cluster = _kafkaCruiseControl.kafkaCluster();
     // Ensure there is no offline replica in the cluster.
@@ -165,18 +172,21 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
       // First try to add and remove replicas to achieve the replication factor for topics of interest.
       clusterModel.createOrDeleteReplicas(topicsToChangeByReplicationFactor, brokersByRack, rackByBroker, cluster);
 
+      if (!clusterModel.isClusterAlive()) {
+        throw new IllegalArgumentException("All brokers are dead in the cluster.");
+      }
+
+      Set<String> excludedTopics = _kafkaCruiseControl.excludedTopics(clusterModel, null);
+      LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
+      OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
+                                                                        excludedBrokersForLeadership,
+                                                                        excludedBrokersForReplicaMove,
+                                                                        false,
+                                                                        Collections.emptySet(),
+                                                                        true);
       // Then further optimize the location of newly added replicas based on goals. Here we restrict the replica movement to
       // only considering newly added replicas, in order to minimize the total bytes to move.
-      result = _kafkaCruiseControl.optimizations(clusterModel,
-                                                 goalsByPriority,
-                                                 operationProgress,
-                                                 null,
-                                                 excludedBrokersForLeadership,
-                                                 excludedBrokersForReplicaMove,
-                                                 false,
-                                                 Collections.emptySet(),
-                                                 initReplicaDistribution,
-                                                 true);
+      result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, initReplicaDistribution, optimizationOptions);
       if (!dryRun) {
         _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), false, concurrentInterBrokerPartitionMovements,
                                              0, concurrentLeaderMovements, replicaMovementStrategy, replicationThrottle, _uuid);

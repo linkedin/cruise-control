@@ -5,19 +5,25 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckHardGoalPresence;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckBrokersHavingOfflineReplicasOnBadDisks;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
@@ -27,6 +33,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  * The async runnable for getting proposals.
  */
 public class ProposalsRunnable extends OperationRunnable {
+  private static final Logger LOG = LoggerFactory.getLogger(ProposalsRunnable.class);
   protected final List<String> _goals;
   protected final ModelCompletenessRequirements _modelCompletenessRequirements;
   protected final boolean _allowCapacityEstimation;
@@ -91,6 +98,9 @@ public class ProposalsRunnable extends OperationRunnable {
     OptimizerResult result;
     sanityCheckHardGoalPresence(_goals, skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
+    if (goalsByPriority.isEmpty()) {
+      throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
+    }
     ModelCompletenessRequirements completenessRequirements = _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority)
                                                                                 .weaker(_modelCompletenessRequirements);
     boolean excludeBrokers = _excludeRecentlyDemotedBrokers || _excludeRecentlyRemovedBrokers;
@@ -110,15 +120,30 @@ public class ProposalsRunnable extends OperationRunnable {
                                                                      _isRebalanceDiskMode,
                                                                      operationProgress);
         sanityCheckBrokersHavingOfflineReplicasOnBadDisks(_goals, clusterModel);
-        result = _kafkaCruiseControl.getProposals(clusterModel,
-                                                  goalsByPriority,
-                                                  operationProgress,
-                                                  _allowCapacityEstimation,
-                                                  _excludedTopics,
-                                                  _excludeRecentlyDemotedBrokers,
-                                                  _excludeRecentlyRemovedBrokers,
-                                                  isTriggeredByGoalViolation,
-                                                  _destinationBrokerIds);
+        if (!clusterModel.isClusterAlive()) {
+          throw new IllegalArgumentException("All brokers are dead in the cluster.");
+        }
+        sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
+        if (!_destinationBrokerIds.isEmpty()) {
+          _kafkaCruiseControl.sanityCheckBrokerPresence(_destinationBrokerIds);
+        }
+        ExecutorState executorState = _kafkaCruiseControl.executorState();
+        Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
+                                                                                   : Collections.emptySet();
+
+        Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
+                                                                                    : Collections.emptySet();
+
+        Set<String> excludedTopics = _kafkaCruiseControl.excludedTopics(clusterModel, _excludedTopics);
+        LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
+        OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
+                                                                          excludedBrokersForLeadership,
+                                                                          excludedBrokersForReplicaMove,
+                                                                          isTriggeredByGoalViolation,
+                                                                          _destinationBrokerIds,
+                                                                          false);
+
+        result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
       } catch (KafkaCruiseControlException kcce) {
         throw kcce;
       } catch (Exception e) {

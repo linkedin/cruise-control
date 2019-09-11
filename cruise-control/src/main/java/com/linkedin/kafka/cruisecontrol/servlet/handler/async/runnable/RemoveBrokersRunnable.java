@@ -5,23 +5,27 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.analyzer.OptimizationOptions;
 import com.linkedin.kafka.cruisecontrol.analyzer.OptimizerResult;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.Goal;
 import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
 import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.executor.ExecutorState;
 import com.linkedin.kafka.cruisecontrol.executor.strategy.ReplicaMovementStrategy;
 import com.linkedin.kafka.cruisecontrol.model.Broker;
 import com.linkedin.kafka.cruisecontrol.model.ClusterModel;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveBrokerParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckHardGoalPresence;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.*;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DRYRUN;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DESTINATION_BROKER_IDS;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
@@ -37,6 +41,7 @@ import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.Ru
  * The async runnable for broker decommission.
  */
 public class RemoveBrokersRunnable extends OperationRunnable {
+  private static final Logger LOG = LoggerFactory.getLogger(RemoveBrokersRunnable.class);
   protected final Set<Integer> _removedBrokerIds;
   protected final Set<Integer> _destinationBrokerIds;
   protected final boolean _dryRun;
@@ -122,6 +127,9 @@ public class RemoveBrokersRunnable extends OperationRunnable {
     _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
     sanityCheckHardGoalPresence(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
+    if (goalsByPriority.isEmpty()) {
+      throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
+    }
     ModelCompletenessRequirements modelCompletenessRequirements =
         _kafkaCruiseControl.modelCompletenessRequirements(goalsByPriority).weaker(_modelCompletenessRequirements);
     OperationProgress operationProgress = _future.operationProgress();
@@ -129,15 +137,30 @@ public class RemoveBrokersRunnable extends OperationRunnable {
       ClusterModel clusterModel = _kafkaCruiseControl.clusterModel(modelCompletenessRequirements, operationProgress);
       sanityCheckBrokersHavingOfflineReplicasOnBadDisks(_goals, clusterModel);
       _removedBrokerIds.forEach(id -> clusterModel.setBrokerState(id, Broker.State.DEAD));
-      OptimizerResult result = _kafkaCruiseControl.getProposals(clusterModel,
-                                                                goalsByPriority,
-                                                                operationProgress,
-                                                                _allowCapacityEstimation,
-                                                                _excludedTopics,
-                                                                _excludeRecentlyDemotedBrokers,
-                                                                _excludeRecentlyRemovedBrokers,
-                                                                false,
-                                                                _destinationBrokerIds);
+      if (!clusterModel.isClusterAlive()) {
+        throw new IllegalArgumentException("All brokers are dead in the cluster.");
+      }
+      sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
+      if (!_destinationBrokerIds.isEmpty()) {
+        _kafkaCruiseControl.sanityCheckBrokerPresence(_destinationBrokerIds);
+      }
+      ExecutorState executorState = _kafkaCruiseControl.executorState();
+      Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
+                                                                                 : Collections.emptySet();
+
+      Set<Integer> excludedBrokersForReplicaMove = _excludeRecentlyRemovedBrokers ? executorState.recentlyRemovedBrokers()
+                                                                                  : Collections.emptySet();
+
+      Set<String> excludedTopics = _kafkaCruiseControl.excludedTopics(clusterModel, _excludedTopics);
+      LOG.debug("Topics excluded from partition movement: {}", excludedTopics);
+      OptimizationOptions optimizationOptions = new OptimizationOptions(excludedTopics,
+                                                                        excludedBrokersForLeadership,
+                                                                        excludedBrokersForReplicaMove,
+                                                                        false,
+                                                                        _destinationBrokerIds,
+                                                                        false);
+
+      OptimizerResult result = _kafkaCruiseControl.optimizations(clusterModel, goalsByPriority, operationProgress, null, optimizationOptions);
       if (!_dryRun) {
         _kafkaCruiseControl.executeRemoval(result.goalProposals(), _throttleRemovedBrokers, _removedBrokerIds, isKafkaAssignerMode(_goals),
                                            _concurrentInterBrokerPartitionMovements, _concurrentLeaderMovements, _replicaMovementStrategy,
