@@ -371,8 +371,8 @@ public class GoalOptimizer implements Runnable {
    * (2) Self-healing: Generates proposals to move replicas away from decommissioned brokers and broken disks.
    * Returns a map from goal names to stats. Initial stats are returned under goal name "init".
    *
+   * Assumptions:
    * <ul>
-   *   Assumptions:
    *   <li>The cluster model cannot be null.</li>
    *   <li>At least one goal has been provided in goalsByPriority.</li>
    *   <li>There is at least one alive broker in the cluster.</li>

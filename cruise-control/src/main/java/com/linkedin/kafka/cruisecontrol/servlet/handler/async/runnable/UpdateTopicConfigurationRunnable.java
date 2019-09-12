@@ -18,13 +18,17 @@ import com.linkedin.kafka.cruisecontrol.monitor.ModelCompletenessRequirements;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicConfigurationParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.TopicReplicationFactorChangeParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import org.apache.kafka.common.Cluster;
+import org.apache.kafka.common.Node;
+import org.apache.kafka.common.PartitionInfo;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,7 +37,7 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPr
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckHardGoalPresence;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.populateRackInfoForReplicationFactorChange;
-import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckNoOfflineReplica;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.partitionWithOfflineReplicas;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.topicsForReplicationFactorChange;
 
 
@@ -147,7 +151,13 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
 
     Cluster cluster = _kafkaCruiseControl.kafkaCluster();
     // Ensure there is no offline replica in the cluster.
-    sanityCheckNoOfflineReplica(cluster);
+    PartitionInfo partitionInfo = partitionWithOfflineReplicas(cluster);
+    if (partitionInfo != null) {
+      throw new IllegalStateException(String.format("Topic partition %s-%d has offline replicas on brokers %s",
+                                                    partitionInfo.topic(), partitionInfo.partition(),
+                                                    Arrays.stream(partitionInfo.offlineReplicas()).mapToInt(Node::id)
+                                                          .boxed().collect(Collectors.toSet())));
+    }
     Map<Short, Set<String>> topicsToChangeByReplicationFactor = topicsForReplicationFactorChange(topicPatternByReplicationFactor, cluster);
 
     // Generate cluster model and get proposal

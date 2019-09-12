@@ -161,20 +161,21 @@ public class RunnableUtils {
   }
 
   /**
-   * Sanity check there is no offline replica in the cluster.
+   * Check partitions in the given cluster for existence of offline replicas, and get the first such partition.
+   * If there no such partitions are identified, return {@code null}.
+   *
    * @param cluster The current cluster state.
+   * @return The first identified partition with offline replicas, {@code null} if no such partition exists.
    */
-  public static void sanityCheckNoOfflineReplica(Cluster cluster) {
+  public static PartitionInfo partitionWithOfflineReplicas(Cluster cluster) {
     for (String topic : cluster.topics()) {
       for (PartitionInfo partitionInfo : cluster.partitionsForTopic(topic)) {
         if (partitionInfo.offlineReplicas().length > 0) {
-          throw new IllegalStateException(String.format("Topic partition %s-%d has offline replicas on brokers %s",
-                                                        partitionInfo.topic(), partitionInfo.partition(),
-                                                        Arrays.stream(partitionInfo.offlineReplicas()).mapToInt(Node::id)
-                                                              .boxed().collect(Collectors.toSet())));
+          return partitionInfo;
         }
       }
     }
+    return null;
   }
 
   /**

@@ -54,6 +54,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
+import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.partitionWithOfflineReplicas;
 
 
 /**
@@ -373,13 +374,15 @@ public class KafkaCruiseControl {
 
   /**
    * Ignore the cached best proposals when:
-   * 1. The caller specified goals, excluded topics, or requested to exclude brokers (e.g. recently removed brokers).
-   * 2. Provided completeness requirements contain a weaker requirement than what is used by the cached proposal.
-   * 3. There is an ongoing execution.
-   * 4. The request is triggered by goal violation detector.
-   * 5. The request involves explicitly requested destination broker Ids.
-   * 6. The caller wants to rebalance across disks within the brokers.
-   *
+   * <ul>
+   *   <li>The caller specified goals, excluded topics, or requested to exclude brokers (e.g. recently removed brokers).</li>
+   *   <li>Provided completeness requirements contain a weaker requirement than what is used by the cached proposal.</li>
+   *   <li>There is an ongoing execution.</li>
+   *   <li>The request is triggered by goal violation detector.</li>
+   *   <li>The request involves explicitly requested destination broker Ids.</li>
+   *   <li>The caller wants to rebalance across disks within the brokers.</li>
+   *   <li>There are offline replicas in the cluster.</li>
+   * </ul>
    * @param goals A list of goal names (i.e. each matching {@link Goal#name()}) to optimize. When empty all goals will be used.
    * @param requirements Model completeness requirements.
    * @param excludedTopics Topics excluded from partition movement (if null, use topics.excluded.from.partition.movement)
@@ -407,7 +410,8 @@ public class KafkaCruiseControl {
 
     return _executor.hasOngoingExecution() || ignoreProposalCache || (goals != null && !goals.isEmpty())
            || hasWeakerRequirement || excludedTopics != null || excludeBrokers || isTriggeredByGoalViolation
-           || !requestedDestinationBrokerIds.isEmpty() || isRebalanceDiskMode;
+           || !requestedDestinationBrokerIds.isEmpty() || isRebalanceDiskMode
+           || partitionWithOfflineReplicas(kafkaCluster()) != null;
   }
 
   /**
