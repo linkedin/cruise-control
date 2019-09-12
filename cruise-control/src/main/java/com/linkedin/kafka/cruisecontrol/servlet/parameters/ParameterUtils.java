@@ -267,7 +267,7 @@ public class ParameterUtils {
    * Default: false -- i.e. a recently removed broker may receive replicas from the other brokers.
    */
   static boolean excludeRecentlyRemovedBrokers(HttpServletRequest request) {
-    return excludeBrokers(request, EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM, false);
+    return excludeBrokers(request, EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM, true);
   }
 
   static boolean wantMaxLoad(HttpServletRequest request) {

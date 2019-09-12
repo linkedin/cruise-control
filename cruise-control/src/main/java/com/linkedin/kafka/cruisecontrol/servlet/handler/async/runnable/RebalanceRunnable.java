@@ -51,7 +51,6 @@ public class RebalanceRunnable extends OperationRunnable {
   protected final Set<Integer> _destinationBrokerIds;
   protected final boolean _isRebalanceDiskMode;
   protected final boolean _isTriggeredByGoalViolation;
-  protected final ProposalsRunnable _proposalsRunnable;
 
   /**
    * Constructor to be used for creating a runnable for self-healing.
@@ -80,10 +79,6 @@ public class RebalanceRunnable extends OperationRunnable {
     _ignoreProposalCache = SELF_HEALING_IGNORE_PROPOSAL_CACHE;
     _destinationBrokerIds = SELF_HEALING_DESTINATION_BROKER_IDS;
     _isRebalanceDiskMode = SELF_HEALING_IS_REBALANCE_DISK_MODE;
-    _proposalsRunnable = new ProposalsRunnable(_kafkaCruiseControl, _future, _goals, _modelCompletenessRequirements,
-                                               _allowCapacityEstimation, _excludedTopics, _excludeRecentlyDemotedBrokers,
-                                               _excludeRecentlyRemovedBrokers, _ignoreProposalCache, _destinationBrokerIds,
-                                               _isRebalanceDiskMode);
     _isTriggeredByGoalViolation = true;
   }
 
@@ -109,10 +104,6 @@ public class RebalanceRunnable extends OperationRunnable {
     _ignoreProposalCache = parameters.ignoreProposalCache();
     _destinationBrokerIds = parameters.destinationBrokerIds();
     _isRebalanceDiskMode =  parameters.isRebalanceDiskMode();
-    _proposalsRunnable = new ProposalsRunnable(_kafkaCruiseControl, _future, _goals, _modelCompletenessRequirements,
-                                               _allowCapacityEstimation, _excludedTopics, _excludeRecentlyDemotedBrokers,
-                                               _excludeRecentlyRemovedBrokers, _ignoreProposalCache, _destinationBrokerIds,
-                                               _isRebalanceDiskMode);
     _isTriggeredByGoalViolation = false;
   }
 
@@ -130,7 +121,11 @@ public class RebalanceRunnable extends OperationRunnable {
    */
   public OptimizerResult rebalance() throws KafkaCruiseControlException {
     _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
-    OptimizerResult result = _proposalsRunnable.getProposals(_skipHardGoalCheck, _isTriggeredByGoalViolation);
+    ProposalsRunnable proposalsRunnable = new ProposalsRunnable(_kafkaCruiseControl, _future, _goals, _modelCompletenessRequirements,
+                                                                 _allowCapacityEstimation, _excludedTopics, _excludeRecentlyDemotedBrokers,
+                                                                 _excludeRecentlyRemovedBrokers, _ignoreProposalCache, _destinationBrokerIds,
+                                                                 _isRebalanceDiskMode);
+    OptimizerResult result = proposalsRunnable.getProposals(_skipHardGoalCheck, _isTriggeredByGoalViolation);
     if (!_dryRun) {
       _kafkaCruiseControl.executeProposals(result.goalProposals(), Collections.emptySet(), isKafkaAssignerMode(_goals),
                                            _concurrentInterBrokerPartitionMovements, _concurrentIntraBrokerPartitionMovements,
