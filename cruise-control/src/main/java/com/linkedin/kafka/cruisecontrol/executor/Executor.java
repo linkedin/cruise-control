@@ -65,6 +65,7 @@ public class Executor {
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
   private static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
+  // A special timestamp to indicate that a broker is a permanent part of recently removed or demoted broker set.
   private static final long PERMANENT_TIMESTAMP = 0L;
   // The maximum time to wait for a leader movement to finish. A leader movement will be marked as failed if
   // it takes longer than this time to finish.
@@ -217,14 +218,18 @@ public class Executor {
 
   private void removeExpiredDemotionHistory() {
     LOG.debug("Remove expired demotion history");
-    _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> (entry.getValue() + _demotionHistoryRetentionTimeMs
-                                                                     < _time.milliseconds()));
+    _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> {
+      long startTime = entry.getValue();
+      return startTime != PERMANENT_TIMESTAMP && startTime + _demotionHistoryRetentionTimeMs < _time.milliseconds();
+    });
   }
 
   private void removeExpiredRemovalHistory() {
     LOG.debug("Remove expired broker removal history");
-    _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> (entry.getValue() + _removalHistoryRetentionTimeMs
-                                                                     < _time.milliseconds()));
+    _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> {
+      long startTime = entry.getValue();
+      return startTime != PERMANENT_TIMESTAMP && startTime + _removalHistoryRetentionTimeMs < _time.milliseconds();
+    });
   }
 
   /**
@@ -243,7 +248,11 @@ public class Executor {
   }
 
   /**
-   * Recently demoted brokers are the ones for which a demotion was started, regardless of how the process was completed.
+   * Recently demoted brokers are the ones
+   * <ul>
+   *   <li>for which a broker demotion was started, regardless of how the corresponding process was completed, or</li>
+   *   <li>that are explicitly marked so -- e.g. via a pluggable component using {@link #addRecentlyDemotedBrokers(Set)}.</li>
+   * </ul>
    *
    * @return IDs of recently demoted brokers -- i.e. demoted within the last {@link #_demotionHistoryRetentionTimeMs}.
    */
@@ -252,7 +261,11 @@ public class Executor {
   }
 
   /**
-   * Recently removed brokers are the ones for which a removal was started, regardless of how the process was completed.
+   * Recently removed brokers are the ones
+   * <ul>
+   *   <li>for which a broker removal was started, regardless of how the corresponding process was completed, or</li>
+   *   <li>that are explicitly marked so -- e.g. via a pluggable component using {@link #addRecentlyRemovedBrokers(Set)}.</li>
+   * </ul>
    *
    * @return IDs of recently removed brokers -- i.e. removed within the last {@link #_removalHistoryRetentionTimeMs}.
    */
@@ -282,7 +295,7 @@ public class Executor {
 
   /**
    * Add the given brokers to the recently removed brokers permanently -- i.e. until they are explicitly dropped by user.
-   * If given set has brokers that were already removed recently, they become a permanent part of recently removed brokers.
+   * If given set has brokers that were already removed recently, make them a permanent part of recently removed brokers.
    *
    * @param brokersToAdd Brokers to add to the {@link #_latestRemoveStartTimeMsByBrokerId}.
    */
@@ -292,7 +305,7 @@ public class Executor {
 
   /**
    * Add the given brokers from the recently demoted brokers permanently -- i.e. until they are explicitly dropped by user.
-   * If given set has brokers that were already demoted recently, they become a permanent part of recently demoted brokers.
+   * If given set has brokers that were already demoted recently, make them a permanent part of recently demoted brokers.
    *
    * @param brokersToAdd Brokers to add to the {@link #_latestDemoteStartTimeMsByBrokerId}.
    */
@@ -606,12 +619,20 @@ public class Executor {
       }
 
       if (demotedBrokers != null) {
-        // Add/overwrite the latest demotion time of demoted brokers (if any).
-        demotedBrokers.forEach(id -> _latestDemoteStartTimeMsByBrokerId.put(id, _time.milliseconds()));
+        // Add/overwrite the latest demotion time of (non-permanent) demoted brokers (if any).
+        demotedBrokers.forEach(id -> {
+          if (_latestDemoteStartTimeMsByBrokerId.get(id) != PERMANENT_TIMESTAMP) {
+            _latestDemoteStartTimeMsByBrokerId.put(id, _time.milliseconds());
+          }
+        });
       }
       if (removedBrokers != null) {
-        // Add/overwrite the latest removal time of removed brokers (if any).
-        removedBrokers.forEach(id -> _latestRemoveStartTimeMsByBrokerId.put(id, _time.milliseconds()));
+        // Add/overwrite the latest removal time of (non-permanent) removed brokers (if any).
+        removedBrokers.forEach(id -> {
+          if (_latestRemoveStartTimeMsByBrokerId.get(id) != PERMANENT_TIMESTAMP) {
+            _latestRemoveStartTimeMsByBrokerId.put(id, _time.milliseconds());
+          }
+        });
       }
       _recentlyDemotedBrokers = recentlyDemotedBrokers();
       _recentlyRemovedBrokers = recentlyRemovedBrokers();
