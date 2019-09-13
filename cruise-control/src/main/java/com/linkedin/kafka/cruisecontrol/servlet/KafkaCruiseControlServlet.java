@@ -40,7 +40,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
   private final AsyncKafkaCruiseControl _asyncKafkaCruiseControl;
   private final KafkaCruiseControlConfig _config;
   private final UserTaskManager _userTaskManager;
-  private final long _maxBlockMs;
   private final ThreadLocal<Integer> _asyncOperationStep;
   private final Map<EndPoint, Meter> _requestMeter = new HashMap<>();
   private final Map<EndPoint, Timer> _successfulRequestExecutionTimer = new HashMap<>();
@@ -54,7 +53,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
     _purgatory = _twoStepVerification ? new Purgatory(_config) : null;
     _userTaskManager = new UserTaskManager(_config, dropwizardMetricRegistry, _successfulRequestExecutionTimer, _purgatory);
     _asyncKafkaCruiseControl.setUserTaskManagerInExecutor(_userTaskManager);
-    _maxBlockMs = _config.getLong(KafkaCruiseControlConfig.WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS);
     _asyncOperationStep = new ThreadLocal<>();
     _asyncOperationStep.set(0);
 
@@ -87,10 +85,6 @@ public class KafkaCruiseControlServlet extends HttpServlet {
 
   public UserTaskManager userTaskManager() {
     return _userTaskManager;
-  }
-
-  public long maxBlockMs() {
-    return _maxBlockMs;
   }
 
   protected void doOptions(HttpServletRequest request, HttpServletResponse response) {

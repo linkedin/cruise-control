@@ -15,7 +15,7 @@ import org.junit.Test;
  * Unit test for execution proposals.
  */
 public class ExecutionProposalTest {
-  private static final TopicPartition TP = new TopicPartition("topic", 0);
+  public static final TopicPartition TP = new TopicPartition("topic", 0);
   private final ReplicaPlacementInfo _r0 =  new ReplicaPlacementInfo(0);
   private final ReplicaPlacementInfo _r1 =  new ReplicaPlacementInfo(1);
   private final ReplicaPlacementInfo _r2 =  new ReplicaPlacementInfo(2);

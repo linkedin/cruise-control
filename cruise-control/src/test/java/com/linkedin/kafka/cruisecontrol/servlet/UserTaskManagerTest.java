@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;

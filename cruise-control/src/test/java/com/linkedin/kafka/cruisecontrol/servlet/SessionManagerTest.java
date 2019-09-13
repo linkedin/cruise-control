@@ -7,7 +7,7 @@ package com.linkedin.kafka.cruisecontrol.servlet;
 import com.codahale.metrics.MetricRegistry;
 import com.linkedin.kafka.cruisecontrol.servlet.response.PauseSamplingResult;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ResumeSamplingResult;
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;

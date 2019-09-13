@@ -23,13 +23,9 @@ import org.slf4j.LoggerFactory;
  */
 public class AnomalyDetectorUtils {
   private static final Logger LOG = LoggerFactory.getLogger(AnomalyDetectorUtils.class);
+  public static final String KAFKA_CRUISE_CONTROL_OBJECT_CONFIG = "kafka.cruise.control.object";
   public static final long MAX_METADATA_WAIT_MS = 60000L;
-  public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures(null,
-                                                                    null,
-                                                                    true,
-                                                                    true,
-                                                                    true,
-                                                                    null);
+  public static final Anomaly SHUTDOWN_ANOMALY = new BrokerFailures();
 
   private AnomalyDetectorUtils() {
   }
@@ -51,7 +47,7 @@ public class AnomalyDetectorUtils {
   /**
    * Get a list of names for goals {@link KafkaCruiseControlConfig#SELF_HEALING_GOALS_CONFIG} in the order of priority.
    */
-  static List<String> getSelfHealingGoalNames(KafkaCruiseControlConfig config) {
+  public static List<String> getSelfHealingGoalNames(KafkaCruiseControlConfig config) {
     List<Goal> goals = config.getConfiguredInstances(KafkaCruiseControlConfig.SELF_HEALING_GOALS_CONFIG, Goal.class);
     List<String> selfHealingGoalNames = new ArrayList<>(goals.size());
     for (Goal goal : goals) {

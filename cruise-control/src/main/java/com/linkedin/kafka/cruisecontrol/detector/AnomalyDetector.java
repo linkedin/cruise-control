@@ -35,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.OPERATION_LOGGER;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getAnomalyType;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.SHUTDOWN_ANOMALY;
@@ -69,12 +70,12 @@ public class AnomalyDetector {
   private volatile long _numCheckedWithDelay;
   private final Object _shutdownLock;
 
-  public AnomalyDetector(KafkaCruiseControlConfig config,
-                         LoadMonitor loadMonitor,
+  public AnomalyDetector(LoadMonitor loadMonitor,
                          KafkaCruiseControl kafkaCruiseControl,
                          Time time,
                          MetricRegistry dropwizardMetricRegistry) {
     _anomalies = new LinkedBlockingDeque<>();
+    KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     _adminClient = KafkaCruiseControlUtils.createAdminClient(KafkaCruiseControlUtils.parseAdminClientConfigs(config));
     _anomalyDetectionIntervalMs = config.getLong(KafkaCruiseControlConfig.ANOMALY_DETECTION_INTERVAL_MS_CONFIG);
     _anomalyNotifier = config.getConfiguredInstance(KafkaCruiseControlConfig.ANOMALY_NOTIFIER_CLASS_CONFIG,
@@ -82,11 +83,11 @@ public class AnomalyDetector {
     _loadMonitor = loadMonitor;
     _kafkaCruiseControl = kafkaCruiseControl;
     _selfHealingGoals = getSelfHealingGoalNames(config);
-    _kafkaCruiseControl.sanityCheckHardGoalPresence(_selfHealingGoals, false);
-    _goalViolationDetector = new GoalViolationDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
-    _brokerFailureDetector = new BrokerFailureDetector(config, _loadMonitor, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
-    _metricAnomalyDetector = new MetricAnomalyDetector(config, _loadMonitor, _anomalies, _kafkaCruiseControl);
-    _diskFailureDetector = new DiskFailureDetector(config, _loadMonitor, _adminClient, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
+    sanityCheckGoals(_selfHealingGoals, false, config);
+    _goalViolationDetector = new GoalViolationDetector(_loadMonitor, _anomalies, time, _kafkaCruiseControl);
+    _brokerFailureDetector = new BrokerFailureDetector(_loadMonitor, _anomalies, time, _kafkaCruiseControl);
+    _metricAnomalyDetector = new MetricAnomalyDetector(_loadMonitor, _anomalies, _kafkaCruiseControl);
+    _diskFailureDetector = new DiskFailureDetector(_loadMonitor, _adminClient, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
     _detectorScheduler = Executors.newScheduledThreadPool(NUM_ANOMALY_DETECTION_THREADS,
                                                           new KafkaCruiseControlThreadFactory(METRIC_REGISTRY_NAME, false, LOG));
     _shutdown = false;

@@ -10,22 +10,17 @@ import com.linkedin.kafka.cruisecontrol.servlet.CruiseControlEndPoint;
 import java.io.UnsupportedEncodingException;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Set;
 import java.util.SortedSet;
 import java.util.TreeSet;
 
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DRY_RUN_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.KAFKA_ASSIGNER_MODE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.CONCURRENT_LEADER_MOVEMENTS_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICA_MOVEMENT_STRATEGIES_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.IGNORE_PROPOSAL_CACHE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REPLICATION_THROTTLE_PARAM;
 import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REVIEW_ID_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DESTINATION_BROKER_IDS_PARAM;
-import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.REBALANCE_DISK_MODE_PARAM;
 
 
 /**
@@ -48,23 +43,19 @@ import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils
  *    &amp;replication_throttle=[bytes_per_second]
  * </pre>
  */
-public class RebalanceParameters extends GoalBasedOptimizationParameters {
+public class RebalanceParameters extends ProposalsParameters {
   protected static final SortedSet<String> CASE_INSENSITIVE_PARAMETER_NAMES;
   static {
     SortedSet<String> validParameterNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    validParameterNames.add(KAFKA_ASSIGNER_MODE_PARAM);
     validParameterNames.add(DRY_RUN_PARAM);
     validParameterNames.add(CONCURRENT_PARTITION_MOVEMENTS_PER_BROKER_PARAM);
     validParameterNames.add(CONCURRENT_INTRA_BROKER_PARTITION_MOVEMENTS_PARAM);
     validParameterNames.add(CONCURRENT_LEADER_MOVEMENTS_PARAM);
     validParameterNames.add(SKIP_HARD_GOAL_CHECK_PARAM);
     validParameterNames.add(REPLICA_MOVEMENT_STRATEGIES_PARAM);
-    validParameterNames.add(IGNORE_PROPOSAL_CACHE_PARAM);
-    validParameterNames.add(DESTINATION_BROKER_IDS_PARAM);
     validParameterNames.add(REPLICATION_THROTTLE_PARAM);
     validParameterNames.add(REVIEW_ID_PARAM);
-    validParameterNames.add(REBALANCE_DISK_MODE_PARAM);
-    validParameterNames.addAll(GoalBasedOptimizationParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
+    validParameterNames.addAll(ProposalsParameters.CASE_INSENSITIVE_PARAMETER_NAMES);
     CASE_INSENSITIVE_PARAMETER_NAMES = Collections.unmodifiableSortedSet(validParameterNames);
   }
   protected boolean _dryRun;
@@ -73,11 +64,8 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
   protected Integer _concurrentLeaderMovements;
   protected boolean _skipHardGoalCheck;
   protected ReplicaMovementStrategy _replicaMovementStrategy;
-  protected boolean _ignoreProposalCache;
-  protected Set<Integer> _destinationBrokerIds;
   protected Long _replicationThrottle;
   protected Integer _reviewId;
-  protected boolean _isRebalanceDiskMode;
 
   public RebalanceParameters() {
     super();
@@ -131,18 +119,6 @@ public class RebalanceParameters extends GoalBasedOptimizationParameters {
 
   public ReplicaMovementStrategy replicaMovementStrategy() {
     return _replicaMovementStrategy;
-  }
-
-  public Set<Integer> destinationBrokerIds() {
-    return _destinationBrokerIds;
-  }
-
-  public boolean ignoreProposalCache() {
-    return _ignoreProposalCache;
-  }
-
-  public boolean isRebalanceDiskMode() {
-    return _isRebalanceDiskMode;
   }
 
   public Long replicationThrottle() {

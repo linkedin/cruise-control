@@ -5,10 +5,9 @@
 package com.linkedin.kafka.cruisecontrol.detector;
 
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
-import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.FixOfflineReplicasRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.response.OptimizationResult;
 import java.util.List;
 import java.util.Map;
@@ -21,14 +20,9 @@ import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.toDateStr
  */
 public class DiskFailures extends KafkaAnomaly {
   private static final String ID_PREFIX = AnomalyType.DISK_FAILURE.toString();
-  private final KafkaCruiseControl _kafkaCruiseControl;
   private final Map<Integer, Map<String, Long>> _failedDisksByBroker;
-  private final boolean _excludeRecentlyDemotedBrokers;
-  private final boolean _excludeRecentlyRemovedBrokers;
-  private final boolean _allowCapacityEstimation;
   private final String _anomalyId;
-  private final List<String> _selfHealingGoals;
-  private final Long _replicationThrottle;
+  private final FixOfflineReplicasRunnable _fixOfflineReplicasRunnable;
 
   public DiskFailures(KafkaCruiseControl kafkaCruiseControl,
                       Map<Integer, Map<String, Long>> failedDisksByBroker,
@@ -39,19 +33,11 @@ public class DiskFailures extends KafkaAnomaly {
     if (failedDisksByBroker == null || failedDisksByBroker.isEmpty()) {
       throw new IllegalArgumentException("Unable to create disk failure anomaly with no failed disk specified.");
     }
-    _kafkaCruiseControl = kafkaCruiseControl;
     _failedDisksByBroker = failedDisksByBroker;
-    _allowCapacityEstimation = allowCapacityEstimation;
-    _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
-    _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
     _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
     _optimizationResult = null;
-    _selfHealingGoals = selfHealingGoals;
-    if (_kafkaCruiseControl != null && _kafkaCruiseControl.config() != null) {
-      _replicationThrottle = _kafkaCruiseControl.config().getLong(KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG);
-    } else {
-      _replicationThrottle = null;
-    }
+    _fixOfflineReplicasRunnable = new FixOfflineReplicasRunnable(kafkaCruiseControl, selfHealingGoals, allowCapacityEstimation,
+                                                                 excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, _anomalyId);
   }
 
   /**
@@ -69,21 +55,7 @@ public class DiskFailures extends KafkaAnomaly {
   @Override
   public boolean fix() throws KafkaCruiseControlException {
     // Fix the cluster by moving replicas off the dead disks.
-    _optimizationResult = new OptimizationResult(_kafkaCruiseControl.fixOfflineReplicas(false,
-                                                                                        _selfHealingGoals,
-                                                                                        null,
-                                                                                        new OperationProgress(),
-                                                                                        _allowCapacityEstimation,
-                                                                                        null,
-                                                                                        null,
-                                                                                        false,
-                                                                                        null,
-                                                                                        null,
-                                                                                        _replicationThrottle,
-                                                                                        _anomalyId,
-                                                                                        _excludeRecentlyDemotedBrokers,
-                                                                                        _excludeRecentlyRemovedBrokers),
-                                                 null);
+    _optimizationResult = new OptimizationResult(_fixOfflineReplicasRunnable.fixOfflineReplicas(), null);
     // Ensure that only the relevant response is cached to avoid memory pressure.
     _optimizationResult.discardIrrelevantAndCacheJsonAndPlaintext();
     return true;

@@ -35,9 +35,10 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.balancednessCostByGoal;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.MAX_BALANCEDNESS_SCORE;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.MAX_METADATA_WAIT_MS;
 import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.shouldSkipAnomalyDetection;
-import static com.linkedin.kafka.cruisecontrol.servlet.response.CruiseControlState.SubState.EXECUTOR;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 
 
 /**
@@ -56,17 +57,15 @@ public class GoalViolationDetector implements Runnable {
   private final boolean _allowCapacityEstimation;
   private final boolean _excludeRecentlyDemotedBrokers;
   private final boolean _excludeRecentlyRemovedBrokers;
-  private final List<String> _selfHealingGoals;
   private final Map<String, Double> _balancednessCostByGoal;
   private volatile double _balancednessScore;
 
-  public GoalViolationDetector(KafkaCruiseControlConfig config,
-                               LoadMonitor loadMonitor,
+  public GoalViolationDetector(LoadMonitor loadMonitor,
                                Queue<Anomaly> anomalies,
                                Time time,
-                               KafkaCruiseControl kafkaCruiseControl,
-                               List<String> selfHealingGoals) {
+                               KafkaCruiseControl kafkaCruiseControl) {
     _loadMonitor = loadMonitor;
+    KafkaCruiseControlConfig config = kafkaCruiseControl.config();
     // Notice that we use a separate set of Goal instances for anomaly detector to avoid interference.
     _detectionGoals = config.getConfiguredInstances(KafkaCruiseControlConfig.ANOMALY_DETECTION_GOALS_CONFIG, Goal.class);
     _anomalies = anomalies;
@@ -76,7 +75,6 @@ public class GoalViolationDetector implements Runnable {
     _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
     _kafkaCruiseControl = kafkaCruiseControl;
-    _selfHealingGoals = selfHealingGoals;
     _balancednessCostByGoal = balancednessCostByGoal(_detectionGoals,
                                                      config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG),
                                                      config.getDouble(KafkaCruiseControlConfig.GOAL_BALANCEDNESS_STRICTNESS_WEIGHT_CONFIG));
@@ -129,9 +127,10 @@ public class GoalViolationDetector implements Runnable {
 
     AutoCloseable clusterModelSemaphore = null;
     try {
-      GoalViolations goalViolations = new GoalViolations(_kafkaCruiseControl, _allowCapacityEstimation,
-                                                         _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers,
-                                                         _selfHealingGoals);
+      Map<String, Object> parameterConfigOverrides = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, _kafkaCruiseControl);
+      GoalViolations goalViolations = _kafkaCruiseControl.config().getConfiguredInstance(KafkaCruiseControlConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
+                                                                                         GoalViolations.class,
+                                                                                         parameterConfigOverrides);
       long now = _time.milliseconds();
       boolean newModelNeeded = true;
       ClusterModel clusterModel = null;
@@ -139,7 +138,7 @@ public class GoalViolationDetector implements Runnable {
       // Retrieve excluded brokers for leadership and replica move.
       ExecutorState executorState = null;
       if (_excludeRecentlyDemotedBrokers || _excludeRecentlyRemovedBrokers) {
-        executorState = _kafkaCruiseControl.state(new OperationProgress(), Collections.singleton(EXECUTOR)).executorState();
+        executorState = _kafkaCruiseControl.executorState();
       }
 
       Set<Integer> excludedBrokersForLeadership = _excludeRecentlyDemotedBrokers ? executorState.recentlyDemotedBrokers()
@@ -168,8 +167,7 @@ public class GoalViolationDetector implements Runnable {
             if (skipDueToOfflineReplicas(clusterModel)) {
               return;
             }
-            KafkaCruiseControl.sanityCheckCapacityEstimation(_allowCapacityEstimation,
-                                                             clusterModel.capacityEstimationInfoByBrokerId());
+            sanityCheckCapacityEstimation(_allowCapacityEstimation, clusterModel.capacityEstimationInfoByBrokerId());
             _lastCheckedModelGeneration = clusterModel.generation();
           }
           newModelNeeded = optimizeForGoal(clusterModel, goal, goalViolations, excludedBrokersForLeadership, excludedBrokersForReplicaMove);

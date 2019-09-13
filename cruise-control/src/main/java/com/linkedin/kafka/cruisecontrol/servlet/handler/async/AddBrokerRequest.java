@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.AddBrokersRunnable;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.AddBrokerParameters;
 import java.util.Map;
 
@@ -20,7 +21,10 @@ public class AddBrokerRequest extends AbstractAsyncRequest {
 
   @Override
   protected OperationFuture handle(String uuid) {
-    return _asyncKafkaCruiseControl.addBrokers(_parameters, uuid);
+    OperationFuture future = new OperationFuture("Add brokers");
+    pending(future.operationProgress());
+    _asyncKafkaCruiseControl.sessionExecutor().submit(new AddBrokersRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid));
+    return future;
   }
 
   @Override

@@ -11,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 import javax.servlet.http.HttpSession;
 
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
+
 
 /**
  * A class to track the progress of a task. This class is used to allow different users to trigger
@@ -85,7 +87,7 @@ public class OperationProgress {
       OperationStep step = _steps.get(i);
       long time = (i == _steps.size() - 1 ? System.currentTimeMillis() : _startTimes.get(i + 1)) - _startTimes.get(i);
       sb.append(String.format("(%6d ms) - (%3.1f%%) %s: %s%n",
-                              time,  step.completionPercentage() * 100, step.name(), step.description()));
+                              time,  step.completionPercentage() * UNIT_INTERVAL_TO_PERCENTAGE, step.name(), step.description()));
     }
     return sb.toString();
   }
@@ -99,7 +101,7 @@ public class OperationProgress {
       stepProgressMap.put(STEP, step.name());
       stepProgressMap.put(DESCRIPTION, step.description());
       stepProgressMap.put(TIME_IN_MS, time);
-      stepProgressMap.put(COMPLETION_PERCENTAGE, step.completionPercentage() * 100.0);
+      stepProgressMap.put(COMPLETION_PERCENTAGE, step.completionPercentage() * UNIT_INTERVAL_TO_PERCENTAGE);
       progressArray[i] = stepProgressMap;
     }
     return progressArray;

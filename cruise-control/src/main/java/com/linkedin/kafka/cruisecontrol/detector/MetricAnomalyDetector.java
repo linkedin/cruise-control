@@ -19,20 +19,20 @@ import java.util.Queue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+
+
 /**
  * This class will be scheduled to periodically check if {@link KafkaMetricAnomalyFinder} identifies a metric anomaly.
  * An alert will be triggered if one of the goals is not met.
  */
 public class MetricAnomalyDetector implements Runnable {
-  public static final String KAFKA_CRUISE_CONTROL_OBJECT_CONFIG = "kafka.cruise.control.object";
   private static final Logger LOG = LoggerFactory.getLogger(MetricAnomalyDetector.class);
   private final LoadMonitor _loadMonitor;
   private final Queue<Anomaly> _anomalies;
   private final List<MetricAnomalyFinder> _kafkaMetricAnomalyFinders;
 
-  @SuppressWarnings("unchecked")
-  public MetricAnomalyDetector(KafkaCruiseControlConfig config,
-                               LoadMonitor loadMonitor,
+  public MetricAnomalyDetector(LoadMonitor loadMonitor,
                                Queue<Anomaly> anomalies,
                                KafkaCruiseControl kafkaCruiseControl) {
     _loadMonitor = loadMonitor;
@@ -40,7 +40,7 @@ public class MetricAnomalyDetector implements Runnable {
 
     Map<String, Object> configWithCruiseControlObject = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG,
                                                                                  kafkaCruiseControl);
-    _kafkaMetricAnomalyFinders = config.getConfiguredInstances(
+    _kafkaMetricAnomalyFinders = kafkaCruiseControl.config().getConfiguredInstances(
         KafkaCruiseControlConfig.METRIC_ANOMALY_FINDER_CLASSES_CONFIG,
         MetricAnomalyFinder.class,
         configWithCruiseControlObject);

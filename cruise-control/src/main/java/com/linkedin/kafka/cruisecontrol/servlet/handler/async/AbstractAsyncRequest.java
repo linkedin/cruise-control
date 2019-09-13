@@ -5,11 +5,14 @@
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
 import com.linkedin.kafka.cruisecontrol.async.AsyncKafkaCruiseControl;
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.async.progress.OperationProgress;
+import com.linkedin.kafka.cruisecontrol.async.progress.Pending;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.servlet.UserTaskManager;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.AbstractRequest;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.cruisecontrol.servlet.response.CruiseControlResponse;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.servlet.response.ProgressResult;
 import java.util.List;
 import java.util.Map;
@@ -71,6 +74,10 @@ public abstract class AbstractAsyncRequest extends AbstractRequest {
     _asyncKafkaCruiseControl = _servlet.asyncKafkaCruiseControl();
     _asyncOperationStep = _servlet.asyncOperationStep();
     _userTaskManager = _servlet.userTaskManager();
-    _maxBlockMs = _servlet.maxBlockMs();
+    _maxBlockMs = _asyncKafkaCruiseControl.config().getLong(KafkaCruiseControlConfig.WEBSERVER_REQUEST_MAX_BLOCK_TIME_MS);
+  }
+
+  protected void pending(OperationProgress progress) {
+    progress.addStep(new Pending());
   }
 }

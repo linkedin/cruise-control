@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RemoveBrokersRunnable;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RemoveBrokerParameters;
 import java.util.Map;
 
@@ -20,7 +21,10 @@ public class RemoveBrokerRequest extends AbstractAsyncRequest {
 
   @Override
   protected OperationFuture handle(String uuid) {
-    return _asyncKafkaCruiseControl.decommissionBrokers(_parameters, uuid);
+    OperationFuture future = new OperationFuture("Remove brokers");
+    pending(future.operationProgress());
+    _asyncKafkaCruiseControl.sessionExecutor().submit(new RemoveBrokersRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid));
+    return future;
   }
 
   @Override

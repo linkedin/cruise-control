@@ -48,7 +48,8 @@ import org.junit.Test;
 
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC0;
 import static com.linkedin.kafka.cruisecontrol.common.TestConstants.TOPIC1;
-import static org.apache.kafka.common.KafkaFuture.*;
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.DEFAULT_START_TIME_FOR_CLUSTER_MODEL;
+import static org.apache.kafka.common.KafkaFuture.completedFuture;
 import static org.easymock.EasyMock.*;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -268,7 +269,7 @@ public class LoadMonitorTest {
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T1P0, 0, WINDOW_MS, METRIC_DEF);
     CruiseControlUnitTestUtils.populateSampleAggregator(3, 4, aggregator, PE_T1P1, 0, WINDOW_MS, METRIC_DEF);
 
-    ClusterModel clusterModel = loadMonitor.clusterModel(-1, Long.MAX_VALUE,
+    ClusterModel clusterModel = loadMonitor.clusterModel(DEFAULT_START_TIME_FOR_CLUSTER_MODEL, Long.MAX_VALUE,
                                                          new ModelCompletenessRequirements(2, 1.0, false),
                                                          true,
                                                          new OperationProgress());

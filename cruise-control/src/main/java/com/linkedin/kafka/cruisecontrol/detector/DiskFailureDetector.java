@@ -46,8 +46,7 @@ public class DiskFailureDetector implements Runnable {
   private final List<String> _selfHealingGoals;
   private final KafkaCruiseControlConfig _config;
 
-  public DiskFailureDetector(KafkaCruiseControlConfig config,
-                             LoadMonitor loadMonitor,
+  public DiskFailureDetector(LoadMonitor loadMonitor,
                              AdminClient adminClient,
                              Queue<Anomaly> anomalies,
                              Time time,
@@ -59,6 +58,7 @@ public class DiskFailureDetector implements Runnable {
     _time = time;
     _lastCheckedClusterGeneration = -1;
     _kafkaCruiseControl = kafkaCruiseControl;
+    KafkaCruiseControlConfig config = _kafkaCruiseControl.config();
     _allowCapacityEstimation = config.getBoolean(KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
     _excludeRecentlyDemotedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
     _excludeRecentlyRemovedBrokers = config.getBoolean(KafkaCruiseControlConfig.BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);

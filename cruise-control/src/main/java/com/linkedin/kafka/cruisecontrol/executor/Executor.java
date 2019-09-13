@@ -50,6 +50,7 @@ import static com.linkedin.kafka.cruisecontrol.executor.ExecutorState.State.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTask.TaskType.*;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutionTaskTracker.ExecutionTasksSummary;
 import static com.linkedin.kafka.cruisecontrol.executor.ExecutorAdminUtils.*;
+import static com.linkedin.kafka.cruisecontrol.monitor.MonitorUtils.UNIT_INTERVAL_TO_PERCENTAGE;
 import static org.apache.kafka.clients.admin.DescribeReplicaLogDirsResult.ReplicaLogDirInfo;
 
 /**
@@ -64,6 +65,8 @@ public class Executor {
   private static final Logger OPERATION_LOG = LoggerFactory.getLogger(OPERATION_LOGGER);
   private static final long EXECUTION_HISTORY_SCANNER_PERIOD_SECONDS = 5;
   private static final long EXECUTION_HISTORY_SCANNER_INITIAL_DELAY_SECONDS = 0;
+  // A special timestamp to indicate that a broker is a permanent part of recently removed or demoted broker set.
+  private static final long PERMANENT_TIMESTAMP = 0L;
   // The maximum time to wait for a leader movement to finish. A leader movement will be marked as failed if
   // it takes longer than this time to finish.
   private static final long LEADER_ACTION_TIMEOUT_MS = 180000L;
@@ -215,14 +218,18 @@ public class Executor {
 
   private void removeExpiredDemotionHistory() {
     LOG.debug("Remove expired demotion history");
-    _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> (entry.getValue() + _demotionHistoryRetentionTimeMs
-                                                                     < _time.milliseconds()));
+    _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> {
+      long startTime = entry.getValue();
+      return startTime != PERMANENT_TIMESTAMP && startTime + _demotionHistoryRetentionTimeMs < _time.milliseconds();
+    });
   }
 
   private void removeExpiredRemovalHistory() {
     LOG.debug("Remove expired broker removal history");
-    _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> (entry.getValue() + _removalHistoryRetentionTimeMs
-                                                                     < _time.milliseconds()));
+    _latestRemoveStartTimeMsByBrokerId.entrySet().removeIf(entry -> {
+      long startTime = entry.getValue();
+      return startTime != PERMANENT_TIMESTAMP && startTime + _removalHistoryRetentionTimeMs < _time.milliseconds();
+    });
   }
 
   /**
@@ -241,7 +248,11 @@ public class Executor {
   }
 
   /**
-   * Recently demoted brokers are the ones for which a demotion was started, regardless of how the process was completed.
+   * Recently demoted brokers are the ones
+   * <ul>
+   *   <li>for which a broker demotion was started, regardless of how the corresponding process was completed, or</li>
+   *   <li>that are explicitly marked so -- e.g. via a pluggable component using {@link #addRecentlyDemotedBrokers(Set)}.</li>
+   * </ul>
    *
    * @return IDs of recently demoted brokers -- i.e. demoted within the last {@link #_demotionHistoryRetentionTimeMs}.
    */
@@ -250,7 +261,11 @@ public class Executor {
   }
 
   /**
-   * Recently removed brokers are the ones for which a removal was started, regardless of how the process was completed.
+   * Recently removed brokers are the ones
+   * <ul>
+   *   <li>for which a broker removal was started, regardless of how the corresponding process was completed, or</li>
+   *   <li>that are explicitly marked so -- e.g. via a pluggable component using {@link #addRecentlyRemovedBrokers(Set)}.</li>
+   * </ul>
    *
    * @return IDs of recently removed brokers -- i.e. removed within the last {@link #_removalHistoryRetentionTimeMs}.
    */
@@ -276,6 +291,26 @@ public class Executor {
    */
   public boolean dropRecentlyDemotedBrokers(Set<Integer> brokersToDrop) {
     return _latestDemoteStartTimeMsByBrokerId.entrySet().removeIf(entry -> (brokersToDrop.contains(entry.getKey())));
+  }
+
+  /**
+   * Add the given brokers to the recently removed brokers permanently -- i.e. until they are explicitly dropped by user.
+   * If given set has brokers that were already removed recently, make them a permanent part of recently removed brokers.
+   *
+   * @param brokersToAdd Brokers to add to the {@link #_latestRemoveStartTimeMsByBrokerId}.
+   */
+  public void addRecentlyRemovedBrokers(Set<Integer> brokersToAdd) {
+    brokersToAdd.forEach(brokerId -> _latestRemoveStartTimeMsByBrokerId.put(brokerId, PERMANENT_TIMESTAMP));
+  }
+
+  /**
+   * Add the given brokers from the recently demoted brokers permanently -- i.e. until they are explicitly dropped by user.
+   * If given set has brokers that were already demoted recently, make them a permanent part of recently demoted brokers.
+   *
+   * @param brokersToAdd Brokers to add to the {@link #_latestDemoteStartTimeMsByBrokerId}.
+   */
+  public void addRecentlyDemotedBrokers(Set<Integer> brokersToAdd) {
+    brokersToAdd.forEach(brokerId -> _latestDemoteStartTimeMsByBrokerId.put(brokerId, PERMANENT_TIMESTAMP));
   }
 
   /**
@@ -584,12 +619,20 @@ public class Executor {
       }
 
       if (demotedBrokers != null) {
-        // Add/overwrite the latest demotion time of demoted brokers (if any).
-        demotedBrokers.forEach(id -> _latestDemoteStartTimeMsByBrokerId.put(id, _time.milliseconds()));
+        // Add/overwrite the latest demotion time of (non-permanent) demoted brokers (if any).
+        demotedBrokers.forEach(id -> {
+          if (_latestDemoteStartTimeMsByBrokerId.get(id) != PERMANENT_TIMESTAMP) {
+            _latestDemoteStartTimeMsByBrokerId.put(id, _time.milliseconds());
+          }
+        });
       }
       if (removedBrokers != null) {
-        // Add/overwrite the latest removal time of removed brokers (if any).
-        removedBrokers.forEach(id -> _latestRemoveStartTimeMsByBrokerId.put(id, _time.milliseconds()));
+        // Add/overwrite the latest removal time of (non-permanent) removed brokers (if any).
+        removedBrokers.forEach(id -> {
+          if (_latestRemoveStartTimeMsByBrokerId.get(id) != PERMANENT_TIMESTAMP) {
+            _latestRemoveStartTimeMsByBrokerId.put(id, _time.milliseconds());
+          }
+        });
       }
       _recentlyDemotedBrokers = recentlyDemotedBrokers();
       _recentlyRemovedBrokers = recentlyRemovedBrokers();
@@ -797,11 +840,10 @@ public class Executor {
         long finishedDataMovementInMB = _executionTaskManager.finishedInterBrokerDataMovementInMB();
         LOG.info("{}/{} ({}%) inter-broker partition movements completed. {}/{} ({}%) MB have been moved.",
                  numFinishedPartitionMovements, numTotalPartitionMovements,
-                 String.format(java.util.Locale.US, "%.2f",
-                               numFinishedPartitionMovements * 100.0 / numTotalPartitionMovements),
+                 String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
                  finishedDataMovementInMB, totalDataToMoveInMB,
-                 totalDataToMoveInMB == 0 ? 100 : String.format(java.util.Locale.US, "%.2f",
-                                                  (finishedDataMovementInMB * 100.0) / totalDataToMoveInMB));
+                 totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataMovementInMB * UNIT_INTERVAL_TO_PERCENTAGE
+                                                                        / totalDataToMoveInMB));
         throttleHelper.clearThrottles(completedTasks, tasksToExecute.stream().filter(t -> t.state() == IN_PROGRESS).collect(Collectors.toList()));
       }
       // After the partition movement finishes, wait for the controller to clean the reassignment zkPath. This also
@@ -858,16 +900,15 @@ public class Executor {
         long finishedDataToMoveInMB = _executionTaskManager.finishedIntraBrokerDataToMoveInMB();
         LOG.info("{}/{} ({}%) intra-broker partition movements completed. {}/{} ({}%) MB have been moved.",
             numFinishedPartitionMovements, numTotalPartitionMovements,
-            String.format(java.util.Locale.US, "%.2f",
-                          numFinishedPartitionMovements * 100.0 / numTotalPartitionMovements),
+            String.format("%.2f", numFinishedPartitionMovements * UNIT_INTERVAL_TO_PERCENTAGE / numTotalPartitionMovements),
             finishedDataToMoveInMB, totalDataToMoveInMB,
-            totalDataToMoveInMB == 0 ? 100 : String.format(java.util.Locale.US, "%.2f",
-                                                           (finishedDataToMoveInMB * 100.0) / totalDataToMoveInMB));
+            totalDataToMoveInMB == 0 ? 100 : String.format("%.2f", finishedDataToMoveInMB * UNIT_INTERVAL_TO_PERCENTAGE
+                                                                   / totalDataToMoveInMB));
       }
       Set<ExecutionTask> inExecutionTasks = _executionTaskManager.inExecutionTasks();
       while (!inExecutionTasks.isEmpty()) {
         LOG.info("Waiting for {} tasks moving {} MB to finish", inExecutionTasks.size(),
-                 _executionTaskManager.inExecutionIntraBrokerDataMovementInMB(), inExecutionTasks);
+                 _executionTaskManager.inExecutionIntraBrokerDataMovementInMB());
         waitForExecutionTaskToFinish();
         inExecutionTasks = _executionTaskManager.inExecutionTasks();
       }

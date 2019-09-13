@@ -29,7 +29,7 @@ import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetric
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_PERCENTILE_UPPER_THRESHOLD_CONFIG;
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_LOWER_MARGIN_CONFIG;
 import static com.linkedin.cruisecontrol.detector.metricanomaly.PercentileMetricAnomalyFinderConfig.METRIC_ANOMALY_UPPER_MARGIN_CONFIG;
-import static com.linkedin.kafka.cruisecontrol.detector.MetricAnomalyDetector.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
 

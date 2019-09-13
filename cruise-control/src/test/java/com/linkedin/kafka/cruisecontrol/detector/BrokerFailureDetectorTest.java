@@ -138,12 +138,7 @@ public class BrokerFailureDetectorTest extends CCKafkaIntegrationTestHarness {
     KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
     EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).atLeastOnce();
     EasyMock.replay(mockKafkaCruiseControl);
-    return new BrokerFailureDetector(kafkaCruiseControlConfig,
-                                     mockLoadMonitor,
-                                     anomalies,
-                                     time,
-                                     mockKafkaCruiseControl,
-                                     Collections.emptyList());
+    return new BrokerFailureDetector(mockLoadMonitor, anomalies, time, mockKafkaCruiseControl);
   }
 
   private void killBroker(int index) throws Exception {

@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RebalanceRunnable;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.RebalanceParameters;
 import java.util.Map;
 
@@ -20,7 +21,10 @@ public class RebalanceRequest extends AbstractAsyncRequest {
 
   @Override
   protected OperationFuture handle(String uuid) {
-    return _asyncKafkaCruiseControl.rebalance(_parameters, uuid);
+    OperationFuture future = new OperationFuture("Rebalance");
+    pending(future.operationProgress());
+    _asyncKafkaCruiseControl.sessionExecutor().submit(new RebalanceRunnable(_asyncKafkaCruiseControl, future, _parameters, uuid));
+    return future;
   }
 
   @Override

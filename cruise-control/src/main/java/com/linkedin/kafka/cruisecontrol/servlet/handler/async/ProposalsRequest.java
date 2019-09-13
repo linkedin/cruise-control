@@ -4,7 +4,8 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet.handler.async;
 
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.ProposalsRunnable;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ProposalsParameters;
 import java.util.Map;
 
@@ -20,7 +21,10 @@ public class ProposalsRequest extends AbstractAsyncRequest {
 
   @Override
   protected OperationFuture handle(String uuid) {
-    return _asyncKafkaCruiseControl.getProposals(_parameters);
+    OperationFuture future = new OperationFuture("Get customized proposals");
+    pending(future.operationProgress());
+    _asyncKafkaCruiseControl.sessionExecutor().submit(new ProposalsRunnable(_asyncKafkaCruiseControl, future, _parameters));
+    return future;
   }
 
   @Override

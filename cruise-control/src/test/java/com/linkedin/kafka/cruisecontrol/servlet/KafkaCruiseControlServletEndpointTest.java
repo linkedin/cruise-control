@@ -4,7 +4,7 @@
 
 package com.linkedin.kafka.cruisecontrol.servlet;
 
-import com.linkedin.kafka.cruisecontrol.async.OperationFuture;
+import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.OperationFuture;
 import com.linkedin.cruisecontrol.servlet.parameters.CruiseControlParameters;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils;
 import com.linkedin.kafka.cruisecontrol.servlet.parameters.UserTasksParameters;
