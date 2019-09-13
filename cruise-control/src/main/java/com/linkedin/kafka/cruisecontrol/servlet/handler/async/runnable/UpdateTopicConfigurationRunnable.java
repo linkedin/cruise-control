@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckHardGoalPresence;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.populateRackInfoForReplicationFactorChange;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.partitionWithOfflineReplicas;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.topicsForReplicationFactorChange;
@@ -143,7 +143,7 @@ public class UpdateTopicConfigurationRunnable extends OperationRunnable {
                                                       boolean dryRun)
       throws KafkaCruiseControlException {
     _kafkaCruiseControl.sanityCheckDryRun(dryRun);
-    sanityCheckHardGoalPresence(goals, skipHardGoalCheck, _kafkaCruiseControl.config());
+    sanityCheckGoals(goals, skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(goals, _kafkaCruiseControl.config());
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");

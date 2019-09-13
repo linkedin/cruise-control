@@ -383,12 +383,14 @@ public class GoalOptimizer implements Runnable {
    *                     cached proposal will be ignored.
    * @param goalsByPriority the goals ordered by priority.
    * @param operationProgress to report the job progress.
-   * @param initReplicaDistributionForProposalGeneration The initial replica distribution of the cluster. This is only needed if the passed
-   *                                in clusterModel is not the original cluster model so that initial replica distribution
-   *                                can not be deducted from that cluster model, otherwise it is null. One case explicitly
-   *                                specifying initial replica distribution needed is to increase/decrease specific topic
-   *                                partition's replication factor, in this case some replicas are tentatively deleted/added
-   *                                in cluster model before passing it in to generate proposals.
+   * @param initReplicaDistributionForProposalGeneration The initial replica distribution of the cluster. This is only
+   *                                                     needed if the passed in clusterModel is not the original cluster
+   *                                                     model so that initial replica distribution can not be deducted
+   *                                                     from that cluster model, otherwise it is null. One case explicitly
+   *                                                     specifying initial replica distribution needed is to increase/decrease
+   *                                                     specific topic partition's replication factor, in this case some
+   *                                                     replicas are tentatively deleted/added in cluster model before
+   *                                                     passing it in to generate proposals.
    * @return Results of optimization containing the proposals and stats.
    */
   public OptimizerResult optimizations(ClusterModel clusterModel,

@@ -257,14 +257,14 @@ public class ParameterUtils {
   }
 
   /**
-   * Default: false -- i.e. a recently demoted broker may receive leadership from the other brokers.
+   * Default: {@code false} -- i.e. a recently demoted broker may receive leadership from the other brokers.
    */
   static boolean excludeRecentlyDemotedBrokers(HttpServletRequest request) {
     return excludeBrokers(request, EXCLUDE_RECENTLY_DEMOTED_BROKERS_PARAM, false);
   }
 
   /**
-   * Default: false -- i.e. a recently removed broker may receive replicas from the other brokers.
+   * Default: {@code true} -- i.e. a recently removed broker may receive replicas from the other brokers.
    */
   static boolean excludeRecentlyRemovedBrokers(HttpServletRequest request) {
     return excludeBrokers(request, EXCLUDE_RECENTLY_REMOVED_BROKERS_PARAM, true);

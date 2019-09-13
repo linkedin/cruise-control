@@ -26,7 +26,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckHardGoalPresence;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.isKafkaAssignerMode;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.sanityCheckBrokersHavingOfflineReplicasOnBadDisks;
 
@@ -88,7 +88,7 @@ public class AddBrokersRunnable extends OperationRunnable {
    */
   public OptimizerResult addBrokers() throws KafkaCruiseControlException {
     _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
-    sanityCheckHardGoalPresence(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
+    sanityCheckGoals(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");

@@ -241,14 +241,15 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    * <code>broker.failures.class</code>
    */
   public static final String BROKER_FAILURES_CLASS_CONFIG = "broker.failures.class";
-  private static final String BROKER_FAILURES_CLASS_DOC = "The broker failures class that extends broker failures.";
+  private static final String BROKER_FAILURES_CLASS_DOC = String.format("The %s class that extends broker failures.",
+                                                                        DEFAULT_BROKER_FAILURES_CLASS);
 
   /**
    * <code>goal.violations.class</code>
    */
   public static final String GOAL_VIOLATIONS_CLASS_CONFIG = "goal.violations.class";
-  private static final String GOAL_VIOLATIONS_CLASS_DOC = "The goal violations class that extends goal violations.";
-
+  private static final String GOAL_VIOLATIONS_CLASS_DOC = String.format("The %s class that extends goal violations.",
+                                                                        DEFAULT_GOAL_VIOLATIONS_CLASS);
   /**
    * <code>min.valid.partition.ratio</code>
    */
@@ -1674,11 +1675,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 ConfigDef.Importance.MEDIUM,
                 ANOMALY_DETECTION_GOALS_DOC)
         .define(BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,
-                ConfigDef.Type.BOOLEAN, DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
                 BROKER_FAILURE_EXCLUDE_RECENTLY_DEMOTED_BROKERS_DOC)
         .define(BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG,
-                ConfigDef.Type.BOOLEAN, DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG,
+                ConfigDef.Type.BOOLEAN,
+                DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG,
                 ConfigDef.Importance.MEDIUM,
                 BROKER_FAILURE_EXCLUDE_RECENTLY_REMOVED_BROKERS_DOC)
         .define(GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG,

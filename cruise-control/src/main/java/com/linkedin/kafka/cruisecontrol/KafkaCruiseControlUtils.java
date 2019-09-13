@@ -32,6 +32,8 @@ import org.apache.kafka.common.config.SaslConfigs;
 import org.apache.kafka.common.security.auth.SecurityProtocol;
 import org.apache.kafka.common.utils.SystemTime;
 
+import static com.linkedin.kafka.cruisecontrol.servlet.parameters.ParameterUtils.SKIP_HARD_GOAL_CHECK_PARAM;
+
 
 /**
  * Util class for convenience.
@@ -140,26 +142,33 @@ public class KafkaCruiseControlUtils {
   }
 
   /**
-   * Sanity check whether all hard goals (based on the given config) are included in provided goal list.
-   * There are two special scenarios where hard goal check is skipped.
+   * Sanity check whether
    * <ul>
-   * <li> {@code goals} is null or empty -- i.e. even if hard goals are excluded from the default goals, this check will pass</li>
-   * <li> {@code goals} only has PreferredLeaderElectionGoal, denotes it is a PLE request.</li>
+   *   <li>all hard goals (based on the given config) are included in the provided goal list, and</li>
+   *   <li>{@link #sanityCheckNonExistingGoal} is not violated.</li>
+   * </ul>
+   *
+   * There are two scenarios where this check is skipped.
+   * <ul>
+   *   <li> {@code goals} is {@code null} or empty -- i.e. even if hard goals are excluded from the default goals, this
+   *   check will pass</li>
+   *   <li> {@code goals} only has {@link PreferredLeaderElectionGoal}, denotes it is a PLE request.</li>
    * </ul>
    *
    * @param goals A list of goal names (i.e. each matching {@link Goal#name()}) to check.
    * @param skipHardGoalCheck True if hard goal checking is not needed.
    * @param config The configurations for Cruise Control.
    */
-  public static void sanityCheckHardGoalPresence(List<String> goals, boolean skipHardGoalCheck, KafkaCruiseControlConfig config) {
+  public static void sanityCheckGoals(List<String> goals, boolean skipHardGoalCheck, KafkaCruiseControlConfig config) {
     if (goals != null && !goals.isEmpty() && !skipHardGoalCheck &&
         !(goals.size() == 1 && goals.get(0).equals(PreferredLeaderElectionGoal.class.getSimpleName()))) {
       sanityCheckNonExistingGoal(goals, AnalyzerUtils.getCaseInsensitiveGoalsByName(config));
       Set<String> hardGoals = config.getList(KafkaCruiseControlConfig.HARD_GOALS_CONFIG).stream()
                                     .map(goalName -> goalName.substring(goalName.lastIndexOf(".") + 1)).collect(Collectors.toSet());
       if (!goals.containsAll(hardGoals)) {
-        throw new IllegalArgumentException("Missing hard goals " + hardGoals + " in the provided goals: " + goals
-                                           + ". Add skip_hard_goal_check=true parameter to ignore this sanity check.");
+        throw new IllegalArgumentException(String.format("Missing hard goals %s in the provided goals: %s. Add %s=true "
+                                                         + "parameter to ignore this sanity check.", hardGoals, goals,
+                                                         SKIP_HARD_GOAL_CHECK_PARAM));
       }
     }
   }
@@ -175,7 +184,8 @@ public class KafkaCruiseControlUtils {
                                                    Map<Integer, String> capacityEstimationInfoByBrokerId) {
     if (!(allowCapacityEstimation || capacityEstimationInfoByBrokerId.isEmpty())) {
       StringBuilder sb = new StringBuilder();
-      sb.append(String.format("Allow capacity estimation or fix dependencies to capture broker capacities.%n"));
+      sb.append(String.format("Failed to capture some broker capacities in the generated cluster model. Either "
+                              + "allow capacity estimation or fix dependencies that capture broker capacities.%n"));
       for (Map.Entry<Integer, String> entry : capacityEstimationInfoByBrokerId.entrySet()) {
         sb.append(String.format("Broker: %d: info: %s%n", entry.getKey(), entry.getValue()));
       }

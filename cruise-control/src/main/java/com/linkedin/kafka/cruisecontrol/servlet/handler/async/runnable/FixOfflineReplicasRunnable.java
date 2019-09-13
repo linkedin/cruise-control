@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.goalsByPriority;
 import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckCapacityEstimation;
-import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckHardGoalPresence;
+import static com.linkedin.kafka.cruisecontrol.KafkaCruiseControlUtils.sanityCheckGoals;
 import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.DEFAULT_REPLICATION_THROTTLE_CONFIG;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_DRYRUN;
 import static com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RunnableUtils.SELF_HEALING_REPLICA_MOVEMENT_STRATEGY;
@@ -114,7 +114,7 @@ public class FixOfflineReplicasRunnable extends OperationRunnable {
    */
   public OptimizerResult fixOfflineReplicas() throws KafkaCruiseControlException {
     _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
-    sanityCheckHardGoalPresence(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
+    sanityCheckGoals(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");

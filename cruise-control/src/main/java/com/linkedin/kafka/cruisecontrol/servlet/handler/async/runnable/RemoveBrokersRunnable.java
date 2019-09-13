@@ -125,7 +125,7 @@ public class RemoveBrokersRunnable extends OperationRunnable {
    */
   public OptimizerResult removeBrokers() throws KafkaCruiseControlException {
     _kafkaCruiseControl.sanityCheckDryRun(_dryRun);
-    sanityCheckHardGoalPresence(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
+    sanityCheckGoals(_goals, _skipHardGoalCheck, _kafkaCruiseControl.config());
     List<Goal> goalsByPriority = goalsByPriority(_goals, _kafkaCruiseControl.config());
     if (goalsByPriority.isEmpty()) {
       throw new IllegalArgumentException("At least one goal must be provided to get an optimization result.");
