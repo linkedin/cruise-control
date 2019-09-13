@@ -152,11 +152,10 @@ public class SelfHealingNotifierTest {
 
     // (2) Goal Violation
     anomalyNotifier.resetAlert(AnomalyType.GOAL_VIOLATION);
-    result = anomalyNotifier.onGoalViolation(new GoalViolations(mockKafkaCruiseControl,
-                                                                true,
-                                                                true,
-                                                                true,
-                                                                Collections.emptyList()));
+    result = anomalyNotifier.onGoalViolation(
+        kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
+                                                       GoalViolations.class,
+                                                       parameterConfigOverrides));
     assertEquals(AnomalyNotificationResult.Action.IGNORE, result.action());
     assertTrue(anomalyNotifier._alertCalled.get(AnomalyType.GOAL_VIOLATION));
     assertFalse(anomalyNotifier._autoFixTriggered.get(AnomalyType.GOAL_VIOLATION));

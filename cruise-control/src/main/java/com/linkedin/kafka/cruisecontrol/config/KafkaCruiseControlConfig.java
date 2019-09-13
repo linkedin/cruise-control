@@ -24,6 +24,7 @@ import com.linkedin.kafka.cruisecontrol.analyzer.goals.ReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.analyzer.goals.TopicReplicaDistributionGoal;
 import com.linkedin.kafka.cruisecontrol.common.KafkaNetworkClientProvider;
 import com.linkedin.kafka.cruisecontrol.detector.BrokerFailures;
+import com.linkedin.kafka.cruisecontrol.detector.GoalViolations;
 import com.linkedin.kafka.cruisecontrol.executor.ExecutorNoopNotifier;
 import com.linkedin.kafka.cruisecontrol.detector.NoopMetricAnomalyFinder;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.NoopNotifier;
@@ -68,6 +69,7 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
   public static final boolean DEFAULT_BROKER_FAILURE_EXCLUDE_RECENT_BROKERS_CONFIG = true;
   public static final boolean DEFAULT_ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG = true;
   public static final String DEFAULT_BROKER_FAILURES_CLASS = BrokerFailures.class.getName();
+  public static final String DEFAULT_GOAL_VIOLATIONS_CLASS = GoalViolations.class.getName();
 
   private static final ConfigDef CONFIG;
 
@@ -240,6 +242,13 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
    */
   public static final String BROKER_FAILURES_CLASS_CONFIG = "broker.failures.class";
   private static final String BROKER_FAILURES_CLASS_DOC = "The broker failures class that extends broker failures.";
+
+  /**
+   * <code>goal.violations.class</code>
+   */
+  public static final String GOAL_VIOLATIONS_CLASS_CONFIG = "goal.violations.class";
+  private static final String GOAL_VIOLATIONS_CLASS_DOC = "The goal violations class that extends goal violations.";
+
   /**
    * <code>min.valid.partition.ratio</code>
    */
@@ -1158,6 +1167,11 @@ public class KafkaCruiseControlConfig extends AbstractConfig {
                 DEFAULT_BROKER_FAILURES_CLASS,
                 ConfigDef.Importance.MEDIUM,
                 BROKER_FAILURES_CLASS_DOC)
+        .define(GOAL_VIOLATIONS_CLASS_CONFIG,
+                ConfigDef.Type.CLASS,
+                DEFAULT_GOAL_VIOLATIONS_CLASS,
+                ConfigDef.Importance.MEDIUM,
+                GOAL_VIOLATIONS_CLASS_DOC)
         .define(GOAL_BALANCEDNESS_PRIORITY_WEIGHT_CONFIG,
                 ConfigDef.Type.DOUBLE,
                 1.1,

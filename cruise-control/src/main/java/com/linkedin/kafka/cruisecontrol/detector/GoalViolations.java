@@ -4,7 +4,9 @@
 
 package com.linkedin.kafka.cruisecontrol.detector;
 
+import com.linkedin.cruisecontrol.common.CruiseControlConfigurable;
 import com.linkedin.kafka.cruisecontrol.KafkaCruiseControl;
+import com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig;
 import com.linkedin.kafka.cruisecontrol.detector.notifier.AnomalyType;
 import com.linkedin.kafka.cruisecontrol.exception.KafkaCruiseControlException;
 import com.linkedin.kafka.cruisecontrol.servlet.handler.async.runnable.RebalanceRunnable;
@@ -19,32 +21,30 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.config.KafkaCruiseControlConfig.GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.KAFKA_CRUISE_CONTROL_OBJECT_CONFIG;
+import static com.linkedin.kafka.cruisecontrol.detector.AnomalyDetectorUtils.getSelfHealingGoalNames;
+
 
 /**
  * A class that holds all the goal violations.
  */
-public class GoalViolations extends KafkaAnomaly {
-  private static final String ID_PREFIX = AnomalyType.GOAL_VIOLATION.toString();
+public class GoalViolations extends KafkaAnomaly implements CruiseControlConfigurable {
   private static final Logger LOG = LoggerFactory.getLogger(GoalViolations.class);
+  protected static final String ID_PREFIX = AnomalyType.GOAL_VIOLATION.toString();
   // The priority order of goals is maintained here.
-  private final Map<Boolean, List<String>> _violatedGoalsByFixability;
-  private final boolean _excludeRecentlyDemotedBrokers;
-  private final boolean _excludeRecentlyRemovedBrokers;
-  private final String _anomalyId;
-  private final RebalanceRunnable _rebalanceRunnable;
+  protected Map<Boolean, List<String>> _violatedGoalsByFixability;
+  protected boolean _excludeRecentlyDemotedBrokers;
+  protected boolean _excludeRecentlyRemovedBrokers;
+  protected String _anomalyId;
+  protected RebalanceRunnable _rebalanceRunnable;
 
-  public GoalViolations(KafkaCruiseControl kafkaCruiseControl,
-                        boolean allowCapacityEstimation,
-                        boolean excludeRecentlyDemotedBrokers,
-                        boolean excludeRecentlyRemovedBrokers,
-                        List<String> selfHealingGoals) {
-    _violatedGoalsByFixability = new HashMap<>();
-    _excludeRecentlyDemotedBrokers = excludeRecentlyDemotedBrokers;
-    _excludeRecentlyRemovedBrokers = excludeRecentlyRemovedBrokers;
-    _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
-    _optimizationResult = null;
-    _rebalanceRunnable = new RebalanceRunnable(kafkaCruiseControl, selfHealingGoals, allowCapacityEstimation,
-                                               excludeRecentlyDemotedBrokers, excludeRecentlyRemovedBrokers, _anomalyId);
+  /**
+   * An anomaly to indicate goal violation(s).
+   */
+  public GoalViolations() {
   }
 
   /**
@@ -101,5 +101,21 @@ public class GoalViolations extends KafkaAnomaly {
     sb.append(String.format("}, Exclude brokers recently (removed: %s demoted: %s)}",
                             _excludeRecentlyRemovedBrokers, _excludeRecentlyDemotedBrokers));
     return sb.toString();
+  }
+
+  @Override
+  public void configure(Map<String, ?> configs) {
+    _violatedGoalsByFixability = new HashMap<>();
+    KafkaCruiseControl kafkaCruiseControl = (KafkaCruiseControl) configs.get(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG);
+    if (kafkaCruiseControl != null) {
+      _optimizationResult = null;
+      KafkaCruiseControlConfig config = kafkaCruiseControl.config();
+      boolean allowCapacityEstimation = config.getBoolean(ANOMALY_DETECTION_ALLOW_CAPACITY_ESTIMATION_CONFIG);
+      _excludeRecentlyDemotedBrokers = config.getBoolean(GOAL_VIOLATION_EXCLUDE_RECENTLY_DEMOTED_BROKERS_CONFIG);
+      _excludeRecentlyRemovedBrokers = config.getBoolean(GOAL_VIOLATION_EXCLUDE_RECENTLY_REMOVED_BROKERS_CONFIG);
+      _anomalyId = String.format("%s-%s", ID_PREFIX, UUID.randomUUID().toString().substring(ID_PREFIX.length() + 1));
+      _rebalanceRunnable = new RebalanceRunnable(kafkaCruiseControl, getSelfHealingGoalNames(config), allowCapacityEstimation,
+                                                 _excludeRecentlyDemotedBrokers, _excludeRecentlyRemovedBrokers, _anomalyId);
+    }
   }
 }

@@ -216,7 +216,8 @@ public class AnomalyDetectorTest {
     OptimizerResult mockOptimizerResult = EasyMock.mock(OptimizerResult.class);
     BrokerStats mockBrokerStats = EasyMock.mock(BrokerStats.class);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).times(1, 3);
+    KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(1, 4);
     mockKafkaCruiseControl.sanityCheckDryRun(EasyMock.eq(SELF_HEALING_DRYRUN));
     EasyMock.expect(mockKafkaCruiseControl.modelCompletenessRequirements(EasyMock.anyObject())).andReturn(mockModelCompletenessRequirements);
 
@@ -299,9 +300,10 @@ public class AnomalyDetectorTest {
     try {
       anomalyDetector.startDetection();
       if (anomalyType == AnomalyType.GOAL_VIOLATION) {
-        GoalViolations violations = new GoalViolations(mockKafkaCruiseControl, true,
-                                                       true, true,
-                                                       Collections.emptyList());
+        Map<String, Object> parameterConfigOverrides = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+        GoalViolations violations = kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
+                                                                                   GoalViolations.class,
+                                                                                   parameterConfigOverrides);
         violations.addViolation("RackAwareGoal", true);
         anomalies.add(violations);
       } else if (anomalyType == AnomalyType.DISK_FAILURE) {
@@ -346,7 +348,8 @@ public class AnomalyDetectorTest {
     ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     KafkaCruiseControl mockKafkaCruiseControl = EasyMock.mock(KafkaCruiseControl.class);
     Properties props = KafkaCruiseControlUnitTestUtils.getKafkaCruiseControlProperties();
-    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(new KafkaCruiseControlConfig(props)).times(1);
+    KafkaCruiseControlConfig kafkaCruiseControlConfig = new KafkaCruiseControlConfig(props);
+    EasyMock.expect(mockKafkaCruiseControl.config()).andReturn(kafkaCruiseControlConfig).times(2);
 
     startPeriodicDetectors(mockDetectorScheduler, mockGoalViolationDetector, mockMetricAnomalyDetector, mockDiskFailureDetector, executorService);
     shutdownDetector(mockDetectorScheduler, executorService);
@@ -366,9 +369,10 @@ public class AnomalyDetectorTest {
 
     try {
       anomalyDetector.startDetection();
-      anomalies.add(new GoalViolations(mockKafkaCruiseControl, true,
-                                       true, true,
-                                       Collections.emptyList()));
+      Map<String, Object> parameterConfigOverrides = Collections.singletonMap(KAFKA_CRUISE_CONTROL_OBJECT_CONFIG, mockKafkaCruiseControl);
+      anomalies.add(kafkaCruiseControlConfig.getConfiguredInstance(KafkaCruiseControlConfig.GOAL_VIOLATIONS_CLASS_CONFIG,
+                                                                   GoalViolations.class,
+                                                                   parameterConfigOverrides));
       while (!anomalies.isEmpty()) {
         // Just wait for the anomalies to be drained.
       }

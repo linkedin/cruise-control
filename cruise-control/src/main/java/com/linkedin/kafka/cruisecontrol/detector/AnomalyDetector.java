@@ -84,7 +84,7 @@ public class AnomalyDetector {
     _kafkaCruiseControl = kafkaCruiseControl;
     _selfHealingGoals = getSelfHealingGoalNames(config);
     sanityCheckHardGoalPresence(_selfHealingGoals, false, config);
-    _goalViolationDetector = new GoalViolationDetector(_loadMonitor, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
+    _goalViolationDetector = new GoalViolationDetector(_loadMonitor, _anomalies, time, _kafkaCruiseControl);
     _brokerFailureDetector = new BrokerFailureDetector(_loadMonitor, _anomalies, time, _kafkaCruiseControl);
     _metricAnomalyDetector = new MetricAnomalyDetector(_loadMonitor, _anomalies, _kafkaCruiseControl);
     _diskFailureDetector = new DiskFailureDetector(_loadMonitor, _adminClient, _anomalies, time, _kafkaCruiseControl, _selfHealingGoals);
