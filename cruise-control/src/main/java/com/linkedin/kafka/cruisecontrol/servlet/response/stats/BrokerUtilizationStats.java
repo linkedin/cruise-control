@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentSkipListMap;
 public class BrokerUtilizationStats extends BrokerStats {
   private static final String HOST = "Host";
   private static final String HOSTS = "hosts";
-  private final List<SingleBrokerStats> _brokerStats;
+  private final List<SingleBrokerUtilizationStats> _brokerStats;
   private final SortedMap<String, BasicStats> _hostStats;
 
   public BrokerUtilizationStats(KafkaCruiseControlConfig config) {
@@ -34,8 +34,8 @@ public class BrokerUtilizationStats extends BrokerStats {
                                    double followerBytesInRate, double bytesOutRate, double potentialBytesOutRate,
                                    int numReplicas, int numLeaders, boolean isEstimated, double capacity) {
 
-    SingleBrokerStats singleBrokerStats =
-        new SingleBrokerStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
+    SingleBrokerUtilizationStats singleBrokerStats =
+        new SingleBrokerUtilizationStats(host, id, state, diskUtil, cpuUtil, leaderBytesInRate, followerBytesInRate, bytesOutRate,
                               potentialBytesOutRate, numReplicas, numLeaders, isEstimated, capacity);
     _brokerStats.add(singleBrokerStats);
     _hostFieldLength = Math.max(_hostFieldLength, host.length());
@@ -68,7 +68,7 @@ public class BrokerUtilizationStats extends BrokerStats {
 
     // broker level statistics
     List<Map<String, Object>> brokerStats = new ArrayList<>(_brokerStats.size());
-    for (SingleBrokerStats stats : _brokerStats) {
+    for (SingleBrokerUtilizationStats stats : _brokerStats) {
       Map<String, Object> brokerEntry = stats.getJsonStructure();
       brokerStats.add(brokerEntry);
     }
@@ -117,7 +117,7 @@ public class BrokerUtilizationStats extends BrokerStats {
     sb.append(String.format("%n%n%" + _hostFieldLength + "s%15s%26s%15s%25s%25s%20s%20s%20s%n",
                             "HOST", "BROKER", "DISK(MB)/_(%)_", "CPU(%)", "LEADER_NW_IN(KB/s)",
                             "FOLLOWER_NW_IN(KB/s)", "NW_OUT(KB/s)", "PNW_OUT(KB/s)", "LEADERS/REPLICAS"));
-    for (SingleBrokerStats stats : _brokerStats) {
+    for (SingleBrokerUtilizationStats stats : _brokerStats) {
       sb.append(String.format("%" + _hostFieldLength + "s,%14d,%19.3f/%05.2f,%14.3f,%24.3f,%24.3f,%19.3f,%19.3f,%14d/%d%n",
                               stats.host(),
                               stats.id(),

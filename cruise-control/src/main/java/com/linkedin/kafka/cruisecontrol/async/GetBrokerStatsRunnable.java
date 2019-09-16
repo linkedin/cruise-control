@@ -45,18 +45,9 @@ class GetBrokerStatsRunnable extends OperationRunnable {
   protected BrokerStats getResult() throws Exception {
     if (_isCapacityStats) {
       if (_start != DEFAULT_START_TIME_FOR_CLUSTER_MODEL) {
-        return _kafkaCruiseControl.clusterModel(_start,
-                                                _end,
-                                                _modelCompletenessRequirements.minMonitoredPartitionsPercentage(),
-                                                _future.operationProgress(),
-                                                _allowCapacityEstimation)
-                                  .brokerCapacityStats(_config);
+        return _kafkaCruiseControl.brokerCapacityStats(_config);
       }
-      return _kafkaCruiseControl.clusterModel(_end,
-                                              _modelCompletenessRequirements,
-                                              _future.operationProgress(),
-                                              _allowCapacityEstimation)
-                                        .brokerCapacityStats(_config);
+      return _kafkaCruiseControl.brokerCapacityStats(_config);
 
     }
 
