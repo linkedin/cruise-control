@@ -1017,20 +1017,20 @@ public class Executor {
 
     /**
      * For a inter-broker replica movement action, the completion depends on the task state:
-     * IN_PROGRESS: when the current replica list is the same as the new replica list.
-     * ABORTING: done when the current replica list is the same as the old replica list. Due to race condition,
-     *           we also consider it done if the current replica list is the same as the new replica list.
+     * IN_PROGRESS: when the current in-sync replica list is the same as the new replica list.
+     * ABORTING: done when the current in-sync replica list is the same as the old replica list. Due to race condition,
+     *           we also consider it done if the current in-sync replica list is the same as the new replica list.
      * DEAD: always considered as done because we neither move forward or rollback.
      *
      * There should be no other task state seen here.
      */
     private boolean isInterBrokerReplicaActionDone(Cluster cluster, TopicPartition tp, ExecutionTask task) {
-      Node[] currentOrderedReplicas = cluster.partition(tp).replicas();
+      Node[] currentInSyncReplicas = cluster.partition(tp).inSyncReplicas();
       switch (task.state()) {
         case IN_PROGRESS:
-          return task.proposal().isInterBrokerMovementCompleted(currentOrderedReplicas);
+          return task.proposal().isInterBrokerMovementCompleted(currentInSyncReplicas);
         case ABORTING:
-          return task.proposal().isInterBrokerMovementAborted(currentOrderedReplicas);
+          return task.proposal().isInterBrokerMovementAborted(currentInSyncReplicas);
         case DEAD:
           return true;
         default:
